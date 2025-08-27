@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NutraSafe Dashboard</title>
+    <title>NutraSafe - Welcome</title>
     <style>
         * {
             margin: 0;
@@ -12,359 +12,137 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            color: #333;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        
-        .header {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 16px;
-            padding: 30px;
-            margin-bottom: 30px;
-            text-align: center;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        }
-        
-        .header h1 {
-            font-size: 2.5rem;
-            color: #2d3748;
-            margin-bottom: 10px;
-            font-weight: 700;
-        }
-        
-        .header p {
-            color: #718096;
-            font-size: 1.1rem;
-        }
-        
-        .cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 25px;
-            margin-bottom: 30px;
-        }
-        
-        .card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 16px;
-            padding: 25px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-        }
-        
-        .card h3 {
-            color: #2d3748;
-            margin-bottom: 15px;
-            font-size: 1.3rem;
-            font-weight: 600;
-        }
-        
-        .card p {
-            color: #718096;
-            line-height: 1.6;
-            margin-bottom: 15px;
-        }
-        
-        .status {
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: 500;
-            display: inline-block;
-        }
-        
-        .status.active {
-            background: #c6f6d5;
-            color: #2f855a;
-        }
-        
-        .status.pending {
-            background: #fed7cc;
-            color: #c53030;
-        }
-        
-        .test-section {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 16px;
-            padding: 30px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        }
-        
-        .test-section h3 {
-            color: #2d3748;
-            margin-bottom: 20px;
-            font-size: 1.4rem;
-            font-weight: 600;
-        }
-        
-        .test-form {
             display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        
-        .test-form input {
-            flex: 1;
-            min-width: 200px;
-            padding: 12px 16px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: border-color 0.3s ease;
-        }
-        
-        .test-form input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        .test-form button {
-            padding: 12px 24px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            align-items: center;
+            justify-content: center;
             color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: transform 0.2s ease;
         }
         
-        .test-form button:hover {
-            transform: translateY(-1px);
-        }
-        
-        .test-form button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .results {
-            background: #f7fafc;
-            border-radius: 8px;
-            padding: 20px;
-            margin-top: 20px;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        
-        .food-item {
-            background: white;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-left: 4px solid #667eea;
-        }
-        
-        .food-name {
-            font-weight: 600;
-            color: #2d3748;
-            margin-bottom: 5px;
-        }
-        
-        .food-brand {
-            color: #718096;
-            font-size: 0.9rem;
-            margin-bottom: 8px;
-        }
-        
-        .food-nutrients {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-            gap: 8px;
-            font-size: 0.85rem;
-        }
-        
-        .nutrient {
-            color: #4a5568;
-        }
-        
-        .error {
-            background: #fed7cc;
-            color: #c53030;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 10px;
-        }
-        
-        .loading {
+        .welcome-container {
             text-align: center;
-            color: #718096;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            padding: 60px 40px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+        }
+        
+        .logo {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .tagline {
+            font-size: 1.2rem;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+        
+        .dashboard-links {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .dashboard-btn {
+            padding: 15px 30px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            color: white;
+            text-decoration: none;
+            font-size: 1.1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .dashboard-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .dashboard-btn .icon {
+            font-size: 1.5rem;
+            margin-right: 10px;
+        }
+        
+        .description {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+        
+        .status-info {
+            margin-top: 40px;
             padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .status-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .status-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .status-value {
+            font-weight: 500;
+            color: #4ade80;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🥗 NutraSafe Dashboard</h1>
-            <p>Firebase Functions API Management & Testing</p>
+    <div class="welcome-container">
+        <div class="logo">🥗 NutraSafe</div>
+        <div class="tagline">Track your nutrition, manage allergies, and maintain a healthy lifestyle</div>
+        
+        <div class="dashboard-links">
+            <a href="/dashboard" class="dashboard-btn">
+                <span class="icon">👤</span>
+                User Dashboard
+                <div class="description">Access your personal nutrition tracking and food diary</div>
+            </a>
+            
+            <a href="/admin" class="dashboard-btn">
+                <span class="icon">⚙️</span>
+                Admin Dashboard
+                <div class="description">Company management, user analytics, and system monitoring</div>
+            </a>
         </div>
         
-        <div class="cards">
-            <div class="card">
-                <h3>📡 API Status</h3>
-                <p>Firebase Functions deployment status and health check</p>
-                <div class="status pending" id="apiStatus">Checking...</div>
+        <div class="status-info">
+            <div class="status-item">
+                <span class="status-label">System Status</span>
+                <span class="status-value">✅ Online</span>
             </div>
-            
-            <div class="card">
-                <h3>🔑 FatSecret Integration</h3>
-                <p>OAuth 2.0 authentication with static IP routing</p>
-                <div class="status pending" id="fatSecretStatus">Not tested</div>
+            <div class="status-item">
+                <span class="status-label">FatSecret API</span>
+                <span class="status-value">✅ Connected</span>
             </div>
-            
-            <div class="card">
-                <h3>🏥 Firebase Backend</h3>
-                <p>Firestore database and user authentication</p>
-                <div class="status active">Active</div>
+            <div class="status-item">
+                <span class="status-label">Static IP</span>
+                <span class="status-value">34.44.189.206</span>
             </div>
-            
-            <div class="card">
-                <h3>📱 iOS App</h3>
-                <p>NutraSafe Beta mobile application</p>
-                <div class="status active">Connected</div>
-            </div>
-        </div>
-        
-        <div class="test-section">
-            <h3>🧪 Test Food Search API</h3>
-            <p style="color: #718096; margin-bottom: 20px;">Test the Firebase Functions endpoint for FatSecret food search</p>
-            
-            <div class="test-form">
-                <input type="text" id="searchQuery" placeholder="Enter food name (e.g., banana, chicken breast)" value="banana">
-                <button onclick="testFoodSearch()" id="searchButton">Search Foods</button>
-            </div>
-            
-            <div id="searchResults"></div>
         </div>
     </div>
-
-    <script>
-        // Check API health on page load
-        window.onload = function() {
-            checkAPIHealth();
-        };
-
-        async function checkAPIHealth() {
-            try {
-                const response = await fetch('https://us-central1-nutrasafe-705c7.cloudfunctions.net/healthCheck');
-                if (response.ok) {
-                    document.getElementById('apiStatus').textContent = 'Active';
-                    document.getElementById('apiStatus').className = 'status active';
-                } else {
-                    throw new Error('Health check failed');
-                }
-            } catch (error) {
-                document.getElementById('apiStatus').textContent = 'Offline';
-                document.getElementById('apiStatus').className = 'status pending';
-            }
-        }
-
-        async function testFoodSearch() {
-            const query = document.getElementById('searchQuery').value;
-            const button = document.getElementById('searchButton');
-            const resultsDiv = document.getElementById('searchResults');
-            
-            if (!query.trim()) {
-                alert('Please enter a food name to search');
-                return;
-            }
-
-            button.disabled = true;
-            button.textContent = 'Searching...';
-            resultsDiv.innerHTML = '<div class="loading">🔍 Searching for foods...</div>';
-
-            try {
-                const response = await fetch('https://us-central1-nutrasafe-705c7.cloudfunctions.net/searchFoods', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        query: query,
-                        maxResults: '10'
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-
-                const data = await response.json();
-                
-                document.getElementById('fatSecretStatus').textContent = 'Active';
-                document.getElementById('fatSecretStatus').className = 'status active';
-                
-                displayResults(data.foods || []);
-
-            } catch (error) {
-                console.error('Search error:', error);
-                document.getElementById('fatSecretStatus').textContent = 'Error';
-                document.getElementById('fatSecretStatus').className = 'status pending';
-                resultsDiv.innerHTML = `<div class="error">❌ Search failed: ${error.message}</div>`;
-            } finally {
-                button.disabled = false;
-                button.textContent = 'Search Foods';
-            }
-        }
-
-        function displayResults(foods) {
-            const resultsDiv = document.getElementById('searchResults');
-            
-            if (foods.length === 0) {
-                resultsDiv.innerHTML = '<div class="error">No foods found. Try a different search term.</div>';
-                return;
-            }
-
-            const resultsHTML = foods.map(food => `
-                <div class="food-item">
-                    <div class="food-name">${food.name}</div>
-                    ${food.brand ? `<div class="food-brand">${food.brand}</div>` : ''}
-                    <div class="food-nutrients">
-                        <div class="nutrient">🔥 ${Math.round(food.calories)} cal</div>
-                        <div class="nutrient">🥩 ${food.protein.toFixed(1)}g protein</div>
-                        <div class="nutrient">🌾 ${food.carbs.toFixed(1)}g carbs</div>
-                        <div class="nutrient">🥑 ${food.fat.toFixed(1)}g fat</div>
-                        <div class="nutrient">🌿 ${food.fiber.toFixed(1)}g fiber</div>
-                        <div class="nutrient">🧂 ${food.sodium.toFixed(0)}mg sodium</div>
-                    </div>
-                </div>
-            `).join('');
-            
-            resultsDiv.innerHTML = `
-                <div class="results">
-                    <h4 style="margin-bottom: 15px; color: #2d3748;">Found ${foods.length} foods:</h4>
-                    ${resultsHTML}
-                </div>
-            `;
-        }
-
-        // Allow Enter key to trigger search
-        document.getElementById('searchQuery').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                testFoodSearch();
-            }
-        });
-    </script>
 </body>
 </html>
