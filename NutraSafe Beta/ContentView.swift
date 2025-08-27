@@ -1,4 +1,139 @@
 import SwiftUI
+import Foundation
+import CryptoKit
+
+// MARK: - FatSecret API Service via Firebase Functions
+class FatSecretService: ObservableObject {
+    static let shared = FatSecretService()
+    
+    // Firebase Functions URL for NutraSafe project
+    private let functionsBaseURL = "https://us-central1-nutrasafe-705c7.cloudfunctions.net"
+    
+    private init() {}
+    
+    func searchWithMockFallback(query: String) async -> [SearchResult] {
+        do {
+            return try await searchFoods(query: query)
+        } catch {
+            print("Firebase Functions API error: \(error). Falling back to mock data.")
+            return mockSearchResults.filter { food in
+                food.name.localizedCaseInsensitiveContains(query) ||
+                food.brand?.localizedCaseInsensitiveContains(query) == true
+            }
+        }
+    }
+    
+    func searchFoods(query: String) async throws -> [SearchResult] {
+        let url = URL(string: "\(functionsBaseURL)/searchFoods")!
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let requestBody = ["query": query, "maxResults": "50"]
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+        
+        struct FirebaseFoodSearchResponse: Codable {
+            let foods: [FirebaseFoodItem]
+            
+            struct FirebaseFoodItem: Codable {
+                let id: String
+                let name: String
+                let brand: String?
+                let calories: Double
+                let protein: Double
+                let carbs: Double
+                let fat: Double
+                let fiber: Double
+                let sugar: Double
+                let sodium: Double
+            }
+        }
+        
+        let searchResponse = try JSONDecoder().decode(FirebaseFoodSearchResponse.self, from: data)
+        
+        return searchResponse.foods.map { food in
+            SearchResult(
+                id: food.id,
+                name: food.name,
+                brand: food.brand,
+                calories: food.calories,
+                protein: food.protein,
+                carbs: food.carbs,
+                fat: food.fat,
+                fiber: food.fiber,
+                sugar: food.sugar,
+                sodium: food.sodium
+            )
+        }
+    }
+    
+    func getFoodDetails(foodId: String) async throws -> SearchResult? {
+        let url = URL(string: "\(functionsBaseURL)/getFoodDetails")!
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let requestBody = ["foodId": foodId]
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+        
+        struct FirebaseFoodDetailsResponse: Codable {
+            let id: String
+            let name: String
+            let brand: String?
+            let calories: Double
+            let protein: Double
+            let carbs: Double
+            let fat: Double
+            let fiber: Double
+            let sugar: Double
+            let sodium: Double
+        }
+        
+        let detailResponse = try JSONDecoder().decode(FirebaseFoodDetailsResponse.self, from: data)
+        
+        return SearchResult(
+            id: detailResponse.id,
+            name: detailResponse.name,
+            brand: detailResponse.brand,
+            calories: detailResponse.calories,
+            protein: detailResponse.protein,
+            carbs: detailResponse.carbs,
+            fat: detailResponse.fat,
+            fiber: detailResponse.fiber,
+            sugar: detailResponse.sugar,
+            sodium: detailResponse.sodium
+        )
+    }
+    
+    private var mockSearchResults: [SearchResult] {
+        return [
+            SearchResult(id: "1", name: "Banana", brand: nil, calories: 89, protein: 1.1, carbs: 23, fat: 0.3, fiber: 2.6, sugar: 12, sodium: 1),
+            SearchResult(id: "2", name: "Chicken Breast", brand: nil, calories: 165, protein: 31, carbs: 0, fat: 3.6, fiber: 0, sugar: 0, sodium: 74),
+            SearchResult(id: "3", name: "Brown Rice", brand: nil, calories: 112, protein: 2.6, carbs: 23, fat: 0.9, fiber: 1.8, sugar: 0.4, sodium: 5),
+            SearchResult(id: "4", name: "Greek Yogurt", brand: "Fage", calories: 59, protein: 10, carbs: 3.6, fat: 0.4, fiber: 0, sugar: 3.6, sodium: 36),
+            SearchResult(id: "5", name: "Almonds", brand: nil, calories: 579, protein: 21, carbs: 22, fat: 50, fiber: 12, sugar: 4.4, sodium: 1),
+            SearchResult(id: "6", name: "Broccoli", brand: nil, calories: 25, protein: 3, carbs: 5, fat: 0.4, fiber: 3, sugar: 1.5, sodium: 33),
+            SearchResult(id: "7", name: "Salmon Fillet", brand: nil, calories: 208, protein: 25, carbs: 0, fat: 12, fiber: 0, sugar: 0, sodium: 59),
+            SearchResult(id: "8", name: "Sweet Potato", brand: nil, calories: 86, protein: 1.6, carbs: 20, fat: 0.1, fiber: 3, sugar: 4.2, sodium: 5)
+        ]
+    }
+}
 
 // MARK: - Professional Nutrition App UI Following Research Standards
 // Based on analysis of MyFitnessPal, Lose It!, Cronometer, and Lifesum
@@ -1763,6 +1898,7 @@ struct AddFoodSearchView: View {
     @State private var searchText = ""
     @State private var searchResults: [FoodSearchResult] = []
     @State private var isSearching = false
+    @StateObject private var fatSecretService = FatSecretService.shared
     
     var body: some View {
         VStack(spacing: 0) {
@@ -1854,13 +1990,15 @@ struct AddFoodSearchView: View {
     }
     
     private func performSearch() {
+        guard !searchText.isEmpty else { return }
+        
         isSearching = true
-        // Simulate API call
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            isSearching = false
-            searchResults = sampleSearchResults.filter { food in
-                food.name.localizedCaseInsensitiveContains(searchText) ||
-                food.brand?.localizedCaseInsensitiveContains(searchText) == true
+        
+        Task {
+            let results = await fatSecretService.searchWithMockFallback(query: searchText)
+            await MainActor.run {
+                self.searchResults = results
+                self.isSearching = false
             }
         }
     }
@@ -2232,12 +2370,12 @@ struct FoodSearchResultRow: View {
                 }
                 
                 HStack(spacing: 16) {
-                    Text("\(food.calories) cal")
+                    Text("\(Int(food.calories)) cal")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.primary)
                     
                     if food.protein > 0 {
-                        Text("\(food.protein)g protein")
+                        Text("\(String(format: "%.1f", food.protein))g protein")
                             .font(.system(size: 13))
                             .foregroundColor(.secondary)
                     }
@@ -2261,26 +2399,34 @@ struct FoodSearchResultRow: View {
 
 // MARK: - Sample Data
 
-struct FoodSearchResult {
-    let id = UUID()
+struct SearchResult: Identifiable {
+    let id: String
     let name: String
     let brand: String?
-    let calories: Int
+    let calories: Double
     let protein: Double
     let carbs: Double
     let fat: Double
-    let servingSize: String
+    let fiber: Double
+    let sugar: Double
+    let sodium: Double
+    
+    var servingSize: String {
+        return "100g"
+    }
 }
 
+typealias FoodSearchResult = SearchResult
+
 let sampleSearchResults: [FoodSearchResult] = [
-    FoodSearchResult(name: "Greek Yoghurt", brand: "Fage", calories: 100, protein: 18.0, carbs: 6.0, fat: 0.0, servingSize: "170g"),
-    FoodSearchResult(name: "Banana", brand: nil, calories: 89, protein: 1.1, carbs: 23.0, fat: 0.3, servingSize: "1 medium"),
-    FoodSearchResult(name: "Chicken Breast", brand: nil, calories: 165, protein: 31.0, carbs: 0.0, fat: 3.6, servingSize: "100g"),
-    FoodSearchResult(name: "Brown Rice", brand: nil, calories: 111, protein: 2.6, carbs: 23.0, fat: 0.9, servingSize: "100g cooked"),
-    FoodSearchResult(name: "Avocado", brand: nil, calories: 160, protein: 2.0, carbs: 8.5, fat: 14.7, servingSize: "1/2 medium"),
-    FoodSearchResult(name: "Spinach", brand: nil, calories: 23, protein: 2.9, carbs: 3.6, fat: 0.4, servingSize: "100g"),
-    FoodSearchResult(name: "Salmon", brand: nil, calories: 208, protein: 22.0, carbs: 0.0, fat: 12.4, servingSize: "100g"),
-    FoodSearchResult(name: "Oats", brand: "Quaker", calories: 150, protein: 5.0, carbs: 27.0, fat: 3.0, servingSize: "40g dry")
+    FoodSearchResult(id: "1", name: "Greek Yoghurt", brand: "Fage", calories: 100, protein: 18.0, carbs: 6.0, fat: 0.0, fiber: 0, sugar: 6.0, sodium: 50),
+    FoodSearchResult(id: "2", name: "Banana", brand: nil, calories: 89, protein: 1.1, carbs: 23.0, fat: 0.3, fiber: 2.6, sugar: 12.2, sodium: 1),
+    FoodSearchResult(id: "3", name: "Chicken Breast", brand: nil, calories: 165, protein: 31.0, carbs: 0.0, fat: 3.6, fiber: 0, sugar: 0, sodium: 74),
+    FoodSearchResult(id: "4", name: "Brown Rice", brand: nil, calories: 111, protein: 2.6, carbs: 23.0, fat: 0.9, fiber: 1.8, sugar: 0.4, sodium: 5),
+    FoodSearchResult(id: "5", name: "Avocado", brand: nil, calories: 160, protein: 2.0, carbs: 8.5, fat: 14.7, fiber: 6.7, sugar: 0.7, sodium: 7),
+    FoodSearchResult(id: "6", name: "Spinach", brand: nil, calories: 23, protein: 2.9, carbs: 3.6, fat: 0.4, fiber: 2.2, sugar: 0.4, sodium: 79),
+    FoodSearchResult(id: "7", name: "Salmon", brand: nil, calories: 208, protein: 22.0, carbs: 0.0, fat: 12.4, fiber: 0, sugar: 0, sodium: 59),
+    FoodSearchResult(id: "8", name: "Oats", brand: "Quaker", calories: 150, protein: 5.0, carbs: 27.0, fat: 3.0, fiber: 4.0, sugar: 1.1, sodium: 2)
 ]
 
 let samplePopularFoods: [FoodSearchResult] = [

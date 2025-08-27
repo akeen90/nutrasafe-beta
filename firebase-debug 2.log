@@ -1,0 +1,16 @@
+[debug] [2025-08-27T18:01:26.457Z] ----------------------------------------------------------------------
+[debug] [2025-08-27T18:01:26.458Z] Command:       /opt/homebrew/Cellar/node@18/18.20.8/bin/node /opt/homebrew/bin/firebase deploy --only functions
+[debug] [2025-08-27T18:01:26.458Z] CLI Version:   13.35.1
+[debug] [2025-08-27T18:01:26.458Z] Platform:      darwin
+[debug] [2025-08-27T18:01:26.458Z] Node Version:  v18.20.8
+[debug] [2025-08-27T18:01:26.459Z] Time:          Wed Aug 27 2025 19:01:26 GMT+0100 (British Summer Time)
+[debug] [2025-08-27T18:01:26.459Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-08-27T18:01:26.536Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-08-27T18:01:26.536Z] > authorizing via signed-in user (aaronmkeen@gmail.com)
+[debug] [2025-08-27T18:01:26.536Z] [iam] checking project nutrasafe-705c7 for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[debug] [2025-08-27T18:01:26.537Z] Checked if tokens are valid: true, expires at: 1756320717712
+[debug] [2025-08-27T18:01:26.537Z] Checked if tokens are valid: true, expires at: 1756320717712
+[debug] [2025-08-27T18:01:26.537Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/nutrasafe-705c7:testIamPermissions [none]
+[debug] [2025-08-27T18:01:26.537Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/nutrasafe-705c7:testIamPermissions x-goog-quota-user=projects/nutrasafe-705c7
+[debug] [2025-08-27T18:01:26.537Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/nutrasafe-705c7:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
