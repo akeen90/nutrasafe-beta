@@ -2345,9 +2345,28 @@ struct FoodSearchResultRow: View {
     let food: FoodSearchResult
     let onAdd: () -> Void
     
+    // Sample user allergens for testing - in production this would come from user settings
+    private let userAllergens: [Allergen] = [.dairy, .eggs, .gluten]
+    
     var body: some View {
+        let allergenResult = AllergenDetector.shared.detectAllergens(
+            in: food.name,
+            ingredients: [],
+            userAllergens: userAllergens
+        )
+        let nutritionScore = NutritionScorer.shared.calculateNutritionScore(
+            calories: food.calories,
+            protein: food.protein,
+            carbs: food.carbs,
+            fat: food.fat,
+            fiber: food.fiber,
+            sugar: food.sugar,
+            sodium: food.sodium,
+            foodName: food.name
+        )
+        
         HStack(spacing: 12) {
-            // Food image placeholder
+            // Food image placeholder with safety indicator
             RoundedRectangle(cornerRadius: 8)
                 .fill(Color(.systemGray5))
                 .frame(width: 50, height: 50)
@@ -2356,12 +2375,77 @@ struct FoodSearchResultRow: View {
                         .font(.system(size: 20))
                         .foregroundColor(.secondary)
                 )
+                .overlay(
+                    // Safety & nutrition indicators
+                    VStack {
+                        HStack {
+                            Spacer()
+                            
+                            // Nutrition grade in top-right
+                            Text(nutritionScore.grade.rawValue)
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 2)
+                                .background(nutritionGradeColor(nutritionScore.grade))
+                                .clipShape(RoundedRectangle(cornerRadius: 4))
+                        }
+                        
+                        Spacer()
+                        
+                        HStack {
+                            Spacer()
+                            
+                            // Safety indicator in bottom-right
+                            if !allergenResult.safeForUser {
+                                Circle()
+                                    .fill(Color.red)
+                                    .frame(width: 14, height: 14)
+                                    .overlay(
+                                        Text("!")
+                                            .font(.system(size: 8, weight: .bold))
+                                            .foregroundColor(.white)
+                                    )
+                            }
+                        }
+                    }
+                    .padding(4)
+                )
             
             VStack(alignment: .leading, spacing: 4) {
-                Text(food.name)
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.primary)
-                    .lineLimit(2)
+                HStack {
+                    Text(food.name)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.primary)
+                        .lineLimit(2)
+                    
+                    Spacer()
+                    
+                    // Allergen warning badges
+                    if !allergenResult.detectedAllergens.isEmpty {
+                        HStack(spacing: 2) {
+                            ForEach(allergenResult.detectedAllergens.prefix(2), id: \.self) { allergen in
+                                Text(allergen.icon)
+                                    .font(.system(size: 12))
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 2)
+                                    .background(Color.red.opacity(0.1))
+                                    .foregroundColor(.red)
+                                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                            }
+                            
+                            if allergenResult.detectedAllergens.count > 2 {
+                                Text("+\(allergenResult.detectedAllergens.count - 2)")
+                                    .font(.system(size: 10, weight: .medium))
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 2)
+                                    .background(Color.red.opacity(0.1))
+                                    .foregroundColor(.red)
+                                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                            }
+                        }
+                    }
+                }
                 
                 if let brand = food.brand {
                     Text(brand)
@@ -2369,31 +2453,96 @@ struct FoodSearchResultRow: View {
                         .foregroundColor(.secondary)
                 }
                 
-                HStack(spacing: 16) {
-                    Text("\(Int(food.calories)) cal")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.primary)
-                    
-                    if food.protein > 0 {
-                        Text("\(String(format: "%.1f", food.protein))g protein")
-                            .font(.system(size: 13))
-                            .foregroundColor(.secondary)
+                // Allergen warning text
+                if !allergenResult.safeForUser && !allergenResult.warnings.isEmpty {
+                    Text("⚠️ " + allergenResult.warnings.first!)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.red)
+                        .lineLimit(1)
+                }
+                
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 12) {
+                            Text("\(Int(food.calories)) cal")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.primary)
+                            
+                            if food.protein > 0 {
+                                Text("\(String(format: "%.1f", food.protein))g protein")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        // Nutrition score and grade
+                        HStack(spacing: 8) {
+                            Text("Nutrition: \(Int(nutritionScore.overallScore))")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(nutritionGradeColor(nutritionScore.grade))
+                            
+                            Text("•")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                            
+                            Text(nutritionScore.grade.description)
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                        }
                     }
+                    
+                    Spacer()
                 }
             }
             
             Spacer()
             
             Button(action: onAdd) {
-                Image(systemName: "plus.circle.fill")
+                Image(systemName: allergenResult.safeForUser ? "plus.circle.fill" : "exclamationmark.triangle.fill")
                     .font(.system(size: 24))
-                    .foregroundColor(.blue)
+                    .foregroundColor(allergenResult.safeForUser ? .blue : .red)
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(Color(.systemGray6))
         .cornerRadius(12)
+    }
+    
+    private func safetyScoreColor(_ score: Double) -> Color {
+        switch score {
+        case 0.8...1.0:
+            return .green
+        case 0.5..<0.8:
+            return .orange
+        default:
+            return .red
+        }
+    }
+    
+    private func safetyScoreText(_ score: Double) -> String {
+        switch score {
+        case 0.8...1.0:
+            return "✓"
+        case 0.5..<0.8:
+            return "!"
+        default:
+            return "⚠"
+        }
+    }
+    
+    private func nutritionGradeColor(_ grade: NutritionGrade) -> Color {
+        switch grade {
+        case .excellent, .veryGood:
+            return .green
+        case .good:
+            return Color(.systemGreen).opacity(0.8)
+        case .average:
+            return .orange
+        case .poor, .veryPoor:
+            return .red
+        }
     }
 }
 
@@ -2426,14 +2575,21 @@ let sampleSearchResults: [FoodSearchResult] = [
     FoodSearchResult(id: "5", name: "Avocado", brand: nil, calories: 160, protein: 2.0, carbs: 8.5, fat: 14.7, fiber: 6.7, sugar: 0.7, sodium: 7),
     FoodSearchResult(id: "6", name: "Spinach", brand: nil, calories: 23, protein: 2.9, carbs: 3.6, fat: 0.4, fiber: 2.2, sugar: 0.4, sodium: 79),
     FoodSearchResult(id: "7", name: "Salmon", brand: nil, calories: 208, protein: 22.0, carbs: 0.0, fat: 12.4, fiber: 0, sugar: 0, sodium: 59),
-    FoodSearchResult(id: "8", name: "Oats", brand: "Quaker", calories: 150, protein: 5.0, carbs: 27.0, fat: 3.0, fiber: 4.0, sugar: 1.1, sodium: 2)
+    FoodSearchResult(id: "8", name: "Oats", brand: "Quaker", calories: 150, protein: 5.0, carbs: 27.0, fat: 3.0, fiber: 4.0, sugar: 1.1, sodium: 2),
+    // Additional foods to test allergen detection
+    FoodSearchResult(id: "9", name: "Whole Milk", brand: "Organic Valley", calories: 150, protein: 8.0, carbs: 12.0, fat: 8.0, fiber: 0, sugar: 12.0, sodium: 105),
+    FoodSearchResult(id: "10", name: "Scrambled Eggs", brand: nil, calories: 155, protein: 13.0, carbs: 1.0, fat: 11.0, fiber: 0, sugar: 1.0, sodium: 124),
+    FoodSearchResult(id: "11", name: "Wheat Bread", brand: "Hovis", calories: 265, protein: 9.0, carbs: 49.0, fat: 3.2, fiber: 2.7, sugar: 3.0, sodium: 491),
+    FoodSearchResult(id: "12", name: "Cheddar Cheese", brand: nil, calories: 403, protein: 25.0, carbs: 1.3, fat: 33.0, fiber: 0, sugar: 0.5, sodium: 621)
 ]
 
 let samplePopularFoods: [FoodSearchResult] = [
-    sampleSearchResults[0], // Greek Yoghurt
-    sampleSearchResults[1], // Banana
-    sampleSearchResults[2], // Chicken Breast
-    sampleSearchResults[7]  // Oats
+    sampleSearchResults[0], // Greek Yoghurt - contains dairy
+    sampleSearchResults[8], // Whole Milk - contains dairy
+    sampleSearchResults[9], // Scrambled Eggs - contains eggs
+    sampleSearchResults[10], // Wheat Bread - contains gluten
+    sampleSearchResults[1], // Banana - safe
+    sampleSearchResults[2]  // Chicken Breast - safe
 ]
 
 // MARK: - Food Tab Component Cards
@@ -2530,25 +2686,25 @@ struct FoodReactionRow: View {
                 .frame(width: 8, height: 8)
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(reaction.food)
+                Text(reaction.foodName)
                     .font(.system(size: 15, weight: .medium))
                     .foregroundColor(.primary)
                 
-                Text(reaction.symptoms)
+                Text(reaction.symptoms.joined(separator: ", "))
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
             }
             
             Spacer()
             
-            Text(formatDate(reaction.date))
+            Text(formatDate(reaction.reactionTime))
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
         }
         .padding(.vertical, 4)
     }
     
-    private func severityColor(for severity: FoodReaction.Severity) -> Color {
+    private func severityColor(for severity: ReactionSeverity) -> Color {
         switch severity {
         case .mild: return .yellow
         case .moderate: return .orange
@@ -3185,9 +3341,30 @@ struct RecipeRow: View {
 import Foundation
 
 let sampleReactions: [FoodReaction] = [
-    FoodReaction(userId: "sample", food: "Milk", symptoms: "Bloating, nausea", severity: .moderate, date: Calendar.current.date(byAdding: .day, value: -2, to: Date()) ?? Date()),
-    FoodReaction(userId: "sample", food: "Peanuts", symptoms: "Hives, itching", severity: .severe, date: Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()),
-    FoodReaction(userId: "sample", food: "Wheat bread", symptoms: "Stomach pain", severity: .mild, date: Calendar.current.date(byAdding: .day, value: -14, to: Date()) ?? Date())
+    FoodReaction(
+        foodName: "Milk",
+        foodIngredients: ["milk", "lactose"],
+        reactionTime: Calendar.current.date(byAdding: .day, value: -2, to: Date()) ?? Date(),
+        symptoms: ["Bloating", "nausea"],
+        severity: .moderate,
+        notes: "Had with cereal"
+    ),
+    FoodReaction(
+        foodName: "Peanuts",
+        foodIngredients: ["peanuts", "groundnuts"],
+        reactionTime: Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date(),
+        symptoms: ["Hives", "itching"],
+        severity: .severe,
+        notes: "Trail mix snack"
+    ),
+    FoodReaction(
+        foodName: "Wheat bread",
+        foodIngredients: ["wheat", "gluten"],
+        reactionTime: Calendar.current.date(byAdding: .day, value: -14, to: Date()) ?? Date(),
+        symptoms: ["Stomach pain"],
+        severity: .mild,
+        notes: "With breakfast"
+    )
 ]
 
 // MARK: - Kitchen Tab Component Cards
