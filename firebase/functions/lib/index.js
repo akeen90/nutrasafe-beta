@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addAdminAsUser = exports.deleteUser = exports.updateUser = exports.createUser = exports.getUserStats = exports.getAnalytics = exports.trackEvent = exports.checkIP = exports.healthCheck = exports.getFoodDetails = exports.searchFoods = void 0;
+exports.addAdminAsUser = exports.deleteUser = exports.updateUser = exports.createUser = exports.getUserStats = exports.getAnalytics = exports.trackEvent = exports.getIngredientsFromFoodName = exports.checkIP = exports.healthCheck = exports.getFoodDetails = exports.searchFoods = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const axios_1 = require("axios");
@@ -9,8 +9,8 @@ admin.initializeApp();
 const corsHandler = cors({ origin: true });
 let cachedToken = null;
 let tokenExpiry = null;
-const FATSECRET_CLIENT_ID = 'ca39fbf0342f4ad2970cbca1eccf7478';
-const FATSECRET_CLIENT_SECRET = '9b2fa211700749fa98ac5dd243602189';
+const FATSECRET_CLIENT_ID = functions.config().fatsecret.client_id || 'ca39fbf0342f4ad2970cbca1eccf7478';
+const FATSECRET_CLIENT_SECRET = functions.config().fatsecret.client_secret || '31900952caf2458e943775f0f6fcbcab';
 const FATSECRET_AUTH_URL = 'https://oauth.fatsecret.com/connect/token';
 const FATSECRET_API_URL = 'https://platform.fatsecret.com/rest/server.api';
 async function getFatSecretToken() {
@@ -159,6 +159,7 @@ exports.getFoodDetails = functions
                 fiber: parseFloat(serving.fiber || '0'),
                 sugar: parseFloat(serving.sugar || '0'),
                 sodium: parseFloat(serving.sodium || '0'),
+                ingredients: [], // Will be populated by ingredient extraction
             };
             // Track the food details event for analytics
             try {
@@ -234,6 +235,183 @@ exports.checkIP = functions
         }
     });
 });
+// Enhanced ingredient extraction function
+exports.getIngredientsFromFoodName = functions
+    .runWith({
+    vpcConnector: 'nutrasafe-vpc-connector',
+    vpcConnectorEgressSettings: 'ALL_TRAFFIC'
+})
+    .https.onRequest(async (req, res) => {
+    return corsHandler(req, res, async () => {
+        var _a, _b, _c;
+        try {
+            const { foodName, searchForBranded = true } = req.body;
+            if (!foodName) {
+                res.status(400).json({ error: 'Food name parameter is required' });
+                return;
+            }
+            console.log(`Extracting ingredients for: ${foodName}`);
+            // First, search for the specific food to get food IDs
+            const token = await getFatSecretToken();
+            let ingredients = [];
+            try {
+                // Search for branded products that might have ingredient lists
+                const searchResponse = await axios_1.default.get(FATSECRET_API_URL, {
+                    params: {
+                        method: 'foods.search',
+                        search_expression: foodName,
+                        format: 'json',
+                        max_results: '20',
+                    },
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                    timeout: 15000
+                });
+                const searchData = searchResponse.data;
+                console.log(`Found ${((_b = (_a = searchData.foods) === null || _a === void 0 ? void 0 : _a.food) === null || _b === void 0 ? void 0 : _b.length) || 0} food items for "${foodName}"`);
+                if ((_c = searchData.foods) === null || _c === void 0 ? void 0 : _c.food) {
+                    // Try to find branded products first (more likely to have ingredients)
+                    const brandedFoods = searchData.foods.food.filter(food => food.brand_name && food.brand_name.trim() !== '');
+                    const foodsToCheck = searchForBranded && brandedFoods.length > 0
+                        ? brandedFoods.slice(0, 5) // Check top 5 branded foods
+                        : searchData.foods.food.slice(0, 3); // Check top 3 foods
+                    console.log(`Checking ${foodsToCheck.length} foods for ingredient information`);
+                    // Try to get detailed information for each food item
+                    for (const food of foodsToCheck) {
+                        try {
+                            // Use food.get.v3 which sometimes includes more detailed information
+                            await axios_1.default.get(FATSECRET_API_URL, {
+                                params: {
+                                    method: 'food.get.v2',
+                                    food_id: food.food_id,
+                                    format: 'json',
+                                },
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                },
+                                timeout: 10000
+                            });
+                            console.log(`Got details for food ID ${food.food_id}: ${food.food_name}`);
+                            // FatSecret API doesn't typically include ingredients in the standard response
+                            // but we can extract some info from the food name and description
+                        }
+                        catch (detailError) {
+                            console.log(`Failed to get details for food ${food.food_id}:`, detailError.message);
+                        }
+                    }
+                }
+                // Since FatSecret doesn't provide ingredient lists in their API,
+                // we'll use intelligent parsing of the food name and known food database
+                ingredients = extractIngredientsFromFoodName(foodName);
+            }
+            catch (apiError) {
+                console.error('FatSecret API error:', apiError.message);
+                // Fallback to name-based ingredient extraction
+                ingredients = extractIngredientsFromFoodName(foodName);
+            }
+            // Track the ingredient extraction event
+            try {
+                await admin.firestore().collection('analytics_events').add({
+                    eventType: 'ingredient_extraction',
+                    userId: 'anonymous',
+                    metadata: {
+                        foodName,
+                        ingredientsFound: ingredients.length,
+                        timestamp: admin.firestore.FieldValue.serverTimestamp()
+                    },
+                    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                    date: new Date().toISOString().split('T')[0],
+                });
+            }
+            catch (analyticsError) {
+                console.log('Analytics tracking failed:', analyticsError);
+            }
+            res.json({
+                foodName,
+                ingredients,
+                extractionMethod: ingredients.length > 0 ? 'name_parsing' : 'not_found',
+                note: 'Ingredient extraction is based on food name analysis. For accurate ingredient lists, check product packaging.'
+            });
+        }
+        catch (error) {
+            console.error('Error extracting ingredients:', error);
+            res.status(500).json({ error: 'Failed to extract ingredients' });
+        }
+    });
+});
+// Helper function to extract ingredients from food names
+function extractIngredientsFromFoodName(foodName) {
+    const lowerName = foodName.toLowerCase();
+    let ingredients = [];
+    // Common ingredient mappings based on food names
+    const ingredientMappings = {
+        'pizza': ['wheat flour', 'tomatoes', 'cheese', 'yeast', 'olive oil', 'salt'],
+        'bread': ['wheat flour', 'yeast', 'salt', 'water'],
+        'pasta': ['durum wheat', 'water', 'eggs'],
+        'yogurt': ['milk', 'live cultures', 'sugar'],
+        'yoghurt': ['milk', 'live cultures', 'sugar'],
+        'cheese': ['milk', 'salt', 'enzymes', 'bacterial cultures'],
+        'butter': ['cream', 'salt'],
+        'milk': ['milk'],
+        'chicken': ['chicken'],
+        'beef': ['beef'],
+        'pork': ['pork'],
+        'fish': ['fish'],
+        'salmon': ['salmon'],
+        'tuna': ['tuna'],
+        'rice': ['rice'],
+        'oats': ['oats'],
+        'quinoa': ['quinoa'],
+        'apple': ['apple'],
+        'banana': ['banana'],
+        'orange': ['orange'],
+        'spinach': ['spinach'],
+        'broccoli': ['broccoli'],
+        'carrot': ['carrot'],
+        'potato': ['potato'],
+        'tomato': ['tomato'],
+        'onion': ['onion'],
+        'garlic': ['garlic'],
+        'egg': ['egg'],
+        'chocolate': ['cocoa', 'sugar', 'milk', 'cocoa butter'],
+        'ice cream': ['milk', 'cream', 'sugar', 'eggs', 'vanilla'],
+        'cookie': ['wheat flour', 'sugar', 'butter', 'eggs', 'baking powder'],
+        'cake': ['wheat flour', 'sugar', 'eggs', 'butter', 'baking powder'],
+        'cereal': ['grains', 'sugar', 'vitamins', 'minerals'],
+        'soup': ['water', 'vegetables', 'salt', 'spices'],
+        'juice': ['fruit', 'water'],
+        'soda': ['water', 'sugar', 'carbon dioxide', 'artificial flavors'],
+        'tea': ['tea leaves'],
+        'coffee': ['coffee beans'],
+    };
+    // Check for direct matches first
+    for (const [foodType, ingredientList] of Object.entries(ingredientMappings)) {
+        if (lowerName.includes(foodType)) {
+            ingredients = [...ingredients, ...ingredientList];
+            break; // Take the first match to avoid duplicates
+        }
+    }
+    // If no direct match, try to extract ingredients from compound food names
+    if (ingredients.length === 0) {
+        // Look for ingredient keywords in the food name
+        const possibleIngredients = [
+            'chicken', 'beef', 'pork', 'fish', 'salmon', 'tuna', 'shrimp',
+            'milk', 'cheese', 'butter', 'cream', 'yogurt', 'eggs',
+            'wheat', 'rice', 'oats', 'corn', 'barley', 'quinoa',
+            'tomato', 'onion', 'garlic', 'pepper', 'mushroom', 'spinach',
+            'apple', 'banana', 'orange', 'berry', 'grape',
+            'sugar', 'salt', 'oil', 'vinegar', 'herbs', 'spices'
+        ];
+        for (const ingredient of possibleIngredients) {
+            if (lowerName.includes(ingredient)) {
+                ingredients.push(ingredient);
+            }
+        }
+    }
+    // Remove duplicates and return
+    return [...new Set(ingredients)];
+}
 // Analytics Functions
 exports.trackEvent = functions.https.onCall(async (data, context) => {
     var _a;

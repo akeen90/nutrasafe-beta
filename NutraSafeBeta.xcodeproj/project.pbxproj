@@ -13,6 +13,7 @@
 		A1234567890123456789012304 /* DataModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890123456789012010 /* DataModels.swift */; };
 		A1234567890123456789012305 /* FirebaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890123456789012011 /* FirebaseManager.swift */; };
 		A1234567890123456789012306 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = A1234567890123456789012012 /* GoogleService-Info.plist */; };
+		A1234567890123456789012307 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890123456789012013 /* HealthKitManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -23,6 +24,7 @@
 		A1234567890123456789012010 /* DataModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataModels.swift; sourceTree = "<group>"; };
 		A1234567890123456789012011 /* FirebaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseManager.swift; sourceTree = "<group>"; };
 		A1234567890123456789012012 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		A1234567890123456789012013 /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -59,6 +61,7 @@
 				A1234567890123456789012002 /* ContentView.swift */,
 				A1234567890123456789012010 /* DataModels.swift */,
 				A1234567890123456789012011 /* FirebaseManager.swift */,
+				A1234567890123456789012013 /* HealthKitManager.swift */,
 				A1234567890123456789012003 /* Assets.xcassets */,
 				A1234567890123456789012012 /* GoogleService-Info.plist */,
 			);
@@ -147,6 +150,7 @@
 				A1234567890123456789012301 /* NutraSafeBetaApp.swift in Sources */,
 				A1234567890123456789012304 /* DataModels.swift in Sources */,
 				A1234567890123456789012305 /* FirebaseManager.swift in Sources */,
+				A1234567890123456789012307 /* HealthKitManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -283,6 +287,7 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "NutraSafe needs access to your exercise calories to provide accurate nutrition tracking and recommendations.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -312,6 +317,7 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "NutraSafe needs access to your exercise calories to provide accurate nutrition tracking and recommendations.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

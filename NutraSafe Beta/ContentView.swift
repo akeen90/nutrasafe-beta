@@ -1,6 +1,7 @@
 import SwiftUI
 import Foundation
 import CryptoKit
+import HealthKit
 
 // MARK: - FatSecret API Service via Firebase Functions
 class FatSecretService: ObservableObject {
@@ -902,14 +903,21 @@ struct DiaryFoodView: View {
 
 // MARK: - Diary Exercise View
 struct DiaryExerciseView: View {
+    @EnvironmentObject var healthKitManager: HealthKitManager
+    @State private var todayWorkouts: [HKWorkout] = []
+    @State private var isLoading = false
+    
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 12) {
                 
                 // Exercise Summary
-                DiaryExerciseSummaryCard()
-                    .padding(.horizontal, 16)
-                    .padding(.top, 16)
+                DiaryExerciseSummaryCard(
+                    totalCalories: healthKitManager.exerciseCalories,
+                    workouts: todayWorkouts
+                )
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
                 
                 // Exercise entries
                 DiaryExerciseCard(
@@ -941,6 +949,34 @@ struct DiaryExerciseView: View {
                 Rectangle()
                     .fill(Color.clear)
                     .frame(height: 100)
+            }
+        }
+        .onAppear {
+            loadHealthData()
+        }
+        .refreshable {
+            loadHealthData()
+        }
+    }
+    
+    private func loadHealthData() {
+        guard healthKitManager.isAuthorized else { return }
+        
+        isLoading = true
+        Task {
+            await healthKitManager.updateExerciseCalories()
+            
+            do {
+                let workouts = try await healthKitManager.fetchWorkouts(for: Date())
+                await MainActor.run {
+                    todayWorkouts = workouts
+                    isLoading = false
+                }
+            } catch {
+                print("Failed to fetch workouts: \(error)")
+                await MainActor.run {
+                    isLoading = false
+                }
             }
         }
     }
@@ -1136,6 +1172,17 @@ struct DiaryFoodRow: View {
 }
 
 struct DiaryExerciseSummaryCard: View {
+    let totalCalories: Double
+    let workouts: [HKWorkout]
+    
+    private var totalDuration: Int {
+        Int(workouts.reduce(0) { $0 + $1.duration })
+    }
+    
+    private var workoutCount: Int {
+        workouts.count
+    }
+    
     var body: some View {
         VStack(spacing: 16) {
             HStack {
@@ -1152,7 +1199,7 @@ struct DiaryExerciseSummaryCard: View {
                 Spacer()
                 
                 VStack(alignment: .trailing, spacing: 4) {
-                    Text("780")
+                    Text("\(Int(totalCalories))")
                         .font(.system(size: 24, weight: .bold))
                         .foregroundColor(.red)
                     
@@ -1163,9 +1210,9 @@ struct DiaryExerciseSummaryCard: View {
             }
             
             HStack(spacing: 20) {
-                DiaryExerciseStat(name: "Duration", value: "135", unit: "min", color: .blue)
-                DiaryExerciseStat(name: "Activities", value: "3", unit: "", color: .green)
-                DiaryExerciseStat(name: "Steps", value: "8.2k", unit: "", color: .purple)
+                DiaryExerciseStat(name: "Duration", value: "\(totalDuration)", unit: "min", color: .blue)
+                DiaryExerciseStat(name: "Activities", value: "\(workoutCount)", unit: "", color: .green)
+                DiaryExerciseStat(name: "Calories", value: "\(Int(totalCalories))", unit: "kcal", color: .red)
             }
         }
         .padding(16)
@@ -2347,11 +2394,14 @@ struct FoodSearchResultRow: View {
     
     // Sample user allergens for testing - in production this would come from user settings
     private let userAllergens: [Allergen] = [.dairy, .eggs, .gluten]
+    @State private var ingredientAnalysis: IngredientAnalysisResult?
+    @State private var isAnalyzing = false
     
     var body: some View {
+        let ingredientList = ingredientAnalysis?.ingredients.map { $0.name } ?? extractBasicIngredients(from: food.name)
         let allergenResult = AllergenDetector.shared.detectAllergens(
             in: food.name,
-            ingredients: [],
+            ingredients: ingredientList,
             userAllergens: userAllergens
         )
         let nutritionScore = NutritionScorer.shared.calculateNutritionScore(
@@ -2461,6 +2511,29 @@ struct FoodSearchResultRow: View {
                         .lineLimit(1)
                 }
                 
+                // Ingredient analysis summary
+                if let analysis = ingredientAnalysis {
+                    HStack(spacing: 6) {
+                        if !analysis.micronutrients.isEmpty {
+                            Text("🧬")
+                                .font(.system(size: 10))
+                            Text("\(analysis.micronutrients.count) nutrients")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(.green)
+                        }
+                        
+                        if !analysis.additives.isEmpty {
+                            Text("⚗️")
+                                .font(.system(size: 10))
+                            Text("\(analysis.additives.count) additives")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(analysis.overallRiskLevel == .safe ? .orange : .red)
+                        }
+                        
+                        Spacer()
+                    }
+                }
+                
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 12) {
@@ -2508,6 +2581,9 @@ struct FoodSearchResultRow: View {
         .padding(.vertical, 12)
         .background(Color(.systemGray6))
         .cornerRadius(12)
+        .onAppear {
+            analyzeIngredients()
+        }
     }
     
     private func safetyScoreColor(_ score: Double) -> Color {
@@ -2543,6 +2619,97 @@ struct FoodSearchResultRow: View {
         case .poor, .veryPoor:
             return .red
         }
+    }
+    
+    private func analyzeIngredients() {
+        guard !isAnalyzing && ingredientAnalysis == nil else { return }
+        
+        isAnalyzing = true
+        
+        // For now, use the basic extraction - in a full implementation,
+        // this would call the Firebase Function to get ingredients
+        let basicIngredients = extractBasicIngredients(from: food.name)
+        let analysis = IngredientAnalyzer.shared.analyzeIngredients(basicIngredients, userAllergens: userAllergens)
+        
+        DispatchQueue.main.async {
+            self.ingredientAnalysis = analysis
+            self.isAnalyzing = false
+        }
+    }
+    
+    private func extractBasicIngredients(from foodName: String) -> [String] {
+        let lowerName = foodName.lowercased()
+        var ingredients: [String] = []
+        
+        // Common ingredient mappings based on food names
+        let ingredientMappings: [String: [String]] = [
+            "pizza": ["wheat flour", "tomatoes", "cheese", "yeast", "olive oil", "salt"],
+            "bread": ["wheat flour", "yeast", "salt", "water"],
+            "pasta": ["durum wheat", "water", "eggs"],
+            "yogurt": ["milk", "live cultures", "sugar"],
+            "yoghurt": ["milk", "live cultures", "sugar"],
+            "cheese": ["milk", "salt", "enzymes", "bacterial cultures"],
+            "butter": ["cream", "salt"],
+            "milk": ["milk"],
+            "chicken": ["chicken"],
+            "beef": ["beef"],
+            "pork": ["pork"],
+            "fish": ["fish"],
+            "salmon": ["salmon"],
+            "tuna": ["tuna"],
+            "rice": ["rice"],
+            "oats": ["oats"],
+            "quinoa": ["quinoa"],
+            "apple": ["apple"],
+            "banana": ["banana"],
+            "orange": ["orange"],
+            "spinach": ["spinach"],
+            "broccoli": ["broccoli"],
+            "carrot": ["carrot"],
+            "potato": ["potato"],
+            "tomato": ["tomato"],
+            "onion": ["onion"],
+            "garlic": ["garlic"],
+            "egg": ["egg"],
+            "chocolate": ["cocoa", "sugar", "milk", "cocoa butter"],
+            "ice cream": ["milk", "cream", "sugar", "eggs", "vanilla"],
+            "cookie": ["wheat flour", "sugar", "butter", "eggs", "baking powder"],
+            "cake": ["wheat flour", "sugar", "eggs", "butter", "baking powder"],
+            "cereal": ["grains", "sugar", "vitamins", "minerals"],
+            "soup": ["water", "vegetables", "salt", "spices"],
+            "juice": ["fruit", "water"],
+            "soda": ["water", "sugar", "carbon dioxide", "artificial flavors"],
+            "tea": ["tea leaves"],
+            "coffee": ["coffee beans"],
+        ]
+        
+        // Check for direct matches first
+        for (foodType, ingredientList) in ingredientMappings {
+            if lowerName.contains(foodType) {
+                ingredients = ingredientList
+                break
+            }
+        }
+        
+        // If no direct match, try to extract ingredients from compound food names
+        if ingredients.isEmpty {
+            let possibleIngredients = [
+                "chicken", "beef", "pork", "fish", "salmon", "tuna", "shrimp",
+                "milk", "cheese", "butter", "cream", "yogurt", "eggs",
+                "wheat", "rice", "oats", "corn", "barley", "quinoa",
+                "tomato", "onion", "garlic", "pepper", "mushroom", "spinach",
+                "apple", "banana", "orange", "berry", "grape",
+                "sugar", "salt", "oil", "vinegar", "herbs", "spices"
+            ]
+            
+            for ingredient in possibleIngredients {
+                if lowerName.contains(ingredient) {
+                    ingredients.append(ingredient)
+                }
+            }
+        }
+        
+        return Array(Set(ingredients)) // Remove duplicates
     }
 }
 

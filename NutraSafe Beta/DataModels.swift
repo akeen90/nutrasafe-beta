@@ -1533,3 +1533,481 @@ extension SafeFood {
         self.dateAdded = dateAdded
     }
 }
+
+// MARK: - Ingredient Analysis System
+
+struct Ingredient {
+    let name: String
+    let category: IngredientCategory
+    let allergens: [Allergen]
+    let micronutrients: [Micronutrient]
+    let additives: [FoodAdditive]
+    let riskLevel: IngredientRiskLevel
+}
+
+enum IngredientCategory: String, CaseIterable {
+    case protein = "protein"
+    case carbohydrate = "carbohydrate"
+    case fat = "fat"
+    case vitamin = "vitamin"
+    case mineral = "mineral"
+    case additive = "additive"
+    case preservative = "preservative"
+    case flavoring = "flavoring"
+    case coloring = "coloring"
+    case emulsifier = "emulsifier"
+    case stabilizer = "stabilizer"
+    case sweetener = "sweetener"
+    case fiber = "fiber"
+    case other = "other"
+}
+
+enum IngredientRiskLevel: String {
+    case safe = "safe"
+    case caution = "caution"
+    case avoid = "avoid"
+    case unknown = "unknown"
+    
+    var color: String {
+        switch self {
+        case .safe: return "green"
+        case .caution: return "orange"
+        case .avoid: return "red"
+        case .unknown: return "gray"
+        }
+    }
+}
+
+struct Micronutrient {
+    let name: String
+    let type: MicronutrientType
+    let amount: Double? // in appropriate units (mg, mcg, IU, etc.)
+    let unit: String
+    let dailyValuePercentage: Double?
+    let benefits: [String]
+    let deficiencyRisks: [String]
+}
+
+enum MicronutrientType: String, CaseIterable {
+    case vitamin = "vitamin"
+    case mineral = "mineral"
+    case antioxidant = "antioxidant"
+    case essentialFattyAcid = "essential_fatty_acid"
+    case amino_acid = "amino_acid"
+    case phytonutrient = "phytonutrient"
+}
+
+struct FoodAdditive {
+    let name: String
+    let code: String? // E-number or other code
+    let purpose: AdditivePurpose
+    let safetyRating: AdditiveRating
+    let commonNames: [String]
+    let potentialEffects: [String]
+}
+
+enum AdditivePurpose: String, CaseIterable {
+    case preservative = "preservative"
+    case colorant = "colorant"
+    case flavoring = "flavoring"
+    case emulsifier = "emulsifier"
+    case stabilizer = "stabilizer"
+    case thickener = "thickener"
+    case sweetener = "sweetener"
+    case antioxidant = "antioxidant"
+    case acidRegulator = "acid_regulator"
+    case other = "other"
+}
+
+enum AdditiveRating: String {
+    case safe = "safe"
+    case generallyRecognizedAsSafe = "gras"
+    case limitedUse = "limited_use"
+    case caution = "caution"
+    case avoid = "avoid"
+    case banned = "banned"
+    
+    var color: String {
+        switch self {
+        case .safe, .generallyRecognizedAsSafe: return "green"
+        case .limitedUse: return "yellow"
+        case .caution: return "orange"
+        case .avoid, .banned: return "red"
+        }
+    }
+}
+
+struct IngredientAnalysisResult {
+    let ingredients: [Ingredient]
+    let detectedAllergens: [Allergen]
+    let micronutrients: [Micronutrient]
+    let additives: [FoodAdditive]
+    let overallRiskLevel: IngredientRiskLevel
+    let warnings: [String]
+    let benefits: [String]
+    let recommendations: [String]
+}
+
+class IngredientAnalyzer {
+    static let shared = IngredientAnalyzer()
+    
+    private init() {}
+    
+    func analyzeIngredients(_ ingredientList: [String], userAllergens: [Allergen] = []) -> IngredientAnalysisResult {
+        var analyzedIngredients: [Ingredient] = []
+        var detectedAllergens: [Allergen] = []
+        var micronutrients: [Micronutrient] = []
+        var additives: [FoodAdditive] = []
+        var warnings: [String] = []
+        var benefits: [String] = []
+        var recommendations: [String] = []
+        
+        for ingredientName in ingredientList {
+            let ingredient = analyzeIndividualIngredient(ingredientName)
+            analyzedIngredients.append(ingredient)
+            
+            // Check for allergens
+            for allergen in ingredient.allergens {
+                if userAllergens.contains(allergen) && !detectedAllergens.contains(allergen) {
+                    detectedAllergens.append(allergen)
+                    warnings.append("Contains \(allergen.displayName): \(ingredientName)")
+                }
+            }
+            
+            // Collect micronutrients
+            micronutrients.append(contentsOf: ingredient.micronutrients)
+            
+            // Collect additives
+            additives.append(contentsOf: ingredient.additives)
+            
+            // Add warnings for risky ingredients
+            if ingredient.riskLevel == .avoid {
+                warnings.append("Avoid: \(ingredientName) - potential health concerns")
+            } else if ingredient.riskLevel == .caution {
+                warnings.append("Caution: \(ingredientName) - consume in moderation")
+            }
+            
+            // Add benefits for beneficial ingredients
+            if ingredient.riskLevel == .safe && !ingredient.micronutrients.isEmpty {
+                let nutrientNames = ingredient.micronutrients.map { $0.name }
+                benefits.append("\(ingredientName): Rich in \(nutrientNames.joined(separator: ", "))")
+            }
+        }
+        
+        // Calculate overall risk level
+        let overallRiskLevel = calculateOverallRiskLevel(analyzedIngredients)
+        
+        // Generate recommendations
+        recommendations = generateRecommendations(
+            ingredients: analyzedIngredients,
+            allergens: detectedAllergens,
+            additives: additives
+        )
+        
+        return IngredientAnalysisResult(
+            ingredients: analyzedIngredients,
+            detectedAllergens: detectedAllergens,
+            micronutrients: Array(Set(micronutrients.map { $0.name })).compactMap { name in
+                micronutrients.first { $0.name == name }
+            }, // Remove duplicates
+            additives: additives,
+            overallRiskLevel: overallRiskLevel,
+            warnings: warnings,
+            benefits: benefits,
+            recommendations: recommendations
+        )
+    }
+    
+    private func analyzeIndividualIngredient(_ ingredientName: String) -> Ingredient {
+        let lowerName = ingredientName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Determine category
+        let category = categorizeIngredient(lowerName)
+        
+        // Detect allergens
+        let allergens = detectAllergensInIngredient(lowerName)
+        
+        // Get micronutrients
+        let micronutrients = getMicronutrientsForIngredient(lowerName)
+        
+        // Detect additives
+        let additives = detectAdditives(lowerName)
+        
+        // Calculate risk level
+        let riskLevel = calculateIngredientRiskLevel(lowerName, additives: additives)
+        
+        return Ingredient(
+            name: ingredientName,
+            category: category,
+            allergens: allergens,
+            micronutrients: micronutrients,
+            additives: additives,
+            riskLevel: riskLevel
+        )
+    }
+    
+    private func categorizeIngredient(_ ingredient: String) -> IngredientCategory {
+        // Proteins
+        if ingredient.contains("protein") || ingredient.contains("casein") || ingredient.contains("whey") ||
+           ["egg", "milk", "meat", "chicken", "beef", "pork", "fish", "tofu", "soy"].contains(where: ingredient.contains) {
+            return .protein
+        }
+        
+        // Carbohydrates
+        if ["sugar", "glucose", "fructose", "sucrose", "maltose", "starch", "flour", "rice", "wheat", "corn"].contains(where: ingredient.contains) {
+            return .carbohydrate
+        }
+        
+        // Fats
+        if ingredient.contains("oil") || ingredient.contains("fat") || ingredient.contains("butter") ||
+           ["palm", "coconut", "olive", "sunflower", "canola", "lard"].contains(where: ingredient.contains) {
+            return .fat
+        }
+        
+        // Vitamins
+        if ingredient.contains("vitamin") || ["ascorbic acid", "thiamine", "riboflavin", "niacin", "folate", "biotin"].contains(where: ingredient.contains) {
+            return .vitamin
+        }
+        
+        // Minerals
+        if ["calcium", "iron", "magnesium", "zinc", "potassium", "sodium", "phosphorus"].contains(where: ingredient.contains) {
+            return .mineral
+        }
+        
+        // Additives with E-numbers
+        if ingredient.hasPrefix("e") && ingredient.count >= 3 {
+            return .additive
+        }
+        
+        // Preservatives
+        if ["preservative", "sodium benzoate", "potassium sorbate", "citric acid"].contains(where: ingredient.contains) {
+            return .preservative
+        }
+        
+        // Sweeteners
+        if ["sweetener", "aspartame", "sucralose", "stevia", "saccharin"].contains(where: ingredient.contains) {
+            return .sweetener
+        }
+        
+        // Colors
+        if ingredient.contains("color") || ingredient.contains("colour") || ["caramel", "annatto", "turmeric"].contains(where: ingredient.contains) {
+            return .coloring
+        }
+        
+        // Flavors
+        if ingredient.contains("flavor") || ingredient.contains("flavour") || ingredient.contains("extract") {
+            return .flavoring
+        }
+        
+        // Fiber
+        if ingredient.contains("fiber") || ingredient.contains("fibre") || ["cellulose", "pectin", "inulin"].contains(where: ingredient.contains) {
+            return .fiber
+        }
+        
+        return .other
+    }
+    
+    private func detectAllergensInIngredient(_ ingredient: String) -> [Allergen] {
+        var detectedAllergens: [Allergen] = []
+        
+        for allergen in Allergen.allCases {
+            for keyword in allergen.keywords {
+                if ingredient.contains(keyword.lowercased()) {
+                    if !detectedAllergens.contains(allergen) {
+                        detectedAllergens.append(allergen)
+                    }
+                    break
+                }
+            }
+        }
+        
+        return detectedAllergens
+    }
+    
+    private func getMicronutrientsForIngredient(_ ingredient: String) -> [Micronutrient] {
+        var micronutrients: [Micronutrient] = []
+        
+        // Common micronutrient mappings
+        if ingredient.contains("spinach") || ingredient.contains("kale") {
+            micronutrients.append(Micronutrient(
+                name: "Iron",
+                type: .mineral,
+                amount: 2.7,
+                unit: "mg",
+                dailyValuePercentage: 15,
+                benefits: ["Oxygen transport", "Energy production"],
+                deficiencyRisks: ["Anemia", "Fatigue"]
+            ))
+            micronutrients.append(Micronutrient(
+                name: "Vitamin K",
+                type: .vitamin,
+                amount: 483,
+                unit: "mcg",
+                dailyValuePercentage: 402,
+                benefits: ["Blood clotting", "Bone health"],
+                deficiencyRisks: ["Bleeding disorders", "Weak bones"]
+            ))
+        }
+        
+        if ingredient.contains("orange") || ingredient.contains("citrus") {
+            micronutrients.append(Micronutrient(
+                name: "Vitamin C",
+                type: .vitamin,
+                amount: 53,
+                unit: "mg",
+                dailyValuePercentage: 59,
+                benefits: ["Immune support", "Antioxidant", "Collagen synthesis"],
+                deficiencyRisks: ["Scurvy", "Impaired wound healing"]
+            ))
+        }
+        
+        if ingredient.contains("milk") || ingredient.contains("dairy") {
+            micronutrients.append(Micronutrient(
+                name: "Calcium",
+                type: .mineral,
+                amount: 276,
+                unit: "mg",
+                dailyValuePercentage: 28,
+                benefits: ["Bone health", "Muscle function"],
+                deficiencyRisks: ["Osteoporosis", "Muscle cramps"]
+            ))
+        }
+        
+        if ingredient.contains("fish") || ingredient.contains("salmon") {
+            micronutrients.append(Micronutrient(
+                name: "Omega-3 Fatty Acids",
+                type: .essentialFattyAcid,
+                amount: 1.8,
+                unit: "g",
+                dailyValuePercentage: nil,
+                benefits: ["Heart health", "Brain function", "Anti-inflammatory"],
+                deficiencyRisks: ["Cardiovascular disease", "Cognitive decline"]
+            ))
+        }
+        
+        return micronutrients
+    }
+    
+    private func detectAdditives(_ ingredient: String) -> [FoodAdditive] {
+        var additives: [FoodAdditive] = []
+        
+        // Common food additives
+        if ingredient.contains("sodium benzoate") || ingredient.contains("e211") {
+            additives.append(FoodAdditive(
+                name: "Sodium Benzoate",
+                code: "E211",
+                purpose: .preservative,
+                safetyRating: .generallyRecognizedAsSafe,
+                commonNames: ["Sodium benzoate"],
+                potentialEffects: ["May cause hyperactivity in sensitive individuals"]
+            ))
+        }
+        
+        if ingredient.contains("aspartame") || ingredient.contains("e951") {
+            additives.append(FoodAdditive(
+                name: "Aspartame",
+                code: "E951",
+                purpose: .sweetener,
+                safetyRating: .caution,
+                commonNames: ["NutraSweet", "Equal"],
+                potentialEffects: ["Not suitable for phenylketonuria", "May cause headaches in sensitive individuals"]
+            ))
+        }
+        
+        if ingredient.contains("msg") || ingredient.contains("monosodium glutamate") || ingredient.contains("e621") {
+            additives.append(FoodAdditive(
+                name: "Monosodium Glutamate",
+                code: "E621",
+                purpose: .flavoring,
+                safetyRating: .caution,
+                commonNames: ["MSG", "Flavor enhancer"],
+                potentialEffects: ["May cause headaches", "Flushing", "Sweating in sensitive individuals"]
+            ))
+        }
+        
+        return additives
+    }
+    
+    private func calculateIngredientRiskLevel(_ ingredient: String, additives: [FoodAdditive]) -> IngredientRiskLevel {
+        // Check for banned or avoid-level additives
+        if additives.contains(where: { $0.safetyRating == .avoid || $0.safetyRating == .banned }) {
+            return .avoid
+        }
+        
+        // Check for caution-level additives
+        if additives.contains(where: { $0.safetyRating == .caution }) {
+            return .caution
+        }
+        
+        // Check for known problematic ingredients
+        let problematicIngredients = [
+            "trans fat", "partially hydrogenated", "high fructose corn syrup",
+            "sodium nitrite", "sodium nitrate", "artificial colors"
+        ]
+        
+        for problematic in problematicIngredients {
+            if ingredient.contains(problematic) {
+                return .avoid
+            }
+        }
+        
+        // Natural whole food ingredients are generally safe
+        let wholeFoodIngredients = [
+            "apple", "banana", "orange", "spinach", "broccoli", "carrot",
+            "chicken", "beef", "fish", "rice", "oats", "quinoa"
+        ]
+        
+        for wholeFood in wholeFoodIngredients {
+            if ingredient.contains(wholeFood) {
+                return .safe
+            }
+        }
+        
+        return .unknown
+    }
+    
+    private func calculateOverallRiskLevel(_ ingredients: [Ingredient]) -> IngredientRiskLevel {
+        let riskLevels = ingredients.map { $0.riskLevel }
+        
+        if riskLevels.contains(.avoid) {
+            return .avoid
+        } else if riskLevels.contains(.caution) {
+            return .caution
+        } else if riskLevels.allSatisfy({ $0 == .safe }) {
+            return .safe
+        } else {
+            return .unknown
+        }
+    }
+    
+    private func generateRecommendations(
+        ingredients: [Ingredient],
+        allergens: [Allergen],
+        additives: [FoodAdditive]
+    ) -> [String] {
+        var recommendations: [String] = []
+        
+        if !allergens.isEmpty {
+            recommendations.append("⚠️ Contains allergens you're sensitive to - consider alternatives")
+        }
+        
+        let avoidAdditives = additives.filter { $0.safetyRating == .avoid || $0.safetyRating == .banned }
+        if !avoidAdditives.isEmpty {
+            recommendations.append("🚫 Contains additives you should avoid: \(avoidAdditives.map { $0.name }.joined(separator: ", "))")
+        }
+        
+        let cautionAdditives = additives.filter { $0.safetyRating == .caution }
+        if !cautionAdditives.isEmpty {
+            recommendations.append("⚠️ Use caution with: \(cautionAdditives.map { $0.name }.joined(separator: ", "))")
+        }
+        
+        let beneficialIngredients = ingredients.filter { $0.riskLevel == .safe && !$0.micronutrients.isEmpty }
+        if !beneficialIngredients.isEmpty {
+            recommendations.append("✅ Good sources of nutrients from: \(beneficialIngredients.map { $0.name }.joined(separator: ", "))")
+        }
+        
+        recommendations.append("💡 Always check full ingredient lists and consult healthcare providers for specific concerns")
+        
+        return recommendations
+    }
+}
