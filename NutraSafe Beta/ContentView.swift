@@ -15,9 +15,10 @@ struct SearchResult: Identifiable {
     let fiber: Double
     let sugar: Double
     let sodium: Double
+    let servingDescription: String?
     
     var servingSize: String {
-        return "100g"
+        return servingDescription ?? "per 100g"
     }
 }
 
@@ -68,6 +69,7 @@ class FatSecretService: ObservableObject {
                 let fiber: Double
                 let sugar: Double
                 let sodium: Double
+                let servingDescription: String?
             }
         }
         
@@ -84,7 +86,8 @@ class FatSecretService: ObservableObject {
                 fat: food.fat,
                 fiber: food.fiber,
                 sugar: food.sugar,
-                sodium: food.sodium
+                sodium: food.sodium,
+                servingDescription: food.servingDescription
             )
         }
     }
@@ -117,6 +120,7 @@ class FatSecretService: ObservableObject {
             let fiber: Double
             let sugar: Double
             let sodium: Double
+            let servingDescription: String?
         }
         
         let detailResponse = try JSONDecoder().decode(FirebaseFoodDetailsResponse.self, from: data)
@@ -131,11 +135,43 @@ class FatSecretService: ObservableObject {
             fat: detailResponse.fat,
             fiber: detailResponse.fiber,
             sugar: detailResponse.sugar,
-            sodium: detailResponse.sodium
+            sodium: detailResponse.sodium,
+            servingDescription: detailResponse.servingDescription
         )
     }
     
 }
+
+// MARK: - Data Models for UI
+
+struct NutritionValue {
+    let current: Double
+    let target: Double
+    
+    var percentage: Double {
+        return min(current / target, 1.0)
+    }
+    
+    var remaining: Double {
+        return max(target - current, 0)
+    }
+}
+
+struct DailyNutrition {
+    let calories: NutritionValue
+    let protein: NutritionValue
+    let carbs: NutritionValue
+    let fat: NutritionValue
+}
+
+struct DiaryExerciseItem: Identifiable {
+    let id = UUID()
+    let name: String
+    let duration: Int // minutes
+    let calories: Double
+    let time: String
+}
+
 
 // MARK: - Professional Nutrition App UI Following Research Standards
 // Based on analysis of MyFitnessPal, Lose It!, Cronometer, and Lifesum
@@ -1637,12 +1673,6 @@ struct DiaryExerciseCard: View {
     }
 }
 
-struct DiaryExerciseItem {
-    let name: String
-    let duration: Int
-    let calories: Int
-    let time: String
-}
 
 struct DiaryExerciseRow: View {
     let exercise: DiaryExerciseItem
@@ -2660,9 +2690,9 @@ struct FoodSearchResultRowEnhanced: View {
                             .foregroundColor(.secondary)
                     }
                     
-                    // Nutrition info
+                    // Nutrition info with proper serving description
                     HStack(spacing: 8) {
-                        Text("Per 100g:")
+                        Text(food.servingSize)
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                         
@@ -2753,27 +2783,16 @@ struct NutrientTag: View {
 
 struct FoodDetailViewFromSearch: View {
     let food: FoodSearchResult
-    @State private var selectedServingIndex = 0
+    @State private var gramsAmount: String = "100"
     @State private var quantity: Double = 1.0
-    @State private var customGrams: String = ""
-    @State private var isCustomGrams = false
     @State private var selectedMeal = "Breakfast"
     @Environment(\.presentationMode) var presentationMode
-    
-    private let servingOptions = [
-        ("Standard Serving", 100.0),
-        ("Small Portion", 75.0),
-        ("Large Portion", 150.0),
-        ("Custom", 0.0)
-    ]
     
     private let mealOptions = ["Breakfast", "Lunch", "Dinner", "Snacks"]
     
     private var currentWeight: Double {
-        if isCustomGrams {
-            return Double(customGrams) ?? 100.0
-        }
-        return servingOptions[selectedServingIndex].1 * quantity
+        let grams = Double(gramsAmount) ?? 100.0
+        return grams * quantity
     }
     
     private var multiplier: Double {
@@ -2845,45 +2864,110 @@ struct FoodDetailViewFromSearch: View {
                         }
                     }
                     
-                    // Serving Selection
-                    VStack(alignment: .leading, spacing: 12) {
+                    // Serving Size - Industry Standard Weight + Quantity System
+                    VStack(alignment: .leading, spacing: 16) {
                         Text("Serving Size")
                             .font(.system(size: 18, weight: .semibold))
                         
-                        Picker("Serving", selection: $selectedServingIndex) {
-                            ForEach(0..<servingOptions.count, id: \.self) { index in
-                                Text(servingOptions[index].0)
-                                    .tag(index)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        .onChange(of: selectedServingIndex, perform: { newValue in
-                            isCustomGrams = newValue == servingOptions.count - 1
-                        })
-                        
-                        if isCustomGrams {
-                            HStack {
-                                TextField("Enter grams", text: $customGrams)
+                        // Weight input (grams)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Weight per serving")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.secondary)
+                            
+                            HStack(spacing: 12) {
+                                TextField("100", text: $gramsAmount)
                                     .textFieldStyle(RoundedBorderTextFieldStyle())
                                     .keyboardType(.decimalPad)
+                                    .frame(width: 80)
+                                
                                 Text("g")
-                                    .foregroundColor(.secondary)
-                            }
-                        } else {
-                            HStack {
-                                Text("Quantity:")
-                                    .font(.system(size: 16))
-                                Stepper("", value: $quantity, in: 0.25...10, step: 0.25)
-                                    .labelsHidden()
-                                Text(String(format: "%.2f", quantity))
                                     .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(.secondary)
+                                
+                                Spacer()
+                                
+                                // Quick gram buttons
+                                HStack(spacing: 8) {
+                                    ForEach([50, 100, 200], id: \.self) { grams in
+                                        Button("\(grams)g") {
+                                            gramsAmount = String(grams)
+                                        }
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundColor(gramsAmount == String(grams) ? .white : .blue)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(gramsAmount == String(grams) ? Color.blue : Color.clear)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 6)
+                                                .stroke(Color.blue, lineWidth: 1)
+                                        )
+                                        .cornerRadius(6)
+                                    }
+                                }
                             }
                         }
                         
-                        Text("Total: \(String(format: "%.0f", currentWeight))g")
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
+                        // Quantity multiplier
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Quantity")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.secondary)
+                            
+                            HStack(spacing: 16) {
+                                Button("-") {
+                                    if quantity > 0.25 {
+                                        quantity = max(0.25, quantity - 0.25)
+                                    }
+                                }
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(width: 40, height: 40)
+                                .background(Color.blue)
+                                .clipShape(Circle())
+                                
+                                VStack(spacing: 2) {
+                                    Text(String(format: "%.2f", quantity))
+                                        .font(.system(size: 20, weight: .bold))
+                                        .foregroundColor(.primary)
+                                    Text("servings")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.secondary)
+                                }
+                                .frame(minWidth: 80)
+                                
+                                Button("+") {
+                                    if quantity < 10 {
+                                        quantity = min(10, quantity + 0.25)
+                                    }
+                                }
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(width: 40, height: 40)
+                                .background(Color.blue)
+                                .clipShape(Circle())
+                                
+                                Spacer()
+                            }
+                        }
+                        
+                        // Total weight display
+                        HStack {
+                            Text("Total Weight:")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.secondary)
+                            
+                            Spacer()
+                            
+                            Text("\(String(format: "%.0f", currentWeight))g")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundColor(.primary)
+                        }
+                        .padding(.top, 8)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(8)
                     }
                     .padding()
                     .background(Color(.systemGray6))
@@ -2948,17 +3032,21 @@ struct FoodDetailViewFromSearch: View {
                     .background(Color(.systemBackground))
                     .cornerRadius(12)
                     
-                    // Meal Selection
+                    // Meal Selection - Rollodex Style
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Add to Meal")
                             .font(.system(size: 18, weight: .semibold))
                         
                         Picker("Meal", selection: $selectedMeal) {
                             ForEach(mealOptions, id: \.self) { meal in
-                                Text(meal).tag(meal)
+                                Text(meal)
+                                    .font(.system(size: 16))
+                                    .tag(meal)
                             }
                         }
-                        .pickerStyle(.segmented)
+                        .pickerStyle(.wheel)
+                        .frame(height: 120)
+                        .clipped()
                     }
                     .padding()
                     .background(Color(.systemGray6))
@@ -3209,19 +3297,19 @@ struct AddFoodSearchView: View {
 // MARK: - Sample Data
 
 let sampleSearchResults: [FoodSearchResult] = [
-    FoodSearchResult(id: "1", name: "Greek Yoghurt", brand: "Fage", calories: 100, protein: 18.0, carbs: 6.0, fat: 0.0, fiber: 0, sugar: 6.0, sodium: 50),
-    FoodSearchResult(id: "2", name: "Banana", brand: nil, calories: 89, protein: 1.1, carbs: 23.0, fat: 0.3, fiber: 2.6, sugar: 12.2, sodium: 1),
-    FoodSearchResult(id: "3", name: "Chicken Breast", brand: nil, calories: 165, protein: 31.0, carbs: 0.0, fat: 3.6, fiber: 0, sugar: 0, sodium: 74),
-    FoodSearchResult(id: "4", name: "Brown Rice", brand: nil, calories: 111, protein: 2.6, carbs: 23.0, fat: 0.9, fiber: 1.8, sugar: 0.4, sodium: 5),
-    FoodSearchResult(id: "5", name: "Avocado", brand: nil, calories: 160, protein: 2.0, carbs: 8.5, fat: 14.7, fiber: 6.7, sugar: 0.7, sodium: 7),
-    FoodSearchResult(id: "6", name: "Spinach", brand: nil, calories: 23, protein: 2.9, carbs: 3.6, fat: 0.4, fiber: 2.2, sugar: 0.4, sodium: 79),
-    FoodSearchResult(id: "7", name: "Salmon", brand: nil, calories: 208, protein: 22.0, carbs: 0.0, fat: 12.4, fiber: 0, sugar: 0, sodium: 59),
-    FoodSearchResult(id: "8", name: "Oats", brand: "Quaker", calories: 150, protein: 5.0, carbs: 27.0, fat: 3.0, fiber: 4.0, sugar: 1.1, sodium: 2),
+    FoodSearchResult(id: "1", name: "Greek Yoghurt", brand: "Fage", calories: 100, protein: 18.0, carbs: 6.0, fat: 0.0, fiber: 0, sugar: 6.0, sodium: 50, servingDescription: "1 container (150g)"),
+    FoodSearchResult(id: "2", name: "Banana", brand: nil, calories: 89, protein: 1.1, carbs: 23.0, fat: 0.3, fiber: 2.6, sugar: 12.2, sodium: 1, servingDescription: "1 medium (118g)"),
+    FoodSearchResult(id: "3", name: "Chicken Breast", brand: nil, calories: 165, protein: 31.0, carbs: 0.0, fat: 3.6, fiber: 0, sugar: 0, sodium: 74, servingDescription: "per 100g"),
+    FoodSearchResult(id: "4", name: "Brown Rice", brand: nil, calories: 111, protein: 2.6, carbs: 23.0, fat: 0.9, fiber: 1.8, sugar: 0.4, sodium: 5, servingDescription: "1/2 cup cooked (98g)"),
+    FoodSearchResult(id: "5", name: "Avocado", brand: nil, calories: 160, protein: 2.0, carbs: 8.5, fat: 14.7, fiber: 6.7, sugar: 0.7, sodium: 7, servingDescription: "1/2 medium (100g)"),
+    FoodSearchResult(id: "6", name: "Spinach", brand: nil, calories: 23, protein: 2.9, carbs: 3.6, fat: 0.4, fiber: 2.2, sugar: 0.4, sodium: 79, servingDescription: "1 cup fresh (30g)"),
+    FoodSearchResult(id: "7", name: "Salmon", brand: nil, calories: 208, protein: 22.0, carbs: 0.0, fat: 12.4, fiber: 0, sugar: 0, sodium: 59, servingDescription: "per 100g"),
+    FoodSearchResult(id: "8", name: "Oats", brand: "Quaker", calories: 150, protein: 5.0, carbs: 27.0, fat: 3.0, fiber: 4.0, sugar: 1.1, sodium: 2, servingDescription: "1/2 cup dry (40g)"),
     // Additional foods to test allergen detection
-    FoodSearchResult(id: "9", name: "Whole Milk", brand: "Organic Valley", calories: 150, protein: 8.0, carbs: 12.0, fat: 8.0, fiber: 0, sugar: 12.0, sodium: 105),
-    FoodSearchResult(id: "10", name: "Scrambled Eggs", brand: nil, calories: 155, protein: 13.0, carbs: 1.0, fat: 11.0, fiber: 0, sugar: 1.0, sodium: 124),
-    FoodSearchResult(id: "11", name: "Wheat Bread", brand: "Hovis", calories: 265, protein: 9.0, carbs: 49.0, fat: 3.2, fiber: 2.7, sugar: 3.0, sodium: 491),
-    FoodSearchResult(id: "12", name: "Cheddar Cheese", brand: nil, calories: 403, protein: 25.0, carbs: 1.3, fat: 33.0, fiber: 0, sugar: 0.5, sodium: 621)
+    FoodSearchResult(id: "9", name: "Whole Milk", brand: "Organic Valley", calories: 150, protein: 8.0, carbs: 12.0, fat: 8.0, fiber: 0, sugar: 12.0, sodium: 105, servingDescription: "1 cup (240ml)"),
+    FoodSearchResult(id: "10", name: "Scrambled Eggs", brand: nil, calories: 155, protein: 13.0, carbs: 1.0, fat: 11.0, fiber: 0, sugar: 1.0, sodium: 124, servingDescription: "1 large egg (50g)"),
+    FoodSearchResult(id: "11", name: "Wheat Bread", brand: "Hovis", calories: 265, protein: 9.0, carbs: 49.0, fat: 3.2, fiber: 2.7, sugar: 3.0, sodium: 491, servingDescription: "2 slices (60g)"),
+    FoodSearchResult(id: "12", name: "Cheddar Cheese", brand: nil, calories: 403, protein: 25.0, carbs: 1.3, fat: 33.0, fiber: 0, sugar: 0.5, sodium: 621, servingDescription: "per 100g")
 ]
 
 
@@ -5228,26 +5316,6 @@ struct MealItem: Identifiable {
         self.carbs = carbs
         self.fat = fat
         self.qualityScore = qualityScore
-    }
-}
-
-struct DailyNutrition {
-    let calories: NutritionValue
-    let protein: NutritionValue
-    let carbs: NutritionValue
-    let fat: NutritionValue
-}
-
-struct NutritionValue {
-    let current: Double
-    let target: Double
-    
-    var percentage: Double {
-        return min(current / target, 1.0)
-    }
-    
-    var remaining: Double {
-        return max(target - current, 0)
     }
 }
 

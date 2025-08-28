@@ -70,17 +70,55 @@ exports.searchFoods = functions
                 res.json({ foods: [] });
                 return;
             }
-            const foods = searchData.foods.food.map(food => ({
-                id: food.food_id,
-                name: food.food_name,
-                brand: food.brand_name || null,
-                calories: 0, // Will be populated by getFoodDetails
-                protein: 0,
-                carbs: 0,
-                fat: 0,
-                fiber: 0,
-                sugar: 0,
-                sodium: 0,
+            // Get detailed nutrition information for each food
+            const foods = await Promise.all(searchData.foods.food.slice(0, 10).map(async (food) => {
+                try {
+                    // Get detailed nutrition data
+                    const detailsResponse = await axios_1.default.get(FATSECRET_API_URL, {
+                        params: {
+                            method: 'food.get.v2',
+                            food_id: food.food_id,
+                            format: 'json',
+                        },
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                        },
+                        timeout: 5000,
+                    });
+                    const foodData = detailsResponse.data;
+                    const foodDetail = foodData.food;
+                    const serving = foodDetail.servings.serving[0];
+                    return {
+                        id: food.food_id,
+                        name: food.food_name,
+                        brand: food.brand_name || null,
+                        calories: parseFloat((serving === null || serving === void 0 ? void 0 : serving.calories) || '0'),
+                        protein: parseFloat((serving === null || serving === void 0 ? void 0 : serving.protein) || '0'),
+                        carbs: parseFloat((serving === null || serving === void 0 ? void 0 : serving.carbohydrate) || '0'),
+                        fat: parseFloat((serving === null || serving === void 0 ? void 0 : serving.fat) || '0'),
+                        fiber: parseFloat((serving === null || serving === void 0 ? void 0 : serving.fiber) || '0'),
+                        sugar: parseFloat((serving === null || serving === void 0 ? void 0 : serving.sugar) || '0'),
+                        sodium: parseFloat((serving === null || serving === void 0 ? void 0 : serving.sodium) || '0'),
+                        servingDescription: (serving === null || serving === void 0 ? void 0 : serving.serving_description) || 'per 100g',
+                    };
+                }
+                catch (detailError) {
+                    console.log(`Failed to get details for ${food.food_name}:`, detailError);
+                    // Return basic food info with 0 values if details fail
+                    return {
+                        id: food.food_id,
+                        name: food.food_name,
+                        brand: food.brand_name || null,
+                        calories: 0,
+                        protein: 0,
+                        carbs: 0,
+                        fat: 0,
+                        fiber: 0,
+                        sugar: 0,
+                        sodium: 0,
+                        servingDescription: 'per 100g',
+                    };
+                }
             }));
             // Track the search event for analytics
             try {
