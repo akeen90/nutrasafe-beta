@@ -2633,6 +2633,391 @@ struct FoodSearchResultRow: View {
     }
 }
 
+struct FoodSearchResultRowEnhanced: View {
+    let food: FoodSearchResult
+    @State private var showingFoodDetail = false
+    
+    private var nutritionScore: ProcessingGrade {
+        ProcessingScorer.shared.calculateProcessingScore(for: food.name).grade
+    }
+    
+    var body: some View {
+        Button(action: {
+            showingFoodDetail = true
+        }) {
+            HStack(spacing: 12) {
+                // Food info
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(food.name)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(2)
+                    
+                    if let brand = food.brand {
+                        Text(brand)
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    // Nutrition info
+                    HStack(spacing: 8) {
+                        Text("Per 100g:")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        
+                        HStack(spacing: 6) {
+                            NutrientTag(value: food.protein, unit: "g", label: "Prot", color: .red)
+                            NutrientTag(value: food.carbs, unit: "g", label: "Carb", color: .orange)
+                            NutrientTag(value: food.fat, unit: "g", label: "Fat", color: .purple)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                
+                Spacer()
+                
+                // Nutrition score and calories
+                VStack(alignment: .trailing, spacing: 6) {
+                    HStack(spacing: 8) {
+                        // Nutrition score
+                        Text(nutritionScore.rawValue)
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(width: 24, height: 24)
+                            .background(nutritionScore.color)
+                            .clipShape(Circle())
+                        
+                        // Calories
+                        VStack(spacing: 2) {
+                            Text("\(Int(food.calories))")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.primary)
+                            Text("kcal")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    // Add button
+                    Button(action: {
+                        print("Adding \(food.name)")
+                        // TODO: Add to diary functionality
+                    }) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.blue)
+                    }
+                    .onTapGesture {
+                        // Prevent the button tap from triggering the main button
+                    }
+                }
+            }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 16)
+            .background(Color(.systemBackground))
+            .cornerRadius(12)
+            .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .sheet(isPresented: $showingFoodDetail) {
+            FoodDetailViewFromSearch(food: food)
+        }
+    }
+}
+
+struct NutrientTag: View {
+    let value: Double
+    let unit: String
+    let label: String
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 2) {
+            Text(String(format: "%.1f", value))
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(color)
+            Text("\(unit)")
+                .font(.system(size: 9))
+                .foregroundColor(color.opacity(0.8))
+            Text(label)
+                .font(.system(size: 9, weight: .medium))
+                .foregroundColor(.secondary)
+        }
+        .padding(.horizontal, 4)
+        .padding(.vertical, 2)
+        .background(color.opacity(0.1))
+        .cornerRadius(4)
+    }
+}
+
+struct FoodDetailViewFromSearch: View {
+    let food: FoodSearchResult
+    @State private var selectedServingIndex = 0
+    @State private var quantity: Double = 1.0
+    @State private var customGrams: String = ""
+    @State private var isCustomGrams = false
+    @State private var selectedMeal = "Breakfast"
+    @Environment(\.presentationMode) var presentationMode
+    
+    private let servingOptions = [
+        ("Standard Serving", 100.0),
+        ("Small Portion", 75.0),
+        ("Large Portion", 150.0),
+        ("Custom", 0.0)
+    ]
+    
+    private let mealOptions = ["Breakfast", "Lunch", "Dinner", "Snacks"]
+    
+    private var currentWeight: Double {
+        if isCustomGrams {
+            return Double(customGrams) ?? 100.0
+        }
+        return servingOptions[selectedServingIndex].1 * quantity
+    }
+    
+    private var multiplier: Double {
+        currentWeight / 100.0
+    }
+    
+    private var adjustedCalories: Double {
+        food.calories * multiplier
+    }
+    
+    private var adjustedProtein: Double {
+        food.protein * multiplier
+    }
+    
+    private var adjustedCarbs: Double {
+        food.carbs * multiplier
+    }
+    
+    private var adjustedFat: Double {
+        food.fat * multiplier
+    }
+    
+    private var glycemicIndex: Int? {
+        GlycemicIndexDatabase.shared.getGIData(for: food.name)?.value
+    }
+    
+    private var glycemicLoad: Double? {
+        guard let gi = glycemicIndex else { return nil }
+        return (Double(gi) * adjustedCarbs) / 100.0
+    }
+    
+    private var nutritionScore: NutritionProcessingScore {
+        ProcessingScorer.shared.calculateProcessingScore(for: food.name)
+    }
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Food Header
+                    VStack(spacing: 12) {
+                        Text(food.name)
+                            .font(.system(size: 24, weight: .bold))
+                            .multilineTextAlignment(.center)
+                        
+                        if let brand = food.brand {
+                            Text(brand)
+                                .font(.system(size: 16))
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        // Nutrition score
+                        HStack(spacing: 12) {
+                            Text(nutritionScore.grade.rawValue)
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(width: 40, height: 40)
+                                .background(nutritionScore.color)
+                                .clipShape(Circle())
+                            
+                            VStack(alignment: .leading) {
+                                Text("Processing Score")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                Text("\(nutritionScore.score)/100")
+                                    .font(.system(size: 18, weight: .bold))
+                                    .foregroundColor(nutritionScore.color)
+                            }
+                        }
+                    }
+                    
+                    // Serving Selection
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Serving Size")
+                            .font(.system(size: 18, weight: .semibold))
+                        
+                        Picker("Serving", selection: $selectedServingIndex) {
+                            ForEach(0..<servingOptions.count, id: \.self) { index in
+                                Text(servingOptions[index].0)
+                                    .tag(index)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .onChange(of: selectedServingIndex, perform: { newValue in
+                            isCustomGrams = newValue == servingOptions.count - 1
+                        })
+                        
+                        if isCustomGrams {
+                            HStack {
+                                TextField("Enter grams", text: $customGrams)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                    .keyboardType(.decimalPad)
+                                Text("g")
+                                    .foregroundColor(.secondary)
+                            }
+                        } else {
+                            HStack {
+                                Text("Quantity:")
+                                    .font(.system(size: 16))
+                                Stepper("", value: $quantity, in: 0.25...10, step: 0.25)
+                                    .labelsHidden()
+                                Text(String(format: "%.2f", quantity))
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                        
+                        Text("Total: \(String(format: "%.0f", currentWeight))g")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+                    
+                    // Nutrition Information
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Nutrition Facts")
+                            .font(.system(size: 18, weight: .semibold))
+                        
+                        // Calories
+                        HStack {
+                            Text("Calories")
+                                .font(.system(size: 16, weight: .medium))
+                            Spacer()
+                            Text("\(Int(adjustedCalories)) kcal")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundColor(.primary)
+                        }
+                        
+                        Divider()
+                        
+                        // Macronutrients
+                        VStack(spacing: 12) {
+                            MacroRow(name: "Protein", value: adjustedProtein, unit: "g", color: .red)
+                            MacroRow(name: "Carbohydrates", value: adjustedCarbs, unit: "g", color: .orange)
+                            MacroRow(name: "Fat", value: adjustedFat, unit: "g", color: .purple)
+                            MacroRow(name: "Fiber", value: food.fiber * multiplier, unit: "g", color: .green)
+                            MacroRow(name: "Sugar", value: food.sugar * multiplier, unit: "g", color: .yellow)
+                            MacroRow(name: "Sodium", value: food.sodium * multiplier, unit: "mg", color: .blue)
+                        }
+                        
+                        // Glycemic Index
+                        if let gi = glycemicIndex {
+                            Divider()
+                            
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Text("Glycemic Index")
+                                        .font(.system(size: 16, weight: .medium))
+                                    Spacer()
+                                    Text("\(gi)")
+                                        .font(.system(size: 16, weight: .bold))
+                                        .foregroundColor(gi <= 55 ? .green : gi <= 70 ? .orange : .red)
+                                }
+                                
+                                if let gl = glycemicLoad {
+                                    HStack {
+                                        Text("Glycemic Load")
+                                            .font(.system(size: 14))
+                                            .foregroundColor(.secondary)
+                                        Spacer()
+                                        Text(String(format: "%.1f", gl))
+                                            .font(.system(size: 14, weight: .medium))
+                                            .foregroundColor(gl <= 10 ? .green : gl <= 20 ? .orange : .red)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+                    
+                    // Meal Selection
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Add to Meal")
+                            .font(.system(size: 18, weight: .semibold))
+                        
+                        Picker("Meal", selection: $selectedMeal) {
+                            ForEach(mealOptions, id: \.self) { meal in
+                                Text(meal).tag(meal)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+                    
+                    // Add Button
+                    Button(action: {
+                        addFoodToDiary()
+                    }) {
+                        Text("Add to \(selectedMeal)")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity, minHeight: 50)
+                            .background(Color.blue)
+                            .cornerRadius(12)
+                    }
+                    
+                    Spacer()
+                }
+                .padding()
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarItems(
+                leading: Button("Cancel") {
+                    presentationMode.wrappedValue.dismiss()
+                },
+                trailing: Button("Add") {
+                    addFoodToDiary()
+                }
+            )
+        }
+    }
+    
+    private func addFoodToDiary() {
+        // TODO: Implement add to diary functionality
+        print("Adding \(food.name) to \(selectedMeal): \(Int(adjustedCalories)) kcal")
+        presentationMode.wrappedValue.dismiss()
+    }
+}
+
+struct MacroRow: View {
+    let name: String
+    let value: Double
+    let unit: String
+    let color: Color
+    
+    var body: some View {
+        HStack {
+            Text(name)
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+            Spacer()
+            Text("\(String(format: "%.1f", value))\(unit)")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(color)
+        }
+    }
+}
+
 // MARK: - Scroll Dismiss Modifier for iOS Compatibility
 struct ScrollDismissModifier: ViewModifier {
     func body(content: Content) -> some View {
@@ -2650,6 +3035,8 @@ struct AddFoodSearchView: View {
     @State private var searchResults: [FoodSearchResult] = []
     @State private var isSearching = false
     @StateObject private var fatSecretService = FatSecretService.shared
+    @State private var searchTask: Task<Void, Never>?
+    @State private var keyboardHeight: CGFloat = 0
     
     var body: some View {
         VStack(spacing: 0) {
@@ -2661,6 +3048,9 @@ struct AddFoodSearchView: View {
                     
                     TextField("Search foods...", text: $searchText)
                         .textFieldStyle(PlainTextFieldStyle())
+                        .onChange(of: searchText, perform: { newValue in
+                            performLiveSearch(query: newValue)
+                        })
                         .onSubmit {
                             performSearch()
                         }
@@ -2722,45 +3112,97 @@ struct AddFoodSearchView: View {
                 ScrollView {
                     LazyVStack(spacing: 8) {
                         ForEach(searchResults, id: \.id) { food in
-                            FoodSearchResultRow(food: food) {
-                                // Add food action
-                                print("Adding \(food.name)")
-                            }
+                            FoodSearchResultRowEnhanced(food: food)
                         }
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
-                    .padding(.bottom, 100) // Extra padding to avoid keyboard
+                    .padding(.bottom, max(20, keyboardHeight))
                 }
                 .modifier(ScrollDismissModifier())
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
-            // Start with empty results - user needs to search
+            setupKeyboardObservers()
+        }
+        .onDisappear {
+            removeKeyboardObservers()
         }
     }
     
-    private func performSearch() {
-        guard !searchText.isEmpty else { return }
+    private func performLiveSearch(query: String) {
+        // Cancel previous search
+        searchTask?.cancel()
+        
+        guard !query.isEmpty, query.count >= 2 else {
+            searchResults = []
+            isSearching = false
+            return
+        }
         
         isSearching = true
         
-        Task {
+        // Debounce search by 0.5 seconds
+        searchTask = Task {
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+            
+            if Task.isCancelled { return }
+            
             do {
-                let results = try await fatSecretService.searchFoods(query: searchText)
+                let results = try await fatSecretService.searchFoods(query: query)
+                
+                if Task.isCancelled { return }
+                
                 await MainActor.run {
                     self.searchResults = results
                     self.isSearching = false
                 }
             } catch {
                 print("Search failed: \(error)")
+                
+                if Task.isCancelled { return }
+                
                 await MainActor.run {
                     self.searchResults = []
                     self.isSearching = false
                 }
             }
         }
+    }
+    
+    private func performSearch() {
+        guard !searchText.isEmpty else { return }
+        performLiveSearch(query: searchText)
+    }
+    
+    private func setupKeyboardObservers() {
+        NotificationCenter.default.addObserver(
+            forName: UIResponder.keyboardWillShowNotification,
+            object: nil,
+            queue: .main
+        ) { notification in
+            if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    keyboardHeight = keyboardFrame.height
+                }
+            }
+        }
+        
+        NotificationCenter.default.addObserver(
+            forName: UIResponder.keyboardWillHideNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            withAnimation(.easeInOut(duration: 0.3)) {
+                keyboardHeight = 0
+            }
+        }
+    }
+    
+    private func removeKeyboardObservers() {
+        NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillShowNotification, object: nil)
+        NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillHideNotification, object: nil)
     }
 }
 
@@ -4930,12 +5372,12 @@ struct FoodDetailView: View {
                             }
                         }
                         .pickerStyle(.segmented)
-                        .onChange(of: selectedServingIndex) { newValue in
+                        .onChange(of: selectedServingIndex, perform: { newValue in
                             isCustomGrams = (newValue == servingOptions.count - 1)
                             if !isCustomGrams {
                                 customGrams = ""
                             }
-                        }
+                        })
                         
                         // Custom grams input
                         if isCustomGrams {

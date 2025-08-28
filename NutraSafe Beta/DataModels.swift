@@ -2033,6 +2033,17 @@ enum ProcessingGrade: String, CaseIterable {
         case .f: return 0
         }
     }
+    
+    var color: Color {
+        switch self {
+        case .aPlus: return .green
+        case .a: return .green
+        case .b: return .yellow
+        case .c: return .orange
+        case .d: return .orange
+        case .f: return .red
+        }
+    }
 }
 
 struct NutritionProcessingScore {
