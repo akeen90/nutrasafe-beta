@@ -3,6 +3,26 @@ import Foundation
 import CryptoKit
 import HealthKit
 
+// MARK: - Data Models
+struct SearchResult: Identifiable {
+    let id: String
+    let name: String
+    let brand: String?
+    let calories: Double
+    let protein: Double
+    let carbs: Double
+    let fat: Double
+    let fiber: Double
+    let sugar: Double
+    let sodium: Double
+    
+    var servingSize: String {
+        return "100g"
+    }
+}
+
+typealias FoodSearchResult = SearchResult
+
 // MARK: - FatSecret API Service via Firebase Functions
 class FatSecretService: ObservableObject {
     static let shared = FatSecretService()
@@ -12,19 +32,12 @@ class FatSecretService: ObservableObject {
     
     private init() {}
     
-    func searchWithMockFallback(query: String) async -> [SearchResult] {
-        do {
-            return try await searchFoods(query: query)
-        } catch {
-            print("Firebase Functions API error: \(error). Falling back to mock data.")
-            return mockSearchResults.filter { food in
-                food.name.localizedCaseInsensitiveContains(query) ||
-                food.brand?.localizedCaseInsensitiveContains(query) == true
-            }
-        }
+    func searchFoods(query: String) async throws -> [SearchResult] {
+        print("Searching FatSecret API for: \(query)")
+        return try await performFatSecretSearch(query: query)
     }
     
-    func searchFoods(query: String) async throws -> [SearchResult] {
+    private func performFatSecretSearch(query: String) async throws -> [SearchResult] {
         let url = URL(string: "\(functionsBaseURL)/searchFoods")!
         
         var request = URLRequest(url: url)
@@ -122,18 +135,6 @@ class FatSecretService: ObservableObject {
         )
     }
     
-    private var mockSearchResults: [SearchResult] {
-        return [
-            SearchResult(id: "1", name: "Banana", brand: nil, calories: 89, protein: 1.1, carbs: 23, fat: 0.3, fiber: 2.6, sugar: 12, sodium: 1),
-            SearchResult(id: "2", name: "Chicken Breast", brand: nil, calories: 165, protein: 31, carbs: 0, fat: 3.6, fiber: 0, sugar: 0, sodium: 74),
-            SearchResult(id: "3", name: "Brown Rice", brand: nil, calories: 112, protein: 2.6, carbs: 23, fat: 0.9, fiber: 1.8, sugar: 0.4, sodium: 5),
-            SearchResult(id: "4", name: "Greek Yogurt", brand: "Fage", calories: 59, protein: 10, carbs: 3.6, fat: 0.4, fiber: 0, sugar: 3.6, sodium: 36),
-            SearchResult(id: "5", name: "Almonds", brand: nil, calories: 579, protein: 21, carbs: 22, fat: 50, fiber: 12, sugar: 4.4, sodium: 1),
-            SearchResult(id: "6", name: "Broccoli", brand: nil, calories: 25, protein: 3, carbs: 5, fat: 0.4, fiber: 3, sugar: 1.5, sodium: 33),
-            SearchResult(id: "7", name: "Salmon Fillet", brand: nil, calories: 208, protein: 25, carbs: 0, fat: 12, fiber: 0, sugar: 0, sodium: 59),
-            SearchResult(id: "8", name: "Sweet Potato", brand: nil, calories: 86, protein: 1.6, carbs: 20, fat: 0.1, fiber: 3, sugar: 4.2, sodium: 5)
-        ]
-    }
 }
 
 // MARK: - Professional Nutrition App UI Following Research Standards
@@ -858,9 +859,9 @@ struct DiaryFoodView: View {
                     targetCalories: 400,
                     currentCalories: 420,
                     foods: [
-                        DiaryFoodItem(name: "Greek Yoghurt", calories: 150, time: "08:30"),
-                        DiaryFoodItem(name: "Banana", calories: 120, time: "08:30"),
-                        DiaryFoodItem(name: "Granola", calories: 150, time: "08:30")
+                        DiaryFoodItem(name: "Greek Yoghurt", calories: 150, protein: 18.0, carbs: 6.0, fat: 0.5, time: "08:30"),
+                        DiaryFoodItem(name: "Banana", calories: 120, protein: 1.3, carbs: 27.0, fat: 0.4, time: "08:30"),
+                        DiaryFoodItem(name: "Granola", calories: 150, protein: 5.0, carbs: 22.0, fat: 6.0, time: "08:30")
                     ],
                     color: .orange
                 )
@@ -869,8 +870,11 @@ struct DiaryFoodView: View {
                 DiaryMealCard(
                     mealType: "Lunch",
                     targetCalories: 500,
-                    currentCalories: 0,
-                    foods: [],
+                    currentCalories: 485,
+                    foods: [
+                        DiaryFoodItem(name: "Chicken Caesar Salad", calories: 320, protein: 28.0, carbs: 12.0, fat: 18.0, time: "13:15"),
+                        DiaryFoodItem(name: "Wholemeal Bread Roll", calories: 165, protein: 6.5, carbs: 28.0, fat: 3.2, time: "13:15")
+                    ],
                     color: .green
                 )
                 .padding(.horizontal, 16)
@@ -878,8 +882,13 @@ struct DiaryFoodView: View {
                 DiaryMealCard(
                     mealType: "Dinner",
                     targetCalories: 600,
-                    currentCalories: 0,
-                    foods: [],
+                    currentCalories: 625,
+                    foods: [
+                        DiaryFoodItem(name: "Grilled Salmon Fillet", calories: 280, protein: 25.0, carbs: 0.0, fat: 18.5, time: "19:30"),
+                        DiaryFoodItem(name: "Roasted Sweet Potato", calories: 180, protein: 4.0, carbs: 41.0, fat: 0.5, time: "19:30"),
+                        DiaryFoodItem(name: "Steamed Broccoli", calories: 55, protein: 5.0, carbs: 11.0, fat: 0.6, time: "19:30"),
+                        DiaryFoodItem(name: "Mixed Green Salad", calories: 110, protein: 3.0, carbs: 8.0, fat: 8.5, time: "19:30")
+                    ],
                     color: .purple
                 )
                 .padding(.horizontal, 16)
@@ -887,8 +896,10 @@ struct DiaryFoodView: View {
                 DiaryMealCard(
                     mealType: "Snacks",
                     targetCalories: 200,
-                    currentCalories: 0,
-                    foods: [],
+                    currentCalories: 195,
+                    foods: [
+                        DiaryFoodItem(name: "Apple with Almond Butter", calories: 195, protein: 6.0, carbs: 25.0, fat: 11.0, time: "15:45")
+                    ],
                     color: .blue
                 )
                 .padding(.horizontal, 16)
@@ -1061,8 +1072,20 @@ struct DiaryMealCard: View {
     let mealType: String
     let targetCalories: Int
     let currentCalories: Int
-    let foods: [DiaryFoodItem]
+    @State var foods: [DiaryFoodItem]
     let color: Color
+    
+    private var totalProtein: Double {
+        foods.reduce(0) { $0 + $1.protein }
+    }
+    
+    private var totalCarbs: Double {
+        foods.reduce(0) { $0 + $1.carbs }
+    }
+    
+    private var totalFat: Double {
+        foods.reduce(0) { $0 + $1.fat }
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -1084,9 +1107,19 @@ struct DiaryMealCard: View {
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.primary)
                     
-                    Text("/ \(targetCalories) cal")
+                    Text("/ \(targetCalories) kcal")
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
+                    
+                    // Show macronutrient totals if foods exist
+                    if !foods.isEmpty {
+                        HStack(spacing: 6) {
+                            MacroSummaryLabel(value: totalProtein, label: "P", color: .red)
+                            MacroSummaryLabel(value: totalCarbs, label: "C", color: .orange)
+                            MacroSummaryLabel(value: totalFat, label: "F", color: .purple)
+                        }
+                        .padding(.top, 2)
+                    }
                 }
             }
             
@@ -1110,8 +1143,15 @@ struct DiaryMealCard: View {
                 .buttonStyle(PlainButtonStyle())
             } else {
                 VStack(spacing: 8) {
-                    ForEach(foods, id: \.name) { food in
-                        DiaryFoodRow(food: food)
+                    ForEach(foods) { food in
+                        DiaryFoodRow(food: food) {
+                            // Delete food from list
+                            if let index = foods.firstIndex(of: food) {
+                                _ = withAnimation(.easeOut(duration: 0.3)) {
+                                    foods.remove(at: index)
+                                }
+                            }
+                        }
                     }
                     
                     Button(action: {
@@ -1140,34 +1180,313 @@ struct DiaryMealCard: View {
     }
 }
 
-struct DiaryFoodItem {
+struct DiaryFoodItem: Identifiable, Equatable {
+    let id = UUID()
     let name: String
     let calories: Int
+    let protein: Double
+    let carbs: Double
+    let fat: Double
     let time: String
+    
+    static func == (lhs: DiaryFoodItem, rhs: DiaryFoodItem) -> Bool {
+        return lhs.id == rhs.id
+    }
 }
 
 struct DiaryFoodRow: View {
     let food: DiaryFoodItem
+    let onDelete: () -> Void
+    @State private var showingFoodDetail = false
     
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(food.name)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(.primary)
+        Button(action: {
+            showingFoodDetail = true
+        }) {
+            HStack(spacing: 12) {
+                // Food name and time
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(food.name)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                    
+                    Text(food.time)
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
                 
-                Text(food.time)
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                Spacer()
+                
+                // Enhanced nutrition display
+                VStack(alignment: .trailing, spacing: 4) {
+                    // Energy (calories)
+                    HStack(spacing: 4) {
+                        Text("\(food.calories)")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.primary)
+                        Text("kcal")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    // Macronutrients in compact format
+                    HStack(spacing: 6) {
+                        CompactMacroLabel(value: food.protein, label: "Prot", color: .red)
+                        CompactMacroLabel(value: food.carbs, label: "Carb", color: .orange)
+                        CompactMacroLabel(value: food.fat, label: "Fat", color: .purple)
+                    }
+                    
+                    // Nutrition Score
+                    NutritionScoreView(food: food)
+                }
             }
-            
-            Spacer()
-            
-            Text("\(food.calories) cal")
-                .font(.system(size: 14))
+        }
+        .buttonStyle(PlainButtonStyle())
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(Color(.systemBackground))
+        .cornerRadius(8)
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button(action: onDelete) {
+                Label("Delete", systemImage: "trash")
+            }
+            .tint(.red)
+        }
+        .sheet(isPresented: $showingFoodDetail) {
+            FoodDetailView(food: food)
+        }
+    }
+}
+
+struct MacroLabel: View {
+    let value: Double
+    let label: String
+    let color: Color
+    
+    var body: some View {
+        VStack(spacing: 1) {
+            Text(String(format: "%.0f", value))
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(color)
+            Text(label)
+                .font(.system(size: 9, weight: .medium))
+                .foregroundColor(color.opacity(0.7))
+        }
+        .frame(minWidth: 20)
+    }
+}
+
+struct MacroSummaryLabel: View {
+    let value: Double
+    let label: String
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 2) {
+            Text(String(format: "%.0f", value))
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(color)
+            Text(label)
+                .font(.system(size: 9, weight: .medium))
+                .foregroundColor(color.opacity(0.8))
+        }
+    }
+}
+
+struct CompactMacroLabel: View {
+    let value: Double
+    let label: String
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 1) {
+            Text(String(format: "%.0f", value))
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(color)
+            Text(label)
+                .font(.system(size: 9, weight: .medium))
                 .foregroundColor(.secondary)
         }
-        .padding(.vertical, 4)
+    }
+}
+
+struct NutritionScoreView: View {
+    let food: DiaryFoodItem
+    @State private var showingScoreDetails = false
+    
+    private var nutritionScore: NutritionProcessingScore {
+        ProcessingScorer.shared.calculateProcessingScore(for: food.name)
+    }
+    
+    var body: some View {
+        Button(action: {
+            showingScoreDetails = true
+        }) {
+            HStack(spacing: 4) {
+                // Score grade
+                Text(nutritionScore.grade.rawValue)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(width: 18, height: 18)
+                    .background(nutritionScore.color)
+                    .clipShape(Circle())
+                
+                Text("Score")
+                    .font(.system(size: 9))
+                    .foregroundColor(.secondary)
+            }
+        }
+        .buttonStyle(PlainButtonStyle())
+        .sheet(isPresented: $showingScoreDetails) {
+            NutritionScoreDetailView(food: food, score: nutritionScore)
+        }
+    }
+}
+
+struct NutritionScoreDetailView: View {
+    let food: DiaryFoodItem
+    let score: NutritionProcessingScore
+    @Environment(\.presentationMode) var presentationMode
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Header with score
+                    VStack(spacing: 12) {
+                        Text(food.name)
+                            .font(.system(size: 24, weight: .bold))
+                            .multilineTextAlignment(.center)
+                        
+                        HStack(spacing: 16) {
+                            // Grade circle
+                            Text(score.grade.rawValue)
+                                .font(.system(size: 32, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(width: 60, height: 60)
+                                .background(score.color)
+                                .clipShape(Circle())
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Processing Score")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.primary)
+                                
+                                Text("\(score.score)/100")
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundColor(score.color)
+                                
+                                Text(score.processingLevel.rawValue)
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(16)
+                    
+                    // Explanation
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Explanation")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.primary)
+                        
+                        Text(score.explanation)
+                            .font(.system(size: 15))
+                            .foregroundColor(.secondary)
+                            .lineSpacing(2)
+                    }
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+                    
+                    // Scoring factors
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Scoring Factors")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.primary)
+                        
+                        ForEach(score.factors, id: \.self) { factor in
+                            HStack {
+                                Image(systemName: factor.contains("✅") ? "checkmark.circle.fill" : 
+                                                 factor.contains("⚠️") ? "exclamationmark.triangle.fill" : "info.circle")
+                                    .foregroundColor(factor.contains("✅") ? .green : 
+                                                   factor.contains("⚠️") ? .orange : .blue)
+                                    .frame(width: 16)
+                                
+                                Text(factor.replacingOccurrences(of: "✅ ", with: "")
+                                          .replacingOccurrences(of: "⚠️ ", with: ""))
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.primary)
+                                
+                                Spacer()
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+                    
+                    // About the scoring system
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("About This Score")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.primary)
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("This processing score evaluates how much a food has been altered from its natural state:")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                GradeExplanationRow(grade: "A+/A", color: .green, description: "Whole, unprocessed foods")
+                                GradeExplanationRow(grade: "B", color: .orange, description: "Lightly processed for preservation")
+                                GradeExplanationRow(grade: "C", color: .yellow, description: "Moderately processed with some additives")
+                                GradeExplanationRow(grade: "D/F", color: .red, description: "Highly processed with many additives")
+                            }
+                            .padding(.top, 8)
+                        }
+                    }
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+                    
+                    Spacer()
+                }
+                .padding()
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarItems(trailing: Button("Done") {
+                presentationMode.wrappedValue.dismiss()
+            })
+        }
+    }
+}
+
+struct GradeExplanationRow: View {
+    let grade: String
+    let color: Color
+    let description: String
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(grade)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(.white)
+                .frame(width: 32, height: 20)
+                .background(color)
+                .cornerRadius(4)
+            
+            Text(description)
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+            
+            Spacer()
+        }
     }
 }
 
@@ -1941,116 +2260,6 @@ struct AddOptionSelector: View {
 
 // MARK: - Add Food Views
 
-struct AddFoodSearchView: View {
-    @State private var searchText = ""
-    @State private var searchResults: [FoodSearchResult] = []
-    @State private var isSearching = false
-    @StateObject private var fatSecretService = FatSecretService.shared
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            // Search Bar
-            VStack(spacing: 12) {
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.secondary)
-                    
-                    TextField("Search foods...", text: $searchText)
-                        .textFieldStyle(PlainTextFieldStyle())
-                        .onSubmit {
-                            performSearch()
-                        }
-                    
-                    if !searchText.isEmpty {
-                        Button(action: { searchText = "" }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
-                
-                // Quick filters
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(["Recent", "Popular", "Brands", "Organic", "Gluten Free"], id: \.self) { filter in
-                            Button(filter) {
-                                searchText = filter.lowercased()
-                                performSearch()
-                            }
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.blue)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Color(.systemGray6))
-                            .cornerRadius(16)
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                }
-            }
-            
-            // Results
-            if isSearching {
-                VStack {
-                    Spacer()
-                    ProgressView("Searching...")
-                    Spacer()
-                }
-            } else if searchResults.isEmpty && !searchText.isEmpty {
-                VStack {
-                    Spacer()
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 48))
-                        .foregroundColor(.secondary)
-                    Text("No results found")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(.secondary)
-                        .padding(.top, 8)
-                    Spacer()
-                }
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 8) {
-                        ForEach(searchText.isEmpty ? samplePopularFoods : searchResults, id: \.id) { food in
-                            FoodSearchResultRow(food: food) {
-                                // Add food action
-                                print("Adding \(food.name)")
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 16)
-                }
-            }
-        }
-        .onAppear {
-            if searchText.isEmpty {
-                searchResults = samplePopularFoods
-            }
-        }
-    }
-    
-    private func performSearch() {
-        guard !searchText.isEmpty else { return }
-        
-        isSearching = true
-        
-        Task {
-            let results = await fatSecretService.searchWithMockFallback(query: searchText)
-            await MainActor.run {
-                self.searchResults = results
-                self.isSearching = false
-            }
-        }
-    }
-}
-
 struct AddFoodManualView: View {
     @State private var foodName = ""
     @State private var calories = ""
@@ -2392,347 +2601,170 @@ struct FoodSearchResultRow: View {
     let food: FoodSearchResult
     let onAdd: () -> Void
     
-    // Sample user allergens for testing - in production this would come from user settings
-    private let userAllergens: [Allergen] = [.dairy, .eggs, .gluten]
-    @State private var ingredientAnalysis: IngredientAnalysisResult?
-    @State private var isAnalyzing = false
-    
     var body: some View {
-        let ingredientList = ingredientAnalysis?.ingredients.map { $0.name } ?? extractBasicIngredients(from: food.name)
-        let allergenResult = AllergenDetector.shared.detectAllergens(
-            in: food.name,
-            ingredients: ingredientList,
-            userAllergens: userAllergens
-        )
-        let nutritionScore = NutritionScorer.shared.calculateNutritionScore(
-            calories: food.calories,
-            protein: food.protein,
-            carbs: food.carbs,
-            fat: food.fat,
-            fiber: food.fiber,
-            sugar: food.sugar,
-            sodium: food.sodium,
-            foodName: food.name
-        )
-        
-        HStack(spacing: 12) {
-            // Food image placeholder with safety indicator
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color(.systemGray5))
-                .frame(width: 50, height: 50)
-                .overlay(
-                    Image(systemName: "fork.knife")
-                        .font(.system(size: 20))
-                        .foregroundColor(.secondary)
-                )
-                .overlay(
-                    // Safety & nutrition indicators
-                    VStack {
-                        HStack {
-                            Spacer()
-                            
-                            // Nutrition grade in top-right
-                            Text(nutritionScore.grade.rawValue)
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 2)
-                                .background(nutritionGradeColor(nutritionScore.grade))
-                                .clipShape(RoundedRectangle(cornerRadius: 4))
-                        }
-                        
-                        Spacer()
-                        
-                        HStack {
-                            Spacer()
-                            
-                            // Safety indicator in bottom-right
-                            if !allergenResult.safeForUser {
-                                Circle()
-                                    .fill(Color.red)
-                                    .frame(width: 14, height: 14)
-                                    .overlay(
-                                        Text("!")
-                                            .font(.system(size: 8, weight: .bold))
-                                            .foregroundColor(.white)
-                                    )
-                            }
-                        }
-                    }
-                    .padding(4)
-                )
-            
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(food.name)
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.primary)
-                        .lineLimit(2)
-                    
-                    Spacer()
-                    
-                    // Allergen warning badges
-                    if !allergenResult.detectedAllergens.isEmpty {
-                        HStack(spacing: 2) {
-                            ForEach(allergenResult.detectedAllergens.prefix(2), id: \.self) { allergen in
-                                Text(allergen.icon)
-                                    .font(.system(size: 12))
-                                    .padding(.horizontal, 4)
-                                    .padding(.vertical, 2)
-                                    .background(Color.red.opacity(0.1))
-                                    .foregroundColor(.red)
-                                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                            }
-                            
-                            if allergenResult.detectedAllergens.count > 2 {
-                                Text("+\(allergenResult.detectedAllergens.count - 2)")
-                                    .font(.system(size: 10, weight: .medium))
-                                    .padding(.horizontal, 4)
-                                    .padding(.vertical, 2)
-                                    .background(Color.red.opacity(0.1))
-                                    .foregroundColor(.red)
-                                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                            }
-                        }
-                    }
-                }
-                
+        HStack {
+            VStack(alignment: .leading) {
+                Text(food.name)
+                    .font(.headline)
                 if let brand = food.brand {
                     Text(brand)
-                        .font(.system(size: 14))
+                        .font(.caption)
                         .foregroundColor(.secondary)
-                }
-                
-                // Allergen warning text
-                if !allergenResult.safeForUser && !allergenResult.warnings.isEmpty {
-                    Text("⚠️ " + allergenResult.warnings.first!)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.red)
-                        .lineLimit(1)
-                }
-                
-                // Ingredient analysis summary
-                if let analysis = ingredientAnalysis {
-                    HStack(spacing: 6) {
-                        if !analysis.micronutrients.isEmpty {
-                            Text("🧬")
-                                .font(.system(size: 10))
-                            Text("\(analysis.micronutrients.count) nutrients")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundColor(.green)
-                        }
-                        
-                        if !analysis.additives.isEmpty {
-                            Text("⚗️")
-                                .font(.system(size: 10))
-                            Text("\(analysis.additives.count) additives")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundColor(analysis.overallRiskLevel == .safe ? .orange : .red)
-                        }
-                        
-                        Spacer()
-                    }
-                }
-                
-                HStack(spacing: 12) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 12) {
-                            Text("\(Int(food.calories)) cal")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(.primary)
-                            
-                            if food.protein > 0 {
-                                Text("\(String(format: "%.1f", food.protein))g protein")
-                                    .font(.system(size: 13))
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        
-                        // Nutrition score and grade
-                        HStack(spacing: 8) {
-                            Text("Nutrition: \(Int(nutritionScore.overallScore))")
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(nutritionGradeColor(nutritionScore.grade))
-                            
-                            Text("•")
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                            
-                            Text(nutritionScore.grade.description)
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                                .lineLimit(1)
-                        }
-                    }
-                    
-                    Spacer()
                 }
             }
             
             Spacer()
             
-            Button(action: onAdd) {
-                Image(systemName: allergenResult.safeForUser ? "plus.circle.fill" : "exclamationmark.triangle.fill")
-                    .font(.system(size: 24))
-                    .foregroundColor(allergenResult.safeForUser ? .blue : .red)
+            VStack {
+                Text("\(Int(food.calories))")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                Text("kcal")
+                    .font(.caption)
             }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
-        .onAppear {
-            analyseIngredients()
-        }
-    }
-    
-    private func safetyScoreColor(_ score: Double) -> Color {
-        switch score {
-        case 0.8...1.0:
-            return .green
-        case 0.5..<0.8:
-            return .orange
-        default:
-            return .red
-        }
-    }
-    
-    private func safetyScoreText(_ score: Double) -> String {
-        switch score {
-        case 0.8...1.0:
-            return "✓"
-        case 0.5..<0.8:
-            return "!"
-        default:
-            return "⚠"
-        }
-    }
-    
-    private func nutritionGradeColor(_ grade: NutritionGrade) -> Color {
-        switch grade {
-        case .excellent, .veryGood:
-            return .green
-        case .good:
-            return Color(.systemGreen).opacity(0.8)
-        case .average:
-            return .orange
-        case .poor, .veryPoor:
-            return .red
-        }
-    }
-    
-    private func analyseIngredients() {
-        guard !isAnalyzing && ingredientAnalysis == nil else { return }
-        
-        isAnalyzing = true
-        
-        // For now, use the basic extraction - in a full implementation,
-        // this would call the Firebase Function to get ingredients
-        let basicIngredients = extractBasicIngredients(from: food.name)
-        let analysis = IngredientAnalyzer.shared.analyseIngredients(basicIngredients, userAllergens: userAllergens)
-        
-        DispatchQueue.main.async {
-            self.ingredientAnalysis = analysis
-            self.isAnalyzing = false
-        }
-    }
-    
-    private func extractBasicIngredients(from foodName: String) -> [String] {
-        let lowerName = foodName.lowercased()
-        var ingredients: [String] = []
-        
-        // Common ingredient mappings based on food names
-        let ingredientMappings: [String: [String]] = [
-            "pizza": ["wheat flour", "tomatoes", "cheese", "yeast", "olive oil", "salt"],
-            "bread": ["wheat flour", "yeast", "salt", "water"],
-            "pasta": ["durum wheat", "water", "eggs"],
-            "yogurt": ["milk", "live cultures", "sugar"],
-            "yoghurt": ["milk", "live cultures", "sugar"],
-            "cheese": ["milk", "salt", "enzymes", "bacterial cultures"],
-            "butter": ["cream", "salt"],
-            "milk": ["milk"],
-            "chicken": ["chicken"],
-            "beef": ["beef"],
-            "pork": ["pork"],
-            "fish": ["fish"],
-            "salmon": ["salmon"],
-            "tuna": ["tuna"],
-            "rice": ["rice"],
-            "oats": ["oats"],
-            "quinoa": ["quinoa"],
-            "apple": ["apple"],
-            "banana": ["banana"],
-            "orange": ["orange"],
-            "spinach": ["spinach"],
-            "broccoli": ["broccoli"],
-            "carrot": ["carrot"],
-            "potato": ["potato"],
-            "tomato": ["tomato"],
-            "onion": ["onion"],
-            "garlic": ["garlic"],
-            "egg": ["egg"],
-            "chocolate": ["cocoa", "sugar", "milk", "cocoa butter"],
-            "ice cream": ["milk", "cream", "sugar", "eggs", "vanilla"],
-            "cookie": ["wheat flour", "sugar", "butter", "eggs", "baking powder"],
-            "cake": ["wheat flour", "sugar", "eggs", "butter", "baking powder"],
-            "cereal": ["grains", "sugar", "vitamins", "minerals"],
-            "soup": ["water", "vegetables", "salt", "spices"],
-            "juice": ["fruit", "water"],
-            "soda": ["water", "sugar", "carbon dioxide", "artificial flavours"],
-            "tea": ["tea leaves"],
-            "coffee": ["coffee beans"],
-        ]
-        
-        // Check for direct matches first
-        for (foodType, ingredientList) in ingredientMappings {
-            if lowerName.contains(foodType) {
-                ingredients = ingredientList
-                break
-            }
-        }
-        
-        // If no direct match, try to extract ingredients from compound food names
-        if ingredients.isEmpty {
-            let possibleIngredients = [
-                "chicken", "beef", "pork", "fish", "salmon", "tuna", "shrimp",
-                "milk", "cheese", "butter", "cream", "yogurt", "eggs",
-                "wheat", "rice", "oats", "corn", "barley", "quinoa",
-                "tomato", "onion", "garlic", "pepper", "mushroom", "spinach",
-                "apple", "banana", "orange", "berry", "grape",
-                "sugar", "salt", "oil", "vinegar", "herbs", "spices"
-            ]
             
-            for ingredient in possibleIngredients {
-                if lowerName.contains(ingredient) {
-                    ingredients.append(ingredient)
+            Button(action: onAdd) {
+                Image(systemName: "plus.circle.fill")
+                    .font(.title2)
+                    .foregroundColor(.blue)
+            }
+        }
+        .padding()
+    }
+}
+
+// MARK: - Scroll Dismiss Modifier for iOS Compatibility
+struct ScrollDismissModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 16.0, *) {
+            content.scrollDismissesKeyboard(.interactively)
+        } else {
+            content
+        }
+    }
+}
+
+// MARK: - Add Food Search View
+struct AddFoodSearchView: View {
+    @State private var searchText = ""
+    @State private var searchResults: [FoodSearchResult] = []
+    @State private var isSearching = false
+    @StateObject private var fatSecretService = FatSecretService.shared
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Search Bar
+            VStack(spacing: 12) {
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.secondary)
+                    
+                    TextField("Search foods...", text: $searchText)
+                        .textFieldStyle(PlainTextFieldStyle())
+                        .onSubmit {
+                            performSearch()
+                        }
+                    
+                    if !searchText.isEmpty {
+                        Button(action: { searchText = "" }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                
+                // Quick filters
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(["Recent", "Popular", "Brands", "Organic", "Gluten Free"], id: \.self) { filter in
+                            Button(filter) {
+                                searchText = filter.lowercased()
+                                performSearch()
+                            }
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.blue)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(16)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+            }
+            
+            // Results
+            if isSearching {
+                VStack {
+                    Spacer()
+                    ProgressView("Searching...")
+                    Spacer()
+                }
+            } else if searchResults.isEmpty && !searchText.isEmpty {
+                VStack {
+                    Spacer()
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 48))
+                        .foregroundColor(.secondary)
+                    Text("No results found")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .padding(.top, 8)
+                    Spacer()
+                }
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        ForEach(searchResults, id: \.id) { food in
+                            FoodSearchResultRow(food: food) {
+                                // Add food action
+                                print("Adding \(food.name)")
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+                    .padding(.bottom, 100) // Extra padding to avoid keyboard
+                }
+                .modifier(ScrollDismissModifier())
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear {
+            // Start with empty results - user needs to search
+        }
+    }
+    
+    private func performSearch() {
+        guard !searchText.isEmpty else { return }
+        
+        isSearching = true
+        
+        Task {
+            do {
+                let results = try await fatSecretService.searchFoods(query: searchText)
+                await MainActor.run {
+                    self.searchResults = results
+                    self.isSearching = false
+                }
+            } catch {
+                print("Search failed: \(error)")
+                await MainActor.run {
+                    self.searchResults = []
+                    self.isSearching = false
                 }
             }
         }
-        
-        return Array(Set(ingredients)) // Remove duplicates
     }
 }
 
 // MARK: - Sample Data
-
-struct SearchResult: Identifiable {
-    let id: String
-    let name: String
-    let brand: String?
-    let calories: Double
-    let protein: Double
-    let carbs: Double
-    let fat: Double
-    let fiber: Double
-    let sugar: Double
-    let sodium: Double
-    
-    var servingSize: String {
-        return "100g"
-    }
-}
-
-typealias FoodSearchResult = SearchResult
 
 let sampleSearchResults: [FoodSearchResult] = [
     FoodSearchResult(id: "1", name: "Greek Yoghurt", brand: "Fage", calories: 100, protein: 18.0, carbs: 6.0, fat: 0.0, fiber: 0, sugar: 6.0, sodium: 50),
@@ -2750,14 +2782,6 @@ let sampleSearchResults: [FoodSearchResult] = [
     FoodSearchResult(id: "12", name: "Cheddar Cheese", brand: nil, calories: 403, protein: 25.0, carbs: 1.3, fat: 33.0, fiber: 0, sugar: 0.5, sodium: 621)
 ]
 
-let samplePopularFoods: [FoodSearchResult] = [
-    sampleSearchResults[0], // Greek Yoghurt - contains dairy
-    sampleSearchResults[8], // Whole Milk - contains dairy
-    sampleSearchResults[9], // Scrambled Eggs - contains eggs
-    sampleSearchResults[10], // Wheat Bread - contains gluten
-    sampleSearchResults[1], // Banana - safe
-    sampleSearchResults[2]  // Chicken Breast - safe
-]
 
 // MARK: - Food Tab Component Cards
 
@@ -4810,6 +4834,331 @@ extension Color {
             blue:  Double(b) / 255,
             opacity: Double(a) / 255
         )
+    }
+}
+
+// MARK: - Food Detail Page
+struct FoodDetailView: View {
+    let food: DiaryFoodItem
+    @State private var selectedServingIndex = 0
+    @State private var quantity: Double = 1.0
+    @State private var customGrams: String = ""
+    @State private var isCustomGrams = false
+    @Environment(\.dismiss) private var dismiss
+    
+    // Mock serving options - in production these would come from the food data
+    private var servingOptions: [FoodServingOption] {
+        [
+            FoodServingOption(name: "1 serving", unit: "serving", gramsPerServing: 100.0, isDefault: true),
+            FoodServingOption(name: "100g", unit: "g", gramsPerServing: 100.0, isDefault: false),
+            FoodServingOption(name: "1 cup", unit: "cup", gramsPerServing: 150.0, isDefault: false),
+            FoodServingOption(name: "Custom", unit: "g", gramsPerServing: 100.0, isDefault: false)
+        ]
+    }
+    
+    private var selectedServing: FoodServingOption {
+        servingOptions[selectedServingIndex]
+    }
+    
+    private var actualGrams: Double {
+        if isCustomGrams, let customValue = Double(customGrams), customValue > 0 {
+            return customValue
+        }
+        return selectedServing.gramsPerServing * quantity
+    }
+    
+    private var scalingFactor: Double {
+        actualGrams / 100.0 // Assuming nutrition is per 100g
+    }
+    
+    private var scaledCalories: Int {
+        Int(Double(food.calories) * scalingFactor)
+    }
+    
+    private var scaledProtein: Double {
+        food.protein * scalingFactor
+    }
+    
+    private var scaledCarbs: Double {
+        food.carbs * scalingFactor
+    }
+    
+    private var scaledFat: Double {
+        food.fat * scalingFactor
+    }
+    
+    private var glycemicData: GlycemicIndexData? {
+        GlycemicIndexDatabase.shared.getGIData(for: food.name)
+    }
+    
+    private var glycemicLoad: Double? {
+        guard let giData = glycemicData, let giValue = giData.value else { return nil }
+        let carbGrams = scaledCarbs
+        return (Double(giValue) * carbGrams) / 100.0
+    }
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Header
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(food.name)
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(.primary)
+                        
+                        if let brand = extractBrand(from: food.name) {
+                            Text(brand)
+                                .font(.system(size: 16))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal)
+                    
+                    // Serving Size Selection
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Serving Size")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.primary)
+                        
+                        // Serving options picker
+                        Picker("Serving Size", selection: $selectedServingIndex) {
+                            ForEach(0..<servingOptions.count, id: \.self) { index in
+                                Text(servingOptions[index].name)
+                                    .tag(index)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .onChange(of: selectedServingIndex) { newValue in
+                            isCustomGrams = (newValue == servingOptions.count - 1)
+                            if !isCustomGrams {
+                                customGrams = ""
+                            }
+                        }
+                        
+                        // Custom grams input
+                        if isCustomGrams {
+                            HStack {
+                                TextField("Enter grams", text: $customGrams)
+                                    .keyboardType(.decimalPad)
+                                    .textFieldStyle(.roundedBorder)
+                                Text("g")
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        // Quantity selector
+                        if !isCustomGrams {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Quantity")
+                                    .font(.system(size: 16, weight: .medium))
+                                
+                                HStack(spacing: 12) {
+                                    Button(action: {
+                                        if quantity > 0.25 {
+                                            quantity -= 0.25
+                                        }
+                                    }) {
+                                        Image(systemName: "minus.circle.fill")
+                                            .font(.system(size: 24))
+                                            .foregroundColor(.blue)
+                                    }
+                                    
+                                    Text(String(format: "%.2g", quantity))
+                                        .font(.system(size: 18, weight: .medium))
+                                        .frame(minWidth: 60)
+                                    
+                                    Button(action: {
+                                        quantity += 0.25
+                                    }) {
+                                        Image(systemName: "plus.circle.fill")
+                                            .font(.system(size: 24))
+                                            .foregroundColor(.blue)
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Total weight display
+                        Text("Total: \(String(format: "%.0f", actualGrams))g")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal)
+                    
+                    // Nutrition Summary
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Nutrition")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.primary)
+                        
+                        // Large calorie display
+                        HStack {
+                            Text("\(scaledCalories)")
+                                .font(.system(size: 36, weight: .bold))
+                                .foregroundColor(.primary)
+                            Text("kcal")
+                                .font(.system(size: 18))
+                                .foregroundColor(.secondary)
+                                .padding(.leading, 4)
+                            Spacer()
+                        }
+                        
+                        // Macronutrient breakdown
+                        VStack(spacing: 12) {
+                            MacroNutrientRow(label: "Protein", value: scaledProtein, unit: "g", color: .red)
+                            MacroNutrientRow(label: "Carbohydrate", value: scaledCarbs, unit: "g", color: .orange)
+                            MacroNutrientRow(label: "Fat", value: scaledFat, unit: "g", color: .purple)
+                        }
+                    }
+                    .padding(.horizontal)
+                    
+                    // Glycemic Index Information
+                    if let giData = glycemicData {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Glycemic Information")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.primary)
+                            
+                            VStack(spacing: 8) {
+                                HStack {
+                                    Text("Glycemic Index:")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                    Text("\(giData.value ?? 0)")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(giData.category.color)
+                                    Text("(\(giData.category.rawValue.capitalized))")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(giData.category.color)
+                                }
+                                
+                                if let gl = glycemicLoad {
+                                    HStack {
+                                        Text("Glycemic Load:")
+                                            .font(.system(size: 16))
+                                            .foregroundColor(.primary)
+                                        Spacer()
+                                        Text(String(format: "%.1f", gl))
+                                            .font(.system(size: 16, weight: .semibold))
+                                            .foregroundColor(glColor(for: gl))
+                                    }
+                                }
+                            }
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+                        }
+                        .padding(.horizontal)
+                    }
+                    
+                    // Processing Score
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Processing Score")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.primary)
+                        
+                        HStack {
+                            let score = ProcessingScorer.shared.calculateProcessingScore(for: food.name)
+                            
+                            // Score circle
+                            ZStack {
+                                Circle()
+                                    .fill(score.color)
+                                    .frame(width: 50, height: 50)
+                                
+                                Text(score.grade.rawValue)
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundColor(.white)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(score.processingLevel.rawValue)
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.primary)
+                                
+                                Text(score.explanation)
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.leading)
+                            }
+                            
+                            Spacer()
+                        }
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                    }
+                    .padding(.horizontal)
+                    
+                    // Add to Diary Button
+                    Button(action: {
+                        // Add food to diary with current serving size
+                        dismiss()
+                    }) {
+                        HStack {
+                            Text("Add to Diary")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.white)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue)
+                        .cornerRadius(12)
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 20)
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Close") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+    
+    private func extractBrand(from name: String) -> String? {
+        // Simple brand extraction - could be enhanced
+        let components = name.components(separatedBy: " - ")
+        return components.count > 1 ? components.last : nil
+    }
+    
+    private func glColor(for gl: Double) -> Color {
+        if gl < 10 { return .green }
+        else if gl < 20 { return .orange }
+        else { return .red }
+    }
+}
+
+struct MacroNutrientRow: View {
+    let label: String
+    let value: Double
+    let unit: String
+    let color: Color
+    
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 16))
+                .foregroundColor(.primary)
+            
+            Spacer()
+            
+            Text(String(format: "%.1f", value))
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(color)
+            
+            Text(unit)
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 4)
     }
 }
 

@@ -1,5 +1,6 @@
 import Foundation
 import Firebase
+import SwiftUI
 
 // MARK: - Allergen Detection System
 enum Allergen: String, CaseIterable, Identifiable {
@@ -2010,4 +2011,503 @@ class IngredientAnalyzer {
         
         return recommendations
     }
+}
+
+// MARK: - Comprehensive Nutrition Processing Score System
+
+enum ProcessingGrade: String, CaseIterable {
+    case aPlus = "A+"
+    case a = "A"
+    case b = "B"
+    case c = "C"
+    case d = "D"
+    case f = "F"
+    
+    var numericValue: Int {
+        switch self {
+        case .aPlus: return 5
+        case .a: return 4
+        case .b: return 3
+        case .c: return 2
+        case .d: return 1
+        case .f: return 0
+        }
+    }
+}
+
+struct NutritionProcessingScore {
+    let grade: ProcessingGrade
+    let score: Int  // 0-100
+    let explanation: String
+    let factors: [String]
+    let processingLevel: ProcessingLevel
+    let additiveCount: Int
+    let eNumberCount: Int
+    let naturalScore: Int
+    
+    var color: Color {
+        switch grade {
+        case .aPlus, .a:
+            return Color.green
+        case .b:
+            return Color.orange
+        case .c:
+            return Color.yellow
+        case .d:
+            return Color.red.opacity(0.8)
+        case .f:
+            return Color.red
+        }
+    }
+}
+
+enum ProcessingLevel: String, CaseIterable {
+    case unprocessed = "Unprocessed"           // Fresh fruits, vegetables, raw meat, plain water
+    case minimally = "Minimally Processed"     // Frozen vegetables, plain yoghurt, tinned beans
+    case processed = "Processed"               // Bread, cheese, tinned fruit in syrup
+    case ultraProcessed = "Ultra-Processed"    // Ready meals, fizzy drinks, crisps, biscuits
+    
+    var score: Int {
+        switch self {
+        case .unprocessed: return 100
+        case .minimally: return 80
+        case .processed: return 50
+        case .ultraProcessed: return 10
+        }
+    }
+}
+
+class ProcessingScorer {
+    static let shared = ProcessingScorer()
+    
+    private init() {}
+    
+    func calculateProcessingScore(for foodName: String) -> NutritionProcessingScore {
+        let foodLower = foodName.lowercased()
+        
+        // Determine base processing level
+        let processingLevel = determineProcessingLevel(foodLower)
+        
+        // Analyze additives and E-numbers
+        let additiveAnalysis = analyseAdditives(in: foodLower)
+        
+        // Calculate natural food bonus
+        let naturalScore = calculateNaturalScore(foodLower)
+        
+        // Calculate base score from processing level
+        var totalScore = processingLevel.score
+        
+        // Apply additive penalties
+        totalScore -= (additiveAnalysis.eNumbers.count * 15)  // Heavy penalty for E-numbers
+        totalScore -= (additiveAnalysis.additives.count * 8)   // Moderate penalty for additives
+        totalScore -= (additiveAnalysis.preservatives.count * 10) // Heavy penalty for preservatives
+        
+        // Apply natural bonuses
+        totalScore += naturalScore
+        
+        // Apply ultra-processed penalties
+        if processingLevel == .ultraProcessed {
+            totalScore -= 30  // Heavy penalty for ultra-processed foods
+        }
+        
+        // Clamp score between 0-100
+        totalScore = max(0, min(100, totalScore))
+        
+        // Determine grade
+        let grade = scoreToGrade(totalScore)
+        
+        // Build explanation
+        let explanation = buildExplanation(processingLevel: processingLevel, 
+                                         additiveAnalysis: additiveAnalysis, 
+                                         naturalScore: naturalScore,
+                                         totalScore: totalScore)
+        
+        // Build factors list
+        let factors = buildFactors(processingLevel: processingLevel, 
+                                 additiveAnalysis: additiveAnalysis, 
+                                 naturalScore: naturalScore)
+        
+        return NutritionProcessingScore(
+            grade: grade,
+            score: totalScore,
+            explanation: explanation,
+            factors: factors,
+            processingLevel: processingLevel,
+            additiveCount: additiveAnalysis.additives.count,
+            eNumberCount: additiveAnalysis.eNumbers.count,
+            naturalScore: naturalScore
+        )
+    }
+    
+    private func determineProcessingLevel(_ food: String) -> ProcessingLevel {
+        // Ultra-processed foods (F grade territory)
+        let ultraProcessedTerms = [
+            "fizzy drink", "soda", "cola", "pepsi", "coca cola", "energy drink",
+            "ready meal", "microwave meal", "instant", "processed meat", "sausage",
+            "burger", "chips", "crisps", "biscuits", "cookies", "cake mix",
+            "ice cream", "chocolate bar", "sweets", "candy", "margarine",
+            "chicken nuggets", "fish fingers", "frozen pizza", "pot noodle"
+        ]
+        
+        // Processed foods (C-D grade territory)
+        let processedTerms = [
+            "bread", "cheese", "tinned", "canned", "soup", "pasta sauce",
+            "yoghurt drink", "fruit juice", "smoothie", "cereal", "granola",
+            "ham", "bacon", "salami", "pickled", "jam", "marmalade"
+        ]
+        
+        // Minimally processed foods (A-B grade territory)
+        let minimallyProcessedTerms = [
+            "frozen", "dried", "tinned beans", "plain yoghurt", "milk",
+            "flour", "oats", "rice", "nuts", "nut butter", "olive oil"
+        ]
+        
+        // Unprocessed foods (A+ grade territory)
+        let unprocessedTerms = [
+            "apple", "banana", "orange", "grapes", "berry", "strawberry",
+            "carrot", "broccoli", "spinach", "lettuce", "tomato", "potato",
+            "chicken breast", "salmon", "cod", "beef", "lamb", "egg",
+            "avocado", "cucumber", "pepper", "onion", "garlic", "lemon",
+            "fresh", "raw", "organic"
+        ]
+        
+        // Check categories in order of processing level
+        if ultraProcessedTerms.contains(where: { food.contains($0) }) {
+            return .ultraProcessed
+        } else if processedTerms.contains(where: { food.contains($0) }) {
+            return .processed
+        } else if minimallyProcessedTerms.contains(where: { food.contains($0) }) {
+            return .minimally
+        } else if unprocessedTerms.contains(where: { food.contains($0) }) {
+            return .unprocessed
+        }
+        
+        // Default to processed for unknown foods
+        return .processed
+    }
+    
+    private struct AdditiveAnalysis {
+        let eNumbers: [String]
+        let additives: [String]
+        let preservatives: [String]
+        let goodAdditives: [String]  // Things like matcha, turmeric
+    }
+    
+    private func analyseAdditives(in food: String) -> AdditiveAnalysis {
+        var eNumbers: [String] = []
+        var additives: [String] = []
+        var preservatives: [String] = []
+        var goodAdditives: [String] = []
+        
+        // Common E-numbers (bad)
+        let commonENumbers = [
+            "e100", "e102", "e104", "e110", "e122", "e124", "e129", // Colourings
+            "e200", "e202", "e211", "e220", "e223", "e224", "e228", // Preservatives
+            "e621", "e627", "e631", "e635", // Flavour enhancers (MSG family)
+            "e951", "e952", "e954", "e955" // Artificial sweeteners
+        ]
+        
+        // Common bad additives
+        let badAdditives = [
+            "monosodium glutamate", "msg", "high fructose corn syrup",
+            "sodium nitrite", "sodium nitrate", "potassium sorbate",
+            "sodium benzoate", "artificial colours", "artificial flavours",
+            "trans fat", "hydrogenated oil", "aspartame", "sucralose"
+        ]
+        
+        // Common preservatives
+        let preservativeTerms = [
+            "preservative", "sodium", "potassium", "calcium", "benzoate",
+            "sorbate", "nitrate", "nitrite", "sulfite", "bisulfite"
+        ]
+        
+        // Good additives that should boost score
+        let beneficialAdditives = [
+            "matcha", "turmeric", "curcumin", "green tea extract",
+            "vitamin c", "vitamin e", "beta carotene", "lycopene",
+            "probiotics", "prebiotics", "omega 3", "antioxidants"
+        ]
+        
+        // Scan for E-numbers
+        eNumbers = commonENumbers.filter { food.contains($0) }
+        
+        // Scan for bad additives
+        additives = badAdditives.filter { food.contains($0) }
+        
+        // Scan for preservatives
+        preservatives = preservativeTerms.filter { food.contains($0) }
+        
+        // Scan for good additives
+        goodAdditives = beneficialAdditives.filter { food.contains($0) }
+        
+        return AdditiveAnalysis(
+            eNumbers: eNumbers,
+            additives: additives,
+            preservatives: preservatives,
+            goodAdditives: goodAdditives
+        )
+    }
+    
+    private func calculateNaturalScore(_ food: String) -> Int {
+        let naturalBonusTerms = [
+            "organic": 10,
+            "fresh": 8,
+            "raw": 12,
+            "natural": 6,
+            "whole": 8,
+            "unprocessed": 15,
+            "homemade": 10,
+            "farm fresh": 12,
+            "wild caught": 8,
+            "grass fed": 8,
+            "free range": 6
+        ]
+        
+        var bonus = 0
+        for (term, value) in naturalBonusTerms {
+            if food.contains(term) {
+                bonus += value
+            }
+        }
+        
+        return min(bonus, 25) // Cap natural bonus at 25 points
+    }
+    
+    private func scoreToGrade(_ score: Int) -> ProcessingGrade {
+        switch score {
+        case 90...100:
+            return .aPlus
+        case 80...89:
+            return .a
+        case 70...79:
+            return .b
+        case 60...69:
+            return .c
+        case 40...59:
+            return .d
+        default:
+            return .f
+        }
+    }
+    
+    private func buildExplanation(processingLevel: ProcessingLevel, 
+                                additiveAnalysis: AdditiveAnalysis, 
+                                naturalScore: Int, 
+                                totalScore: Int) -> String {
+        var explanation = "Processing Level: \(processingLevel.rawValue). "
+        
+        if additiveAnalysis.eNumbers.count > 0 {
+            explanation += "\(additiveAnalysis.eNumbers.count) E-number(s) detected. "
+        }
+        
+        if additiveAnalysis.additives.count > 0 {
+            explanation += "\(additiveAnalysis.additives.count) additive(s) detected. "
+        }
+        
+        if naturalScore > 0 {
+            explanation += "Natural food bonus applied. "
+        }
+        
+        switch processingLevel {
+        case .unprocessed:
+            explanation += "Excellent choice - whole, natural food."
+        case .minimally:
+            explanation += "Good choice - lightly processed for convenience."
+        case .processed:
+            explanation += "Moderate choice - some processing involved."
+        case .ultraProcessed:
+            explanation += "Consider limiting - highly processed with many additives."
+        }
+        
+        return explanation
+    }
+    
+    private func buildFactors(processingLevel: ProcessingLevel, 
+                            additiveAnalysis: AdditiveAnalysis, 
+                            naturalScore: Int) -> [String] {
+        var factors: [String] = []
+        
+        factors.append("Processing: \(processingLevel.rawValue)")
+        
+        if additiveAnalysis.eNumbers.count > 0 {
+            factors.append("⚠️ \(additiveAnalysis.eNumbers.count) E-number(s)")
+        }
+        
+        if additiveAnalysis.additives.count > 0 {
+            factors.append("⚠️ \(additiveAnalysis.additives.count) additive(s)")
+        }
+        
+        if additiveAnalysis.preservatives.count > 0 {
+            factors.append("⚠️ \(additiveAnalysis.preservatives.count) preservative(s)")
+        }
+        
+        if additiveAnalysis.goodAdditives.count > 0 {
+            factors.append("✅ \(additiveAnalysis.goodAdditives.count) beneficial additive(s)")
+        }
+        
+        if naturalScore > 0 {
+            factors.append("✅ Natural food bonus")
+        }
+        
+        return factors
+    }
+}
+
+// MARK: - Glycemic Index System
+
+enum GICategory: String, CaseIterable {
+    case low = "Low GI"
+    case medium = "Medium GI" 
+    case high = "High GI"
+    case unknown = "GI Unknown"
+    
+    var range: String {
+        switch self {
+        case .low: return "< 55"
+        case .medium: return "55-70"
+        case .high: return "> 70"
+        case .unknown: return "N/A"
+        }
+    }
+    
+    var color: Color {
+        switch self {
+        case .low: return .green
+        case .medium: return .orange
+        case .high: return .red
+        case .unknown: return .gray
+        }
+    }
+    
+    var description: String {
+        switch self {
+        case .low: return "Slow glucose release - good for blood sugar control"
+        case .medium: return "Moderate glucose release - consume mindfully"
+        case .high: return "Rapid glucose release - limit portion size"
+        case .unknown: return "GI data not available for this food"
+        }
+    }
+}
+
+struct GlycemicIndexData {
+    let value: Int?  // nil if unknown
+    let category: GICategory
+    let servingSize: String
+    let carbsPer100g: Double
+    let isEstimated: Bool
+    
+    func calculateGIImpact(servingGrams: Double, carbsInServing: Double) -> Double? {
+        guard let giValue = value, carbsInServing > 0 else { return nil }
+        
+        // Calculate GL (Glycemic Load) = (GI × carbs in serving) / 100
+        let glycemicLoad = (Double(giValue) * carbsInServing) / 100.0
+        return glycemicLoad
+    }
+}
+
+class GlycemicIndexDatabase {
+    static let shared = GlycemicIndexDatabase()
+    
+    private init() {}
+    
+    // Scientifically-validated GI values for common foods
+    private let giDatabase: [String: GlycemicIndexData] = [
+        // Fruits (clinically tested values)
+        "apple": GlycemicIndexData(value: 36, category: .low, servingSize: "1 medium (120g)", carbsPer100g: 14.0, isEstimated: false),
+        "banana": GlycemicIndexData(value: 51, category: .low, servingSize: "1 medium (120g)", carbsPer100g: 23.0, isEstimated: false),
+        "orange": GlycemicIndexData(value: 43, category: .low, servingSize: "1 medium (150g)", carbsPer100g: 12.0, isEstimated: false),
+        "grapes": GlycemicIndexData(value: 46, category: .low, servingSize: "1 cup (150g)", carbsPer100g: 16.0, isEstimated: false),
+        "watermelon": GlycemicIndexData(value: 76, category: .high, servingSize: "1 cup (150g)", carbsPer100g: 8.0, isEstimated: false),
+        
+        // Vegetables
+        "potato": GlycemicIndexData(value: 78, category: .high, servingSize: "1 medium (150g)", carbsPer100g: 17.0, isEstimated: false),
+        "sweet potato": GlycemicIndexData(value: 70, category: .high, servingSize: "1 medium (150g)", carbsPer100g: 20.0, isEstimated: false),
+        "carrot": GlycemicIndexData(value: 47, category: .low, servingSize: "1 cup (120g)", carbsPer100g: 10.0, isEstimated: false),
+        "broccoli": GlycemicIndexData(value: 10, category: .low, servingSize: "1 cup (90g)", carbsPer100g: 7.0, isEstimated: false),
+        
+        // Grains & Cereals
+        "white rice": GlycemicIndexData(value: 73, category: .high, servingSize: "1 cup cooked (150g)", carbsPer100g: 28.0, isEstimated: false),
+        "brown rice": GlycemicIndexData(value: 68, category: .medium, servingSize: "1 cup cooked (150g)", carbsPer100g: 23.0, isEstimated: false),
+        "oats": GlycemicIndexData(value: 55, category: .medium, servingSize: "1 cup cooked (240g)", carbsPer100g: 12.0, isEstimated: false),
+        "quinoa": GlycemicIndexData(value: 53, category: .low, servingSize: "1 cup cooked (185g)", carbsPer100g: 22.0, isEstimated: false),
+        "white bread": GlycemicIndexData(value: 75, category: .high, servingSize: "1 slice (30g)", carbsPer100g: 49.0, isEstimated: false),
+        "wholemeal bread": GlycemicIndexData(value: 74, category: .high, servingSize: "1 slice (30g)", carbsPer100g: 41.0, isEstimated: false),
+        
+        // Legumes
+        "lentils": GlycemicIndexData(value: 32, category: .low, servingSize: "1 cup cooked (200g)", carbsPer100g: 20.0, isEstimated: false),
+        "chickpeas": GlycemicIndexData(value: 28, category: .low, servingSize: "1 cup cooked (165g)", carbsPer100g: 27.0, isEstimated: false),
+        "kidney beans": GlycemicIndexData(value: 24, category: .low, servingSize: "1 cup cooked (180g)", carbsPer100g: 25.0, isEstimated: false),
+        
+        // Dairy
+        "milk": GlycemicIndexData(value: 39, category: .low, servingSize: "1 cup (240ml)", carbsPer100g: 5.0, isEstimated: false),
+        "yoghurt": GlycemicIndexData(value: 41, category: .low, servingSize: "1 cup (245g)", carbsPer100g: 4.7, isEstimated: false),
+        
+        // Nuts (very low/no GI impact)
+        "almonds": GlycemicIndexData(value: 0, category: .low, servingSize: "30g", carbsPer100g: 4.0, isEstimated: false),
+        "nuts": GlycemicIndexData(value: 15, category: .low, servingSize: "30g", carbsPer100g: 7.0, isEstimated: false),
+    ]
+    
+    func getGIData(for foodName: String) -> GlycemicIndexData? {
+        let searchTerm = foodName.lowercased()
+        
+        // Direct match first
+        if let data = giDatabase[searchTerm] {
+            return data
+        }
+        
+        // Partial match for compound foods
+        for (key, data) in giDatabase {
+            if searchTerm.contains(key) || key.contains(searchTerm) {
+                return data
+            }
+        }
+        
+        // No data available - return unknown
+        return GlycemicIndexData(
+            value: nil, 
+            category: .unknown, 
+            servingSize: "N/A", 
+            carbsPer100g: 0.0, 
+            isEstimated: false
+        )
+    }
+    
+    func calculateGICategory(from value: Int) -> GICategory {
+        switch value {
+        case 0..<55:
+            return .low
+        case 55...70:
+            return .medium
+        default:
+            return .high
+        }
+    }
+}
+
+// MARK: - Enhanced Food Detail System
+
+struct FoodServingOption {
+    let id = UUID()
+    let name: String
+    let unit: String
+    let gramsPerServing: Double
+    let isDefault: Bool
+}
+
+struct DetailedFoodInfo {
+    let name: String
+    let brand: String?
+    let energy: Double
+    let protein: Double
+    let carbs: Double
+    let fat: Double
+    let fibre: Double
+    let sugar: Double
+    let sodium: Double
+    let servingOptions: [FoodServingOption]
+    let nutritionPer100g: Bool
+    let ingredients: [String]?
+    let allergens: [Allergen]
+    let processingScore: NutritionProcessingScore
+    let glycemicIndex: GlycemicIndexData
 }
