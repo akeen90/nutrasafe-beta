@@ -280,20 +280,20 @@ class NutritionScorer {
             positiveFactors.append("Good protein content (\(String(format: "%.1f", protein))g)")
         }
         
-        // High fiber content
-        let fiberPerCalorie = fiber / (calories / 100) // fiber per 100 calories
+        // High fibre content
+        let fiberPerCalorie = fiber / (calories / 100) // fibre per 100 calories
         if fiberPerCalorie > 3.0 {
             score += 12
-            positiveFactors.append("Excellent fiber content (\(String(format: "%.1f", fiber))g)")
+            positiveFactors.append("Excellent fibre content (\(String(format: "%.1f", fiber))g)")
         } else if fiberPerCalorie > 2.0 {
             score += 6
-            positiveFactors.append("Good fiber content (\(String(format: "%.1f", fiber))g)")
+            positiveFactors.append("Good fibre content (\(String(format: "%.1f", fiber))g)")
         }
         
         // Low calorie density
         if calories < 100 {
             score += 10
-            positiveFactors.append("Low calorie density")
+            positiveFactors.append("Low energy density")
         }
         
         // Natural whole foods bonus
@@ -337,8 +337,8 @@ class NutritionScorer {
         // Very high calorie density
         if calories > 400 {
             score -= 8
-            negativeFactors.append("Very high calorie density")
-            recommendations.append("Watch portion sizes for calorie-dense foods")
+            negativeFactors.append("Very high energy density")
+            recommendations.append("Watch portion sizes for energy-dense foods")
         }
         
         // Processed food penalty
@@ -1653,7 +1653,7 @@ class IngredientAnalyzer {
     
     private init() {}
     
-    func analyzeIngredients(_ ingredientList: [String], userAllergens: [Allergen] = []) -> IngredientAnalysisResult {
+    func analyseIngredients(_ ingredientList: [String], userAllergens: [Allergen] = []) -> IngredientAnalysisResult {
         var analyzedIngredients: [Ingredient] = []
         var detectedAllergens: [Allergen] = []
         var micronutrients: [Micronutrient] = []
@@ -1663,7 +1663,7 @@ class IngredientAnalyzer {
         var recommendations: [String] = []
         
         for ingredientName in ingredientList {
-            let ingredient = analyzeIndividualIngredient(ingredientName)
+            let ingredient = analyseIndividualIngredient(ingredientName)
             analyzedIngredients.append(ingredient)
             
             // Check for allergens
@@ -1718,7 +1718,7 @@ class IngredientAnalyzer {
         )
     }
     
-    private func analyzeIndividualIngredient(_ ingredientName: String) -> Ingredient {
+    private func analyseIndividualIngredient(_ ingredientName: String) -> Ingredient {
         let lowerName = ingredientName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         
         // Determine category
@@ -1920,7 +1920,7 @@ class IngredientAnalyzer {
                 code: "E621",
                 purpose: .flavoring,
                 safetyRating: .caution,
-                commonNames: ["MSG", "Flavor enhancer"],
+                commonNames: ["MSG", "Flavour enhancer"],
                 potentialEffects: ["May cause headaches", "Flushing", "Sweating in sensitive individuals"]
             ))
         }

@@ -1203,7 +1203,7 @@ struct DiaryExerciseSummaryCard: View {
                         .font(.system(size: 24, weight: .bold))
                         .foregroundColor(.red)
                     
-                    Text("calories burned")
+                    Text("energy burnt")
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
@@ -1212,7 +1212,7 @@ struct DiaryExerciseSummaryCard: View {
             HStack(spacing: 20) {
                 DiaryExerciseStat(name: "Duration", value: "\(totalDuration)", unit: "min", color: .blue)
                 DiaryExerciseStat(name: "Activities", value: "\(workoutCount)", unit: "", color: .green)
-                DiaryExerciseStat(name: "Calories", value: "\(Int(totalCalories))", unit: "kcal", color: .red)
+                DiaryExerciseStat(name: "Energy", value: "\(Int(totalCalories))", unit: "kcal", color: .red)
             }
         }
         .padding(16)
@@ -2103,7 +2103,7 @@ struct AddFoodManualView: View {
                         .foregroundColor(.primary)
                     
                     VStack(spacing: 12) {
-                        NutritionInputRow(label: "Calories", value: $calories, unit: "kcal")
+                        NutritionInputRow(label: "Energy", value: $calories, unit: "kcal")
                         NutritionInputRow(label: "Protein", value: $protein, unit: "g")
                         NutritionInputRow(label: "Carbs", value: $carbs, unit: "g")
                         NutritionInputRow(label: "Fat", value: $fat, unit: "g")
@@ -2582,7 +2582,7 @@ struct FoodSearchResultRow: View {
         .background(Color(.systemGray6))
         .cornerRadius(12)
         .onAppear {
-            analyzeIngredients()
+            analyseIngredients()
         }
     }
     
@@ -2621,7 +2621,7 @@ struct FoodSearchResultRow: View {
         }
     }
     
-    private func analyzeIngredients() {
+    private func analyseIngredients() {
         guard !isAnalyzing && ingredientAnalysis == nil else { return }
         
         isAnalyzing = true
@@ -2629,7 +2629,7 @@ struct FoodSearchResultRow: View {
         // For now, use the basic extraction - in a full implementation,
         // this would call the Firebase Function to get ingredients
         let basicIngredients = extractBasicIngredients(from: food.name)
-        let analysis = IngredientAnalyzer.shared.analyzeIngredients(basicIngredients, userAllergens: userAllergens)
+        let analysis = IngredientAnalyzer.shared.analyseIngredients(basicIngredients, userAllergens: userAllergens)
         
         DispatchQueue.main.async {
             self.ingredientAnalysis = analysis
@@ -2678,7 +2678,7 @@ struct FoodSearchResultRow: View {
             "cereal": ["grains", "sugar", "vitamins", "minerals"],
             "soup": ["water", "vegetables", "salt", "spices"],
             "juice": ["fruit", "water"],
-            "soda": ["water", "sugar", "carbon dioxide", "artificial flavors"],
+            "soda": ["water", "sugar", "carbon dioxide", "artificial flavours"],
             "tea": ["tea leaves"],
             "coffee": ["coffee beans"],
         ]
@@ -4562,7 +4562,7 @@ struct ProfessionalMealSection: View {
                             .foregroundColor(.primary)
                         
                         if !items.isEmpty {
-                            Text("\(totalCalories) calories")
+                            Text("\(totalCalories) energy")
                                 .font(.system(size: 14)) // Reduced from 17pt
                                 .foregroundColor(.secondary)
                         }

@@ -70,7 +70,7 @@ class HealthKitManager: ObservableObject {
                 self.exerciseCalories = calories
             }
         } catch {
-            print("Failed to fetch exercise calories: \(error)")
+            print("Failed to fetch exercise energy: \(error)")
         }
     }
     
