@@ -2383,81 +2383,22 @@ struct AddFoodManualView: View {
     }
 }
 
+import AVFoundation
+
 struct AddFoodBarcodeView: View {
-    @State private var isScanning = false
     @State private var scannedProduct: FoodSearchResult?
+    @State private var isSearching = false
+    @State private var errorMessage: String?
     
     var body: some View {
-        VStack(spacing: 20) {
-            if !isScanning && scannedProduct == nil {
-                // Initial state
-                VStack(spacing: 24) {
-                    Image(systemName: "barcode.viewfinder")
-                        .font(.system(size: 80))
-                        .foregroundColor(.blue)
-                    
-                    VStack(spacing: 8) {
-                        Text("Scan Product Barcode")
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(.primary)
-                        
-                        Text("Point your camera at the product barcode to automatically identify the food item")
-                            .font(.system(size: 16))
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    
-                    Button(action: {
-                        startScanning()
-                    }) {
-                        Text("Start Scanning")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(Color.blue)
-                            .cornerRadius(12)
-                    }
-                }
-                .padding(.horizontal, 32)
-                
-            } else if isScanning {
-                // Scanning state
-                VStack(spacing: 20) {
-                    Text("Scanning...")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(.primary)
-                    
-                    // Mock camera viewfinder
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.blue, lineWidth: 3)
-                        .frame(height: 300)
-                        .overlay(
-                            VStack {
-                                Spacer()
-                                HStack {
-                                    Rectangle()
-                                        .fill(Color.red)
-                                        .frame(width: 200, height: 2)
-                                        .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: isScanning)
-                                }
-                                Spacer()
-                            }
-                        )
-                        .padding(.horizontal, 32)
-                    
-                    Button("Cancel") {
-                        isScanning = false
-                    }
-                    .foregroundColor(.red)
-                }
-                
-            } else if let product = scannedProduct {
+        VStack(spacing: 0) {
+            if let product = scannedProduct {
                 // Result state
                 VStack(spacing: 16) {
                     Text("Product Found!")
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundColor(.green)
+                        .padding(.top, 20)
                     
                     FoodSearchResultRow(food: product) {
                         print("Adding scanned food: \(product.name)")
@@ -2466,23 +2407,236 @@ struct AddFoodBarcodeView: View {
                     
                     Button("Scan Another") {
                         scannedProduct = nil
-                        startScanning()
+                        errorMessage = nil
                     }
                     .foregroundColor(.blue)
+                    .padding(.bottom, 20)
+                }
+                
+            } else {
+                // Camera scanning view
+                ZStack {
+                    ModernBarcodeScanner { barcode in
+                        handleBarcodeScanned(barcode)
+                    }
+                    
+                    // Overlay UI
+                    VStack {
+                        HStack {
+                            Spacer()
+                        }
+                        .frame(height: 100)
+                        .background(Color.black.opacity(0.7))
+                        
+                        Spacer()
+                        
+                        // Scanning indicator
+                        VStack(spacing: 16) {
+                            if isSearching {
+                                ProgressView()
+                                    .scaleEffect(1.2)
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                Text("Looking up product...")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.white)
+                            } else {
+                                Text("Position barcode within the frame")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.white)
+                            }
+                            
+                            if let errorMessage = errorMessage {
+                                Text(errorMessage)
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.red)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 32)
+                            }
+                        }
+                        .frame(height: 120)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.black.opacity(0.7))
+                    }
                 }
             }
-            
-            Spacer()
         }
-        .padding(.top, 20)
+        .navigationTitle("Scan Barcode")
+        .navigationBarTitleDisplayMode(.inline)
     }
     
-    private func startScanning() {
-        isScanning = true
-        // Simulate barcode scanning
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-            isScanning = false
-            scannedProduct = sampleSearchResults.randomElement()
+    private func handleBarcodeScanned(_ barcode: String) {
+        guard !isSearching else { return }
+        
+        isSearching = true
+        errorMessage = nil
+        
+        searchProductByBarcode(barcode) { result in
+            DispatchQueue.main.async {
+                isSearching = false
+                
+                switch result {
+                case .success(let product):
+                    scannedProduct = product
+                case .failure(let error):
+                    errorMessage = "Product not found. Try scanning again or search manually."
+                    print("Barcode search error: \(error)")
+                }
+            }
+        }
+    }
+    
+    private func searchProductByBarcode(_ barcode: String, completion: @escaping (Result<FoodSearchResult, Error>) -> Void) {
+        guard let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/searchFoodByBarcode") else {
+            completion(.failure(NSError(domain: "Invalid URL", code: 0)))
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let requestBody = ["barcode": barcode]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: requestBody)
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+            
+            guard let data = data else {
+                completion(.failure(NSError(domain: "No data", code: 0)))
+                return
+            }
+            
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let success = json["success"] as? Bool,
+                   success,
+                   let foodData = json["food"] as? [String: Any] {
+                    
+                    let food = FoodSearchResult(
+                        id: foodData["food_id"] as? String ?? UUID().uuidString,
+                        name: foodData["food_name"] as? String ?? "Unknown Product",
+                        brand: foodData["brand_name"] as? String,
+                        calories: foodData["calories"] as? Double ?? 0,
+                        protein: foodData["protein"] as? Double ?? 0,
+                        carbs: foodData["carbohydrates"] as? Double ?? 0,
+                        fat: foodData["fat"] as? Double ?? 0,
+                        fiber: foodData["fiber"] as? Double ?? 0,
+                        sugar: foodData["sugar"] as? Double ?? 0,
+                        sodium: foodData["sodium"] as? Double ?? 0,
+                        servingDescription: foodData["serving_description"] as? String ?? "per 100g",
+                        ingredients: foodData["ingredients"] as? String
+                    )
+                    
+                    completion(.success(food))
+                } else {
+                    completion(.failure(NSError(domain: "Product not found", code: 404)))
+                }
+            } catch {
+                completion(.failure(error))
+            }
+        }.resume()
+    }
+}
+
+struct ModernBarcodeScanner: UIViewRepresentable {
+    let onBarcodeScanned: (String) -> Void
+    
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView(frame: .zero)
+        view.backgroundColor = .black
+        
+        let captureSession = AVCaptureSession()
+        guard let videoCaptureDevice = AVCaptureDevice.default(for: .video) else { return view }
+        let videoInput: AVCaptureDeviceInput
+        
+        do {
+            videoInput = try AVCaptureDeviceInput(device: videoCaptureDevice)
+        } catch {
+            return view
+        }
+        
+        if captureSession.canAddInput(videoInput) {
+            captureSession.addInput(videoInput)
+        } else {
+            return view
+        }
+        
+        let metadataOutput = AVCaptureMetadataOutput()
+        
+        if captureSession.canAddOutput(metadataOutput) {
+            captureSession.addOutput(metadataOutput)
+            
+            metadataOutput.setMetadataObjectsDelegate(context.coordinator, queue: DispatchQueue.main)
+            metadataOutput.metadataObjectTypes = [.ean8, .ean13, .pdf417, .upce, .code128, .code39, .code93]
+        } else {
+            return view
+        }
+        
+        let previewLayer = AVCaptureVideoPreviewLayer(session: captureSession)
+        previewLayer.frame = view.layer.bounds
+        previewLayer.videoGravity = .resizeAspectFill
+        view.layer.addSublayer(previewLayer)
+        
+        // Add scanning frame overlay
+        let frameLayer = CAShapeLayer()
+        let frameRect = CGRect(x: 50, y: 200, width: 250, height: 150)
+        let framePath = UIBezierPath(roundedRect: frameRect, cornerRadius: 12)
+        frameLayer.path = framePath.cgPath
+        frameLayer.strokeColor = UIColor.systemBlue.cgColor
+        frameLayer.fillColor = UIColor.clear.cgColor
+        frameLayer.lineWidth = 3
+        view.layer.addSublayer(frameLayer)
+        
+        DispatchQueue.global(qos: .background).async {
+            captureSession.startRunning()
+        }
+        
+        context.coordinator.captureSession = captureSession
+        context.coordinator.previewLayer = previewLayer
+        
+        return view
+    }
+    
+    func updateUIView(_ uiView: UIView, context: Context) {
+        context.coordinator.previewLayer?.frame = uiView.bounds
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, AVCaptureMetadataOutputObjectsDelegate {
+        let parent: ModernBarcodeScanner
+        var captureSession: AVCaptureSession?
+        var previewLayer: AVCaptureVideoPreviewLayer?
+        private var lastScannedBarcode: String?
+        private var lastScanTime: Date?
+        
+        init(_ parent: ModernBarcodeScanner) {
+            self.parent = parent
+        }
+        
+        func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
+            guard let metadataObject = metadataObjects.first,
+                  let readableObject = metadataObject as? AVMetadataMachineReadableCodeObject,
+                  let stringValue = readableObject.stringValue else { return }
+            
+            // Prevent duplicate scans
+            let now = Date()
+            if let lastBarcode = lastScannedBarcode,
+               let lastTime = lastScanTime,
+               lastBarcode == stringValue && now.timeIntervalSince(lastTime) < 2.0 {
+                return
+            }
+            
+            lastScannedBarcode = stringValue
+            lastScanTime = now
+            
+            AudioServicesPlaySystemSound(SystemSoundID(kSystemSoundID_Vibrate))
+            parent.onBarcodeScanned(stringValue)
         }
     }
 }
@@ -2875,22 +3029,22 @@ struct FoodDetailViewFromSearch: View {
                                 .foregroundColor(.secondary)
                         }
                         
-                        // Nutrition score
+                        // Processing score - simplified to just letter grade
                         HStack(spacing: 12) {
                             Text(nutritionScore.grade.rawValue)
-                                .font(.system(size: 20, weight: .bold))
+                                .font(.system(size: 24, weight: .bold))
                                 .foregroundColor(.white)
-                                .frame(width: 40, height: 40)
+                                .frame(width: 50, height: 50)
                                 .background(nutritionScore.color)
                                 .clipShape(Circle())
                             
                             VStack(alignment: .leading) {
-                                Text("Processing Score")
-                                    .font(.system(size: 12, weight: .medium))
+                                Text("Processing Grade")
+                                    .font(.system(size: 16, weight: .medium))
                                     .foregroundColor(.secondary)
-                                Text("\(nutritionScore.score)/100")
-                                    .font(.system(size: 18, weight: .bold))
-                                    .foregroundColor(nutritionScore.color)
+                                Text(nutritionScore.explanation)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
                             }
                         }
                     }
@@ -3085,6 +3239,41 @@ struct FoodDetailViewFromSearch: View {
                     .background(Color(.systemBackground))
                     .cornerRadius(12)
                     
+                    // Expandable Ingredients Section
+                    ExpandableSection(title: "Ingredients", systemImage: "list.bullet") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            if let ingredients = food.ingredients {
+                                Text(ingredients)
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.primary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            } else {
+                                Text("Ingredient information not available")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                                    .italic()
+                            }
+                        }
+                        .padding()
+                    }
+                    
+                    // Expandable Vitamins & Minerals Section
+                    ExpandableSection(title: "Vitamins & Minerals", systemImage: "sparkles") {
+                        VStack(spacing: 12) {
+                            // Mock vitamin data - in production this would come from API
+                            VitaminRow(name: "Vitamin A", amount: "2%", dailyValue: "DV")
+                            VitaminRow(name: "Vitamin C", amount: "15%", dailyValue: "DV")
+                            VitaminRow(name: "Calcium", amount: "8%", dailyValue: "DV")
+                            VitaminRow(name: "Iron", amount: "4%", dailyValue: "DV")
+                            
+                            Text("* Daily Values are based on a 2000 calorie diet")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                                .italic()
+                        }
+                        .padding()
+                    }
+                    
                     // Meal Selection - Rollodex Style
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Add to Meal")
@@ -3137,6 +3326,87 @@ struct FoodDetailViewFromSearch: View {
         // TODO: Implement add to diary functionality
         print("Adding \(food.name) to \(selectedMeal): \(Int(adjustedCalories)) kcal")
         presentationMode.wrappedValue.dismiss()
+    }
+}
+
+// Expandable section component
+struct ExpandableSection<Content: View>: View {
+    let title: String
+    let systemImage: String
+    let content: () -> Content
+    @State private var isExpanded = false
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    isExpanded.toggle()
+                }
+            }) {
+                HStack {
+                    Image(systemName: systemImage)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.blue)
+                        .frame(width: 20)
+                    
+                    Text(title)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                }
+                .padding()
+                .background(Color(.systemGray6))
+                .cornerRadius(isExpanded ? 12 : 12)
+            }
+            .buttonStyle(PlainButtonStyle())
+            
+            if isExpanded {
+                content()
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+                    .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .background(Color(.systemBackground))
+        .cornerRadius(12)
+        .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
+    }
+}
+
+// Vitamin row component
+struct VitaminRow: View {
+    let name: String
+    let amount: String
+    let dailyValue: String
+    
+    var body: some View {
+        HStack {
+            Text(name)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.primary)
+            
+            Spacer()
+            
+            HStack(spacing: 4) {
+                Text(amount)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.blue)
+                Text(dailyValue)
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 4)
+        .background(Color(.systemGray6))
+        .cornerRadius(8)
     }
 }
 

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addAdminAsUser = exports.deleteUser = exports.updateUser = exports.createUser = exports.getUserStats = exports.getAnalytics = exports.trackEvent = exports.getIngredientsFromFoodName = exports.checkIP = exports.healthCheck = exports.getFoodDetails = exports.searchFoods = void 0;
+exports.searchFoodByBarcode = exports.addAdminAsUser = exports.deleteUser = exports.updateUser = exports.createUser = exports.getUserStats = exports.getAnalytics = exports.trackEvent = exports.getIngredientsFromFoodName = exports.checkIP = exports.healthCheck = exports.getFoodDetails = exports.searchFoods = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const axios_1 = require("axios");
@@ -921,5 +921,145 @@ exports.addAdminAsUser = functions.https.onCall(async (data, context) => {
         console.error('Error adding admin as user:', error);
         throw new functions.https.HttpsError('internal', error.message);
     }
+});
+// Barcode search function
+exports.searchFoodByBarcode = functions
+    .runWith({
+    memory: '512MB',
+    timeoutSeconds: 60,
+})
+    .https.onRequest(async (req, res) => {
+    return corsHandler(req, res, async () => {
+        var _a, _b;
+        try {
+            const { barcode } = req.body;
+            if (!barcode) {
+                res.status(400).json({ error: 'Barcode parameter is required' });
+                return;
+            }
+            console.log('Searching for barcode:', barcode);
+            const token = await getFatSecretToken();
+            // Search for food by barcode using FatSecret API
+            const searchResponse = await axios_1.default.get(FATSECRET_API_URL, {
+                params: {
+                    method: 'food.search',
+                    search_expression: barcode,
+                    format: 'json',
+                    max_results: '10',
+                },
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+            console.log('FatSecret search response:', JSON.stringify(searchResponse.data, null, 2));
+            const searchData = searchResponse.data;
+            if (!((_a = searchData.foods) === null || _a === void 0 ? void 0 : _a.food) || searchData.foods.food.length === 0) {
+                res.status(404).json({
+                    success: false,
+                    error: 'No product found for this barcode'
+                });
+                return;
+            }
+            // Get the first food item and fetch its details
+            const firstFood = searchData.foods.food[0];
+            // Get detailed food information
+            const detailsResponse = await axios_1.default.get(FATSECRET_API_URL, {
+                params: {
+                    method: 'food.get.v2',
+                    food_id: firstFood.food_id,
+                    format: 'json',
+                },
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+            const foodData = detailsResponse.data;
+            const food = foodData.food;
+            // Handle serving as array or single object
+            const servings = (_b = food.servings) === null || _b === void 0 ? void 0 : _b.serving;
+            const serving = Array.isArray(servings) ? servings[0] : servings;
+            if (!serving) {
+                res.status(404).json({
+                    success: false,
+                    error: 'No nutritional information available for this product'
+                });
+                return;
+            }
+            // Try to get ingredients from Open Food Facts (English only)
+            const ingredients = await getIngredientsFromOpenFoodFacts(food.food_name, food.brand_name);
+            // Extract serving sizes from the food data
+            const servingSizes = [];
+            if (Array.isArray(servings)) {
+                for (const srv of servings) {
+                    if (srv.serving_description && srv.metric_serving_amount) {
+                        servingSizes.push({
+                            description: srv.serving_description,
+                            metric_serving_amount: parseFloat(srv.metric_serving_amount || '100'),
+                            metric_serving_unit: srv.metric_serving_unit || 'g'
+                        });
+                    }
+                }
+            }
+            else if (serving.serving_description) {
+                servingSizes.push({
+                    description: serving.serving_description,
+                    metric_serving_amount: parseFloat(serving.metric_serving_amount || '100'),
+                    metric_serving_unit: serving.metric_serving_unit || 'g'
+                });
+            }
+            // Default serving size if none found
+            if (servingSizes.length === 0) {
+                servingSizes.push({
+                    description: '100g',
+                    metric_serving_amount: 100,
+                    metric_serving_unit: 'g'
+                });
+            }
+            const result = {
+                success: true,
+                food: {
+                    food_id: food.food_id,
+                    food_name: food.food_name,
+                    brand_name: food.brand_name || null,
+                    food_description: food.food_description || null,
+                    ingredients: ingredients,
+                    // Macronutrients
+                    calories: parseFloat(serving.calories || '0'),
+                    protein: parseFloat(serving.protein || '0'),
+                    carbohydrates: parseFloat(serving.carbohydrate || '0'),
+                    fat: parseFloat(serving.fat || '0'),
+                    saturated_fat: parseFloat(serving.saturated_fat || '0'),
+                    fiber: parseFloat(serving.fiber || '0'),
+                    sugar: parseFloat(serving.sugar || '0'),
+                    // Minerals
+                    sodium: parseFloat(serving.sodium || '0'),
+                    potassium: parseFloat(serving.potassium || '0'),
+                    calcium: parseFloat(serving.calcium || '0'),
+                    iron: parseFloat(serving.iron || '0'),
+                    // Vitamins
+                    vitamin_a: parseFloat(serving.vitamin_a || '0'),
+                    vitamin_c: parseFloat(serving.vitamin_c || '0'),
+                    vitamin_d: parseFloat(serving.vitamin_d || '0'),
+                    // Serving info
+                    servingSizes: servingSizes,
+                    serving_description: serving.serving_description || 'per 100g',
+                    metric_serving_amount: parseFloat(serving.metric_serving_amount || '100'),
+                    metric_serving_unit: serving.metric_serving_unit || 'g',
+                }
+            };
+            console.log('Returning barcode result:', JSON.stringify(result, null, 2));
+            res.json(result);
+        }
+        catch (error) {
+            console.error('Error searching for barcode:', error);
+            if (error.response) {
+                console.error('API Error Response:', error.response.data);
+            }
+            res.status(500).json({
+                success: false,
+                error: 'Failed to search for product by barcode'
+            });
+        }
+    });
 });
 //# sourceMappingURL=index.js.map
