@@ -32,7 +32,14 @@ interface FoodDetailsResponse {
   food: {
     food_id: string;
     food_name: string;
+    food_description?: string;
     brand_name?: string;
+    food_images?: {
+      food_image?: Array<{
+        image_url?: string;
+        image_type?: string;
+      }>;
+    };
     servings: {
       serving: Array<{
         calories?: string;
@@ -42,7 +49,32 @@ interface FoodDetailsResponse {
         protein?: string;
         sodium?: string;
         sugar?: string;
+        saturated_fat?: string;
+        polyunsaturated_fat?: string;
+        monounsaturated_fat?: string;
+        trans_fat?: string;
+        cholesterol?: string;
+        potassium?: string;
+        calcium?: string;
+        iron?: string;
+        vitamin_a?: string;
+        vitamin_c?: string;
+        vitamin_d?: string;
+        vitamin_e?: string;
+        vitamin_k?: string;
+        thiamin?: string;
+        riboflavin?: string;
+        niacin?: string;
+        vitamin_b6?: string;
+        folate?: string;
+        vitamin_b12?: string;
+        magnesium?: string;
+        phosphorus?: string;
+        zinc?: string;
         serving_description: string;
+        measurement_description?: string;
+        metric_serving_amount?: string;
+        metric_serving_unit?: string;
       }>;
     };
   };
@@ -55,6 +87,7 @@ const FATSECRET_CLIENT_ID = functions.config().fatsecret.client_id || 'ca39fbf03
 const FATSECRET_CLIENT_SECRET = functions.config().fatsecret.client_secret || '31900952caf2458e943775f0f6fcbcab';
 const FATSECRET_AUTH_URL = 'https://oauth.fatsecret.com/connect/token';
 const FATSECRET_API_URL = 'https://platform.fatsecret.com/rest/server.api';
+const OPENFOODFACTS_API_URL = 'https://world.openfoodfacts.net/api/v2';
 
 async function getFatSecretToken(): Promise<string> {
   if (cachedToken && tokenExpiry && tokenExpiry > new Date()) {
@@ -87,6 +120,81 @@ async function getFatSecretToken(): Promise<string> {
     console.error('Error getting FatSecret token:', error.response?.data || error.message);
     throw new functions.https.HttpsError('internal', `Failed to authenticate with FatSecret API: ${error.message}`);
   }
+}
+
+// English-only ingredient lookup from Open Food Facts
+async function getIngredientsFromOpenFoodFacts(productName: string, brandName?: string): Promise<string | null> {
+  try {
+    // Search for product in Open Food Facts with English language filter
+    const searchQuery = brandName ? `${brandName} ${productName}` : productName;
+    const searchUrl = `${OPENFOODFACTS_API_URL}/search`;
+    
+    console.log(`Searching Open Food Facts for: ${searchQuery}`);
+    
+    const response = await axios.get(searchUrl, {
+      params: {
+        search_terms: searchQuery,
+        search_simple: 1,
+        action: 'process',
+        json: 1,
+        page_size: 5,
+        // Filter for English-only products
+        countries: 'united-kingdom,united-states,australia,canada,new-zealand',
+        language: 'en'
+      },
+      timeout: 3000,
+      headers: {
+        'User-Agent': 'NutraSafe-App/1.0'
+      }
+    });
+
+    const products = response.data?.products;
+    if (!products || products.length === 0) {
+      console.log(`No Open Food Facts products found for: ${searchQuery}`);
+      return null;
+    }
+
+    // Look for the best match (English ingredients)
+    for (const product of products) {
+      // Check if ingredients are in English (no accents, foreign characters)
+      const ingredients = product.ingredients_text;
+      if (ingredients && isEnglishText(ingredients)) {
+        console.log(`Found English ingredients for ${searchQuery}: ${ingredients.substring(0, 100)}...`);
+        return ingredients;
+      }
+    }
+
+    console.log(`No English ingredients found for: ${searchQuery}`);
+    return null;
+  } catch (error: any) {
+    console.log(`Open Food Facts lookup failed for ${productName}:`, error.message);
+    return null;
+  }
+}
+
+// Check if text is primarily English (no foreign characters)
+function isEnglishText(text: string): boolean {
+  if (!text || text.length < 10) return false;
+  
+  // Check for common non-English patterns
+  const foreignPatterns = [
+    /[áàâäéèêëíìîïóòôöúùûüýÿñç]/gi, // Accented characters
+    /[αβγδεζηθικλμνξοπρστυφχψω]/gi,   // Greek
+    /[а-я]/gi,                        // Cyrillic
+    /[一-龯]/g,                       // Chinese/Japanese
+    /[ㄱ-ㅎ가-힣]/g                    // Korean
+  ];
+  
+  // If more than 10% foreign characters, reject
+  let foreignCount = 0;
+  for (const pattern of foreignPatterns) {
+    const matches = text.match(pattern);
+    if (matches) {
+      foreignCount += matches.length;
+    }
+  }
+  
+  return foreignCount < (text.length * 0.1);
 }
 
 export const searchFoods = functions
@@ -126,13 +234,18 @@ export const searchFoods = functions
       }
 
       // Get detailed nutrition information for each food
+      // Handle both array and single object responses
+      const foodArray = Array.isArray(searchData.foods.food) 
+        ? searchData.foods.food 
+        : [searchData.foods.food];
+        
       const foods = await Promise.all(
-        searchData.foods.food.slice(0, 10).map(async (food) => {
+        foodArray.slice(0, 10).map(async (food) => {
           try {
-            // Get detailed nutrition data
+            // Get detailed nutrition data using v2 API
             const detailsResponse = await axios.get(FATSECRET_API_URL, {
               params: {
-                method: 'food.get.v2',
+                method: 'food.get.v2',  // v2 is the latest available version
                 food_id: food.food_id,
                 format: 'json',
               },
@@ -144,36 +257,101 @@ export const searchFoods = functions
 
             const foodData: FoodDetailsResponse = detailsResponse.data;
             const foodDetail = foodData.food;
-            const serving = foodDetail.servings.serving[0];
-
+            // Handle serving as array or single object
+            const servings = foodDetail.servings?.serving;
+            const serving = Array.isArray(servings) ? servings[0] : servings;
+            
+            // Extract image URL if available
+            const imageUrl = foodDetail.food_images?.food_image?.[0]?.image_url || null;
+            
+            // Extract comprehensive nutrition data
             return {
               id: food.food_id,
               name: food.food_name,
               brand: food.brand_name || null,
+              description: foodDetail.food_description || null,
+              imageUrl: imageUrl,
+              // Macronutrients
               calories: parseFloat(serving?.calories || '0'),
               protein: parseFloat(serving?.protein || '0'),
               carbs: parseFloat(serving?.carbohydrate || '0'),
               fat: parseFloat(serving?.fat || '0'),
+              saturatedFat: parseFloat(serving?.saturated_fat || '0'),
+              polyunsaturatedFat: parseFloat(serving?.polyunsaturated_fat || '0'),
+              monounsaturatedFat: parseFloat(serving?.monounsaturated_fat || '0'),
+              transFat: parseFloat(serving?.trans_fat || '0'),
+              cholesterol: parseFloat(serving?.cholesterol || '0'),
               fiber: parseFloat(serving?.fiber || '0'),
               sugar: parseFloat(serving?.sugar || '0'),
+              // Minerals
               sodium: parseFloat(serving?.sodium || '0'),
+              potassium: parseFloat(serving?.potassium || '0'),
+              calcium: parseFloat(serving?.calcium || '0'),
+              iron: parseFloat(serving?.iron || '0'),
+              magnesium: parseFloat(serving?.magnesium || '0'),
+              phosphorus: parseFloat(serving?.phosphorus || '0'),
+              zinc: parseFloat(serving?.zinc || '0'),
+              // Vitamins
+              vitaminA: parseFloat(serving?.vitamin_a || '0'),
+              vitaminC: parseFloat(serving?.vitamin_c || '0'),
+              vitaminD: parseFloat(serving?.vitamin_d || '0'),
+              vitaminE: parseFloat(serving?.vitamin_e || '0'),
+              vitaminK: parseFloat(serving?.vitamin_k || '0'),
+              thiamin: parseFloat(serving?.thiamin || '0'),
+              riboflavin: parseFloat(serving?.riboflavin || '0'),
+              niacin: parseFloat(serving?.niacin || '0'),
+              vitaminB6: parseFloat(serving?.vitamin_b6 || '0'),
+              folate: parseFloat(serving?.folate || '0'),
+              vitaminB12: parseFloat(serving?.vitamin_b12 || '0'),
+              // Serving info
               servingDescription: serving?.serving_description || 'per 100g',
+              metricServingAmount: parseFloat(serving?.metric_serving_amount || '100'),
+              metricServingUnit: serving?.metric_serving_unit || 'g',
+              // Try to get ingredients from Open Food Facts (English only)
+              ingredients: await getIngredientsFromOpenFoodFacts(food.food_name, food.brand_name),
             };
-          } catch (detailError) {
-            console.log(`Failed to get details for ${food.food_name}:`, detailError);
-            // Return basic food info with 0 values if details fail
+          } catch (detailError: any) {
+            console.log(`Failed to get details for ${food.food_name}:`, detailError.message);
+            // Return basic food info with available data from search
             return {
               id: food.food_id,
               name: food.food_name,
               brand: food.brand_name || null,
+              description: null,
+              imageUrl: null,
               calories: 0,
               protein: 0,
               carbs: 0,
               fat: 0,
+              saturatedFat: 0,
+              polyunsaturatedFat: 0,
+              monounsaturatedFat: 0,
+              transFat: 0,
+              cholesterol: 0,
               fiber: 0,
               sugar: 0,
               sodium: 0,
+              potassium: 0,
+              calcium: 0,
+              iron: 0,
+              magnesium: 0,
+              phosphorus: 0,
+              zinc: 0,
+              vitaminA: 0,
+              vitaminC: 0,
+              vitaminD: 0,
+              vitaminE: 0,
+              vitaminK: 0,
+              thiamin: 0,
+              riboflavin: 0,
+              niacin: 0,
+              vitaminB6: 0,
+              folate: 0,
+              vitaminB12: 0,
               servingDescription: 'per 100g',
+              metricServingAmount: 100,
+              metricServingUnit: 'g',
+              ingredients: null, // No ingredients available when details fail
             };
           }
         })
@@ -232,6 +410,7 @@ export const getFoodDetails = functions
 
       const token = await getFatSecretToken();
 
+      // Get food details using v2 API
       const response = await axios.get(FATSECRET_API_URL, {
         params: {
           method: 'food.get.v2',
@@ -242,28 +421,80 @@ export const getFoodDetails = functions
           'Authorization': `Bearer ${token}`,
         },
       });
-
+      
       const foodData: FoodDetailsResponse = response.data;
+
       const food = foodData.food;
-      const serving = food.servings.serving[0];
+      // Handle serving as array or single object
+      const servings = food.servings?.serving;
+      const serving = Array.isArray(servings) ? servings[0] : servings;
 
       if (!serving) {
         res.status(404).json({error: 'No serving information found'});
         return;
+      }
+      
+      // Extract image URL if available
+      const imageUrl = food.food_images?.food_image?.[0]?.image_url || null;
+      
+      // Try to extract ingredients from description or use our extraction function
+      let ingredients: string[] = [];
+      if (food.food_description) {
+        // Simple extraction from description - look for "Ingredients:" section
+        const ingredientsMatch = food.food_description.match(/ingredients[:\s]+([^.]+)/i);
+        if (ingredientsMatch) {
+          ingredients = ingredientsMatch[1].split(',').map(i => i.trim());
+        }
+      }
+      
+      // If no ingredients found in description, use name-based extraction
+      if (ingredients.length === 0) {
+        ingredients = extractIngredientsFromFoodName(food.food_name);
       }
 
       const result = {
         id: food.food_id,
         name: food.food_name,
         brand: food.brand_name || null,
+        description: food.food_description || null,
+        imageUrl: imageUrl,
+        ingredients: ingredients,
+        // Macronutrients
         calories: parseFloat(serving.calories || '0'),
         protein: parseFloat(serving.protein || '0'),
         carbs: parseFloat(serving.carbohydrate || '0'),
         fat: parseFloat(serving.fat || '0'),
+        saturatedFat: parseFloat(serving.saturated_fat || '0'),
+        polyunsaturatedFat: parseFloat(serving.polyunsaturated_fat || '0'),
+        monounsaturatedFat: parseFloat(serving.monounsaturated_fat || '0'),
+        transFat: parseFloat(serving.trans_fat || '0'),
+        cholesterol: parseFloat(serving.cholesterol || '0'),
         fiber: parseFloat(serving.fiber || '0'),
         sugar: parseFloat(serving.sugar || '0'),
+        // Minerals
         sodium: parseFloat(serving.sodium || '0'),
-        ingredients: [], // Will be populated by ingredient extraction
+        potassium: parseFloat(serving.potassium || '0'),
+        calcium: parseFloat(serving.calcium || '0'),
+        iron: parseFloat(serving.iron || '0'),
+        magnesium: parseFloat(serving.magnesium || '0'),
+        phosphorus: parseFloat(serving.phosphorus || '0'),
+        zinc: parseFloat(serving.zinc || '0'),
+        // Vitamins (if available in v2)
+        vitaminA: parseFloat(serving.vitamin_a || '0'),
+        vitaminC: parseFloat(serving.vitamin_c || '0'),
+        vitaminD: parseFloat(serving.vitamin_d || '0'),
+        vitaminE: parseFloat(serving.vitamin_e || '0'),
+        vitaminK: parseFloat(serving.vitamin_k || '0'),
+        thiamin: parseFloat(serving.thiamin || '0'),
+        riboflavin: parseFloat(serving.riboflavin || '0'),
+        niacin: parseFloat(serving.niacin || '0'),
+        vitaminB6: parseFloat(serving.vitamin_b6 || '0'),
+        folate: parseFloat(serving.folate || '0'),
+        vitaminB12: parseFloat(serving.vitamin_b12 || '0'),
+        // Serving info
+        servingDescription: serving.serving_description || 'per 100g',
+        metricServingAmount: parseFloat(serving.metric_serving_amount || '100'),
+        metricServingUnit: serving.metric_serving_unit || 'g',
       };
 
       // Track the food details event for analytics
@@ -385,13 +616,18 @@ export const getIngredientsFromFoodName = functions
 
         if (searchData.foods?.food) {
           // Try to find branded products first (more likely to have ingredients)
-          const brandedFoods = searchData.foods.food.filter(food => 
+          // Handle both array and single object responses
+          const foodArray = Array.isArray(searchData.foods.food) 
+            ? searchData.foods.food 
+            : [searchData.foods.food];
+            
+          const brandedFoods = foodArray.filter(food => 
             food.brand_name && food.brand_name.trim() !== ''
           );
-          
+            
           const foodsToCheck = searchForBranded && brandedFoods.length > 0 
             ? brandedFoods.slice(0, 5)  // Check top 5 branded foods
-            : searchData.foods.food.slice(0, 3); // Check top 3 foods
+            : foodArray.slice(0, 3); // Check top 3 foods
 
           console.log(`Checking ${foodsToCheck.length} foods for ingredient information`);
 

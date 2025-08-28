@@ -2093,17 +2093,20 @@ class ProcessingScorer {
     
     private init() {}
     
-    func calculateProcessingScore(for foodName: String) -> NutritionProcessingScore {
+    func calculateProcessingScore(for foodName: String, ingredients: String? = nil) -> NutritionProcessingScore {
         let foodLower = foodName.lowercased()
         
-        // Determine base processing level
-        let processingLevel = determineProcessingLevel(foodLower)
+        // Use real ingredients if provided, otherwise fall back to food name analysis
+        let analysisText = ingredients?.lowercased() ?? foodLower
         
-        // Analyze additives and E-numbers
-        let additiveAnalysis = analyseAdditives(in: foodLower)
+        // Determine base processing level from ingredients or food name
+        let processingLevel = determineProcessingLevel(analysisText, isIngredientList: ingredients != nil)
+        
+        // Analyze additives and E-numbers in ingredients
+        let additiveAnalysis = analyseAdditives(in: analysisText)
         
         // Calculate natural food bonus
-        let naturalScore = calculateNaturalScore(foodLower)
+        let naturalScore = calculateNaturalScore(analysisText)
         
         // Calculate base score from processing level
         var totalScore = processingLevel.score
@@ -2150,13 +2153,20 @@ class ProcessingScorer {
         )
     }
     
-    private func determineProcessingLevel(_ food: String) -> ProcessingLevel {
+    private func determineProcessingLevel(_ food: String, isIngredientList: Bool = false) -> ProcessingLevel {
+        
+        // If we have real ingredients, analyze them scientifically
+        if isIngredientList {
+            return analyzeIngredientsProcessingLevel(food)
+        }
         // Ultra-processed foods (F grade territory)
         let ultraProcessedTerms = [
             "fizzy drink", "soda", "cola", "pepsi", "coca cola", "energy drink",
             "ready meal", "microwave meal", "instant", "processed meat", "sausage",
             "burger", "chips", "crisps", "biscuits", "cookies", "cake mix",
-            "ice cream", "chocolate bar", "sweets", "candy", "margarine",
+            "ice cream", "chocolate bar", "candy bar", "sweets", "candy", "margarine",
+            "milky way", "mars bar", "snickers", "twix", "kit kat", "bounty",
+            "maltesers", "smarties", "haribo", "gummy", "jelly beans",
             "chicken nuggets", "fish fingers", "frozen pizza", "pot noodle"
         ]
         
@@ -2220,10 +2230,12 @@ class ProcessingScorer {
         
         // Common bad additives
         let badAdditives = [
-            "monosodium glutamate", "msg", "high fructose corn syrup",
+            "monosodium glutamate", "msg", "high fructose corn syrup", "glucose syrup",
             "sodium nitrite", "sodium nitrate", "potassium sorbate",
             "sodium benzoate", "artificial colours", "artificial flavours",
-            "trans fat", "hydrogenated oil", "aspartame", "sucralose"
+            "trans fat", "hydrogenated oil", "palm fat", "palm oil",
+            "emulsifier", "lecithin", "stabiliser", "thickener",
+            "aspartame", "sucralose", "syrup", "modified starch"
         ]
         
         // Common preservatives
@@ -2362,6 +2374,80 @@ class ProcessingScorer {
         
         return factors
     }
+    
+    // MARK: - Scientific Ingredient Analysis (NOVA Classification)
+    
+    private func analyzeIngredientsProcessingLevel(_ ingredients: String) -> ProcessingLevel {
+        let ingredientList = ingredients.lowercased()
+        
+        // Count ultra-processed indicators (NOVA Group 4)
+        var ultraProcessedScore = 0
+        
+        // Industrial sweeteners and additives
+        let ultraProcessedIndicators = [
+            "glucose syrup", "high fructose corn syrup", "invert sugar", "maltodextrin",
+            "hydrolysed protein", "soy protein isolate", "modified starch",
+            "hydrogenated oil", "palm oil", "palm fat", "trans fat",
+            "emulsifier", "stabiliser", "thickener", "gelling agent",
+            "flavouring", "artificial flavour", "natural flavour", "flavour enhancer",
+            "lecithin", "mono- and diglycerides", "polyglycerol",
+            "sodium benzoate", "potassium sorbate", "calcium propionate",
+            "bht", "bha", "tbhq", "sodium nitrite", "sodium nitrate",
+            "carrageenan", "xanthan gum", "guar gum", "locust bean gum",
+            "aspartame", "sucralose", "acesulfame", "cyclamate"
+        ]
+        
+        // E-numbers (typically ultra-processed)
+        let eNumberPattern = "e\\d{3,4}"
+        let regex = try? NSRegularExpression(pattern: eNumberPattern)
+        let eNumberMatches = regex?.numberOfMatches(in: ingredientList, range: NSRange(ingredientList.startIndex..., in: ingredientList)) ?? 0
+        
+        // Count ultra-processed indicators
+        for indicator in ultraProcessedIndicators {
+            if ingredientList.contains(indicator) {
+                ultraProcessedScore += 1
+            }
+        }
+        
+        // Add E-number penalties
+        ultraProcessedScore += eNumberMatches
+        
+        // Classify based on NOVA system
+        if ultraProcessedScore >= 3 {
+            return .ultraProcessed  // 3+ ultra-processed indicators = NOVA Group 4
+        }
+        
+        // Check for processed indicators (NOVA Group 3)
+        let processedIndicators = [
+            "salt", "sugar", "oil", "vinegar", "citric acid", "ascorbic acid",
+            "sodium chloride", "calcium chloride", "lactic acid"
+        ]
+        
+        var processedScore = 0
+        for indicator in processedIndicators {
+            if ingredientList.contains(indicator) {
+                processedScore += 1
+            }
+        }
+        
+        if processedScore >= 2 {
+            return .processed  // Some processing with added substances
+        }
+        
+        // Check for minimal processing indicators (NOVA Group 2)
+        let minimalIndicators = [
+            "pasteurised", "frozen", "dried", "fermented", "pressed", "ground"
+        ]
+        
+        for indicator in minimalIndicators {
+            if ingredientList.contains(indicator) {
+                return .minimally  // Physical/chemical processes only
+            }
+        }
+        
+        // Default to unprocessed if no processing indicators found (NOVA Group 1)
+        return .unprocessed
+    }
 }
 
 // MARK: - Glycemic Index System
@@ -2421,64 +2507,68 @@ class GlycemicIndexDatabase {
     
     private init() {}
     
-    // Scientifically-validated GI values for common foods
-    private let giDatabase: [String: GlycemicIndexData] = [
-        // Fruits (clinically tested values)
-        "apple": GlycemicIndexData(value: 36, category: .low, servingSize: "1 medium (120g)", carbsPer100g: 14.0, isEstimated: false),
-        "banana": GlycemicIndexData(value: 51, category: .low, servingSize: "1 medium (120g)", carbsPer100g: 23.0, isEstimated: false),
-        "orange": GlycemicIndexData(value: 43, category: .low, servingSize: "1 medium (150g)", carbsPer100g: 12.0, isEstimated: false),
-        "grapes": GlycemicIndexData(value: 46, category: .low, servingSize: "1 cup (150g)", carbsPer100g: 16.0, isEstimated: false),
-        "watermelon": GlycemicIndexData(value: 76, category: .high, servingSize: "1 cup (150g)", carbsPer100g: 8.0, isEstimated: false),
+    // Calculate GI based on macronutrient profile - MUCH more accurate and scalable
+    func calculateGIFromMacros(carbs: Double, sugar: Double, fiber: Double, protein: Double, fat: Double) -> GlycemicIndexData {
         
-        // Vegetables
-        "potato": GlycemicIndexData(value: 78, category: .high, servingSize: "1 medium (150g)", carbsPer100g: 17.0, isEstimated: false),
-        "sweet potato": GlycemicIndexData(value: 70, category: .high, servingSize: "1 medium (150g)", carbsPer100g: 20.0, isEstimated: false),
-        "carrot": GlycemicIndexData(value: 47, category: .low, servingSize: "1 cup (120g)", carbsPer100g: 10.0, isEstimated: false),
-        "broccoli": GlycemicIndexData(value: 10, category: .low, servingSize: "1 cup (90g)", carbsPer100g: 7.0, isEstimated: false),
+        // SCIENTIFIC APPROACH: GI estimation based on macronutrient composition
         
-        // Grains & Cereals
-        "white rice": GlycemicIndexData(value: 73, category: .high, servingSize: "1 cup cooked (150g)", carbsPer100g: 28.0, isEstimated: false),
-        "brown rice": GlycemicIndexData(value: 68, category: .medium, servingSize: "1 cup cooked (150g)", carbsPer100g: 23.0, isEstimated: false),
-        "oats": GlycemicIndexData(value: 55, category: .medium, servingSize: "1 cup cooked (240g)", carbsPer100g: 12.0, isEstimated: false),
-        "quinoa": GlycemicIndexData(value: 53, category: .low, servingSize: "1 cup cooked (185g)", carbsPer100g: 22.0, isEstimated: false),
-        "white bread": GlycemicIndexData(value: 75, category: .high, servingSize: "1 slice (30g)", carbsPer100g: 49.0, isEstimated: false),
-        "wholemeal bread": GlycemicIndexData(value: 74, category: .high, servingSize: "1 slice (30g)", carbsPer100g: 41.0, isEstimated: false),
+        // Base GI calculation
+        var estimatedGI: Int
         
-        // Legumes
-        "lentils": GlycemicIndexData(value: 32, category: .low, servingSize: "1 cup cooked (200g)", carbsPer100g: 20.0, isEstimated: false),
-        "chickpeas": GlycemicIndexData(value: 28, category: .low, servingSize: "1 cup cooked (165g)", carbsPer100g: 27.0, isEstimated: false),
-        "kidney beans": GlycemicIndexData(value: 24, category: .low, servingSize: "1 cup cooked (180g)", carbsPer100g: 25.0, isEstimated: false),
-        
-        // Dairy
-        "milk": GlycemicIndexData(value: 39, category: .low, servingSize: "1 cup (240ml)", carbsPer100g: 5.0, isEstimated: false),
-        "yoghurt": GlycemicIndexData(value: 41, category: .low, servingSize: "1 cup (245g)", carbsPer100g: 4.7, isEstimated: false),
-        
-        // Nuts (very low/no GI impact)
-        "almonds": GlycemicIndexData(value: 0, category: .low, servingSize: "30g", carbsPer100g: 4.0, isEstimated: false),
-        "nuts": GlycemicIndexData(value: 15, category: .low, servingSize: "30g", carbsPer100g: 7.0, isEstimated: false),
-    ]
-    
-    func getGIData(for foodName: String) -> GlycemicIndexData? {
-        let searchTerm = foodName.lowercased()
-        
-        // Direct match first
-        if let data = giDatabase[searchTerm] {
-            return data
+        // 1. If very low carbs (< 5g), GI is effectively zero
+        if carbs < 5.0 {
+            estimatedGI = 0
+        } 
+        // 2. High sugar content = higher GI
+        else if sugar > (carbs * 0.7) { // >70% of carbs are sugar
+            estimatedGI = 75 // High GI (like white bread, candy)
+        }
+        // 3. High fiber significantly lowers GI
+        else if fiber > (carbs * 0.3) { // >30% of carbs are fiber
+            estimatedGI = 35 // Low GI (like beans, vegetables)
+        }
+        // 4. Protein and fat slow absorption
+        else if (protein + fat) > carbs {
+            estimatedGI = 30 // Low GI (like nuts, meat)
+        }
+        // 5. Medium sugar with some fiber
+        else if sugar > (carbs * 0.4) && fiber > (carbs * 0.1) {
+            estimatedGI = 55 // Medium GI (like fruits)
+        }
+        // 6. Complex carbs with moderate fiber
+        else if fiber > (carbs * 0.15) {
+            estimatedGI = 50 // Medium GI (like whole grains)
+        }
+        // 7. Refined carbs with little fiber
+        else {
+            estimatedGI = 70 // High GI (like white rice, pasta)
         }
         
-        // Partial match for compound foods
-        for (key, data) in giDatabase {
-            if searchTerm.contains(key) || key.contains(searchTerm) {
-                return data
-            }
-        }
+        let category = calculateGICategory(from: estimatedGI)
         
-        // No data available - return unknown
         return GlycemicIndexData(
-            value: nil, 
-            category: .unknown, 
-            servingSize: "N/A", 
-            carbsPer100g: 0.0, 
+            value: estimatedGI,
+            category: category,
+            servingSize: "per serving",
+            carbsPer100g: carbs,
+            isEstimated: true // Always mark calculated GI as estimated
+        )
+    }
+    
+    // For backward compatibility - now calculates based on macros if available
+    func getGIData(for foodName: String, carbs: Double? = nil, sugar: Double? = nil, fiber: Double? = nil, protein: Double? = nil, fat: Double? = nil) -> GlycemicIndexData? {
+        
+        // If we have macro data, calculate GI scientifically
+        if let c = carbs, let s = sugar, let f = fiber, let p = protein, let ft = fat {
+            return calculateGIFromMacros(carbs: c, sugar: s, fiber: f, protein: p, fat: ft)
+        }
+        
+        // Fallback: return unknown for foods without macro data
+        return GlycemicIndexData(
+            value: nil,
+            category: .unknown,
+            servingSize: "N/A",
+            carbsPer100g: 0.0,
             isEstimated: false
         )
     }

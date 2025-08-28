@@ -16,6 +16,7 @@ struct SearchResult: Identifiable {
     let sugar: Double
     let sodium: Double
     let servingDescription: String?
+    let ingredients: String? // Ingredients from Open Food Facts
     
     var servingSize: String {
         return servingDescription ?? "per 100g"
@@ -70,6 +71,7 @@ class FatSecretService: ObservableObject {
                 let sugar: Double
                 let sodium: Double
                 let servingDescription: String?
+                let ingredients: String?
             }
         }
         
@@ -87,7 +89,8 @@ class FatSecretService: ObservableObject {
                 fiber: food.fiber,
                 sugar: food.sugar,
                 sodium: food.sodium,
-                servingDescription: food.servingDescription
+                servingDescription: food.servingDescription,
+                ingredients: food.ingredients
             )
         }
     }
@@ -121,6 +124,7 @@ class FatSecretService: ObservableObject {
             let sugar: Double
             let sodium: Double
             let servingDescription: String?
+            let ingredients: String?
         }
         
         let detailResponse = try JSONDecoder().decode(FirebaseFoodDetailsResponse.self, from: data)
@@ -136,7 +140,8 @@ class FatSecretService: ObservableObject {
             fiber: detailResponse.fiber,
             sugar: detailResponse.sugar,
             sodium: detailResponse.sodium,
-            servingDescription: detailResponse.servingDescription
+            servingDescription: detailResponse.servingDescription,
+            ingredients: detailResponse.ingredients
         )
     }
     
@@ -2816,12 +2821,38 @@ struct FoodDetailViewFromSearch: View {
     }
     
     private var glycemicIndex: Int? {
-        GlycemicIndexDatabase.shared.getGIData(for: food.name)?.value
+        glycemicData?.value
+    }
+    
+    private var glycemicCategory: String? {
+        guard let gi = glycemicIndex else { return nil }
+        if gi <= 55 { return "Low" }
+        else if gi <= 70 { return "Medium" }
+        else { return "High" }
+    }
+    
+    private var glycemicData: GlycemicIndexData? {
+        // Calculate GI based on actual macro data - much more accurate!
+        GlycemicIndexDatabase.shared.getGIData(
+            for: food.name,
+            carbs: adjustedCarbs,
+            sugar: food.sugar * multiplier,
+            fiber: food.fiber * multiplier,
+            protein: adjustedProtein,
+            fat: adjustedFat
+        )
     }
     
     private var glycemicLoad: Double? {
         guard let gi = glycemicIndex else { return nil }
         return (Double(gi) * adjustedCarbs) / 100.0
+    }
+    
+    private var glycemicLoadCategory: String? {
+        guard let gl = glycemicLoad else { return nil }
+        if gl <= 10 { return "Low" }
+        else if gl <= 20 { return "Medium" }
+        else { return "High" }
     }
     
     private var nutritionScore: NutritionProcessingScore {
@@ -3001,7 +3032,7 @@ struct FoodDetailViewFromSearch: View {
                         }
                         
                         // Glycemic Index
-                        if let gi = glycemicIndex {
+                        if let giCategory = glycemicCategory {
                             Divider()
                             
                             VStack(alignment: .leading, spacing: 8) {
@@ -3009,21 +3040,43 @@ struct FoodDetailViewFromSearch: View {
                                     Text("Glycemic Index")
                                         .font(.system(size: 16, weight: .medium))
                                     Spacer()
-                                    Text("\(gi)")
-                                        .font(.system(size: 16, weight: .bold))
-                                        .foregroundColor(gi <= 55 ? .green : gi <= 70 ? .orange : .red)
+                                    HStack(spacing: 4) {
+                                        Text("\(giCategory)")
+                                            .font(.system(size: 16, weight: .bold))
+                                            .foregroundColor(giCategory == "Low" ? .green : giCategory == "Medium" ? .orange : .red)
+                                        
+                                        // FAILSAFE: Show warning for estimated values
+                                        if let giData = glycemicData, giData.isEstimated {
+                                            Image(systemName: "exclamationmark.triangle.fill")
+                                                .font(.system(size: 12))
+                                                .foregroundColor(.orange)
+                                        }
+                                        
+                                        Text("GI")
+                                            .font(.system(size: 16, weight: .bold))
+                                            .foregroundColor(giCategory == "Low" ? .green : giCategory == "Medium" ? .orange : .red)
+                                    }
                                 }
                                 
-                                if let gl = glycemicLoad {
+                                if let glCategory = glycemicLoadCategory {
                                     HStack {
                                         Text("Glycemic Load")
                                             .font(.system(size: 14))
                                             .foregroundColor(.secondary)
                                         Spacer()
-                                        Text(String(format: "%.1f", gl))
+                                        Text("\(glCategory) GL")
                                             .font(.system(size: 14, weight: .medium))
-                                            .foregroundColor(gl <= 10 ? .green : gl <= 20 ? .orange : .red)
+                                            .foregroundColor(glCategory == "Low" ? .green : glCategory == "Medium" ? .orange : .red)
                                     }
+                                }
+                                
+                                // FAILSAFE: Show disclaimer for estimated GI values
+                                if let giData = glycemicData, giData.isEstimated {
+                                    Text("⚠️ Estimated based on similar foods - verify with healthcare provider")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.orange)
+                                        .italic()
+                                        .padding(.top, 4)
                                 }
                             }
                         }
@@ -3297,19 +3350,19 @@ struct AddFoodSearchView: View {
 // MARK: - Sample Data
 
 let sampleSearchResults: [FoodSearchResult] = [
-    FoodSearchResult(id: "1", name: "Greek Yoghurt", brand: "Fage", calories: 100, protein: 18.0, carbs: 6.0, fat: 0.0, fiber: 0, sugar: 6.0, sodium: 50, servingDescription: "1 container (150g)"),
-    FoodSearchResult(id: "2", name: "Banana", brand: nil, calories: 89, protein: 1.1, carbs: 23.0, fat: 0.3, fiber: 2.6, sugar: 12.2, sodium: 1, servingDescription: "1 medium (118g)"),
-    FoodSearchResult(id: "3", name: "Chicken Breast", brand: nil, calories: 165, protein: 31.0, carbs: 0.0, fat: 3.6, fiber: 0, sugar: 0, sodium: 74, servingDescription: "per 100g"),
-    FoodSearchResult(id: "4", name: "Brown Rice", brand: nil, calories: 111, protein: 2.6, carbs: 23.0, fat: 0.9, fiber: 1.8, sugar: 0.4, sodium: 5, servingDescription: "1/2 cup cooked (98g)"),
-    FoodSearchResult(id: "5", name: "Avocado", brand: nil, calories: 160, protein: 2.0, carbs: 8.5, fat: 14.7, fiber: 6.7, sugar: 0.7, sodium: 7, servingDescription: "1/2 medium (100g)"),
-    FoodSearchResult(id: "6", name: "Spinach", brand: nil, calories: 23, protein: 2.9, carbs: 3.6, fat: 0.4, fiber: 2.2, sugar: 0.4, sodium: 79, servingDescription: "1 cup fresh (30g)"),
-    FoodSearchResult(id: "7", name: "Salmon", brand: nil, calories: 208, protein: 22.0, carbs: 0.0, fat: 12.4, fiber: 0, sugar: 0, sodium: 59, servingDescription: "per 100g"),
-    FoodSearchResult(id: "8", name: "Oats", brand: "Quaker", calories: 150, protein: 5.0, carbs: 27.0, fat: 3.0, fiber: 4.0, sugar: 1.1, sodium: 2, servingDescription: "1/2 cup dry (40g)"),
+    FoodSearchResult(id: "1", name: "Greek Yoghurt", brand: "Fage", calories: 100, protein: 18.0, carbs: 6.0, fat: 0.0, fiber: 0, sugar: 6.0, sodium: 50, servingDescription: "1 container (150g)", ingredients: nil),
+    FoodSearchResult(id: "2", name: "Banana", brand: nil, calories: 89, protein: 1.1, carbs: 23.0, fat: 0.3, fiber: 2.6, sugar: 12.2, sodium: 1, servingDescription: "1 medium (118g)", ingredients: nil),
+    FoodSearchResult(id: "3", name: "Chicken Breast", brand: nil, calories: 165, protein: 31.0, carbs: 0.0, fat: 3.6, fiber: 0, sugar: 0, sodium: 74, servingDescription: "per 100g", ingredients: nil),
+    FoodSearchResult(id: "4", name: "Brown Rice", brand: nil, calories: 111, protein: 2.6, carbs: 23.0, fat: 0.9, fiber: 1.8, sugar: 0.4, sodium: 5, servingDescription: "1/2 cup cooked (98g)", ingredients: nil),
+    FoodSearchResult(id: "5", name: "Avocado", brand: nil, calories: 160, protein: 2.0, carbs: 8.5, fat: 14.7, fiber: 6.7, sugar: 0.7, sodium: 7, servingDescription: "1/2 medium (100g)", ingredients: nil),
+    FoodSearchResult(id: "6", name: "Spinach", brand: nil, calories: 23, protein: 2.9, carbs: 3.6, fat: 0.4, fiber: 2.2, sugar: 0.4, sodium: 79, servingDescription: "1 cup fresh (30g)", ingredients: nil),
+    FoodSearchResult(id: "7", name: "Salmon", brand: nil, calories: 208, protein: 22.0, carbs: 0.0, fat: 12.4, fiber: 0, sugar: 0, sodium: 59, servingDescription: "per 100g", ingredients: nil),
+    FoodSearchResult(id: "8", name: "Oats", brand: "Quaker", calories: 150, protein: 5.0, carbs: 27.0, fat: 3.0, fiber: 4.0, sugar: 1.1, sodium: 2, servingDescription: "1/2 cup dry (40g)", ingredients: nil),
     // Additional foods to test allergen detection
-    FoodSearchResult(id: "9", name: "Whole Milk", brand: "Organic Valley", calories: 150, protein: 8.0, carbs: 12.0, fat: 8.0, fiber: 0, sugar: 12.0, sodium: 105, servingDescription: "1 cup (240ml)"),
-    FoodSearchResult(id: "10", name: "Scrambled Eggs", brand: nil, calories: 155, protein: 13.0, carbs: 1.0, fat: 11.0, fiber: 0, sugar: 1.0, sodium: 124, servingDescription: "1 large egg (50g)"),
-    FoodSearchResult(id: "11", name: "Wheat Bread", brand: "Hovis", calories: 265, protein: 9.0, carbs: 49.0, fat: 3.2, fiber: 2.7, sugar: 3.0, sodium: 491, servingDescription: "2 slices (60g)"),
-    FoodSearchResult(id: "12", name: "Cheddar Cheese", brand: nil, calories: 403, protein: 25.0, carbs: 1.3, fat: 33.0, fiber: 0, sugar: 0.5, sodium: 621, servingDescription: "per 100g")
+    FoodSearchResult(id: "9", name: "Whole Milk", brand: "Organic Valley", calories: 150, protein: 8.0, carbs: 12.0, fat: 8.0, fiber: 0, sugar: 12.0, sodium: 105, servingDescription: "1 cup (240ml)", ingredients: nil),
+    FoodSearchResult(id: "10", name: "Scrambled Eggs", brand: nil, calories: 155, protein: 13.0, carbs: 1.0, fat: 11.0, fiber: 0, sugar: 1.0, sodium: 124, servingDescription: "1 large egg (50g)", ingredients: nil),
+    FoodSearchResult(id: "11", name: "Wheat Bread", brand: "Hovis", calories: 265, protein: 9.0, carbs: 49.0, fat: 3.2, fiber: 2.7, sugar: 3.0, sodium: 491, servingDescription: "2 slices (60g)", ingredients: nil),
+    FoodSearchResult(id: "12", name: "Cheddar Cheese", brand: nil, calories: 403, protein: 25.0, carbs: 1.3, fat: 33.0, fiber: 0, sugar: 0.5, sodium: 621, servingDescription: "per 100g", ingredients: nil)
 ]
 
 
@@ -5398,7 +5451,15 @@ struct FoodDetailView: View {
     }
     
     private var glycemicData: GlycemicIndexData? {
-        GlycemicIndexDatabase.shared.getGIData(for: food.name)
+        // Calculate GI based on actual macro data - much more accurate!
+        GlycemicIndexDatabase.shared.getGIData(
+            for: food.name,
+            carbs: scaledCarbs,
+            sugar: 0.0, // DiaryFoodItem doesn't have sugar data
+            fiber: 0.0, // DiaryFoodItem doesn't have fiber data  
+            protein: scaledProtein,
+            fat: scaledFat
+        )
     }
     
     private var glycemicLoad: Double? {
@@ -5571,6 +5632,7 @@ struct FoodDetailView: View {
                             .foregroundColor(.primary)
                         
                         HStack {
+                            // DiaryFoodItem doesn't have ingredients, use food name only
                             let score = ProcessingScorer.shared.calculateProcessingScore(for: food.name)
                             
                             // Score circle

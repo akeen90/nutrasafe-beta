@@ -62,10 +62,15 @@ firebase serve
 - [ ] Regular billing monitoring
 
 ## 📊 Current Status
-- **iOS App**: ✅ Fully functional with HealthKit
-- **Firebase**: ✅ All functions deployed and secure
+- **iOS App**: ✅ Fully functional with HealthKit, latest Firebase iOS SDK v10.29.0
+- **Firebase Functions**: ✅ All functions upgraded and deployed with Node.js 20 runtime
+  - Firebase Functions: v5.1.1 (latest compatible)
+  - Firebase Admin: v12.7.0 
+  - All dependencies updated (Axios v1.11.0, TypeScript v5.9.2, CORS v2.8.5)
+- **Web Dashboard**: ✅ Deployed with latest hosting configuration
 - **Security**: ✅ All credentials properly managed
 - **Features**: ✅ Comprehensive nutrition tracking system
+- **Runtime**: ✅ Node.js 20 runtime ready for Firebase deployment
 
 ## 🚀 Next Steps
 1. UK localization (spelling and legal compliance)
