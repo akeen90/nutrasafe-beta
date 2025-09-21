@@ -75,6 +75,65 @@ struct KitchenTabView: View {
     }
 }
 
+// MARK: - Styled helpers
+struct SectionCard<Content: View>: View {
+    let title: String
+    @ViewBuilder var content: Content
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title).font(.system(size: 12, weight: .semibold)).foregroundColor(.secondary)
+            VStack(alignment: .leading, spacing: 12) { content }
+                .padding(14)
+                .background(RoundedRectangle(cornerRadius: 14).fill(Color(.systemBackground)))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Color(.systemGray5), lineWidth: 1)
+                )
+        }
+    }
+}
+
+struct SegmentedContainer<Content: View>: View {
+    @ViewBuilder var content: Content
+    var body: some View {
+        content
+            .padding(8)
+            .background(RoundedRectangle(cornerRadius: 10).fill(Color(.systemGray6)))
+    }
+}
+
+struct CounterPill: View {
+    @Binding var value: Int
+    let range: ClosedRange<Int>
+    var body: some View {
+        HStack(spacing: 0) {
+            Button(action: { if value > range.lowerBound { value -= 1 } }) {
+                Image(systemName: "minus").font(.system(size: 16, weight: .semibold))
+            }
+            .frame(width: 40, height: 36)
+
+            Divider().frame(height: 20)
+
+            Text("\(value)")
+                .frame(minWidth: 44)
+                .font(.system(size: 16, weight: .semibold))
+
+            Divider().frame(height: 20)
+
+            Button(action: { if value < range.upperBound { value += 1 } }) {
+                Image(systemName: "plus").font(.system(size: 16, weight: .semibold))
+            }
+            .frame(width: 40, height: 36)
+        }
+        .foregroundColor(.primary)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Color(.systemGray6)))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color(.systemGray4), lineWidth: 1)
+        )
+    }
+}
+
 struct AddFoundFoodToKitchenSheet: View {
     @Environment(\.dismiss) var dismiss
     let food: FoodSearchResult
@@ -91,50 +150,62 @@ struct AddFoundFoodToKitchenSheet: View {
 
     var body: some View {
         NavigationView {
-            Form {
-                Section(header: Text("Item")) {
-                    Text(food.name)
-                    if let brand = food.brand { Text(brand).foregroundColor(.secondary) }
-                    if let serving = food.servingDescription { Text(serving).foregroundColor(.secondary) }
-                }
-                Section(header: Text("Opened")) {
-                    Picker("", selection: $openedMode) {
-                        Text("Opened Today").tag(OpenedMode.today)
-                        Text("Choose Date").tag(OpenedMode.chooseDate)
-                    }.pickerStyle(.segmented)
-                    if openedMode == .chooseDate {
-                        DatePicker("Opened Date", selection: $openedDate, displayedComponents: .date)
-                    }
-                }
-                Section(header: Text("Expiry")) {
-                    HStack {
-                        Stepper(value: $expiryAmount, in: 1...365) { EmptyView() }
-                            .labelsHidden()
-                            .frame(width: 0)
-                        TextField("Amount", value: $expiryAmount, formatter: NumberFormatter())
-                            .keyboardType(.numberPad)
-                            .frame(width: 60)
-                            .multilineTextAlignment(.center)
-                        Picker("Unit", selection: $expiryUnit) {
-                            ForEach(ExpiryUnit.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            ScrollView {
+                VStack(spacing: 16) {
+                    SectionCard(title: "ITEM") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(food.name)
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundColor(.primary)
+                            if let brand = food.brand { Text(brand).font(.system(size: 14)).foregroundColor(.secondary) }
+                            if let serving = food.servingDescription { Text(serving).font(.system(size: 12)).foregroundColor(.secondary) }
                         }
-                        .pickerStyle(.segmented)
+                    }
+                    SectionCard(title: "OPENED") {
+                        SegmentedContainer {
+                            Picker("", selection: $openedMode) {
+                                Text("Opened Today").tag(OpenedMode.today)
+                                Text("Choose Date").tag(OpenedMode.chooseDate)
+                            }.pickerStyle(.segmented)
+                        }
+                        if openedMode == .chooseDate {
+                            DatePicker("Opened Date", selection: $openedDate, displayedComponents: .date)
+                                .datePickerStyle(.compact)
+                        }
+                    }
+                    SectionCard(title: "EXPIRY") {
+                        HStack(spacing: 12) {
+                            CounterPill(value: $expiryAmount, range: 1...365)
+                            SegmentedContainer {
+                                Picker("Unit", selection: $expiryUnit) {
+                                    ForEach(ExpiryUnit.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                                }.pickerStyle(.segmented)
+                            }
+                        }
                         .onChange(of: expiryAmount) { _ in recalcExpiry() }
                         .onChange(of: expiryUnit) { _ in recalcExpiry() }
-                        Spacer()
+                        HStack {
+                            Text("Expiry Date").font(.system(size: 14, weight: .medium)).foregroundColor(.secondary)
+                            Spacer()
+                            DatePicker("Expiry Date", selection: $expiryDate, displayedComponents: .date)
+                                .labelsHidden()
+                                .datePickerStyle(.compact)
+                        }
                     }
-                    DatePicker("Expiry Date (override)", selection: $expiryDate, displayedComponents: .date)
+                    SectionCard(title: "DETAILS") {
+                        TextField("Quantity", text: $quantity).textFieldStyle(.roundedBorder)
+                    }
                 }
-                Section(header: Text("Details")) {
-                    TextField("Quantity", text: $quantity).keyboardType(.default)
-                }
+                .padding(16)
+                .onAppear { recalcExpiry() }
             }
+            .background(Color(.systemGroupedBackground))
             .navigationTitle("Add to Kitchen")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { Task { await save() } }) {
-                        if isSaving { ProgressView() } else { Text("Add") }
+                        if isSaving { ProgressView() } else { Text("Add").fontWeight(.semibold) }
                     }
                 }
             }
@@ -961,61 +1032,57 @@ struct ManualKitchenItemSheet: View {
 
     var body: some View {
         NavigationView {
-            Form {
-                Section(header: Text("Item Details")) {
-                    TextField("Item name", text: $itemName)
-                    TextField("Brand (optional)", text: $brand)
-                    TextField("Quantity", text: $quantity)
-                }
-                Section(header: Text("Opened")) {
-                    Picker("", selection: $openedMode) {
-                        Text("Opened Today").tag(OpenedMode.today)
-                        Text("Choose Date").tag(OpenedMode.chooseDate)
-                    }.pickerStyle(.segmented)
-                    if openedMode == .chooseDate {
-                        DatePicker("Opened Date", selection: $openedDate, displayedComponents: .date)
-                    }
-                }
-                Section(header: Text("Expiry")) {
-                    HStack {
-                        Stepper(value: $expiryAmount, in: 1...365) { EmptyView() }
-                            .labelsHidden()
-                            .frame(width: 0)
-                        TextField("Amount", value: $expiryAmount, formatter: NumberFormatter())
-                            .keyboardType(.numberPad)
-                            .frame(width: 60)
-                            .multilineTextAlignment(.center)
-                        Picker("Unit", selection: $expiryUnit) {
-                            ForEach(ExpiryUnit.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            ScrollView {
+                VStack(spacing: 16) {
+                    SectionCard(title: "ITEM DETAILS") {
+                        VStack(alignment: .leading, spacing: 12) {
+                            TextField("Item name", text: $itemName).textFieldStyle(.roundedBorder)
+                            TextField("Brand (optional)", text: $brand).textFieldStyle(.roundedBorder)
+                            TextField("Quantity", text: $quantity).textFieldStyle(.roundedBorder)
                         }
-                        .pickerStyle(.segmented)
+                    }
+                    SectionCard(title: "OPENED") {
+                        SegmentedContainer {
+                            Picker("", selection: $openedMode) {
+                                Text("Opened Today").tag(OpenedMode.today)
+                                Text("Choose Date").tag(OpenedMode.chooseDate)
+                            }.pickerStyle(.segmented)
+                        }
+                        if openedMode == .chooseDate {
+                            DatePicker("Opened Date", selection: $openedDate, displayedComponents: .date)
+                                .datePickerStyle(.compact)
+                        }
+                    }
+                    SectionCard(title: "EXPIRY") {
+                        HStack(spacing: 12) {
+                            CounterPill(value: $expiryAmount, range: 1...365)
+                            SegmentedContainer {
+                                Picker("Unit", selection: $expiryUnit) {
+                                    ForEach(ExpiryUnit.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                                }.pickerStyle(.segmented)
+                            }
+                        }
                         .onChange(of: expiryAmount) { _ in recalcExpiry() }
                         .onChange(of: expiryUnit) { _ in recalcExpiry() }
-                        Spacer()
+                        HStack {
+                            Text("Expiry Date").font(.system(size: 14, weight: .medium)).foregroundColor(.secondary)
+                            Spacer()
+                            DatePicker("Expiry Date", selection: $expiryDate, displayedComponents: .date)
+                                .labelsHidden()
+                                .datePickerStyle(.compact)
+                        }
                     }
-                    DatePicker("Expiry Date (override)", selection: $expiryDate, displayedComponents: .date)
                 }
+                .padding(16)
+                .onAppear { recalcExpiry() }
             }
             .navigationTitle("Manual Entry")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-
+                ToolbarItem(placement: .navigationBarLeading) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        saveKitchenItem()
-                    }) {
-                        if isSaving {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                        } else {
-                            Text("Add")
-                                .font(.system(size: 16, weight: .semibold))
-                        }
+                    Button(action: { saveKitchenItem() }) {
+                        if isSaving { ProgressView().scaleEffect(0.8) } else { Text("Add").font(.system(size: 16, weight: .semibold)) }
                     }
                     .disabled(itemName.isEmpty || isSaving)
                 }
