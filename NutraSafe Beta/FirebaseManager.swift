@@ -188,8 +188,8 @@ class FirebaseManager: ObservableObject {
     }
 
     func searchFoodsByBarcode(barcode: String) async throws -> [FoodSearchResult] {
-        // Search in Firebase Cloud Functions by barcode
-        guard let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/searchFoods") else {
+        // Search in Firebase Cloud Functions by barcode (internal DB first)
+        guard let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/searchFoodByBarcode") else {
             throw URLError(.badURL)
         }
 
@@ -203,9 +203,12 @@ class FirebaseManager: ObservableObject {
         let (data, _) = try await URLSession.shared.data(for: request)
 
         let decoder = JSONDecoder()
-        let response = try decoder.decode(FoodSearchResponse.self, from: data)
+        let barcodeResponse = try decoder.decode(BarcodeSearchResponse.self, from: data)
 
-        return response.foods
+        if let result = barcodeResponse.toFoodSearchResult() {
+            return [result]
+        }
+        return []
     }
 
     func getReactions() async throws -> [FoodReaction] {
