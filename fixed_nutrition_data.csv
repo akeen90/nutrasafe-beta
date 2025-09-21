@@ -1,0 +1,6 @@
+id,name,brand,processed_date,status,ingredients,serving_size,energy_kcal_100g,fat_100g,carbs_100g,sugar_100g,protein_100g,salt_100g,chatgpt_raw_response,extraction_notes
+6,Sea Bass,ASDA,2025-09-11T11:54:25.484710,failed,,,,,,,,,,ChatGPT had no reliable data
+7,Cauliflower,Sainsbury's,2025-09-11T11:54:28.617546,failed,,,,,,,,,,ChatGPT had no reliable data
+8,White Flute,,2025-09-11T11:54:32.143575,failed,,,,,,,,,,ChatGPT had no reliable data
+10,Star Pasta,Sainsbury'S's’S,2025-09-11T11:54:35.579251,failed,,,,,,,,,,ChatGPT had no reliable data
+12,Lime Cordial,Sainsbury's,2025-09-11T11:54:39.526663,failed,,,,,,,,,,ChatGPT had no reliable data

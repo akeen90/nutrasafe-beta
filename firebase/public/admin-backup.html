@@ -1,0 +1,1903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutraSafe Admin Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-bg: #0a0e1a;
+            --secondary-bg: #1a1f2e;
+            --card-bg: #252b3d;
+            --primary-accent: #00d4ff;
+            --secondary-accent: #6c5ce7;
+            --success-color: #00b894;
+            --danger-color: #e74c3c;
+            --warning-color: #fdcb6e;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a6b8;
+            --text-muted: #6c757d;
+            --border-color: #2d3748;
+            --shadow-dark: 0 10px 40px rgba(0, 0, 0, 0.4);
+            --shadow-light: 0 4px 20px rgba(0, 212, 255, 0.15);
+            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-accent: linear-gradient(135deg, #00d4ff 0%, #6c5ce7 100%);
+            --glassmorphism: rgba(37, 43, 61, 0.8);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
+            background: var(--primary-bg);
+            background-image: 
+                radial-gradient(circle at 25% 25%, rgba(108, 92, 231, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 75% 75%, rgba(0, 212, 255, 0.15) 0%, transparent 50%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0;
+            background: transparent;
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            background: var(--secondary-bg);
+            border-right: 1px solid var(--border-color);
+            padding: 24px;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .main-content {
+            margin-left: 280px;
+            padding: 24px;
+            min-height: 100vh;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--gradient-accent);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .logo-text {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.3px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav-tab {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            border-radius: 12px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-align: left;
+            width: 100%;
+            position: relative;
+        }
+
+        .nav-tab::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 0;
+            background: var(--primary-accent);
+            border-radius: 2px;
+            transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .nav-tab.active {
+            background: rgba(0, 212, 255, 0.15);
+            color: var(--primary-accent);
+            box-shadow: var(--shadow-light);
+        }
+
+        .nav-tab.active::before {
+            height: 24px;
+        }
+
+        .nav-tab:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            transform: translateX(4px);
+        }
+
+        .nav-icon {
+            font-size: 18px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .top-bar {
+            position: fixed;
+            top: 0;
+            left: 280px;
+            right: 0;
+            height: 60px;
+            background: var(--secondary-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            z-index: 100;
+        }
+
+        .top-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .top-bar-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .system-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 0;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            position: relative;
+            animation: pulse-status 2s infinite;
+        }
+
+        .status-online {
+            background: var(--success-color);
+            box-shadow: 0 0 0 4px rgba(0, 184, 148, 0.2);
+        }
+
+        .status-offline {
+            background: var(--danger-color);
+            box-shadow: 0 0 0 4px rgba(231, 76, 60, 0.2);
+            animation: none;
+        }
+
+        .status-warning {
+            background: var(--warning-color);
+            box-shadow: 0 0 0 4px rgba(253, 203, 110, 0.2);
+        }
+
+        @keyframes pulse-status {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--gradient-accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .tab-content {
+            display: none;
+            padding-top: 84px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 24px;
+            border-radius: 16px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--primary-accent), transparent);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary-accent);
+            box-shadow: var(--shadow-light);
+        }
+
+        .stat-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: var(--text-primary);
+        }
+
+        .stat-number {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+            line-height: 1.2;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .stat-change {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 20px;
+        }
+
+        .stat-change.positive {
+            color: var(--success-color);
+            background: rgba(0, 184, 148, 0.15);
+        }
+
+        .stat-change.negative {
+            color: var(--danger-color);
+            background: rgba(231, 76, 60, 0.15);
+        }
+
+        .chart-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 24px;
+            border-radius: 16px;
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chart-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--secondary-accent), transparent);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .chart-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .chart-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chart-period {
+            padding: 6px 12px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .chart-period:hover,
+        .chart-period.active {
+            border-color: var(--primary-accent);
+            color: var(--primary-accent);
+            background: rgba(0, 212, 255, 0.1);
+        }
+
+        .verification-item {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .verification-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: var(--warning-color);
+            border-radius: 2px 0 0 2px;
+        }
+
+        .verification-item:hover {
+            border-color: var(--warning-color);
+            box-shadow: 0 8px 32px rgba(253, 203, 110, 0.15);
+        }
+
+        .verification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .food-info {
+            flex: 1;
+        }
+
+        .food-name {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+            line-height: 1.3;
+        }
+
+        .brand-name {
+            color: var(--text-secondary);
+            margin-bottom: 0;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .verification-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: rgba(253, 203, 110, 0.15);
+            color: var(--warning-color);
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .ingredients {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            padding: 16px;
+            border-radius: 12px;
+            margin: 16px 0;
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--text-secondary);
+            position: relative;
+        }
+
+        .ingredients::before {
+            content: 'EXTRACTED INGREDIENTS';
+            position: absolute;
+            top: -8px;
+            left: 12px;
+            background: var(--card-bg);
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 600;
+            padding: 0 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .ingredients-content {
+            margin-top: 8px;
+        }
+
+        .nutrition-data {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(108, 92, 231, 0.08);
+            border: 1px solid rgba(108, 92, 231, 0.2);
+            border-radius: 12px;
+            position: relative;
+        }
+
+        .nutrition-data::before {
+            content: 'NUTRITION FACTS (per 100g)';
+            position: absolute;
+            top: -8px;
+            left: 16px;
+            background: var(--card-bg);
+            color: var(--secondary-accent);
+            font-size: 10px;
+            font-weight: 600;
+            padding: 0 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .nutrition-item {
+            text-align: center;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .nutrition-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .nutrition-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .nutrition-value {
+            font-size: 16px;
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: 1px solid transparent;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-transform: none;
+            letter-spacing: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-approve {
+            background: linear-gradient(135deg, var(--success-color), #00a085);
+            color: white;
+            box-shadow: 0 4px 20px rgba(0, 184, 148, 0.3);
+        }
+
+        .btn-approve:hover {
+            box-shadow: 0 8px 32px rgba(0, 184, 148, 0.4);
+        }
+
+        .btn-reject {
+            background: linear-gradient(135deg, var(--danger-color), #c0392b);
+            color: white;
+            box-shadow: 0 4px 20px rgba(231, 76, 60, 0.3);
+        }
+
+        .btn-reject:hover {
+            box-shadow: 0 8px 32px rgba(231, 76, 60, 0.4);
+        }
+
+        .btn-primary {
+            background: var(--gradient-accent);
+            color: white;
+            box-shadow: var(--shadow-light);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border-color: var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--primary-accent);
+            color: var(--primary-accent);
+            background: rgba(0, 212, 255, 0.05);
+        }
+
+        .timestamp {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .timestamp::before {
+            content: '🕐';
+            font-size: 14px;
+        }
+
+        .alert {
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            border: 1px solid;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .alert-success {
+            background: rgba(0, 184, 148, 0.15);
+            color: var(--success-color);
+            border-color: rgba(0, 184, 148, 0.3);
+        }
+
+        .alert-success::before {
+            content: '✅';
+            font-size: 16px;
+        }
+
+        .alert-error {
+            background: rgba(231, 76, 60, 0.15);
+            color: var(--danger-color);
+            border-color: rgba(231, 76, 60, 0.3);
+        }
+
+        .alert-error::before {
+            content: '❌';
+            font-size: 16px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid var(--primary-accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            backdrop-filter: blur(10px);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideIn {
+            from { 
+                opacity: 0;
+                transform: translate(-50%, -60%);
+            }
+            to { 
+                opacity: 1;
+                transform: translate(-50%, -50%);
+            }
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 32px;
+            border-radius: 20px;
+            max-width: 520px;
+            width: 90%;
+            box-shadow: var(--shadow-dark);
+            animation: slideIn 0.3s ease;
+        }
+
+        .modal h3 {
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            font-size: 20px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .modal p {
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            resize: vertical;
+            min-height: 120px;
+            font-family: inherit;
+            font-size: 14px;
+            color: var(--text-primary);
+            line-height: 1.5;
+            transition: all 0.3s;
+        }
+
+        textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        textarea:focus {
+            border-color: var(--primary-accent);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+        }
+
+        .refresh-btn {
+            background: var(--gradient-accent);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-bottom: 24px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: var(--shadow-light);
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(0, 212, 255, 0.3);
+        }
+
+        .refresh-btn:active {
+            transform: translateY(0);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            font-size: 20px;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .api-endpoint {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            transition: all 0.3s;
+        }
+
+        .api-endpoint:hover {
+            border-color: var(--primary-accent);
+            background: rgba(0, 212, 255, 0.05);
+        }
+
+        .endpoint-name {
+            font-weight: 500;
+            color: var(--text-primary);
+            font-family: 'SF Mono', 'Monaco', monospace;
+            font-size: 13px;
+        }
+
+        .endpoint-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .response-time {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-family: 'SF Mono', 'Monaco', monospace;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 4px 8px;
+            border-radius: 6px;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .quick-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .quick-stat {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 16px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .quick-stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .quick-stat-info h4 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .quick-stat-info p {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin: 0;
+            font-weight: 500;
+        }
+
+        .metric-trend {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .trend-up {
+            color: var(--success-color);
+        }
+
+        .trend-down {
+            color: var(--danger-color);
+        }
+
+        @media (max-width: 1200px) {
+            .sidebar {
+                width: 240px;
+            }
+            .main-content {
+                margin-left: 240px;
+            }
+            .top-bar {
+                left: 240px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0;
+            }
+            .top-bar {
+                left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar Navigation -->
+        <div class="sidebar">
+            <div class="logo">
+                <div class="logo-icon">🍎</div>
+                <div class="logo-text">NutraSafe</div>
+            </div>
+            
+            <div class="nav-tabs">
+                <button class="nav-tab active" onclick="switchTab('overview')">
+                    <span class="nav-icon">📊</span>
+                    Overview
+                </button>
+                <button class="nav-tab" onclick="switchTab('verifications')">
+                    <span class="nav-icon">🔍</span>
+                    Food Verifications
+                </button>
+                <button class="nav-tab" onclick="switchTab('analytics')">
+                    <span class="nav-icon">📈</span>
+                    Analytics
+                </button>
+                <button class="nav-tab" onclick="switchTab('system')">
+                    <span class="nav-icon">⚙️</span>
+                    System Status
+                </button>
+            </div>
+        </div>
+
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div class="top-bar-left">
+                <div class="breadcrumb">
+                    <span>Dashboard</span>
+                    <span>›</span>
+                    <span id="current-section">Overview</span>
+                </div>
+            </div>
+            <div class="top-bar-right">
+                <div class="system-status">
+                    <div class="status-dot status-online"></div>
+                    <span style="color: var(--text-secondary); font-size: 12px; font-weight: 500;">System Online</span>
+                </div>
+                <div class="user-avatar">AD</div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div id="alerts"></div>
+
+            <!-- Overview Tab -->
+            <div id="overview" class="tab-content active">
+                <div class="section-header">
+                    <h2 class="section-title">Dashboard Overview</h2>
+                    <button class="btn btn-secondary" onclick="loadOverviewData()">
+                        <span>🔄</span>
+                        Refresh Data
+                    </button>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div>
+                                <div class="stat-label">Total Users</div>
+                                <div class="stat-number" id="total-users">Loading...</div>
+                                <div class="stat-change positive" id="users-change">
+                                    ↗️ +12.5%
+                                </div>
+                            </div>
+                            <div class="stat-icon" style="background: rgba(0, 184, 148, 0.15); color: var(--success-color);">👥</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div>
+                                <div class="stat-label">Active Users (30 days)</div>
+                                <div class="stat-number" id="active-users">Loading...</div>
+                                <div class="stat-change positive" id="active-change">
+                                    ↗️ +8.3%
+                                </div>
+                            </div>
+                            <div class="stat-icon" style="background: rgba(0, 212, 255, 0.15); color: var(--primary-accent);">🔥</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div>
+                                <div class="stat-label">Pending Verifications</div>
+                                <div class="stat-number" id="pending-count">Loading...</div>
+                                <div class="stat-change negative" id="pending-change">
+                                    ↘️ -15.2%
+                                </div>
+                            </div>
+                            <div class="stat-icon" style="background: rgba(253, 203, 110, 0.15); color: var(--warning-color);">⏳</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div>
+                                <div class="stat-label">Verified Foods</div>
+                                <div class="stat-number" id="total-verified">Loading...</div>
+                                <div class="stat-change positive" id="verified-change">
+                                    ↗️ +22.1%
+                                </div>
+                            </div>
+                            <div class="stat-icon" style="background: rgba(108, 92, 231, 0.15); color: var(--secondary-accent);">✅</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div>
+                                <div class="stat-label">API Calls Today</div>
+                                <div class="stat-number" id="api-calls-today">Loading...</div>
+                                <div class="stat-change positive" id="api-change">
+                                    ↗️ +5.7%
+                                </div>
+                            </div>
+                            <div class="stat-icon" style="background: rgba(255, 107, 107, 0.15); color: #ff6b6b;">🚀</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div>
+                                <div class="stat-label">System Uptime</div>
+                                <div class="stat-number" id="system-uptime">Loading...</div>
+                                <div class="stat-change positive">
+                                    ✨ Excellent
+                                </div>
+                            </div>
+                            <div class="stat-icon" style="background: rgba(0, 184, 148, 0.15); color: var(--success-color);">⚡</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <div class="chart-title">User Registration Trends</div>
+                        <div class="chart-actions">
+                            <button class="chart-period active">30D</button>
+                            <button class="chart-period">7D</button>
+                            <button class="chart-period">24H</button>
+                        </div>
+                    </div>
+                    <canvas id="userGrowthChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+
+            <!-- Food Verifications Tab -->
+            <div id="verifications" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Food Verifications</h2>
+                    <button class="refresh-btn" onclick="loadPendingVerifications()">
+                        <span>🔄</span>
+                        Refresh Verifications
+                    </button>
+                </div>
+                
+                <div id="verification-loading" class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>Loading pending verifications...</p>
+                </div>
+
+                <div id="verifications-list"></div>
+            </div>
+
+            <!-- Analytics Tab -->
+            <div id="analytics" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Analytics & Insights</h2>
+                    <button class="btn btn-secondary" onclick="loadAnalytics()">
+                        <span>📊</span>
+                        Update Charts
+                    </button>
+                </div>
+                
+                <div class="quick-stats">
+                    <div class="quick-stat">
+                        <div class="quick-stat-icon" style="background: rgba(0, 184, 148, 0.15); color: var(--success-color);">📱</div>
+                        <div class="quick-stat-info">
+                            <h4>68,429</h4>
+                            <p>Total Scans</p>
+                            <div class="metric-trend trend-up">↗️ +12.3%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="quick-stat">
+                        <div class="quick-stat-icon" style="background: rgba(0, 212, 255, 0.15); color: var(--primary-accent);">🔍</div>
+                        <div class="quick-stat-info">
+                            <h4>45,821</h4>
+                            <p>Searches</p>
+                            <div class="metric-trend trend-up">↗️ +8.7%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="quick-stat">
+                        <div class="quick-stat-icon" style="background: rgba(253, 203, 110, 0.15); color: var(--warning-color);">🤖</div>
+                        <div class="quick-stat-info">
+                            <h4>12,847</h4>
+                            <p>AI Analyses</p>
+                            <div class="metric-trend trend-up">↗️ +23.1%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="quick-stat">
+                        <div class="quick-stat-icon" style="background: rgba(108, 92, 231, 0.15); color: var(--secondary-accent);">⚡</div>
+                        <div class="quick-stat-info">
+                            <h4>98.7%</h4>
+                            <p>Accuracy</p>
+                            <div class="metric-trend trend-up">↗️ +0.3%</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <div class="chart-title">API Usage Analytics</div>
+                        <div class="chart-actions">
+                            <button class="chart-period active">7D</button>
+                            <button class="chart-period">30D</button>
+                            <button class="chart-period">90D</button>
+                        </div>
+                    </div>
+                    <canvas id="apiUsageChart" width="400" height="200"></canvas>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <div class="chart-title">Scanner Usage Distribution</div>
+                        </div>
+                        <canvas id="scannerUsageChart" width="400" height="300"></canvas>
+                    </div>
+
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <div class="chart-title">Top Food Categories</div>
+                        </div>
+                        <canvas id="categoryChart" width="400" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Status Tab -->
+            <div id="system" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">System Health</h2>
+                    <button class="btn btn-secondary" onclick="checkSystemStatus()">
+                        <span>🔄</span>
+                        Check Status
+                    </button>
+                </div>
+                
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <div class="chart-title">API Endpoints Health</div>
+                        <div class="system-status">
+                            <div class="status-dot status-online"></div>
+                            <span style="color: var(--success-color); font-weight: 600; font-size: 12px;">All Systems Operational</span>
+                        </div>
+                    </div>
+                    
+                    <div id="api-endpoints">
+                        <div class="api-endpoint">
+                            <div class="endpoint-name">/getPendingVerifications</div>
+                            <div class="endpoint-status">
+                                <div class="status-dot status-online"></div>
+                                <span class="response-time" id="endpoint-pending">Checking...</span>
+                            </div>
+                        </div>
+                        <div class="api-endpoint">
+                            <div class="endpoint-name">/approveVerification</div>
+                            <div class="endpoint-status">
+                                <div class="status-dot status-online"></div>
+                                <span class="response-time" id="endpoint-approve">Checking...</span>
+                            </div>
+                        </div>
+                        <div class="api-endpoint">
+                            <div class="endpoint-name">/rejectVerification</div>
+                            <div class="endpoint-status">
+                                <div class="status-dot status-online"></div>
+                                <span class="response-time" id="endpoint-reject">Checking...</span>
+                            </div>
+                        </div>
+                        <div class="api-endpoint">
+                            <div class="endpoint-name">/processIngredientImage</div>
+                            <div class="endpoint-status">
+                                <div class="status-dot status-online"></div>
+                                <span class="response-time" id="endpoint-process">Checking...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div>
+                                <div class="stat-label">Database Documents</div>
+                                <div class="stat-number" id="database-size">Loading...</div>
+                                <div class="stat-change positive">
+                                    📈 Growing
+                                </div>
+                            </div>
+                            <div class="stat-icon" style="background: rgba(108, 92, 231, 0.15); color: var(--secondary-accent);">🗂️</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div>
+                                <div class="stat-label">Storage Usage (MB)</div>
+                                <div class="stat-number" id="storage-usage">Loading...</div>
+                                <div class="stat-change positive">
+                                    ✅ Optimal
+                                </div>
+                            </div>
+                            <div class="stat-icon" style="background: rgba(0, 212, 255, 0.15); color: var(--primary-accent);">💾</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div>
+                                <div class="stat-label">Function Executions Today</div>
+                                <div class="stat-number" id="function-executions">Loading...</div>
+                                <div class="stat-change positive">
+                                    🚀 Active
+                                </div>
+                            </div>
+                            <div class="stat-icon" style="background: rgba(0, 184, 148, 0.15); color: var(--success-color);">⚡</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div>
+                                <div class="stat-label">Error Rate (%)</div>
+                                <div class="stat-number" id="error-rate">Loading...</div>
+                                <div class="stat-change positive">
+                                    ✨ Excellent
+                                </div>
+                            </div>
+                            <div class="stat-icon" style="background: rgba(0, 184, 148, 0.15); color: var(--success-color);">🎯</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="approvalModal" class="modal">
+        <div class="modal-content">
+            <h3>✅ Approve Verification</h3>
+            <p>Add any admin notes (optional):</p>
+            <textarea id="approvalNotes" placeholder="Add notes about this verification..."></textarea>
+            <div style="margin-top: 20px; display: flex; gap: 15px;">
+                <button class="btn btn-approve" onclick="confirmApproval()">Approve & Add to Database</button>
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="rejectionModal" class="modal">
+        <div class="modal-content">
+            <h3>❌ Reject Verification</h3>
+            <p>Reason for rejection (required):</p>
+            <textarea id="rejectionReason" placeholder="Why is this verification being rejected?"></textarea>
+            <div style="margin-top: 20px; display: flex; gap: 15px;">
+                <button class="btn btn-reject" onclick="confirmRejection()">Reject Verification</button>
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://us-central1-nutrasafe-705c7.cloudfunctions.net';
+        let currentVerificationId = null;
+        let charts = {};
+
+        // Tab switching
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all nav tabs
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+            
+            // Update breadcrumb
+            const sectionNames = {
+                'overview': 'Overview',
+                'verifications': 'Food Verifications',
+                'analytics': 'Analytics',
+                'system': 'System Status'
+            };
+            document.getElementById('current-section').textContent = sectionNames[tabName];
+            
+            // Load data for specific tabs
+            if (tabName === 'verifications') {
+                loadPendingVerifications();
+            } else if (tabName === 'analytics') {
+                loadAnalytics();
+            } else if (tabName === 'system') {
+                checkSystemStatus();
+            }
+        }
+
+        // Load overview data
+        async function loadOverviewData() {
+            try {
+                // Load pending verifications count
+                const pendingResponse = await fetch(`${API_BASE}/getPendingVerifications`);
+                const pendingData = await pendingResponse.json();
+                
+                if (pendingData.success) {
+                    document.getElementById('pending-count').textContent = pendingData.count || 0;
+                }
+
+                // Simulate other stats (replace with real Firebase Analytics when available)
+                document.getElementById('total-users').textContent = '1,247';
+                document.getElementById('active-users').textContent = '892';
+                document.getElementById('total-verified').textContent = '3,456';
+                document.getElementById('api-calls-today').textContent = '12,843';
+                document.getElementById('system-uptime').textContent = '99.9%';
+                
+                // Add loading animation
+                document.querySelectorAll('.stat-number').forEach(el => {
+                    if (el.textContent !== 'Loading...') {
+                        el.style.opacity = '0';
+                        setTimeout(() => {
+                            el.style.opacity = '1';
+                            el.style.transition = 'opacity 0.5s ease';
+                        }, Math.random() * 500);
+                    }
+                });
+
+                // Create user growth chart with realistic data
+                createUserGrowthChart();
+                
+            } catch (error) {
+                console.error('Error loading overview data:', error);
+                showAlert('Error loading dashboard data: ' + error.message, 'error');
+            }
+        }
+
+        // Load pending verifications
+        async function loadPendingVerifications() {
+            const loadingEl = document.getElementById('verification-loading');
+            const listEl = document.getElementById('verifications-list');
+            
+            loadingEl.style.display = 'block';
+            listEl.innerHTML = '';
+
+            try {
+                const response = await fetch(`${API_BASE}/getPendingVerifications`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const sortedVerifications = data.pendingVerifications.sort((a, b) => 
+                        new Date(b.submittedAt) - new Date(a.submittedAt)
+                    );
+                    displayVerifications(sortedVerifications);
+                } else {
+                    showAlert('Error loading verifications: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Network error: ' + error.message, 'error');
+            } finally {
+                loadingEl.style.display = 'none';
+            }
+        }
+
+        function displayVerifications(verifications) {
+            const listEl = document.getElementById('verifications-list');
+            
+            if (verifications.length === 0) {
+                listEl.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🎉</div>
+                        <h3>All caught up!</h3>
+                        <p>No pending verifications at the moment.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            listEl.innerHTML = verifications.map(verification => `
+                <div class="verification-item">
+                    <div class="verification-header">
+                        <div class="food-info">
+                            <div class="food-name">${verification.foodName}</div>
+                            ${verification.brandName ? `<div class="brand-name">Brand: ${verification.brandName}</div>` : ''}
+                        </div>
+                        <div class="verification-status">
+                            ⏳ PENDING
+                        </div>
+                    </div>
+                    
+                    <div class="ingredients">
+                        <div class="ingredients-content">${verification.extractedIngredients}</div>
+                    </div>
+                    
+                    <div class="nutrition-data">
+                        <div class="nutrition-item">
+                            <div class="nutrition-label">Calories</div>
+                            <div class="nutrition-value">${Math.round(verification.nutritionData.calories)}</div>
+                        </div>
+                        <div class="nutrition-item">
+                            <div class="nutrition-label">Protein</div>
+                            <div class="nutrition-value">${verification.nutritionData.protein.toFixed(1)}g</div>
+                        </div>
+                        <div class="nutrition-item">
+                            <div class="nutrition-label">Carbs</div>
+                            <div class="nutrition-value">${verification.nutritionData.carbs.toFixed(1)}g</div>
+                        </div>
+                        <div class="nutrition-item">
+                            <div class="nutrition-label">Fat</div>
+                            <div class="nutrition-value">${verification.nutritionData.fat.toFixed(1)}g</div>
+                        </div>
+                        <div class="nutrition-item">
+                            <div class="nutrition-label">Fiber</div>
+                            <div class="nutrition-value">${verification.nutritionData.fiber.toFixed(1)}g</div>
+                        </div>
+                        <div class="nutrition-item">
+                            <div class="nutrition-label">Sugar</div>
+                            <div class="nutrition-value">${verification.nutritionData.sugar.toFixed(1)}g</div>
+                        </div>
+                        <div class="nutrition-item">
+                            <div class="nutrition-label">Sodium</div>
+                            <div class="nutrition-value">${verification.nutritionData.sodium.toFixed(0)}mg</div>
+                        </div>
+                    </div>
+
+                    <div class="actions">
+                        <button class="btn btn-approve" onclick="approveVerification('${verification.id}')">
+                            <span>✅</span>
+                            Approve & Add to Database
+                        </button>
+                        <button class="btn btn-reject" onclick="rejectVerification('${verification.id}')">
+                            <span>❌</span>
+                            Reject Verification
+                        </button>
+                    </div>
+
+                    <div class="timestamp">
+                        Submitted: ${new Date(verification.submittedAt).toLocaleString()}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Verification actions
+        function approveVerification(verificationId) {
+            currentVerificationId = verificationId;
+            document.getElementById('approvalModal').style.display = 'block';
+            document.getElementById('approvalNotes').value = '';
+        }
+
+        function rejectVerification(verificationId) {
+            currentVerificationId = verificationId;
+            document.getElementById('rejectionModal').style.display = 'block';
+            document.getElementById('rejectionReason').value = '';
+        }
+
+        async function confirmApproval() {
+            const notes = document.getElementById('approvalNotes').value;
+            
+            try {
+                const response = await fetch(`${API_BASE}/approveVerification`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        verificationId: currentVerificationId,
+                        adminNotes: notes
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('✅ Verification approved and added to database!', 'success');
+                    closeModal();
+                    loadPendingVerifications();
+                    loadOverviewData(); // Refresh counts
+                } else {
+                    showAlert('Error approving verification: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Network error: ' + error.message, 'error');
+            }
+        }
+
+        async function confirmRejection() {
+            const reason = document.getElementById('rejectionReason').value;
+            
+            if (!reason.trim()) {
+                showAlert('Please provide a reason for rejection', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/rejectVerification`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        verificationId: currentVerificationId,
+                        rejectionReason: reason
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('❌ Verification rejected', 'success');
+                    closeModal();
+                    loadPendingVerifications();
+                    loadOverviewData(); // Refresh counts
+                } else {
+                    showAlert('Error rejecting verification: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Network error: ' + error.message, 'error');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('approvalModal').style.display = 'none';
+            document.getElementById('rejectionModal').style.display = 'none';
+            currentVerificationId = null;
+        }
+
+        // Analytics
+        function loadAnalytics() {
+            createApiUsageChart();
+            createScannerUsageChart();
+            createCategoryChart();
+        }
+
+        function createUserGrowthChart() {
+            const ctx = document.getElementById('userGrowthChart').getContext('2d');
+            
+            // Generate realistic data for last 30 days
+            const dates = [];
+            const users = [];
+            let baseUsers = 1200;
+            
+            for (let i = 29; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                dates.push(date.toLocaleDateString());
+                
+                // Simulate growth with some randomness
+                baseUsers += Math.floor(Math.random() * 10) + 1;
+                users.push(baseUsers);
+            }
+            
+            if (charts.userGrowth) {
+                charts.userGrowth.destroy();
+            }
+            
+            charts.userGrowth = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: 'Total Users',
+                        data: users,
+                        borderColor: '#00d4ff',
+                        backgroundColor: 'rgba(0, 212, 255, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#a0a6b8'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: '#a0a6b8'
+                            },
+                            grid: {
+                                color: '#2d3748'
+                            }
+                        },
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                color: '#a0a6b8'
+                            },
+                            grid: {
+                                color: '#2d3748'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createApiUsageChart() {
+            const ctx = document.getElementById('apiUsageChart').getContext('2d');
+            
+            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const apiCalls = [8420, 9150, 7890, 10200, 11580, 9870, 8960];
+            
+            if (charts.apiUsage) {
+                charts.apiUsage.destroy();
+            }
+            
+            charts.apiUsage = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: days,
+                    datasets: [{
+                        label: 'API Calls',
+                        data: apiCalls,
+                        backgroundColor: 'rgba(0, 212, 255, 0.8)',
+                        borderColor: '#00d4ff',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#a0a6b8'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: '#a0a6b8'
+                            },
+                            grid: {
+                                color: '#2d3748'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#a0a6b8'
+                            },
+                            grid: {
+                                color: '#2d3748'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createScannerUsageChart() {
+            const ctx = document.getElementById('scannerUsageChart').getContext('2d');
+            
+            if (charts.scannerUsage) {
+                charts.scannerUsage.destroy();
+            }
+            
+            charts.scannerUsage = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Barcode Scanner', 'AI Scanner', 'Manual Search'],
+                    datasets: [{
+                        data: [45, 35, 20],
+                        backgroundColor: ['#00b894', '#fdcb6e', '#00d4ff'],
+                        borderWidth: 2,
+                        borderColor: '#252b3d'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#a0a6b8',
+                                padding: 20
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createCategoryChart() {
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            
+            const categories = ['Snacks', 'Beverages', 'Dairy', 'Meat', 'Vegetables', 'Grains'];
+            const counts = [1250, 980, 760, 650, 580, 420];
+            
+            if (charts.category) {
+                charts.category.destroy();
+            }
+            
+            charts.category = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: categories,
+                    datasets: [{
+                        label: 'Scans',
+                        data: counts,
+                        backgroundColor: 'rgba(108, 92, 231, 0.8)',
+                        borderColor: '#6c5ce7',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#a0a6b8'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#a0a6b8'
+                            },
+                            grid: {
+                                color: '#2d3748'
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                color: '#a0a6b8'
+                            },
+                            grid: {
+                                color: '#2d3748'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // System status
+        async function checkSystemStatus() {
+            const endpoints = ['getPendingVerifications', 'approveVerification', 'rejectVerification', 'processIngredientImage'];
+            
+            for (const endpoint of endpoints) {
+                const startTime = Date.now();
+                try {
+                    const response = await fetch(`${API_BASE}/${endpoint}`, {
+                        method: endpoint === 'getPendingVerifications' ? 'GET' : 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: endpoint !== 'getPendingVerifications' ? JSON.stringify({}) : undefined
+                    });
+                    
+                    const responseTime = Date.now() - startTime;
+                    const elementId = endpoint.replace('Verification', '').replace('Ingredient', '').replace('get', '').replace('Pending', 'pending').replace('approve', 'approve').replace('reject', 'reject').replace('process', 'process').replace('Image', '');
+                    document.getElementById(`endpoint-${elementId}`).textContent = `${responseTime}ms`;
+                } catch (error) {
+                    console.error(`Error checking ${endpoint}:`, error);
+                }
+            }
+
+            // Simulate system stats
+            document.getElementById('database-size').textContent = '15,247';
+            document.getElementById('storage-usage').textContent = '2,456';
+            document.getElementById('function-executions').textContent = '48,392';
+            document.getElementById('error-rate').textContent = '0.12';
+        }
+
+        function showAlert(message, type) {
+            const alertsEl = document.getElementById('alerts');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            
+            alertsEl.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+
+        // Event listeners
+        window.onclick = function(event) {
+            const approvalModal = document.getElementById('approvalModal');
+            const rejectionModal = document.getElementById('rejectionModal');
+            
+            if (event.target === approvalModal) {
+                approvalModal.style.display = 'none';
+            }
+            if (event.target === rejectionModal) {
+                rejectionModal.style.display = 'none';
+            }
+        }
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadOverviewData();
+        });
+    </script>
+</body>
+</html>

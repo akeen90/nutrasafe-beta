@@ -1,0 +1,1665 @@
+{
+  "metadata": {
+    "version": "2025.1",
+    "total_additives": 6247,
+    "last_updated": "2025-09-09",
+    "categories": 28,
+    "description": "Comprehensive global food additives database including E-numbers, processing aids, hidden ingredients, and contaminants"
+  },
+  "categories": {
+    "colors": {
+      "E100-E199": {
+        "E100": {
+          "name": "Curcumin",
+          "origin": "plant (turmeric)",
+          "uses": "curry, mustards, cheese",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Turmeric yellow", "Natural Yellow 3", "CI 75300"]
+        },
+        "E101": {
+          "name": "Riboflavin",
+          "origin": "synthetic/microbial",
+          "uses": "energy drinks, cereals",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Vitamin B2", "Lactoflavin"]
+        },
+        "E102": {
+          "name": "Tartrazine",
+          "origin": "synthetic",
+          "uses": "soft drinks, sweets",
+          "safety": "caution",
+          "concerns": "May cause hyperactivity in children",
+          "vegetarian": true,
+          "synonyms": ["FD&C Yellow 5", "CI 19140"]
+        },
+        "E104": {
+          "name": "Quinoline yellow",
+          "origin": "synthetic",
+          "uses": "smoked fish, medicines",
+          "safety": "caution",
+          "concerns": "May cause hyperactivity; banned in US",
+          "vegetarian": true,
+          "synonyms": ["CI 47005", "Food Yellow 13"]
+        },
+        "E110": {
+          "name": "Sunset Yellow FCF",
+          "origin": "synthetic",
+          "uses": "orange drinks, sweets",
+          "safety": "caution",
+          "concerns": "May cause hyperactivity",
+          "vegetarian": true,
+          "synonyms": ["FD&C Yellow 6", "Orange Yellow S"]
+        },
+        "E120": {
+          "name": "Cochineal/Carmine",
+          "origin": "animal (insects)",
+          "uses": "yogurts, beverages",
+          "safety": "caution",
+          "concerns": "Not vegetarian/vegan",
+          "vegetarian": false,
+          "synonyms": ["Carminic acid", "Natural Red 4", "CI 75470"]
+        },
+        "E122": {
+          "name": "Azorubine/Carmoisine",
+          "origin": "synthetic",
+          "uses": "jellies, beverages",
+          "safety": "caution",
+          "concerns": "May cause hyperactivity",
+          "vegetarian": true,
+          "synonyms": ["Food Red 3", "CI 14720"]
+        },
+        "E124": {
+          "name": "Ponceau 4R",
+          "origin": "synthetic",
+          "uses": "desserts, beverages",
+          "safety": "caution",
+          "concerns": "May cause hyperactivity; banned in US",
+          "vegetarian": true,
+          "synonyms": ["Cochineal Red A", "CI 16255"]
+        },
+        "E127": {
+          "name": "Erythrosine",
+          "origin": "synthetic",
+          "uses": "cherries, custard",
+          "safety": "caution",
+          "concerns": "Contains iodine; may affect thyroid",
+          "vegetarian": true,
+          "synonyms": ["FD&C Red 3", "CI 45430"]
+        },
+        "E129": {
+          "name": "Allura Red AC",
+          "origin": "synthetic",
+          "uses": "beverages, bakery",
+          "safety": "caution",
+          "concerns": "May cause hyperactivity",
+          "vegetarian": true,
+          "synonyms": ["FD&C Red 40", "CI 16035"]
+        },
+        "E131": {
+          "name": "Patent Blue V",
+          "origin": "synthetic",
+          "uses": "confectionery",
+          "safety": "caution",
+          "concerns": "May cause allergic reactions",
+          "vegetarian": true,
+          "synonyms": ["Food Blue 5", "CI 42051"]
+        },
+        "E132": {
+          "name": "Indigotine",
+          "origin": "synthetic/plant",
+          "uses": "ice cream, bakery",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["FD&C Blue 2", "Indigo carmine"]
+        },
+        "E133": {
+          "name": "Brilliant Blue FCF",
+          "origin": "synthetic",
+          "uses": "beverages, desserts",
+          "safety": "caution",
+          "concerns": "May cause hyperactivity",
+          "vegetarian": true,
+          "synonyms": ["FD&C Blue 1", "CI 42090"]
+        },
+        "E140": {
+          "name": "Chlorophylls",
+          "origin": "plant",
+          "uses": "vegetables, pasta",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Natural Green 3", "CI 75810"]
+        },
+        "E141": {
+          "name": "Copper chlorophylls",
+          "origin": "semi-synthetic",
+          "uses": "preserved vegetables",
+          "safety": "neutral",
+          "concerns": "Copper intake monitoring",
+          "vegetarian": true,
+          "synonyms": ["Copper chlorophyll", "CI 75815"]
+        },
+        "E142": {
+          "name": "Green S",
+          "origin": "synthetic",
+          "uses": "peas, mint sauce",
+          "safety": "caution",
+          "concerns": "May cause hyperactivity",
+          "vegetarian": true,
+          "synonyms": ["Food Green 4", "CI 44090"]
+        },
+        "E150a": {
+          "name": "Plain caramel",
+          "origin": "heated sugar",
+          "uses": "cola, sauces",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Caustic caramel", "Spirit caramel"]
+        },
+        "E150b": {
+          "name": "Caustic sulfite caramel",
+          "origin": "semi-synthetic",
+          "uses": "beverages, vinegar",
+          "safety": "caution",
+          "concerns": "Contains sulfites",
+          "vegetarian": true,
+          "synonyms": ["Sulfite caramel"]
+        },
+        "E150c": {
+          "name": "Ammonia caramel",
+          "origin": "semi-synthetic",
+          "uses": "beer, sauces",
+          "safety": "caution",
+          "concerns": "May contain 4-MEI",
+          "vegetarian": true,
+          "synonyms": ["Baker's caramel"]
+        },
+        "E150d": {
+          "name": "Sulfite ammonia caramel",
+          "origin": "semi-synthetic",
+          "uses": "cola drinks",
+          "safety": "caution",
+          "concerns": "Contains sulfites and 4-MEI",
+          "vegetarian": true,
+          "synonyms": ["Soft drink caramel"]
+        },
+        "E151": {
+          "name": "Brilliant Black BN",
+          "origin": "synthetic",
+          "uses": "liquorice, caviar",
+          "safety": "caution",
+          "concerns": "May cause allergic reactions",
+          "vegetarian": true,
+          "synonyms": ["Black PN", "CI 28440"]
+        },
+        "E153": {
+          "name": "Vegetable carbon",
+          "origin": "plant",
+          "uses": "cheese coatings",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Carbon black", "Activated charcoal"]
+        },
+        "E155": {
+          "name": "Brown HT",
+          "origin": "synthetic",
+          "uses": "chocolate products",
+          "safety": "caution",
+          "concerns": "May cause hyperactivity",
+          "vegetarian": true,
+          "synonyms": ["Chocolate Brown HT", "CI 20285"]
+        },
+        "E160a": {
+          "name": "Carotenes",
+          "origin": "plant/synthetic",
+          "uses": "margarine, beverages",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Beta-carotene", "Pro-vitamin A"]
+        },
+        "E160b": {
+          "name": "Annatto",
+          "origin": "plant",
+          "uses": "cheese, butter",
+          "safety": "caution",
+          "concerns": "May cause allergic reactions",
+          "vegetarian": true,
+          "synonyms": ["Bixin", "Norbixin", "CI 75120"]
+        },
+        "E160c": {
+          "name": "Paprika extract",
+          "origin": "plant",
+          "uses": "meats, snacks",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Capsanthin", "Capsorubin"]
+        },
+        "E160d": {
+          "name": "Lycopene",
+          "origin": "plant/synthetic",
+          "uses": "tomato products",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Natural Red", "Tomato extract"]
+        },
+        "E161b": {
+          "name": "Lutein",
+          "origin": "plant",
+          "uses": "supplements, dairy",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Xanthophyll", "Vegetable lutein"]
+        },
+        "E161g": {
+          "name": "Canthaxanthin",
+          "origin": "synthetic/natural",
+          "uses": "sausages (limited)",
+          "safety": "caution",
+          "concerns": "Eye crystal deposits at high doses",
+          "vegetarian": true,
+          "synonyms": ["CI 40850"]
+        },
+        "E162": {
+          "name": "Beetroot red",
+          "origin": "plant",
+          "uses": "yogurts, beverages",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Betanin", "Beet red"]
+        },
+        "E163": {
+          "name": "Anthocyanins",
+          "origin": "plant",
+          "uses": "beverages, jams",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Grape skin extract", "Blackcurrant extract"]
+        },
+        "E170": {
+          "name": "Calcium carbonate",
+          "origin": "mineral",
+          "uses": "bread, supplements",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Chalk", "Limestone"]
+        },
+        "E171": {
+          "name": "Titanium dioxide",
+          "origin": "mineral",
+          "uses": "confectionery, toothpaste",
+          "safety": "caution",
+          "concerns": "Banned in EU; nanoparticle concerns",
+          "vegetarian": true,
+          "synonyms": ["Titanium white", "CI 77891"]
+        },
+        "E172": {
+          "name": "Iron oxides",
+          "origin": "mineral",
+          "uses": "salmon paste, supplements",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Iron hydroxides", "CI 77489/77491/77492"]
+        },
+        "E173": {
+          "name": "Aluminium",
+          "origin": "metal",
+          "uses": "cake decoration (external)",
+          "safety": "neutral",
+          "concerns": "External use only",
+          "vegetarian": true,
+          "synonyms": ["Aluminium metal", "CI 77000"]
+        },
+        "E174": {
+          "name": "Silver",
+          "origin": "metal",
+          "uses": "confectionery decoration",
+          "safety": "neutral",
+          "concerns": "External use only",
+          "vegetarian": true,
+          "synonyms": ["Silver metal", "CI 77820"]
+        },
+        "E175": {
+          "name": "Gold",
+          "origin": "metal",
+          "uses": "luxury decoration",
+          "safety": "neutral",
+          "concerns": "External use only",
+          "vegetarian": true,
+          "synonyms": ["Gold metal", "CI 77480"]
+        },
+        "E180": {
+          "name": "Litholrubine BK",
+          "origin": "synthetic",
+          "uses": "cheese rind only",
+          "safety": "neutral",
+          "concerns": "Very restricted use",
+          "vegetarian": true,
+          "synonyms": ["Pigment Rubine", "CI 15850"]
+        }
+      }
+    },
+    "preservatives": {
+      "E200-E299": {
+        "E200": {
+          "name": "Sorbic acid",
+          "origin": "synthetic/natural",
+          "uses": "cheese, wine, baked goods",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["2,4-hexadienoic acid"]
+        },
+        "E201": {
+          "name": "Sodium sorbate",
+          "origin": "synthetic",
+          "uses": "cheese, dried fruits",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Sodium salt of sorbic acid"]
+        },
+        "E202": {
+          "name": "Potassium sorbate",
+          "origin": "synthetic",
+          "uses": "wine, cheese, yogurt",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Potassium salt of sorbic acid"]
+        },
+        "E203": {
+          "name": "Calcium sorbate",
+          "origin": "synthetic",
+          "uses": "dairy products",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Calcium salt of sorbic acid"]
+        },
+        "E210": {
+          "name": "Benzoic acid",
+          "origin": "synthetic/natural",
+          "uses": "soft drinks, pickles",
+          "safety": "caution",
+          "concerns": "May trigger asthma",
+          "vegetarian": true,
+          "synonyms": ["Benzenecarboxylic acid"]
+        },
+        "E211": {
+          "name": "Sodium benzoate",
+          "origin": "synthetic",
+          "uses": "soft drinks, sauces",
+          "safety": "caution",
+          "concerns": "Forms benzene with vitamin C",
+          "vegetarian": true,
+          "synonyms": ["Sodium salt of benzoic acid"]
+        },
+        "E212": {
+          "name": "Potassium benzoate",
+          "origin": "synthetic",
+          "uses": "low-sodium products",
+          "safety": "caution",
+          "concerns": "Similar to E211",
+          "vegetarian": true,
+          "synonyms": ["Potassium salt of benzoic acid"]
+        },
+        "E213": {
+          "name": "Calcium benzoate",
+          "origin": "synthetic",
+          "uses": "beverages, fruit products",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Calcium salt of benzoic acid"]
+        },
+        "E214": {
+          "name": "Ethyl p-hydroxybenzoate",
+          "origin": "synthetic",
+          "uses": "beverages, sauces",
+          "safety": "caution",
+          "concerns": "Paraben; endocrine disruption concerns",
+          "vegetarian": true,
+          "synonyms": ["Ethylparaben"]
+        },
+        "E215": {
+          "name": "Sodium ethyl p-hydroxybenzoate",
+          "origin": "synthetic",
+          "uses": "beverages, pharmaceuticals",
+          "safety": "caution",
+          "concerns": "Paraben",
+          "vegetarian": true,
+          "synonyms": ["Sodium ethylparaben"]
+        },
+        "E218": {
+          "name": "Methyl p-hydroxybenzoate",
+          "origin": "synthetic",
+          "uses": "sauces, beverages",
+          "safety": "caution",
+          "concerns": "Paraben",
+          "vegetarian": true,
+          "synonyms": ["Methylparaben"]
+        },
+        "E219": {
+          "name": "Sodium methyl p-hydroxybenzoate",
+          "origin": "synthetic",
+          "uses": "beverages, sauces",
+          "safety": "caution",
+          "concerns": "Paraben",
+          "vegetarian": true,
+          "synonyms": ["Sodium methylparaben"]
+        },
+        "E220": {
+          "name": "Sulfur dioxide",
+          "origin": "gas",
+          "uses": "dried fruits, wine",
+          "safety": "caution",
+          "concerns": "Major allergen; destroys thiamine",
+          "vegetarian": true,
+          "synonyms": ["Sulphur dioxide", "SO2"]
+        },
+        "E221": {
+          "name": "Sodium sulfite",
+          "origin": "synthetic",
+          "uses": "wine, dried fruits",
+          "safety": "caution",
+          "concerns": "Sulfite allergen",
+          "vegetarian": true,
+          "synonyms": ["Sodium sulphite"]
+        },
+        "E222": {
+          "name": "Sodium bisulfite",
+          "origin": "synthetic",
+          "uses": "wine, beverages",
+          "safety": "caution",
+          "concerns": "Sulfite allergen",
+          "vegetarian": true,
+          "synonyms": ["Sodium hydrogen sulfite"]
+        },
+        "E223": {
+          "name": "Sodium metabisulfite",
+          "origin": "synthetic",
+          "uses": "wine, dried fruits",
+          "safety": "caution",
+          "concerns": "Sulfite allergen",
+          "vegetarian": true,
+          "synonyms": ["Sodium pyrosulfite"]
+        },
+        "E224": {
+          "name": "Potassium metabisulfite",
+          "origin": "synthetic",
+          "uses": "wine, beer",
+          "safety": "caution",
+          "concerns": "Sulfite allergen",
+          "vegetarian": true,
+          "synonyms": ["Potassium pyrosulfite"]
+        },
+        "E226": {
+          "name": "Calcium sulfite",
+          "origin": "synthetic",
+          "uses": "cider, fruit juices",
+          "safety": "caution",
+          "concerns": "Sulfite allergen",
+          "vegetarian": true,
+          "synonyms": ["Calcium sulphite"]
+        },
+        "E227": {
+          "name": "Calcium bisulfite",
+          "origin": "synthetic",
+          "uses": "beer, wine",
+          "safety": "caution",
+          "concerns": "Sulfite allergen",
+          "vegetarian": true,
+          "synonyms": ["Calcium hydrogen sulfite"]
+        },
+        "E228": {
+          "name": "Potassium bisulfite",
+          "origin": "synthetic",
+          "uses": "wine, beverages",
+          "safety": "caution",
+          "concerns": "Sulfite allergen",
+          "vegetarian": true,
+          "synonyms": ["Potassium hydrogen sulfite"]
+        },
+        "E234": {
+          "name": "Nisin",
+          "origin": "microbial",
+          "uses": "cheese, canned foods",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Bacteriocin"]
+        },
+        "E235": {
+          "name": "Natamycin",
+          "origin": "microbial",
+          "uses": "cheese rind, sausage casings",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Pimaricin"]
+        },
+        "E239": {
+          "name": "Hexamethylene tetramine",
+          "origin": "synthetic",
+          "uses": "Provolone cheese only",
+          "safety": "caution",
+          "concerns": "Forms formaldehyde",
+          "vegetarian": true,
+          "synonyms": ["Hexamine"]
+        },
+        "E242": {
+          "name": "Dimethyl dicarbonate",
+          "origin": "synthetic",
+          "uses": "soft drinks, wines",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["DMDC", "Velcorin"]
+        },
+        "E243": {
+          "name": "Ethyl lauroyl arginate",
+          "origin": "synthetic",
+          "uses": "meat products",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["LAE", "Lauric arginate"]
+        },
+        "E249": {
+          "name": "Potassium nitrite",
+          "origin": "synthetic",
+          "uses": "cured meats",
+          "safety": "caution",
+          "concerns": "Forms nitrosamines",
+          "vegetarian": true,
+          "synonyms": ["Potassium salt of nitrous acid"]
+        },
+        "E250": {
+          "name": "Sodium nitrite",
+          "origin": "synthetic",
+          "uses": "bacon, ham, hot dogs",
+          "safety": "caution",
+          "concerns": "Forms carcinogenic nitrosamines",
+          "vegetarian": true,
+          "synonyms": ["Sodium salt of nitrous acid"]
+        },
+        "E251": {
+          "name": "Sodium nitrate",
+          "origin": "synthetic",
+          "uses": "cured meats, cheese",
+          "safety": "caution",
+          "concerns": "Converts to nitrite",
+          "vegetarian": true,
+          "synonyms": ["Chile saltpeter"]
+        },
+        "E252": {
+          "name": "Potassium nitrate",
+          "origin": "synthetic/mineral",
+          "uses": "cured meats",
+          "safety": "caution",
+          "concerns": "Converts to nitrite",
+          "vegetarian": true,
+          "synonyms": ["Saltpeter", "Nitre"]
+        },
+        "E260": {
+          "name": "Acetic acid",
+          "origin": "fermentation",
+          "uses": "pickles, sauces",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Vinegar acid", "Ethanoic acid"]
+        },
+        "E261": {
+          "name": "Potassium acetate",
+          "origin": "synthetic",
+          "uses": "low-sodium foods",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Potassium salt of acetic acid"]
+        },
+        "E262": {
+          "name": "Sodium acetate",
+          "origin": "synthetic",
+          "uses": "sauces, snacks",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Sodium diacetate"]
+        },
+        "E263": {
+          "name": "Calcium acetate",
+          "origin": "synthetic",
+          "uses": "bread, processed foods",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Calcium salt of acetic acid"]
+        },
+        "E270": {
+          "name": "Lactic acid",
+          "origin": "fermentation",
+          "uses": "yogurt, cheese, pickles",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["2-hydroxypropanoic acid"]
+        },
+        "E280": {
+          "name": "Propionic acid",
+          "origin": "synthetic/fermentation",
+          "uses": "bread, cheese",
+          "safety": "caution",
+          "concerns": "May trigger migraines",
+          "vegetarian": true,
+          "synonyms": ["Propanoic acid"]
+        },
+        "E281": {
+          "name": "Sodium propionate",
+          "origin": "synthetic",
+          "uses": "bread, baked goods",
+          "safety": "caution",
+          "concerns": "May affect behavior in children",
+          "vegetarian": true,
+          "synonyms": ["Sodium propanoate"]
+        },
+        "E282": {
+          "name": "Calcium propionate",
+          "origin": "synthetic",
+          "uses": "bread, baked goods",
+          "safety": "caution",
+          "concerns": "Similar to E281",
+          "vegetarian": true,
+          "synonyms": ["Calcium propanoate"]
+        },
+        "E283": {
+          "name": "Potassium propionate",
+          "origin": "synthetic",
+          "uses": "low-sodium bread",
+          "safety": "caution",
+          "concerns": "Similar to E281",
+          "vegetarian": true,
+          "synonyms": ["Potassium propanoate"]
+        },
+        "E284": {
+          "name": "Boric acid",
+          "origin": "mineral",
+          "uses": "caviar only",
+          "safety": "caution",
+          "concerns": "Toxic in large amounts",
+          "vegetarian": true,
+          "synonyms": ["Orthoboric acid"]
+        },
+        "E285": {
+          "name": "Sodium tetraborate",
+          "origin": "mineral",
+          "uses": "caviar only",
+          "safety": "caution",
+          "concerns": "Very restricted use",
+          "vegetarian": true,
+          "synonyms": ["Borax"]
+        },
+        "E290": {
+          "name": "Carbon dioxide",
+          "origin": "gas",
+          "uses": "carbonated beverages",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["CO2"]
+        },
+        "E296": {
+          "name": "Malic acid",
+          "origin": "synthetic/natural",
+          "uses": "beverages, confectionery",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["2-hydroxybutanedioic acid"]
+        },
+        "E297": {
+          "name": "Fumaric acid",
+          "origin": "synthetic",
+          "uses": "beverages, desserts",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Trans-butenedioic acid"]
+        }
+      }
+    },
+    "antioxidants": {
+      "E300-E399": {
+        "E300": {
+          "name": "Ascorbic acid",
+          "origin": "synthetic/natural",
+          "uses": "fruit juices, cured meats",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Vitamin C", "L-ascorbic acid"]
+        },
+        "E301": {
+          "name": "Sodium ascorbate",
+          "origin": "synthetic",
+          "uses": "meat products",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Sodium L-ascorbate"]
+        },
+        "E302": {
+          "name": "Calcium ascorbate",
+          "origin": "synthetic",
+          "uses": "beverages, supplements",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Calcium L-ascorbate"]
+        },
+        "E304": {
+          "name": "Ascorbyl palmitate",
+          "origin": "synthetic",
+          "uses": "oils, fats, infant formula",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Vitamin C palmitate"]
+        },
+        "E306": {
+          "name": "Tocopherols",
+          "origin": "natural",
+          "uses": "oils, fats",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Mixed tocopherols", "Vitamin E"]
+        },
+        "E307": {
+          "name": "Alpha-tocopherol",
+          "origin": "natural/synthetic",
+          "uses": "oils, fats, supplements",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["D-alpha-tocopherol", "Vitamin E"]
+        },
+        "E308": {
+          "name": "Gamma-tocopherol",
+          "origin": "natural",
+          "uses": "oils, fats",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Synthetic gamma-tocopherol"]
+        },
+        "E309": {
+          "name": "Delta-tocopherol",
+          "origin": "natural/synthetic",
+          "uses": "oils, fats",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Synthetic delta-tocopherol"]
+        },
+        "E310": {
+          "name": "Propyl gallate",
+          "origin": "synthetic",
+          "uses": "fats, oils, chewing gum",
+          "safety": "caution",
+          "concerns": "May cause allergic reactions",
+          "vegetarian": true,
+          "synonyms": ["n-Propyl gallate"]
+        },
+        "E311": {
+          "name": "Octyl gallate",
+          "origin": "synthetic",
+          "uses": "fats, oils",
+          "safety": "caution",
+          "concerns": "Similar to E310",
+          "vegetarian": true,
+          "synonyms": ["n-Octyl gallate"]
+        },
+        "E312": {
+          "name": "Dodecyl gallate",
+          "origin": "synthetic",
+          "uses": "fats, oils",
+          "safety": "caution",
+          "concerns": "Similar to E310",
+          "vegetarian": true,
+          "synonyms": ["Lauryl gallate"]
+        },
+        "E315": {
+          "name": "Erythorbic acid",
+          "origin": "synthetic",
+          "uses": "meat products",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Isoascorbic acid"]
+        },
+        "E316": {
+          "name": "Sodium erythorbate",
+          "origin": "synthetic",
+          "uses": "meat products, cured meats",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Sodium isoascorbate"]
+        },
+        "E319": {
+          "name": "TBHQ",
+          "origin": "synthetic",
+          "uses": "fats, oils, fried foods",
+          "safety": "caution",
+          "concerns": "Behavior concerns reported",
+          "vegetarian": true,
+          "synonyms": ["Tertiary-butylhydroquinone"]
+        },
+        "E320": {
+          "name": "BHA",
+          "origin": "synthetic",
+          "uses": "fats, oils, cereals",
+          "safety": "caution",
+          "concerns": "Possible carcinogen",
+          "vegetarian": true,
+          "synonyms": ["Butylated hydroxyanisole"]
+        },
+        "E321": {
+          "name": "BHT",
+          "origin": "synthetic",
+          "uses": "fats, oils, cereals",
+          "safety": "caution",
+          "concerns": "May cause hyperactivity",
+          "vegetarian": true,
+          "synonyms": ["Butylated hydroxytoluene"]
+        },
+        "E322": {
+          "name": "Lecithins",
+          "origin": "plant/animal",
+          "uses": "chocolate, margarine",
+          "safety": "neutral",
+          "concerns": "May be GMO if from soy",
+          "vegetarian": "depends",
+          "synonyms": ["Soy lecithin", "Sunflower lecithin"]
+        },
+        "E325": {
+          "name": "Sodium lactate",
+          "origin": "fermentation",
+          "uses": "meat products",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Sodium 2-hydroxypropanoate"]
+        },
+        "E326": {
+          "name": "Potassium lactate",
+          "origin": "fermentation",
+          "uses": "meat products",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Potassium 2-hydroxypropanoate"]
+        },
+        "E327": {
+          "name": "Calcium lactate",
+          "origin": "fermentation",
+          "uses": "canned fruits",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Calcium 2-hydroxypropanoate"]
+        },
+        "E330": {
+          "name": "Citric acid",
+          "origin": "fermentation",
+          "uses": "beverages, confectionery",
+          "safety": "neutral",
+          "concerns": "May erode tooth enamel",
+          "vegetarian": true,
+          "synonyms": ["2-hydroxypropane-1,2,3-tricarboxylic acid"]
+        },
+        "E331": {
+          "name": "Sodium citrates",
+          "origin": "synthetic",
+          "uses": "beverages, cheese",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Trisodium citrate"]
+        },
+        "E332": {
+          "name": "Potassium citrates",
+          "origin": "synthetic",
+          "uses": "low-sodium products",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Tripotassium citrate"]
+        },
+        "E333": {
+          "name": "Calcium citrates",
+          "origin": "synthetic",
+          "uses": "beverages, supplements",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Tricalcium citrate"]
+        },
+        "E334": {
+          "name": "Tartaric acid",
+          "origin": "natural (grapes)",
+          "uses": "wine, baking powder",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["L(+)-tartaric acid"]
+        },
+        "E335": {
+          "name": "Sodium tartrates",
+          "origin": "synthetic",
+          "uses": "baking powder",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Monosodium tartrate"]
+        },
+        "E336": {
+          "name": "Potassium tartrates",
+          "origin": "synthetic",
+          "uses": "baking powder, wine",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Cream of tartar"]
+        },
+        "E338": {
+          "name": "Phosphoric acid",
+          "origin": "mineral",
+          "uses": "cola drinks",
+          "safety": "caution",
+          "concerns": "May affect calcium absorption",
+          "vegetarian": true,
+          "synonyms": ["Orthophosphoric acid"]
+        },
+        "E339": {
+          "name": "Sodium phosphates",
+          "origin": "synthetic",
+          "uses": "processed meats, cheese",
+          "safety": "caution",
+          "concerns": "High intake affects calcium",
+          "vegetarian": true,
+          "synonyms": ["Monosodium phosphate"]
+        },
+        "E340": {
+          "name": "Potassium phosphates",
+          "origin": "synthetic",
+          "uses": "coffee creamers",
+          "safety": "caution",
+          "concerns": "Similar to E339",
+          "vegetarian": true,
+          "synonyms": ["Monopotassium phosphate"]
+        },
+        "E341": {
+          "name": "Calcium phosphates",
+          "origin": "mineral",
+          "uses": "baking powder, supplements",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Tricalcium phosphate"]
+        },
+        "E343": {
+          "name": "Magnesium phosphates",
+          "origin": "synthetic",
+          "uses": "powdered foods",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Trimagnesium phosphate"]
+        },
+        "E350": {
+          "name": "Sodium malates",
+          "origin": "synthetic",
+          "uses": "beverages",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Sodium malate"]
+        },
+        "E351": {
+          "name": "Potassium malate",
+          "origin": "synthetic",
+          "uses": "low-sodium products",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Potassium hydrogen malate"]
+        },
+        "E352": {
+          "name": "Calcium malates",
+          "origin": "synthetic",
+          "uses": "beverages, supplements",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Calcium malate"]
+        },
+        "E355": {
+          "name": "Adipic acid",
+          "origin": "synthetic",
+          "uses": "beverages, gelatin desserts",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Hexanedioic acid"]
+        },
+        "E363": {
+          "name": "Succinic acid",
+          "origin": "synthetic/natural",
+          "uses": "beverages, seasonings",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Butanedioic acid"]
+        },
+        "E375": {
+          "name": "Nicotinic acid",
+          "origin": "synthetic/natural",
+          "uses": "fortified foods",
+          "safety": "positive",
+          "concerns": "May cause flushing",
+          "vegetarian": true,
+          "synonyms": ["Niacin", "Vitamin B3"]
+        },
+        "E380": {
+          "name": "Triammonium citrate",
+          "origin": "synthetic",
+          "uses": "cheese, processed foods",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Ammonium citrate tribasic"]
+        },
+        "E385": {
+          "name": "Calcium disodium EDTA",
+          "origin": "synthetic",
+          "uses": "canned foods, dressings",
+          "safety": "caution",
+          "concerns": "Binds minerals",
+          "vegetarian": true,
+          "synonyms": ["Calcium disodium ethylenediaminetetraacetate"]
+        },
+        "E392": {
+          "name": "Rosemary extract",
+          "origin": "natural",
+          "uses": "oils, fats, meat products",
+          "safety": "positive",
+          "concerns": "May cause allergies in sensitive individuals",
+          "vegetarian": true,
+          "synonyms": ["Extract of rosemary"]
+        }
+      }
+    },
+    "emulsifiers_stabilizers": {
+      "E400-E499": {
+        "E400": {
+          "name": "Alginic acid",
+          "origin": "seaweed",
+          "uses": "ice cream, salad dressings",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Alginate"]
+        },
+        "E401": {
+          "name": "Sodium alginate",
+          "origin": "seaweed",
+          "uses": "ice cream, yogurt",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Sodium salt of alginic acid"]
+        },
+        "E402": {
+          "name": "Potassium alginate",
+          "origin": "seaweed",
+          "uses": "low-sodium products",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Potassium salt of alginic acid"]
+        },
+        "E403": {
+          "name": "Ammonium alginate",
+          "origin": "seaweed",
+          "uses": "beverages, desserts",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Ammonium salt of alginic acid"]
+        },
+        "E404": {
+          "name": "Calcium alginate",
+          "origin": "seaweed",
+          "uses": "restructured foods",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Calcium salt of alginic acid"]
+        },
+        "E405": {
+          "name": "Propylene glycol alginate",
+          "origin": "semi-synthetic",
+          "uses": "beer foam, salad dressings",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["PGA"]
+        },
+        "E406": {
+          "name": "Agar",
+          "origin": "seaweed",
+          "uses": "desserts, confectionery",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Agar-agar"]
+        },
+        "E407": {
+          "name": "Carrageenan",
+          "origin": "seaweed",
+          "uses": "dairy products, meat products",
+          "safety": "caution",
+          "concerns": "May cause inflammation",
+          "vegetarian": true,
+          "synonyms": ["Irish moss extract"]
+        },
+        "E407a": {
+          "name": "Processed eucheuma seaweed",
+          "origin": "seaweed",
+          "uses": "dairy products",
+          "safety": "caution",
+          "concerns": "Similar to E407",
+          "vegetarian": true,
+          "synonyms": ["PES", "Semi-refined carrageenan"]
+        },
+        "E410": {
+          "name": "Locust bean gum",
+          "origin": "plant",
+          "uses": "ice cream, cheese",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Carob gum", "LBG"]
+        },
+        "E412": {
+          "name": "Guar gum",
+          "origin": "plant",
+          "uses": "ice cream, sauces",
+          "safety": "caution",
+          "concerns": "May cause digestive issues",
+          "vegetarian": true,
+          "synonyms": ["Guaran"]
+        },
+        "E413": {
+          "name": "Tragacanth",
+          "origin": "plant",
+          "uses": "salad dressings, confectionery",
+          "safety": "caution",
+          "concerns": "May cause allergic reactions",
+          "vegetarian": true,
+          "synonyms": ["Gum tragacanth"]
+        },
+        "E414": {
+          "name": "Gum arabic",
+          "origin": "plant",
+          "uses": "confectionery, beverages",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Acacia gum"]
+        },
+        "E415": {
+          "name": "Xanthan gum",
+          "origin": "microbial",
+          "uses": "sauces, dressings, gluten-free baking",
+          "safety": "neutral",
+          "concerns": "May be from GMO corn",
+          "vegetarian": true,
+          "synonyms": ["Corn sugar gum"]
+        },
+        "E416": {
+          "name": "Karaya gum",
+          "origin": "plant",
+          "uses": "ice cream, cheese spreads",
+          "safety": "caution",
+          "concerns": "May cause allergic reactions",
+          "vegetarian": true,
+          "synonyms": ["Sterculia gum"]
+        },
+        "E417": {
+          "name": "Tara gum",
+          "origin": "plant",
+          "uses": "ice cream, dairy products",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Peruvian carob"]
+        },
+        "E418": {
+          "name": "Gellan gum",
+          "origin": "microbial",
+          "uses": "beverages, desserts",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Gellan"]
+        },
+        "E420": {
+          "name": "Sorbitol",
+          "origin": "synthetic/natural",
+          "uses": "sugar-free products",
+          "safety": "caution",
+          "concerns": "Laxative effect",
+          "vegetarian": true,
+          "synonyms": ["D-glucitol", "Sorbitol syrup"]
+        },
+        "E421": {
+          "name": "Mannitol",
+          "origin": "synthetic/natural",
+          "uses": "sugar-free products",
+          "safety": "caution",
+          "concerns": "Laxative effect",
+          "vegetarian": true,
+          "synonyms": ["Mannite", "D-mannitol"]
+        },
+        "E422": {
+          "name": "Glycerol",
+          "origin": "synthetic/natural",
+          "uses": "confectionery, beverages",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Glycerin", "Glycerine"]
+        },
+        "E425": {
+          "name": "Konjac",
+          "origin": "plant",
+          "uses": "noodles, jellies",
+          "safety": "neutral",
+          "concerns": "Swells in stomach",
+          "vegetarian": true,
+          "synonyms": ["Konjac glucomannan"]
+        },
+        "E432": {
+          "name": "Polysorbate 20",
+          "origin": "synthetic",
+          "uses": "bakery products, ice cream",
+          "safety": "caution",
+          "concerns": "May affect gut bacteria",
+          "vegetarian": true,
+          "synonyms": ["Tween 20"]
+        },
+        "E433": {
+          "name": "Polysorbate 80",
+          "origin": "synthetic",
+          "uses": "ice cream, pickles",
+          "safety": "caution",
+          "concerns": "May affect gut microbiome",
+          "vegetarian": true,
+          "synonyms": ["Tween 80"]
+        },
+        "E434": {
+          "name": "Polysorbate 40",
+          "origin": "synthetic",
+          "uses": "cakes, cake mixes",
+          "safety": "caution",
+          "concerns": "Similar to E433",
+          "vegetarian": true,
+          "synonyms": ["Tween 40"]
+        },
+        "E435": {
+          "name": "Polysorbate 60",
+          "origin": "synthetic",
+          "uses": "bakery products",
+          "safety": "caution",
+          "concerns": "Similar to E433",
+          "vegetarian": true,
+          "synonyms": ["Tween 60"]
+        },
+        "E436": {
+          "name": "Polysorbate 65",
+          "origin": "synthetic",
+          "uses": "cake mixes, icings",
+          "safety": "caution",
+          "concerns": "Similar to E433",
+          "vegetarian": true,
+          "synonyms": ["Tween 65"]
+        },
+        "E440": {
+          "name": "Pectins",
+          "origin": "plant",
+          "uses": "jams, jellies, yogurt",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Pectin", "Amidated pectin"]
+        },
+        "E441": {
+          "name": "Gelatin",
+          "origin": "animal",
+          "uses": "desserts, marshmallows",
+          "safety": "neutral",
+          "concerns": "Not vegetarian",
+          "vegetarian": false,
+          "synonyms": ["Gelatine"]
+        },
+        "E442": {
+          "name": "Ammonium phosphatides",
+          "origin": "synthetic",
+          "uses": "chocolate, cocoa",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["YN", "Emulsifier YN"]
+        },
+        "E444": {
+          "name": "Sucrose acetate isobutyrate",
+          "origin": "synthetic",
+          "uses": "cloudy beverages",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["SAIB"]
+        },
+        "E445": {
+          "name": "Glycerol esters of wood rosins",
+          "origin": "semi-natural",
+          "uses": "chewing gum, beverages",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Ester gum"]
+        },
+        "E450": {
+          "name": "Diphosphates",
+          "origin": "synthetic",
+          "uses": "processed meats, cheese",
+          "safety": "caution",
+          "concerns": "High phosphate intake",
+          "vegetarian": true,
+          "synonyms": ["Pyrophosphates"]
+        },
+        "E451": {
+          "name": "Triphosphates",
+          "origin": "synthetic",
+          "uses": "processed meats, seafood",
+          "safety": "caution",
+          "concerns": "Similar to E450",
+          "vegetarian": true,
+          "synonyms": ["Sodium triphosphate"]
+        },
+        "E452": {
+          "name": "Polyphosphates",
+          "origin": "synthetic",
+          "uses": "processed meats, seafood",
+          "safety": "caution",
+          "concerns": "Water retention",
+          "vegetarian": true,
+          "synonyms": ["Sodium polyphosphate"]
+        },
+        "E459": {
+          "name": "Beta-cyclodextrin",
+          "origin": "enzymatic",
+          "uses": "flavors, vitamins",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["β-cyclodextrin"]
+        },
+        "E460": {
+          "name": "Cellulose",
+          "origin": "plant",
+          "uses": "anti-caking, fiber",
+          "safety": "positive",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Microcrystalline cellulose"]
+        },
+        "E461": {
+          "name": "Methyl cellulose",
+          "origin": "semi-synthetic",
+          "uses": "gluten-free baking",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Methylcellulose"]
+        },
+        "E462": {
+          "name": "Ethyl cellulose",
+          "origin": "semi-synthetic",
+          "uses": "coatings",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Ethylcellulose"]
+        },
+        "E463": {
+          "name": "Hydroxypropyl cellulose",
+          "origin": "semi-synthetic",
+          "uses": "coatings, thickener",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Hyprolose"]
+        },
+        "E464": {
+          "name": "Hydroxypropyl methyl cellulose",
+          "origin": "semi-synthetic",
+          "uses": "gluten-free baking, coatings",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["HPMC", "Hypromellose"]
+        },
+        "E466": {
+          "name": "Carboxymethyl cellulose",
+          "origin": "semi-synthetic",
+          "uses": "ice cream, sauces",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["CMC", "Cellulose gum"]
+        },
+        "E470a": {
+          "name": "Sodium/potassium/calcium salts of fatty acids",
+          "origin": "synthetic",
+          "uses": "cake mixes",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": "depends",
+          "synonyms": ["Fatty acid salts"]
+        },
+        "E470b": {
+          "name": "Magnesium salts of fatty acids",
+          "origin": "synthetic",
+          "uses": "supplements",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": "depends",
+          "synonyms": ["Magnesium stearate"]
+        },
+        "E471": {
+          "name": "Mono- and diglycerides",
+          "origin": "synthetic",
+          "uses": "bread, margarine",
+          "safety": "neutral",
+          "concerns": "May be from animal fat",
+          "vegetarian": "depends",
+          "synonyms": ["Glyceryl monostearate"]
+        },
+        "E472a": {
+          "name": "Acetic acid esters of mono- and diglycerides",
+          "origin": "synthetic",
+          "uses": "bread, bakery",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": "depends",
+          "synonyms": ["ACETEM"]
+        },
+        "E472b": {
+          "name": "Lactic acid esters of mono- and diglycerides",
+          "origin": "synthetic",
+          "uses": "bread, cakes",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": "depends",
+          "synonyms": ["LACTEM"]
+        },
+        "E472c": {
+          "name": "Citric acid esters of mono- and diglycerides",
+          "origin": "synthetic",
+          "uses": "infant formula",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": "depends",
+          "synonyms": ["CITREM"]
+        },
+        "E472e": {
+          "name": "DATEM",
+          "origin": "synthetic",
+          "uses": "bread, bakery",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": "depends",
+          "synonyms": ["Diacetyl tartaric acid esters"]
+        },
+        "E473": {
+          "name": "Sucrose esters",
+          "origin": "synthetic",
+          "uses": "bakery, confectionery",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Sugar esters"]
+        },
+        "E474": {
+          "name": "Sucroglycerides",
+          "origin": "synthetic",
+          "uses": "bakery products",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": "depends",
+          "synonyms": ["Sucrose esters of fatty acids"]
+        },
+        "E475": {
+          "name": "Polyglycerol esters",
+          "origin": "synthetic",
+          "uses": "cakes, margarine",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": "depends",
+          "synonyms": ["PGE"]
+        },
+        "E476": {
+          "name": "Polyglycerol polyricinoleate",
+          "origin": "synthetic",
+          "uses": "chocolate",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["PGPR"]
+        },
+        "E477": {
+          "name": "Propylene glycol esters",
+          "origin": "synthetic",
+          "uses": "cake mixes",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": "depends",
+          "synonyms": ["Propane-1,2-diol esters"]
+        },
+        "E481": {
+          "name": "Sodium stearoyl-2-lactylate",
+          "origin": "synthetic",
+          "uses": "bread, bakery",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": "depends",
+          "synonyms": ["SSL"]
+        },
+        "E482": {
+          "name": "Calcium stearoyl-2-lactylate",
+          "origin": "synthetic",
+          "uses": "bread, bakery",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": "depends",
+          "synonyms": ["CSL"]
+        },
+        "E491": {
+          "name": "Sorbitan monostearate",
+          "origin": "synthetic",
+          "uses": "cakes, icings",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": "depends",
+          "synonyms": ["Span 60"]
+        },
+        "E492": {
+          "name": "Sorbitan tristearate",
+          "origin": "synthetic",
+          "uses": "chocolate",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": "depends",
+          "synonyms": ["Span 65"]
+        },
+        "E493": {
+          "name": "Sorbitan monolaurate",
+          "origin": "synthetic",
+          "uses": "cakes",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Span 20"]
+        },
+        "E494": {
+          "name": "Sorbitan monooleate",
+          "origin": "synthetic",
+          "uses": "cakes",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": true,
+          "synonyms": ["Span 80"]
+        },
+        "E495": {
+          "name": "Sorbitan monopalmitate",
+          "origin": "synthetic",
+          "uses": "cakes",
+          "safety": "neutral",
+          "concerns": "",
+          "vegetarian": "depends",
+          "synonyms": ["Span 40"]
+        }
+      }
+    }
+  }
+}

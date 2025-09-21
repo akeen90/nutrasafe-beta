@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutraSafe Admin - Working Version</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0a0e1a;
+            color: white;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #00ff88;
+        }
+        .search-section {
+            background: #1a1f2e;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .search-input {
+            width: 100%;
+            max-width: 300px;
+            padding: 10px;
+            margin-right: 10px;
+            background: #252b3d;
+            border: 1px solid #2d3748;
+            border-radius: 4px;
+            color: white;
+        }
+        .btn {
+            padding: 10px 20px;
+            background: #00ff88;
+            color: black;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn:hover {
+            background: #00d470;
+        }
+        .results {
+            background: #1a1f2e;
+            padding: 20px;
+            border-radius: 8px;
+            min-height: 200px;
+        }
+        .loading {
+            text-align: center;
+            color: #00ff88;
+            margin: 20px 0;
+        }
+        .error {
+            color: #ff4757;
+            background: #2d1b1b;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .food-item {
+            background: #252b3d;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 3px solid #00ff88;
+        }
+        .food-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+        .food-details {
+            color: #a0a6b8;
+            margin-top: 5px;
+            font-size: 14px;
+        }
+        .nutrition {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .nutrient {
+            background: #2d3748;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍎 NutraSafe Admin Dashboard</h1>
+            <p>Simple Working Version</p>
+        </div>
+        
+        <div class="search-section">
+            <h3>Search Foods</h3>
+            <div style="margin: 10px 0;">
+                <input type="text" id="search-input" class="search-input" placeholder="Search for foods..." />
+                <button onclick="searchFoods()" class="btn">Search</button>
+            </div>
+            <div style="margin-top: 10px;">
+                <button onclick="searchFoods('bread')" class="btn" style="background: #007bff;">Try "bread"</button>
+                <button onclick="searchFoods('milk')" class="btn" style="background: #007bff;">Try "milk"</button>
+                <button onclick="searchFoods('chicken')" class="btn" style="background: #007bff;">Try "chicken"</button>
+            </div>
+        </div>
+        
+        <div class="results" id="results">
+            <p>Enter a search term above to find foods in the database.</p>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://us-central1-nutrasafe-705c7.cloudfunctions.net';
+        
+        function showLoading() {
+            document.getElementById('results').innerHTML = '<div class="loading">🔍 Searching database...</div>';
+        }
+        
+        function showError(message) {
+            document.getElementById('results').innerHTML = `<div class="error">❌ ${message}</div>`;
+        }
+        
+        function displayFoods(foods) {
+            const resultsDiv = document.getElementById('results');
+            
+            if (!foods || foods.length === 0) {
+                resultsDiv.innerHTML = '<div class="error">No foods found matching your search.</div>';
+                return;
+            }
+            
+            let html = `<h3>Found ${foods.length} food(s):</h3>`;
+            
+            foods.forEach(food => {
+                html += `
+                    <div class="food-item">
+                        <div class="food-name">${food.name || food.foodName || 'Unnamed Food'}</div>
+                        <div class="food-details">
+                            Brand: ${food.brand || food.brandName || 'N/A'} | 
+                            Source: ${food.source || 'manual'} | 
+                            Collection: ${food.collection || 'foods'}
+                        </div>
+                        <div class="nutrition">
+                            <div class="nutrient">Calories: ${food.calories?.kcal || food.calories || 'N/A'}</div>
+                            <div class="nutrient">Protein: ${food.protein?.per100g || food.protein || 'N/A'}g</div>
+                            <div class="nutrient">Carbs: ${food.carbs?.per100g || food.carbs || 'N/A'}g</div>
+                            <div class="nutrient">Fat: ${food.fat?.per100g || food.fat || 'N/A'}g</div>
+                        </div>
+                        ${food.ingredients ? `<div class="food-details" style="margin-top: 8px;"><strong>Ingredients:</strong> ${food.ingredients.substring(0, 100)}...</div>` : ''}
+                    </div>
+                `;
+            });
+            
+            resultsDiv.innerHTML = html;
+        }
+        
+        async function searchFoods(query) {
+            const searchTerm = query || document.getElementById('search-input').value.trim();
+            
+            if (!searchTerm) {
+                showError('Please enter a search term');
+                return;
+            }
+            
+            showLoading();
+            
+            try {
+                console.log('Searching for:', searchTerm);
+                
+                // Try the searchFoods function
+                const response = await fetch(`${API_BASE}/searchFoods`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    body: JSON.stringify({
+                        query: searchTerm,
+                        maxResults: 50
+                    })
+                });
+                
+                console.log('Response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                if (data.foods && Array.isArray(data.foods)) {
+                    displayFoods(data.foods);
+                } else {
+                    showError('No foods returned from search function');
+                }
+                
+            } catch (error) {
+                console.error('Search error:', error);
+                showError(`Search failed: ${error.message}. The Firebase function may not be responding correctly.`);
+            }
+        }
+        
+        // Allow Enter key to search
+        document.getElementById('search-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchFoods();
+            }
+        });
+        
+        // Test connection on load
+        window.addEventListener('load', function() {
+            console.log('Admin dashboard loaded');
+            console.log('Firebase API Base:', API_BASE);
+        });
+    </script>
+</body>
+</html>

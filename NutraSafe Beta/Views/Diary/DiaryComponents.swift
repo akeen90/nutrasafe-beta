@@ -1,0 +1,381 @@
+//
+//  DiaryComponents.swift
+//  NutraSafe Beta
+//
+//  Diary-related view components extracted from ContentView.swift
+//
+
+import SwiftUI
+
+// MARK: - Diary Meal Card
+struct DiaryMealCard: View {
+    let mealType: String
+    let targetCalories: Int
+    let currentCalories: Int
+    @Binding var foods: [DiaryFoodItem]
+    let color: Color
+    @Binding var selectedTab: TabItem
+    @Binding var selectedFoodItems: Set<String>
+    @Binding var isSelectionMode: Bool
+    let onEditFood: () -> Void
+    
+    private var totalProtein: Double {
+        foods.reduce(0) { $0 + $1.protein }
+    }
+    
+    private var totalCarbs: Double {
+        foods.reduce(0) { $0 + $1.carbs }
+    }
+    
+    private var totalFat: Double {
+        foods.reduce(0) { $0 + $1.fat }
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Column headers (only show once at the top)
+            if mealType == "Breakfast" {
+                HStack {
+                    Text("DESC/SERVING")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.secondary)
+                    
+                    Spacer()
+                    
+                    HStack(spacing: 0) {
+                        Text("KCAL")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .frame(width: 50, alignment: .trailing)
+                        Text("PROT")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .frame(width: 50, alignment: .trailing)
+                        Text("CARB")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .frame(width: 50, alignment: .trailing)
+                        Text("FAT")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .frame(width: 50, alignment: .trailing)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+            }
+            
+            // Rounded pill-style meal header like MyFitnessPal
+            HStack {
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(color)
+                        .frame(width: 12, height: 12)
+                    
+                    Text(mealType.uppercased())
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.primary)
+                }
+                
+                Spacer()
+                
+                // Calories and macros in header like MyFitnessPal
+                HStack(spacing: 0) {
+                    Text("\(currentCalories)")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .frame(width: 50, alignment: .trailing)
+                    
+                    Text("\(String(format: "%.1f", totalProtein))")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .frame(width: 50, alignment: .trailing)
+                    
+                    Text("\(String(format: "%.1f", totalCarbs))")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .frame(width: 50, alignment: .trailing)
+                    
+                    Text("\(String(format: "%.1f", totalFat))")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .frame(width: 50, alignment: .trailing)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(Color(.systemGray6))
+            .cornerRadius(8)
+            
+            // Food items section - directly under header
+            if !foods.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(foods) { food in
+                        DiaryFoodRow(
+                            food: food,
+                            isSelected: selectedFoodItems.contains(food.id.uuidString),
+                            isSelectionMode: true, // Always in selection mode for direct tap
+                            selectedCount: selectedFoodItems.count,
+                            onTap: {
+                                if selectedFoodItems.contains(food.id.uuidString) {
+                                    selectedFoodItems.remove(food.id.uuidString)
+                                } else {
+                                    selectedFoodItems.insert(food.id.uuidString)
+                                }
+                            },
+                            onDelete: {
+                                // Delete food from list
+                                if let index = foods.firstIndex(of: food) {
+                                    withAnimation(.easeOut(duration: 0.3)) {
+                                        foods.remove(at: index)
+                                    }
+                                }
+                            },
+                            onEdit: {
+                                // Edit single food item
+                                selectedFoodItems = [food.id.uuidString]
+                                onEditFood()
+                            }
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color(.systemBackground))
+                        
+                        if food.id != foods.last?.id {
+                            Divider()
+                                .padding(.horizontal, 16)
+                        }
+                    }
+                    
+                    // Add more button
+                    Button(action: {
+                        // Store the selected meal type and navigate to add tab
+                        UserDefaults.standard.set(mealType, forKey: "preselectedMealType")
+                        selectedTab = .add
+                    }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.blue)
+                            
+                            Text("Add more")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.blue)
+                            
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .background(Color(.systemBackground))
+                }
+            } else {
+                // Empty state add button
+                Button(action: {
+                    // Store the selected meal type and navigate to add tab
+                    UserDefaults.standard.set(mealType, forKey: "preselectedMealType")
+                    selectedTab = .add
+                }) {
+                    HStack {
+                        Image(systemName: "plus.circle")
+                            .font(.system(size: 16))
+                            .foregroundColor(.blue)
+                        
+                        Text("Add \(mealType.lowercased())")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(.blue)
+                        
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .background(Color(.systemBackground))
+            }
+        }
+    }
+    
+    private func deleteFood(at offsets: IndexSet) {
+        withAnimation(.easeOut(duration: 0.3)) {
+            foods.remove(atOffsets: offsets)
+        }
+    }
+}
+
+// MARK: - Diary Food Row
+struct DiaryFoodRow: View {
+    let food: DiaryFoodItem
+    let isSelected: Bool
+    let isSelectionMode: Bool
+    let selectedCount: Int
+    let onTap: () -> Void
+    let onDelete: () -> Void
+    let onEdit: () -> Void
+    @State private var showingFoodDetail = false
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            // Selection circle (only show when selected)
+            if isSelected {
+                Button(action: {
+                    onTap()
+                }) {
+                    Circle()
+                        .fill(Color.blue)
+                        .frame(width: 16, height: 16)
+                        .overlay(
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(.white)
+                        )
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+            
+            // Food name and details
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(food.name)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.primary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+
+                    // Nutrition grade badge
+                    if let score = food.processedScore, !score.isEmpty {
+                        Text(score)
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(processedScoreColor(score))
+                            .cornerRadius(4)
+                    }
+
+                    // Sugar level warning
+                    if food.sugarLevel == "High" {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.orange)
+                    }
+
+                    // Allergen warning (if ingredients contain common allergens)
+                    if let ingredients = food.ingredients,
+                       containsCommonAllergens(ingredients) {
+                        Image(systemName: "exclamationmark.shield.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.red)
+                    }
+                }
+
+                // Serving size and quantity
+                HStack(spacing: 4) {
+                    Text(food.servingDescription)
+                        .font(.system(size: 11, weight: .regular))
+                        .foregroundColor(.secondary)
+
+                    if food.quantity > 1 {
+                        Text("× \(String(format: "%.0f", food.quantity))")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.blue)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            
+            Spacer()
+            
+            // Macros aligned with headers like MyFitnessPal
+            HStack(spacing: 0) {
+                Text("\(food.calories)")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.primary)
+                    .frame(width: 50, alignment: .trailing)
+                
+                Text("\(String(format: "%.1f", food.protein))")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .frame(width: 50, alignment: .trailing)
+                
+                Text("\(String(format: "%.1f", food.carbs))")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .frame(width: 50, alignment: .trailing)
+                
+                Text("\(String(format: "%.1f", food.fat))")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .frame(width: 50, alignment: .trailing)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onTap() // Direct selection on tap
+            // Don't show action sheet here - it will be managed globally
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button(action: onDelete) {
+                Label("Delete", systemImage: "trash")
+            }
+            .tint(.red)
+        }
+        .sheet(isPresented: $showingFoodDetail) {
+            FoodDetailViewFromSearch(
+                food: food.toFoodSearchResult(),
+                sourceType: .diary,
+                selectedTab: .constant(.diary)
+            )
+        }
+    }
+    
+    private func processedScoreColor(_ score: String) -> Color {
+        switch score.uppercased() {
+        case "A+", "A", "A-":
+            return Color.green
+        case "B+", "B", "B-":
+            return Color.blue
+        case "C+", "C", "C-":
+            return Color.orange
+        case "D+", "D", "D-":
+            return Color.red.opacity(0.8)
+        case "F":
+            return Color.red
+        default:
+            return Color.gray
+        }
+    }
+    
+    private func sugarLevelColor(_ level: String) -> Color {
+        switch level.lowercased() {
+        case "low":
+            return Color.green
+        case "medium", "med":
+            return Color.orange
+        case "high":
+            return Color.red
+        default:
+            return Color.gray
+        }
+    }
+
+    private func containsCommonAllergens(_ ingredients: [String]) -> Bool {
+        let commonAllergens = [
+            "milk", "dairy", "lactose", "casein", "whey",
+            "egg", "eggs", "albumin",
+            "peanut", "peanuts", "groundnut",
+            "tree nut", "almond", "walnut", "cashew", "pistachio", "pecan",
+            "soy", "soya", "soybean",
+            "wheat", "gluten", "barley", "rye", "oats",
+            "fish", "salmon", "tuna", "cod", "sardine",
+            "shellfish", "shrimp", "crab", "lobster", "clam", "oyster",
+            "sesame", "sesame seed"
+        ]
+
+        let allIngredients = ingredients.joined(separator: " ").lowercased()
+        return commonAllergens.contains { allergen in
+            allIngredients.contains(allergen)
+        }
+    }
+}

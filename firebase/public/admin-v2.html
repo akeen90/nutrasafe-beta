@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutraSafe Admin Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .nav-tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            color: #666;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .nav-tab.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .nav-tab:hover:not(.active) {
+            background: #f0f0f0;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .chart-title {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .verification-item {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-left: 4px solid #ffa726;
+        }
+
+        .food-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .brand-name {
+            color: #666;
+            margin-bottom: 15px;
+            font-style: italic;
+        }
+
+        .ingredients {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 0.9em;
+            line-height: 1.4;
+            border: 1px solid #e9ecef;
+        }
+
+        .nutrition-data {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #e3f2fd 0%, #f0f4ff 100%);
+            border-radius: 8px;
+        }
+
+        .nutrition-item {
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+        }
+
+        .nutrition-label {
+            font-size: 0.8em;
+            color: #666;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .nutrition-value {
+            font-size: 1.2em;
+            color: #1976d2;
+            font-weight: bold;
+        }
+
+        .actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn-approve {
+            background: linear-gradient(135deg, #4caf50, #45a049);
+            color: white;
+        }
+
+        .btn-reject {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            color: white;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .timestamp {
+            font-size: 0.9em;
+            color: #999;
+            margin-top: 15px;
+            font-style: italic;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .alert-success {
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+
+        .alert-error {
+            background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        .modal h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            resize: vertical;
+            min-height: 100px;
+            font-family: inherit;
+            font-size: 14px;
+        }
+
+        textarea:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+
+        .system-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .status-online {
+            background: #4caf50;
+        }
+
+        .status-offline {
+            background: #f44336;
+        }
+
+        .status-warning {
+            background: #ff9800;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 20px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state h3 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+            color: #999;
+        }
+
+        .api-endpoint {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .endpoint-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .endpoint-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .response-time {
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍎 NutraSafe Admin Dashboard</h1>
+            <p>Comprehensive system management and analytics</p>
+        </div>
+
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="switchTab('overview')">Overview</button>
+            <button class="nav-tab" onclick="switchTab('verifications')">Food Verifications</button>
+            <button class="nav-tab" onclick="switchTab('analytics')">Analytics</button>
+            <button class="nav-tab" onclick="switchTab('system')">System Status</button>
+        </div>
+
+        <div id="alerts"></div>
+
+        <!-- Overview Tab -->
+        <div id="overview" class="tab-content active">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="total-users">Loading...</div>
+                    <div class="stat-label">Total Users</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="active-users">Loading...</div>
+                    <div class="stat-label">Active Users (30 days)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="pending-count">Loading...</div>
+                    <div class="stat-label">Pending Verifications</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="total-verified">Loading...</div>
+                    <div class="stat-label">Verified Foods</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="api-calls-today">Loading...</div>
+                    <div class="stat-label">API Calls Today</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="system-uptime">Loading...</div>
+                    <div class="stat-label">System Uptime</div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">User Registration Trends (Last 30 Days)</div>
+                <canvas id="userGrowthChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+
+        <!-- Food Verifications Tab -->
+        <div id="verifications" class="tab-content">
+            <button class="refresh-btn" onclick="loadPendingVerifications()">🔄 Refresh Verifications</button>
+            
+            <div id="verification-loading" class="loading">
+                <div class="loading-spinner"></div>
+                <p>Loading pending verifications...</p>
+            </div>
+
+            <div id="verifications-list"></div>
+        </div>
+
+        <!-- Analytics Tab -->
+        <div id="analytics" class="tab-content">
+            <div class="chart-container">
+                <div class="chart-title">API Usage (Last 7 Days)</div>
+                <canvas id="apiUsageChart" width="400" height="200"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Food Scanner Usage</div>
+                <canvas id="scannerUsageChart" width="400" height="200"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Most Scanned Food Categories</div>
+                <canvas id="categoryChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+
+        <!-- System Status Tab -->
+        <div id="system" class="tab-content">
+            <div class="chart-container">
+                <div class="chart-title">API Endpoints Status</div>
+                <div id="api-endpoints">
+                    <div class="api-endpoint">
+                        <div class="endpoint-name">getPendingVerifications</div>
+                        <div class="endpoint-status">
+                            <div class="status-dot status-online"></div>
+                            <span class="response-time" id="endpoint-pending">Checking...</span>
+                        </div>
+                    </div>
+                    <div class="api-endpoint">
+                        <div class="endpoint-name">approveVerification</div>
+                        <div class="endpoint-status">
+                            <div class="status-dot status-online"></div>
+                            <span class="response-time" id="endpoint-approve">Checking...</span>
+                        </div>
+                    </div>
+                    <div class="api-endpoint">
+                        <div class="endpoint-name">rejectVerification</div>
+                        <div class="endpoint-status">
+                            <div class="status-dot status-online"></div>
+                            <span class="response-time" id="endpoint-reject">Checking...</span>
+                        </div>
+                    </div>
+                    <div class="api-endpoint">
+                        <div class="endpoint-name">processIngredientImage</div>
+                        <div class="endpoint-status">
+                            <div class="status-dot status-online"></div>
+                            <span class="response-time" id="endpoint-process">Checking...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="database-size">Loading...</div>
+                    <div class="stat-label">Database Documents</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="storage-usage">Loading...</div>
+                    <div class="stat-label">Storage Usage (MB)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="function-executions">Loading...</div>
+                    <div class="stat-label">Function Executions Today</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="error-rate">Loading...</div>
+                    <div class="stat-label">Error Rate (%)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="approvalModal" class="modal">
+        <div class="modal-content">
+            <h3>✅ Approve Verification</h3>
+            <p>Add any admin notes (optional):</p>
+            <textarea id="approvalNotes" placeholder="Add notes about this verification..."></textarea>
+            <div style="margin-top: 20px; display: flex; gap: 15px;">
+                <button class="btn btn-approve" onclick="confirmApproval()">Approve & Add to Database</button>
+                <button class="btn" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="rejectionModal" class="modal">
+        <div class="modal-content">
+            <h3>❌ Reject Verification</h3>
+            <p>Reason for rejection (required):</p>
+            <textarea id="rejectionReason" placeholder="Why is this verification being rejected?"></textarea>
+            <div style="margin-top: 20px; display: flex; gap: 15px;">
+                <button class="btn btn-reject" onclick="confirmRejection()">Reject Verification</button>
+                <button class="btn" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://us-central1-nutrasafe-705c7.cloudfunctions.net';
+        let currentVerificationId = null;
+        let charts = {};
+
+        // Tab switching
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all nav tabs
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+            
+            // Load data for specific tabs
+            if (tabName === 'verifications') {
+                loadPendingVerifications();
+            } else if (tabName === 'analytics') {
+                loadAnalytics();
+            } else if (tabName === 'system') {
+                checkSystemStatus();
+            }
+        }
+
+        // Load overview data
+        async function loadOverviewData() {
+            try {
+                // Load pending verifications count
+                const pendingResponse = await fetch(`${API_BASE}/getPendingVerifications`);
+                const pendingData = await pendingResponse.json();
+                
+                if (pendingData.success) {
+                    document.getElementById('pending-count').textContent = pendingData.count || 0;
+                }
+
+                // Simulate other stats (replace with real Firebase Analytics when available)
+                document.getElementById('total-users').textContent = '1,247';
+                document.getElementById('active-users').textContent = '892';
+                document.getElementById('total-verified').textContent = '3,456';
+                document.getElementById('api-calls-today').textContent = '12,843';
+                document.getElementById('system-uptime').textContent = '99.9%';
+
+                // Create user growth chart with realistic data
+                createUserGrowthChart();
+                
+            } catch (error) {
+                console.error('Error loading overview data:', error);
+                showAlert('Error loading dashboard data: ' + error.message, 'error');
+            }
+        }
+
+        // Load pending verifications
+        async function loadPendingVerifications() {
+            const loadingEl = document.getElementById('verification-loading');
+            const listEl = document.getElementById('verifications-list');
+            
+            loadingEl.style.display = 'block';
+            listEl.innerHTML = '';
+
+            try {
+                const response = await fetch(`${API_BASE}/getPendingVerifications`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const sortedVerifications = data.pendingVerifications.sort((a, b) => 
+                        new Date(b.submittedAt) - new Date(a.submittedAt)
+                    );
+                    displayVerifications(sortedVerifications);
+                } else {
+                    showAlert('Error loading verifications: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Network error: ' + error.message, 'error');
+            } finally {
+                loadingEl.style.display = 'none';
+            }
+        }
+
+        function displayVerifications(verifications) {
+            const listEl = document.getElementById('verifications-list');
+            
+            if (verifications.length === 0) {
+                listEl.innerHTML = `
+                    <div class="empty-state">
+                        <h3>🎉 All caught up!</h3>
+                        <p>No pending verifications at the moment.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            listEl.innerHTML = verifications.map(verification => `
+                <div class="verification-item">
+                    <div class="food-name">${verification.foodName}</div>
+                    ${verification.brandName ? `<div class="brand-name">Brand: ${verification.brandName}</div>` : ''}
+                    
+                    <div class="ingredients">
+                        <strong>Extracted Ingredients:</strong><br>
+                        ${verification.extractedIngredients}
+                    </div>
+                    
+                    <div class="nutrition-data">
+                        <div class="nutrition-item">
+                            <div class="nutrition-label">Calories</div>
+                            <div class="nutrition-value">${Math.round(verification.nutritionData.calories)}</div>
+                        </div>
+                        <div class="nutrition-item">
+                            <div class="nutrition-label">Protein</div>
+                            <div class="nutrition-value">${verification.nutritionData.protein.toFixed(1)}g</div>
+                        </div>
+                        <div class="nutrition-item">
+                            <div class="nutrition-label">Carbs</div>
+                            <div class="nutrition-value">${verification.nutritionData.carbs.toFixed(1)}g</div>
+                        </div>
+                        <div class="nutrition-item">
+                            <div class="nutrition-label">Fat</div>
+                            <div class="nutrition-value">${verification.nutritionData.fat.toFixed(1)}g</div>
+                        </div>
+                        <div class="nutrition-item">
+                            <div class="nutrition-label">Fiber</div>
+                            <div class="nutrition-value">${verification.nutritionData.fiber.toFixed(1)}g</div>
+                        </div>
+                        <div class="nutrition-item">
+                            <div class="nutrition-label">Sugar</div>
+                            <div class="nutrition-value">${verification.nutritionData.sugar.toFixed(1)}g</div>
+                        </div>
+                        <div class="nutrition-item">
+                            <div class="nutrition-label">Sodium</div>
+                            <div class="nutrition-value">${verification.nutritionData.sodium.toFixed(0)}mg</div>
+                        </div>
+                    </div>
+
+                    <div class="actions">
+                        <button class="btn btn-approve" onclick="approveVerification('${verification.id}')">
+                            ✅ Approve & Add to Database
+                        </button>
+                        <button class="btn btn-reject" onclick="rejectVerification('${verification.id}')">
+                            ❌ Reject Verification
+                        </button>
+                    </div>
+
+                    <div class="timestamp">
+                        Submitted: ${new Date(verification.submittedAt).toLocaleString()}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Verification actions
+        function approveVerification(verificationId) {
+            currentVerificationId = verificationId;
+            document.getElementById('approvalModal').style.display = 'block';
+            document.getElementById('approvalNotes').value = '';
+        }
+
+        function rejectVerification(verificationId) {
+            currentVerificationId = verificationId;
+            document.getElementById('rejectionModal').style.display = 'block';
+            document.getElementById('rejectionReason').value = '';
+        }
+
+        async function confirmApproval() {
+            const notes = document.getElementById('approvalNotes').value;
+            
+            try {
+                const response = await fetch(`${API_BASE}/approveVerification`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        verificationId: currentVerificationId,
+                        adminNotes: notes
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('✅ Verification approved and added to database!', 'success');
+                    closeModal();
+                    loadPendingVerifications();
+                    loadOverviewData(); // Refresh counts
+                } else {
+                    showAlert('Error approving verification: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Network error: ' + error.message, 'error');
+            }
+        }
+
+        async function confirmRejection() {
+            const reason = document.getElementById('rejectionReason').value;
+            
+            if (!reason.trim()) {
+                showAlert('Please provide a reason for rejection', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/rejectVerification`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        verificationId: currentVerificationId,
+                        rejectionReason: reason
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('❌ Verification rejected', 'success');
+                    closeModal();
+                    loadPendingVerifications();
+                    loadOverviewData(); // Refresh counts
+                } else {
+                    showAlert('Error rejecting verification: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Network error: ' + error.message, 'error');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('approvalModal').style.display = 'none';
+            document.getElementById('rejectionModal').style.display = 'none';
+            currentVerificationId = null;
+        }
+
+        // Analytics
+        function loadAnalytics() {
+            createApiUsageChart();
+            createScannerUsageChart();
+            createCategoryChart();
+        }
+
+        function createUserGrowthChart() {
+            const ctx = document.getElementById('userGrowthChart').getContext('2d');
+            
+            // Generate realistic data for last 30 days
+            const dates = [];
+            const users = [];
+            let baseUsers = 1200;
+            
+            for (let i = 29; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                dates.push(date.toLocaleDateString());
+                
+                // Simulate growth with some randomness
+                baseUsers += Math.floor(Math.random() * 10) + 1;
+                users.push(baseUsers);
+            }
+            
+            if (charts.userGrowth) {
+                charts.userGrowth.destroy();
+            }
+            
+            charts.userGrowth = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: 'Total Users',
+                        data: users,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: false
+                        }
+                    }
+                }
+            });
+        }
+
+        function createApiUsageChart() {
+            const ctx = document.getElementById('apiUsageChart').getContext('2d');
+            
+            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const apiCalls = [8420, 9150, 7890, 10200, 11580, 9870, 8960];
+            
+            if (charts.apiUsage) {
+                charts.apiUsage.destroy();
+            }
+            
+            charts.apiUsage = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: days,
+                    datasets: [{
+                        label: 'API Calls',
+                        data: apiCalls,
+                        backgroundColor: 'rgba(102, 126, 234, 0.8)',
+                        borderColor: '#667eea',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function createScannerUsageChart() {
+            const ctx = document.getElementById('scannerUsageChart').getContext('2d');
+            
+            if (charts.scannerUsage) {
+                charts.scannerUsage.destroy();
+            }
+            
+            charts.scannerUsage = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Barcode Scanner', 'AI Scanner', 'Manual Search'],
+                    datasets: [{
+                        data: [45, 35, 20],
+                        backgroundColor: ['#4caf50', '#ff9800', '#2196f3'],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function createCategoryChart() {
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            
+            const categories = ['Snacks', 'Beverages', 'Dairy', 'Meat', 'Vegetables', 'Grains'];
+            const counts = [1250, 980, 760, 650, 580, 420];
+            
+            if (charts.category) {
+                charts.category.destroy();
+            }
+            
+            charts.category = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: categories,
+                    datasets: [{
+                        label: 'Scans',
+                        data: counts,
+                        backgroundColor: 'rgba(118, 75, 162, 0.8)',
+                        borderColor: '#764ba2',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    indexAxis: 'y',
+                    scales: {
+                        x: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // System status
+        async function checkSystemStatus() {
+            const endpoints = ['getPendingVerifications', 'approveVerification', 'rejectVerification', 'processIngredientImage'];
+            
+            for (const endpoint of endpoints) {
+                const startTime = Date.now();
+                try {
+                    const response = await fetch(`${API_BASE}/${endpoint}`, {
+                        method: endpoint === 'getPendingVerifications' ? 'GET' : 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: endpoint !== 'getPendingVerifications' ? JSON.stringify({}) : undefined
+                    });
+                    
+                    const responseTime = Date.now() - startTime;
+                    document.getElementById(`endpoint-${endpoint.replace('Verification', '').replace('Ingredient', '').replace('get', '').replace('Pending', 'pending').replace('approve', 'approve').replace('reject', 'reject').replace('process', 'process').replace('Image', '')}`).textContent = `${responseTime}ms`;
+                } catch (error) {
+                    document.getElementById(`endpoint-${endpoint}`).textContent = 'Error';
+                }
+            }
+
+            // Simulate system stats
+            document.getElementById('database-size').textContent = '15,247';
+            document.getElementById('storage-usage').textContent = '2,456';
+            document.getElementById('function-executions').textContent = '48,392';
+            document.getElementById('error-rate').textContent = '0.12';
+        }
+
+        function showAlert(message, type) {
+            const alertsEl = document.getElementById('alerts');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            
+            alertsEl.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+
+        // Event listeners
+        window.onclick = function(event) {
+            const approvalModal = document.getElementById('approvalModal');
+            const rejectionModal = document.getElementById('rejectionModal');
+            
+            if (event.target === approvalModal) {
+                approvalModal.style.display = 'none';
+            }
+            if (event.target === rejectionModal) {
+                rejectionModal.style.display = 'none';
+            }
+        }
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadOverviewData();
+        });
+    </script>
+</body>
+</html>

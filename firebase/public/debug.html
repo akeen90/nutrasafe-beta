@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Admin API Calls</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #000; color: #0f0; }
+        .log { background: #111; padding: 10px; margin: 10px 0; border-left: 3px solid #0f0; }
+        .error { border-left-color: #f00; color: #f00; }
+        .success { border-left-color: #0f0; color: #0f0; }
+        button { padding: 10px 20px; margin: 5px; background: #333; color: #0f0; border: 1px solid #0f0; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🔧 NutraSafe Admin API Debug</h1>
+    <p>Testing Firebase functions from browser...</p>
+    
+    <div>
+        <button onclick="testSearchFoods()">Test searchFoods</button>
+        <button onclick="testGetAllFoods()">Test getAllFoods</button>
+        <button onclick="clearLogs()">Clear Logs</button>
+    </div>
+    
+    <div id="logs"></div>
+
+    <script>
+        const API_BASE = 'https://us-central1-nutrasafe-705c7.cloudfunctions.net';
+        
+        function log(message, type = 'log') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logDiv = document.createElement('div');
+            logDiv.className = `log ${type}`;
+            logDiv.innerHTML = `[${timestamp}] ${message}`;
+            document.getElementById('logs').appendChild(logDiv);
+            console.log(message);
+            
+            // Scroll to bottom
+            logDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+        
+        async function testSearchFoods() {
+            log('🔍 Testing searchFoods function...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/searchFoods`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        query: 'bread',
+                        maxResults: 5
+                    })
+                });
+                
+                log(`Response status: ${response.status}`, response.ok ? 'success' : 'error');
+                log(`Response headers: ${JSON.stringify([...response.headers.entries()])}`);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`Error response: ${errorText}`, 'error');
+                    return;
+                }
+                
+                const data = await response.json();
+                log(`Success! Got ${data.foods?.length || 0} foods`, 'success');
+                
+                if (data.foods && data.foods.length > 0) {
+                    const firstFood = data.foods[0];
+                    log(`First food: ${JSON.stringify(firstFood, null, 2)}`);
+                }
+                
+            } catch (error) {
+                log(`Network error: ${error.message}`, 'error');
+                log(`Error details: ${error.stack}`);
+            }
+        }
+        
+        async function testGetAllFoods() {
+            log('📊 Testing getAllFoods function...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/getAllFoods?limit=10`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                log(`Response status: ${response.status}`, response.ok ? 'success' : 'error');
+                log(`Response headers: ${JSON.stringify([...response.headers.entries()])}`);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`Error response: ${errorText}`, 'error');
+                    return;
+                }
+                
+                const data = await response.json();
+                log(`Success! Got ${data.foods?.length || 0} foods`, 'success');
+                
+                if (data.foods && data.foods.length > 0) {
+                    const firstFood = data.foods[0];
+                    log(`First food: ${JSON.stringify(firstFood, null, 2)}`);
+                }
+                
+            } catch (error) {
+                log(`Network error: ${error.message}`, 'error');
+                log(`Error details: ${error.stack}`);
+            }
+        }
+        
+        // Auto-run tests on page load
+        window.addEventListener('load', () => {
+            log('🚀 Debug page loaded. Click buttons to test API calls.');
+        });
+    </script>
+</body>
+</html>

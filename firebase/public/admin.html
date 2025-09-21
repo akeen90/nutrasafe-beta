@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutraSafe Admin - Fast Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <style>
+        /* Critical CSS - loaded synchronously */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #000000;
+            --bg-secondary: #0a0e1a;
+            --bg-tertiary: #1a1f2e;
+            --accent: #00ff88;
+            --accent-blue: #00d4ff;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a6b8;
+            --border: #2d3748;
+            --shadow: 0 0 20px rgba(0, 255, 136, 0.15);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .app {
+            height: 100vh;
+            display: grid;
+            grid-template-rows: 50px 1fr;
+            grid-template-columns: 250px 1fr;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .nav {
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+        }
+
+        .nav-item {
+            display: block;
+            padding: 12px 20px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.15s ease;
+            cursor: pointer;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: var(--bg-tertiary);
+            color: var(--accent);
+            border-right: 2px solid var(--accent);
+        }
+
+        .main {
+            background: var(--bg-primary);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Loading States */
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-secondary) 50%, var(--bg-tertiary) 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .skeleton-row {
+            height: 60px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+        }
+
+        /* Virtual Scroller */
+        .virtual-scroller {
+            height: 100%;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .virtual-content {
+            position: relative;
+        }
+
+        .virtual-item {
+            position: absolute;
+            left: 0;
+            right: 0;
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-secondary);
+            transition: background 0.15s ease;
+        }
+
+        .virtual-item:hover {
+            background: var(--bg-tertiary);
+        }
+
+        /* Food Item Styles */
+        .food-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+        }
+
+        .food-image {
+            width: 40px;
+            height: 40px;
+            border-radius: 4px;
+            object-fit: cover;
+            background: var(--bg-tertiary);
+        }
+
+        .food-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .food-name {
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .food-meta {
+            color: var(--text-secondary);
+            font-size: 12px;
+            margin-top: 2px;
+        }
+
+        .food-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.15s ease;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: black;
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        /* Search */
+        .search-container {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.2);
+        }
+
+        /* Status indicators */
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+
+        .status-verified { background: var(--accent); }
+        .status-pending { background: #ffd700; }
+        .status-issue { background: #ff4757; }
+
+        /* Performance indicators */
+        .perf-indicator {
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            background: var(--bg-tertiary);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-family: monospace;
+            z-index: 1000;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .app {
+                grid-template-columns: 1fr;
+                grid-template-rows: 50px 50px 1fr;
+            }
+            
+            .nav {
+                grid-row: 2;
+                grid-column: 1;
+                display: flex;
+                overflow-x: auto;
+            }
+            
+            .nav-item {
+                white-space: nowrap;
+            }
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: var(--bg-primary);
+            border-radius: 12px;
+            width: 100%;
+            max-width: 1200px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-header {
+            padding: 24px 32px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            color: var(--accent);
+            font-size: 24px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 32px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            padding: 0;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 32px;
+        }
+
+        .before-after-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+            margin-bottom: 32px;
+        }
+
+        .before-section h3 {
+            color: #ff6b35;
+            margin-bottom: 20px;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+        }
+
+        .after-section h3 {
+            color: #4ecdc4;
+            margin-bottom: 20px;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+        }
+
+        .data-section {
+            background: var(--bg-secondary);
+            padding: 24px;
+            border-radius: 8px;
+            border: 2px solid transparent;
+        }
+
+        .before-section .data-section {
+            border-color: #ff6b3520;
+        }
+
+        .after-section .data-section {
+            border-color: #4ecdc420;
+        }
+
+        .field-group {
+            margin-bottom: 16px;
+            padding: 12px;
+            background: var(--bg-primary);
+            border-radius: 6px;
+            border-left: 4px solid var(--accent);
+        }
+
+        .field-group strong {
+            color: var(--accent);
+            display: inline-block;
+            min-width: 120px;
+        }
+
+        .nutrition-data {
+            background: var(--bg-primary);
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 16px;
+            line-height: 1.6;
+            border-left: 4px solid #4ecdc4;
+        }
+
+        .nutrition-data strong {
+            color: #4ecdc4;
+            font-size: 16px;
+        }
+
+        .deletion-warning {
+            background: #ff6b3520;
+            border: 2px solid #ff6b35;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 16px;
+            color: #ff6b35;
+            font-weight: bold;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+        }
+
+        @media (max-width: 768px) {
+            .before-after-grid {
+                grid-template-columns: 1fr;
+                gap: 24px;
+            }
+            
+            .modal-content {
+                margin: 20px;
+                max-height: calc(100vh - 40px);
+            }
+            
+            .modal-body {
+                padding: 20px;
+            }
+            
+            .modal-header {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <header class="header">
+            <div class="logo">🥗 NutraSafe Admin</div>
+            <div id="metrics" style="font-family: monospace; font-size: 12px;"></div>
+        </header>
+
+        <nav class="nav">
+            <a href="#foods" class="nav-item active" data-view="foods">Foods Database</a>
+            <a href="#users" class="nav-item" data-view="users">Users</a>
+            <a href="#analytics" class="nav-item" data-view="analytics">Analytics</a>
+            <a href="#cleanse" class="nav-item" data-view="cleanse">AI Cleanse</a>
+            <a href="#settings" class="nav-item" data-view="settings">Settings</a>
+        </nav>
+
+        <main class="main">
+            <div id="app-content">
+                <!-- Dynamic content will be inserted here -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Performance indicator -->
+    <div class="perf-indicator" id="perf">
+        FPS: <span id="fps">--</span> | 
+        Items: <span id="item-count">0</span> | 
+        Mem: <span id="memory">--</span>
+    </div>
+
+    <script>
+        // Meta-level Performance Core
+        class MetaPerf {
+            constructor() {
+                this.fps = 0;
+                this.frameCount = 0;
+                this.lastTime = performance.now();
+                this.startMonitoring();
+            }
+
+            startMonitoring() {
+                const updateFPS = () => {
+                    this.frameCount++;
+                    const now = performance.now();
+                    if (now >= this.lastTime + 1000) {
+                        this.fps = Math.round((this.frameCount * 1000) / (now - this.lastTime));
+                        this.frameCount = 0;
+                        this.lastTime = now;
+                        this.updateDisplay();
+                    }
+                    requestAnimationFrame(updateFPS);
+                };
+                updateFPS();
+            }
+
+            updateDisplay() {
+                document.getElementById('fps').textContent = this.fps;
+                if (performance.memory) {
+                    const mb = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
+                    document.getElementById('memory').textContent = mb + 'MB';
+                }
+            }
+        }
+
+        // Virtual Scroller - Meta-style Performance
+        class VirtualScroller {
+            constructor(container, itemHeight = 60, bufferSize = 10) {
+                this.container = container;
+                this.itemHeight = itemHeight;
+                this.bufferSize = bufferSize;
+                this.items = [];
+                this.visibleItems = new Map();
+                this.scrollTop = 0;
+                this.containerHeight = container.clientHeight;
+                
+                this.setupScrolling();
+                this.createContent();
+            }
+
+            setupScrolling() {
+                this.container.addEventListener('scroll', this.onScroll.bind(this), { passive: true });
+                window.addEventListener('resize', this.onResize.bind(this));
+            }
+
+            createContent() {
+                this.content = document.createElement('div');
+                this.content.className = 'virtual-content';
+                this.container.appendChild(this.content);
+            }
+
+            setItems(items) {
+                this.items = items;
+                this.content.style.height = `${items.length * this.itemHeight}px`;
+                this.render();
+                document.getElementById('item-count').textContent = items.length;
+            }
+
+            onScroll() {
+                this.scrollTop = this.container.scrollTop;
+                this.render();
+            }
+
+            onResize() {
+                this.containerHeight = this.container.clientHeight;
+                this.render();
+            }
+
+            render() {
+                const startIndex = Math.max(0, Math.floor(this.scrollTop / this.itemHeight) - this.bufferSize);
+                const endIndex = Math.min(
+                    this.items.length - 1,
+                    Math.ceil((this.scrollTop + this.containerHeight) / this.itemHeight) + this.bufferSize
+                );
+
+                // Remove items that are no longer visible
+                for (const [index, element] of this.visibleItems) {
+                    if (index < startIndex || index > endIndex) {
+                        element.remove();
+                        this.visibleItems.delete(index);
+                    }
+                }
+
+                // Add new visible items
+                for (let i = startIndex; i <= endIndex; i++) {
+                    if (!this.visibleItems.has(i) && this.items[i]) {
+                        const element = this.createItemElement(this.items[i], i);
+                        this.content.appendChild(element);
+                        this.visibleItems.set(i, element);
+                    }
+                }
+            }
+
+            createItemElement(item, index) {
+                const element = document.createElement('div');
+                element.className = 'virtual-item';
+                element.style.top = `${index * this.itemHeight}px`;
+                element.style.height = `${this.itemHeight}px`;
+                element.innerHTML = this.renderItem(item, index);
+                return element;
+            }
+
+            renderItem(item, index) {
+                return `
+                    <div class="food-item">
+                        <img class="food-image" src="${item.image || '/api/placeholder/40/40'}" alt="${item.name}" loading="lazy">
+                        <div class="food-info">
+                            <div class="food-name">${item.name}</div>
+                            <div class="food-meta">
+                                <span class="status-dot ${item.verified ? 'status-verified' : 'status-pending'}"></span>
+                                ${item.brand || 'Unknown Brand'} • ${item.category || 'Uncategorized'}
+                            </div>
+                        </div>
+                        <div class="food-actions">
+                            <button class="btn btn-primary" onclick="app.editFood('${item.id}')">Edit</button>
+                            <button class="btn btn-secondary" onclick="app.deleteFood('${item.id}')">Delete</button>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Smart Cache System
+        class SmartCache {
+            constructor() {
+                this.cache = new Map();
+                this.timestamps = new Map();
+                this.maxAge = 5 * 60 * 1000; // 5 minutes
+            }
+
+            get(key) {
+                if (!this.cache.has(key)) return null;
+                
+                const timestamp = this.timestamps.get(key);
+                if (Date.now() - timestamp > this.maxAge) {
+                    this.cache.delete(key);
+                    this.timestamps.delete(key);
+                    return null;
+                }
+                
+                return this.cache.get(key);
+            }
+
+            set(key, value) {
+                this.cache.set(key, value);
+                this.timestamps.set(key, Date.now());
+            }
+
+            clear() {
+                this.cache.clear();
+                this.timestamps.clear();
+            }
+        }
+
+        // Main App Class - Meta-style Architecture
+        class AdminApp {
+            constructor() {
+                this.cache = new SmartCache();
+                this.perf = new MetaPerf();
+                this.currentView = 'foods';
+                this.foods = [];
+                this.filteredFoods = [];
+                this.searchTerm = '';
+                this.cleanseInProgress = false;
+                this.cleanseProgress = {
+                    processed: 0,
+                    total: 0,
+                    cost: 0,
+                    issues: 0
+                };
+                
+                this.init();
+            }
+
+            async init() {
+                this.setupNavigation();
+                this.setupSearch();
+                await this.loadView('foods');
+            }
+
+            setupNavigation() {
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const view = item.dataset.view;
+                        this.switchView(view);
+                    });
+                });
+            }
+
+            setupSearch() {
+                // Initialize current filters
+                this.currentFilters = {
+                    sortBy: 'recent',
+                    search: '',
+                    brand: '',
+                    hasBarcode: '',
+                    hasIngredients: '',
+                    severity: '',
+                    dateRange: ''
+                };
+
+                const searchContainer = document.createElement('div');
+                searchContainer.innerHTML = `
+                    <div style="display: grid; gap: 15px;">
+                        <!-- Main Search and Sort Row -->
+                        <div style="display: grid; gap: 15px; grid-template-columns: 1fr auto auto;">
+                            <div>
+                                <input type="text" id="search-input" class="search-input" 
+                                       placeholder="Search foods by name, brand, or ingredient..." />
+                            </div>
+                            <div>
+                                <select id="sort-select" style="padding: 10px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary); min-width: 120px;">
+                                    <option value="recent">🕒 Most Recent</option>
+                                    <option value="name">📝 Name A-Z</option>
+                                    <option value="brand">🏪 Brand A-Z</option>
+                                    <option value="severity">⚠️ Issues First</option>
+                                    <option value="calories">🔥 Calories High</option>
+                                </select>
+                            </div>
+                            <div>
+                                <button id="export-btn" class="btn btn-primary" 
+                                        style="padding: 10px 20px; font-size: 14px; white-space: nowrap;">
+                                    📊 Export CSV
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Filter Row -->
+                        <div style="display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
+                            <div>
+                                <select id="brand-filter" style="width: 100%; padding: 8px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary); font-size: 13px;">
+                                    <option value="">🏪 All Brands</option>
+                                    <option value="Tesco">Tesco</option>
+                                    <option value="Sainsburys">Sainsbury's</option>
+                                    <option value="ASDA">ASDA</option>
+                                    <option value="Morrisons">Morrisons</option>
+                                    <option value="Co-op">Co-op</option>
+                                </select>
+                            </div>
+                            <div>
+                                <select id="barcode-filter" style="width: 100%; padding: 8px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary); font-size: 13px;">
+                                    <option value="">📊 All Barcodes</option>
+                                    <option value="true">✅ Has Barcode</option>
+                                    <option value="false">❌ Missing Barcode</option>
+                                </select>
+                            </div>
+                            <div>
+                                <select id="ingredients-filter" style="width: 100%; padding: 8px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary); font-size: 13px;">
+                                    <option value="">🧪 All Ingredients</option>
+                                    <option value="true">✅ Has Ingredients</option>
+                                    <option value="false">❌ Missing Ingredients</option>
+                                </select>
+                            </div>
+                            <div>
+                                <select id="severity-filter" style="width: 100%; padding: 8px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary); font-size: 13px;">
+                                    <option value="">⚠️ All Severities</option>
+                                    <option value="critical">🔴 Critical</option>
+                                    <option value="major">🟠 Major</option>
+                                    <option value="minor">🟡 Minor</option>
+                                    <option value="none">🟢 No Issues</option>
+                                </select>
+                            </div>
+                            <div>
+                                <select id="date-filter" style="width: 100%; padding: 8px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary); font-size: 13px;">
+                                    <option value="">📅 All Time</option>
+                                    <option value="today">📅 Today</option>
+                                    <option value="week">📅 This Week</option>
+                                    <option value="month">📅 This Month</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Stats Row -->
+                        <div id="filter-stats" style="font-size: 12px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid var(--border);">
+                            <div>
+                                <span id="results-count">0</span> foods found 
+                                <span id="filter-indicators" style="margin-left: 15px;"></span>
+                            </div>
+                            <div>
+                                <button id="clear-filters" style="background: none; border: none; color: var(--accent); cursor: pointer; font-size: 12px; text-decoration: underline;">
+                                    Clear All Filters
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Set up event listeners
+                this.setupFilterListeners(searchContainer);
+                
+                return searchContainer;
+            }
+
+            setupFilterListeners(container) {
+                let searchTimeout;
+                
+                // Search input
+                const searchInput = container.querySelector('#search-input');
+                searchInput.addEventListener('input', (e) => {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(() => {
+                        this.currentFilters.search = e.target.value;
+                        this.applyFilters();
+                    }, 150);
+                });
+
+                // Sort dropdown
+                const sortSelect = container.querySelector('#sort-select');
+                sortSelect.addEventListener('change', (e) => {
+                    this.currentFilters.sortBy = e.target.value;
+                    this.applyFilters();
+                });
+
+                // Filter dropdowns
+                const brandFilter = container.querySelector('#brand-filter');
+                brandFilter.addEventListener('change', (e) => {
+                    this.currentFilters.brand = e.target.value;
+                    this.applyFilters();
+                });
+
+                const barcodeFilter = container.querySelector('#barcode-filter');
+                barcodeFilter.addEventListener('change', (e) => {
+                    this.currentFilters.hasBarcode = e.target.value;
+                    this.applyFilters();
+                });
+
+                const ingredientsFilter = container.querySelector('#ingredients-filter');
+                ingredientsFilter.addEventListener('change', (e) => {
+                    this.currentFilters.hasIngredients = e.target.value;
+                    this.applyFilters();
+                });
+
+                const severityFilter = container.querySelector('#severity-filter');
+                severityFilter.addEventListener('change', (e) => {
+                    this.currentFilters.severity = e.target.value;
+                    this.applyFilters();
+                });
+
+                const dateFilter = container.querySelector('#date-filter');
+                dateFilter.addEventListener('change', (e) => {
+                    this.currentFilters.dateRange = e.target.value;
+                    this.applyFilters();
+                });
+
+                // Export button
+                const exportBtn = container.querySelector('#export-btn');
+                exportBtn.addEventListener('click', () => {
+                    this.exportData();
+                });
+
+                // Clear filters button
+                const clearBtn = container.querySelector('#clear-filters');
+                clearBtn.addEventListener('click', () => {
+                    this.clearAllFilters();
+                });
+            }
+
+            async applyFilters() {
+                console.log('🔍 Applying filters:', this.currentFilters);
+                
+                // Fetch filtered foods from backend
+                const filteredFoods = await this.fetchFoods(this.currentFilters);
+                this.foods = filteredFoods;
+                this.filteredFoods = [...filteredFoods];
+                
+                // Update the virtual scroller
+                if (this.scroller) {
+                    this.scroller.setItems(this.filteredFoods);
+                }
+                
+                // Update stats
+                this.updateFilterStats();
+            }
+
+            updateFilterStats() {
+                const statsContainer = document.querySelector('#filter-stats');
+                if (!statsContainer) return;
+                
+                const resultsCount = document.querySelector('#results-count');
+                const filterIndicators = document.querySelector('#filter-indicators');
+                
+                if (resultsCount) {
+                    resultsCount.textContent = this.filteredFoods.length;
+                }
+                
+                if (filterIndicators) {
+                    const activeFilters = [];
+                    if (this.currentFilters.search) activeFilters.push(`Search: "${this.currentFilters.search}"`);
+                    if (this.currentFilters.brand) activeFilters.push(`Brand: ${this.currentFilters.brand}`);
+                    if (this.currentFilters.hasBarcode) activeFilters.push(`Barcode: ${this.currentFilters.hasBarcode === 'true' ? 'Has' : 'Missing'}`);
+                    if (this.currentFilters.hasIngredients) activeFilters.push(`Ingredients: ${this.currentFilters.hasIngredients === 'true' ? 'Has' : 'Missing'}`);
+                    if (this.currentFilters.severity) activeFilters.push(`Severity: ${this.currentFilters.severity}`);
+                    if (this.currentFilters.dateRange) activeFilters.push(`Date: ${this.currentFilters.dateRange}`);
+                    
+                    filterIndicators.textContent = activeFilters.length > 0 ? `Active filters: ${activeFilters.join(', ')}` : '';
+                }
+            }
+
+            clearAllFilters() {
+                // Reset all filters
+                this.currentFilters = {
+                    sortBy: 'recent',
+                    search: '',
+                    brand: '',
+                    hasBarcode: '',
+                    hasIngredients: '',
+                    severity: '',
+                    dateRange: ''
+                };
+                
+                // Reset UI elements
+                document.querySelector('#search-input').value = '';
+                document.querySelector('#sort-select').value = 'recent';
+                document.querySelector('#brand-filter').value = '';
+                document.querySelector('#barcode-filter').value = '';
+                document.querySelector('#ingredients-filter').value = '';
+                document.querySelector('#severity-filter').value = '';
+                document.querySelector('#date-filter').value = '';
+                
+                // Reapply filters (which will now be empty, showing all)
+                this.applyFilters();
+            }
+
+            async exportData() {
+                try {
+                    console.log('📊 Exporting data with current filters...');
+                    
+                    // Show loading state
+                    const exportBtn = document.querySelector('#export-btn');
+                    const originalText = exportBtn.textContent;
+                    exportBtn.textContent = '⏳ Exporting...';
+                    exportBtn.disabled = true;
+                    
+                    // Call export function with current filters
+                    const params = new URLSearchParams();
+                    Object.entries(this.currentFilters).forEach(([key, value]) => {
+                        if (value) params.set(key, value);
+                    });
+                    params.set('format', 'csv');
+                    
+                    const response = await fetch(`https://us-central1-nutrasafe-705c7.cloudfunctions.net/exportCleansedFoods?${params}`);
+                    
+                    if (!response.ok) {
+                        throw new Error(`Export failed: ${response.status}`);
+                    }
+                    
+                    // Download the file
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `nutrasafe-cleansed-foods-${new Date().toISOString().split('T')[0]}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    console.log('✅ Export completed successfully');
+                    
+                } catch (error) {
+                    console.error('❌ Export failed:', error);
+                    alert('Export failed. Please try again.');
+                } finally {
+                    // Restore button state
+                    const exportBtn = document.querySelector('#export-btn');
+                    exportBtn.textContent = originalText;
+                    exportBtn.disabled = false;
+                }
+            }
+
+            switchView(view) {
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.classList.toggle('active', item.dataset.view === view);
+                });
+                
+                this.currentView = view;
+                this.loadView(view);
+            }
+
+            async loadView(view) {
+                const content = document.getElementById('app-content');
+                
+                switch(view) {
+                    case 'foods':
+                        await this.loadFoodsView(content);
+                        break;
+                    case 'cleanse':
+                        await this.loadCleanseView(content);
+                        break;
+                    case 'analytics':
+                        await this.loadAnalyticsView(content);
+                        break;
+                    default:
+                        content.innerHTML = `<div style="padding: 20px;">View: ${view} - Coming Soon</div>`;
+                }
+            }
+
+            async loadFoodsView(container) {
+                // Show loading skeletons immediately
+                this.showLoadingSkeletons(container);
+                
+                // Try cache first
+                let foods = this.cache.get('foods');
+                if (!foods) {
+                    foods = await this.fetchFoods();
+                    this.cache.set('foods', foods);
+                }
+                
+                this.foods = foods;
+                this.filteredFoods = [...foods];
+                
+                // Create the foods interface
+                const searchContainer = document.createElement('div');
+                searchContainer.className = 'search-container';
+                searchContainer.appendChild(this.setupSearch());
+                
+                const scrollerContainer = document.createElement('div');
+                scrollerContainer.className = 'virtual-scroller';
+                scrollerContainer.style.height = 'calc(100% - 80px)';
+                
+                container.innerHTML = '';
+                container.appendChild(searchContainer);
+                container.appendChild(scrollerContainer);
+                
+                // Initialize virtual scroller
+                this.scroller = new VirtualScroller(scrollerContainer);
+                this.scroller.setItems(this.filteredFoods);
+                
+                // Initialize filter stats after UI is ready
+                setTimeout(() => {
+                    if (this.currentFilters) {
+                        this.updateFilterStats();
+                    }
+                }, 100);
+            }
+
+            showLoadingSkeletons(container) {
+                const skeletons = Array.from({length: 15}, () => 
+                    '<div class="skeleton skeleton-row"></div>'
+                ).join('');
+                
+                container.innerHTML = `
+                    <div class="search-container">
+                        <div class="skeleton" style="height: 40px; border-radius: 4px;"></div>
+                    </div>
+                    <div style="padding: 20px;">
+                        ${skeletons}
+                    </div>
+                `;
+            }
+
+            async fetchFoods(filters = {}) {
+                try {
+                    // Build query string with enhanced filters
+                    const params = new URLSearchParams({
+                        limit: '1000',
+                        sortBy: filters.sortBy || 'recent',
+                        search: filters.search || '',
+                        brand: filters.brand || '',
+                        hasBarcode: filters.hasBarcode || '',
+                        hasIngredients: filters.hasIngredients || '',
+                        severity: filters.severity || '',
+                        dateRange: filters.dateRange || ''
+                    });
+                    
+                    // Remove empty parameters
+                    for (let [key, value] of [...params]) {
+                        if (!value) params.delete(key);
+                    }
+                    
+                    console.log('🔍 Fetching foods with filters:', Object.fromEntries(params));
+                    
+                    // Get cleansed foods with enhanced filtering
+                    const cleansedResponse = await fetch(`https://us-central1-nutrasafe-705c7.cloudfunctions.net/getCleansedFoods?${params}`);
+                    if (cleansedResponse.ok) {
+                        const cleansedData = await cleansedResponse.json();
+                        if (cleansedData.foods && cleansedData.foods.length > 0) {
+                            console.log(`✅ Loaded ${cleansedData.foods.length} cleansed foods from Firebase`);
+                            return cleansedData.foods.map(food => ({
+                                id: food.originalId || food.id,
+                                originalData: food.originalData,
+                                cleanedData: food.cleanedData,
+                                // Display fields for the list (use cleaned data if available, fallback to original)
+                                name: food.cleanedData?.name || food.originalData?.name || 'Unknown',
+                                brand: food.cleanedData?.brand || food.originalData?.brand || 'Unknown',
+                                category: food.originalData?.category || 'Uncategorized',
+                                verified: food.verified || false,
+                                image: food.originalData?.image || food.image
+                            }));
+                        }
+                    }
+                    
+                    // Fallback to the original API
+                    const response = await fetch('/api/foods');
+                    if (response.ok) {
+                        return await response.json();
+                    }
+                    
+                    throw new Error('No food data available');
+                } catch (error) {
+                    console.error('Error fetching foods:', error);
+                    // Return mock data for demo
+                    return this.generateMockFoods(1000);
+                }
+            }
+
+            generateMockFoods(count) {
+                const brands = ['Tesco', 'Sainsburys', 'ASDA', 'Morrisons', 'Co-op'];
+                const categories = ['Dairy', 'Meat', 'Vegetables', 'Fruits', 'Snacks'];
+                const names = ['Organic Milk', 'Chicken Breast', 'Broccoli', 'Bananas', 'Crisps'];
+                
+                return Array.from({length: count}, (_, i) => ({
+                    id: `food-${i}`,
+                    name: `${names[i % names.length]} ${i + 1}`,
+                    brand: brands[i % brands.length],
+                    category: categories[i % categories.length],
+                    verified: Math.random() > 0.3,
+                    image: null
+                }));
+            }
+
+            filterFoods() {
+                // Legacy compatibility method - now redirects to new filtering system
+                if (this.currentFilters) {
+                    this.applyFilters();
+                } else {
+                    // Fallback to old behavior if new system not initialized
+                    if (!this.searchTerm) {
+                        this.filteredFoods = [...this.foods];
+                    } else {
+                        this.filteredFoods = this.foods.filter(food => 
+                            food.name.toLowerCase().includes(this.searchTerm) ||
+                            (food.brand && food.brand.toLowerCase().includes(this.searchTerm))
+                        );
+                    }
+                    
+                    if (this.scroller) {
+                        this.scroller.setItems(this.filteredFoods);
+                    }
+                }
+            }
+
+            async loadCleanseView(container) {
+                container.innerHTML = `
+                    <div style="padding: 20px;">
+                        <h2 style="color: var(--accent); margin-bottom: 20px;">🧹 AI Food Cleanse</h2>
+                        
+                        <!-- Controls Section -->
+                        <div style="background: var(--bg-secondary); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                            <h3 style="margin-bottom: 15px;">Cleanse Settings</h3>
+                            <div style="display: grid; gap: 15px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                                <div>
+                                    <label style="display: block; margin-bottom: 5px;">Batch Size:</label>
+                                    <input type="number" id="batch-size" value="50" min="1" max="100" 
+                                           style="width: 100%; padding: 8px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary);">
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 5px;">Analysis Type:</label>
+                                    <select id="analysis-type" 
+                                            style="width: 100%; padding: 8px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary);">
+                                        <option value="comprehensive">Comprehensive Analysis</option>
+                                        <option value="quick">Quick Analysis</option>
+                                        <option value="allergens-only">Allergens Only</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div style="display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); margin-bottom: 20px;">
+                            <div style="background: var(--bg-secondary); padding: 20px; border-radius: 8px;">
+                                <h3>Quick Cleanse (100 Foods)</h3>
+                                <p style="color: var(--text-secondary); margin: 10px 0;">Test AI analysis on 100 random foods</p>
+                                <button class="btn btn-primary" id="quick-cleanse-btn" onclick="app.runQuickCleanse()" 
+                                        style="padding: 10px 20px; font-size: 14px;">Start Quick Cleanse</button>
+                            </div>
+                            <div style="background: var(--bg-secondary); padding: 20px; border-radius: 8px;">
+                                <h3>Full Database Cleanse</h3>
+                                <p style="color: var(--text-secondary); margin: 10px 0;">Analyze all unverified foods in database</p>
+                                <button class="btn btn-primary" id="full-cleanse-btn" onclick="app.runFullCleanse()" 
+                                        style="padding: 10px 20px; font-size: 14px;">Start Full Cleanse</button>
+                            </div>
+                        </div>
+
+                        <!-- Progress Section -->
+                        <div style="background: var(--bg-secondary); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                            <h3 style="margin-bottom: 15px;">🔄 Progress Monitor</h3>
+                            <div id="cleanse-status" style="color: var(--text-secondary); margin-bottom: 10px;">Ready to start cleansing...</div>
+                            <div style="background: var(--bg-tertiary); border-radius: 6px; height: 10px; margin: 10px 0;">
+                                <div id="progress-bar" style="background: var(--accent); height: 100%; border-radius: 6px; width: 0%; transition: width 0.3s;"></div>
+                            </div>
+                            <div style="display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); font-family: monospace; font-size: 12px;">
+                                <div>Processed: <span id="processed-count" style="color: var(--accent);">0</span></div>
+                                <div>Total: <span id="total-count" style="color: var(--text-secondary);">0</span></div>
+                                <div>Issues Found: <span id="issues-count" style="color: #ff4757;">0</span></div>
+                                <div>Cost: $<span id="cost-estimate" style="color: var(--accent-blue);">0.00</span></div>
+                            </div>
+                            <div style="margin-top: 10px;">
+                                <button class="btn btn-secondary" id="stop-cleanse-btn" onclick="app.stopCleanse()" 
+                                        style="padding: 6px 12px; font-size: 12px;" disabled>Stop Cleanse</button>
+                                <button class="btn btn-secondary" id="view-results-btn" onclick="app.viewCleanseResults()" 
+                                        style="padding: 6px 12px; font-size: 12px; margin-left: 10px;" disabled>View Results</button>
+                            </div>
+                        </div>
+
+                        <!-- Activity Log -->
+                        <div style="background: var(--bg-secondary); padding: 20px; border-radius: 8px;">
+                            <h3 style="margin-bottom: 15px;">📝 Activity Log</h3>
+                            <div id="activity-log" style="max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px; background: var(--bg-tertiary); border-radius: 4px; padding: 10px;">
+                                <div style="color: var(--text-secondary);">No activity yet. Start a cleanse operation to see logs here.</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            async loadAnalyticsView(container) {
+                container.innerHTML = `
+                    <div style="padding: 20px;">
+                        <h2 style="color: var(--accent); margin-bottom: 20px;">Analytics Dashboard</h2>
+                        <div style="display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
+                            <div style="background: var(--bg-secondary); padding: 20px; border-radius: 8px;">
+                                <h3>Total Foods</h3>
+                                <div style="font-size: 32px; color: var(--accent); font-weight: bold;">${this.foods.length || 0}</div>
+                            </div>
+                            <div style="background: var(--bg-secondary); padding: 20px; border-radius: 8px;">
+                                <h3>Verified Foods</h3>
+                                <div style="font-size: 32px; color: var(--accent); font-weight: bold;">
+                                    ${this.foods.filter(f => f.verified).length || 0}
+                                </div>
+                            </div>
+                            <div style="background: var(--bg-secondary); padding: 20px; border-radius: 8px;">
+                                <h3>Pending Review</h3>
+                                <div style="font-size: 32px; color: #ffd700; font-weight: bold;">
+                                    ${this.foods.filter(f => !f.verified).length || 0}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Food Actions
+            editFood(id) {
+                console.log('Edit food:', id);
+                const food = this.foods.find(f => f.id === id);
+                if (!food) return;
+                
+                this.showFoodModal(food);
+            }
+
+            showFoodModal(food) {
+                // Create modal HTML with Before/After comparison
+                const modalHTML = `
+                    <div class="modal-overlay" onclick="this.remove()">
+                        <div class="modal-content" onclick="event.stopPropagation()">
+                            <div class="modal-header">
+                                <h2>Food Details: ${food.cleanedData?.name || food.originalData?.name || food.name || 'Unknown'}</h2>
+                                <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="before-after-grid">
+                                    <div class="before-section">
+                                        <h3>📥 BEFORE (Original Data)</h3>
+                                        <div class="data-section">
+                                            <div class="field-group">
+                                                <strong>Name:</strong> "${food.originalData?.name || food.name || 'N/A'}"
+                                            </div>
+                                            <div class="field-group">
+                                                <strong>Brand:</strong> "${food.originalData?.brand || food.brand || 'N/A'}"
+                                            </div>
+                                            <div class="field-group">
+                                                <strong>Barcode:</strong> "${food.originalData?.barcode || food.barcode || 'N/A'}"
+                                            </div>
+                                            <div class="field-group">
+                                                <strong>Serving Size:</strong> "${food.originalData?.servingSize || 'N/A'}"
+                                            </div>
+                                            <div class="field-group">
+                                                <strong>Ingredients:</strong> "${food.originalData?.ingredients || food.ingredients || 'N/A'}"
+                                            </div>
+                                            <div class="nutrition-data">
+                                                <strong>Nutrition (per 100g):</strong><br>
+                                                Calories: ${food.originalData?.nutritionData?.calories || food.nutritionData?.calories || 'N/A'} kcal<br>
+                                                Protein: ${food.originalData?.nutritionData?.protein || food.nutritionData?.protein || 'N/A'}g<br>
+                                                Carbs: ${food.originalData?.nutritionData?.carbs || food.nutritionData?.carbs || 'N/A'}g<br>
+                                                Fat: ${food.originalData?.nutritionData?.fat || food.nutritionData?.fat || 'N/A'}g<br>
+                                                Fiber: ${food.originalData?.nutritionData?.fiber || food.nutritionData?.fiber || 'N/A'}g<br>
+                                                Sugar: ${food.originalData?.nutritionData?.sugar || food.nutritionData?.sugar || 'N/A'}g<br>
+                                                Sodium: ${food.originalData?.nutritionData?.sodium || food.nutritionData?.sodium || 'N/A'}mg<br>
+                                                Salt: ${food.originalData?.nutritionData?.salt || food.nutritionData?.salt || 'N/A'}g
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="after-section">
+                                        <h3>✨ AFTER (AI Cleaned Data)</h3>
+                                        <div class="data-section">
+                                            <div class="field-group">
+                                                <strong>Name:</strong> "${food.cleanedData?.name || 'Not cleaned'}"
+                                            </div>
+                                            <div class="field-group">
+                                                <strong>Brand:</strong> "${food.cleanedData?.brand || 'Not cleaned'}"
+                                            </div>
+                                            <div class="field-group">
+                                                <strong>Barcode:</strong> "${food.cleanedData?.barcode || 'Not cleaned'}"
+                                            </div>
+                                            <div class="field-group">
+                                                <strong>Serving Size:</strong> "${food.cleanedData?.servingSize || 'Not extracted'}"
+                                            </div>
+                                            <div class="field-group">
+                                                <strong>Ingredients:</strong> "${food.cleanedData?.ingredients || 'Not cleaned'}"
+                                            </div>
+                                            <div class="nutrition-data">
+                                                <strong>Nutrition (per 100g):</strong><br>
+                                                ${food.cleanedData?.nutritionData ? `
+                                                    Calories: ${food.cleanedData.nutritionData.calories || 'N/A'} kcal<br>
+                                                    Protein: ${food.cleanedData.nutritionData.protein || 'N/A'}g<br>
+                                                    Carbs: ${food.cleanedData.nutritionData.carbs || 'N/A'}g<br>
+                                                    Fat: ${food.cleanedData.nutritionData.fat || 'N/A'}g<br>
+                                                    Fiber: ${food.cleanedData.nutritionData.fiber || 'N/A'}g<br>
+                                                    Sugar: ${food.cleanedData.nutritionData.sugar || 'N/A'}g<br>
+                                                    Sodium: ${food.cleanedData.nutritionData.sodium || 'N/A'}mg<br>
+                                                    Salt: ${food.cleanedData.nutritionData.salt || 'N/A'}g
+                                                ` : 'Not cleaned'}
+                                            </div>
+                                            ${food.cleanedData?.recommendedForDeletion ? `
+                                                <div class="deletion-warning">
+                                                    ⚠️ <strong>Recommended for deletion:</strong> ${food.cleanedData.deleteReason || 'AI suggested deletion'}
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-actions">
+                                    <button class="btn btn-primary" onclick="app.saveFood('${food.id}')">Save Changes</button>
+                                    <button class="btn btn-secondary" onclick="app.deleteFood('${food.id}')">Delete Food</button>
+                                    <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Add modal to DOM
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+            }
+
+            saveFood(id) {
+                console.log('Save food changes:', id);
+                // Implement save functionality
+                this.closeModal();
+            }
+
+            closeModal() {
+                const modal = document.querySelector('.modal-overlay');
+                if (modal) modal.remove();
+            }
+
+            deleteFood(id) {
+                console.log('Delete food:', id);
+                // Implement optimistic delete
+                const index = this.filteredFoods.findIndex(f => f.id === id);
+                if (index !== -1) {
+                    this.filteredFoods.splice(index, 1);
+                    this.scroller.setItems(this.filteredFoods);
+                }
+            }
+
+            async runQuickCleanse() {
+                await this.startCleanse(100);
+            }
+
+            async runFullCleanse() {
+                await this.startCleanse(-1); // -1 means all foods
+            }
+
+            async startCleanse(maxFoods = -1) {
+                if (this.cleanseInProgress) return;
+
+                const batchSize = parseInt(document.getElementById('batch-size').value) || 50;
+                const analysisType = document.getElementById('analysis-type').value;
+
+                // Get foods to cleanse
+                let foodsToProcess = [...this.foods];
+                if (maxFoods > 0) {
+                    foodsToProcess = foodsToProcess.slice(0, maxFoods);
+                }
+
+                if (foodsToProcess.length === 0) {
+                    this.logActivity('❌ No foods to process', 'error');
+                    return;
+                }
+
+                const estimatedCost = (foodsToProcess.length * 0.002).toFixed(2);
+                const confirmMessage = `Start AI cleanse of ${foodsToProcess.length} foods?\n\nBatch size: ${batchSize}\nAnalysis type: ${analysisType}\nEstimated cost: $${estimatedCost}`;
+
+                if (!confirm(confirmMessage)) return;
+
+                this.cleanseInProgress = true;
+                this.cleanseProgress = {
+                    processed: 0,
+                    total: foodsToProcess.length,
+                    cost: 0,
+                    issues: 0
+                };
+
+                // Update UI
+                document.getElementById('quick-cleanse-btn').disabled = true;
+                document.getElementById('full-cleanse-btn').disabled = true;
+                document.getElementById('stop-cleanse-btn').disabled = false;
+                
+                this.updateCleanseProgress();
+                this.logActivity('🚀 AI cleanse started', 'info');
+
+                try {
+                    // Process in batches
+                    const batches = [];
+                    for (let i = 0; i < foodsToProcess.length; i += batchSize) {
+                        batches.push(foodsToProcess.slice(i, i + batchSize));
+                    }
+
+                    for (let i = 0; i < batches.length && this.cleanseInProgress; i++) {
+                        const batch = batches[i];
+                        this.logActivity(`📦 Processing batch ${i + 1}/${batches.length} (${batch.length} foods)`, 'info');
+                        
+                        await this.processBatch(batch, analysisType);
+                        
+                        this.cleanseProgress.processed += batch.length;
+                        this.updateCleanseProgress();
+
+                        // Small delay between batches
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+
+                    this.logActivity(`✅ Cleanse completed! Processed ${this.cleanseProgress.processed} foods`, 'success');
+                    document.getElementById('view-results-btn').disabled = false;
+
+                } catch (error) {
+                    this.logActivity(`❌ Error during cleanse: ${error.message}`, 'error');
+                } finally {
+                    this.cleanseInProgress = false;
+                    document.getElementById('quick-cleanse-btn').disabled = false;
+                    document.getElementById('full-cleanse-btn').disabled = false;
+                    document.getElementById('stop-cleanse-btn').disabled = true;
+                }
+            }
+
+            async processBatch(foods, analysisType) {
+                try {
+                    const response = await fetch('https://us-central1-nutrasafe-705c7.cloudfunctions.net/analyzeAndCleanFoods', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            foods: foods,
+                            analysisType: analysisType
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    const result = await response.json();
+                    
+                    // Update progress with results
+                    if (result.issuesFound) {
+                        this.cleanseProgress.issues += result.issuesFound;
+                    }
+                    if (result.cost) {
+                        this.cleanseProgress.cost += result.cost;
+                    }
+
+                    this.logActivity(`✅ Batch processed: ${result.issuesFound || 0} issues found, $${(result.cost || 0).toFixed(4)} cost`, 'success');
+
+                } catch (error) {
+                    this.logActivity(`❌ Batch failed: ${error.message}`, 'error');
+                    throw error;
+                }
+            }
+
+            stopCleanse() {
+                if (this.cleanseInProgress) {
+                    this.cleanseInProgress = false;
+                    this.logActivity('⏹️ Cleanse stopped by user', 'warning');
+                }
+            }
+
+            updateCleanseProgress() {
+                const progress = this.cleanseProgress;
+                const percentage = progress.total > 0 ? (progress.processed / progress.total) * 100 : 0;
+
+                document.getElementById('cleanse-status').textContent = 
+                    this.cleanseInProgress ? 
+                    `Processing... ${progress.processed}/${progress.total} foods` : 
+                    'Ready to start cleansing...';
+
+                document.getElementById('progress-bar').style.width = `${percentage}%`;
+                document.getElementById('processed-count').textContent = progress.processed;
+                document.getElementById('total-count').textContent = progress.total;
+                document.getElementById('issues-count').textContent = progress.issues;
+                document.getElementById('cost-estimate').textContent = progress.cost.toFixed(4);
+            }
+
+            logActivity(message, type = 'info') {
+                const log = document.getElementById('activity-log');
+                const timestamp = new Date().toLocaleTimeString();
+                const colors = {
+                    info: 'var(--text-primary)',
+                    success: 'var(--accent)',
+                    warning: '#ffd700',
+                    error: '#ff4757'
+                };
+
+                const entry = document.createElement('div');
+                entry.style.color = colors[type] || colors.info;
+                entry.style.marginBottom = '2px';
+                entry.textContent = `[${timestamp}] ${message}`;
+
+                if (log.children.length === 1 && log.children[0].textContent.includes('No activity yet')) {
+                    log.innerHTML = '';
+                }
+
+                log.appendChild(entry);
+                log.scrollTop = log.scrollHeight;
+            }
+
+            viewCleanseResults() {
+                this.logActivity('📊 Opening results view...', 'info');
+                // TODO: Implement results viewer
+                alert('Results viewer coming soon! Check the activity log for detailed results.');
+            }
+        }
+
+        // Initialize the app when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            window.app = new AdminApp();
+        });
+
+        // Service Worker Registration for offline functionality
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(err => {
+                console.log('SW registration failed:', err);
+            });
+        }
+    </script>
+</body>
+</html>

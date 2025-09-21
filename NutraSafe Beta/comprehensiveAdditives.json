@@ -1,0 +1,5381 @@
+{
+  "E100": {
+    "code": "E100",
+    "name": "Curcumin",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "curcumin"
+    ]
+  },
+  "E101I": {
+    "code": "E101I",
+    "name": "Riboflavin",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "riboflavin"
+    ]
+  },
+  "E101II": {
+    "code": "E101II",
+    "name": "Riboflavin-5'-phosphate",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "riboflavin-5'-phosphate"
+    ]
+  },
+  "E102": {
+    "code": "E102",
+    "name": "Tartrazine",
+    "category": "colour",
+    "healthScore": 7,
+    "childWarning": true,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "caution",
+    "synonyms": [
+      "FD&C Yellow 5",
+      "Yellow 5",
+      "Tartrazine"
+    ],
+    "searchTerms": [
+      "tartrazine",
+      "fd&c yellow 5",
+      "yellow 5",
+      "tartrazine"
+    ]
+  },
+  "E104": {
+    "code": "E104",
+    "name": "Quinoline yellow",
+    "category": "colour",
+    "healthScore": 7,
+    "childWarning": true,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "caution",
+    "synonyms": [],
+    "searchTerms": [
+      "quinoline yellow"
+    ]
+  },
+  "E110": {
+    "code": "E110",
+    "name": "Sunset Yellow FCF; Orange Yellow S",
+    "category": "colour",
+    "healthScore": 7,
+    "childWarning": true,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "caution",
+    "synonyms": [
+      "FD&C Yellow 6",
+      "Yellow 6",
+      "Sunset Yellow"
+    ],
+    "searchTerms": [
+      "sunset yellow fcf; orange yellow s",
+      "fd&c yellow 6",
+      "yellow 6",
+      "sunset yellow"
+    ]
+  },
+  "E120": {
+    "code": "E120",
+    "name": "Cochineal; Carminic acid; Carmines",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "Carmine",
+      "Carminic acid",
+      "Cochineal"
+    ],
+    "searchTerms": [
+      "cochineal; carminic acid; carmines",
+      "carmine",
+      "carminic acid",
+      "cochineal"
+    ]
+  },
+  "E122": {
+    "code": "E122",
+    "name": "Azorubine; Carmoisine",
+    "category": "colour",
+    "healthScore": 7,
+    "childWarning": true,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "caution",
+    "synonyms": [],
+    "searchTerms": [
+      "azorubine; carmoisine"
+    ]
+  },
+  "E123": {
+    "code": "E123",
+    "name": "Amaranth",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "amaranth"
+    ]
+  },
+  "E124": {
+    "code": "E124",
+    "name": "Ponceau 4R; Cochineal Red A",
+    "category": "colour",
+    "healthScore": 7,
+    "childWarning": true,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "caution",
+    "synonyms": [
+      "Ponceau 4R",
+      "Cochineal Red A"
+    ],
+    "searchTerms": [
+      "ponceau 4r; cochineal red a",
+      "ponceau 4r",
+      "cochineal red a"
+    ]
+  },
+  "E127": {
+    "code": "E127",
+    "name": "Erythrosine",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "Erythrosine",
+      "FD&C Red 3"
+    ],
+    "searchTerms": [
+      "erythrosine",
+      "erythrosine",
+      "fd&c red 3"
+    ]
+  },
+  "E129": {
+    "code": "E129",
+    "name": "Allura Red AC",
+    "category": "colour",
+    "healthScore": 7,
+    "childWarning": true,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "caution",
+    "synonyms": [
+      "Allura Red AC",
+      "Red 40",
+      "FD&C Red 40"
+    ],
+    "searchTerms": [
+      "allura red ac",
+      "allura red ac",
+      "red 40",
+      "fd&c red 40"
+    ]
+  },
+  "E131": {
+    "code": "E131",
+    "name": "Patent Blue V",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "patent blue v"
+    ]
+  },
+  "E132": {
+    "code": "E132",
+    "name": "Indigotine; Indigo Carmine",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "Indigotine",
+      "FD&C Blue 2",
+      "Blue 2"
+    ],
+    "searchTerms": [
+      "indigotine; indigo carmine",
+      "indigotine",
+      "fd&c blue 2",
+      "blue 2"
+    ]
+  },
+  "E133": {
+    "code": "E133",
+    "name": "Brilliant Blue FCF",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "Brilliant Blue FCF",
+      "FD&C Blue 1",
+      "Blue 1"
+    ],
+    "searchTerms": [
+      "brilliant blue fcf",
+      "brilliant blue fcf",
+      "fd&c blue 1",
+      "blue 1"
+    ]
+  },
+  "E140": {
+    "code": "E140",
+    "name": "Chlorophylls and chlorophyllins",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "chlorophylls and chlorophyllins"
+    ]
+  },
+  "E141": {
+    "code": "E141",
+    "name": "Copper complexes of chlorophylls and chlorophyllins",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "copper complexes of chlorophylls and chlorophyllins"
+    ]
+  },
+  "E142": {
+    "code": "E142",
+    "name": "Green S",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "green s"
+    ]
+  },
+  "E150A": {
+    "code": "E150A",
+    "name": "Plain caramel",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "plain caramel"
+    ]
+  },
+  "E150B": {
+    "code": "E150B",
+    "name": "Caustic sulphite caramel",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "caustic sulphite caramel"
+    ]
+  },
+  "E150C": {
+    "code": "E150C",
+    "name": "Ammonia caramel",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "ammonia caramel"
+    ]
+  },
+  "E150D": {
+    "code": "E150D",
+    "name": "Sulphite ammonia caramel",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "Caramel color IV",
+      "Sulphite ammonia caramel"
+    ],
+    "searchTerms": [
+      "sulphite ammonia caramel",
+      "caramel color iv",
+      "sulphite ammonia caramel"
+    ]
+  },
+  "E151": {
+    "code": "E151",
+    "name": "Brilliant Black BN; Black PN",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "brilliant black bn; black pn"
+    ]
+  },
+  "E153": {
+    "code": "E153",
+    "name": "Vegetable carbon",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "vegetable carbon"
+    ]
+  },
+  "E155": {
+    "code": "E155",
+    "name": "Brown HT",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "brown ht"
+    ]
+  },
+  "E160A": {
+    "code": "E160A",
+    "name": "Carotenes",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "carotenes"
+    ]
+  },
+  "E160B(I)": {
+    "code": "E160B(I)",
+    "name": "Annatto, bixin",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "annatto, bixin"
+    ]
+  },
+  "E160B(II)": {
+    "code": "E160B(II)",
+    "name": "Annatto, norbixin",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "annatto, norbixin"
+    ]
+  },
+  "E160C": {
+    "code": "E160C",
+    "name": "Paprika extract; Capsanthin; Capsorubin",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "paprika extract; capsanthin; capsorubin"
+    ]
+  },
+  "E160D": {
+    "code": "E160D",
+    "name": "Lycopene",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "lycopene"
+    ]
+  },
+  "E160E": {
+    "code": "E160E",
+    "name": "Beta-apo-8'-carotenal (C30)",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "beta-apo-8'-carotenal (c30)"
+    ]
+  },
+  "E161B": {
+    "code": "E161B",
+    "name": "Lutein",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "lutein"
+    ]
+  },
+  "E161G": {
+    "code": "E161G",
+    "name": "Canthaxanthin",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "canthaxanthin"
+    ]
+  },
+  "E162": {
+    "code": "E162",
+    "name": "Beetroot Red; Betanin",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "beetroot red; betanin"
+    ]
+  },
+  "E163": {
+    "code": "E163",
+    "name": "Anthocyanins",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "anthocyanins"
+    ]
+  },
+  "E170": {
+    "code": "E170",
+    "name": "Calcium carbonate",
+    "category": "colour/others",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium carbonate"
+    ]
+  },
+  "E171": {
+    "code": "E171",
+    "name": "Titanium dioxide",
+    "category": "colour",
+    "healthScore": 22,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "caution",
+    "synonyms": [
+      "Titanium dioxide",
+      "TiO2"
+    ],
+    "searchTerms": [
+      "titanium dioxide",
+      "titanium dioxide",
+      "tio2"
+    ]
+  },
+  "E172": {
+    "code": "E172",
+    "name": "Iron oxides and hydroxides",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "Iron oxides",
+      "Iron hydroxides"
+    ],
+    "searchTerms": [
+      "iron oxides and hydroxides",
+      "iron oxides",
+      "iron hydroxides"
+    ]
+  },
+  "E173": {
+    "code": "E173",
+    "name": "Aluminium",
+    "category": "colour/others",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "aluminium"
+    ]
+  },
+  "E174": {
+    "code": "E174",
+    "name": "Silver",
+    "category": "colour/others",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "silver"
+    ]
+  },
+  "E175": {
+    "code": "E175",
+    "name": "Gold",
+    "category": "colour/others",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "gold"
+    ]
+  },
+  "E180": {
+    "code": "E180",
+    "name": "Litholrubine BK",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "litholrubine bk"
+    ]
+  },
+  "E128": {
+    "code": "E128",
+    "name": "Red 2G",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "red 2g"
+    ]
+  },
+  "E154": {
+    "code": "E154",
+    "name": "Brown FK (Kipper Brown)",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "brown fk (kipper brown)"
+    ]
+  },
+  "E160F": {
+    "code": "E160F",
+    "name": "Ethyl ester of beta-apo-8'-carotenic acid",
+    "category": "colour",
+    "healthScore": 42,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "ethyl ester of beta-apo-8'-carotenic acid"
+    ]
+  },
+  "E200": {
+    "code": "E200",
+    "name": "Sorbic acid",
+    "category": "preservative",
+    "healthScore": 40,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sorbic acid"
+    ]
+  },
+  "E202": {
+    "code": "E202",
+    "name": "Potassium sorbate",
+    "category": "preservative",
+    "healthScore": 40,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "potassium sorbate"
+    ]
+  },
+  "E210": {
+    "code": "E210",
+    "name": "Benzoic acid",
+    "category": "preservative",
+    "healthScore": 40,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "benzoic acid"
+    ]
+  },
+  "E211": {
+    "code": "E211",
+    "name": "Sodium benzoate",
+    "category": "preservative",
+    "healthScore": 40,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium benzoate"
+    ]
+  },
+  "E212": {
+    "code": "E212",
+    "name": "Potassium benzoate",
+    "category": "preservative",
+    "healthScore": 40,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "potassium benzoate"
+    ]
+  },
+  "E213": {
+    "code": "E213",
+    "name": "Calcium benzoate",
+    "category": "preservative",
+    "healthScore": 40,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium benzoate"
+    ]
+  },
+  "E214": {
+    "code": "E214",
+    "name": "Ethyl p-hydroxybenzoate",
+    "category": "preservative",
+    "healthScore": 40,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "ethyl p-hydroxybenzoate"
+    ]
+  },
+  "E215": {
+    "code": "E215",
+    "name": "Sodium ethyl p-hydroxybenzoate",
+    "category": "preservative",
+    "healthScore": 40,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium ethyl p-hydroxybenzoate"
+    ]
+  },
+  "E218": {
+    "code": "E218",
+    "name": "Methyl p-hydroxybenzoate",
+    "category": "preservative",
+    "healthScore": 40,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "methyl p-hydroxybenzoate"
+    ]
+  },
+  "E219": {
+    "code": "E219",
+    "name": "Sodium methyl p-hydroxybenzoate",
+    "category": "preservative",
+    "healthScore": 40,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium methyl p-hydroxybenzoate"
+    ]
+  },
+  "E220": {
+    "code": "E220",
+    "name": "Sulphur dioxide",
+    "category": "preservative",
+    "healthScore": 10,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": true,
+    "effectsVerdict": "caution",
+    "synonyms": [
+      "Sulphur dioxide",
+      "Sulfur dioxide"
+    ],
+    "searchTerms": [
+      "sulphur dioxide",
+      "sulphur dioxide",
+      "sulfur dioxide"
+    ]
+  },
+  "E221": {
+    "code": "E221",
+    "name": "Sodium sulphite",
+    "category": "preservative",
+    "healthScore": 10,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": true,
+    "effectsVerdict": "caution",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium sulphite"
+    ]
+  },
+  "E222": {
+    "code": "E222",
+    "name": "Sodium hydrogen sulphite",
+    "category": "preservative",
+    "healthScore": 10,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": true,
+    "effectsVerdict": "caution",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium hydrogen sulphite"
+    ]
+  },
+  "E223": {
+    "code": "E223",
+    "name": "Sodium metabisulphite",
+    "category": "preservative",
+    "healthScore": 10,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": true,
+    "effectsVerdict": "caution",
+    "synonyms": [
+      "Sodium metabisulfite",
+      "Sodium metabisulphite"
+    ],
+    "searchTerms": [
+      "sodium metabisulphite",
+      "sodium metabisulfite",
+      "sodium metabisulphite"
+    ]
+  },
+  "E224": {
+    "code": "E224",
+    "name": "Potassium metabisulphite",
+    "category": "preservative",
+    "healthScore": 10,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": true,
+    "effectsVerdict": "caution",
+    "synonyms": [],
+    "searchTerms": [
+      "potassium metabisulphite"
+    ]
+  },
+  "E226": {
+    "code": "E226",
+    "name": "Calcium sulphite",
+    "category": "preservative",
+    "healthScore": 10,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": true,
+    "effectsVerdict": "caution",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium sulphite"
+    ]
+  },
+  "E227": {
+    "code": "E227",
+    "name": "Calcium hydrogen sulphite",
+    "category": "preservative",
+    "healthScore": 10,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": true,
+    "effectsVerdict": "caution",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium hydrogen sulphite"
+    ]
+  },
+  "E228": {
+    "code": "E228",
+    "name": "Potassium hydrogen sulphite",
+    "category": "preservative",
+    "healthScore": 10,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": true,
+    "effectsVerdict": "caution",
+    "synonyms": [],
+    "searchTerms": [
+      "potassium hydrogen sulphite"
+    ]
+  },
+  "E234": {
+    "code": "E234",
+    "name": "Nisin",
+    "category": "preservative",
+    "healthScore": 40,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "nisin"
+    ]
+  },
+  "E235": {
+    "code": "E235",
+    "name": "Natamycin",
+    "category": "preservative",
+    "healthScore": 40,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "natamycin"
+    ]
+  },
+  "E239": {
+    "code": "E239",
+    "name": "Hexamethylene tetramine",
+    "category": "preservative",
+    "healthScore": 40,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "hexamethylene tetramine"
+    ]
+  },
+  "E242": {
+    "code": "E242",
+    "name": "Dimethyl dicarbonate",
+    "category": "preservative",
+    "healthScore": 40,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "dimethyl dicarbonate"
+    ]
+  },
+  "E243": {
+    "code": "E243",
+    "name": "Ethyl lauroyl arginate",
+    "category": "preservative",
+    "healthScore": 40,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "ethyl lauroyl arginate"
+    ]
+  },
+  "E249": {
+    "code": "E249",
+    "name": "Potassium nitrite",
+    "category": "preservative",
+    "healthScore": 20,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "caution",
+    "synonyms": [
+      "Potassium nitrite",
+      "Curing salt"
+    ],
+    "searchTerms": [
+      "potassium nitrite",
+      "potassium nitrite",
+      "curing salt"
+    ]
+  },
+  "E250": {
+    "code": "E250",
+    "name": "Sodium nitrite",
+    "category": "preservative",
+    "healthScore": 20,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "caution",
+    "synonyms": [
+      "Sodium nitrite",
+      "Prague Powder #1 (contains nitrite)"
+    ],
+    "searchTerms": [
+      "sodium nitrite",
+      "sodium nitrite",
+      "prague powder #1 (contains nitrite)"
+    ]
+  },
+  "E251": {
+    "code": "E251",
+    "name": "Sodium nitrate",
+    "category": "preservative",
+    "healthScore": 20,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "caution",
+    "synonyms": [
+      "Sodium nitrate",
+      "Saltpetre"
+    ],
+    "searchTerms": [
+      "sodium nitrate",
+      "sodium nitrate",
+      "saltpetre"
+    ]
+  },
+  "E252": {
+    "code": "E252",
+    "name": "Potassium nitrate",
+    "category": "preservative",
+    "healthScore": 20,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "caution",
+    "synonyms": [],
+    "searchTerms": [
+      "potassium nitrate"
+    ]
+  },
+  "E280": {
+    "code": "E280",
+    "name": "Propionic acid",
+    "category": "preservative",
+    "healthScore": 40,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "propionic acid"
+    ]
+  },
+  "E281": {
+    "code": "E281",
+    "name": "Sodium propionate",
+    "category": "preservative",
+    "healthScore": 40,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium propionate"
+    ]
+  },
+  "E282": {
+    "code": "E282",
+    "name": "Calcium propionate",
+    "category": "preservative",
+    "healthScore": 40,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium propionate"
+    ]
+  },
+  "E283": {
+    "code": "E283",
+    "name": "Potassium propionate",
+    "category": "preservative",
+    "healthScore": 40,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "potassium propionate"
+    ]
+  },
+  "E284": {
+    "code": "E284",
+    "name": "Boric acid",
+    "category": "preservative",
+    "healthScore": 40,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "boric acid"
+    ]
+  },
+  "E285": {
+    "code": "E285",
+    "name": "Sodium tetraborate; borax",
+    "category": "preservative",
+    "healthScore": 40,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium tetraborate; borax"
+    ]
+  },
+  "E1105": {
+    "code": "E1105",
+    "name": "Lysozyme",
+    "category": "preservative",
+    "healthScore": 40,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "lysozyme"
+    ]
+  },
+  "E300": {
+    "code": "E300",
+    "name": "Ascorbic acid",
+    "category": "antioxidant",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "Ascorbic acid",
+      "Vitamin C"
+    ],
+    "searchTerms": [
+      "ascorbic acid",
+      "ascorbic acid",
+      "vitamin c"
+    ]
+  },
+  "E301": {
+    "code": "E301",
+    "name": "Sodium ascorbate",
+    "category": "antioxidant",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium ascorbate"
+    ]
+  },
+  "E302": {
+    "code": "E302",
+    "name": "Calcium ascorbate",
+    "category": "antioxidant",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium ascorbate"
+    ]
+  },
+  "E304": {
+    "code": "E304",
+    "name": "Fatty acid esters of ascorbic acid",
+    "category": "antioxidant",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "fatty acid esters of ascorbic acid"
+    ]
+  },
+  "E306": {
+    "code": "E306",
+    "name": "Tocopherols",
+    "category": "antioxidant",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "Mixed tocopherols",
+      "Vitamin E"
+    ],
+    "searchTerms": [
+      "tocopherols",
+      "mixed tocopherols",
+      "vitamin e"
+    ]
+  },
+  "E307": {
+    "code": "E307",
+    "name": "Alpha-tocopherol",
+    "category": "antioxidant",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "alpha-tocopherol"
+    ]
+  },
+  "E308": {
+    "code": "E308",
+    "name": "Gamma-tocopherol",
+    "category": "antioxidant",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "gamma-tocopherol"
+    ]
+  },
+  "E309": {
+    "code": "E309",
+    "name": "Delta-tocopherol",
+    "category": "antioxidant",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "delta-tocopherol"
+    ]
+  },
+  "E310": {
+    "code": "E310",
+    "name": "Propyl gallate",
+    "category": "antioxidant",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "propyl gallate"
+    ]
+  },
+  "E315": {
+    "code": "E315",
+    "name": "Erythorbic acid",
+    "category": "antioxidant",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "erythorbic acid"
+    ]
+  },
+  "E316": {
+    "code": "E316",
+    "name": "Sodium erythorbate",
+    "category": "antioxidant",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium erythorbate"
+    ]
+  },
+  "E319": {
+    "code": "E319",
+    "name": "Tertiary-butyl hydroquinone (TBHQ)",
+    "category": "antioxidant",
+    "healthScore": 30,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "caution",
+    "synonyms": [
+      "TBHQ"
+    ],
+    "searchTerms": [
+      "tertiary-butyl hydroquinone (tbhq)",
+      "tbhq"
+    ]
+  },
+  "E320": {
+    "code": "E320",
+    "name": "Butylated hydroxyanisole (BHA)",
+    "category": "antioxidant",
+    "healthScore": 30,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "caution",
+    "synonyms": [
+      "BHA"
+    ],
+    "searchTerms": [
+      "butylated hydroxyanisole (bha)",
+      "bha"
+    ]
+  },
+  "E321": {
+    "code": "E321",
+    "name": "Butylated hydroxytoluene (BHT)",
+    "category": "antioxidant",
+    "healthScore": 30,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "caution",
+    "synonyms": [
+      "BHT"
+    ],
+    "searchTerms": [
+      "butylated hydroxytoluene (bht)",
+      "bht"
+    ]
+  },
+  "E392": {
+    "code": "E392",
+    "name": "Extracts of rosemary",
+    "category": "antioxidant",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "extracts of rosemary"
+    ]
+  },
+  "E586": {
+    "code": "E586",
+    "name": "4-Hexylresorcinol",
+    "category": "antioxidant",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "4-hexylresorcinol"
+    ]
+  },
+  "E420": {
+    "code": "E420",
+    "name": "Sorbitol; Sorbitol syrup",
+    "category": "sweetener",
+    "healthScore": 20,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": true,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "caution",
+    "synonyms": [],
+    "searchTerms": [
+      "sorbitol; sorbitol syrup"
+    ]
+  },
+  "E421": {
+    "code": "E421",
+    "name": "Mannitol",
+    "category": "sweetener",
+    "healthScore": 20,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": true,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "caution",
+    "synonyms": [],
+    "searchTerms": [
+      "mannitol"
+    ]
+  },
+  "E950": {
+    "code": "E950",
+    "name": "Acesulfame K",
+    "category": "sweetener",
+    "healthScore": 45,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "Acesulfame K",
+      "Ace-K"
+    ],
+    "searchTerms": [
+      "acesulfame k",
+      "acesulfame k",
+      "ace-k"
+    ]
+  },
+  "E951": {
+    "code": "E951",
+    "name": "Aspartame",
+    "category": "sweetener",
+    "healthScore": 15,
+    "childWarning": false,
+    "pkuWarning": true,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "caution",
+    "synonyms": [
+      "Aspartame",
+      "NutraSweet"
+    ],
+    "searchTerms": [
+      "aspartame",
+      "aspartame",
+      "nutrasweet"
+    ]
+  },
+  "E952": {
+    "code": "E952",
+    "name": "Cyclamic acid and salts",
+    "category": "sweetener",
+    "healthScore": 45,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "cyclamic acid and salts"
+    ]
+  },
+  "E953": {
+    "code": "E953",
+    "name": "Isomalt",
+    "category": "sweetener",
+    "healthScore": 20,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": true,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "caution",
+    "synonyms": [],
+    "searchTerms": [
+      "isomalt"
+    ]
+  },
+  "E954": {
+    "code": "E954",
+    "name": "Saccharin and salts",
+    "category": "sweetener",
+    "healthScore": 45,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "saccharin and salts"
+    ]
+  },
+  "E955": {
+    "code": "E955",
+    "name": "Sucralose",
+    "category": "sweetener",
+    "healthScore": 45,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "Sucralose",
+      "Splenda"
+    ],
+    "searchTerms": [
+      "sucralose",
+      "sucralose",
+      "splenda"
+    ]
+  },
+  "E957": {
+    "code": "E957",
+    "name": "Thaumatin",
+    "category": "sweetener",
+    "healthScore": 45,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "thaumatin"
+    ]
+  },
+  "E959": {
+    "code": "E959",
+    "name": "Neohesperidine DC",
+    "category": "sweetener",
+    "healthScore": 45,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "neohesperidine dc"
+    ]
+  },
+  "E960A": {
+    "code": "E960A",
+    "name": "Steviol glycosides from stevia",
+    "category": "sweetener",
+    "healthScore": 45,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "steviol glycosides from stevia"
+    ]
+  },
+  "E960B": {
+    "code": "E960B",
+    "name": "Steviol glycosides from fermentation",
+    "category": "sweetener",
+    "healthScore": 45,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "steviol glycosides from fermentation"
+    ]
+  },
+  "E960C": {
+    "code": "E960C",
+    "name": "Enzymatically produced steviol glycosides",
+    "category": "sweetener",
+    "healthScore": 45,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "enzymatically produced steviol glycosides"
+    ]
+  },
+  "E960D": {
+    "code": "E960D",
+    "name": "Glucosylated steviol glycosides",
+    "category": "sweetener",
+    "healthScore": 45,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "Glucosylated steviol glycosides"
+    ],
+    "searchTerms": [
+      "glucosylated steviol glycosides",
+      "glucosylated steviol glycosides"
+    ]
+  },
+  "E961": {
+    "code": "E961",
+    "name": "Neotame",
+    "category": "sweetener",
+    "healthScore": 45,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "Neotame",
+      "Newtame"
+    ],
+    "searchTerms": [
+      "neotame",
+      "neotame",
+      "newtame"
+    ]
+  },
+  "E962": {
+    "code": "E962",
+    "name": "Aspartame-acesulfame salt",
+    "category": "sweetener",
+    "healthScore": 15,
+    "childWarning": false,
+    "pkuWarning": true,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "caution",
+    "synonyms": [
+      "Aspartame-acesulfame salt"
+    ],
+    "searchTerms": [
+      "aspartame-acesulfame salt",
+      "aspartame-acesulfame salt"
+    ]
+  },
+  "E964": {
+    "code": "E964",
+    "name": "Polyglycitol syrup",
+    "category": "sweetener",
+    "healthScore": 20,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": true,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "caution",
+    "synonyms": [],
+    "searchTerms": [
+      "polyglycitol syrup"
+    ]
+  },
+  "E965": {
+    "code": "E965",
+    "name": "Maltitol; Maltitol syrup",
+    "category": "sweetener",
+    "healthScore": 20,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": true,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "caution",
+    "synonyms": [
+      "Maltitol",
+      "Maltitol syrup"
+    ],
+    "searchTerms": [
+      "maltitol; maltitol syrup",
+      "maltitol",
+      "maltitol syrup"
+    ]
+  },
+  "E966": {
+    "code": "E966",
+    "name": "Lactitol",
+    "category": "sweetener",
+    "healthScore": 20,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": true,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "caution",
+    "synonyms": [],
+    "searchTerms": [
+      "lactitol"
+    ]
+  },
+  "E967": {
+    "code": "E967",
+    "name": "Xylitol",
+    "category": "sweetener",
+    "healthScore": 20,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": true,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "caution",
+    "synonyms": [
+      "Xylitol"
+    ],
+    "searchTerms": [
+      "xylitol",
+      "xylitol"
+    ]
+  },
+  "E968": {
+    "code": "E968",
+    "name": "Erythritol",
+    "category": "sweetener",
+    "healthScore": 20,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": true,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "caution",
+    "synonyms": [
+      "Erythritol"
+    ],
+    "searchTerms": [
+      "erythritol",
+      "erythritol"
+    ]
+  },
+  "E969": {
+    "code": "E969",
+    "name": "Advantame",
+    "category": "sweetener",
+    "healthScore": 45,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "advantame"
+    ]
+  },
+  "E322": {
+    "code": "E322",
+    "name": "Lecithins",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "Lecithin",
+      "Soy lecithin",
+      "Sunflower lecithin"
+    ],
+    "searchTerms": [
+      "lecithins",
+      "lecithin",
+      "soy lecithin",
+      "sunflower lecithin"
+    ]
+  },
+  "E400": {
+    "code": "E400",
+    "name": "Alginic acid",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "alginic acid"
+    ]
+  },
+  "E401": {
+    "code": "E401",
+    "name": "Sodium alginate",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium alginate"
+    ]
+  },
+  "E402": {
+    "code": "E402",
+    "name": "Potassium alginate",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "potassium alginate"
+    ]
+  },
+  "E403": {
+    "code": "E403",
+    "name": "Ammonium alginate",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "ammonium alginate"
+    ]
+  },
+  "E404": {
+    "code": "E404",
+    "name": "Calcium alginate",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium alginate"
+    ]
+  },
+  "E405": {
+    "code": "E405",
+    "name": "Propane-1,2-diol alginate",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "propane-1,2-diol alginate"
+    ]
+  },
+  "E406": {
+    "code": "E406",
+    "name": "Agar",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "agar"
+    ]
+  },
+  "E407": {
+    "code": "E407",
+    "name": "Carrageenan",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "Carrageenan"
+    ],
+    "searchTerms": [
+      "carrageenan",
+      "carrageenan"
+    ]
+  },
+  "E407A": {
+    "code": "E407A",
+    "name": "Processed eucheuma seaweed",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "processed eucheuma seaweed"
+    ]
+  },
+  "E410": {
+    "code": "E410",
+    "name": "Locust bean gum; carob gum",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "locust bean gum; carob gum"
+    ]
+  },
+  "E412": {
+    "code": "E412",
+    "name": "Guar gum",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "guar gum"
+    ]
+  },
+  "E413": {
+    "code": "E413",
+    "name": "Tragacanth",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "tragacanth"
+    ]
+  },
+  "E414": {
+    "code": "E414",
+    "name": "Acacia gum; gum arabic",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "acacia gum; gum arabic"
+    ]
+  },
+  "E415": {
+    "code": "E415",
+    "name": "Xanthan gum",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "Xanthan gum"
+    ],
+    "searchTerms": [
+      "xanthan gum",
+      "xanthan gum"
+    ]
+  },
+  "E416": {
+    "code": "E416",
+    "name": "Karaya gum",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "karaya gum"
+    ]
+  },
+  "E417": {
+    "code": "E417",
+    "name": "Tara gum",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "tara gum"
+    ]
+  },
+  "E418": {
+    "code": "E418",
+    "name": "Gellan gum",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "gellan gum"
+    ]
+  },
+  "E425": {
+    "code": "E425",
+    "name": "Konjac",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "konjac"
+    ]
+  },
+  "E426": {
+    "code": "E426",
+    "name": "Soybean hemicellulose",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "soybean hemicellulose"
+    ]
+  },
+  "E427": {
+    "code": "E427",
+    "name": "Cassia gum",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "cassia gum"
+    ]
+  },
+  "E432": {
+    "code": "E432",
+    "name": "Polysorbate 20",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "polysorbate 20"
+    ]
+  },
+  "E433": {
+    "code": "E433",
+    "name": "Polysorbate 80",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "polysorbate 80"
+    ]
+  },
+  "E434": {
+    "code": "E434",
+    "name": "Polysorbate 40",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "polysorbate 40"
+    ]
+  },
+  "E435": {
+    "code": "E435",
+    "name": "Polysorbate 60",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "polysorbate 60"
+    ]
+  },
+  "E436": {
+    "code": "E436",
+    "name": "Polysorbate 65",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "polysorbate 65"
+    ]
+  },
+  "E440": {
+    "code": "E440",
+    "name": "Pectins",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "pectins"
+    ]
+  },
+  "E442": {
+    "code": "E442",
+    "name": "Ammonium phosphatides",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "ammonium phosphatides"
+    ]
+  },
+  "E444": {
+    "code": "E444",
+    "name": "Sucrose acetate isobutyrate",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sucrose acetate isobutyrate"
+    ]
+  },
+  "E445": {
+    "code": "E445",
+    "name": "Glycerol esters of wood rosins",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "glycerol esters of wood rosins"
+    ]
+  },
+  "E460": {
+    "code": "E460",
+    "name": "Cellulose",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "cellulose"
+    ]
+  },
+  "E461": {
+    "code": "E461",
+    "name": "Methyl cellulose",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "methyl cellulose"
+    ]
+  },
+  "E462": {
+    "code": "E462",
+    "name": "Ethyl cellulose",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "ethyl cellulose"
+    ]
+  },
+  "E463": {
+    "code": "E463",
+    "name": "Hydroxypropyl cellulose",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "hydroxypropyl cellulose"
+    ]
+  },
+  "E464": {
+    "code": "E464",
+    "name": "Hydroxypropyl methyl cellulose",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "hydroxypropyl methyl cellulose"
+    ]
+  },
+  "E465": {
+    "code": "E465",
+    "name": "Ethyl methyl cellulose",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "ethyl methyl cellulose"
+    ]
+  },
+  "E466": {
+    "code": "E466",
+    "name": "Carboxy methyl cellulose",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "carboxy methyl cellulose"
+    ]
+  },
+  "E468": {
+    "code": "E468",
+    "name": "Crosslinked sodium carboxy methyl cellulose",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "crosslinked sodium carboxy methyl cellulose"
+    ]
+  },
+  "E469": {
+    "code": "E469",
+    "name": "Enzymatically hydrolysed carboxy methyl cellulose",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "enzymatically hydrolysed carboxy methyl cellulose"
+    ]
+  },
+  "E470A": {
+    "code": "E470A",
+    "name": "Sodium, potassium and calcium salts of fatty acids",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium, potassium and calcium salts of fatty acids"
+    ]
+  },
+  "E470B": {
+    "code": "E470B",
+    "name": "Magnesium salts of fatty acids",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "magnesium salts of fatty acids"
+    ]
+  },
+  "E471": {
+    "code": "E471",
+    "name": "Mono- and diglycerides of fatty acids",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "Mono- and diglycerides of fatty acids",
+      "MDG"
+    ],
+    "searchTerms": [
+      "mono- and diglycerides of fatty acids",
+      "mono- and diglycerides of fatty acids",
+      "mdg"
+    ]
+  },
+  "E472A": {
+    "code": "E472A",
+    "name": "Acetic acid esters of mono- and diglycerides of fatty acids",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "acetic acid esters of mono- and diglycerides of fatty acids"
+    ]
+  },
+  "E472B": {
+    "code": "E472B",
+    "name": "Lactic acid esters of mono- and diglycerides of fatty acids",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "lactic acid esters of mono- and diglycerides of fatty acids"
+    ]
+  },
+  "E472C": {
+    "code": "E472C",
+    "name": "Citric acid esters of mono- and diglycerides of fatty acids",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "citric acid esters of mono- and diglycerides of fatty acids"
+    ]
+  },
+  "E472D": {
+    "code": "E472D",
+    "name": "Tartaric acid esters of mono- and diglycerides of fatty acids",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "tartaric acid esters of mono- and diglycerides of fatty acids"
+    ]
+  },
+  "E472E": {
+    "code": "E472E",
+    "name": "Mono- and diacetyltartaric acid esters of mono- and diglycerides of fatty acids (DATEM)",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "DATEM"
+    ],
+    "searchTerms": [
+      "mono- and diacetyltartaric acid esters of mono- and diglycerides of fatty acids (datem)",
+      "datem"
+    ]
+  },
+  "E472F": {
+    "code": "E472F",
+    "name": "Mixed acetic and tartaric acid esters of mono- and diglycerides of fatty acids",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "mixed acetic and tartaric acid esters of mono- and diglycerides of fatty acids"
+    ]
+  },
+  "E473": {
+    "code": "E473",
+    "name": "Sucrose esters of fatty acids",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sucrose esters of fatty acids"
+    ]
+  },
+  "E474": {
+    "code": "E474",
+    "name": "Sucroglycerides",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sucroglycerides"
+    ]
+  },
+  "E475": {
+    "code": "E475",
+    "name": "Polyglycerol esters of fatty acids",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "polyglycerol esters of fatty acids"
+    ]
+  },
+  "E476": {
+    "code": "E476",
+    "name": "Polyglycerol polyricinoleate (PGPR)",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "PGPR",
+      "Polyglycerol polyricinoleate"
+    ],
+    "searchTerms": [
+      "polyglycerol polyricinoleate (pgpr)",
+      "pgpr",
+      "polyglycerol polyricinoleate"
+    ]
+  },
+  "E477": {
+    "code": "E477",
+    "name": "Propane-1,2-diol esters of fatty acids",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "propane-1,2-diol esters of fatty acids"
+    ]
+  },
+  "E479B": {
+    "code": "E479B",
+    "name": "Thermally oxidised soya bean oil interacted with mono- and diglycerides of fatty acids",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "thermally oxidised soya bean oil interacted with mono- and diglycerides of fatty acids"
+    ]
+  },
+  "E481": {
+    "code": "E481",
+    "name": "Sodium stearoyl-2-lactylate",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium stearoyl-2-lactylate"
+    ]
+  },
+  "E482": {
+    "code": "E482",
+    "name": "Calcium stearoyl-2-lactylate",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium stearoyl-2-lactylate"
+    ]
+  },
+  "E483": {
+    "code": "E483",
+    "name": "Stearyl tartrate",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "stearyl tartrate"
+    ]
+  },
+  "E491": {
+    "code": "E491",
+    "name": "Sorbitan monostearate",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sorbitan monostearate"
+    ]
+  },
+  "E492": {
+    "code": "E492",
+    "name": "Sorbitan tristearate",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sorbitan tristearate"
+    ]
+  },
+  "E493": {
+    "code": "E493",
+    "name": "Sorbitan monolaurate",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sorbitan monolaurate"
+    ]
+  },
+  "E494": {
+    "code": "E494",
+    "name": "Sorbitan monooleate",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sorbitan monooleate"
+    ]
+  },
+  "E495": {
+    "code": "E495",
+    "name": "Sorbitan monopalmitate",
+    "category": "emulsifier/stabiliser/thickener/gelling",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sorbitan monopalmitate"
+    ]
+  },
+  "E260": {
+    "code": "E260",
+    "name": "Acetic acid",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "acetic acid"
+    ]
+  },
+  "E261": {
+    "code": "E261",
+    "name": "Potassium acetate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "potassium acetate"
+    ]
+  },
+  "E262": {
+    "code": "E262",
+    "name": "Sodium acetate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium acetate"
+    ]
+  },
+  "E263": {
+    "code": "E263",
+    "name": "Calcium acetate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium acetate"
+    ]
+  },
+  "E270": {
+    "code": "E270",
+    "name": "Lactic acid",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "lactic acid"
+    ]
+  },
+  "E290": {
+    "code": "E290",
+    "name": "Carbon dioxide",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "carbon dioxide"
+    ]
+  },
+  "E296": {
+    "code": "E296",
+    "name": "Malic acid",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "malic acid"
+    ]
+  },
+  "E297": {
+    "code": "E297",
+    "name": "Fumaric acid",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "fumaric acid"
+    ]
+  },
+  "E325": {
+    "code": "E325",
+    "name": "Sodium lactate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium lactate"
+    ]
+  },
+  "E326": {
+    "code": "E326",
+    "name": "Potassium lactate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "potassium lactate"
+    ]
+  },
+  "E327": {
+    "code": "E327",
+    "name": "Calcium lactate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium lactate"
+    ]
+  },
+  "E330": {
+    "code": "E330",
+    "name": "Citric acid",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "citric acid"
+    ]
+  },
+  "E331": {
+    "code": "E331",
+    "name": "Sodium citrates",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium citrates"
+    ]
+  },
+  "E332": {
+    "code": "E332",
+    "name": "Potassium citrates",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "potassium citrates"
+    ]
+  },
+  "E333": {
+    "code": "E333",
+    "name": "Calcium citrates",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium citrates"
+    ]
+  },
+  "E334": {
+    "code": "E334",
+    "name": "Tartaric acid (L-(+))",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "tartaric acid (l-(+))"
+    ]
+  },
+  "E335": {
+    "code": "E335",
+    "name": "Sodium tartrates",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium tartrates"
+    ]
+  },
+  "E336": {
+    "code": "E336",
+    "name": "Potassium tartrates",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "potassium tartrates"
+    ]
+  },
+  "E337": {
+    "code": "E337",
+    "name": "Sodium potassium tartrate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium potassium tartrate"
+    ]
+  },
+  "E338": {
+    "code": "E338",
+    "name": "Phosphoric acid",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "phosphoric acid"
+    ]
+  },
+  "E339": {
+    "code": "E339",
+    "name": "Sodium phosphates",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium phosphates"
+    ]
+  },
+  "E340": {
+    "code": "E340",
+    "name": "Potassium phosphates",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "potassium phosphates"
+    ]
+  },
+  "E341": {
+    "code": "E341",
+    "name": "Calcium phosphates",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium phosphates"
+    ]
+  },
+  "E343": {
+    "code": "E343",
+    "name": "Magnesium phosphates",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "magnesium phosphates"
+    ]
+  },
+  "E350": {
+    "code": "E350",
+    "name": "Sodium malates",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium malates"
+    ]
+  },
+  "E351": {
+    "code": "E351",
+    "name": "Potassium malate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "potassium malate"
+    ]
+  },
+  "E352": {
+    "code": "E352",
+    "name": "Calcium malates",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium malates"
+    ]
+  },
+  "E353": {
+    "code": "E353",
+    "name": "Metatartaric acid",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "metatartaric acid"
+    ]
+  },
+  "E354": {
+    "code": "E354",
+    "name": "Calcium tartrate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium tartrate"
+    ]
+  },
+  "E355": {
+    "code": "E355",
+    "name": "Adipic acid",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "adipic acid"
+    ]
+  },
+  "E356": {
+    "code": "E356",
+    "name": "Sodium adipate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium adipate"
+    ]
+  },
+  "E357": {
+    "code": "E357",
+    "name": "Potassium adipate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "potassium adipate"
+    ]
+  },
+  "E363": {
+    "code": "E363",
+    "name": "Succinic acid",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "succinic acid"
+    ]
+  },
+  "E380": {
+    "code": "E380",
+    "name": "Triammonium citrate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "triammonium citrate"
+    ]
+  },
+  "E385": {
+    "code": "E385",
+    "name": "Calcium disodium EDTA",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium disodium edta"
+    ]
+  },
+  "E422": {
+    "code": "E422",
+    "name": "Glycerol",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "glycerol"
+    ]
+  },
+  "E423": {
+    "code": "E423",
+    "name": "Octenyl succinic acid modified gum Arabic",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "octenyl succinic acid modified gum arabic"
+    ]
+  },
+  "E450": {
+    "code": "E450",
+    "name": "Diphosphates",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "diphosphates"
+    ]
+  },
+  "E451": {
+    "code": "E451",
+    "name": "Triphosphates",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "triphosphates"
+    ]
+  },
+  "E452": {
+    "code": "E452",
+    "name": "Polyphosphates",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "polyphosphates"
+    ]
+  },
+  "E459": {
+    "code": "E459",
+    "name": "Beta-cyclodextrin",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "beta-cyclodextrin"
+    ]
+  },
+  "E499": {
+    "code": "E499",
+    "name": "Stigmasterol-rich plant sterols",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "stigmasterol-rich plant sterols"
+    ]
+  },
+  "E500": {
+    "code": "E500",
+    "name": "Sodium carbonates",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium carbonates"
+    ]
+  },
+  "E501": {
+    "code": "E501",
+    "name": "Potassium carbonates",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "potassium carbonates"
+    ]
+  },
+  "E503": {
+    "code": "E503",
+    "name": "Ammonium carbonates",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "ammonium carbonates"
+    ]
+  },
+  "E504": {
+    "code": "E504",
+    "name": "Magnesium carbonates",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "magnesium carbonates"
+    ]
+  },
+  "E507": {
+    "code": "E507",
+    "name": "Hydrochloric acid",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "hydrochloric acid"
+    ]
+  },
+  "E508": {
+    "code": "E508",
+    "name": "Potassium chloride",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "potassium chloride"
+    ]
+  },
+  "E509": {
+    "code": "E509",
+    "name": "Calcium chloride",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium chloride"
+    ]
+  },
+  "E511": {
+    "code": "E511",
+    "name": "Magnesium chloride",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "magnesium chloride"
+    ]
+  },
+  "E512": {
+    "code": "E512",
+    "name": "Stannous chloride",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "stannous chloride"
+    ]
+  },
+  "E513": {
+    "code": "E513",
+    "name": "Sulphuric acid",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sulphuric acid"
+    ]
+  },
+  "E514": {
+    "code": "E514",
+    "name": "Sodium sulphates",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium sulphates"
+    ]
+  },
+  "E515": {
+    "code": "E515",
+    "name": "Potassium sulphates",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "potassium sulphates"
+    ]
+  },
+  "E516": {
+    "code": "E516",
+    "name": "Calcium sulphate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium sulphate"
+    ]
+  },
+  "E517": {
+    "code": "E517",
+    "name": "Ammonium sulphate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "ammonium sulphate"
+    ]
+  },
+  "E520": {
+    "code": "E520",
+    "name": "Aluminium sulphate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "aluminium sulphate"
+    ]
+  },
+  "E521": {
+    "code": "E521",
+    "name": "Aluminium sodium sulphate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "aluminium sodium sulphate"
+    ]
+  },
+  "E522": {
+    "code": "E522",
+    "name": "Aluminium potassium sulphate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "aluminium potassium sulphate"
+    ]
+  },
+  "E523": {
+    "code": "E523",
+    "name": "Aluminium ammonium sulphate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "aluminium ammonium sulphate"
+    ]
+  },
+  "E524": {
+    "code": "E524",
+    "name": "Sodium hydroxide",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium hydroxide"
+    ]
+  },
+  "E525": {
+    "code": "E525",
+    "name": "Potassium hydroxide",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "potassium hydroxide"
+    ]
+  },
+  "E526": {
+    "code": "E526",
+    "name": "Calcium hydroxide",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium hydroxide"
+    ]
+  },
+  "E527": {
+    "code": "E527",
+    "name": "Ammonium hydroxide",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "ammonium hydroxide"
+    ]
+  },
+  "E528": {
+    "code": "E528",
+    "name": "Magnesium hydroxide",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "magnesium hydroxide"
+    ]
+  },
+  "E529": {
+    "code": "E529",
+    "name": "Calcium oxide",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium oxide"
+    ]
+  },
+  "E530": {
+    "code": "E530",
+    "name": "Magnesium oxide",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "magnesium oxide"
+    ]
+  },
+  "E535": {
+    "code": "E535",
+    "name": "Sodium ferrocyanide",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "Sodium ferrocyanide",
+      "Yellow prussiate of soda"
+    ],
+    "searchTerms": [
+      "sodium ferrocyanide",
+      "sodium ferrocyanide",
+      "yellow prussiate of soda"
+    ]
+  },
+  "E536": {
+    "code": "E536",
+    "name": "Potassium ferrocyanide",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "potassium ferrocyanide"
+    ]
+  },
+  "E538": {
+    "code": "E538",
+    "name": "Calcium ferrocyanide",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium ferrocyanide"
+    ]
+  },
+  "E541": {
+    "code": "E541",
+    "name": "Sodium aluminium phosphate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium aluminium phosphate"
+    ]
+  },
+  "E551": {
+    "code": "E551",
+    "name": "Silicon dioxide",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "Silicon dioxide",
+      "Silica"
+    ],
+    "searchTerms": [
+      "silicon dioxide",
+      "silicon dioxide",
+      "silica"
+    ]
+  },
+  "E552": {
+    "code": "E552",
+    "name": "Calcium silicate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium silicate"
+    ]
+  },
+  "E553A": {
+    "code": "E553A",
+    "name": "Magnesium silicate / Magnesium trisilicate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "magnesium silicate / magnesium trisilicate"
+    ]
+  },
+  "E553B": {
+    "code": "E553B",
+    "name": "Talc",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "talc"
+    ]
+  },
+  "E554": {
+    "code": "E554",
+    "name": "Sodium aluminium silicate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium aluminium silicate"
+    ]
+  },
+  "E555": {
+    "code": "E555",
+    "name": "Potassium aluminium silicate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "potassium aluminium silicate"
+    ]
+  },
+  "E570": {
+    "code": "E570",
+    "name": "Fatty acids",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "fatty acids"
+    ]
+  },
+  "E574": {
+    "code": "E574",
+    "name": "Gluconic acid",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "gluconic acid"
+    ]
+  },
+  "E575": {
+    "code": "E575",
+    "name": "Glucono delta-lactone",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "glucono delta-lactone"
+    ]
+  },
+  "E576": {
+    "code": "E576",
+    "name": "Sodium gluconate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "sodium gluconate"
+    ]
+  },
+  "E577": {
+    "code": "E577",
+    "name": "Potassium gluconate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "potassium gluconate"
+    ]
+  },
+  "E578": {
+    "code": "E578",
+    "name": "Calcium gluconate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium gluconate"
+    ]
+  },
+  "E579": {
+    "code": "E579",
+    "name": "Ferrous gluconate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "ferrous gluconate"
+    ]
+  },
+  "E585": {
+    "code": "E585",
+    "name": "Ferrous lactate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "ferrous lactate"
+    ]
+  },
+  "E620": {
+    "code": "E620",
+    "name": "Glutamic acid",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "glutamic acid"
+    ]
+  },
+  "E621": {
+    "code": "E621",
+    "name": "Monosodium glutamate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "monosodium glutamate"
+    ]
+  },
+  "E622": {
+    "code": "E622",
+    "name": "Monopotassium glutamate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "monopotassium glutamate"
+    ]
+  },
+  "E623": {
+    "code": "E623",
+    "name": "Calcium diglutamate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium diglutamate"
+    ]
+  },
+  "E624": {
+    "code": "E624",
+    "name": "Monoammonium glutamate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "monoammonium glutamate"
+    ]
+  },
+  "E625": {
+    "code": "E625",
+    "name": "Magnesium diglutamate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "magnesium diglutamate"
+    ]
+  },
+  "E626": {
+    "code": "E626",
+    "name": "Guanylic acid",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "guanylic acid"
+    ]
+  },
+  "E627": {
+    "code": "E627",
+    "name": "Disodium guanylate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "disodium guanylate"
+    ]
+  },
+  "E628": {
+    "code": "E628",
+    "name": "Dipotassium guanylate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "dipotassium guanylate"
+    ]
+  },
+  "E629": {
+    "code": "E629",
+    "name": "Calcium guanylate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium guanylate"
+    ]
+  },
+  "E630": {
+    "code": "E630",
+    "name": "Inosinic acid",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "inosinic acid"
+    ]
+  },
+  "E631": {
+    "code": "E631",
+    "name": "Disodium inosinate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "disodium inosinate"
+    ]
+  },
+  "E632": {
+    "code": "E632",
+    "name": "Dipotassium inosinate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "dipotassium inosinate"
+    ]
+  },
+  "E633": {
+    "code": "E633",
+    "name": "Calcium inosinate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium inosinate"
+    ]
+  },
+  "E634": {
+    "code": "E634",
+    "name": "Calcium 5'-ribonucleotides",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "calcium 5'-ribonucleotides"
+    ]
+  },
+  "E635": {
+    "code": "E635",
+    "name": "Disodium 5'-ribonucleotides",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "disodium 5'-ribonucleotides"
+    ]
+  },
+  "E640": {
+    "code": "E640",
+    "name": "Glycine and its sodium salt",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "glycine and its sodium salt"
+    ]
+  },
+  "E641": {
+    "code": "E641",
+    "name": "L-leucine",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "l-leucine"
+    ]
+  },
+  "E650": {
+    "code": "E650",
+    "name": "Zinc acetate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "zinc acetate"
+    ]
+  },
+  "E900": {
+    "code": "E900",
+    "name": "Dimethylpolysiloxane",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "dimethylpolysiloxane"
+    ]
+  },
+  "E901": {
+    "code": "E901",
+    "name": "Beeswax, white and yellow",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "beeswax, white and yellow"
+    ]
+  },
+  "E902": {
+    "code": "E902",
+    "name": "Candelilla wax",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "candelilla wax"
+    ]
+  },
+  "E903": {
+    "code": "E903",
+    "name": "Carnauba wax",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "Carnauba wax"
+    ],
+    "searchTerms": [
+      "carnauba wax",
+      "carnauba wax"
+    ]
+  },
+  "E904": {
+    "code": "E904",
+    "name": "Shellac",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "Shellac",
+      "Confectioner’s glaze"
+    ],
+    "searchTerms": [
+      "shellac",
+      "shellac",
+      "confectioner’s glaze"
+    ]
+  },
+  "E905": {
+    "code": "E905",
+    "name": "Microcrystalline wax",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "microcrystalline wax"
+    ]
+  },
+  "E907": {
+    "code": "E907",
+    "name": "Hydrogenated Poly-1-Decene",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "hydrogenated poly-1-decene"
+    ]
+  },
+  "E914": {
+    "code": "E914",
+    "name": "Oxidised Polyethylene wax",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "oxidised polyethylene wax"
+    ]
+  },
+  "E920": {
+    "code": "E920",
+    "name": "L-Cysteine",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "l-cysteine"
+    ]
+  },
+  "E927B": {
+    "code": "E927B",
+    "name": "Carbamide",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "carbamide"
+    ]
+  },
+  "E938": {
+    "code": "E938",
+    "name": "Argon",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "argon"
+    ]
+  },
+  "E939": {
+    "code": "E939",
+    "name": "Helium",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "helium"
+    ]
+  },
+  "E941": {
+    "code": "E941",
+    "name": "Nitrogen",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "nitrogen"
+    ]
+  },
+  "E942": {
+    "code": "E942",
+    "name": "Nitrous oxide",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "nitrous oxide"
+    ]
+  },
+  "E943A": {
+    "code": "E943A",
+    "name": "Butane",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "butane"
+    ]
+  },
+  "E943B": {
+    "code": "E943B",
+    "name": "Iso-butane",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "iso-butane"
+    ]
+  },
+  "E944": {
+    "code": "E944",
+    "name": "Propane",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "propane"
+    ]
+  },
+  "E948": {
+    "code": "E948",
+    "name": "Oxygen",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "oxygen"
+    ]
+  },
+  "E949": {
+    "code": "E949",
+    "name": "Hydrogen",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "hydrogen"
+    ]
+  },
+  "E999": {
+    "code": "E999",
+    "name": "Quillaia extract",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "quillaia extract"
+    ]
+  },
+  "E1200": {
+    "code": "E1200",
+    "name": "Polydextrose",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "polydextrose"
+    ]
+  },
+  "E1201": {
+    "code": "E1201",
+    "name": "Polyvinylpyrrolidone",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "polyvinylpyrrolidone"
+    ]
+  },
+  "E1202": {
+    "code": "E1202",
+    "name": "Polyvinylpolypyrrolidone",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "polyvinylpolypyrrolidone"
+    ]
+  },
+  "E1203": {
+    "code": "E1203",
+    "name": "Polyvinyl alcohol",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "polyvinyl alcohol"
+    ]
+  },
+  "E1204": {
+    "code": "E1204",
+    "name": "Pullulan",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "pullulan"
+    ]
+  },
+  "E1205": {
+    "code": "E1205",
+    "name": "Basic methacrylate copolymer",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "basic methacrylate copolymer"
+    ]
+  },
+  "E1206": {
+    "code": "E1206",
+    "name": "Neutral methacrylate copolymer",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "neutral methacrylate copolymer"
+    ]
+  },
+  "E1207": {
+    "code": "E1207",
+    "name": "Anionic methacrylate copolymer",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "anionic methacrylate copolymer"
+    ]
+  },
+  "E1208": {
+    "code": "E1208",
+    "name": "Polyvinylpyrrolidone-vinyl acetate copolymer",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "polyvinylpyrrolidone-vinyl acetate copolymer"
+    ]
+  },
+  "E1209": {
+    "code": "E1209",
+    "name": "Polyvinyl alcohol–polyethylene glycol graft copolymer",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "polyvinyl alcohol–polyethylene glycol graft copolymer"
+    ]
+  },
+  "E1404": {
+    "code": "E1404",
+    "name": "Oxidised starch",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "oxidised starch"
+    ]
+  },
+  "E1410": {
+    "code": "E1410",
+    "name": "Monostarch phosphate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "monostarch phosphate"
+    ]
+  },
+  "E1412": {
+    "code": "E1412",
+    "name": "Distarch phosphate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "distarch phosphate"
+    ]
+  },
+  "E1413": {
+    "code": "E1413",
+    "name": "Phosphated distarch phosphate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "phosphated distarch phosphate"
+    ]
+  },
+  "E1414": {
+    "code": "E1414",
+    "name": "Acetylated distarch phosphate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "acetylated distarch phosphate"
+    ]
+  },
+  "E1420": {
+    "code": "E1420",
+    "name": "Acetylated starch",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "acetylated starch"
+    ]
+  },
+  "E1422": {
+    "code": "E1422",
+    "name": "Acetylated distarch adipate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "acetylated distarch adipate"
+    ]
+  },
+  "E1440": {
+    "code": "E1440",
+    "name": "Hydroxypropyl starch",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "hydroxypropyl starch"
+    ]
+  },
+  "E1442": {
+    "code": "E1442",
+    "name": "Hydroxypropyl distarch phosphate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "hydroxypropyl distarch phosphate"
+    ]
+  },
+  "E1450": {
+    "code": "E1450",
+    "name": "Starch sodium octenyl succinate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "starch sodium octenyl succinate"
+    ]
+  },
+  "E1451": {
+    "code": "E1451",
+    "name": "Acetylated oxidised starch",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "acetylated oxidised starch"
+    ]
+  },
+  "E1452": {
+    "code": "E1452",
+    "name": "Starch aluminium octenyl succinate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "starch aluminium octenyl succinate"
+    ]
+  },
+  "E1505": {
+    "code": "E1505",
+    "name": "Triethyl citrate",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "triethyl citrate"
+    ]
+  },
+  "E1517": {
+    "code": "E1517",
+    "name": "Glyceryl diacetate (diacetin)",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "glyceryl diacetate (diacetin)"
+    ]
+  },
+  "E1518": {
+    "code": "E1518",
+    "name": "Glyceryl triacetate; triacetin",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "glyceryl triacetate; triacetin"
+    ]
+  },
+  "E1519": {
+    "code": "E1519",
+    "name": "Benzyl alcohol",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "benzyl alcohol"
+    ]
+  },
+  "E1520": {
+    "code": "E1520",
+    "name": "Propan-1,2-diol; propylene glycol",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "propan-1,2-diol; propylene glycol"
+    ]
+  },
+  "E1521": {
+    "code": "E1521",
+    "name": "Polyethylene glycol",
+    "category": "others",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "polyethylene glycol"
+    ]
+  },
+  "GEN-FLAV-NAT": {
+    "code": "GEN-FLAV-NAT",
+    "name": "Natural flavourings",
+    "category": "flavourings",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "natural flavourings"
+    ]
+  },
+  "GEN-FLAV-ART": {
+    "code": "GEN-FLAV-ART",
+    "name": "Artificial flavourings",
+    "category": "flavourings",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "artificial flavourings"
+    ]
+  },
+  "GEN-FLAV-SMOKE": {
+    "code": "GEN-FLAV-SMOKE",
+    "name": "Smoke flavourings",
+    "category": "flavourings",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "smoke flavourings"
+    ]
+  },
+  "GEN-ENZYMES": {
+    "code": "GEN-ENZYMES",
+    "name": "Food enzymes (e.g., amylase, protease, lipase, transglutaminase)",
+    "category": "enzymes/processing aids",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "food enzymes (e.g., amylase, protease, lipase, transglutaminase)"
+    ]
+  },
+  "GEN-YEAST-EXTRACT": {
+    "code": "GEN-YEAST-EXTRACT",
+    "name": "Yeast extract",
+    "category": "flavour enhancer",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "yeast extract"
+    ]
+  },
+  "GEN-HVP": {
+    "code": "GEN-HVP",
+    "name": "Hydrolyzed vegetable protein (HVP)",
+    "category": "flavour enhancer",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "hydrolyzed vegetable protein (hvp)"
+    ]
+  },
+  "GEN-MOD-STARCH": {
+    "code": "GEN-MOD-STARCH",
+    "name": "Modified starch (generic)",
+    "category": "thickener/stabiliser",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "modified starch (generic)"
+    ]
+  },
+  "GEN-ANTIFOAM-SILICONE": {
+    "code": "GEN-ANTIFOAM-SILICONE",
+    "name": "Antifoam (silicone)",
+    "category": "processing aid/antifoam",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [],
+    "searchTerms": [
+      "antifoam (silicone)"
+    ]
+  },
+  "ING-GLUCOSE-SYRUP": {
+    "code": "ING-GLUCOSE-SYRUP",
+    "name": "Glucose syrup",
+    "category": "carbohydrate ingredient / sweetener (ingredient)",
+    "healthScore": 45,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "corn syrup (US)",
+      "wheat glucose syrup"
+    ],
+    "searchTerms": [
+      "glucose syrup",
+      "corn syrup (us)",
+      "wheat glucose syrup"
+    ]
+  },
+  "ING-GLUCOSE-FRUCTOSE-SYRUP": {
+    "code": "ING-GLUCOSE-FRUCTOSE-SYRUP",
+    "name": "Glucose‑fructose syrup",
+    "category": "carbohydrate ingredient / sweetener (ingredient)",
+    "healthScore": 45,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "GFS",
+      "isoglucose",
+      "HFCS (US context)"
+    ],
+    "searchTerms": [
+      "glucose‑fructose syrup",
+      "gfs",
+      "isoglucose",
+      "hfcs (us context)"
+    ]
+  },
+  "ING-FRUCTOSE-GLUCOSE-SYRUP": {
+    "code": "ING-FRUCTOSE-GLUCOSE-SYRUP",
+    "name": "Fructose‑glucose syrup",
+    "category": "carbohydrate ingredient / sweetener (ingredient)",
+    "healthScore": 45,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "FGS",
+      "HFCS-55 (US context)"
+    ],
+    "searchTerms": [
+      "fructose‑glucose syrup",
+      "fgs",
+      "hfcs-55 (us context)"
+    ]
+  },
+  "ING-MALTODEXTRIN": {
+    "code": "ING-MALTODEXTRIN",
+    "name": "Maltodextrin",
+    "category": "carbohydrate ingredient / bulking agent",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "DE 5–19"
+    ],
+    "searchTerms": [
+      "maltodextrin",
+      "de 5–19"
+    ]
+  },
+  "ING-DEXTROSE": {
+    "code": "ING-DEXTROSE",
+    "name": "Dextrose (glucose)",
+    "category": "carbohydrate ingredient",
+    "healthScore": 50,
+    "childWarning": false,
+    "pkuWarning": false,
+    "polyolsWarning": false,
+    "sulphitesAllergen": false,
+    "effectsVerdict": "neutral",
+    "synonyms": [
+      "glucose",
+      "dextrose monohydrate",
+      "dextrose anhydrous"
+    ],
+    "searchTerms": [
+      "dextrose (glucose)",
+      "glucose",
+      "dextrose monohydrate",
+      "dextrose anhydrous"
+    ]
+  }
+}

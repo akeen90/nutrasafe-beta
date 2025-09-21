@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutraSafe Admin - Food Database</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui; background: #1a1a1a; color: white; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .controls { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
+        .search-input { padding: 8px 12px; border-radius: 4px; border: 1px solid #444; background: #333; color: white; }
+        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn:hover { opacity: 0.8; }
+        .table-container { background: #2a2a2a; border-radius: 6px; overflow: hidden; }
+        .table { width: 100%; border-collapse: collapse; }
+        .table th, .table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #444; }
+        .table th { background: #333; font-weight: 600; font-size: 11px; }
+        .table td { font-size: 12px; }
+        .table tr:hover { background: #333; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; }
+        .modal-content { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #2a2a2a; padding: 20px; border-radius: 8px; max-width: 800px; width: 90%; max-height: 90%; overflow-y: auto; }
+        .modal-header { font-size: 18px; font-weight: 600; margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 10px; }
+        .form-group { margin-bottom: 15px; }
+        .form-label { display: block; margin-bottom: 5px; font-size: 12px; font-weight: 500; }
+        .form-input, .form-textarea { width: 100%; padding: 8px 12px; border: 1px solid #444; border-radius: 4px; background: #333; color: white; }
+        .form-textarea { min-height: 80px; resize: vertical; }
+        .nutrition-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .modal-actions { margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end; }
+        .loading { text-align: center; padding: 40px; color: #666; }
+        .alert { position: fixed; top: 20px; right: 20px; padding: 12px 16px; border-radius: 4px; z-index: 2000; }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍎 NutraSafe Admin - Food Database</h1>
+            <p>Manage your food database with comprehensive editing capabilities</p>
+        </div>
+
+        <div class="controls">
+            <input type="text" class="search-input" id="search-input" placeholder="Search foods..." onkeyup="filterFoods()" />
+            <button class="btn btn-primary" onclick="loadAllFoods()">🔄 Refresh</button>
+            <button class="btn btn-success" onclick="exportData()">📥 Export</button>
+            <span id="food-count" style="margin-left: auto; color: #666; font-size: 12px;">0 foods loaded</span>
+        </div>
+
+        <div class="table-container">
+            <div id="loading" class="loading">
+                <div>Loading food database...</div>
+            </div>
+            <div id="food-table" style="display: none;">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Brand</th>
+                            <th>Calories</th>
+                            <th>Protein</th>
+                            <th>Carbs</th>
+                            <th>Fat</th>
+                            <th>Source</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="food-tbody">
+                        <!-- Food rows will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Modal -->
+    <div id="view-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                Food Details
+                <button onclick="closeModal()" style="float: right; background: none; border: none; color: white; font-size: 20px; cursor: pointer;">&times;</button>
+            </div>
+            <div id="view-content">
+                <!-- Content populated by JavaScript -->
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-success" onclick="openEditModal()">✏️ Edit</button>
+                <button class="btn btn-primary" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                Edit Food
+                <button onclick="closeModal()" style="float: right; background: none; border: none; color: white; font-size: 20px; cursor: pointer;">&times;</button>
+            </div>
+            <div id="edit-content">
+                <div class="form-group">
+                    <label class="form-label">Food Name *</label>
+                    <input type="text" class="form-input" id="edit-name" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Brand</label>
+                    <input type="text" class="form-input" id="edit-brand" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Barcode</label>
+                    <input type="text" class="form-input" id="edit-barcode" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Ingredients</label>
+                    <textarea class="form-textarea" id="edit-ingredients"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Nutrition (per 100g)</label>
+                    <div class="nutrition-grid">
+                        <div>
+                            <label class="form-label">Calories</label>
+                            <input type="number" class="form-input" id="edit-calories" step="0.1" />
+                        </div>
+                        <div>
+                            <label class="form-label">Protein (g)</label>
+                            <input type="number" class="form-input" id="edit-protein" step="0.1" />
+                        </div>
+                        <div>
+                            <label class="form-label">Carbs (g)</label>
+                            <input type="number" class="form-input" id="edit-carbs" step="0.1" />
+                        </div>
+                        <div>
+                            <label class="form-label">Fat (g)</label>
+                            <input type="number" class="form-input" id="edit-fat" step="0.1" />
+                        </div>
+                        <div>
+                            <label class="form-label">Fiber (g)</label>
+                            <input type="number" class="form-input" id="edit-fiber" step="0.1" />
+                        </div>
+                        <div>
+                            <label class="form-label">Sugar (g)</label>
+                            <input type="number" class="form-input" id="edit-sugar" step="0.1" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-success" onclick="saveFood()">💾 Save</button>
+                <button class="btn btn-danger" onclick="deleteFood()">🗑️ Delete</button>
+                <button class="btn btn-primary" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://us-central1-nutrasafe-705c7.cloudfunctions.net';
+        let allFoods = [];
+        let filteredFoods = [];
+        let currentFood = null;
+
+        // Load all foods when page loads
+        window.addEventListener('DOMContentLoaded', function() {
+            loadAllFoods();
+        });
+
+        async function loadAllFoods() {
+            const loading = document.getElementById('loading');
+            const table = document.getElementById('food-table');
+            const countEl = document.getElementById('food-count');
+            
+            loading.style.display = 'block';
+            table.style.display = 'none';
+
+            try {
+                console.log('Loading all foods...');
+                const response = await fetch(`${API_BASE}/getAllFoods?limit=5000&collection=all`);
+                const data = await response.json();
+
+                if (data.foods && data.foods.length > 0) {
+                    allFoods = data.foods.sort((a, b) => {
+                        const nameA = (a.name || a.foodName || '').toLowerCase();
+                        const nameB = (b.name || b.foodName || '').toLowerCase();
+                        return nameA.localeCompare(nameB);
+                    });
+                    
+                    filteredFoods = [...allFoods];
+                    displayFoods();
+                    countEl.textContent = `${allFoods.length} foods loaded`;
+                    console.log(`Loaded ${allFoods.length} foods`);
+                } else {
+                    throw new Error('No foods returned');
+                }
+            } catch (error) {
+                console.error('Error loading foods:', error);
+                loading.innerHTML = '<div style="color: #dc3545;">Error loading foods. Please try again.</div>';
+                showAlert('Error loading food database', 'error');
+            }
+
+            loading.style.display = 'none';
+            table.style.display = 'block';
+        }
+
+        function displayFoods() {
+            const tbody = document.getElementById('food-tbody');
+            const foods = filteredFoods.slice(0, 100); // Show first 100 for performance
+            
+            tbody.innerHTML = foods.map((food, index) => {
+                const name = food.name || food.foodName || 'N/A';
+                const brand = food.brand || food.brandName || '';
+                const calories = food.calories?.kcal || food.calories || '';
+                const protein = food.protein?.per100g || food.protein || '';
+                const carbs = food.carbs?.per100g || food.carbs || '';
+                const fat = food.fat?.per100g || food.fat || '';
+                const source = food.source || 'unknown';
+                
+                return `
+                    <tr>
+                        <td><strong>${name}</strong></td>
+                        <td>${brand}</td>
+                        <td>${calories}</td>
+                        <td>${protein}g</td>
+                        <td>${carbs}g</td>
+                        <td>${fat}g</td>
+                        <td>${source}</td>
+                        <td>
+                            <button class="btn btn-primary" onclick="viewFood(${index})" style="font-size: 10px; padding: 4px 8px;">👁️ View</button>
+                            <button class="btn btn-success" onclick="editFood(${index})" style="font-size: 10px; padding: 4px 8px;">✏️ Edit</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('food-count').textContent = `Showing ${foods.length} of ${filteredFoods.length} foods`;
+        }
+
+        function filterFoods() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            if (!query) {
+                filteredFoods = [...allFoods];
+            } else {
+                filteredFoods = allFoods.filter(food => {
+                    const name = (food.name || food.foodName || '').toLowerCase();
+                    const brand = (food.brand || food.brandName || '').toLowerCase();
+                    const ingredients = (food.ingredients || food.extractedIngredients || '').toLowerCase();
+                    return name.includes(query) || brand.includes(query) || ingredients.includes(query);
+                });
+            }
+            displayFoods();
+        }
+
+        function viewFood(index) {
+            currentFood = filteredFoods[index];
+            if (!currentFood) return;
+
+            const nutrition = currentFood.nutritionData || {};
+            document.getElementById('view-content').innerHTML = `
+                <div class="form-group">
+                    <label class="form-label">Food Name</label>
+                    <div style="padding: 8px; background: #333; border-radius: 4px;">
+                        ${currentFood.name || currentFood.foodName || 'N/A'}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Brand</label>
+                    <div style="padding: 8px; background: #333; border-radius: 4px;">
+                        ${currentFood.brand || currentFood.brandName || 'N/A'}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Barcode</label>
+                    <div style="padding: 8px; background: #333; border-radius: 4px;">
+                        ${currentFood.barcode || 'N/A'}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Ingredients</label>
+                    <div style="padding: 8px; background: #333; border-radius: 4px; max-height: 120px; overflow-y: auto;">
+                        ${currentFood.ingredients || currentFood.extractedIngredients || 'N/A'}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Nutrition (per 100g)</label>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                        <div>Calories: ${currentFood.calories?.kcal || currentFood.calories || nutrition.calories || 'N/A'}</div>
+                        <div>Protein: ${currentFood.protein?.per100g || currentFood.protein || nutrition.protein || 'N/A'}g</div>
+                        <div>Carbs: ${currentFood.carbs?.per100g || currentFood.carbs || nutrition.carbs || 'N/A'}g</div>
+                        <div>Fat: ${currentFood.fat?.per100g || currentFood.fat || nutrition.fat || 'N/A'}g</div>
+                        <div>Fiber: ${currentFood.fiber?.per100g || currentFood.fiber || nutrition.fiber || 'N/A'}g</div>
+                        <div>Sugar: ${currentFood.sugar?.per100g || currentFood.sugar || nutrition.sugar || 'N/A'}g</div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('view-modal').style.display = 'block';
+        }
+
+        function editFood(index) {
+            currentFood = filteredFoods[index];
+            if (!currentFood) return;
+
+            const nutrition = currentFood.nutritionData || {};
+            
+            document.getElementById('edit-name').value = currentFood.name || currentFood.foodName || '';
+            document.getElementById('edit-brand').value = currentFood.brand || currentFood.brandName || '';
+            document.getElementById('edit-barcode').value = currentFood.barcode || '';
+            document.getElementById('edit-ingredients').value = currentFood.ingredients || currentFood.extractedIngredients || '';
+            document.getElementById('edit-calories').value = currentFood.calories?.kcal || currentFood.calories || nutrition.calories || '';
+            document.getElementById('edit-protein').value = currentFood.protein?.per100g || currentFood.protein || nutrition.protein || '';
+            document.getElementById('edit-carbs').value = currentFood.carbs?.per100g || currentFood.carbs || nutrition.carbs || nutrition.carbohydrates || '';
+            document.getElementById('edit-fat').value = currentFood.fat?.per100g || currentFood.fat || nutrition.fat || '';
+            document.getElementById('edit-fiber').value = currentFood.fiber?.per100g || currentFood.fiber || nutrition.fiber || '';
+            document.getElementById('edit-sugar').value = currentFood.sugar?.per100g || currentFood.sugar || nutrition.sugar || '';
+
+            document.getElementById('edit-modal').style.display = 'block';
+        }
+
+        function openEditModal() {
+            document.getElementById('view-modal').style.display = 'none';
+            const index = filteredFoods.indexOf(currentFood);
+            editFood(index);
+        }
+
+        async function saveFood() {
+            if (!currentFood) return;
+
+            try {
+                const updatedData = {
+                    foodId: currentFood.id,
+                    foodName: document.getElementById('edit-name').value.trim(),
+                    brandName: document.getElementById('edit-brand').value.trim() || null,
+                    barcode: document.getElementById('edit-barcode').value.trim() || null,
+                    extractedIngredients: document.getElementById('edit-ingredients').value.trim() || null,
+                    nutritionData: {
+                        calories: parseFloat(document.getElementById('edit-calories').value) || 0,
+                        protein: parseFloat(document.getElementById('edit-protein').value) || 0,
+                        carbs: parseFloat(document.getElementById('edit-carbs').value) || 0,
+                        fat: parseFloat(document.getElementById('edit-fat').value) || 0,
+                        fiber: parseFloat(document.getElementById('edit-fiber').value) || 0,
+                        sugar: parseFloat(document.getElementById('edit-sugar').value) || 0
+                    },
+                    verifiedBy: 'admin',
+                    verificationMethod: 'manual'
+                };
+
+                const response = await fetch(`${API_BASE}/updateVerifiedFood`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedData)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showAlert('Food updated successfully!', 'success');
+                    closeModal();
+                    // Update local data
+                    const index = allFoods.findIndex(f => f.id === currentFood.id);
+                    if (index !== -1) {
+                        allFoods[index] = { ...currentFood, ...updatedData };
+                        filterFoods();
+                    }
+                } else {
+                    showAlert('Error updating food: ' + (result.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                console.error('Error saving food:', error);
+                showAlert('Network error while saving', 'error');
+            }
+        }
+
+        async function deleteFood() {
+            if (!currentFood) return;
+            
+            const foodName = currentFood.name || currentFood.foodName;
+            if (!confirm(`Delete "${foodName}"? This cannot be undone.`)) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/deleteVerifiedFoods`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        foodIds: [currentFood.id],
+                        collection: currentFood.collection || 'verifiedFoods'
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showAlert('Food deleted successfully', 'success');
+                    closeModal();
+                    // Remove from local data
+                    allFoods = allFoods.filter(f => f.id !== currentFood.id);
+                    filterFoods();
+                } else {
+                    showAlert('Error deleting food: ' + (result.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting food:', error);
+                showAlert('Network error while deleting', 'error');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('view-modal').style.display = 'none';
+            document.getElementById('edit-modal').style.display = 'none';
+            currentFood = null;
+        }
+
+        function exportData() {
+            const csv = ['Name,Brand,Calories,Protein,Carbs,Fat,Ingredients'];
+            filteredFoods.forEach(food => {
+                const name = (food.name || food.foodName || '').replace(/"/g, '""');
+                const brand = (food.brand || food.brandName || '').replace(/"/g, '""');
+                const calories = food.calories?.kcal || food.calories || '';
+                const protein = food.protein?.per100g || food.protein || '';
+                const carbs = food.carbs?.per100g || food.carbs || '';
+                const fat = food.fat?.per100g || food.fat || '';
+                const ingredients = (food.ingredients || food.extractedIngredients || '').replace(/"/g, '""');
+                csv.push(`"${name}","${brand}",${calories},${protein},${carbs},${fat},"${ingredients}"`);
+            });
+
+            const blob = new Blob([csv.join('\\n')], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'nutrasafe_foods.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function showAlert(message, type) {
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            document.body.appendChild(alert);
+            setTimeout(() => alert.remove(), 3000);
+        }
+
+        // Close modal when clicking outside
+        window.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal')) {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>

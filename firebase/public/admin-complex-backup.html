@@ -1,0 +1,2379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutraSafe Admin Terminal</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --terminal-bg: #000000;
+            --panel-bg: #0a0e1a;
+            --card-bg: #1a1f2e;
+            --surface-bg: #252b3d;
+            --accent-primary: #00ff88;
+            --accent-secondary: #00d4ff;
+            --accent-tertiary: #ff6b6b;
+            --accent-warning: #ffd700;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a6b8;
+            --text-muted: #6c757d;
+            --text-success: #00ff88;
+            --text-danger: #ff4757;
+            --border-primary: #2d3748;
+            --border-accent: rgba(0, 255, 136, 0.3);
+            --shadow-glow: 0 0 20px rgba(0, 255, 136, 0.15);
+            --shadow-deep: 0 8px 32px rgba(0, 0, 0, 0.6);
+            --gradient-primary: linear-gradient(135deg, #00ff88 0%, #00d4ff 100%);
+            --gradient-danger: linear-gradient(135deg, #ff4757 0%, #ff3742 100%);
+            --gradient-warning: linear-gradient(135deg, #ffd700 0%, #ffb700 100%);
+            --gradient-surface: linear-gradient(135deg, #1a1f2e 0%, #252b3d 100%);
+            --font-mono: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+            background: var(--terminal-bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.4;
+            font-size: 12px;
+            overflow-x: auto;
+        }
+
+        .terminal-container {
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            grid-template-rows: 40px 1fr;
+            height: 100vh;
+            gap: 1px;
+            background: var(--border-primary);
+        }
+
+        /* Top Header Bar */
+        .header-bar {
+            grid-column: 1 / -1;
+            background: var(--panel-bg);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            border-bottom: 1px solid var(--border-primary);
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            font-size: 13px;
+            color: var(--accent-primary);
+        }
+
+        .system-metrics {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 11px;
+            font-family: var(--font-mono);
+        }
+
+        .metric-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .status-indicator {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent-primary);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            background: var(--panel-bg);
+            padding: 8px;
+            overflow-y: auto;
+        }
+
+        .nav-section {
+            margin-bottom: 16px;
+        }
+
+        .nav-header {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            padding: 0 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            margin-bottom: 2px;
+        }
+
+        .nav-item:hover {
+            background: rgba(0, 255, 136, 0.05);
+            color: var(--accent-primary);
+        }
+
+        .nav-item.active {
+            background: rgba(0, 255, 136, 0.15);
+            color: var(--accent-primary);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .nav-icon {
+            width: 14px;
+            text-align: center;
+            font-size: 12px;
+        }
+
+        /* Main Content Area */
+        .main-content {
+            background: var(--panel-bg);
+            padding: 8px;
+            overflow-y: auto;
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 8px;
+        }
+
+        /* Search and Controls Bar */
+        .controls-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 8px 12px;
+            background: var(--card-bg);
+            border-radius: 6px;
+            border: 1px solid var(--border-primary);
+        }
+
+        .search-section {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .search-input {
+            flex: 1;
+            max-width: 300px;
+            padding: 6px 12px;
+            background: var(--surface-bg);
+            border: 1px solid var(--border-primary);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-size: 11px;
+            font-family: var(--font-mono);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.2);
+        }
+
+        .filter-controls {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .filter-btn {
+            padding: 4px 8px;
+            background: var(--surface-bg);
+            border: 1px solid var(--border-primary);
+            border-radius: 3px;
+            color: var(--text-secondary);
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover,
+        .filter-btn.active {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+            background: rgba(0, 255, 136, 0.05);
+        }
+
+        /* Content Panels */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            grid-template-rows: 120px 1fr;
+            gap: 8px;
+            height: 100%;
+        }
+
+        /* Quick Stats Panel */
+        .stats-panel {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 8px;
+        }
+
+        .stat-card {
+            background: var(--gradient-surface);
+            border: 1px solid var(--border-primary);
+            border-radius: 6px;
+            padding: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--gradient-primary);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .stat-label {
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            line-height: 1;
+            margin-bottom: 2px;
+        }
+
+        .stat-change {
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--text-success);
+        }
+
+        .stat-change.negative {
+            color: var(--text-danger);
+        }
+
+        /* Main Data Table */
+        .data-panel {
+            background: var(--card-bg);
+            border: 1px solid var(--border-primary);
+            border-radius: 6px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            padding: 8px 12px;
+            background: var(--surface-bg);
+            border-bottom: 1px solid var(--border-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .panel-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .panel-btn {
+            padding: 3px 6px;
+            background: transparent;
+            border: 1px solid var(--border-primary);
+            border-radius: 3px;
+            color: var(--text-secondary);
+            font-size: 9px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .panel-btn:hover {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+        }
+
+        /* Data Table */
+        .data-table {
+            flex: 1;
+            overflow: auto;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10px;
+        }
+
+        .table th {
+            background: var(--surface-bg);
+            padding: 6px 8px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            border-bottom: 1px solid var(--border-primary);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid rgba(45, 55, 72, 0.3);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+        }
+
+        .table tr:hover {
+            background: rgba(0, 255, 136, 0.02);
+        }
+
+        .status-badge {
+            padding: 2px 6px;
+            border-radius: 2px;
+            font-size: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .status-pending {
+            background: rgba(255, 215, 0, 0.2);
+            color: var(--accent-warning);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+
+        .status-approved {
+            background: rgba(0, 255, 136, 0.2);
+            color: var(--accent-primary);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+
+        .status-rejected {
+            background: rgba(255, 71, 87, 0.2);
+            color: var(--accent-tertiary);
+            border: 1px solid rgba(255, 71, 87, 0.3);
+        }
+
+        /* Action Buttons */
+        .action-btn {
+            padding: 3px 6px;
+            border: none;
+            border-radius: 2px;
+            font-size: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-right: 2px;
+        }
+
+        .btn-approve {
+            background: var(--gradient-primary);
+            color: var(--terminal-bg);
+        }
+
+        .btn-approve:hover {
+            box-shadow: var(--shadow-glow);
+        }
+
+        .btn-reject {
+            background: var(--gradient-danger);
+            color: white;
+        }
+
+        .btn-reject:hover {
+            box-shadow: 0 0 20px rgba(255, 71, 87, 0.3);
+        }
+
+        .btn-view {
+            background: var(--surface-bg);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-primary);
+        }
+
+        .btn-view:hover {
+            color: var(--accent-secondary);
+            border-color: var(--accent-secondary);
+        }
+
+        /* Side Panel */
+        .side-panel {
+            background: var(--card-bg);
+            border: 1px solid var(--border-primary);
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Charts and Analytics */
+        .chart-container {
+            padding: 12px;
+            height: 200px;
+        }
+
+        .mini-chart {
+            padding: 8px;
+            height: 120px;
+            background: var(--surface-bg);
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        /* Loading States */
+        .loading-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: var(--text-muted);
+            font-size: 11px;
+        }
+
+        .loading-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(0, 255, 136, 0.2);
+            border-top: 2px solid var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Modal Dialogs */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--card-bg);
+            border: 1px solid var(--border-primary);
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: var(--shadow-deep);
+        }
+
+        .modal-header {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-primary);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .form-input,
+        .form-textarea {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--surface-bg);
+            border: 1px solid var(--border-primary);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-size: 11px;
+            font-family: inherit;
+        }
+
+        .form-textarea {
+            min-height: 80px;
+            resize: vertical;
+            font-family: var(--font-mono);
+        }
+
+        .form-input:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.2);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        /* Alerts */
+        .alert {
+            position: fixed;
+            top: 50px;
+            right: 20px;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            z-index: 2000;
+            max-width: 300px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .alert-success {
+            background: rgba(0, 255, 136, 0.15);
+            color: var(--accent-primary);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+
+        .alert-error {
+            background: rgba(255, 71, 87, 0.15);
+            color: var(--accent-tertiary);
+            border: 1px solid rgba(255, 71, 87, 0.3);
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Food Details */
+        .food-detail {
+            font-size: 10px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .nutrition-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 4px;
+            font-size: 8px;
+            margin-top: 4px;
+        }
+
+        .nutrition-item {
+            background: rgba(0, 255, 136, 0.05);
+            padding: 3px;
+            border-radius: 2px;
+            text-align: center;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1400px) {
+            .content-grid {
+                grid-template-columns: 1fr 250px;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .terminal-container {
+                grid-template-columns: 180px 1fr;
+            }
+            
+            .content-grid {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto 1fr;
+            }
+            
+            .side-panel {
+                grid-row: 2;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .terminal-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: 40px 40px 1fr;
+            }
+            
+            .sidebar {
+                grid-row: 2;
+                padding: 4px;
+            }
+            
+            .nav-section {
+                display: inline-block;
+                margin-right: 16px;
+                margin-bottom: 0;
+            }
+            
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal-container">
+        <!-- Top Header Bar -->
+        <div class="header-bar">
+            <div class="logo-section">
+                <span>🍎</span>
+                <span>NUTRASAFE ADMIN TERMINAL</span>
+            </div>
+            <div class="system-metrics">
+                <div class="metric-item">
+                    <div class="status-indicator"></div>
+                    <span>ONLINE</span>
+                </div>
+                <div class="metric-item">
+                    <span>CPU: 12%</span>
+                </div>
+                <div class="metric-item">
+                    <span>MEM: 2.1GB</span>
+                </div>
+                <div class="metric-item">
+                    <span>API: 99.8%</span>
+                </div>
+                <div class="metric-item" id="current-time">
+                    <span>--:--:--</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Navigation -->
+        <div class="sidebar">
+            <div class="nav-section">
+                <div class="nav-header">Dashboard</div>
+                <div class="nav-item" data-tab="overview">
+                    <span class="nav-icon">📊</span>
+                    <span>Overview</span>
+                </div>
+                <div class="nav-item" data-tab="search">
+                    <span class="nav-icon">🔍</span>
+                    <span>Food Search</span>
+                </div>
+                <div class="nav-item active" data-tab="database">
+                    <span class="nav-icon">🗄️</span>
+                    <span>Database</span>
+                </div>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-header">Analytics</div>
+                <div class="nav-item" data-tab="analytics">
+                    <span class="nav-icon">📈</span>
+                    <span>Charts</span>
+                </div>
+                <div class="nav-item" data-tab="reports">
+                    <span class="nav-icon">📋</span>
+                    <span>Reports</span>
+                </div>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-header">System</div>
+                <div class="nav-item" data-tab="system">
+                    <span class="nav-icon">⚙️</span>
+                    <span>Health</span>
+                </div>
+                <div class="nav-item" data-tab="logs">
+                    <span class="nav-icon">📝</span>
+                    <span>Logs</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <!-- Controls Bar -->
+            <div class="controls-bar">
+                <div class="search-section">
+                    <input type="text" class="search-input" id="global-search" placeholder="Search foods, database, analytics..." />
+                    <button class="filter-btn" id="search-btn">🔍</button>
+                </div>
+                <div class="filter-controls">
+                    <button class="filter-btn active" data-filter="all">All</button>
+                    <button class="filter-btn" data-filter="pending">Pending</button>
+                    <button class="filter-btn" data-filter="approved">Approved</button>
+                    <button class="filter-btn" data-filter="today">Today</button>
+                    <button class="filter-btn" data-filter="week">This Week</button>
+                    <button class="panel-btn" onclick="refreshData()">↻ Refresh</button>
+                </div>
+            </div>
+
+            <!-- Content Grid -->
+            <div class="content-grid">
+                <!-- Quick Stats Panel -->
+                <div class="stats-panel">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-label">Total Users</div>
+                        </div>
+                        <div class="stat-value" id="stat-users">1,247</div>
+                        <div class="stat-change">+12.5% ↗</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-label">Active Today</div>
+                        </div>
+                        <div class="stat-value" id="stat-active">892</div>
+                        <div class="stat-change">+8.3% ↗</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-label">Pending</div>
+                        </div>
+                        <div class="stat-value" id="stat-pending">0</div>
+                        <div class="stat-change negative">-15.2% ↘</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-label">Verified</div>
+                        </div>
+                        <div class="stat-value" id="stat-verified">3,456</div>
+                        <div class="stat-change">+22.1% ↗</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-label">API Calls</div>
+                        </div>
+                        <div class="stat-value" id="stat-api">12.8K</div>
+                        <div class="stat-change">+5.7% ↗</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-label">Uptime</div>
+                        </div>
+                        <div class="stat-value" id="stat-uptime">99.9%</div>
+                        <div class="stat-change">✨ Excellent</div>
+                    </div>
+                </div>
+
+                <!-- Main Data Panel -->
+                <div class="data-panel">
+                    <div class="panel-header">
+                        <div class="panel-title" id="panel-title">Food Verifications Queue</div>
+                        <div class="panel-actions">
+                            <button class="panel-btn" onclick="exportData()">Export</button>
+                            <button class="panel-btn" onclick="configureColumns()">Columns</button>
+                            <button class="panel-btn" onclick="toggleView()">View</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table" id="main-data-container">
+                        <div class="loading-container" id="loading-indicator">
+                            <div class="loading-spinner"></div>
+                            <span>Loading data...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Side Panel -->
+                <div class="side-panel">
+                    <div class="panel-header">
+                        <div class="panel-title">Live Analytics</div>
+                        <div class="panel-actions">
+                            <button class="panel-btn">⚡</button>
+                        </div>
+                    </div>
+                    
+                    <div class="mini-chart">
+                        <canvas id="realtime-chart" width="260" height="100"></canvas>
+                    </div>
+                    
+                    <div class="mini-chart">
+                        <canvas id="status-chart" width="260" height="100"></canvas>
+                    </div>
+                    
+                    <div style="padding: 12px; flex: 1; overflow-y: auto; font-size: 10px;">
+                        <div style="margin-bottom: 12px;">
+                            <div style="color: var(--text-muted); margin-bottom: 4px;">RECENT ACTIVITY</div>
+                            <div id="activity-feed">
+                                <div style="padding: 4px 0; color: var(--text-secondary);">Loading activity...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Food Edit Modal -->
+    <div id="food-edit-modal" class="modal">
+        <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <span>Edit Food Details</span>
+                <button onclick="closeFoodEditModal()" style="float: right; background: none; border: none; color: var(--text-secondary); font-size: 20px; cursor: pointer;">&times;</button>
+            </div>
+            <div id="food-edit-content">
+                <!-- Basic Information -->
+                <div class="form-group">
+                    <label class="form-label">Food Name *</label>
+                    <input type="text" class="form-input" id="edit-food-name" placeholder="Enter food name..." />
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Brand Name</label>
+                    <input type="text" class="form-input" id="edit-brand-name" placeholder="Enter brand name..." />
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Barcode</label>
+                    <input type="text" class="form-input" id="edit-barcode" placeholder="Enter barcode..." />
+                </div>
+                
+                <!-- Ingredients -->
+                <div class="form-group">
+                    <label class="form-label">Ingredients</label>
+                    <textarea class="form-textarea" id="edit-ingredients" rows="4" placeholder="Enter ingredients list (comma separated)..."></textarea>
+                </div>
+                
+                <!-- Nutrition Information -->
+                <div class="form-group">
+                    <label class="form-label">Nutrition Information (per 100g)</label>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 8px;">
+                        <div>
+                            <label class="form-label" style="font-size: 10px; margin-bottom: 4px;">Calories (kcal)</label>
+                            <input type="number" class="form-input" id="edit-calories" placeholder="0" step="0.1" />
+                        </div>
+                        <div>
+                            <label class="form-label" style="font-size: 10px; margin-bottom: 4px;">Protein (g)</label>
+                            <input type="number" class="form-input" id="edit-protein" placeholder="0" step="0.1" />
+                        </div>
+                        <div>
+                            <label class="form-label" style="font-size: 10px; margin-bottom: 4px;">Carbohydrates (g)</label>
+                            <input type="number" class="form-input" id="edit-carbs" placeholder="0" step="0.1" />
+                        </div>
+                        <div>
+                            <label class="form-label" style="font-size: 10px; margin-bottom: 4px;">Fat (g)</label>
+                            <input type="number" class="form-input" id="edit-fat" placeholder="0" step="0.1" />
+                        </div>
+                        <div>
+                            <label class="form-label" style="font-size: 10px; margin-bottom: 4px;">Fiber (g)</label>
+                            <input type="number" class="form-input" id="edit-fiber" placeholder="0" step="0.1" />
+                        </div>
+                        <div>
+                            <label class="form-label" style="font-size: 10px; margin-bottom: 4px;">Sugar (g)</label>
+                            <input type="number" class="form-input" id="edit-sugar" placeholder="0" step="0.1" />
+                        </div>
+                        <div>
+                            <label class="form-label" style="font-size: 10px; margin-bottom: 4px;">Sodium (mg)</label>
+                            <input type="number" class="form-input" id="edit-sodium" placeholder="0" step="0.1" />
+                        </div>
+                        <div>
+                            <label class="form-label" style="font-size: 10px; margin-bottom: 4px;">Salt (g)</label>
+                            <input type="number" class="form-input" id="edit-salt" placeholder="0" step="0.1" />
+                        </div>
+                        <div>
+                            <label class="form-label" style="font-size: 10px; margin-bottom: 4px;">Saturated Fat (g)</label>
+                            <input type="number" class="form-input" id="edit-saturated-fat" placeholder="0" step="0.1" />
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Source and Verification -->
+                <div class="form-group">
+                    <label class="form-label">Source Collection</label>
+                    <select class="form-input" id="edit-collection">
+                        <option value="verifiedFoods">Verified Foods</option>
+                        <option value="foods">Foods</option>
+                        <option value="manualFoods">Manual Foods</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Data Source</label>
+                    <input type="text" class="form-input" id="edit-source" placeholder="e.g., Tesco, ASDA, Manual..." />
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Serving Size Description</label>
+                    <input type="text" class="form-input" id="edit-serving-size" placeholder="e.g., per 100g, per serving..." />
+                </div>
+                
+                <!-- Save Status -->
+                <div id="save-status" style="margin-top: 16px; padding: 8px; border-radius: 4px; display: none;">
+                </div>
+            </div>
+            
+            <div class="modal-actions">
+                <button class="action-btn btn-approve" onclick="saveFoodChanges()">💾 Save Changes</button>
+                <button class="action-btn btn-reject" onclick="deleteFoodEntry()" id="delete-food-btn">🗑️ Delete</button>
+                <button class="action-btn btn-view" onclick="closeFoodEditModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Food View Modal -->
+    <div id="food-view-modal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <span>Food Details</span>
+                <button onclick="closeFoodViewModal()" style="float: right; background: none; border: none; color: var(--text-secondary); font-size: 20px; cursor: pointer;">&times;</button>
+            </div>
+            <div id="food-view-content">
+                <!-- Content will be populated dynamically -->
+            </div>
+            <div class="modal-actions">
+                <button class="action-btn btn-approve" onclick="openEditFromView()">✏️ Edit</button>
+                <button class="action-btn btn-view" onclick="closeFoodViewModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="verification-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">Food Verification Details</div>
+            <div id="modal-content">
+                <!-- Dynamic content will be loaded here -->
+            </div>
+            <div class="modal-actions">
+                <button class="action-btn btn-approve" onclick="approveVerification()">✓ Approve</button>
+                <button class="action-btn btn-reject" onclick="rejectVerification()">✗ Reject</button>
+                <button class="action-btn btn-view" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="search-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">Advanced Food Search</div>
+            <div class="form-group">
+                <label class="form-label">Search Query</label>
+                <input type="text" class="form-input" id="advanced-search" placeholder="Enter food name, brand, or ingredient..." />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Category Filter</label>
+                <select class="form-input" id="category-filter">
+                    <option value="">All Categories</option>
+                    <option value="snacks">Snacks</option>
+                    <option value="beverages">Beverages</option>
+                    <option value="dairy">Dairy</option>
+                    <option value="meat">Meat & Poultry</option>
+                    <option value="vegetables">Vegetables</option>
+                    <option value="grains">Grains</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Date Range</label>
+                <input type="date" class="form-input" id="date-from" style="width: 48%; margin-right: 4%;" />
+                <input type="date" class="form-input" id="date-to" style="width: 48%;" />
+            </div>
+            <div class="modal-actions">
+                <button class="action-btn btn-approve" onclick="performAdvancedSearch()">🔍 Search</button>
+                <button class="action-btn btn-view" onclick="closeSearchModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://us-central1-nutrasafe-705c7.cloudfunctions.net';
+        let currentData = [];
+        let filteredData = [];
+        let currentTab = 'overview';
+        let realtimeChart = null;
+        let statusChart = null;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+            setupEventListeners();
+            startRealtimeUpdates();
+            updateTime();
+            setInterval(updateTime, 1000);
+        });
+
+        function initializeDashboard() {
+            loadOverviewData();
+            loadDatabaseBrowser();
+            setupCharts();
+        }
+
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toTimeString().split(' ')[0];
+        }
+
+        function setupEventListeners() {
+            // Navigation
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => switchTab(item.dataset.tab));
+            });
+
+            // Search functionality
+            document.getElementById('global-search').addEventListener('input', performSearch);
+            document.getElementById('search-btn').addEventListener('click', openAdvancedSearch);
+
+            // Filters
+            document.querySelectorAll('[data-filter]').forEach(btn => {
+                btn.addEventListener('click', () => applyFilter(btn.dataset.filter));
+            });
+
+            // Modal close on background click
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) closeModal();
+                });
+            });
+        }
+
+        function switchTab(tabName) {
+            // Update navigation
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.toggle('active', item.dataset.tab === tabName);
+            });
+
+            currentTab = tabName;
+            updatePanelTitle(tabName);
+            loadTabData(tabName);
+        }
+
+        function updatePanelTitle(tabName) {
+            const titles = {
+                'overview': 'System Overview',
+                'search': 'Food Database Search',
+                'database': 'Food Database Browser',
+                'analytics': 'Analytics Dashboard',
+                'reports': 'Reports & Exports',
+                'system': 'System Health Monitor',
+                'logs': 'System Activity Logs'
+            };
+            document.getElementById('panel-title').textContent = titles[tabName] || 'Dashboard';
+        }
+
+        function loadTabData(tabName) {
+            const container = document.getElementById('main-data-container');
+            
+            switch(tabName) {
+                case 'search':
+                    loadSearchInterface();
+                    break;
+                case 'database':
+                    loadDatabaseBrowser();
+                    break;
+                case 'analytics':
+                    loadAnalyticsDashboard();
+                    break;
+                case 'system':
+                    loadSystemHealth();
+                    break;
+                case 'logs':
+                    loadSystemLogs();
+                    break;
+                default:
+                    loadOverviewData();
+            }
+        }
+
+        function loadSearchInterface() {
+            const container = document.getElementById('main-data-container');
+            container.innerHTML = `
+                <div style="padding: 20px; text-align: center;">
+                    <div style="margin-bottom: 20px;">
+                        <input type="text" id="food-search" placeholder="Search for foods..." style="width: 300px; padding: 10px; margin-right: 10px;" onkeypress="if(event.key === 'Enter') searchFoods()" />
+                        <button onclick="searchFoods()" class="action-btn btn-approve">Search Foods</button>
+                    </div>
+                    <div id="search-results">
+                        <div class="loading-container">
+                            <span>Enter a search term to find foods in the database</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function searchFoods() {
+            const query = document.getElementById('food-search').value.trim();
+            if (!query) return;
+
+            const resultsContainer = document.getElementById('search-results');
+            resultsContainer.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><span>Searching Firebase database...</span></div>';
+
+            try {
+                // Call your real Firebase searchFoods function
+                const response = await fetch(`${API_BASE}/searchFoods`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query: query,
+                        maxResults: 50
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.foods && data.foods.length > 0) {
+                    const tableHtml = `
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Food Name</th>
+                                    <th>Brand</th>
+                                    <th>Calories/100g</th>
+                                    <th>Source</th>
+                                    <th>Collection</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.foods.map(food => `
+                                    <tr>
+                                        <td>${food.name || 'N/A'}</td>
+                                        <td>${food.brand || 'N/A'}</td>
+                                        <td>${food.calories || 'N/A'}</td>
+                                        <td><span class="status-badge status-${food.source || 'manual'}">${food.source || 'manual'}</span></td>
+                                        <td><span class="status-badge status-verified">${food.collection || 'foods'}</span></td>
+                                        <td>
+                                            <button class="action-btn btn-view" onclick="viewFoodDetails('${food.id || food.name}', '${food.collection || 'foods'}')">View</button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    resultsContainer.innerHTML = tableHtml;
+                } else {
+                    resultsContainer.innerHTML = '<div class="loading-container"><span>No foods found matching your search</span></div>';
+                }
+            } catch (error) {
+                console.error('Error searching foods:', error);
+                resultsContainer.innerHTML = '<div class="loading-container"><span>Error searching foods. Please try again.</span></div>';
+            }
+        }
+
+        function loadVerificationsData() {
+            const container = document.getElementById('main-data-container');
+            container.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><span>Loading verifications...</span></div>';
+
+            fetch(`${API_BASE}/getPendingVerifications`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.pendingVerifications) {
+                        currentData = data.pendingVerifications.sort((a, b) => 
+                            new Date(b.submittedAt) - new Date(a.submittedAt)
+                        );
+                        displayVerifications(currentData);
+                        document.getElementById('stat-pending').textContent = currentData.length;
+                    } else {
+                        displayEmptyState('No pending verifications found');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading verifications:', error);
+                    displayEmptyState('Error loading verifications');
+                });
+        }
+
+        function displayVerifications(verifications) {
+            const container = document.getElementById('main-data-container');
+            
+            if (verifications.length === 0) {
+                displayEmptyState('No verifications match your current filter');
+                return;
+            }
+
+            const tableHtml = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Food Name</th>
+                            <th>Brand</th>
+                            <th>Submitted</th>
+                            <th>Calories</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${verifications.map(verification => `
+                            <tr onclick="viewVerification('${verification.id}')">
+                                <td>
+                                    <strong>${verification.foodName}</strong>
+                                    <div class="food-detail">${verification.extractedIngredients.substring(0, 50)}...</div>
+                                </td>
+                                <td>${verification.brandName || 'N/A'}</td>
+                                <td>${new Date(verification.submittedAt).toLocaleDateString()}</td>
+                                <td>${Math.round(verification.nutritionData.calories)}</td>
+                                <td><span class="status-badge status-pending">PENDING</span></td>
+                                <td onclick="event.stopPropagation()">
+                                    <button class="action-btn btn-approve" onclick="quickApprove('${verification.id}')">✓</button>
+                                    <button class="action-btn btn-reject" onclick="quickReject('${verification.id}')">✗</button>
+                                    <button class="action-btn btn-view" onclick="viewVerification('${verification.id}')">👁</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            container.innerHTML = tableHtml;
+        }
+
+        function displayEmptyState(message) {
+            const container = document.getElementById('main-data-container');
+            container.innerHTML = `<div class="loading-container"><span>${message}</span></div>`;
+        }
+
+        function performSearch() {
+            const query = document.getElementById('global-search').value.toLowerCase();
+            if (!query) {
+                filteredData = currentData;
+            } else {
+                filteredData = currentData.filter(item => 
+                    item.foodName?.toLowerCase().includes(query) ||
+                    item.brandName?.toLowerCase().includes(query) ||
+                    item.extractedIngredients?.toLowerCase().includes(query)
+                );
+            }
+            displayVerifications(filteredData);
+        }
+
+        function applyFilter(filterType) {
+            // Update filter button states
+            document.querySelectorAll('[data-filter]').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filter === filterType);
+            });
+
+            // Apply filter logic
+            let filtered = currentData;
+            const now = new Date();
+            
+            switch(filterType) {
+                case 'pending':
+                    filtered = currentData.filter(item => item.status === 'pending');
+                    break;
+                case 'approved':
+                    filtered = currentData.filter(item => item.status === 'approved');
+                    break;
+                case 'today':
+                    filtered = currentData.filter(item => {
+                        const itemDate = new Date(item.submittedAt);
+                        return itemDate.toDateString() === now.toDateString();
+                    });
+                    break;
+                case 'week':
+                    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                    filtered = currentData.filter(item => {
+                        const itemDate = new Date(item.submittedAt);
+                        return itemDate >= weekAgo;
+                    });
+                    break;
+            }
+            
+            filteredData = filtered;
+            displayVerifications(filteredData);
+        }
+
+        function setupCharts() {
+            setupRealtimeChart();
+            setupStatusChart();
+        }
+
+        function setupRealtimeChart() {
+            const ctx = document.getElementById('realtime-chart').getContext('2d');
+            const gradient = ctx.createLinearGradient(0, 0, 0, 100);
+            gradient.addColorStop(0, 'rgba(0, 255, 136, 0.3)');
+            gradient.addColorStop(1, 'rgba(0, 255, 136, 0.0)');
+
+            realtimeChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 10}, (_, i) => `${i}s`),
+                    datasets: [{
+                        label: 'API Requests',
+                        data: Array.from({length: 10}, () => Math.floor(Math.random() * 100) + 50),
+                        borderColor: '#00ff88',
+                        backgroundColor: gradient,
+                        fill: true,
+                        tension: 0.4,
+                        borderWidth: 2,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { display: false },
+                        y: { display: false }
+                    },
+                    elements: { point: { radius: 0 } }
+                }
+            });
+        }
+
+        function setupStatusChart() {
+            const ctx = document.getElementById('status-chart').getContext('2d');
+            statusChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Approved', 'Pending', 'Rejected'],
+                    datasets: [{
+                        data: [75, 20, 5],
+                        backgroundColor: ['#00ff88', '#ffd700', '#ff4757'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { 
+                            display: false 
+                        } 
+                    }
+                }
+            });
+        }
+
+        function startRealtimeUpdates() {
+            setInterval(() => {
+                if (realtimeChart) {
+                    const newData = Math.floor(Math.random() * 100) + 50;
+                    realtimeChart.data.datasets[0].data.shift();
+                    realtimeChart.data.datasets[0].data.push(newData);
+                    realtimeChart.update('none');
+                }
+            }, 2000);
+
+            setInterval(updateActivityFeed, 5000);
+        }
+
+        function updateActivityFeed() {
+            const activities = [
+                'Food verification approved',
+                'New user registered',
+                'API endpoint checked',
+                'Database backup completed',
+                'Search query processed'
+            ];
+            
+            const feed = document.getElementById('activity-feed');
+            const activity = activities[Math.floor(Math.random() * activities.length)];
+            const time = new Date().toLocaleTimeString();
+            
+            feed.innerHTML = `
+                <div style="padding: 2px 0; color: var(--accent-primary); font-size: 9px;">
+                    ${time} - ${activity}
+                </div>
+                ${feed.innerHTML}
+            `;
+            
+            // Keep only last 10 items
+            const items = feed.children;
+            while (items.length > 10) {
+                feed.removeChild(items[items.length - 1]);
+            }
+        }
+
+        // Cache management functions
+        function clearCache() {
+            localStorage.removeItem(CACHE_KEY);
+            localStorage.removeItem(CACHE_VERSION_KEY);
+            cacheTimestamp = null;
+            console.log('🗑️ Cache cleared');
+        }
+        
+        function invalidateCache() {
+            cacheVersion++;
+            localStorage.setItem(CACHE_VERSION_KEY, cacheVersion.toString());
+            console.log('🔄 Cache invalidated, version bumped to', cacheVersion);
+        }
+        
+        function updateCacheStats() {
+            // Update stats panel with cache information
+            const statsPanel = document.querySelector('.stats-panel');
+            if (statsPanel && cacheStats.totalLoaded > 0) {
+                const cacheAge = cacheTimestamp ? Math.round((Date.now() - cacheTimestamp) / 1000 / 60) : 0;
+                const loadTimeDisplay = cacheStats.loadTime ? `${cacheStats.loadTime}ms` : 'N/A';
+                
+                // Update existing stat cards or add cache info
+                const existingCards = statsPanel.querySelectorAll('.stat-card');
+                if (existingCards.length >= 2) {
+                    const secondCard = existingCards[1];
+                    secondCard.innerHTML = `
+                        <div class="stat-header">
+                            <div class="stat-label">Database Cache</div>
+                        </div>
+                        <div class="stat-value">${cacheStats.totalLoaded}</div>
+                        <div class="stat-change">Loaded in ${loadTimeDisplay} (${cacheAge}min ago)</div>
+                    `;
+                }
+            }
+        }
+        
+        async function refreshData() {
+            const refreshBtn = document.querySelector('[onclick="refreshData()"]');
+            if (refreshBtn) {
+                refreshBtn.textContent = '🔄 Refreshing...';
+                refreshBtn.disabled = true;
+            }
+            
+            try {
+                if (currentTab === 'database') {
+                    // Force fresh data load for database
+                    console.log('🔄 Force refreshing database...');
+                    await fetchFreshData();
+                    await saveToCache();
+                    updateCacheStats();
+                    displayDatabaseResults();
+                    showAlert('Database refreshed successfully', 'success');
+                } else {
+                    loadTabData(currentTab);
+                    showAlert('Data refreshed successfully', 'success');
+                }
+            } catch (error) {
+                console.error('Error refreshing data:', error);
+                showAlert('Error refreshing data', 'error');
+            } finally {
+                if (refreshBtn) {
+                    refreshBtn.textContent = '↻ Refresh';
+                    refreshBtn.disabled = false;
+                }
+            }
+        }
+        
+        // Add new food to cache (for when foods are added/edited)
+        function addFoodToCache(newFood) {
+            try {
+                // Add to local arrays
+                const existingIndex = databaseData.findIndex(f => f.id === newFood.id);
+                if (existingIndex !== -1) {
+                    databaseData[existingIndex] = newFood;
+                } else {
+                    databaseData.push(newFood);
+                }
+                
+                // Re-sort and filter
+                databaseData.sort((a, b) => {
+                    const nameA = (a.name || a.foodName || '').toLowerCase();
+                    const nameB = (b.name || b.foodName || '').toLowerCase();
+                    return nameA.localeCompare(nameB);
+                });
+                
+                filterDatabase(); // This will update filteredDatabaseData
+                
+                // Update cache
+                saveToCache();
+                
+                console.log('➕ Added/updated food in cache:', newFood.name || newFood.foodName);
+            } catch (error) {
+                console.error('Error adding food to cache:', error);
+            }
+        }
+        
+        // Remove food from cache (for deletions)
+        function removeFoodFromCache(foodId) {
+            try {
+                const initialLength = databaseData.length;
+                databaseData = databaseData.filter(f => f.id !== foodId);
+                filteredDatabaseData = filteredDatabaseData.filter(f => f.id !== foodId);
+                
+                if (databaseData.length !== initialLength) {
+                    saveToCache();
+                    console.log('➖ Removed food from cache:', foodId);
+                }
+            } catch (error) {
+                console.error('Error removing food from cache:', error);
+            }
+        }
+
+        function openAdvancedSearch() {
+            document.getElementById('search-modal').style.display = 'block';
+        }
+
+        function closeSearchModal() {
+            document.getElementById('search-modal').style.display = 'none';
+        }
+
+        function performAdvancedSearch() {
+            // Implement advanced search logic here
+            closeSearchModal();
+            showAlert('Advanced search completed', 'success');
+        }
+
+        function viewVerification(id) {
+            const verification = currentData.find(v => v.id === id);
+            if (!verification) return;
+
+            document.getElementById('modal-content').innerHTML = `
+                <div class="form-group">
+                    <label class="form-label">Food Name</label>
+                    <div style="padding: 8px; background: var(--surface-bg); border-radius: 4px; font-family: var(--font-mono);">
+                        ${verification.foodName}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Brand</label>
+                    <div style="padding: 8px; background: var(--surface-bg); border-radius: 4px; font-family: var(--font-mono);">
+                        ${verification.brandName || 'N/A'}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Extracted Ingredients</label>
+                    <div style="padding: 8px; background: var(--surface-bg); border-radius: 4px; font-family: var(--font-mono); max-height: 80px; overflow-y: auto;">
+                        ${verification.extractedIngredients}
+                    </div>
+                </div>
+                <div class="nutrition-grid">
+                    <div class="nutrition-item">Cal: ${Math.round(verification.nutritionData.calories)}</div>
+                    <div class="nutrition-item">Prot: ${verification.nutritionData.protein.toFixed(1)}g</div>
+                    <div class="nutrition-item">Carb: ${verification.nutritionData.carbs.toFixed(1)}g</div>
+                    <div class="nutrition-item">Fat: ${verification.nutritionData.fat.toFixed(1)}g</div>
+                </div>
+            `;
+            document.getElementById('verification-modal').style.display = 'block';
+            document.getElementById('verification-modal').dataset.verificationId = id;
+        }
+
+        function quickApprove(id) {
+            confirmAction(id, 'approve', 'Approve this verification?');
+        }
+
+        function quickReject(id) {
+            confirmAction(id, 'reject', 'Reject this verification?');
+        }
+
+        function confirmAction(id, action, message) {
+            if (confirm(message)) {
+                performVerificationAction(id, action);
+            }
+        }
+
+        function performVerificationAction(id, action) {
+            const endpoint = action === 'approve' ? 'approveVerification' : 'rejectVerification';
+            
+            fetch(`${API_BASE}/${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    verificationId: id,
+                    [action === 'reject' ? 'rejectionReason' : 'adminNotes']: `Quick ${action} from admin terminal`
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert(`Verification ${action}d successfully`, 'success');
+                    loadVerificationsData();
+                } else {
+                    showAlert(`Error: ${data.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                showAlert(`Network error: ${error.message}`, 'error');
+            });
+        }
+
+        function approveVerification() {
+            const id = document.getElementById('verification-modal').dataset.verificationId;
+            if (id) {
+                performVerificationAction(id, 'approve');
+                closeModal();
+            }
+        }
+
+        function rejectVerification() {
+            const id = document.getElementById('verification-modal').dataset.verificationId;
+            if (id) {
+                performVerificationAction(id, 'reject');
+                closeModal();
+            }
+        }
+
+        function closeModal() {
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.style.display = 'none';
+            });
+        }
+
+        function showAlert(message, type) {
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            document.body.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 3000);
+        }
+
+        async function loadOverviewData() {
+            try {
+                const response = await fetch(`${API_BASE}/getPendingVerifications`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('stat-pending').textContent = data.count || 0;
+                }
+            } catch (error) {
+                console.error('Error loading overview:', error);
+            }
+        }
+
+        // Enhanced database caching system
+        let databaseData = [];
+        let filteredDatabaseData = [];
+        let currentPage = 0;
+        const itemsPerPage = 50;
+        
+        // Cache management
+        let cacheTimestamp = null;
+        let cacheVersion = 1;
+        const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+        const CACHE_KEY = 'nutrasafe_admin_cache';
+        const CACHE_VERSION_KEY = 'nutrasafe_cache_version';
+        
+        // Cache statistics
+        let cacheStats = {
+            totalLoaded: 0,
+            lastUpdate: null,
+            loadTime: 0,
+            collections: []
+        };
+
+        async function loadDatabaseBrowser() {
+            const container = document.getElementById('main-data-container');
+            container.innerHTML = `
+                <div style="padding: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="text" id="db-search" placeholder="Filter foods..." style="width: 250px; padding: 6px 10px; font-size: 11px;" onkeyup="filterDatabase()" />
+                            <select id="collection-filter" onchange="filterDatabase()" style="padding: 6px; font-size: 11px;">
+                                <option value="">All Collections</option>
+                                <option value="foods">Foods</option>
+                                <option value="verifiedFoods">Verified Foods</option>
+                                <option value="manualFoods">Manual Foods</option>
+                            </select>
+                            <select id="source-filter" onchange="filterDatabase()" style="padding: 6px; font-size: 11px;">
+                                <option value="">All Sources</option>
+                                <option value="tesco">Tesco</option>
+                                <option value="asda">ASDA</option>
+                                <option value="manual">Manual</option>
+                                <option value="company">Company</option>
+                            </select>
+                        </div>
+                        <div style="font-size: 10px; color: var(--text-secondary);">
+                            Showing <span id="item-count">0</span> foods
+                        </div>
+                    </div>
+                    <div id="database-results" style="max-height: 600px; overflow-y: auto; border: 1px solid var(--border-primary); border-radius: 6px;">
+                        <div class="loading-container">
+                            <div class="loading-spinner"></div>
+                            <span>Loading database...</span>
+                        </div>
+                    </div>
+                    <div id="pagination" style="margin-top: 12px; display: flex; justify-content: center; gap: 8px;"></div>
+                </div>
+            `;
+            
+            await loadInitialData();
+        }
+
+        async function loadInitialData() {
+            const startTime = performance.now();
+            
+            try {
+                console.log('🔄 Loading database with intelligent caching...');
+                
+                // Check if we have valid cached data
+                if (await loadFromCache()) {
+                    console.log('✅ Loaded from cache successfully');
+                    updateCacheStats();
+                    displayDatabaseResults();
+                    return;
+                }
+                
+                console.log('📡 Cache miss or expired, fetching fresh data...');
+                await fetchFreshData();
+                
+                // Save to cache
+                await saveToCache();
+                
+                const loadTime = performance.now() - startTime;
+                cacheStats.loadTime = Math.round(loadTime);
+                updateCacheStats();
+                displayDatabaseResults();
+                
+            } catch (error) {
+                console.error('Error loading database:', error);
+                showAlert('Error loading database. Using fallback method.', 'error');
+                await loadWithSearchFallback();
+            }
+        }
+        
+        async function loadFromCache() {
+            try {
+                const cachedData = localStorage.getItem(CACHE_KEY);
+                const cachedVersion = localStorage.getItem(CACHE_VERSION_KEY);
+                
+                if (!cachedData || !cachedVersion) {
+                    console.log('No cache found');
+                    return false;
+                }
+                
+                const cache = JSON.parse(cachedData);
+                const now = Date.now();
+                
+                // Check cache expiry
+                if (now - cache.timestamp > CACHE_DURATION) {
+                    console.log('Cache expired');
+                    return false;
+                }
+                
+                // Check cache version
+                if (parseInt(cachedVersion) !== cacheVersion) {
+                    console.log('Cache version mismatch');
+                    return false;
+                }
+                
+                // Load from cache
+                databaseData = cache.data || [];
+                filteredDatabaseData = [...databaseData];
+                cacheTimestamp = cache.timestamp;
+                cacheStats = cache.stats || cacheStats;
+                
+                console.log(`📦 Loaded ${databaseData.length} foods from cache`);
+                return true;
+                
+            } catch (error) {
+                console.error('Error loading from cache:', error);
+                return false;
+            }
+        }
+        
+        async function fetchFreshData() {
+            try {
+                // First try the getAllFoods function
+                const response = await fetch(`${API_BASE}/getAllFoods?limit=5000&collection=all`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log(`📊 getAllFoods returned: ${data.foods?.length || 0} foods from collections: ${data.collections?.join(', ') || 'unknown'}`);
+                    
+                    if (data.foods && data.foods.length > 0) {
+                        databaseData = data.foods.sort((a, b) => {
+                            const nameA = (a.name || a.foodName || '').toLowerCase();
+                            const nameB = (b.name || b.foodName || '').toLowerCase();
+                            return nameA.localeCompare(nameB);
+                        });
+                        
+                        filteredDatabaseData = [...databaseData];
+                        cacheStats.collections = data.collections || [];
+                        cacheStats.totalLoaded = databaseData.length;
+                        cacheStats.lastUpdate = new Date().toISOString();
+                        
+                        console.log(`✅ Fresh data loaded: ${databaseData.length} foods`);
+                        return;
+                    }
+                }
+                
+                // Fallback to search method
+                console.log('⚠️ getAllFoods not available, using search fallback...');
+                await loadWithSearchFallback();
+                
+            } catch (error) {
+                console.error('Error fetching fresh data:', error);
+                throw error;
+            }
+        }
+        
+        async function saveToCache() {
+            try {
+                const cache = {
+                    data: databaseData,
+                    timestamp: Date.now(),
+                    stats: cacheStats,
+                    version: cacheVersion
+                };
+                
+                localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+                localStorage.setItem(CACHE_VERSION_KEY, cacheVersion.toString());
+                cacheTimestamp = cache.timestamp;
+                
+                const sizeKB = Math.round(JSON.stringify(cache).length / 1024);
+                console.log(`💾 Saved ${databaseData.length} foods to cache (${sizeKB}KB)`);
+                
+            } catch (error) {
+                console.error('Error saving to cache:', error);
+                // Clear problematic cache
+                clearCache();
+            }
+        }
+
+        async function loadWithSearchFallback() {
+            try {
+                // Fallback method using common search terms
+                const searches = ['bread', 'milk', 'chicken', 'banana', 'rice', 'pasta'];
+                const allResults = [];
+                
+                for (const query of searches) {
+                    try {
+                        const response = await fetch(`${API_BASE}/searchFoods`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ query: query, maxResults: 200 })
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data.foods) {
+                                allResults.push(...data.foods);
+                            }
+                        }
+                    } catch (error) {
+                        console.error(`Search fallback error for "${query}":`, error);
+                    }
+                }
+                
+                // Remove duplicates
+                const uniqueResults = [];
+                const seenIds = new Set();
+                
+                allResults.forEach(food => {
+                    const id = food.id || `${food.name}-${food.brand}` || food.name;
+                    if (id && !seenIds.has(id)) {
+                        seenIds.add(id);
+                        uniqueResults.push(food);
+                    }
+                });
+                
+                databaseData = uniqueResults.sort((a, b) => {
+                    const nameA = (a.name || '').toLowerCase();
+                    const nameB = (b.name || '').toLowerCase();
+                    return nameA.localeCompare(nameB);
+                });
+                
+                filteredDatabaseData = [...databaseData];
+                console.log(`Fallback method loaded: ${databaseData.length} foods`);
+                displayDatabaseResults();
+                
+            } catch (error) {
+                console.error('Critical error in fallback method:', error);
+                document.getElementById('database-results').innerHTML = 
+                    '<div class="loading-container"><span>Error loading database. Check console for details.</span></div>';
+            }
+        }
+
+        function filterDatabase() {
+            const searchTerm = document.getElementById('db-search').value.toLowerCase();
+            const collectionFilter = document.getElementById('collection-filter').value;
+            const sourceFilter = document.getElementById('source-filter').value;
+            
+            filteredDatabaseData = databaseData.filter(food => {
+                const matchesSearch = !searchTerm || 
+                    (food.name && food.name.toLowerCase().includes(searchTerm)) ||
+                    (food.brand && food.brand.toLowerCase().includes(searchTerm)) ||
+                    (food.ingredients && food.ingredients.toLowerCase().includes(searchTerm));
+                
+                const matchesCollection = !collectionFilter || food.collection === collectionFilter;
+                const matchesSource = !sourceFilter || food.source === sourceFilter;
+                
+                return matchesSearch && matchesCollection && matchesSource;
+            });
+            
+            currentPage = 0;
+            displayDatabaseResults();
+        }
+
+        function displayDatabaseResults() {
+            const resultsContainer = document.getElementById('database-results');
+            const itemCount = document.getElementById('item-count');
+            
+            console.log('Displaying database results:', filteredDatabaseData.length, 'foods');
+            console.log('Sample food data:', filteredDatabaseData[0]);
+            
+            itemCount.textContent = filteredDatabaseData.length;
+            
+            if (filteredDatabaseData.length === 0) {
+                resultsContainer.innerHTML = '<div class="loading-container"><span>No foods match your filters</span></div>';
+                document.getElementById('pagination').innerHTML = '';
+                return;
+            }
+            
+            const startIndex = currentPage * itemsPerPage;
+            const endIndex = Math.min(startIndex + itemsPerPage, filteredDatabaseData.length);
+            const pageData = filteredDatabaseData.slice(startIndex, endIndex);
+            
+            const tableHtml = `
+                <table class="table" style="font-size: 10px;">
+                    <thead>
+                        <tr>
+                            <th style="width: 25%;">Name</th>
+                            <th style="width: 15%;">Brand</th>
+                            <th style="width: 8%;">Cal/100g</th>
+                            <th style="width: 6%;">Protein</th>
+                            <th style="width: 6%;">Carbs</th>
+                            <th style="width: 6%;">Fat</th>
+                            <th style="width: 10%;">Source</th>
+                            <th style="width: 10%;">Collection</th>
+                            <th style="width: 14%;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${pageData.map(food => {
+                            console.log('Rendering food row:', food.name, food.id, food.collection);
+                            return `
+                            <tr style="cursor: pointer;" onclick="viewDatabaseFood('${food.id || food.name}', '${food.collection || 'verifiedFoods'}')">
+                                <td style="font-weight: 500;">${food.name || food.foodName || 'N/A'}</td>
+                                <td>${food.brand || food.brandName || 'N/A'}</td>
+                                <td>${food.calories?.kcal || food.calories || 'N/A'}</td>
+                                <td>${food.protein?.per100g || food.protein || 'N/A'}</td>
+                                <td>${food.carbs?.per100g || food.carbs || 'N/A'}</td>
+                                <td>${food.fat?.per100g || food.fat || 'N/A'}</td>
+                                <td><span class="status-badge status-${food.source || 'manual'}">${food.source || 'manual'}</span></td>
+                                <td><span class="status-badge status-verified">${food.collection || 'verifiedFoods'}</span></td>
+                                <td>
+                                    <button class="action-btn btn-view" onclick="event.stopPropagation(); viewDatabaseFood('${food.id || food.name}', '${food.collection || 'verifiedFoods'}')" style="font-size: 9px; padding: 2px 6px;">👁️ View</button>
+                                    <button class="action-btn btn-approve" onclick="event.stopPropagation(); editDatabaseFood('${food.id || food.name}', '${food.collection || 'verifiedFoods'}')" style="font-size: 9px; padding: 2px 6px;">✏️ Edit</button>
+                                </td>
+                            </tr>
+                        `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+            
+            resultsContainer.innerHTML = tableHtml;
+            
+            // Update pagination
+            updatePagination();
+        }
+        
+        function updatePagination() {
+            const totalPages = Math.ceil(filteredDatabaseData.length / itemsPerPage);
+            const paginationContainer = document.getElementById('pagination');
+            
+            if (totalPages <= 1) {
+                paginationContainer.innerHTML = '';
+                return;
+            }
+            
+            let paginationHtml = '';
+            
+            // Previous button
+            if (currentPage > 0) {
+                paginationHtml += `<button class="filter-btn" onclick="changePage(${currentPage - 1})">← Previous</button>`;
+            }
+            
+            // Page numbers (show max 5 pages)
+            const startPage = Math.max(0, currentPage - 2);
+            const endPage = Math.min(totalPages - 1, startPage + 4);
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const active = i === currentPage ? 'active' : '';
+                paginationHtml += `<button class="filter-btn ${active}" onclick="changePage(${i})">${i + 1}</button>`;
+            }
+            
+            // Next button  
+            if (currentPage < totalPages - 1) {
+                paginationHtml += `<button class="filter-btn" onclick="changePage(${currentPage + 1})">Next →</button>`;
+            }
+            
+            paginationContainer.innerHTML = paginationHtml;
+        }
+        
+        function changePage(page) {
+            currentPage = page;
+            displayDatabaseResults();
+        }
+        
+        // Global variables for food editing
+        let currentEditingFood = null;
+        let currentEditingCollection = null;
+
+        async function viewDatabaseFood(foodId, collection = 'verifiedFoods') {
+            try {
+                console.log('viewDatabaseFood called with:', foodId, collection);
+                console.log('databaseData length:', databaseData.length);
+                const food = databaseData.find(f => {
+                    const nameMatch = f.id === foodId || f.name === foodId || f.foodName === foodId;
+                    const collectionMatch = !f.collection || f.collection === collection || collection === 'foods';
+                    return nameMatch && collectionMatch;
+                });
+                console.log('Found food:', food);
+                
+                if (!food) {
+                    showAlert('Food not found', 'error');
+                    return;
+                }
+
+                const nutrition = food.nutritionData || {};
+                const viewContent = document.getElementById('food-view-content');
+                
+                viewContent.innerHTML = `
+                    <div class="form-group">
+                        <label class="form-label">Food Name</label>
+                        <div style="padding: 8px; background: var(--surface-bg); border-radius: 4px; font-family: var(--font-mono);">
+                            ${food.name || food.foodName || 'N/A'}
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Brand</label>
+                        <div style="padding: 8px; background: var(--surface-bg); border-radius: 4px; font-family: var(--font-mono);">
+                            ${food.brand || food.brandName || 'N/A'}
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Barcode</label>
+                        <div style="padding: 8px; background: var(--surface-bg); border-radius: 4px; font-family: var(--font-mono);">
+                            ${food.barcode || 'N/A'}
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Ingredients</label>
+                        <div style="padding: 8px; background: var(--surface-bg); border-radius: 4px; font-family: var(--font-mono); max-height: 120px; overflow-y: auto;">
+                            ${food.ingredients || food.extractedIngredients || 'N/A'}
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Nutrition (per 100g)</label>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px;">
+                            <div class="nutrition-item">Calories: ${food.calories?.kcal || food.calories || nutrition.calories || 'N/A'}</div>
+                            <div class="nutrition-item">Protein: ${food.protein?.per100g || food.protein || nutrition.protein || 'N/A'}g</div>
+                            <div class="nutrition-item">Carbs: ${food.carbs?.per100g || food.carbs || nutrition.carbs || 'N/A'}g</div>
+                            <div class="nutrition-item">Fat: ${food.fat?.per100g || food.fat || nutrition.fat || 'N/A'}g</div>
+                            <div class="nutrition-item">Fiber: ${food.fiber?.per100g || food.fiber || nutrition.fiber || 'N/A'}g</div>
+                            <div class="nutrition-item">Sugar: ${food.sugar?.per100g || food.sugar || nutrition.sugar || 'N/A'}g</div>
+                            <div class="nutrition-item">Sodium: ${food.sodium?.per100g || food.sodium || nutrition.sodium || 'N/A'}mg</div>
+                            <div class="nutrition-item">Source: ${food.source || 'N/A'}</div>
+                            <div class="nutrition-item">Collection: ${food.collection || collection}</div>
+                        </div>
+                    </div>
+                `;
+                
+                currentEditingFood = food;
+                currentEditingCollection = collection;
+                document.getElementById('food-view-modal').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error viewing food:', error);
+                showAlert('Error loading food details', 'error');
+            }
+        }
+
+        function loadAnalyticsDashboard() {
+            displayEmptyState('Advanced analytics - Coming soon');
+        }
+
+        function loadSystemHealth() {
+            displayEmptyState('System health monitor - Coming soon');
+        }
+
+        function loadSystemLogs() {
+            displayEmptyState('System logs - Coming soon');
+        }
+
+        function exportData() {
+            showAlert('Data export initiated', 'success');
+        }
+
+        function configureColumns() {
+            showAlert('Column configuration opened', 'success');
+        }
+
+        function toggleView() {
+            showAlert('View toggled', 'success');
+        }
+
+        function viewFoodDetails(name) {
+            showAlert(`Viewing details for: ${name}`, 'success');
+        }
+
+        async function editDatabaseFood(foodId, collection = 'verifiedFoods') {
+            try {
+                console.log('editDatabaseFood called with:', foodId, collection);
+                const food = databaseData.find(f => {
+                    const nameMatch = f.id === foodId || f.name === foodId || f.foodName === foodId;
+                    const collectionMatch = !f.collection || f.collection === collection || collection === 'foods';
+                    return nameMatch && collectionMatch;
+                });
+                console.log('Found food for editing:', food);
+                
+                if (!food) {
+                    showAlert('Food not found', 'error');
+                    return;
+                }
+
+                // Populate the edit form
+                const nutrition = food.nutritionData || {};
+                document.getElementById('edit-food-name').value = food.name || food.foodName || '';
+                document.getElementById('edit-brand-name').value = food.brand || food.brandName || '';
+                document.getElementById('edit-barcode').value = food.barcode || '';
+                document.getElementById('edit-ingredients').value = food.ingredients || food.extractedIngredients || '';
+                
+                // Nutrition values
+                document.getElementById('edit-calories').value = food.calories?.kcal || food.calories || nutrition.calories || '';
+                document.getElementById('edit-protein').value = food.protein?.per100g || food.protein || nutrition.protein || '';
+                document.getElementById('edit-carbs').value = food.carbs?.per100g || food.carbs || nutrition.carbs || nutrition.carbohydrates || '';
+                document.getElementById('edit-fat').value = food.fat?.per100g || food.fat || nutrition.fat || '';
+                document.getElementById('edit-fiber').value = food.fiber?.per100g || food.fiber || nutrition.fiber || nutrition.fibre || '';
+                document.getElementById('edit-sugar').value = food.sugar?.per100g || food.sugar || nutrition.sugar || nutrition.sugars || '';
+                document.getElementById('edit-sodium').value = food.sodium?.per100g || food.sodium || nutrition.sodium || '';
+                document.getElementById('edit-salt').value = nutrition.salt || '';
+                document.getElementById('edit-saturated-fat').value = nutrition.saturatedFat || nutrition.saturated_fat || '';
+                
+                // Other fields
+                document.getElementById('edit-collection').value = food.collection || collection;
+                document.getElementById('edit-source').value = food.source || '';
+                document.getElementById('edit-serving-size').value = food.servingSize || food.servingDescription || '';
+                
+                currentEditingFood = food;
+                currentEditingCollection = collection;
+                document.getElementById('food-edit-modal').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error loading food for editing:', error);
+                showAlert('Error loading food for editing', 'error');
+            }
+        }
+
+        async function saveFoodChanges() {
+            if (!currentEditingFood) {
+                showAlert('No food selected for editing', 'error');
+                return;
+            }
+
+            const saveStatus = document.getElementById('save-status');
+            saveStatus.style.display = 'block';
+            saveStatus.style.background = 'rgba(0, 255, 136, 0.15)';
+            saveStatus.style.color = 'var(--accent-primary)';
+            saveStatus.textContent = '💾 Saving changes...';
+
+            try {
+                // Gather form data
+                const updatedData = {
+                    foodId: currentEditingFood.id,
+                    foodName: document.getElementById('edit-food-name').value.trim(),
+                    brandName: document.getElementById('edit-brand-name').value.trim() || null,
+                    barcode: document.getElementById('edit-barcode').value.trim() || null,
+                    extractedIngredients: document.getElementById('edit-ingredients').value.trim() || null,
+                    nutritionData: {
+                        calories: parseFloat(document.getElementById('edit-calories').value) || 0,
+                        protein: parseFloat(document.getElementById('edit-protein').value) || 0,
+                        carbs: parseFloat(document.getElementById('edit-carbs').value) || 0,
+                        carbohydrates: parseFloat(document.getElementById('edit-carbs').value) || 0,
+                        fat: parseFloat(document.getElementById('edit-fat').value) || 0,
+                        fiber: parseFloat(document.getElementById('edit-fiber').value) || 0,
+                        fibre: parseFloat(document.getElementById('edit-fiber').value) || 0,
+                        sugar: parseFloat(document.getElementById('edit-sugar').value) || 0,
+                        sugars: parseFloat(document.getElementById('edit-sugar').value) || 0,
+                        sodium: parseFloat(document.getElementById('edit-sodium').value) || 0,
+                        salt: parseFloat(document.getElementById('edit-salt').value) || 0,
+                        saturatedFat: parseFloat(document.getElementById('edit-saturated-fat').value) || 0
+                    },
+                    source: document.getElementById('edit-source').value.trim() || null,
+                    servingSize: document.getElementById('edit-serving-size').value.trim() || 'per 100g',
+                    verifiedBy: 'admin',
+                    verificationMethod: 'manual'
+                };
+
+                console.log('Updating food with data:', updatedData);
+
+                // Call the updateVerifiedFood function
+                const response = await fetch(`${API_BASE}/updateVerifiedFood`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(updatedData)
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    saveStatus.textContent = '✅ Changes saved successfully!';
+                    
+                    // Update the cache with new food data
+                    const updatedFood = {
+                        ...currentEditingFood,
+                        name: updatedData.foodName,
+                        foodName: updatedData.foodName,
+                        brand: updatedData.brandName,
+                        brandName: updatedData.brandName,
+                        barcode: updatedData.barcode,
+                        ingredients: updatedData.extractedIngredients,
+                        extractedIngredients: updatedData.extractedIngredients,
+                        nutritionData: updatedData.nutritionData,
+                        calories: { kcal: updatedData.nutritionData.calories },
+                        protein: { per100g: updatedData.nutritionData.protein },
+                        carbs: { per100g: updatedData.nutritionData.carbs },
+                        fat: { per100g: updatedData.nutritionData.fat },
+                        fiber: { per100g: updatedData.nutritionData.fiber },
+                        sugar: { per100g: updatedData.nutritionData.sugar },
+                        sodium: { per100g: updatedData.nutritionData.sodium },
+                        source: updatedData.source,
+                        servingSize: updatedData.servingSize,
+                        verifiedBy: 'admin',
+                        updatedAt: new Date().toISOString()
+                    };
+                    
+                    // Use smart cache update
+                    addFoodToCache(updatedFood);
+                    updateCacheStats();
+                    
+                    setTimeout(() => {
+                        closeFoodEditModal();
+                        showAlert('Food updated successfully', 'success');
+                    }, 1500);
+                    
+                } else {
+                    saveStatus.style.background = 'rgba(255, 71, 87, 0.15)';
+                    saveStatus.style.color = 'var(--accent-tertiary)';
+                    saveStatus.textContent = '❌ Error saving: ' + (result.error || 'Unknown error');
+                }
+                
+            } catch (error) {
+                console.error('Error saving food changes:', error);
+                saveStatus.style.background = 'rgba(255, 71, 87, 0.15)';
+                saveStatus.style.color = 'var(--accent-tertiary)';
+                saveStatus.textContent = '❌ Network error: ' + error.message;
+            }
+        }
+
+        async function deleteFoodEntry() {
+            if (!currentEditingFood) {
+                showAlert('No food selected for deletion', 'error');
+                return;
+            }
+
+            const foodName = currentEditingFood.name || currentEditingFood.foodName;
+            if (!confirm(`Are you sure you want to delete "${foodName}"? This action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                // Call the delete function (assuming it exists in food-management.ts)
+                const response = await fetch(`${API_BASE}/deleteVerifiedFoods`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        foodIds: [currentEditingFood.id],
+                        collection: currentEditingCollection || 'verifiedFoods'
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Remove from local data
+                    const foodIndex = databaseData.findIndex(f => f.id === currentEditingFood.id);
+                    if (foodIndex !== -1) {
+                        databaseData.splice(foodIndex, 1);
+                        filterDatabase();
+                    }
+                    
+                    closeFoodEditModal();
+                    showAlert(`"${foodName}" deleted successfully`, 'success');
+                } else {
+                    showAlert('Error deleting food: ' + (result.error || 'Unknown error'), 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error deleting food:', error);
+                showAlert('Network error while deleting food', 'error');
+            }
+        }
+
+        function openEditFromView() {
+            closeFoodViewModal();
+            if (currentEditingFood && currentEditingCollection) {
+                editDatabaseFood(currentEditingFood.id || currentEditingFood.name, currentEditingCollection);
+            }
+        }
+
+        function closeFoodEditModal() {
+            document.getElementById('food-edit-modal').style.display = 'none';
+            document.getElementById('save-status').style.display = 'none';
+            currentEditingFood = null;
+            currentEditingCollection = null;
+        }
+
+        function closeFoodViewModal() {
+            document.getElementById('food-view-modal').style.display = 'none';
+            currentEditingFood = null;
+            currentEditingCollection = null;
+        }
+
+        function editFood(name) {
+            showAlert(`Editing: ${name}`, 'success');
+        }
+    </script>
+</body>
+</html>

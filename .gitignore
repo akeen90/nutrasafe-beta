@@ -1,0 +1,32 @@
+# API Keys and Secrets
+GoogleService-Info.plist
+google-services.json
+.env
+*.key
+*.pem
+
+# Firebase
+.firebase/
+firebase-debug*.log
+firestore-debug.log
+
+# iOS
+Build/
+DerivedData/
+*.xcuserdata/
+*.xcuserdatad/
+UserInterfaceState.xcuserstate
+
+# Node modules
+node_modules/
+npm-debug.log
+
+# IDE
+.vscode/
+.idea/
+
+# System
+.DS_Store
+Thumbs.db# API Keys
+.env
+*.key

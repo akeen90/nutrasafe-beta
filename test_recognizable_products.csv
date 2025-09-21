@@ -1,0 +1,4 @@
+id,name,brand,processed_date,status,ingredients,serving_size,energy_kcal_100g,fat_100g,carbs_100g,sugar_100g,protein_100g,salt_100g,chatgpt_raw_response,extraction_notes
+123,Sliced White Bread,Sainsbury's,2025-09-11T11:55:57.979669,failed,,,,,,,,,,ChatGPT had no reliable data
+20,Walkers,Walkers,2025-09-11T11:56:01.859312,failed,,,,,,,,,,ChatGPT had no reliable data
+82,Milka with Whole Hazelnuts,Milka,2025-09-11T11:56:03.414432,failed,,,,,,,,,,ChatGPT had no reliable data

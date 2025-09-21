@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutraSafe - My Dashboard</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 15px 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .navbar .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #667eea;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        
+        .dashboard-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .dashboard-header h1 {
+            color: white;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .dashboard-header p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.1rem;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+        
+        .card h3 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card-icon {
+            font-size: 1.5rem;
+        }
+        
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .stat-label {
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+        
+        .stat-value {
+            font-weight: 600;
+            color: #1e293b;
+            font-size: 1.1rem;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+        }
+        
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #475569;
+        }
+        
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+        
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .action-btn {
+            padding: 15px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            text-decoration: none;
+            color: #334155;
+        }
+        
+        .action-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .recent-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .recent-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .recent-item:last-child {
+            border-bottom: none;
+        }
+        
+        .recent-item-info {
+            flex: 1;
+        }
+        
+        .recent-item-title {
+            font-weight: 500;
+            color: #1e293b;
+            margin-bottom: 2px;
+        }
+        
+        .recent-item-meta {
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+        
+        .login-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        
+        .login-form {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            width: 400px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .login-form h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #1e293b;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #374151;
+            font-weight: 500;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .alert {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+        
+        .alert-error {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+        
+        .alert-success {
+            background: #f0fdf4;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+        
+        .chart-container {
+            margin-top: 20px;
+            height: 200px;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .food-search {
+            margin-top: 20px;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-bottom: 15px;
+        }
+        
+        .food-results {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: white;
+        }
+        
+        .food-item {
+            padding: 15px;
+            border-bottom: 1px solid #f1f5f9;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .food-item:hover {
+            background: #f8fafc;
+        }
+        
+        .food-item:last-child {
+            border-bottom: none;
+        }
+        
+        .food-name {
+            font-weight: 500;
+            color: #1e293b;
+            margin-bottom: 2px;
+        }
+        
+        .food-brand {
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+        
+        .allergen-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #fef2f2;
+            color: #dc2626;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            margin: 2px;
+            border: 1px solid #fecaca;
+        }
+        
+        .safe-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #f0fdf4;
+            color: #166534;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            margin: 2px;
+            border: 1px solid #bbf7d0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-container">
+        <div class="login-form">
+            <h2>Welcome to NutraSafe</h2>
+            <div class="alert alert-error hidden" id="loginAlert"></div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Sign In</button>
+            </form>
+            <p style="text-align: center; margin-top: 20px; color: #64748b;">
+                Don't have an account? Contact admin for access.
+            </p>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard" class="hidden">
+        <nav class="navbar">
+            <div class="container">
+                <div class="logo">NutraSafe</div>
+                <div class="nav-user">
+                    <span id="userName">Loading...</span>
+                    <div class="user-avatar" id="userAvatar">U</div>
+                    <button class="btn btn-secondary" onclick="signOut()">Sign Out</button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container">
+            <div class="dashboard-header">
+                <h1>My NutraSafe Dashboard</h1>
+                <p>Track your nutrition, manage allergies, and maintain a healthy lifestyle</p>
+            </div>
+
+            <div class="dashboard-grid">
+                <!-- Today's Nutrition Overview -->
+                <div class="card">
+                    <h3><span class="card-icon">🥗</span>Today's Nutrition</h3>
+                    <div class="stats-row">
+                        <span class="stat-label">Calories</span>
+                        <span class="stat-value" id="todayCalories">0</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="caloriesProgress" style="width: 0%"></div>
+                    </div>
+                    <div class="stats-row">
+                        <span class="stat-label">Protein</span>
+                        <span class="stat-value" id="todayProtein">0g</span>
+                    </div>
+                    <div class="stats-row">
+                        <span class="stat-label">Carbs</span>
+                        <span class="stat-value" id="todayCarbs">0g</span>
+                    </div>
+                    <div class="stats-row">
+                        <span class="stat-label">Fat</span>
+                        <span class="stat-value" id="todayFat">0g</span>
+                    </div>
+                    <div class="quick-actions">
+                        <a href="#" class="action-btn" onclick="showFoodSearch()">🔍 Add Food</a>
+                        <a href="#" class="action-btn" onclick="showDiary()">📖 View Diary</a>
+                    </div>
+                </div>
+
+                <!-- Recent Food Diary -->
+                <div class="card">
+                    <h3><span class="card-icon">📖</span>Recent Meals</h3>
+                    <div class="recent-list" id="recentMeals">
+                        <div class="recent-item">
+                            <div class="recent-item-info">
+                                <div class="recent-item-title">No meals logged yet</div>
+                                <div class="recent-item-meta">Start by adding your first meal</div>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="showFoodSearch()" style="width: 100%; margin-top: 15px;">
+                        Add Meal
+                    </button>
+                </div>
+
+                <!-- Allergen Alerts -->
+                <div class="card">
+                    <h3><span class="card-icon">⚠️</span>Allergen Management</h3>
+                    <div id="allergenList">
+                        <p style="color: #64748b; margin-bottom: 15px;">Manage your food allergies and intolerances</p>
+                        <div class="allergen-tag">Dairy</div>
+                        <div class="allergen-tag">Nuts</div>
+                        <div class="allergen-tag">Gluten</div>
+                    </div>
+                    <div class="quick-actions">
+                        <a href="#" class="action-btn" onclick="manageAllergens()">⚙️ Manage</a>
+                        <a href="#" class="action-btn" onclick="checkFood()">🔍 Check Food</a>
+                    </div>
+                </div>
+
+                <!-- Weekly Progress -->
+                <div class="card">
+                    <h3><span class="card-icon">📊</span>Weekly Progress</h3>
+                    <div class="chart-container">
+                        <canvas id="weeklyChart"></canvas>
+                    </div>
+                    <div class="stats-row">
+                        <span class="stat-label">Average Daily Calories</span>
+                        <span class="stat-value" id="avgCalories">0</span>
+                    </div>
+                    <div class="stats-row">
+                        <span class="stat-label">Days Tracked</span>
+                        <span class="stat-value" id="daysTracked">0/7</span>
+                    </div>
+                </div>
+
+                <!-- Kitchen Expiry Alerts -->
+                <div class="card">
+                    <h3><span class="card-icon">🏠</span>Kitchen Alerts</h3>
+                    <div class="recent-list" id="expiryAlerts">
+                        <div class="recent-item">
+                            <div class="recent-item-info">
+                                <div class="recent-item-title">No expiring items</div>
+                                <div class="recent-item-meta">Your kitchen is up to date</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="quick-actions">
+                        <a href="#" class="action-btn" onclick="manageKitchen()">🏠 Manage Kitchen</a>
+                        <a href="#" class="action-btn" onclick="addKitchenItem()">➕ Add Item</a>
+                    </div>
+                </div>
+
+                <!-- Quick Food Search -->
+                <div class="card">
+                    <h3><span class="card-icon">🔍</span>Quick Food Search</h3>
+                    <div class="food-search">
+                        <input type="text" class="search-input" id="foodSearchInput" placeholder="Search for foods...">
+                        <div class="food-results hidden" id="foodResults"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBNzNiTjpQXhPjz8PjowsfWj5cGe3fdAJk",
+            authDomain: "nutrasafe-705c7.firebaseapp.com",
+            projectId: "nutrasafe-705c7",
+            storageBucket: "nutrasafe-705c7.firebasestorage.app",
+            messagingSenderId: "128150759188",
+            appId: "1:128150759188:ios:cc965730162576d9574401"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const functions = firebase.functions();
+
+        let currentUser = null;
+
+        // Check authentication state
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                currentUser = user;
+                showDashboard(user);
+            } else {
+                showLogin();
+            }
+        });
+
+        function showLogin() {
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('dashboard').classList.add('hidden');
+        }
+
+        function showDashboard(user) {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            
+            // Update user info
+            document.getElementById('userName').textContent = user.displayName || user.email.split('@')[0];
+            document.getElementById('userAvatar').textContent = (user.displayName || user.email).charAt(0).toUpperCase();
+            
+            // Load dashboard data
+            loadDashboardData();
+        }
+
+        // Login form handler
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const alert = document.getElementById('loginAlert');
+            
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+            } catch (error) {
+                alert.textContent = error.message;
+                alert.classList.remove('hidden');
+            }
+        });
+
+        function signOut() {
+            auth.signOut();
+        }
+
+        async function loadDashboardData() {
+            if (!currentUser) return;
+
+            try {
+                // Load today's nutrition data
+                await loadTodayNutrition();
+                
+                // Load recent meals
+                await loadRecentMeals();
+                
+                // Load weekly progress
+                await loadWeeklyProgress();
+                
+                // Load kitchen alerts
+                await loadKitchenAlerts();
+                
+                // Initialize food search
+                initializeFoodSearch();
+                
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+            }
+        }
+
+        async function loadTodayNutrition() {
+            const today = new Date().toISOString().split('T')[0];
+            
+            try {
+                const todayDoc = await db.collection('users')
+                    .doc(currentUser.uid)
+                    .collection('dailyNutrition')
+                    .doc(today)
+                    .get();
+
+                if (todayDoc.exists) {
+                    const data = todayDoc.data();
+                    document.getElementById('todayCalories').textContent = data.calories || 0;
+                    document.getElementById('todayProtein').textContent = `${data.protein || 0}g`;
+                    document.getElementById('todayCarbs').textContent = `${data.carbs || 0}g`;
+                    document.getElementById('todayFat').textContent = `${data.fat || 0}g`;
+                    
+                    // Update progress bar (assuming 2000 cal target)
+                    const calorieProgress = Math.min((data.calories || 0) / 2000 * 100, 100);
+                    document.getElementById('caloriesProgress').style.width = `${calorieProgress}%`;
+                }
+            } catch (error) {
+                console.log('No nutrition data for today yet:', error);
+                // Set default values to show the stats are working
+                document.getElementById('todayCalories').textContent = '0';
+                document.getElementById('todayProtein').textContent = '0g';
+                document.getElementById('todayCarbs').textContent = '0g';
+                document.getElementById('todayFat').textContent = '0g';
+            }
+        }
+
+        async function loadRecentMeals() {
+            try {
+                const mealsSnapshot = await db.collection('users')
+                    .doc(currentUser.uid)
+                    .collection('foodEntries')
+                    .orderBy('timestamp', 'desc')
+                    .limit(5)
+                    .get();
+
+                const mealsContainer = document.getElementById('recentMeals');
+                
+                if (mealsSnapshot.empty) {
+                    mealsContainer.innerHTML = `
+                        <div class="recent-item">
+                            <div class="recent-item-info">
+                                <div class="recent-item-title">No meals logged yet</div>
+                                <div class="recent-item-meta">Start by adding your first meal</div>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                mealsContainer.innerHTML = '';
+                mealsSnapshot.forEach(doc => {
+                    const meal = doc.data();
+                    const timestamp = meal.timestamp?.toDate() || new Date();
+                    const timeAgo = getTimeAgo(timestamp);
+                    
+                    const mealElement = document.createElement('div');
+                    mealElement.className = 'recent-item';
+                    mealElement.innerHTML = `
+                        <div class="recent-item-info">
+                            <div class="recent-item-title">${meal.name || 'Unknown Food'}</div>
+                            <div class="recent-item-meta">${meal.calories || 0} cal • ${timeAgo}</div>
+                        </div>
+                    `;
+                    mealsContainer.appendChild(mealElement);
+                });
+            } catch (error) {
+                console.log('Error loading recent meals:', error);
+            }
+        }
+
+        async function loadWeeklyProgress() {
+            // Initialize chart
+            const ctx = document.getElementById('weeklyChart').getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Daily Calories',
+                        data: [0, 0, 0, 0, 0, 0, 0],
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#e2e8f0'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: '#e2e8f0'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Load actual data for the week
+            try {
+                const weekData = [];
+                const today = new Date();
+                
+                for (let i = 6; i >= 0; i--) {
+                    const date = new Date(today);
+                    date.setDate(date.getDate() - i);
+                    const dateString = date.toISOString().split('T')[0];
+                    
+                    const dayDoc = await db.collection('users')
+                        .doc(currentUser.uid)
+                        .collection('dailyNutrition')
+                        .doc(dateString)
+                        .get();
+                    
+                    weekData.push(dayDoc.exists ? (dayDoc.data().calories || 0) : 0);
+                }
+                
+                chart.data.datasets[0].data = weekData;
+                chart.update();
+                
+                // Update stats
+                const totalCalories = weekData.reduce((sum, cal) => sum + cal, 0);
+                const daysWithData = weekData.filter(cal => cal > 0).length;
+                document.getElementById('avgCalories').textContent = daysWithData > 0 ? Math.round(totalCalories / daysWithData) : 0;
+                document.getElementById('daysTracked').textContent = `${daysWithData}/7`;
+                
+            } catch (error) {
+                console.log('Error loading weekly data:', error);
+            }
+        }
+
+        async function loadKitchenAlerts() {
+            try {
+                const now = new Date();
+                const threeDaysFromNow = new Date(now);
+                threeDaysFromNow.setDate(now.getDate() + 3);
+                
+                const expiringSnapshot = await db.collection('users')
+                    .doc(currentUser.uid)
+                    .collection('kitchenItems')
+                    .where('expiryDate', '<=', threeDaysFromNow)
+                    .orderBy('expiryDate', 'asc')
+                    .limit(5)
+                    .get();
+
+                const alertsContainer = document.getElementById('expiryAlerts');
+                
+                if (expiringSnapshot.empty) {
+                    alertsContainer.innerHTML = `
+                        <div class="recent-item">
+                            <div class="recent-item-info">
+                                <div class="recent-item-title">No expiring items</div>
+                                <div class="recent-item-meta">Your kitchen is up to date</div>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                alertsContainer.innerHTML = '';
+                expiringSnapshot.forEach(doc => {
+                    const item = doc.data();
+                    const expiryDate = item.expiryDate.toDate();
+                    const daysUntilExpiry = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+                    
+                    const alertElement = document.createElement('div');
+                    alertElement.className = 'recent-item';
+                    alertElement.innerHTML = `
+                        <div class="recent-item-info">
+                            <div class="recent-item-title">${item.name}</div>
+                            <div class="recent-item-meta">
+                                ${daysUntilExpiry <= 0 ? 'Expired!' : `Expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}`}
+                            </div>
+                        </div>
+                    `;
+                    alertsContainer.appendChild(alertElement);
+                });
+            } catch (error) {
+                console.log('Error loading kitchen alerts:', error);
+            }
+        }
+
+        function initializeFoodSearch() {
+            const searchInput = document.getElementById('foodSearchInput');
+            const resultsContainer = document.getElementById('foodResults');
+            let searchTimeout;
+
+            searchInput.addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                const query = e.target.value.trim();
+                
+                if (query.length < 2) {
+                    resultsContainer.classList.add('hidden');
+                    return;
+                }
+
+                searchTimeout = setTimeout(async () => {
+                    await searchFoods(query);
+                }, 500);
+            });
+        }
+
+        async function searchFoods(query) {
+            const resultsContainer = document.getElementById('foodResults');
+            
+            try {
+                const searchFunction = functions.httpsCallable('searchFoods');
+                const result = await searchFunction({ query, maxResults: 10 });
+                const foods = result.data.foods;
+
+                if (foods && foods.length > 0) {
+                    resultsContainer.innerHTML = '';
+                    foods.forEach(food => {
+                        const foodElement = document.createElement('div');
+                        foodElement.className = 'food-item';
+                        foodElement.onclick = () => addFoodToDiary(food);
+                        foodElement.innerHTML = `
+                            <div class="food-name">${food.name}</div>
+                            <div class="food-brand">${food.brand || 'Generic'}</div>
+                        `;
+                        resultsContainer.appendChild(foodElement);
+                    });
+                    resultsContainer.classList.remove('hidden');
+                } else {
+                    resultsContainer.innerHTML = '<div class="food-item">No foods found</div>';
+                    resultsContainer.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Error searching foods:', error);
+                resultsContainer.innerHTML = '<div class="food-item">Error searching foods</div>';
+                resultsContainer.classList.remove('hidden');
+            }
+        }
+
+        async function addFoodToDiary(food) {
+            try {
+                // Get detailed nutrition info
+                const detailsFunction = functions.httpsCallable('getFoodDetails');
+                const detailsResult = await detailsFunction({ foodId: food.id });
+                const foodDetails = detailsResult.data;
+
+                // Add to user's food diary
+                await db.collection('users').doc(currentUser.uid).collection('foodEntries').add({
+                    ...foodDetails,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    date: new Date().toISOString().split('T')[0]
+                });
+
+                // Update daily nutrition totals
+                const today = new Date().toISOString().split('T')[0];
+                const dailyRef = db.collection('users').doc(currentUser.uid).collection('dailyNutrition').doc(today);
+                
+                await dailyRef.set({
+                    calories: firebase.firestore.FieldValue.increment(foodDetails.calories || 0),
+                    protein: firebase.firestore.FieldValue.increment(foodDetails.protein || 0),
+                    carbs: firebase.firestore.FieldValue.increment(foodDetails.carbs || 0),
+                    fat: firebase.firestore.FieldValue.increment(foodDetails.fat || 0),
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+
+                // Clear search and reload data
+                document.getElementById('foodSearchInput').value = '';
+                document.getElementById('foodResults').classList.add('hidden');
+                
+                // Reload dashboard data
+                loadDashboardData();
+                
+                alert('Food added to diary!');
+                
+            } catch (error) {
+                console.error('Error adding food to diary:', error);
+                alert('Error adding food to diary');
+            }
+        }
+
+        function getTimeAgo(date) {
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins}m ago`;
+            if (diffHours < 24) return `${diffHours}h ago`;
+            return `${diffDays}d ago`;
+        }
+
+        // Placeholder functions for future features
+        function showFoodSearch() {
+            alert('Food search feature - coming soon!');
+        }
+
+        function showDiary() {
+            alert('Full diary view - coming soon!');
+        }
+
+        function manageAllergens() {
+            alert('Allergen management - coming soon!');
+        }
+
+        function checkFood() {
+            alert('Food allergen check - coming soon!');
+        }
+
+        function manageKitchen() {
+            alert('Kitchen management - coming soon!');
+        }
+
+        function addKitchenItem() {
+            alert('Add kitchen item - coming soon!');
+        }
+    </script>
+</body>
+</html>
