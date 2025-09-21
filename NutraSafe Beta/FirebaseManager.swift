@@ -163,7 +163,51 @@ class FirebaseManager: ObservableObject {
         try await db.collection("users").document(userId)
             .collection("kitchenInventory").document(itemId).delete()
     }
-    
+
+    // MARK: - Food Search Functions
+
+    func searchFoods(query: String) async throws -> [FoodSearchResult] {
+        // Search in Firebase Cloud Functions
+        guard let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/searchFoods") else {
+            throw URLError(.badURL)
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let requestBody = ["query": query]
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+
+        let decoder = JSONDecoder()
+        let response = try decoder.decode(FoodSearchResponse.self, from: data)
+
+        return response.foods
+    }
+
+    func searchFoodsByBarcode(barcode: String) async throws -> [FoodSearchResult] {
+        // Search in Firebase Cloud Functions by barcode
+        guard let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/searchFoods") else {
+            throw URLError(.badURL)
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let requestBody = ["barcode": barcode]
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+
+        let decoder = JSONDecoder()
+        let response = try decoder.decode(FoodSearchResponse.self, from: data)
+
+        return response.foods
+    }
+
     func getReactions() async throws -> [FoodReaction] {
         guard let userId = currentUser?.uid else { return [] }
         let snapshot = try await db.collection("users").document(userId)
@@ -284,4 +328,10 @@ class FirebaseManager: ObservableObject {
             .collection("pendingVerifications").document(verificationId)
             .updateData(["status": status.rawValue])
     }
+}
+
+// MARK: - Response Models for Food Search
+
+struct FoodSearchResponse: Codable {
+    let foods: [FoodSearchResult]
 }

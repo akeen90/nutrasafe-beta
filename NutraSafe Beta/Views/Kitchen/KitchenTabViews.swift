@@ -692,11 +692,116 @@ struct QuickActionButton: View {
 
 struct AddKitchenItemSheet: View {
     @Environment(\.dismiss) var dismiss
+    @State private var showingManualAdd = false
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Text("Add to Kitchen")
+                    .font(.title)
+                    .fontWeight(.bold)
+
+                Text("Choose how to add your item")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+
+                VStack(spacing: 16) {
+                    AddOptionButton(
+                        icon: "magnifyingglass",
+                        title: "Search Database",
+                        subtitle: "Find from our food database",
+                        color: .blue
+                    ) {
+                        // Will implement search functionality
+                        showingManualAdd = true
+                    }
+
+                    AddOptionButton(
+                        icon: "barcode.viewfinder",
+                        title: "Scan Barcode",
+                        subtitle: "Scan product barcode",
+                        color: .green
+                    ) {
+                        // Will implement barcode scanning
+                        showingManualAdd = true
+                    }
+
+                    AddOptionButton(
+                        icon: "plus.circle",
+                        title: "Manual Entry",
+                        subtitle: "Add item details manually",
+                        color: .purple
+                    ) {
+                        showingManualAdd = true
+                    }
+                }
+
+                Spacer()
+            }
+            .padding()
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showingManualAdd) {
+            ManualKitchenItemSheet()
+        }
+    }
+}
+
+struct AddOptionButton: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let color: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 16) {
+                Image(systemName: icon)
+                    .font(.system(size: 24))
+                    .foregroundColor(color)
+                    .frame(width: 50, height: 50)
+                    .background(color.opacity(0.1))
+                    .clipShape(Circle())
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+
+                    Text(subtitle)
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            }
+            .padding()
+            .background(Color(.systemGray6))
+            .cornerRadius(12)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+struct ManualKitchenItemSheet: View {
+    @Environment(\.dismiss) var dismiss
     @State private var itemName = ""
     @State private var brand = ""
-    @State private var quantity = ""
+    @State private var quantity = "1"
     @State private var location = "Fridge"
-    @State private var expiryDate = Date().addingTimeInterval(7 * 24 * 60 * 60) // 7 days from now
+    @State private var expiryDate = Date().addingTimeInterval(7 * 24 * 60 * 60)
     @State private var isSaving = false
 
     private let locations = ["Fridge", "Freezer", "Pantry", "Cupboard", "Counter"]
@@ -720,7 +825,7 @@ struct AddKitchenItemSheet: View {
                     DatePicker("Expiry Date", selection: $expiryDate, displayedComponents: .date)
                 }
             }
-            .navigationTitle("Add Kitchen Item")
+            .navigationTitle("Manual Entry")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -750,7 +855,6 @@ struct AddKitchenItemSheet: View {
     private func saveKitchenItem() {
         isSaving = true
 
-        // Create kitchen item data
         let kitchenItem = KitchenInventoryItem(
             name: itemName,
             brand: brand.isEmpty ? nil : brand,
