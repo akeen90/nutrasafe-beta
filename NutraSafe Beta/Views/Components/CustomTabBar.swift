@@ -56,25 +56,21 @@ struct CustomTabBar: View {
                     }) {
                         VStack(spacing: 4) {
                             Image(systemName: tab.icon)
-                                .font(.system(size: 22))
+                                .font(.system(size: 22, weight: selectedTab == tab ? .semibold : .regular))
                                 .foregroundColor(selectedTab == tab ? .blue : Color.gray)
                                 .scaleEffect(selectedTab == tab ? 1.1 : 1.0)
                                 .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selectedTab)
 
                             if !tab.title.isEmpty {
                                 Text(tab.title)
-                                    .font(.system(size: 10, weight: .medium))
+                                    .font(.system(size: 10, weight: selectedTab == tab ? .semibold : .medium))
                                     .foregroundColor(selectedTab == tab ? .blue : Color.gray)
                             }
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(selectedTab == tab ? Color.blue.opacity(0.1) : Color.clear)
-                                .padding(.horizontal, 4)
-                                .animation(.easeInOut(duration: 0.2), value: selectedTab)
-                        )
+                        .padding(.horizontal, 4)
+                        // No surrounding shade — highlight is icon + label tint only
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
