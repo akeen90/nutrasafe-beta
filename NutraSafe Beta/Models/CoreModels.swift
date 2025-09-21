@@ -21,22 +21,22 @@ struct KitchenInventoryItem: Codable, Identifiable {
     let name: String
     let brand: String?
     let quantity: String
-    let location: String
     let expiryDate: Date
     let addedDate: Date
+    let openedDate: Date?
     let barcode: String?
     let category: String?
 
     init(id: String = UUID().uuidString, name: String, brand: String? = nil,
-         quantity: String, location: String, expiryDate: Date, addedDate: Date,
-         barcode: String? = nil, category: String? = nil) {
+         quantity: String, expiryDate: Date, addedDate: Date,
+         openedDate: Date? = nil, barcode: String? = nil, category: String? = nil) {
         self.id = id
         self.name = name
         self.brand = brand
         self.quantity = quantity
-        self.location = location
         self.expiryDate = expiryDate
         self.addedDate = addedDate
+        self.openedDate = openedDate
         self.barcode = barcode
         self.category = category
     }

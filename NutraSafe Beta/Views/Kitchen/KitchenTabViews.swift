@@ -79,10 +79,15 @@ struct AddFoundFoodToKitchenSheet: View {
     @Environment(\.dismiss) var dismiss
     let food: FoodSearchResult
     @State private var quantity: String = "1"
-    @State private var location: String = "Fridge"
     @State private var expiryDate: Date = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
     @State private var isSaving = false
-    private let locations = ["Fridge", "Freezer", "Pantry", "Cupboard", "Counter"]
+    @State private var openedMode: OpenedMode = .today
+    @State private var openedDate: Date = Date()
+    @State private var expiryAmount: Int = 7
+    @State private var expiryUnit: ExpiryUnit = .days
+
+    enum OpenedMode { case today, chooseDate }
+    enum ExpiryUnit: String, CaseIterable { case days = "Days", weeks = "Weeks" }
 
     var body: some View {
         NavigationView {
@@ -92,12 +97,36 @@ struct AddFoundFoodToKitchenSheet: View {
                     if let brand = food.brand { Text(brand).foregroundColor(.secondary) }
                     if let serving = food.servingDescription { Text(serving).foregroundColor(.secondary) }
                 }
-                Section(header: Text("Details")) {
-                    TextField("Quantity", text: $quantity)
-                    Picker("Location", selection: $location) {
-                        ForEach(locations, id: \.self) { Text($0) }
+                Section(header: Text("Opened")) {
+                    Picker("", selection: $openedMode) {
+                        Text("Opened Today").tag(OpenedMode.today)
+                        Text("Choose Date").tag(OpenedMode.chooseDate)
+                    }.pickerStyle(.segmented)
+                    if openedMode == .chooseDate {
+                        DatePicker("Opened Date", selection: $openedDate, displayedComponents: .date)
                     }
-                    DatePicker("Expiry Date", selection: $expiryDate, displayedComponents: .date)
+                }
+                Section(header: Text("Expiry")) {
+                    HStack {
+                        Stepper(value: $expiryAmount, in: 1...365) { EmptyView() }
+                            .labelsHidden()
+                            .frame(width: 0)
+                        TextField("Amount", value: $expiryAmount, formatter: NumberFormatter())
+                            .keyboardType(.numberPad)
+                            .frame(width: 60)
+                            .multilineTextAlignment(.center)
+                        Picker("Unit", selection: $expiryUnit) {
+                            ForEach(ExpiryUnit.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        .onChange(of: expiryAmount) { _ in recalcExpiry() }
+                        .onChange(of: expiryUnit) { _ in recalcExpiry() }
+                        Spacer()
+                    }
+                    DatePicker("Expiry Date (override)", selection: $expiryDate, displayedComponents: .date)
+                }
+                Section(header: Text("Details")) {
+                    TextField("Quantity", text: $quantity).keyboardType(.default)
                 }
             }
             .navigationTitle("Add to Kitchen")
@@ -112,6 +141,15 @@ struct AddFoundFoodToKitchenSheet: View {
         }
     }
 
+    private func recalcExpiry() {
+        var comps = DateComponents()
+        switch expiryUnit {
+        case .days: comps.day = expiryAmount
+        case .weeks: comps.day = expiryAmount * 7
+        }
+        expiryDate = Calendar.current.date(byAdding: comps, to: Date()) ?? Date()
+    }
+
     private func save() async {
         guard !isSaving else { return }
         isSaving = true
@@ -119,9 +157,9 @@ struct AddFoundFoodToKitchenSheet: View {
             name: food.name,
             brand: food.brand,
             quantity: quantity.isEmpty ? "1" : quantity,
-            location: location,
             expiryDate: expiryDate,
-            addedDate: Date()
+            addedDate: Date(),
+            openedDate: openedMode == .today ? Date() : openedDate
         )
         do {
             try await FirebaseManager.shared.addKitchenItem(item)
@@ -149,7 +187,7 @@ struct KitchenExpiryView: View {
                     .padding(.top, 16)
 
                 // Critical Expiring Items
-                KitchenCriticalExpiryCard()
+                        KitchenCriticalExpiryCard()
                     .padding(.horizontal, 16)
 
                 // This Week's Expiry
@@ -328,13 +366,12 @@ struct KitchenCriticalExpiryCard: View {
 
             VStack(spacing: 0) {
                 ForEach(0..<3, id: \.self) { index in
-                    ModernExpiryRow(
-                        name: ["Greek Yoghurt", "Chicken Breast", "Baby Spinach"][index],
-                        brand: ["Fage", "Organic Valley", "Fresh Express"][index],
-                        location: "Fridge",
-                        daysLeft: index,
-                        quantity: ["2 cups", "1.5 lbs", "5 oz bag"][index]
-                    )
+                        ModernExpiryRow(
+                            name: ["Greek Yoghurt", "Chicken Breast", "Baby Spinach"][index],
+                            brand: ["Fage", "Organic Valley", "Fresh Express"][index],
+                            daysLeft: index,
+                            quantity: ["2 cups", "1.5 lbs", "5 oz bag"][index]
+                        )
 
                     if index < 2 {
                         Divider()
@@ -434,13 +471,6 @@ struct KitchenWeeklyExpiryCard: View {
 
                                         Spacer()
 
-                                        Text("Fridge")
-                                            .font(.system(size: 11))
-                                            .foregroundColor(.secondary)
-                                            .padding(.horizontal, 8)
-                                            .padding(.vertical, 4)
-                                            .background(Color(.systemGray5))
-                                            .cornerRadius(6)
                                     }
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 8)
@@ -474,7 +504,6 @@ struct KitchenWeeklyExpiryCard: View {
 struct ModernExpiryRow: View {
     let name: String
     let brand: String
-    let location: String
     let daysLeft: Int
     let quantity: String
 
@@ -540,19 +569,11 @@ struct ModernExpiryRow: View {
 
             Spacer()
 
-            // Location & Urgency
+            // Urgency
             VStack(alignment: .trailing, spacing: 4) {
                 Text(urgencyText)
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(urgencyColor)
-
-                Text(location)
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color(.systemGray5))
-                    .cornerRadius(4)
             }
         }
         .padding(.horizontal, 12)
@@ -928,11 +949,15 @@ struct ManualKitchenItemSheet: View {
     @State private var itemName = ""
     @State private var brand = ""
     @State private var quantity = "1"
-    @State private var location = "Fridge"
     @State private var expiryDate = Date().addingTimeInterval(7 * 24 * 60 * 60)
     @State private var isSaving = false
+    @State private var openedMode: OpenedMode = .today
+    @State private var openedDate: Date = Date()
+    @State private var expiryAmount: Int = 7
+    @State private var expiryUnit: ExpiryUnit = .days
 
-    private let locations = ["Fridge", "Freezer", "Pantry", "Cupboard", "Counter"]
+    enum OpenedMode { case today, chooseDate }
+    enum ExpiryUnit: String, CaseIterable { case days = "Days", weeks = "Weeks" }
 
     var body: some View {
         NavigationView {
@@ -942,15 +967,33 @@ struct ManualKitchenItemSheet: View {
                     TextField("Brand (optional)", text: $brand)
                     TextField("Quantity", text: $quantity)
                 }
-
-                Section(header: Text("Storage")) {
-                    Picker("Location", selection: $location) {
-                        ForEach(locations, id: \.self) { loc in
-                            Text(loc).tag(loc)
-                        }
+                Section(header: Text("Opened")) {
+                    Picker("", selection: $openedMode) {
+                        Text("Opened Today").tag(OpenedMode.today)
+                        Text("Choose Date").tag(OpenedMode.chooseDate)
+                    }.pickerStyle(.segmented)
+                    if openedMode == .chooseDate {
+                        DatePicker("Opened Date", selection: $openedDate, displayedComponents: .date)
                     }
-
-                    DatePicker("Expiry Date", selection: $expiryDate, displayedComponents: .date)
+                }
+                Section(header: Text("Expiry")) {
+                    HStack {
+                        Stepper(value: $expiryAmount, in: 1...365) { EmptyView() }
+                            .labelsHidden()
+                            .frame(width: 0)
+                        TextField("Amount", value: $expiryAmount, formatter: NumberFormatter())
+                            .keyboardType(.numberPad)
+                            .frame(width: 60)
+                            .multilineTextAlignment(.center)
+                        Picker("Unit", selection: $expiryUnit) {
+                            ForEach(ExpiryUnit.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        .onChange(of: expiryAmount) { _ in recalcExpiry() }
+                        .onChange(of: expiryUnit) { _ in recalcExpiry() }
+                        Spacer()
+                    }
+                    DatePicker("Expiry Date (override)", selection: $expiryDate, displayedComponents: .date)
                 }
             }
             .navigationTitle("Manual Entry")
@@ -980,6 +1023,15 @@ struct ManualKitchenItemSheet: View {
         }
     }
 
+    private func recalcExpiry() {
+        var comps = DateComponents()
+        switch expiryUnit {
+        case .days: comps.day = expiryAmount
+        case .weeks: comps.day = expiryAmount * 7
+        }
+        expiryDate = Calendar.current.date(byAdding: comps, to: Date()) ?? Date()
+    }
+
     private func saveKitchenItem() {
         isSaving = true
 
@@ -987,9 +1039,9 @@ struct ManualKitchenItemSheet: View {
             name: itemName,
             brand: brand.isEmpty ? nil : brand,
             quantity: quantity.isEmpty ? "1" : quantity,
-            location: location,
             expiryDate: expiryDate,
-            addedDate: Date()
+            addedDate: Date(),
+            openedDate: openedMode == .today ? Date() : openedDate
         )
 
         Task {
