@@ -12,123 +12,99 @@ import SwiftUI
 
 struct KitchenTabView: View {
     @Binding var showingSettings: Bool
-    @State private var selectedKitchenSubTab: KitchenSubTab = .expiry
-    
-    enum KitchenSubTab: String, CaseIterable {
-        case expiry = "Expiry"
-        
-        var icon: String {
-            switch self {
-            case .expiry: return "clock.arrow.circlepath"
-            }
-        }
-    }
-    
+    @Binding var selectedTab: TabItem
+    @State private var showingScanner = false
+    @State private var showingCamera = false
+
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
                 // Header
-                VStack(spacing: 16) {
-                    HStack {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text("Kitchen")
                             .font(.system(size: 32, weight: .bold))
                             .foregroundColor(.primary)
-                        
-                        Spacer()
-                        
-                        Button(action: {
-                            showingSettings = true
-                        }) {
-                            Image(systemName: "gearshape.fill")
-                                .font(.system(size: 20))
-                                .foregroundColor(.primary)
-                                .frame(width: 40, height: 40)
-                                .background(Color(.systemGray6))
-                                .clipShape(Circle())
-                        }
+
+                        Text("Track freshness & reduce waste")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 16)
-                    
-                    // Sub-tab selector
-                    KitchenSubTabSelector(selectedTab: $selectedKitchenSubTab)
-                        .padding(.horizontal, 16)
+
+                    Spacer()
+
+                    Button(action: {
+                        showingSettings = true
+                    }) {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.primary)
+                            .frame(width: 40, height: 40)
+                            .background(Color(.systemGray6))
+                            .clipShape(Circle())
+                    }
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 8)
                 .background(Color(.systemBackground))
-                
-                // Content based on selected sub-tab
-                Group {
-                    switch selectedKitchenSubTab {
-                    case .expiry:
-                        KitchenExpiryView()
-                    }
-                }
+
+                // Main content
+                KitchenExpiryView(
+                    showingScanner: $showingScanner,
+                    showingCamera: $showingCamera,
+                    selectedTab: $selectedTab
+                )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .background(Color(.systemBackground))
             .navigationBarHidden(true)
         }
-    }
-}
-
-// MARK: - Kitchen Sub-Tab Selector
-
-struct KitchenSubTabSelector: View {
-    @Binding var selectedTab: KitchenTabView.KitchenSubTab
-    
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach(KitchenTabView.KitchenSubTab.allCases, id: \.self) { tab in
-                Button(action: {
-                    selectedTab = tab
-                }) {
-                    VStack(spacing: 6) {
-                        Image(systemName: tab.icon)
-                            .font(.system(size: 14))
-                        
-                        Text(tab.rawValue)
-                            .font(.system(size: 12, weight: .medium))
-                    }
-                    .foregroundColor(selectedTab == tab ? .white : .primary)
-                    .frame(maxWidth: .infinity, minHeight: 60)
-                    .background(
-                        selectedTab == tab 
-                            ? Color.blue
-                            : Color.clear
-                    )
-                }
-                .buttonStyle(PlainButtonStyle())
-            }
+        .sheet(isPresented: $showingScanner) {
+            // Barcode scanner will be implemented
+            Text("Barcode Scanner Coming Soon")
+                .font(.title)
+                .padding()
         }
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
-        .animation(.easeInOut(duration: 0.2), value: selectedTab)
+        .sheet(isPresented: $showingCamera) {
+            // Camera scanner will be implemented
+            Text("Camera Scanner Coming Soon")
+                .font(.title)
+                .padding()
+        }
     }
 }
 
 // MARK: - Kitchen Sub Views
 
 struct KitchenExpiryView: View {
+    @Binding var showingScanner: Bool
+    @Binding var showingCamera: Bool
+    @Binding var selectedTab: TabItem
+
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 12) {
                 // Expiry Alerts Summary
-                KitchenExpiryAlertsCard()
+                KitchenExpiryAlertsCard(selectedTab: $selectedTab)
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
-                
+
                 // Critical Expiring Items
                 KitchenCriticalExpiryCard()
                     .padding(.horizontal, 16)
-                
+
                 // This Week's Expiry
                 KitchenWeeklyExpiryCard()
                     .padding(.horizontal, 16)
-                
+
                 // Quick Add Item
-                KitchenQuickAddCard()
-                    .padding(.horizontal, 16)
-                
+                KitchenQuickAddCard(
+                    showingScanner: $showingScanner,
+                    showingCamera: $showingCamera
+                )
+                .padding(.horizontal, 16)
+
                 Rectangle()
                     .fill(Color.clear)
                     .frame(height: 100)
@@ -141,6 +117,8 @@ struct KitchenExpiryView: View {
 
 struct KitchenExpiryAlertsCard: View {
     @State private var selectedFilter: ExpiryFilter = .all
+    @State private var showingAddSheet = false
+    @Binding var selectedTab: TabItem
 
     enum ExpiryFilter: String, CaseIterable {
         case all = "All Items"
@@ -149,7 +127,7 @@ struct KitchenExpiryAlertsCard: View {
 
         var color: Color {
             switch self {
-            case .all: return .blue
+            case .all: return .green
             case .expiring: return .orange
             case .expired: return .red
             }
@@ -174,21 +152,26 @@ struct KitchenExpiryAlertsCard: View {
 
                 // Action Buttons
                 HStack(spacing: 12) {
-                    Button(action: {}) {
+                    Button(action: {
+                        // Navigate to add tab for barcode scanning
+                        showingAddSheet = true
+                    }) {
                         Image(systemName: "barcode.viewfinder")
                             .font(.system(size: 18))
-                            .foregroundColor(.blue)
+                            .foregroundColor(.green)
                             .frame(width: 36, height: 36)
-                            .background(Color.blue.opacity(0.1))
+                            .background(Color.green.opacity(0.1))
                             .cornerRadius(8)
                     }
 
-                    Button(action: {}) {
+                    Button(action: {
+                        showingAddSheet = true
+                    }) {
                         Image(systemName: "plus")
                             .font(.system(size: 18))
-                            .foregroundColor(.blue)
+                            .foregroundColor(.purple)
                             .frame(width: 36, height: 36)
-                            .background(Color.blue.opacity(0.1))
+                            .background(Color.purple.opacity(0.1))
                             .cornerRadius(8)
                     }
                 }
@@ -224,6 +207,9 @@ struct KitchenExpiryAlertsCard: View {
         .padding(16)
         .background(Color(.systemGray6))
         .cornerRadius(12)
+        .sheet(isPresented: $showingAddSheet) {
+            AddKitchenItemSheet()
+        }
     }
 }
 
@@ -512,6 +498,8 @@ struct ModernExpiryRow: View {
 // MARK: - Kitchen Quick Add Interface
 
 struct KitchenQuickAddCard: View {
+    @Binding var showingScanner: Bool
+    @Binding var showingCamera: Bool
     @State private var showingAddSheet = false
 
     var body: some View {
@@ -519,7 +507,7 @@ struct KitchenQuickAddCard: View {
             HStack {
                 Label("Quick Actions", systemImage: "bolt.fill")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.blue)
+                    .foregroundColor(.orange)
 
                 Spacer()
             }
@@ -531,7 +519,7 @@ struct KitchenQuickAddCard: View {
                     subtitle: "Add by barcode",
                     color: .blue,
                     action: {
-                        // Scan barcode action
+                        showingScanner = true
                     }
                 )
 
@@ -541,7 +529,7 @@ struct KitchenQuickAddCard: View {
                     subtitle: "Import items",
                     color: .green,
                     action: {
-                        // Photo receipt action
+                        showingCamera = true
                     }
                 )
 
@@ -603,6 +591,7 @@ struct AddKitchenItemSheet: View {
     @State private var quantity = ""
     @State private var location = "Fridge"
     @State private var expiryDate = Date().addingTimeInterval(7 * 24 * 60 * 60) // 7 days from now
+    @State private var isSaving = false
 
     private let locations = ["Fridge", "Freezer", "Pantry", "Cupboard", "Counter"]
 
@@ -625,7 +614,7 @@ struct AddKitchenItemSheet: View {
                     DatePicker("Expiry Date", selection: $expiryDate, displayedComponents: .date)
                 }
             }
-            .navigationTitle("Add Item")
+            .navigationTitle("Add Kitchen Item")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -636,13 +625,45 @@ struct AddKitchenItemSheet: View {
 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
-                        // Add item logic
-                        dismiss()
+                        saveKitchenItem()
                     }) {
-                        Text("Add")
-                            .font(.system(size: 16, weight: .semibold))
+                        if isSaving {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        } else {
+                            Text("Add")
+                                .font(.system(size: 16, weight: .semibold))
+                        }
                     }
-                    .disabled(itemName.isEmpty)
+                    .disabled(itemName.isEmpty || isSaving)
+                }
+            }
+        }
+    }
+
+    private func saveKitchenItem() {
+        isSaving = true
+
+        // Create kitchen item data
+        let kitchenItem = KitchenInventoryItem(
+            name: itemName,
+            brand: brand.isEmpty ? nil : brand,
+            quantity: quantity.isEmpty ? "1" : quantity,
+            location: location,
+            expiryDate: expiryDate,
+            addedDate: Date()
+        )
+
+        Task {
+            do {
+                try await FirebaseManager.shared.addKitchenItem(kitchenItem)
+                await MainActor.run {
+                    dismiss()
+                }
+            } catch {
+                print("Error saving kitchen item: \(error)")
+                await MainActor.run {
+                    isSaving = false
                 }
             }
         }
@@ -654,7 +675,10 @@ struct AddKitchenItemSheet: View {
 #if DEBUG
 struct KitchenTabView_Previews: PreviewProvider {
     static var previews: some View {
-        KitchenTabView(showingSettings: .constant(false))
+        KitchenTabView(
+            showingSettings: .constant(false),
+            selectedTab: .constant(.kitchen)
+        )
     }
 }
 #endif

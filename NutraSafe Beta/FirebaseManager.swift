@@ -90,12 +90,78 @@ class FirebaseManager: ObservableObject {
     }
     
     // MARK: - Food Reactions
-    
+
     func saveReaction(_ reaction: FoodReaction) async throws {
         guard let userId = currentUser?.uid else { return }
         let reactionData = reaction.toDictionary()
         try await db.collection("users").document(userId)
             .collection("reactions").document(reaction.id.uuidString).setData(reactionData)
+    }
+
+    // MARK: - Kitchen Inventory
+
+    func addKitchenItem(_ item: KitchenInventoryItem) async throws {
+        guard let userId = currentUser?.uid else {
+            // Try anonymous sign in
+            try await signInAnonymously()
+            guard let userId = currentUser?.uid else { return }
+            try await addKitchenItemHelper(item, userId: userId)
+            return
+        }
+        try await addKitchenItemHelper(item, userId: userId)
+    }
+
+    private func addKitchenItemHelper(_ item: KitchenInventoryItem, userId: String) async throws {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(item)
+        let dict = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] ?? [:]
+
+        try await db.collection("users").document(userId)
+            .collection("kitchenInventory").document(item.id).setData(dict)
+    }
+
+    func getKitchenItems() async throws -> [KitchenInventoryItem] {
+        guard let userId = currentUser?.uid else {
+            // Try anonymous sign in
+            try await signInAnonymously()
+            guard let userId = currentUser?.uid else { return [] }
+            return try await getKitchenItemsHelper(userId: userId)
+        }
+        return try await getKitchenItemsHelper(userId: userId)
+    }
+
+    private func getKitchenItemsHelper(userId: String) async throws -> [KitchenInventoryItem] {
+        let snapshot = try await db.collection("users").document(userId)
+            .collection("kitchenInventory")
+            .order(by: "expiryDate", descending: false)
+            .getDocuments()
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        return snapshot.documents.compactMap { doc in
+            guard let data = try? JSONSerialization.data(withJSONObject: doc.data(), options: []) else { return nil }
+            return try? decoder.decode(KitchenInventoryItem.self, from: data)
+        }
+    }
+
+    func updateKitchenItem(_ item: KitchenInventoryItem) async throws {
+        guard let userId = currentUser?.uid else { return }
+
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(item)
+        let dict = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] ?? [:]
+
+        try await db.collection("users").document(userId)
+            .collection("kitchenInventory").document(item.id).setData(dict, merge: true)
+    }
+
+    func deleteKitchenItem(itemId: String) async throws {
+        guard let userId = currentUser?.uid else { return }
+        try await db.collection("users").document(userId)
+            .collection("kitchenInventory").document(itemId).delete()
     }
     
     func getReactions() async throws -> [FoodReaction] {
@@ -140,14 +206,7 @@ class FirebaseManager: ObservableObject {
             KitchenItem.fromDictionary(doc.data())
         }
     }
-    
-    func deleteKitchenItem(itemId: String) async throws {
-        guard let userId = currentUser?.uid else { return }
-        try await db.collection("users").document(userId)
-            .collection("kitchenItems").document(itemId).delete()
-    }
-    
-    
+
     // MARK: - Exercise Entries
     
     func saveExerciseEntry(_ entry: ExerciseEntry) async throws {

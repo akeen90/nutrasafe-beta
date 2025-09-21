@@ -1370,7 +1370,7 @@ struct ContentView: View {
                 case .food:
                     FoodTabView(showingSettings: $showingSettings)
                 case .kitchen:
-                    KitchenTabView(showingSettings: $showingSettings)
+                    KitchenTabView(showingSettings: $showingSettings, selectedTab: $selectedTab)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

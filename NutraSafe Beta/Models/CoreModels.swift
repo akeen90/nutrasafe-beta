@@ -15,6 +15,77 @@ struct BoundingBox: Codable {
     let height: Double
 }
 
+// MARK: - Kitchen Inventory Models
+struct KitchenInventoryItem: Codable, Identifiable {
+    let id: String
+    let name: String
+    let brand: String?
+    let quantity: String
+    let location: String
+    let expiryDate: Date
+    let addedDate: Date
+    let barcode: String?
+    let category: String?
+
+    init(id: String = UUID().uuidString, name: String, brand: String? = nil,
+         quantity: String, location: String, expiryDate: Date, addedDate: Date,
+         barcode: String? = nil, category: String? = nil) {
+        self.id = id
+        self.name = name
+        self.brand = brand
+        self.quantity = quantity
+        self.location = location
+        self.expiryDate = expiryDate
+        self.addedDate = addedDate
+        self.barcode = barcode
+        self.category = category
+    }
+
+    var daysUntilExpiry: Int {
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.day], from: Date(), to: expiryDate)
+        return components.day ?? 0
+    }
+
+    var expiryStatus: ExpiryStatus {
+        switch daysUntilExpiry {
+        case ...0: return .expired
+        case 1: return .expiringToday
+        case 2...3: return .expiringSoon
+        case 4...7: return .expiringThisWeek
+        default: return .fresh
+        }
+    }
+}
+
+enum ExpiryStatus {
+    case expired
+    case expiringToday
+    case expiringSoon
+    case expiringThisWeek
+    case fresh
+
+    var color: Color {
+        switch self {
+        case .expired: return .red
+        case .expiringToday: return .red
+        case .expiringSoon: return .orange
+        case .expiringThisWeek: return .yellow
+        case .fresh: return .green
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .expired: return "Expired"
+        case .expiringToday: return "Expires Today"
+        case .expiringSoon: return "Expires Soon"
+        case .expiringThisWeek: return "This Week"
+        case .fresh: return "Fresh"
+        }
+    }
+}
+
 enum ReactionSeverity: String, CaseIterable, Codable {
     case mild = "mild"
     case moderate = "moderate"
