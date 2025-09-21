@@ -748,10 +748,75 @@ struct QuickActionButton: View {
     }
 }
 
+struct KitchenBarcodeScanSheet: View {
+    @Environment(\.dismiss) var dismiss
+    @State private var isSearching = false
+    @State private var scannedFood: FoodSearchResult?
+    @State private var errorMessage: String?
+    @State private var showAddForm = false
+
+    var body: some View {
+        NavigationView {
+            ZStack {
+                ModernBarcodeScanner { barcode in
+                    Task { await lookup(barcode: barcode) }
+                }
+
+                VStack(spacing: 12) {
+                    if isSearching {
+                        ProgressView().progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        Text("Looking up product...").foregroundColor(.white)
+                    } else {
+                        Text("Position barcode within the frame").foregroundColor(.white)
+                    }
+                    if let errorMessage = errorMessage {
+                        Text(errorMessage).foregroundColor(.red).padding(.horizontal)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 120)
+                .background(Color.black.opacity(0.7))
+                .frame(maxHeight: .infinity, alignment: .bottom)
+            }
+            .navigationTitle("Scan Barcode")
+            .toolbar { ToolbarItem(placement: .navigationBarLeading) { Button("Close") { dismiss() } } }
+        }
+        .sheet(isPresented: $showAddForm) {
+            if let food = scannedFood {
+                AddFoundFoodToKitchenSheet(food: food)
+            }
+        }
+    }
+
+    private func lookup(barcode: String) async {
+        guard !isSearching else { return }
+        isSearching = true
+        errorMessage = nil
+        do {
+            let results = try await FirebaseManager.shared.searchFoodsByBarcode(barcode: barcode)
+            await MainActor.run {
+                self.isSearching = false
+                if let first = results.first {
+                    self.scannedFood = first
+                    self.showAddForm = true
+                } else {
+                    self.errorMessage = "Product not found. Try another scan or search manually."
+                }
+            }
+        } catch {
+            await MainActor.run {
+                self.isSearching = false
+                self.errorMessage = "Lookup failed. Please try again."
+            }
+        }
+    }
+}
+
 struct AddKitchenItemSheet: View {
     @Environment(\.dismiss) var dismiss
     @State private var showingManualAdd = false
     @State private var showingSearch = false
+    @State private var showingBarcodeScan = false
 
     var body: some View {
         NavigationView {
@@ -780,8 +845,7 @@ struct AddKitchenItemSheet: View {
                         subtitle: "Scan product barcode",
                         color: .green
                     ) {
-                        // Will implement barcode scanning
-                        showingManualAdd = true
+                        showingBarcodeScan = true
                     }
 
                     AddOptionButton(
@@ -811,6 +875,9 @@ struct AddKitchenItemSheet: View {
         }
         .sheet(isPresented: $showingSearch) {
             KitchenSearchSheet()
+        }
+        .sheet(isPresented: $showingBarcodeScan) {
+            KitchenBarcodeScanSheet()
         }
     }
 }
