@@ -317,7 +317,7 @@ struct NutrientTag: View {
 
 /// Enumeration for different food search sources
 enum FoodSourceType {
-    case search, barcode, ai, manual, diary
+    case search, barcode, ai, manual, diary, kitchen
 }
 
 // MARK: - Main Food Search View

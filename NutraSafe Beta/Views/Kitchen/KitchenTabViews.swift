@@ -374,7 +374,7 @@ struct KitchenExpiryAlertsCard: View {
         .padding(16)
         .background(Color(.systemGray6))
         .cornerRadius(12)
-        .sheet(isPresented: $showingAddSheet) {
+.fullScreenCover(isPresented: $showingAddSheet) {
             AddKitchenItemSheet()
         }
     }
@@ -573,6 +573,8 @@ struct ModernExpiryRow: View {
     let brand: String
     let daysLeft: Int
     let quantity: String
+    @State private var showingDetail = false
+    @State private var foodDetail: FoodSearchResult?
 
     private var urgencyColor: Color {
         switch daysLeft {
@@ -601,17 +603,20 @@ struct ModernExpiryRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Icon
-            ZStack {
-                Circle()
-                    .fill(urgencyColor.opacity(0.1))
-                    .frame(width: 36, height: 36)
+        Button(action: {
+            showingDetail = true
+        }) {
+            HStack(spacing: 12) {
+                // Icon
+                ZStack {
+                    Circle()
+                        .fill(urgencyColor.opacity(0.1))
+                        .frame(width: 36, height: 36)
 
-                Image(systemName: urgencyIcon)
-                    .font(.system(size: 16))
-                    .foregroundColor(urgencyColor)
-            }
+                    Image(systemName: urgencyIcon)
+                        .font(.system(size: 16))
+                        .foregroundColor(urgencyColor)
+                }
 
             // Item Details
             VStack(alignment: .leading, spacing: 2) {
@@ -642,9 +647,14 @@ struct ModernExpiryRow: View {
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(urgencyColor)
             }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .buttonStyle(PlainButtonStyle())
+        .sheet(isPresented: $showingDetail) {
+            KitchenItemDetailView(itemName: name, brand: brand, daysLeft: daysLeft, quantity: quantity)
+        }
     }
 }
 
@@ -799,7 +809,7 @@ struct KitchenQuickAddCard: View {
         .padding(16)
         .background(Color(.systemGray6))
         .cornerRadius(12)
-        .sheet(isPresented: $showingAddSheet) {
+.fullScreenCover(isPresented: $showingAddSheet) {
             AddKitchenItemSheet()
         }
     }
@@ -869,10 +879,9 @@ struct KitchenBarcodeScanSheet: View {
             .navigationTitle("Scan Barcode")
             .toolbar { ToolbarItem(placement: .navigationBarLeading) { Button("Close") { dismiss() } } }
         }
-        .sheet(isPresented: $showAddForm) {
-            if let food = scannedFood {
-                AddFoundFoodToKitchenSheet(food: food)
-            }
+        .navigationViewStyle(StackNavigationViewStyle())
+.sheet(item: $scannedFood) { food in
+            AddFoundFoodToKitchenSheet(food: food)
         }
     }
 
@@ -885,8 +894,7 @@ struct KitchenBarcodeScanSheet: View {
             await MainActor.run {
                 self.isSearching = false
                 if let first = results.first {
-                    self.scannedFood = first
-                    self.showAddForm = true
+self.scannedFood = first
                 } else {
                     self.errorMessage = "Product not found. Try another scan or search manually."
                 }
@@ -958,13 +966,14 @@ struct AddKitchenItemSheet: View {
                 }
             }
         }
-        .sheet(isPresented: $showingManualAdd) {
+        .navigationViewStyle(StackNavigationViewStyle())
+.sheet(isPresented: $showingManualAdd) {
             ManualKitchenItemSheet()
         }
-        .sheet(isPresented: $showingSearch) {
+.sheet(isPresented: $showingSearch) {
             KitchenSearchSheet()
         }
-        .sheet(isPresented: $showingBarcodeScan) {
+.sheet(isPresented: $showingBarcodeScan) {
             KitchenBarcodeScanSheet()
         }
     }
@@ -1082,6 +1091,7 @@ struct ManualKitchenItemSheet: View {
                 }
             }
         }
+        .navigationViewStyle(StackNavigationViewStyle())
     }
 
     private func recalcExpiry() {
@@ -1166,8 +1176,8 @@ struct KitchenSearchSheet: View {
 
                 if isSearching { ProgressView("Searching…").padding() }
 
-                List(results, id: \.id) { food in
-                    Button { selectedFood = food; showAddForm = true } label: {
+List(results, id: \.id) { food in
+                    Button { selectedFood = food } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(food.name).font(.system(size: 16, weight: .semibold))
@@ -1191,10 +1201,9 @@ struct KitchenSearchSheet: View {
                 }
             }
         }
-        .sheet(isPresented: $showAddForm) {
-            if let selectedFood = selectedFood {
-                AddFoundFoodToKitchenSheet(food: selectedFood)
-            }
+        .navigationViewStyle(StackNavigationViewStyle())
+.sheet(item: $selectedFood) { selectedFood in
+            AddFoundFoodToKitchenSheet(food: selectedFood)
         }
     }
 
@@ -1209,5 +1218,249 @@ struct KitchenSearchSheet: View {
             print("Kitchen search error: \\(error)")
             await MainActor.run { self.isSearching = false }
         }
+    }
+}
+
+// MARK: - Kitchen Item Detail View
+struct KitchenItemDetailView: View {
+    @Environment(\.dismiss) var dismiss
+    let itemName: String
+    let brand: String?
+    let daysLeft: Int
+    let quantity: String
+    @State private var isLoading = true
+    @State private var foodDetail: FoodSearchResult?
+    @State private var showingFoodDetail = false
+    
+    var urgencyColor: Color {
+        switch daysLeft {
+        case 0: return .red
+        case 1...2: return .orange
+        case 3...7: return .yellow
+        default: return .green
+        }
+    }
+    
+    var urgencyText: String {
+        switch daysLeft {
+        case 0: return "Expires today"
+        case 1: return "Expires tomorrow"
+        case 2...7: return "\(daysLeft) days left"
+        default: return "\(daysLeft) days left"
+        }
+    }
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                if isLoading {
+                    VStack(spacing: 20) {
+                        ProgressView()
+                        Text("Loading nutrition information...")
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        VStack(spacing: 20) {
+                            // Item Header
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(itemName)
+                                            .font(.title2)
+                                            .fontWeight(.bold)
+                                        if let brand = brand, !brand.isEmpty {
+                                            Text(brand)
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                    Spacer()
+                                }
+                                
+                                // Status badges
+                                HStack(spacing: 12) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "clock.fill")
+                                            .font(.system(size: 14))
+                                        Text(urgencyText)
+                                            .font(.system(size: 14, weight: .medium))
+                                    }
+                                    .foregroundColor(urgencyColor)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(urgencyColor.opacity(0.1))
+                                    .cornerRadius(20)
+                                    
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "scalemass")
+                                            .font(.system(size: 14))
+                                        Text(quantity)
+                                            .font(.system(size: 14, weight: .medium))
+                                    }
+                                    .foregroundColor(.blue)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(Color.blue.opacity(0.1))
+                                    .cornerRadius(20)
+                                }
+                            }
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+                            
+                            if let food = foodDetail {
+                                // Nutrition Info
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("Nutrition per 100g")
+                                        .font(.headline)
+                                        .padding(.horizontal)
+                                    
+                                    HStack(spacing: 12) {
+                                        NutrientCard(title: "Calories", value: "\(Int(food.calories))", unit: "kcal", color: .orange)
+                                        NutrientCard(title: "Protein", value: String(format: "%.1f", food.protein), unit: "g", color: .red)
+                                    }
+                                    .padding(.horizontal)
+                                    
+                                    HStack(spacing: 12) {
+                                        NutrientCard(title: "Carbs", value: String(format: "%.1f", food.carbs), unit: "g", color: .blue)
+                                        NutrientCard(title: "Fat", value: String(format: "%.1f", food.fat), unit: "g", color: .purple)
+                                    }
+                                    .padding(.horizontal)
+                                    
+                                    Button(action: {
+                                        showingFoodDetail = true
+                                    }) {
+                                        HStack {
+                                            Text("View Full Nutrition Details")
+                                            Image(systemName: "chevron.right")
+                                        }
+                                        .font(.system(size: 16, weight: .medium))
+                                        .frame(maxWidth: .infinity)
+                                        .padding()
+                                        .background(Color.blue)
+                                        .foregroundColor(.white)
+                                        .cornerRadius(12)
+                                    }
+                                    .padding(.horizontal)
+                                    .padding(.top, 8)
+                                }
+                                .padding(.vertical)
+                            } else {
+                                VStack(spacing: 20) {
+                                    Image(systemName: "exclamationmark.circle")
+                                        .font(.system(size: 48))
+                                        .foregroundColor(.orange)
+                                    
+                                    Text("Nutrition information not found")
+                                        .font(.headline)
+                                    
+                                    Text("We couldn't find detailed nutrition data for this item. Try searching for it in our food database.")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                        .multilineTextAlignment(.center)
+                                        .padding(.horizontal)
+                                }
+                                .padding(.vertical, 40)
+                            }
+                        }
+                        .padding(.vertical)
+                    }
+                }
+            }
+            .navigationTitle("Kitchen Item")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Close") { dismiss() }
+                }
+            }
+        }
+        .navigationViewStyle(StackNavigationViewStyle())
+        .onAppear {
+            print("[KitchenItemDetailView] appear: item=\(itemName), brand=\(brand ?? "nil"), daysLeft=\(daysLeft), qty=\(quantity)")
+            Task {
+                await loadFoodDetails()
+            }
+        }
+        .fullScreenCover(isPresented: $showingFoodDetail) {
+            if let food = foodDetail {
+                FoodDetailViewFromSearch(
+                    food: food,
+                    sourceType: .kitchen,
+                    selectedTab: .constant(.kitchen)
+                )
+            } else {
+                NavigationView {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                        Text("Loading details...")
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color(.systemBackground))
+                    .navigationTitle("Food Details")
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button("Close") { showingFoodDetail = false }
+                        }
+                    }
+                }
+                .navigationViewStyle(StackNavigationViewStyle())
+            }
+        }
+    }
+    
+    private func loadFoodDetails() async {
+        // Try to search for the food by name (and brand if available)
+        let searchQuery = brand != nil && !brand!.isEmpty ? "\(brand!) \(itemName)" : itemName
+        print("[KitchenItemDetailView] fetching details for query=\(searchQuery)")
+        do {
+            let results = try await FirebaseManager.shared.searchFoods(query: searchQuery)
+            print("[KitchenItemDetailView] results count=\(results.count)")
+            await MainActor.run {
+                if let firstResult = results.first {
+                    self.foodDetail = firstResult
+                    print("[KitchenItemDetailView] assigned first result: id=\(firstResult.id)")
+                } else {
+                    print("[KitchenItemDetailView] no results found")
+                }
+                self.isLoading = false
+            }
+        } catch {
+            print("[KitchenItemDetailView] error loading food details: \(error)")
+            await MainActor.run {
+                self.isLoading = false
+            }
+        }
+    }
+}
+
+private struct NutrientCard: View {
+    let title: String
+    let value: String
+    let unit: String
+    let color: Color
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Text(title)
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+            
+            HStack(alignment: .lastTextBaseline, spacing: 2) {
+                Text(value)
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(color)
+                Text(unit)
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
     }
 }

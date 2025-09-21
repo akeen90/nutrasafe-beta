@@ -16,8 +16,10 @@ import Foundation
 struct AddFoodBarcodeView: View {
     @Binding var selectedTab: TabItem
     @State private var scannedProduct: FoodSearchResult?
+    @State private var pendingContribution: PendingFoodContribution?
     @State private var isSearching = false
     @State private var errorMessage: String?
+    @State private var showingContributionForm = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -28,10 +30,10 @@ struct AddFoodBarcodeView: View {
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundColor(.green)
                         .padding(.top, 20)
-                    
+
                     FoodSearchResultRowEnhanced(food: product, sourceType: .barcode, selectedTab: $selectedTab)
                     .padding(.horizontal, 16)
-                    
+
                     Button("Scan Another") {
                         scannedProduct = nil
                         errorMessage = nil
@@ -39,7 +41,50 @@ struct AddFoodBarcodeView: View {
                     .foregroundColor(.blue)
                     .padding(.bottom, 20)
                 }
-                
+
+            } else if let contribution = pendingContribution {
+                // Product not found - show contribution prompt
+                VStack(spacing: 20) {
+                    Image(systemName: "plus.circle")
+                        .font(.system(size: 50))
+                        .foregroundColor(.orange)
+                        .padding(.top, 20)
+
+                    Text("Product Not Found")
+                        .font(.system(size: 20, weight: .semibold))
+
+                    Text("Help us grow our database!")
+                        .font(.system(size: 16))
+                        .foregroundColor(.secondary)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Barcode: \(contribution.barcode)")
+                            .font(.system(size: 14, design: .monospaced))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding()
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(8)
+                    .padding(.horizontal, 20)
+
+                    Button("Add Product Details") {
+                        showingContributionForm = true
+                    }
+                    .foregroundColor(.white)
+                    .padding()
+                    .background(Color.blue)
+                    .cornerRadius(10)
+                    .padding(.horizontal, 20)
+
+                    Button("Scan Another") {
+                        pendingContribution = nil
+                        errorMessage = nil
+                    }
+                    .foregroundColor(.blue)
+                    .padding(.bottom, 20)
+                }
+                .padding()
+
             } else {
                 // Camera scanning view
                 ZStack {
@@ -89,24 +134,45 @@ struct AddFoodBarcodeView: View {
         }
         .navigationTitle("Scan Barcode")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showingContributionForm) {
+            if let contribution = pendingContribution {
+                FoodContributionFormView(
+                    pendingContribution: contribution,
+                    onComplete: {
+                        showingContributionForm = false
+                        pendingContribution = nil
+                    }
+                )
+            }
+        }
     }
     
     // MARK: - Barcode Handling
     private func handleBarcodeScanned(_ barcode: String) {
         guard !isSearching else { return }
-        
+
         isSearching = true
         errorMessage = nil
-        
+
         searchProductByBarcode(barcode) { result in
             DispatchQueue.main.async {
                 isSearching = false
-                
+
                 switch result {
-                case .success(let product):
-                    scannedProduct = product
+                case .success(let response):
+                    if response.success, let product = response.toFoodSearchResult() {
+                        scannedProduct = product
+                    } else if response.action == "user_contribution_needed",
+                              let placeholderId = response.placeholder_id {
+                        pendingContribution = PendingFoodContribution(
+                            placeholderId: placeholderId,
+                            barcode: barcode
+                        )
+                    } else {
+                        errorMessage = response.message ?? "Product not found. Try scanning again or search manually."
+                    }
                 case .failure(let error):
-                    errorMessage = "Product not found. Try scanning again or search manually."
+                    errorMessage = "Failed to search product. Try scanning again or search manually."
                     print("Barcode search error: \(error)")
                 }
             }
@@ -114,7 +180,7 @@ struct AddFoodBarcodeView: View {
     }
     
     // MARK: - Barcode API Search
-    private func searchProductByBarcode(_ barcode: String, completion: @escaping (Result<FoodSearchResult, Error>) -> Void) {
+    private func searchProductByBarcode(_ barcode: String, completion: @escaping (Result<BarcodeSearchResponse, Error>) -> Void) {
         // Hardcoded API endpoint for barcode lookup
         guard let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/searchFoodByBarcode") else {
             completion(.failure(NSError(domain: "Invalid URL", code: 0)))
@@ -140,32 +206,29 @@ struct AddFoodBarcodeView: View {
             }
             
             do {
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let success = json["success"] as? Bool,
-                   success,
-                   let foodData = json["food"] as? [String: Any] {
-                    
-                    let food = FoodSearchResult(
-                        id: foodData["food_id"] as? String ?? UUID().uuidString,
-                        name: foodData["food_name"] as? String ?? "Unknown Product",
-                        brand: foodData["brand_name"] as? String,
-                        calories: foodData["calories"] as? Double ?? 0,
-                        protein: foodData["protein"] as? Double ?? 0,
-                        carbs: foodData["carbohydrates"] as? Double ?? 0,
-                        fat: foodData["fat"] as? Double ?? 0,
-                        fiber: foodData["fiber"] as? Double ?? 0,
-                        sugar: foodData["sugar"] as? Double ?? 0,
-                        sodium: foodData["sodium"] as? Double ?? 0,
-                        servingDescription: foodData["serving_description"] as? String ?? "per 100g",
-                        ingredients: (foodData["ingredients"] as? String)?.components(separatedBy: ", ")
-                    )
-                    
-                    completion(.success(food))
-                } else {
-                    completion(.failure(NSError(domain: "Product not found", code: 404)))
-                }
+                let decoder = JSONDecoder()
+                let response = try decoder.decode(BarcodeSearchResponse.self, from: data)
+                completion(.success(response))
             } catch {
-                completion(.failure(error))
+                // Fallback to manual parsing for compatibility
+                do {
+                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                        let response = BarcodeSearchResponse(
+                            success: json["success"] as? Bool ?? false,
+                            food: nil,
+                            error: json["error"] as? String,
+                            message: json["message"] as? String,
+                            action: json["action"] as? String,
+                            placeholder_id: json["placeholder_id"] as? String,
+                            barcode: json["barcode"] as? String
+                        )
+                        completion(.success(response))
+                    } else {
+                        completion(.failure(error))
+                    }
+                } catch {
+                    completion(.failure(error))
+                }
             }
         }.resume()
     }
@@ -313,6 +376,143 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
             // Provide haptic feedback for successful scan
             AudioServicesPlaySystemSound(SystemSoundID(kSystemSoundID_Vibrate))
             onBarcodeScanned?(stringValue)
+        }
+    }
+}
+
+// MARK: - Food Contribution Form
+
+struct FoodContributionFormView: View {
+    let pendingContribution: PendingFoodContribution
+    let onComplete: () -> Void
+
+    @State private var foodName = ""
+    @State private var brandName = ""
+    @State private var ingredients = ""
+    @State private var isSubmitting = false
+    @State private var showingSuccessMessage = false
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        NavigationView {
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(spacing: 20) {
+                    // Header
+                    VStack(spacing: 8) {
+                        Image(systemName: "doc.text.fill")
+                            .font(.system(size: 40))
+                            .foregroundColor(.blue)
+
+                        Text("Add Product Details")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+
+                        Text("Help us grow our food database")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.top)
+
+                    // Barcode info
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Barcode")
+                            .font(.headline)
+                        Text(pendingContribution.barcode)
+                            .font(.system(size: 16, design: .monospaced))
+                            .padding()
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(8)
+                    }
+
+                    // Form fields
+                    VStack(alignment: .leading, spacing: 16) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Product Name *")
+                                .font(.headline)
+                            TextField("Enter product name", text: $foodName)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                        }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Brand Name")
+                                .font(.headline)
+                            TextField("Enter brand name (optional)", text: $brandName)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                        }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Ingredients")
+                                .font(.headline)
+                            TextField("Enter ingredients list (optional)", text: $ingredients)
+                                .lineLimit(6)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                        }
+                    }
+
+                    // Submit button
+                    Button(action: submitContribution) {
+                        HStack {
+                            if isSubmitting {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                    .foregroundColor(.white)
+                            }
+                            Text(isSubmitting ? "Submitting..." : "Submit Product")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .foregroundColor(.white)
+                        .padding()
+                        .background(canSubmit ? Color.blue : Color.gray)
+                        .cornerRadius(10)
+                    }
+                    .disabled(!canSubmit || isSubmitting)
+
+                    // Success message
+                    if showingSuccessMessage {
+                        VStack(spacing: 8) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 30))
+                                .foregroundColor(.green)
+                            Text("Thank you for your contribution!")
+                                .font(.headline)
+                                .foregroundColor(.green)
+                            Text("Your product will be reviewed and added to our database.")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .padding()
+                        .background(Color.green.opacity(0.1))
+                        .cornerRadius(12)
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Add Product")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(false)
+        }
+    }
+
+    private var canSubmit: Bool {
+        !foodName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func submitContribution() {
+        guard canSubmit && !isSubmitting else { return }
+
+        isSubmitting = true
+
+        // Simulate API call - in real implementation, this would update the pending food entry
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            isSubmitting = false
+            showingSuccessMessage = true
+
+            // Auto-close after showing success message
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                onComplete()
+                dismiss()
+            }
         }
     }
 }

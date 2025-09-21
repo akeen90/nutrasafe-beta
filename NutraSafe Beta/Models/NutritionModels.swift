@@ -12,7 +12,7 @@ import FirebaseFirestore
 // MARK: - Nutrition Models
 // Uses shared types from CoreModels and FoodSafetyModels where appropriate
 
-struct FoodSearchResult: Identifiable, Codable, Equatable {
+struct FoodSearchResult: Identifiable, Decodable, Equatable {
     let id: String
     let name: String
     let brand: String?
@@ -53,8 +53,126 @@ struct FoodSearchResult: Identifiable, Codable, Equatable {
         self.processingLabel = processingLabel
     }
     
+    // Custom decoder to handle flexible payloads from Cloud Functions
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case brand
+        case calories
+        case protein
+        case carbs
+        case fat
+        case fiber
+        case sugar
+        case sodium
+        case servingDescription
+        case ingredients
+        case confidence
+        case verifiedBy
+        case verificationMethod
+        case verifiedAt
+        case additives
+        case processingScore
+        case processingGrade
+        case processingLabel
+    }
+    
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.name = try c.decode(String.self, forKey: .name)
+        self.brand = try c.decodeIfPresent(String.self, forKey: .brand)
+        self.calories = (try? c.decode(Double.self, forKey: .calories)) ?? 0
+        self.protein = (try? c.decode(Double.self, forKey: .protein)) ?? 0
+        self.carbs = (try? c.decode(Double.self, forKey: .carbs)) ?? 0
+        self.fat = (try? c.decode(Double.self, forKey: .fat)) ?? 0
+        self.fiber = (try? c.decode(Double.self, forKey: .fiber)) ?? 0
+        self.sugar = (try? c.decode(Double.self, forKey: .sugar)) ?? 0
+        self.sodium = (try? c.decode(Double.self, forKey: .sodium)) ?? 0
+        self.servingDescription = try? c.decode(String.self, forKey: .servingDescription)
+        // ingredients could be string or array - normalize to [String]
+        if let arr = try? c.decode([String].self, forKey: .ingredients) {
+            self.ingredients = arr
+        } else if let str = try? c.decode(String.self, forKey: .ingredients) {
+            let parts = str.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            self.ingredients = parts.isEmpty ? nil : parts
+        } else {
+            self.ingredients = nil
+        }
+        self.confidence = try? c.decode(Double.self, forKey: .confidence)
+        // Consider the result verified if backend included any verification markers
+        let hasVerifier = (try? c.decodeIfPresent(String.self, forKey: .verifiedBy)) != nil || (try? c.decodeIfPresent(String.self, forKey: .verificationMethod)) != nil || (try? c.decodeIfPresent(String.self, forKey: .verifiedAt)) != nil
+        self.isVerified = hasVerifier
+        self.additives = try? c.decode([NutritionAdditiveInfo].self, forKey: .additives)
+        self.processingScore = try? c.decode(Int.self, forKey: .processingScore)
+        self.processingGrade = try? c.decode(String.self, forKey: .processingGrade)
+        self.processingLabel = try? c.decode(String.self, forKey: .processingLabel)
+    }
+    
     var servingSize: String {
         return servingDescription ?? "per 100g"
+    }
+}
+
+// MARK: - Barcode Response Models
+
+struct BarcodeSearchResponse: Codable {
+    let success: Bool
+    let food: BarcodeFood?
+    let error: String?
+    let message: String?
+    let action: String?
+    let placeholder_id: String?
+    let barcode: String?
+
+    // Convert to FoodSearchResult for compatibility
+    func toFoodSearchResult() -> FoodSearchResult? {
+        guard let food = food else { return nil }
+
+        return FoodSearchResult(
+            id: food.food_id,
+            name: food.food_name,
+            brand: food.brand_name,
+            calories: food.calories,
+            protein: food.protein,
+            carbs: food.carbohydrates,
+            fat: food.fat,
+            fiber: food.fiber,
+            sugar: food.sugar,
+            sodium: food.sodium,
+            servingDescription: food.serving_description,
+            ingredients: food.ingredients?.components(separatedBy: ", "),
+            isVerified: food.source_collection != "pendingFoods"
+        )
+    }
+}
+
+struct BarcodeFood: Codable {
+    let food_id: String
+    let food_name: String
+    let brand_name: String?
+    let barcode: String
+    let calories: Double
+    let protein: Double
+    let carbohydrates: Double
+    let fat: Double
+    let fiber: Double
+    let sugar: Double
+    let sodium: Double
+    let serving_description: String
+    let ingredients: String?
+    let source_collection: String?
+}
+
+struct PendingFoodContribution: Identifiable {
+    let id: String
+    let barcode: String
+    let placeholderName: String
+
+    init(placeholderId: String, barcode: String) {
+        self.id = placeholderId
+        self.barcode = barcode
+        self.placeholderName = "Unknown Product (\(barcode))"
     }
 }
 

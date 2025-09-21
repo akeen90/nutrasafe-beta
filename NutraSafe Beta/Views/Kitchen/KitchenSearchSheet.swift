@@ -7,6 +7,7 @@ struct KitchenSearchSheet: View {
     @State private var results: [FoodSearchResult] = []
     @State private var selectedFood: FoodSearchResult?
     @State private var showAddForm = false
+    @State private var searchTask: Task<Void, Never>? = nil
 
     var body: some View {
         NavigationView {
@@ -30,6 +31,16 @@ struct KitchenSearchSheet: View {
                 .cornerRadius(12)
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
+                .onChange(of: query) { newValue in
+                    // Debounce search-as-you-type
+                    searchTask?.cancel()
+                    let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard trimmed.count >= 2 else { self.results = []; return }
+                    searchTask = Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 300_000_000) // 300ms
+                        await runSearch()
+                    }
+                }
 
                 if isSearching {
                     ProgressView("Searching…")

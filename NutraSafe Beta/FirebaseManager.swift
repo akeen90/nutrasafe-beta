@@ -335,6 +335,6 @@ class FirebaseManager: ObservableObject {
 
 // MARK: - Response Models for Food Search
 
-struct FoodSearchResponse: Codable {
+struct FoodSearchResponse: Decodable {
     let foods: [FoodSearchResult]
 }
