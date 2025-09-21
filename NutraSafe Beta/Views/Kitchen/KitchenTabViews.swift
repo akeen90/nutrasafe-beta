@@ -98,6 +98,10 @@ struct KitchenExpiryView: View {
                 KitchenWeeklyExpiryCard()
                     .padding(.horizontal, 16)
 
+                // Fresh Items
+                KitchenFreshItemsCard()
+                    .padding(.horizontal, 16)
+
                 // Quick Add Item
                 KitchenQuickAddCard(
                     showingScanner: $showingScanner,
@@ -180,11 +184,11 @@ struct KitchenExpiryAlertsCard: View {
             // Status Cards Row
             HStack(spacing: 12) {
                 StatusCard(
-                    title: "Use Today",
+                    title: "Expired",
                     count: 3,
                     icon: "exclamationmark.triangle.fill",
                     color: .red,
-                    subtitle: "Expires today"
+                    subtitle: "Remove now"
                 )
 
                 StatusCard(
@@ -251,7 +255,7 @@ struct KitchenCriticalExpiryCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("Expiring Today", systemImage: "exclamationmark.triangle.fill")
+                Label("Expired Items", systemImage: "exclamationmark.triangle.fill")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.red)
 
@@ -290,7 +294,7 @@ struct KitchenCriticalExpiryCard: View {
 }
 
 struct KitchenWeeklyExpiryCard: View {
-    @State private var expandedDays: Set<String> = []
+    @State private var expandedSections: Set<String> = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -307,31 +311,32 @@ struct KitchenWeeklyExpiryCard: View {
             }
 
             VStack(spacing: 0) {
-                ForEach(["Tomorrow", "Wednesday", "Thursday", "Friday"], id: \.self) { day in
+                // Simplified sections instead of day-by-day
+                ForEach(["Next 1-2 Days", "Later This Week"], id: \.self) { section in
                     VStack(spacing: 0) {
                         Button(action: {
                             withAnimation(.easeInOut(duration: 0.2)) {
-                                if expandedDays.contains(day) {
-                                    expandedDays.remove(day)
+                                if expandedSections.contains(section) {
+                                    expandedSections.remove(section)
                                 } else {
-                                    expandedDays.insert(day)
+                                    expandedSections.insert(section)
                                 }
                             }
                         }) {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(day)
+                                    Text(section)
                                         .font(.system(size: 15, weight: .semibold))
                                         .foregroundColor(.primary)
 
-                                    Text(day == "Tomorrow" ? "2 items" : day == "Wednesday" ? "1 item" : "3 items")
+                                    Text(section == "Next 1-2 Days" ? "3 items" : "5 items")
                                         .font(.system(size: 12))
                                         .foregroundColor(.secondary)
                                 }
 
                                 Spacer()
 
-                                Image(systemName: expandedDays.contains(day) ? "chevron.up" : "chevron.down")
+                                Image(systemName: expandedSections.contains(section) ? "chevron.up" : "chevron.down")
                                     .font(.system(size: 12))
                                     .foregroundColor(.secondary)
                             }
@@ -340,11 +345,11 @@ struct KitchenWeeklyExpiryCard: View {
                         }
                         .buttonStyle(PlainButtonStyle())
 
-                        if expandedDays.contains(day) {
+                        if expandedSections.contains(section) {
                             VStack(spacing: 0) {
                                 Divider()
 
-                                ForEach(0..<2, id: \.self) { index in
+                                ForEach(0..<3, id: \.self) { index in
                                     HStack {
                                         Circle()
                                             .fill(Color.orange.opacity(0.2))
@@ -356,11 +361,15 @@ struct KitchenWeeklyExpiryCard: View {
                                             )
 
                                         VStack(alignment: .leading, spacing: 2) {
-                                            Text(index == 0 ? "Organic Milk" : "Whole Wheat Bread")
+                                            Text(section == "Next 1-2 Days" ?
+                                                ["Organic Milk", "Whole Wheat Bread", "Cheese"][index] :
+                                                ["Apples", "Carrots", "Yogurt"][index])
                                                 .font(.system(size: 14, weight: .medium))
                                                 .foregroundColor(.primary)
 
-                                            Text(index == 0 ? "1/2 gallon" : "1 loaf")
+                                            Text(section == "Next 1-2 Days" ?
+                                                ["1/2 gallon", "1 loaf", "8 oz block"][index] :
+                                                ["2 lbs bag", "1 lb bag", "6 pack"][index])
                                                 .font(.system(size: 12))
                                                 .foregroundColor(.secondary)
                                         }
@@ -378,7 +387,7 @@ struct KitchenWeeklyExpiryCard: View {
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 8)
 
-                                    if index < 1 {
+                                    if index < 2 {
                                         Divider()
                                             .padding(.leading, 44)
                                     }
@@ -387,7 +396,7 @@ struct KitchenWeeklyExpiryCard: View {
                             .transition(.opacity)
                         }
 
-                        if day != "Friday" {
+                        if section != "Later This Week" {
                             Divider()
                         }
                     }
@@ -494,6 +503,103 @@ struct ModernExpiryRow: View {
 }
 
 // Removed KitchenExpiryDayRow - replaced with expandable day sections in KitchenWeeklyExpiryCard
+
+struct KitchenFreshItemsCard: View {
+    @State private var isExpanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isExpanded.toggle()
+                }
+            }) {
+                HStack {
+                    Label("Fresh Items", systemImage: "checkmark.circle.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.green)
+
+                    Spacer()
+
+                    Text("42 items")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            if isExpanded {
+                VStack(spacing: 0) {
+                    ForEach(0..<5, id: \.self) { index in
+                        HStack {
+                            Circle()
+                                .fill(Color.green.opacity(0.1))
+                                .frame(width: 32, height: 32)
+                                .overlay(
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(.green)
+                                )
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(["Organic Bananas", "Pasta", "Canned Tomatoes", "Rice", "Olive Oil"][index])
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.primary)
+
+                                HStack(spacing: 4) {
+                                    Text(["Dole", "Barilla", "San Marzano", "Jasmine", "Extra Virgin"][index])
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.secondary)
+
+                                    Text("•")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.secondary)
+
+                                    Text(["6 count", "1 lb box", "28 oz can", "2 lb bag", "500ml bottle"][index])
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+
+                            Spacer()
+
+                            VStack(alignment: .trailing, spacing: 4) {
+                                Text(["2 weeks", "1 month", "6 months", "1 year", "2 years"][index])
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(.green)
+
+                                Text(["Counter", "Pantry", "Pantry", "Pantry", "Pantry"][index])
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color(.systemGray5))
+                                    .cornerRadius(4)
+                            }
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+
+                        if index < 4 {
+                            Divider()
+                                .padding(.leading, 44)
+                        }
+                    }
+                }
+                .background(Color(.systemBackground))
+                .cornerRadius(10)
+                .transition(.opacity)
+            }
+        }
+        .padding(16)
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+    }
+}
 
 // MARK: - Kitchen Quick Add Interface
 
