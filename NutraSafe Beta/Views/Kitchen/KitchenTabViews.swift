@@ -137,7 +137,6 @@ struct CounterPill: View {
 struct AddFoundFoodToKitchenSheet: View {
     @Environment(\.dismiss) var dismiss
     let food: FoodSearchResult
-    @State private var quantity: String = "1"
     @State private var expiryDate: Date = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
     @State private var isSaving = false
     @State private var openedMode: OpenedMode = .today
@@ -192,9 +191,6 @@ struct AddFoundFoodToKitchenSheet: View {
                                 .datePickerStyle(.compact)
                         }
                     }
-                    SectionCard(title: "DETAILS") {
-                        TextField("Quantity", text: $quantity).textFieldStyle(.roundedBorder)
-                    }
                 }
                 .padding(16)
                 .onAppear { recalcExpiry() }
@@ -227,7 +223,7 @@ struct AddFoundFoodToKitchenSheet: View {
         let item = KitchenInventoryItem(
             name: food.name,
             brand: food.brand,
-            quantity: quantity.isEmpty ? "1" : quantity,
+            quantity: "1",
             expiryDate: expiryDate,
             addedDate: Date(),
             openedDate: openedMode == .today ? Date() : openedDate
@@ -1019,7 +1015,6 @@ struct ManualKitchenItemSheet: View {
     @Environment(\.dismiss) var dismiss
     @State private var itemName = ""
     @State private var brand = ""
-    @State private var quantity = "1"
     @State private var expiryDate = Date().addingTimeInterval(7 * 24 * 60 * 60)
     @State private var isSaving = false
     @State private var openedMode: OpenedMode = .today
@@ -1038,7 +1033,6 @@ struct ManualKitchenItemSheet: View {
                         VStack(alignment: .leading, spacing: 12) {
                             TextField("Item name", text: $itemName).textFieldStyle(.roundedBorder)
                             TextField("Brand (optional)", text: $brand).textFieldStyle(.roundedBorder)
-                            TextField("Quantity", text: $quantity).textFieldStyle(.roundedBorder)
                         }
                     }
                     SectionCard(title: "OPENED") {
@@ -1105,7 +1099,7 @@ struct ManualKitchenItemSheet: View {
         let kitchenItem = KitchenInventoryItem(
             name: itemName,
             brand: brand.isEmpty ? nil : brand,
-            quantity: quantity.isEmpty ? "1" : quantity,
+            quantity: "1",
             expiryDate: expiryDate,
             addedDate: Date(),
             openedDate: openedMode == .today ? Date() : openedDate
