@@ -114,13 +114,23 @@ struct DiaryMealCard: View {
                         DiaryFoodRow(
                             food: food,
                             isSelected: selectedFoodItems.contains(food.id.uuidString),
-                            isSelectionMode: true, // Always in selection mode for direct tap
+                            isSelectionMode: isSelectionMode,
                             selectedCount: selectedFoodItems.count,
                             onTap: {
-                                if selectedFoodItems.contains(food.id.uuidString) {
-                                    selectedFoodItems.remove(food.id.uuidString)
-                                } else {
+                                // Toggle selection mode on tap
+                                if !isSelectionMode {
+                                    isSelectionMode = true
                                     selectedFoodItems.insert(food.id.uuidString)
+                                } else {
+                                    if selectedFoodItems.contains(food.id.uuidString) {
+                                        selectedFoodItems.remove(food.id.uuidString)
+                                        // Exit selection mode if no items selected
+                                        if selectedFoodItems.isEmpty {
+                                            isSelectionMode = false
+                                        }
+                                    } else {
+                                        selectedFoodItems.insert(food.id.uuidString)
+                                    }
                                 }
                             },
                             onDelete: {
@@ -217,18 +227,23 @@ struct DiaryFoodRow: View {
     
     var body: some View {
         HStack(spacing: 8) {
-            // Selection circle (only show when selected)
-            if isSelected {
+            // Selection circle (show when in selection mode)
+            if isSelectionMode {
                 Button(action: {
                     onTap()
                 }) {
                     Circle()
-                        .fill(Color.blue)
-                        .frame(width: 16, height: 16)
+                        .fill(isSelected ? Color.blue : Color.clear)
+                        .frame(width: 20, height: 20)
+                        .overlay(
+                            Circle()
+                                .stroke(Color.gray.opacity(0.3), lineWidth: 1.5)
+                        )
                         .overlay(
                             Image(systemName: "checkmark")
-                                .font(.system(size: 10, weight: .medium))
+                                .font(.system(size: 11, weight: .medium))
                                 .foregroundColor(.white)
+                                .opacity(isSelected ? 1 : 0)
                         )
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -312,8 +327,13 @@ struct DiaryFoodRow: View {
         }
         .contentShape(Rectangle())
         .onTapGesture {
-            onTap() // Direct selection on tap
-            // Don't show action sheet here - it will be managed globally
+            if !isSelectionMode {
+                // When not in selection mode, show food detail
+                showingFoodDetail = true
+            } else {
+                // When in selection mode, toggle selection
+                onTap()
+            }
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(action: onDelete) {
