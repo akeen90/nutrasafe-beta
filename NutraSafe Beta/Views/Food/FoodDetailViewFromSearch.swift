@@ -54,6 +54,7 @@ struct FoodDetailViewFromSearch: View {
     @State private var originalMealType = ""
     @State private var quantityMultiplier: Double = 1.0 // New quantity multiplier
     @State private var servingSizeText: String = "" // Editable serving size
+    @State private var showingKitchenAddSheet: Bool = false
     
     // Micronutrient data
     @StateObject private var micronutrientManager = MicronutrientManager.shared
@@ -70,6 +71,10 @@ struct FoodDetailViewFromSearch: View {
                 return "Move to \(selectedMeal)"
             }
         } else {
+            // When opened from Kitchen, reflect Kitchen action
+            if sourceType == .kitchen {
+                return "Add to Kitchen"
+            }
             return "Add to Diary"
         }
     }
@@ -809,6 +814,11 @@ struct FoodDetailViewFromSearch: View {
                 },
                 photoType: .barcode
             )
+        }
+        // Kitchen add flow
+        .sheet(isPresented: $showingKitchenAddSheet) {
+            // Reuse Kitchen add sheet for details like expiry/location
+            AddFoundFoodToKitchenSheet(food: food)
         }
     }
     
@@ -1790,39 +1800,45 @@ struct FoodDetailViewFromSearch: View {
                     }
                 }
                 
-                // Meal Time Selector
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("MEAL TIME")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundColor(.secondary)
-                        .tracking(0.5)
-                    
-                    HStack(spacing: 8) {
-                        ForEach(mealOptions, id: \.self) { meal in
-                            Button(action: {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    selectedMeal = meal
-                                }
-                            }) {
-                                Text(meal)
-                                    .font(.system(size: 13, weight: selectedMeal == meal ? .semibold : .medium))
-                                    .foregroundColor(selectedMeal == meal ? .white : .primary)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 16)
-                                            .fill(selectedMeal == meal ? .blue : Color.gray.opacity(0.15))
-                                    )
-                            }
-                        }
+                // Meal Time Selector (Diary only)
+                if sourceType != .kitchen {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("MEAL TIME")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundColor(.secondary)
+                            .tracking(0.5)
                         
-                        Spacer()
+                        HStack(spacing: 8) {
+                            ForEach(mealOptions, id: \.self) { meal in
+                                Button(action: {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        selectedMeal = meal
+                                    }
+                                }) {
+                                    Text(meal)
+                                        .font(.system(size: 13, weight: selectedMeal == meal ? .semibold : .medium))
+                                        .foregroundColor(selectedMeal == meal ? .white : .primary)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 16)
+                                                .fill(selectedMeal == meal ? .blue : Color.gray.opacity(0.15))
+                                        )
+                                }
+                            }
+                            
+                            Spacer()
+                        }
                     }
                 }
                 
-                // Add to Food Log Button
+                // Add Button
                 Button(action: {
-                    addToFoodLog()
+                    if sourceType == .kitchen {
+                        showingKitchenAddSheet = true
+                    } else {
+                        addToFoodLog()
+                    }
                 }) {
                     HStack {
                         Image(systemName: "plus.circle.fill")

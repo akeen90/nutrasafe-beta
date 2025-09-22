@@ -322,10 +322,12 @@ struct NewWorkoutView: View {
         
         // Start updating elapsed time every second
         Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
-            if let startTime = workoutStartTime {
-                elapsedTime = Date().timeIntervalSince(startTime)
-            } else {
-                timer.invalidate()
+            DispatchQueue.main.async {
+                if let startTime = workoutStartTime {
+                    elapsedTime = Date().timeIntervalSince(startTime)
+                } else {
+                    timer.invalidate()
+                }
             }
         }
     }

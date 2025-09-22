@@ -68,7 +68,9 @@ class WorkoutManager: ObservableObject {
         let totalSeconds = Int(Date().timeIntervalSince(startTime))
         let minutes = totalSeconds / 60
         let seconds = totalSeconds % 60
-        currentWorkoutDuration = "\(minutes):\(String(format: "%02d", seconds))"
+        DispatchQueue.main.async { [weak self] in
+            self?.currentWorkoutDuration = "\(minutes):\(String(format: "%02d", seconds))"
+        }
     }
     
     func finishWorkout() -> WorkoutSessionSummary {
@@ -295,16 +297,18 @@ class RestTimer: ObservableObject, Identifiable {
         }
         
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            if self?.remainingTime ?? 0 > 0 {
-                self?.remainingTime -= 1
-                // Update Live Activity
-                if #available(iOS 16.1, *) {
-                    if #available(iOS 16.2, *), let manager = self?.liveActivityManager as? LiveActivityManager {
-                        manager.updateRestTimerActivity(remainingTime: self?.remainingTime ?? 0, isPaused: self?.isPaused ?? false)
+            DispatchQueue.main.async { [weak self] in
+                if self?.remainingTime ?? 0 > 0 {
+                    self?.remainingTime -= 1
+                    // Update Live Activity
+                    if #available(iOS 16.1, *) {
+                        if #available(iOS 16.2, *), let manager = self?.liveActivityManager as? LiveActivityManager {
+                            manager.updateRestTimerActivity(remainingTime: self?.remainingTime ?? 0, isPaused: self?.isPaused ?? false)
+                        }
                     }
+                } else {
+                    self?.complete()
                 }
-            } else {
-                self?.complete()
             }
         }
     }
@@ -336,16 +340,18 @@ class RestTimer: ObservableObject, Identifiable {
         }
         
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            if self?.remainingTime ?? 0 > 0 {
-                self?.remainingTime -= 1
-                // Update Live Activity
-                if #available(iOS 16.1, *) {
-                    if #available(iOS 16.2, *), let manager = self?.liveActivityManager as? LiveActivityManager {
-                        manager.updateRestTimerActivity(remainingTime: self?.remainingTime ?? 0, isPaused: self?.isPaused ?? false)
+            DispatchQueue.main.async { [weak self] in
+                if self?.remainingTime ?? 0 > 0 {
+                    self?.remainingTime -= 1
+                    // Update Live Activity
+                    if #available(iOS 16.1, *) {
+                        if #available(iOS 16.2, *), let manager = self?.liveActivityManager as? LiveActivityManager {
+                            manager.updateRestTimerActivity(remainingTime: self?.remainingTime ?? 0, isPaused: self?.isPaused ?? false)
+                        }
                     }
+                } else {
+                    self?.complete()
                 }
-            } else {
-                self?.complete()
             }
         }
     }
@@ -1338,7 +1344,7 @@ struct ContentView: View {
     @State private var deleteTrigger = false
     @StateObject private var workoutManager = WorkoutManager.shared
     @StateObject private var healthKitManager = HealthKitManager.shared
-    
+
     var body: some View {
         NavigationView {
             ZStack {
@@ -1416,6 +1422,9 @@ struct ContentView: View {
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .sheet(isPresented: $showingSettings) {
             SettingsView()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToKitchen)) { _ in
+            selectedTab = .kitchen
         }
         }
     }

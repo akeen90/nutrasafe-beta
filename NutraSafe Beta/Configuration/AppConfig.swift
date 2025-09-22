@@ -94,5 +94,15 @@ enum AppConfig {
         static let isHealthKitEnabled = true
         static let isOfflineModeEnabled = false
         static let isAnalyticsEnabled = Environment.current == .production
+        
+        // Development-only: silently sign in anonymously if no user session is present
+        // Production will always require explicit auth
+        static let allowAnonymousAuth: Bool = {
+            #if DEBUG
+            return true
+            #else
+            return false
+            #endif
+        }()
     }
 }

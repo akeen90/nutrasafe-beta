@@ -1,18 +1,26 @@
 import SwiftUI
 import Firebase
 
+// Explicit app delegate for proper Firebase initialization and to satisfy swizzler expectations
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication,
+                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
+        if FirebaseApp.app() == nil {
+            FirebaseApp.configure()
+        }
+        return true
+    }
+}
+
 @main
 struct NutraSafeBetaApp: App {
+    // Register app delegate for Firebase setup
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
     @StateObject private var firebaseManager = FirebaseManager.shared
     @StateObject private var healthKitManager = HealthKitManager.shared
     @StateObject private var workoutManager = WorkoutManager.shared
     @StateObject private var restTimerManager = ExerciseRestTimerManager()
-
-    init() {
-        if FirebaseApp.app() == nil {
-            FirebaseApp.configure()
-        }
-    }
 
     var body: some Scene {
         WindowGroup {
@@ -32,9 +40,7 @@ struct MainAppView: View {
     var body: some View {
         ContentView()
             .onAppear {
-                Task {
-                    await healthKitManager.requestAuthorization()
-                }
+                Task { await healthKitManager.requestAuthorization() }
             }
     }
 }
