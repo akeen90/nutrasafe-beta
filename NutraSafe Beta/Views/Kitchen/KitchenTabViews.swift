@@ -1497,70 +1497,30 @@ struct FreshnessIndicatorView: View {
     var body: some View {
         ZStack {
             Circle()
-                .stroke(Color.gray.opacity(0.2), lineWidth: 8)
-                .frame(width: 120, height: 120)
+                .stroke(Color.gray.opacity(0.2), lineWidth: 6)
+                .frame(width: 80, height: 80)
 
             Circle()
                 .trim(from: 0, to: freshnessScore)
                 .stroke(
-                    AngularGradient(
-                        gradient: Gradient(colors: [freshnessColor, freshnessColor.opacity(0.5)]),
-                        center: .center
-                    ),
-                    style: StrokeStyle(lineWidth: 8, lineCap: .round)
+                    freshnessColor,
+                    style: StrokeStyle(lineWidth: 6, lineCap: .round)
                 )
-                .frame(width: 120, height: 120)
+                .frame(width: 80, height: 80)
                 .rotationEffect(.degrees(-90))
                 .animation(.spring(response: 0.6), value: freshnessScore)
 
-            VStack(spacing: 4) {
+            VStack(spacing: 2) {
                 Text(freshnessEmoji)
-                    .font(.system(size: 32))
+                    .font(.system(size: 24))
                 Text("\(Int(freshnessScore * 100))%")
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundColor(freshnessColor)
                 Text("Fresh")
-                    .font(.system(size: 12))
+                    .font(.system(size: 10))
                     .foregroundColor(.secondary)
             }
             .scaleEffect(pulseAnimation ? 1.05 : 1.0)
-        }
-    }
-}
-
-struct StorageLocationSelector: View {
-    @Binding var storageLocation: KitchenItemDetailView.StorageLocation
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label("STORAGE LOCATION", systemImage: "location.fill")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(.secondary)
-
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                ForEach(KitchenItemDetailView.StorageLocation.allCases, id: \.self) { location in
-                    Button(action: {
-                        withAnimation(.spring(response: 0.3)) {
-                            storageLocation = location
-                        }
-                    }) {
-                        HStack {
-                            Image(systemName: location.icon)
-                                .font(.system(size: 16))
-                            Text(location.rawValue)
-                                .font(.system(size: 14, weight: .medium))
-                        }
-                        .foregroundColor(storageLocation == location ? .white : location.color)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(storageLocation == location ? location.color : location.color.opacity(0.1))
-                        )
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                }
-            }
         }
     }
 }
@@ -1577,36 +1537,25 @@ struct KitchenItemDetailView: View {
     @State private var editedExpiryDate: Date = Date()
     @State private var isOpened: Bool = false
     @State private var openedDate: Date = Date()
-    @State private var storageLocation: StorageLocation = .fridge
     @State private var notes: String = ""
     @State private var isSaving: Bool = false
     @State private var showDatePicker: Bool = false
     @State private var animateIn: Bool = false
     @State private var pulseAnimation: Bool = false
 
-    enum StorageLocation: String, CaseIterable {
-        case fridge = "Fridge"
-        case freezer = "Freezer"
-        case pantry = "Pantry"
-        case counter = "Counter"
+    // New expiry selector states
+    @State private var expiryMode: ExpiryMode = .calendar
+    @State private var expiryAmount: Int = 7
+    @State private var expiryUnit: ExpiryUnit = .days
 
-        var icon: String {
-            switch self {
-            case .fridge: return "snowflake"
-            case .freezer: return "snowflake.circle.fill"
-            case .pantry: return "shippingbox.fill"
-            case .counter: return "countertops"
-            }
-        }
+    enum ExpiryMode {
+        case calendar
+        case selector
+    }
 
-        var color: Color {
-            switch self {
-            case .fridge: return .blue
-            case .freezer: return .cyan
-            case .pantry: return .brown
-            case .counter: return .orange
-            }
-        }
+    enum ExpiryUnit: String, CaseIterable {
+        case days = "Days"
+        case weeks = "Weeks"
     }
 
     var freshnessScore: Double {
@@ -1641,217 +1590,243 @@ struct KitchenItemDetailView: View {
 
     var body: some View {
         NavigationView {
-            ZStack {
-                // Premium gradient background
-                LinearGradient(
-                    colors: [
-                        Color(.systemBackground),
-                        freshnessColor.opacity(0.05)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
+            ScrollView {
+                VStack(spacing: 16) {
+                    // Top Product Card - Horizontal Layout
+                    HStack(spacing: 16) {
+                        // Freshness Indicator
+                        FreshnessIndicatorView(
+                            freshnessScore: freshnessScore,
+                            freshnessColor: freshnessColor,
+                            freshnessEmoji: freshnessEmoji,
+                            pulseAnimation: $pulseAnimation
+                        )
 
-                ScrollView {
-                    VStack(spacing: 24) {
-                        // Hero Card with Product Info
-                        VStack(spacing: 20) {
-                            // Freshness Indicator Ring
-                            FreshnessIndicatorView(
-                                freshnessScore: freshnessScore,
-                                freshnessColor: freshnessColor,
-                                freshnessEmoji: freshnessEmoji,
-                                pulseAnimation: $pulseAnimation
-                            )
-                            .padding(.top, 8)
+                        // Product Info
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(itemName)
+                                .font(.system(size: 24, weight: .bold))
+                                .foregroundColor(.primary)
 
-                            VStack(spacing: 8) {
-                                Text(itemName)
-                                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                                    .multilineTextAlignment(.center)
+                            if let brand = brand, !brand.isEmpty {
+                                Text(brand)
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                            }
 
-                                if let brand = brand, !brand.isEmpty {
-                                    Text(brand)
-                                        .font(.system(size: 16))
+                            HStack(spacing: 12) {
+                                Label(quantity, systemImage: "scalemass")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.blue)
+
+                                Label("\(daysLeft) days", systemImage: "calendar")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(freshnessColor)
+                            }
+                            .padding(.top, 4)
+                        }
+
+                        Spacer()
+                    }
+                    .padding(20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(.secondarySystemBackground))
+                    )
+                    .scaleEffect(animateIn ? 1 : 0.95)
+                    .opacity(animateIn ? 1 : 0)
+
+                    // Smart Recommendation Card
+                    HStack {
+                        Image(systemName: "lightbulb.fill")
+                            .foregroundColor(.yellow)
+                            .font(.system(size: 16))
+                        Text(smartRecommendation)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.primary)
+                        Spacer()
+                    }
+                    .padding(16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.yellow.opacity(0.1))
+                    )
+                    .scaleEffect(animateIn ? 1 : 0.95)
+                    .opacity(animateIn ? 1 : 0)
+                    .animation(.spring(response: 0.5).delay(0.05), value: animateIn)
+
+                    // Expiry Management Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("EXPIRY DATE", systemImage: "calendar.badge.clock")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.secondary)
+
+                        // Mode Selector
+                        Picker("", selection: $expiryMode) {
+                            Text("Calendar").tag(ExpiryMode.calendar)
+                            Text("Select").tag(ExpiryMode.selector)
+                        }
+                        .pickerStyle(.segmented)
+
+                        if expiryMode == .calendar {
+                            Button(action: { showDatePicker.toggle() }) {
+                                HStack {
+                                    Text(editedExpiryDate, style: .date)
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 14))
                                         .foregroundColor(.secondary)
                                 }
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(.tertiarySystemBackground))
+                                )
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        } else {
+                            // Days/Weeks Selector
+                            HStack(spacing: 12) {
+                                // Amount picker
+                                HStack {
+                                    Button(action: { if expiryAmount > 1 { expiryAmount -= 1 } }) {
+                                        Image(systemName: "minus.circle.fill")
+                                            .font(.system(size: 24))
+                                            .foregroundColor(.blue)
+                                    }
 
-                                HStack(spacing: 16) {
-                                    Label(quantity, systemImage: "scalemass")
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(.blue)
+                                    Text("\(expiryAmount)")
+                                        .font(.system(size: 20, weight: .semibold))
+                                        .frame(minWidth: 40)
 
-                                    Label("\(daysLeft) days", systemImage: "calendar")
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(freshnessColor)
+                                    Button(action: { if expiryAmount < 365 { expiryAmount += 1 } }) {
+                                        Image(systemName: "plus.circle.fill")
+                                            .font(.system(size: 24))
+                                            .foregroundColor(.blue)
+                                    }
                                 }
-                                .padding(.top, 4)
-                            }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(.tertiarySystemBackground))
+                                )
 
-                            // Smart Recommendation
-                            HStack {
-                                Image(systemName: "lightbulb.fill")
-                                    .foregroundColor(.yellow)
-                                    .font(.system(size: 14))
-                                Text(smartRecommendation)
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(.primary)
+                                // Unit picker
+                                Picker("", selection: $expiryUnit) {
+                                    ForEach(ExpiryUnit.allCases, id: \.self) { unit in
+                                        Text(unit.rawValue).tag(unit)
+                                    }
+                                }
+                                .pickerStyle(.segmented)
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color.yellow.opacity(0.1))
-                            )
                         }
-                        .padding(24)
-                        .background(
-                            RoundedRectangle(cornerRadius: 20)
-                                .fill(Color(.secondarySystemBackground))
-                                .shadow(color: .black.opacity(0.05), radius: 10, y: 5)
-                        )
-                        .scaleEffect(animateIn ? 1 : 0.95)
-                        .opacity(animateIn ? 1 : 0)
+                    }
+                    .padding(20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(.secondarySystemBackground))
+                    )
+                    .scaleEffect(animateIn ? 1 : 0.95)
+                    .opacity(animateIn ? 1 : 0)
+                    .animation(.spring(response: 0.5).delay(0.1), value: animateIn)
 
-                        // Storage Location Selector
-                        StorageLocationSelector(storageLocation: $storageLocation)
-                        .padding(20)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color(.secondarySystemBackground))
-                        )
-                        .scaleEffect(animateIn ? 1 : 0.95)
-                        .opacity(animateIn ? 1 : 0)
-                        .animation(.spring(response: 0.5).delay(0.1), value: animateIn)
-
-                        // Expiry Management
-                        VStack(spacing: 16) {
-                            // New Expiry Date
-                            VStack(alignment: .leading, spacing: 8) {
-                                Label("EXPIRY DATE", systemImage: "calendar.badge.clock")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(.secondary)
-
-                                Button(action: { showDatePicker.toggle() }) {
-                                    HStack {
-                                        Text(editedExpiryDate, style: .date)
-                                            .font(.system(size: 16, weight: .medium))
-                                        Spacer()
-                                        Image(systemName: "chevron.right")
-                                            .font(.system(size: 14))
-                                            .foregroundColor(.secondary)
-                                    }
-                                    .padding()
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .fill(Color(.tertiarySystemBackground))
-                                    )
-                                }
-                                .buttonStyle(PlainButtonStyle())
+                    // Opened Status Card
+                    VStack(spacing: 12) {
+                        Toggle(isOn: $isOpened) {
+                            HStack {
+                                Label("Product Opened", systemImage: isOpened ? "seal.fill" : "seal")
+                                    .font(.system(size: 15, weight: .medium))
+                                Spacer()
                             }
+                        }
+                        .toggleStyle(SwitchToggleStyle(tint: .green))
 
-                            // Opened Status
-                            VStack(alignment: .leading, spacing: 8) {
-                                Toggle(isOn: $isOpened) {
-                                    HStack {
-                                        Label("Product Opened", systemImage: isOpened ? "seal.fill" : "seal")
-                                            .font(.system(size: 15, weight: .medium))
-                                        Spacer()
-                                    }
-                                }
-                                .toggleStyle(SwitchToggleStyle(tint: .green))
+                        if isOpened {
+                            DatePicker(
+                                "Opened on",
+                                selection: $openedDate,
+                                displayedComponents: .date
+                            )
+                            .font(.system(size: 14))
+                            .transition(.scale.combined(with: .opacity))
+                        }
+                    }
+                    .padding(20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(.secondarySystemBackground))
+                    )
+                    .scaleEffect(animateIn ? 1 : 0.95)
+                    .opacity(animateIn ? 1 : 0)
+                    .animation(.spring(response: 0.5).delay(0.15), value: animateIn)
 
-                                if isOpened {
-                                    DatePicker(
-                                        "Opened on",
-                                        selection: $openedDate,
-                                        displayedComponents: .date
-                                    )
-                                    .font(.system(size: 14))
-                                    .padding(.horizontal)
-                                    .transition(.scale.combined(with: .opacity))
-                                }
-                            }
+                    // Notes Field
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("NOTES", systemImage: "note.text")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.secondary)
+
+                        TextField("Add notes about this item...", text: $notes)
+                            .font(.system(size: 14))
                             .padding()
                             .background(
                                 RoundedRectangle(cornerRadius: 12)
                                     .fill(Color(.tertiarySystemBackground))
                             )
-
-                            // Notes Field
-                            VStack(alignment: .leading, spacing: 8) {
-                                Label("NOTES", systemImage: "note.text")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(.secondary)
-
-                                TextField("Add notes about this item...", text: $notes)
-                                    .font(.system(size: 14))
-                                    .padding()
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .fill(Color(.tertiarySystemBackground))
-                                    )
-                            }
-                        }
-                        .padding(20)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color(.secondarySystemBackground))
-                        )
-                        .scaleEffect(animateIn ? 1 : 0.95)
-                        .opacity(animateIn ? 1 : 0)
-                        .animation(.spring(response: 0.5).delay(0.2), value: animateIn)
-
-                        // Action Buttons
-                        VStack(spacing: 12) {
-                            Button(action: { Task { await saveChanges() } }) {
-                                HStack {
-                                    if isSaving {
-                                        ProgressView()
-                                            .scaleEffect(0.8)
-                                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                    } else {
-                                        Image(systemName: "checkmark.circle.fill")
-                                        Text("Save Changes")
-                                    }
-                                }
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(
-                                    LinearGradient(
-                                        colors: [Color.blue, Color.blue.opacity(0.8)],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                                .cornerRadius(14)
-                                .shadow(color: .blue.opacity(0.3), radius: 8, y: 4)
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .disabled(isSaving)
-
-                            Button(action: { dismiss() }) {
-                                Text("Cancel")
-                                    .font(.system(size: 15, weight: .medium))
-                                    .foregroundColor(.secondary)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 14)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .fill(Color(.tertiarySystemBackground))
-                                    )
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                        }
-                        .scaleEffect(animateIn ? 1 : 0.95)
-                        .opacity(animateIn ? 1 : 0)
-                        .animation(.spring(response: 0.5).delay(0.3), value: animateIn)
                     }
-                    .padding()
+                    .padding(20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(.secondarySystemBackground))
+                    )
+                    .scaleEffect(animateIn ? 1 : 0.95)
+                    .opacity(animateIn ? 1 : 0)
+                    .animation(.spring(response: 0.5).delay(0.2), value: animateIn)
+
+                    // Action Buttons
+                    VStack(spacing: 12) {
+                        Button(action: { Task { await saveChanges() } }) {
+                            HStack {
+                                if isSaving {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                } else {
+                                    Image(systemName: "checkmark.circle.fill")
+                                    Text("Save Changes")
+                                }
+                            }
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color.blue)
+                            .cornerRadius(14)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .disabled(isSaving)
+
+                        Button(action: { dismiss() }) {
+                            Text("Cancel")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(.tertiarySystemBackground))
+                                )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    .scaleEffect(animateIn ? 1 : 0.95)
+                    .opacity(animateIn ? 1 : 0)
+                    .animation(.spring(response: 0.5).delay(0.25), value: animateIn)
                 }
+                .padding()
             }
             .navigationTitle("Manage Item")
             .navigationBarTitleDisplayMode(.inline)
@@ -1878,12 +1853,33 @@ struct KitchenItemDetailView: View {
         }
         .onAppear {
             editedExpiryDate = Date().addingTimeInterval(TimeInterval(daysLeft * 24 * 60 * 60))
+            expiryAmount = max(daysLeft, 1)
+            expiryUnit = daysLeft > 14 ? .weeks : .days
+            if expiryUnit == .weeks {
+                expiryAmount = expiryAmount / 7
+            }
             withAnimation(.spring(response: 0.6)) {
                 animateIn = true
             }
             withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
                 pulseAnimation = true
             }
+        }
+        .onChange(of: expiryMode) { _ in
+            updateExpiryDate()
+        }
+        .onChange(of: expiryAmount) { _ in
+            updateExpiryDate()
+        }
+        .onChange(of: expiryUnit) { _ in
+            updateExpiryDate()
+        }
+    }
+
+    private func updateExpiryDate() {
+        if expiryMode == .selector {
+            let daysToAdd = expiryUnit == .weeks ? expiryAmount * 7 : expiryAmount
+            editedExpiryDate = Date().addingTimeInterval(TimeInterval(daysToAdd * 24 * 60 * 60))
         }
     }
 
