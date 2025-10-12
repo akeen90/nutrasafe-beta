@@ -983,51 +983,108 @@ struct LogReactionView: View {
     }
 
     private func autoLoadIngredientsFromFood(_ ingredients: [String]) {
-        // Show loading state while AI processes
-        Task {
-            // First apply basic client-side filtering for quick results
-            let basicFiltered = ingredients.compactMap { ingredient -> String? in
-                let cleaned = ingredient.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !cleaned.isEmpty else { return nil }
-                guard cleaned.count < 50 else { return nil }
-                guard !cleaned.contains(":") else { return nil }
+        let standardized = standardizeIngredients(ingredients)
+        suspectedIngredients = standardized
+    }
 
-                let periodCount = cleaned.filter { $0 == "." }.count
-                guard periodCount <= 1 else { return nil }
+    private func standardizeIngredients(_ ingredients: [String]) -> [String] {
+        var processed: [String] = []
+        var seen = Set<String>()
 
-                let excludeKeywords = [
-                    "ALLERGEN", "STORAGE", "HOW TO", "NUTRITION", "PREPARE",
-                    "REFRIGERATE", "BEST", "USE BY", "DEFROST", "COOKING",
-                    "INSTRUCTIONS", "WARNING", "CONTAINS", "MAY CONTAIN"
-                ]
+        for ingredient in ingredients {
+            var cleaned = ingredient.trimmingCharacters(in: .whitespacesAndNewlines)
 
-                let upperCleaned = cleaned.uppercased()
-                for keyword in excludeKeywords {
-                    if upperCleaned.contains(keyword) {
-                        return nil
+            // Skip empty
+            guard !cleaned.isEmpty else { continue }
+
+            // Skip long text blocks (instructions/warnings)
+            guard cleaned.count < 80 else { continue }
+
+            // Skip if contains colons (labels)
+            guard !cleaned.contains(":") else { continue }
+
+            // Skip if has multiple sentences
+            let periodCount = cleaned.filter { $0 == "." }.count
+            guard periodCount <= 1 else { continue }
+
+            // Filter out common non-ingredient text
+            let excludeKeywords = [
+                "ALLERGEN", "STORAGE", "HOW TO", "NUTRITION", "PREPARE",
+                "REFRIGERATE", "BEST", "USE BY", "DEFROST", "COOKING",
+                "INSTRUCTIONS", "WARNING", "CONTAINS", "MAY CONTAIN",
+                "FOR ALLERGENS", "SEE INGREDIENTS", "MADE IN A",
+                "INCLUDING CEREALS", "ENERGY", "FAT", "PROTEIN",
+                "CARBOHYDRATE", "PER 100", "TYPICAL VALUES"
+            ]
+
+            let upperCleaned = cleaned.uppercased()
+            var shouldSkip = false
+            for keyword in excludeKeywords {
+                if upperCleaned.contains(keyword) {
+                    shouldSkip = true
+                    break
+                }
+            }
+            if shouldSkip { continue }
+
+            // Remove vitamins and minerals
+            let vitaminsMineral = [
+                "CALCIUM CARBONATE", "IRON", "NIACIN", "THIAMIN", "RIBOFLAVIN",
+                "VITAMIN", "FOLIC ACID", "ZINC", "MAGNESIUM", "POTASSIUM"
+            ]
+            for vm in vitaminsMineral {
+                if upperCleaned.contains(vm) {
+                    shouldSkip = true
+                    break
+                }
+            }
+            if shouldSkip { continue }
+
+            // Clean up the ingredient name
+            // Remove percentages
+            cleaned = cleaned.replacingOccurrences(of: #"\s*\(\d+%?\)|\s*\d+%"#, with: "", options: .regularExpression)
+
+            // Handle parenthetical sub-ingredients: "butter (milk)" → "butter, milk"
+            if let openParen = cleaned.firstIndex(of: "("),
+               let closeParen = cleaned.lastIndex(of: ")") {
+                let main = String(cleaned[..<openParen]).trimmingCharacters(in: .whitespaces)
+                let sub = String(cleaned[cleaned.index(after: openParen)..<closeParen]).trimmingCharacters(in: .whitespaces)
+
+                // If sub-ingredient is not just clarification, keep both
+                if !sub.isEmpty && !sub.lowercased().contains(main.lowercased()) {
+                    if !seen.contains(main.lowercased()) {
+                        processed.append(main)
+                        seen.insert(main.lowercased())
                     }
+                    if !seen.contains(sub.lowercased()) {
+                        processed.append(sub)
+                        seen.insert(sub.lowercased())
+                    }
+                    continue
+                } else {
+                    // Clarification, use main only
+                    cleaned = main
                 }
-
-                return cleaned
             }
 
-            // Update UI with basic filtering immediately
-            await MainActor.run {
-                suspectedIngredients = basicFiltered
-            }
+            // Remove trailing/leading punctuation except periods at end
+            cleaned = cleaned.trimmingCharacters(in: CharacterSet(charactersIn: "()[]{}"))
 
-            // Then call Gemini for AI-powered standardization
-            do {
-                let standardized = try await standardizeIngredientsWithAI(basicFiltered)
-                await MainActor.run {
-                    suspectedIngredients = standardized
-                }
-                print("✨ AI standardized ingredients: \(standardized.joined(separator: ", "))")
-            } catch {
-                print("⚠️ AI standardization failed, keeping basic filter: \(error)")
-                // Already have basic filtered results, so no need to update
+            // Normalize spaces
+            cleaned = cleaned.replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+
+            // Final length check
+            guard cleaned.count >= 2 else { continue }
+
+            // Add if not duplicate
+            let lowerCleaned = cleaned.lowercased()
+            if !seen.contains(lowerCleaned) {
+                processed.append(cleaned)
+                seen.insert(lowerCleaned)
             }
         }
+
+        return processed
     }
 
     private func standardizeIngredientsWithAI(_ ingredients: [String]) async throws -> [String] {
