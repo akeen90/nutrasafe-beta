@@ -90,14 +90,17 @@ struct FoodSearchResultRowEnhanced: View {
     let food: FoodSearchResult
     let sourceType: FoodSourceType
     @Binding var selectedTab: TabItem
+    @Binding var destination: AddFoodMainView.AddDestination
     @State private var showingFoodDetail = false
+    @State private var showingKitchenSheet = false
     @State private var isPressed = false
     @EnvironmentObject var diaryDataManager: DiaryDataManager
-    
-    init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>) {
+
+    init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, destination: Binding<AddFoodMainView.AddDestination>) {
         self.food = food
         self.sourceType = sourceType
         self._selectedTab = selectedTab
+        self._destination = destination
     }
     
     private var nutritionScore: ProcessingGrade {
@@ -144,7 +147,11 @@ struct FoodSearchResultRowEnhanced: View {
     
     var body: some View {
         Button(action: {
-            showingFoodDetail = true
+            if destination == .kitchen {
+                showingKitchenSheet = true
+            } else {
+                showingFoodDetail = true
+            }
         }) {
             VStack(alignment: .leading, spacing: 12) {
                 // Product name and brand
@@ -271,18 +278,31 @@ struct FoodSearchResultRowEnhanced: View {
         .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
             isPressed = pressing
         }, perform: {
-            showingFoodDetail = true
+            if destination == .kitchen {
+                showingKitchenSheet = true
+            } else {
+                showingFoodDetail = true
+            }
         })
         .simultaneousGesture(
             TapGesture()
                 .onEnded { _ in
-                    showingFoodDetail = true
+                    if destination == .kitchen {
+                        showingKitchenSheet = true
+                    } else {
+                        showingFoodDetail = true
+                    }
                 }
         )
         .buttonStyle(PlainButtonStyle())
         .sheet(isPresented: $showingFoodDetail) {
-            FoodDetailViewFromSearch(food: food, sourceType: sourceType, selectedTab: $selectedTab)
+            FoodDetailViewFromSearch(food: food, sourceType: sourceType, selectedTab: $selectedTab, destination: destination)
                 .environmentObject(diaryDataManager)
+        }
+        .sheet(isPresented: $showingKitchenSheet) {
+            AddFoundFoodToKitchenSheet(food: food) { tab in
+                selectedTab = tab
+            }
         }
     }
 }
@@ -325,10 +345,10 @@ enum FoodSourceType {
 /// Comprehensive food search interface with live search, recent foods, and keyboard handling
 struct AddFoodSearchView: View {
     @Binding var selectedTab: TabItem
+    @Binding var destination: AddFoodMainView.AddDestination
     @State private var searchText = ""
     @State private var searchResults: [FoodSearchResult] = []
     @State private var isSearching = false
-    @StateObject private var fatSecretService = FatSecretService.shared
     @EnvironmentObject var diaryDataManager: DiaryDataManager
     @State private var recentFoods: [DiaryFoodItem] = []
     @State private var searchTask: Task<Void, Never>?
@@ -409,15 +429,15 @@ struct AddFoodSearchView: View {
                                 
                                 ForEach(recentFoods, id: \.id) { recentFood in
                                     let searchResult = convertToSearchResult(recentFood)
-                                    FoodSearchResultRowEnhanced(food: searchResult, selectedTab: $selectedTab)
+                                    FoodSearchResultRowEnhanced(food: searchResult, selectedTab: $selectedTab, destination: $destination)
                                         .padding(.horizontal, 16)
                                 }
                             }
                         }
-                        
+
                         // Show search results when searching
                         ForEach(searchResults, id: \.id) { food in
-                            FoodSearchResultRowEnhanced(food: food, selectedTab: $selectedTab)
+                            FoodSearchResultRowEnhanced(food: food, selectedTab: $selectedTab, destination: $destination)
                         }
                     }
                     .padding(.horizontal, searchText.isEmpty ? 0 : 16)
@@ -480,7 +500,7 @@ struct AddFoodSearchView: View {
             if Task.isCancelled { return }
             
             do {
-                let results = try await fatSecretService.searchFoods(query: query)
+                let results = try await FirebaseManager.shared.searchFoods(query: query)
                 
                 if Task.isCancelled { return }
                 

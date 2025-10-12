@@ -536,9 +536,9 @@ struct ComprehensiveWorkoutView: View {
                                                             .fontWeight(index == currentExerciseIndex ? .semibold : .regular)
                                                             .foregroundColor(index == currentExerciseIndex ? .white : .primary)
                                                         
-                                                        let sets = exerciseSets[exercise]?.count ?? 0
-                                                        if sets > 0 {
-                                                            Text("\(sets) sets")
+                                                        let setCount = exerciseSets[exercise]?.count ?? 0
+                                                        if setCount > 0 {
+                                                            Text("\(setCount) sets")
                                                                 .font(.caption)
                                                                 .foregroundColor(index == currentExerciseIndex ? .white.opacity(0.9) : .secondary)
                                                         }

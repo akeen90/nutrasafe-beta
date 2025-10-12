@@ -15,6 +15,7 @@ import AudioToolbox
 
 struct AddFoodAIView: View {
     @Binding var selectedTab: TabItem
+    @Binding var destination: AddFoodMainView.AddDestination
     @State private var isScanning = false
     @State private var recognizedFoods: [FoodSearchResult] = []
     @State private var showingImagePicker = false
@@ -111,7 +112,8 @@ struct AddFoodAIView: View {
                         onScanAnother: {
                             recognizedFoods = []
                         },
-                        selectedTab: $selectedTab
+                        selectedTab: $selectedTab,
+                        destination: destination
                     )
                 }
             }
@@ -135,7 +137,7 @@ struct AddFoodAIView: View {
         .sheet(isPresented: $showingFoodDetail) {
             if let food = selectedFoodForDetail {
                 NavigationView {
-                    FoodDetailViewFromSearch(food: food, selectedTab: $selectedTab)
+                    FoodDetailViewFromSearch(food: food, selectedTab: $selectedTab, destination: destination)
                 }
             }
         }
@@ -373,7 +375,8 @@ struct AIFoodSelectionView: View {
     let onSelectionComplete: ([FoodSearchResult]) -> Void
     let onScanAnother: () -> Void
     @Binding var selectedTab: TabItem
-    
+    let destination: AddFoodMainView.AddDestination
+
     @State private var selectedFoods: Set<String> = []
     @State private var showingFoodDetail = false
     @State private var selectedFood: FoodSearchResult?
@@ -435,7 +438,7 @@ struct AIFoodSelectionView: View {
         .sheet(isPresented: $showingFoodDetail) {
             if let food = selectedFood {
                 NavigationView {
-                    FoodDetailViewFromSearch(food: food, selectedTab: $selectedTab)
+                    FoodDetailViewFromSearch(food: food, selectedTab: $selectedTab, destination: destination)
                 }
             }
         }

@@ -21,6 +21,7 @@ struct FoodDetailViewFromSearch: View {
     let food: FoodSearchResult
     let sourceType: FoodSourceType
     @Binding var selectedTab: TabItem
+    let destination: AddFoodMainView.AddDestination
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var diaryDataManager: DiaryDataManager
     @State private var gramsAmount: String = "100"
@@ -31,11 +32,18 @@ struct FoodDetailViewFromSearch: View {
     @State private var ingredientImage: UIImage?
     @State private var isProcessingIngredients = false
     @State private var showingSubmissionSuccess = false
-    
-    init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>) {
+    @State private var enrichedFood: FoodSearchResult?
+
+    init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, destination: AddFoodMainView.AddDestination) {
         self.food = food
         self.sourceType = sourceType
         self._selectedTab = selectedTab
+        self.destination = destination
+    }
+
+    // Use enriched food if available, otherwise use original
+    private var displayFood: FoodSearchResult {
+        enrichedFood ?? food
     }
     
     // Enhanced photo system for database building
@@ -71,11 +79,8 @@ struct FoodDetailViewFromSearch: View {
                 return "Move to \(selectedMeal)"
             }
         } else {
-            // When opened from Kitchen, reflect Kitchen action
-            if sourceType == .kitchen {
-                return "Add to Kitchen"
-            }
-            return "Add to Diary"
+            // Reflect destination selection
+            return destination == .kitchen ? "Add to Kitchen" : "Add to Diary"
         }
     }
     
@@ -115,7 +120,7 @@ struct FoodDetailViewFromSearch: View {
     
     // Extract the actual serving size from editable serving size text
     private var actualServingSize: Double {
-        let textToUse = servingSizeText.isEmpty ? (food.servingDescription ?? "100g") : servingSizeText
+        let textToUse = servingSizeText.isEmpty ? (displayFood.servingDescription ?? "100g") : servingSizeText
         
         // Try to extract numbers from serving description like "39.4g", "1 container (150g)" or "1/2 cup (98g)"
         let patterns = [
@@ -145,37 +150,37 @@ struct FoodDetailViewFromSearch: View {
     }
     
     private var adjustedCalories: Double {
-        food.calories * perServingMultiplier * quantityMultiplier
+        displayFood.calories * perServingMultiplier * quantityMultiplier
     }
-    
+
     private var adjustedProtein: Double {
-        food.protein * perServingMultiplier * quantityMultiplier
+        displayFood.protein * perServingMultiplier * quantityMultiplier
     }
-    
+
     private var adjustedCarbs: Double {
-        food.carbs * perServingMultiplier * quantityMultiplier
+        displayFood.carbs * perServingMultiplier * quantityMultiplier
     }
-    
+
     private var adjustedFat: Double {
-        food.fat * perServingMultiplier * quantityMultiplier
+        displayFood.fat * perServingMultiplier * quantityMultiplier
     }
-    
+
     private var adjustedFiber: Double {
-        food.fiber * perServingMultiplier * quantityMultiplier
+        displayFood.fiber * perServingMultiplier * quantityMultiplier
     }
-    
+
     private var adjustedSugar: Double {
-        food.sugar * perServingMultiplier * quantityMultiplier
+        displayFood.sugar * perServingMultiplier * quantityMultiplier
     }
-    
+
     private var adjustedSalt: Double {
         // Convert sodium (mg) to salt (g): salt = sodium * 2.5 / 1000
-        (food.sodium * perServingMultiplier * quantityMultiplier * 2.5) / 1000
+        (displayFood.sodium * perServingMultiplier * quantityMultiplier * 2.5) / 1000
     }
-    
+
     private var saltPer100g: Double {
         // Convert sodium (mg) to salt (g): salt = sodium * 2.5 / 1000
-        (food.sodium * 2.5) / 1000
+        (displayFood.sodium * 2.5) / 1000
     }
     
     private var glycemicIndex: Int? {
@@ -223,23 +228,23 @@ struct FoodDetailViewFromSearch: View {
         if let userIngredients = getIngredientsList(), !userIngredients.isEmpty {
             // Calculate score using user-verified ingredients
             let ingredientsString = userIngredients.joined(separator: ", ")
-            return ProcessingScorer.shared.calculateProcessingScore(for: food.name, ingredients: ingredientsString, sugarPer100g: food.sugar)
+            return ProcessingScorer.shared.calculateProcessingScore(for: displayFood.name, ingredients: ingredientsString, sugarPer100g: displayFood.sugar)
         }
-        
+
         // Fallback to official ingredients if available
-        if let ingredients = food.ingredients, !ingredients.isEmpty {
+        if let ingredients = displayFood.ingredients, !ingredients.isEmpty {
             // Remove from pending list if it was there
             if submittedFoods.contains(foodKey) {
                 var updatedSubmittedFoods = submittedFoods
                 updatedSubmittedFoods.removeAll { $0 == foodKey }
                 UserDefaults.standard.set(updatedSubmittedFoods, forKey: "submittedFoodsForReview")
             }
-            
+
             // Calculate score using ingredients (convert array to string)
             let ingredientsString = ingredients.joined(separator: ", ")
-            return ProcessingScorer.shared.calculateProcessingScore(for: food.name, ingredients: ingredientsString, sugarPer100g: food.sugar)
+            return ProcessingScorer.shared.calculateProcessingScore(for: displayFood.name, ingredients: ingredientsString, sugarPer100g: displayFood.sugar)
         }
-        
+
         // Only show "In Review" if the food was submitted AND has no ingredients
         if submittedFoods.contains(foodKey) {
             return NutritionProcessingScore(
@@ -255,11 +260,11 @@ struct FoodDetailViewFromSearch: View {
         }
 
         // Default score for foods without ingredients
-        return ProcessingScorer.shared.calculateProcessingScore(for: food.name, sugarPer100g: food.sugar)
+        return ProcessingScorer.shared.calculateProcessingScore(for: displayFood.name, sugarPer100g: displayFood.sugar)
     }
-    
+
     private var sugarScore: SugarContentScore {
-        return SugarContentScorer.shared.calculateSugarScore(sugarPer100g: food.sugar)
+        return SugarContentScorer.shared.calculateSugarScore(sugarPer100g: displayFood.sugar)
     }
     
     enum IngredientsStatus {
@@ -307,7 +312,7 @@ struct FoodDetailViewFromSearch: View {
         }
         
         // Food has nutrition data but no ingredients - still unverified
-        if food.calories > 0 || food.protein > 0 || food.carbs > 0 || food.fat > 0 {
+        if displayFood.calories > 0 || displayFood.protein > 0 || displayFood.carbs > 0 || displayFood.fat > 0 {
             print("🔍 Has nutrition data but unverified")
             return .unverified
         }
@@ -404,8 +409,13 @@ struct FoodDetailViewFromSearch: View {
     
     
     private func getDetectedAdditives() -> [DetailedAdditive] {
+        print("getDetectedAdditives: displayFood.additives = \(String(describing: displayFood.additives))")
+        print("getDetectedAdditives: displayFood.name = \(displayFood.name)")
+        print("getDetectedAdditives: displayFood.calories = \(displayFood.calories)")
+
         // First check if we have Firebase additive data
-        if let firebaseAdditives = food.additives, !firebaseAdditives.isEmpty {
+        if let firebaseAdditives = displayFood.additives, !firebaseAdditives.isEmpty {
+            print("getDetectedAdditives: Found \(firebaseAdditives.count) additives")
             return firebaseAdditives.map { additive in
                 let riskLevel: String
                 if additive.effectsVerdict == "avoid" {
@@ -415,15 +425,16 @@ struct FoodDetailViewFromSearch: View {
                 } else {
                     riskLevel = "Low"
                 }
-                
-                let description = "No information available"
-                
+
+                // Use consumer guide if available, otherwise use a default message
+                let description = additive.consumerGuide ?? "No detailed information available for this additive."
+
                 return DetailedAdditive(
                     name: additive.name,
                     code: additive.code,
                     purpose: additive.category.capitalized,
-                    origin: "Unknown", // NutritionAdditiveInfo doesn't have origin
-                    childWarning: additive.childWarning ?? false,
+                    origin: additive.origin ?? "Unknown",
+                    childWarning: additive.childWarning,
                     riskLevel: riskLevel,
                     description: description
                 )
@@ -666,24 +677,47 @@ struct FoodDetailViewFromSearch: View {
             }
         }
         .onAppear {
+            // Check if nutrition data is missing (for any food - editing or fresh search)
+            if food.calories == 0 || (food.fiber == 0 && food.sugar == 0 && food.sodium == 0) {
+                // Try to fetch fresh data from Firebase
+                Task {
+                    await fetchEnrichedFoodData()
+                }
+            }
+
             // Check for editing mode
             if let mode = UserDefaults.standard.string(forKey: "foodSearchMode"), mode == "editing" {
                 isEditingMode = true
                 originalMealType = UserDefaults.standard.string(forKey: "editingMealType") ?? ""
                 selectedMeal = originalMealType
+
+                // Load saved quantity and serving size for editing
+                if let savedQuantity = UserDefaults.standard.object(forKey: "editingQuantity") as? Double {
+                    quantityMultiplier = savedQuantity
+                }
+                if let savedServingDesc = UserDefaults.standard.string(forKey: "editingServingDescription") {
+                    servingSizeText = savedServingDesc
+                }
+
+                // Clear editing context after loading
+                UserDefaults.standard.removeObject(forKey: "foodSearchMode")
+                UserDefaults.standard.removeObject(forKey: "editingMealType")
+                UserDefaults.standard.removeObject(forKey: "editingFoodId")
+                UserDefaults.standard.removeObject(forKey: "editingQuantity")
+                UserDefaults.standard.removeObject(forKey: "editingServingDescription")
             } else if let preselectedMeal = UserDefaults.standard.string(forKey: "preselectedMealType") {
                 selectedMeal = preselectedMeal
                 // Clear the stored value after using it
                 UserDefaults.standard.removeObject(forKey: "preselectedMealType")
             }
-            
+
             // Initialize picker values based on current food serving data
             selectedAmount = Double(gramsAmount) ?? 100
             selectedServings = Double(servings) ?? 1.0
             selectedUnit = "g"
-            
+
             // If there's a serving description, try to extract unit information
-            if let servingDesc = food.servingDescription?.lowercased() {
+            if let servingDesc = displayFood.servingDescription?.lowercased() {
                 if servingDesc.contains("cup") {
                     selectedUnit = "cups"
                 } else if servingDesc.contains("tbsp") || servingDesc.contains("tablespoon") {
@@ -818,7 +852,10 @@ struct FoodDetailViewFromSearch: View {
         // Kitchen add flow
         .sheet(isPresented: $showingKitchenAddSheet) {
             // Reuse Kitchen add sheet for details like expiry/location
-            AddFoundFoodToKitchenSheet(food: food)
+            AddFoundFoodToKitchenSheet(food: food) { tab in
+                selectedTab = tab
+                dismiss()
+            }
         }
     }
     
@@ -863,7 +900,7 @@ struct FoodDetailViewFromSearch: View {
                             .foregroundColor(.primary)
                         
                         HStack(alignment: .bottom, spacing: 4) {
-                            Text(String(format: "%.0f", food.calories))
+                            Text(String(format: "%.0f", displayFood.calories))
                                 .font(.system(size: 24, weight: .bold, design: .rounded))
                                 .foregroundColor(.secondary)
                             Text("kcal")
@@ -893,11 +930,11 @@ struct FoodDetailViewFromSearch: View {
                     .tracking(0.5)
                 
                 VStack(spacing: 8) {
-                    nutritionRowModern("Protein", perServing: adjustedProtein, per100g: food.protein, unit: "g")
-                    nutritionRowModern("Carbs", perServing: adjustedCarbs, per100g: food.carbs, unit: "g")
-                    nutritionRowModern("Fat", perServing: adjustedFat, per100g: food.fat, unit: "g")
-                    nutritionRowModern("Fiber", perServing: adjustedFiber, per100g: food.fiber, unit: "g")
-                    nutritionRowModern("Sugar", perServing: adjustedSugar, per100g: food.sugar, unit: "g")
+                    nutritionRowModern("Protein", perServing: adjustedProtein, per100g: displayFood.protein, unit: "g")
+                    nutritionRowModern("Carbs", perServing: adjustedCarbs, per100g: displayFood.carbs, unit: "g")
+                    nutritionRowModern("Fat", perServing: adjustedFat, per100g: displayFood.fat, unit: "g")
+                    nutritionRowModern("Fiber", perServing: adjustedFiber, per100g: displayFood.fiber, unit: "g")
+                    nutritionRowModern("Sugar", perServing: adjustedSugar, per100g: displayFood.sugar, unit: "g")
                     nutritionRowModern("Salt", perServing: adjustedSalt, per100g: saltPer100g, unit: "g")
                 }
             }
@@ -968,37 +1005,51 @@ struct FoodDetailViewFromSearch: View {
         
         // Calculate actual serving calories and macros based on user selections
         let servingSize = actualServingSize
-        let totalCalories = food.calories * (servingSize / 100) * quantityMultiplier
-        let totalProtein = food.protein * (servingSize / 100) * quantityMultiplier
-        let totalCarbs = food.carbs * (servingSize / 100) * quantityMultiplier
-        let totalFat = food.fat * (servingSize / 100) * quantityMultiplier
-        
+        let totalCalories = displayFood.calories * (servingSize / 100) * quantityMultiplier
+        let totalProtein = displayFood.protein * (servingSize / 100) * quantityMultiplier
+        let totalCarbs = displayFood.carbs * (servingSize / 100) * quantityMultiplier
+        let totalFat = displayFood.fat * (servingSize / 100) * quantityMultiplier
+        let totalFiber = displayFood.fiber * (servingSize / 100) * quantityMultiplier
+        let totalSugar = displayFood.sugar * (servingSize / 100) * quantityMultiplier
+        let totalSodium = displayFood.sodium * (servingSize / 100) * quantityMultiplier
+
         // Create diary entry
         let diaryEntry = DiaryFoodItem(
-            name: food.name,
+            name: displayFood.name,
+            brand: displayFood.brand,
             calories: Int(totalCalories),
             protein: totalProtein,
             carbs: totalCarbs,
             fat: totalFat,
+            fiber: totalFiber,
+            sugar: totalSugar,
+            sodium: totalSodium,
             servingDescription: "\(String(format: "%.0f", servingSize))g serving",
             quantity: quantityMultiplier,
             time: selectedMeal,
             processedScore: nutritionScore.grade.rawValue,
             sugarLevel: getSugarLevel(),
-            ingredients: food.ingredients,
-            additives: food.additives
+            ingredients: displayFood.ingredients,
+            additives: displayFood.additives,
+            barcode: displayFood.barcode
         )
-        
-        // Add to diary using DiaryDataManager
-        print("FoodDetailView: About to add food '\(diaryEntry.name)' to meal '\(selectedMeal)'")
-        print("FoodDetailView: DiaryEntry details - Calories: \(diaryEntry.calories), Protein: \(diaryEntry.protein), Serving: \(diaryEntry.servingDescription), Quantity: \(diaryEntry.quantity)")
-        diaryDataManager.addFoodItem(diaryEntry, to: selectedMeal, for: Date())
 
-        print("FoodDetailView: Successfully added \(diaryEntry.name) to \(selectedMeal)")
-        
-        // Navigate back to diary tab and dismiss view
-        selectedTab = .diary
-        dismiss()
+        // Add to diary or kitchen based on destination
+        if destination == .kitchen {
+            // Show kitchen detail sheet where user can set expiry, location, etc.
+            showingKitchenAddSheet = true
+        } else {
+            // Add to diary using DiaryDataManager
+            print("FoodDetailView: About to add food '\(diaryEntry.name)' to meal '\(selectedMeal)'")
+            print("FoodDetailView: DiaryEntry details - Calories: \(diaryEntry.calories), Protein: \(diaryEntry.protein), Serving: \(diaryEntry.servingDescription), Quantity: \(diaryEntry.quantity)")
+            diaryDataManager.addFoodItem(diaryEntry, to: selectedMeal, for: Date())
+
+            print("FoodDetailView: Successfully added \(diaryEntry.name) to \(selectedMeal)")
+
+            // Navigate back to diary
+            selectedTab = .diary
+            dismiss()
+        }
     }
     
     private func formatQuantityMultiplier(_ quantity: Double) -> String {
@@ -1008,6 +1059,42 @@ struct FoodDetailViewFromSearch: View {
             return "\(Int(quantity))"
         } else {
             return String(format: "%.1f", quantity)
+        }
+    }
+
+    // Fetch complete nutrition data from Firebase when editing old items with missing data
+    private func fetchEnrichedFoodData() async {
+        print("FoodDetailView: Fetching enriched data for \(food.name)")
+        print("FoodDetailView: Current food.additives = \(String(describing: food.additives))")
+
+        // Try barcode first if available
+        if let barcode = food.barcode, !barcode.isEmpty {
+            do {
+                let results = try await FirebaseManager.shared.searchFoodsByBarcode(barcode: barcode)
+                if let freshFood = results.first {
+                    print("FoodDetailView: Found fresh data by barcode")
+                    print("FoodDetailView: Fresh additives = \(String(describing: freshFood.additives))")
+                    enrichedFood = freshFood
+                    return
+                }
+            } catch {
+                print("FoodDetailView: Barcode search failed: \(error)")
+            }
+        }
+
+        // Fallback to name search
+        do {
+            let results = try await FirebaseManager.shared.searchFoods(query: food.name)
+            if let freshFood = results.first {
+                print("FoodDetailView: Found fresh data by name search")
+                print("FoodDetailView: Fresh calories = \(freshFood.calories)")
+                print("FoodDetailView: Fresh additives = \(String(describing: freshFood.additives))")
+                enrichedFood = freshFood
+            } else {
+                print("FoodDetailView: No results found for '\(food.name)'")
+            }
+        } catch {
+            print("FoodDetailView: Name search failed: \(error)")
         }
     }
     
@@ -1252,15 +1339,15 @@ struct FoodDetailViewFromSearch: View {
     
     private func loadMicronutrients() {
         let basicVitamins: [String: Double] = [
-            "vitaminA": food.protein * 2.5 * quantityMultiplier,
-            "vitaminC": food.carbs * 0.8 * quantityMultiplier,
-            "folate": food.carbs * 0.6 * quantityMultiplier
+            "vitaminA": displayFood.protein * 2.5 * quantityMultiplier,
+            "vitaminC": displayFood.carbs * 0.8 * quantityMultiplier,
+            "folate": displayFood.carbs * 0.6 * quantityMultiplier
         ]
 
         let basicMinerals: [String: Double] = [
-            "calcium": food.protein * 8.0 * quantityMultiplier,
-            "iron": food.protein * 1.2 * quantityMultiplier,
-            "potassium": food.carbs * 15.0 * quantityMultiplier
+            "calcium": displayFood.protein * 8.0 * quantityMultiplier,
+            "iron": displayFood.protein * 1.2 * quantityMultiplier,
+            "potassium": displayFood.carbs * 15.0 * quantityMultiplier
         ]
 
         currentMicronutrients = MicronutrientProfile(
@@ -1481,13 +1568,13 @@ struct FoodDetailViewFromSearch: View {
                     "brandName": food.brand ?? "",
                     "imageData": base64String,
                     "nutritionData": [
-                        "calories": food.calories,
-                        "protein": food.protein,
-                        "carbs": food.carbs,
-                        "fat": food.fat,
-                        "fiber": food.fiber,
-                        "sugar": food.sugar,
-                        "sodium": food.sodium
+                        "calories": displayFood.calories,
+                        "protein": displayFood.protein,
+                        "carbs": displayFood.carbs,
+                        "fat": displayFood.fat,
+                        "fiber": displayFood.fiber,
+                        "sugar": displayFood.sugar,
+                        "sodium": displayFood.sodium
                     ]
                 ]
                 
@@ -1552,13 +1639,13 @@ struct FoodDetailViewFromSearch: View {
                     "foodName": food.name,
                     "brandName": food.brand ?? "",
                     "nutritionData": [
-                        "calories": food.calories,
-                        "protein": food.protein,
-                        "carbs": food.carbs,
-                        "fat": food.fat,
-                        "fiber": food.fiber,
-                        "sugar": food.sugar,
-                        "sodium": food.sodium
+                        "calories": displayFood.calories,
+                        "protein": displayFood.protein,
+                        "carbs": displayFood.carbs,
+                        "fat": displayFood.fat,
+                        "fiber": displayFood.fiber,
+                        "sugar": displayFood.sugar,
+                        "sodium": displayFood.sodium
                     ]
                 ]
                 
@@ -1834,7 +1921,7 @@ struct FoodDetailViewFromSearch: View {
                 
                 // Add Button
                 Button(action: {
-                    if sourceType == .kitchen {
+                    if destination == .kitchen {
                         showingKitchenAddSheet = true
                     } else {
                         addToFoodLog()
@@ -2176,15 +2263,22 @@ struct FoodDetailViewFromSearch: View {
         let foodId = food.id
         let updatedFoodItem = DiaryFoodItem(
             name: food.name,
+            brand: food.brand,
             calories: Int(adjustedCalories),
             protein: adjustedProtein,
             carbs: adjustedCarbs,
             fat: adjustedFat,
+            fiber: adjustedFiber,
+            sugar: adjustedSugar,
+            sodium: adjustedSalt,
+            servingDescription: "\(String(format: "%.0f", actualServingSize))g serving",
+            quantity: quantityMultiplier,
             time: getCurrentTimeString(),
             processedScore: nutritionScore.grade.rawValue,
             sugarLevel: getSugarLevel(),
             ingredients: food.ingredients,
-            additives: food.additives
+            additives: food.additives,
+            barcode: food.barcode
         )
         
         switch originalMealType {

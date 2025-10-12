@@ -16,8 +16,8 @@ struct DiaryMealCard: View {
     let color: Color
     @Binding var selectedTab: TabItem
     @Binding var selectedFoodItems: Set<String>
-    @Binding var isSelectionMode: Bool
     let onEditFood: () -> Void
+    let onSaveNeeded: () -> Void
     
     private var totalProtein: Double {
         foods.reduce(0) { $0 + $1.protein }
@@ -114,23 +114,13 @@ struct DiaryMealCard: View {
                         DiaryFoodRow(
                             food: food,
                             isSelected: selectedFoodItems.contains(food.id.uuidString),
-                            isSelectionMode: isSelectionMode,
-                            selectedCount: selectedFoodItems.count,
+                            hasAnySelection: !selectedFoodItems.isEmpty,
                             onTap: {
-                                // Toggle selection mode on tap
-                                if !isSelectionMode {
-                                    isSelectionMode = true
-                                    selectedFoodItems.insert(food.id.uuidString)
+                                // Always toggle selection on tap
+                                if selectedFoodItems.contains(food.id.uuidString) {
+                                    selectedFoodItems.remove(food.id.uuidString)
                                 } else {
-                                    if selectedFoodItems.contains(food.id.uuidString) {
-                                        selectedFoodItems.remove(food.id.uuidString)
-                                        // Exit selection mode if no items selected
-                                        if selectedFoodItems.isEmpty {
-                                            isSelectionMode = false
-                                        }
-                                    } else {
-                                        selectedFoodItems.insert(food.id.uuidString)
-                                    }
+                                    selectedFoodItems.insert(food.id.uuidString)
                                 }
                             },
                             onDelete: {
@@ -139,12 +129,9 @@ struct DiaryMealCard: View {
                                     withAnimation(.easeOut(duration: 0.3)) {
                                         foods.remove(at: index)
                                     }
+                                    // Save after deletion
+                                    onSaveNeeded()
                                 }
-                            },
-                            onEdit: {
-                                // Edit single food item
-                                selectedFoodItems = [food.id.uuidString]
-                                onEditFood()
                             }
                         )
                         .padding(.horizontal, 16)
@@ -218,20 +205,19 @@ struct DiaryMealCard: View {
 struct DiaryFoodRow: View {
     let food: DiaryFoodItem
     let isSelected: Bool
-    let isSelectionMode: Bool
-    let selectedCount: Int
+    let hasAnySelection: Bool
     let onTap: () -> Void
     let onDelete: () -> Void
-    let onEdit: () -> Void
     @State private var showingFoodDetail = false
-    
+
     var body: some View {
-        HStack(spacing: 8) {
-            // Selection circle (show when in selection mode)
-            if isSelectionMode {
-                Button(action: {
-                    onTap()
-                }) {
+        Button(action: {
+            // Tap always toggles selection
+            onTap()
+        }) {
+            HStack(spacing: 8) {
+                // Selection circle (show when any item is selected)
+                if hasAnySelection {
                     Circle()
                         .fill(isSelected ? Color.blue : Color.clear)
                         .frame(width: 20, height: 20)
@@ -246,94 +232,88 @@ struct DiaryFoodRow: View {
                                 .opacity(isSelected ? 1 : 0)
                         )
                 }
-                .buttonStyle(PlainButtonStyle())
-            }
-            
-            // Food name and details
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(food.name)
-                        .font(.system(size: 13, weight: .medium))
+
+                // Food name and details
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(food.name)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.primary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+
+                        // Nutrition grade badge
+                        if let score = food.processedScore, !score.isEmpty {
+                            Text(score)
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(processedScoreColor(score))
+                                .cornerRadius(4)
+                        }
+
+                        // Sugar level warning
+                        if food.sugarLevel == "High" {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(.orange)
+                        }
+
+                        // Allergen warning (if ingredients contain common allergens)
+                        if let ingredients = food.ingredients,
+                           containsCommonAllergens(ingredients) {
+                            Image(systemName: "exclamationmark.shield.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(.red)
+                        }
+                    }
+
+                    // Serving size and quantity
+                    HStack(spacing: 4) {
+                        Text(food.servingDescription)
+                            .font(.system(size: 11, weight: .regular))
+                            .foregroundColor(.secondary)
+
+                        if food.quantity > 1 {
+                            Text("× \(String(format: "%.0f", food.quantity))")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(.blue)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Spacer()
+
+                // Macros aligned with headers like MyFitnessPal
+                HStack(spacing: 0) {
+                    Text("\(food.calories)")
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(.primary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
+                        .frame(width: 50, alignment: .trailing)
 
-                    // Nutrition grade badge
-                    if let score = food.processedScore, !score.isEmpty {
-                        Text(score)
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 1)
-                            .background(processedScoreColor(score))
-                            .cornerRadius(4)
-                    }
-
-                    // Sugar level warning
-                    if food.sugarLevel == "High" {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 10))
-                            .foregroundColor(.orange)
-                    }
-
-                    // Allergen warning (if ingredients contain common allergens)
-                    if let ingredients = food.ingredients,
-                       containsCommonAllergens(ingredients) {
-                        Image(systemName: "exclamationmark.shield.fill")
-                            .font(.system(size: 10))
-                            .foregroundColor(.red)
-                    }
-                }
-
-                // Serving size and quantity
-                HStack(spacing: 4) {
-                    Text(food.servingDescription)
-                        .font(.system(size: 11, weight: .regular))
+                    Text("\(String(format: "%.1f", food.protein))")
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.secondary)
+                        .frame(width: 50, alignment: .trailing)
 
-                    if food.quantity > 1 {
-                        Text("× \(String(format: "%.0f", food.quantity))")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.blue)
-                    }
+                    Text("\(String(format: "%.1f", food.carbs))")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .frame(width: 50, alignment: .trailing)
+
+                    Text("\(String(format: "%.1f", food.fat))")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .frame(width: 50, alignment: .trailing)
                 }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            
-            Spacer()
-            
-            // Macros aligned with headers like MyFitnessPal
-            HStack(spacing: 0) {
-                Text("\(food.calories)")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.primary)
-                    .frame(width: 50, alignment: .trailing)
-                
-                Text("\(String(format: "%.1f", food.protein))")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .frame(width: 50, alignment: .trailing)
-                
-                Text("\(String(format: "%.1f", food.carbs))")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .frame(width: 50, alignment: .trailing)
-                
-                Text("\(String(format: "%.1f", food.fat))")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .frame(width: 50, alignment: .trailing)
             }
         }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            if !isSelectionMode {
-                // When not in selection mode, show food detail
-                showingFoodDetail = true
-            } else {
-                // When in selection mode, toggle selection
-                onTap()
-            }
+        .buttonStyle(PlainButtonStyle())
+        .onLongPressGesture {
+            // Long press to view food details
+            showingFoodDetail = true
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(action: onDelete) {
@@ -345,7 +325,8 @@ struct DiaryFoodRow: View {
             FoodDetailViewFromSearch(
                 food: food.toFoodSearchResult(),
                 sourceType: .diary,
-                selectedTab: .constant(.diary)
+                selectedTab: .constant(.diary),
+                destination: .diary
             )
         }
     }

@@ -31,8 +31,9 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     let processingScore: Int?
     let processingGrade: String?
     let processingLabel: String?
-    
-    init(id: String, name: String, brand: String? = nil, calories: Double, protein: Double, carbs: Double, fat: Double, fiber: Double, sugar: Double, sodium: Double, servingDescription: String? = nil, ingredients: [String]? = nil, confidence: Double? = nil, isVerified: Bool = false, additives: [NutritionAdditiveInfo]? = nil, processingScore: Int? = nil, processingGrade: String? = nil, processingLabel: String? = nil) {
+    let barcode: String?
+
+    init(id: String, name: String, brand: String? = nil, calories: Double, protein: Double, carbs: Double, fat: Double, fiber: Double, sugar: Double, sodium: Double, servingDescription: String? = nil, ingredients: [String]? = nil, confidence: Double? = nil, isVerified: Bool = false, additives: [NutritionAdditiveInfo]? = nil, processingScore: Int? = nil, processingGrade: String? = nil, processingLabel: String? = nil, barcode: String? = nil) {
         self.id = id
         self.name = name
         self.brand = brand
@@ -51,6 +52,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         self.processingScore = processingScore
         self.processingGrade = processingGrade
         self.processingLabel = processingLabel
+        self.barcode = barcode
     }
     
     // Custom decoder to handle flexible payloads from Cloud Functions
@@ -75,20 +77,86 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         case processingScore
         case processingGrade
         case processingLabel
+        case barcode
     }
     
+    // Helper structs for nested nutrition format from Firebase
+    private struct CalorieInfo: Codable {
+        let kcal: Double
+    }
+
+    private struct NutrientInfo: Codable {
+        let per100g: Double
+    }
+
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.id = try c.decode(String.self, forKey: .id)
         self.name = try c.decode(String.self, forKey: .name)
         self.brand = try c.decodeIfPresent(String.self, forKey: .brand)
-        self.calories = (try? c.decode(Double.self, forKey: .calories)) ?? 0
-        self.protein = (try? c.decode(Double.self, forKey: .protein)) ?? 0
-        self.carbs = (try? c.decode(Double.self, forKey: .carbs)) ?? 0
-        self.fat = (try? c.decode(Double.self, forKey: .fat)) ?? 0
-        self.fiber = (try? c.decode(Double.self, forKey: .fiber)) ?? 0
-        self.sugar = (try? c.decode(Double.self, forKey: .sugar)) ?? 0
-        self.sodium = (try? c.decode(Double.self, forKey: .sodium)) ?? 0
+
+        // Handle calories - try direct Double, then nested {kcal: Double}
+        if let directValue = try? c.decode(Double.self, forKey: .calories) {
+            self.calories = directValue
+        } else if let nested = try? c.decode(CalorieInfo.self, forKey: .calories) {
+            self.calories = nested.kcal
+        } else {
+            self.calories = 0
+        }
+
+        // Handle protein - try direct Double, then nested {per100g: Double}
+        if let directValue = try? c.decode(Double.self, forKey: .protein) {
+            self.protein = directValue
+        } else if let nested = try? c.decode(NutrientInfo.self, forKey: .protein) {
+            self.protein = nested.per100g
+        } else {
+            self.protein = 0
+        }
+
+        // Handle carbs - try direct Double, then nested {per100g: Double}
+        if let directValue = try? c.decode(Double.self, forKey: .carbs) {
+            self.carbs = directValue
+        } else if let nested = try? c.decode(NutrientInfo.self, forKey: .carbs) {
+            self.carbs = nested.per100g
+        } else {
+            self.carbs = 0
+        }
+
+        // Handle fat - try direct Double, then nested {per100g: Double}
+        if let directValue = try? c.decode(Double.self, forKey: .fat) {
+            self.fat = directValue
+        } else if let nested = try? c.decode(NutrientInfo.self, forKey: .fat) {
+            self.fat = nested.per100g
+        } else {
+            self.fat = 0
+        }
+
+        // Handle fiber - try direct Double, then nested {per100g: Double}
+        if let directValue = try? c.decode(Double.self, forKey: .fiber) {
+            self.fiber = directValue
+        } else if let nested = try? c.decode(NutrientInfo.self, forKey: .fiber) {
+            self.fiber = nested.per100g
+        } else {
+            self.fiber = 0
+        }
+
+        // Handle sugar - try direct Double, then nested {per100g: Double}
+        if let directValue = try? c.decode(Double.self, forKey: .sugar) {
+            self.sugar = directValue
+        } else if let nested = try? c.decode(NutrientInfo.self, forKey: .sugar) {
+            self.sugar = nested.per100g
+        } else {
+            self.sugar = 0
+        }
+
+        // Handle sodium - try direct Double, then nested {per100g: Double}
+        if let directValue = try? c.decode(Double.self, forKey: .sodium) {
+            self.sodium = directValue
+        } else if let nested = try? c.decode(NutrientInfo.self, forKey: .sodium) {
+            self.sodium = nested.per100g
+        } else {
+            self.sodium = 0
+        }
         self.servingDescription = try? c.decode(String.self, forKey: .servingDescription)
         // ingredients could be string or array - normalize to [String]
         if let arr = try? c.decode([String].self, forKey: .ingredients) {
@@ -107,6 +175,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         self.processingScore = try? c.decode(Int.self, forKey: .processingScore)
         self.processingGrade = try? c.decode(String.self, forKey: .processingGrade)
         self.processingLabel = try? c.decode(String.self, forKey: .processingLabel)
+        self.barcode = try? c.decode(String.self, forKey: .barcode)
     }
     
     var servingSize: String {
@@ -184,6 +253,58 @@ struct NutritionAdditiveInfo: Codable, Equatable {
     let healthScore: Int
     let childWarning: Bool
     let effectsVerdict: String
+    let consumerGuide: String?
+    let origin: String?
+
+    // Regular init for manual construction
+    init(code: String, name: String, category: String, healthScore: Int, childWarning: Bool, effectsVerdict: String, consumerGuide: String? = nil, origin: String? = nil) {
+        self.code = code
+        self.name = name
+        self.category = category
+        self.healthScore = healthScore
+        self.childWarning = childWarning
+        self.effectsVerdict = effectsVerdict
+        self.consumerGuide = consumerGuide
+        self.origin = origin
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case code
+        case name
+        case category
+        case healthScore
+        case childWarning = "child_warning"
+        case effectsVerdict = "effects_verdict"
+        case consumerGuide = "consumer_guide"
+        case origin
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.code = try container.decode(String.self, forKey: .code)
+        self.name = try container.decode(String.self, forKey: .name)
+        self.category = try container.decode(String.self, forKey: .category)
+
+        // healthScore might not exist in Firebase data
+        self.healthScore = (try? container.decode(Int.self, forKey: .healthScore)) ?? 0
+
+        // Handle both snake_case (from Firebase) and camelCase
+        if let childWarn = try? container.decode(Bool.self, forKey: .childWarning) {
+            self.childWarning = childWarn
+        } else {
+            self.childWarning = false
+        }
+
+        if let verdict = try? container.decode(String.self, forKey: .effectsVerdict) {
+            self.effectsVerdict = verdict
+        } else {
+            self.effectsVerdict = "neutral"
+        }
+
+        // Optional fields
+        self.consumerGuide = try? container.decode(String.self, forKey: .consumerGuide)
+        self.origin = try? container.decode(String.self, forKey: .origin)
+    }
 }
 
 // Local nutrition-specific TimePattern to avoid conflicts with FoodSafetyModels
@@ -814,10 +935,14 @@ struct NutrientAmount {
 struct DiaryFoodItem: Identifiable, Equatable, Codable {
     var id = UUID()
     let name: String
+    let brand: String?
     let calories: Int
     let protein: Double
     let carbs: Double
     let fat: Double
+    let fiber: Double
+    let sugar: Double
+    let sodium: Double
     let servingDescription: String
     let quantity: Double
     let time: String?
@@ -825,14 +950,19 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
     let sugarLevel: String?
     let ingredients: [String]?
     let additives: [NutritionAdditiveInfo]?
+    let barcode: String?
 
-    init(id: UUID = UUID(), name: String, calories: Int, protein: Double, carbs: Double, fat: Double, servingDescription: String = "100g serving", quantity: Double = 1.0, time: String? = nil, processedScore: String? = nil, sugarLevel: String? = nil, ingredients: [String]? = nil, additives: [NutritionAdditiveInfo]? = nil) {
+    init(id: UUID = UUID(), name: String, brand: String? = nil, calories: Int, protein: Double, carbs: Double, fat: Double, fiber: Double = 0, sugar: Double = 0, sodium: Double = 0, servingDescription: String = "100g serving", quantity: Double = 1.0, time: String? = nil, processedScore: String? = nil, sugarLevel: String? = nil, ingredients: [String]? = nil, additives: [NutritionAdditiveInfo]? = nil, barcode: String? = nil) {
         self.id = id
         self.name = name
+        self.brand = brand
         self.calories = calories
         self.protein = protein
         self.carbs = carbs
         self.fat = fat
+        self.fiber = fiber
+        self.sugar = sugar
+        self.sodium = sodium
         self.servingDescription = servingDescription
         self.quantity = quantity
         self.time = time
@@ -840,6 +970,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
         self.sugarLevel = sugarLevel
         self.ingredients = ingredients
         self.additives = additives
+        self.barcode = barcode
     }
 
     static func == (lhs: DiaryFoodItem, rhs: DiaryFoodItem) -> Bool {
@@ -848,26 +979,69 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
 
     // Convert DiaryFoodItem back to FoodSearchResult for full feature access
     func toFoodSearchResult() -> FoodSearchResult {
+        // Extract serving size from servingDescription (e.g., "150g serving" -> 150)
+        let servingSize = extractServingSize(from: servingDescription)
+
+        // DiaryFoodItem stores total values (servingSize * quantity)
+        // We need to reverse-calculate to per-100g base values
+        let multiplier = (servingSize / 100.0) * quantity
+
+        // Convert stored totals back to per-100g values
+        let per100gCalories = multiplier > 0 ? Double(calories) / multiplier : Double(calories)
+        let per100gProtein = multiplier > 0 ? protein / multiplier : protein
+        let per100gCarbs = multiplier > 0 ? carbs / multiplier : carbs
+        let per100gFat = multiplier > 0 ? fat / multiplier : fat
+        let per100gFiber = multiplier > 0 ? fiber / multiplier : fiber
+        let per100gSugar = multiplier > 0 ? sugar / multiplier : sugar
+        let per100gSodium = multiplier > 0 ? sodium / multiplier : sodium
+
         return FoodSearchResult(
             id: self.id.uuidString,
             name: self.name,
-            brand: nil,
-            calories: Double(self.calories),
-            protein: self.protein,
-            carbs: self.carbs,
-            fat: self.fat,
-            fiber: 0, // Default values for missing data
-            sugar: 0,
-            sodium: 0,
-            servingDescription: self.servingDescription,
+            brand: self.brand,
+            calories: per100gCalories,
+            protein: per100gProtein,
+            carbs: per100gCarbs,
+            fat: per100gFat,
+            fiber: per100gFiber,
+            sugar: per100gSugar,
+            sodium: per100gSodium,
+            servingDescription: "\(String(format: "%.0f", servingSize))g",
             ingredients: self.ingredients,
             confidence: 1.0, // High confidence for saved items
             isVerified: true,
             additives: self.additives,
             processingScore: nil,
             processingGrade: self.processedScore,
-            processingLabel: self.processedScore
+            processingLabel: self.processedScore,
+            barcode: self.barcode
         )
+    }
+
+    private func extractServingSize(from servingDesc: String?) -> Double {
+        guard let servingDesc = servingDesc else { return 100.0 }
+
+        // Try to extract numbers from serving description like "150g serving", "39.4g", etc.
+        let patterns = [
+            #"(\d+(?:\.\d+)?)\s*g"#,  // Match "150g" or "150 g"
+            #"\((\d+(?:\.\d+)?)\s*g\)"#  // Match "(150g)" in parentheses
+        ]
+
+        for pattern in patterns {
+            if let regex = try? NSRegularExpression(pattern: pattern, options: []),
+               let match = regex.firstMatch(in: servingDesc, options: [], range: NSRange(location: 0, length: servingDesc.count)),
+               let range = Range(match.range(at: 1), in: servingDesc) {
+                return Double(String(servingDesc[range])) ?? 100.0
+            }
+        }
+
+        // If just a number, assume it's grams
+        if let number = Double(servingDesc.trimmingCharacters(in: .whitespacesAndNewlines)) {
+            return number
+        }
+
+        // Default to 100g if no weight found
+        return 100.0
     }
 }
 

@@ -11,7 +11,15 @@ class FirebaseManager: ObservableObject {
     
     private lazy var db = Firestore.firestore()
     private lazy var auth = Auth.auth()
-    
+
+    // MARK: - Search Cache
+    private struct SearchCacheEntry {
+        let results: [FoodSearchResult]
+        let timestamp: Date
+    }
+    private var searchCache: [String: SearchCacheEntry] = [:]
+    private let cacheExpirationSeconds: TimeInterval = 300 // 5 minutes
+
     private init() {
         // Defer Firebase service initialization until first access
     }
@@ -259,37 +267,87 @@ class FirebaseManager: ObservableObject {
 
     func updateKitchenItem(_ item: KitchenInventoryItem) async throws {
         ensureAuthStateLoaded()
-        if AppConfig.Features.allowAnonymousAuth && auth.currentUser == nil { try? await signInAnonymously() }
-        let userId = currentUser?.uid ?? auth.currentUser?.uid ?? "local_user"
 
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        let data = try encoder.encode(item)
-        let dict = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] ?? [:]
+        // Try to authenticate if not already
+        if AppConfig.Features.allowAnonymousAuth && auth.currentUser == nil {
+            print("updateKitchenItem: No user, attempting anonymous sign-in...")
+            do {
+                try await signInAnonymously()
+            } catch {
+                print("❌ updateKitchenItem: Anonymous sign-in failed: \(error)")
+                // Continue to local storage fallback
+            }
+        }
 
-        try await db.collection("users").document(userId)
-            .collection("kitchenInventory").document(item.id).setData(dict, merge: true)
+        // Try Firebase first if we have a user
+        if let userId = currentUser?.uid ?? auth.currentUser?.uid {
+            print("updateKitchenItem: Using userId: \(userId)")
+
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            let data = try encoder.encode(item)
+            let dict = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] ?? [:]
+
+            do {
+                try await db.collection("users").document(userId)
+                    .collection("kitchenInventory").document(item.id).setData(dict, merge: true)
+                print("✅ updateKitchenItem: Successfully updated item in Firebase \(item.id)")
+                return
+            } catch {
+                print("❌ updateKitchenItem: Firebase update failed: \(error)")
+                // Fall through to local storage
+            }
+        }
+
+        // Fallback to local storage update
+        print("updateKitchenItem: Updating item locally")
+        var localItems = getLocalKitchenItems()
+        if let index = localItems.firstIndex(where: { $0.id == item.id }) {
+            localItems[index] = item
+            if let encoded = try? JSONEncoder().encode(localItems) {
+                UserDefaults.standard.set(encoded, forKey: "localKitchenItems")
+                print("✅ updateKitchenItem: Successfully updated item locally \(item.id)")
+            }
+        } else {
+            print("⚠️ updateKitchenItem: Item not found locally, adding it")
+            saveKitchenItemLocally(item)
+        }
     }
 
     func deleteKitchenItem(itemId: String) async throws {
         ensureAuthStateLoaded()
-        if AppConfig.Features.allowAnonymousAuth && auth.currentUser == nil { try? await signInAnonymously() }
 
-        // Try to delete from Firebase if user is authenticated
-        if let userId = currentUser?.uid ?? auth.currentUser?.uid {
+        // Try to authenticate if not already
+        if AppConfig.Features.allowAnonymousAuth && auth.currentUser == nil {
+            print("deleteKitchenItem: No user, attempting anonymous sign-in...")
             do {
-                try await db.collection("users").document(userId)
-                    .collection("kitchenInventory").document(itemId).delete()
+                try await signInAnonymously()
             } catch {
-                print("Failed to delete from Firebase: \(error)")
+                print("❌ deleteKitchenItem: Anonymous sign-in failed: \(error)")
+                // Continue to local storage
             }
         }
 
-        // Also delete from local storage
+        // Try Firebase first if we have a user
+        if let userId = currentUser?.uid ?? auth.currentUser?.uid {
+            print("deleteKitchenItem: Using userId: \(userId)")
+
+            do {
+                try await db.collection("users").document(userId)
+                    .collection("kitchenInventory").document(itemId).delete()
+                print("✅ deleteKitchenItem: Successfully deleted item from Firebase \(itemId)")
+            } catch {
+                print("❌ deleteKitchenItem: Firebase delete failed: \(error)")
+                // Continue to local storage deletion
+            }
+        }
+
+        // Always delete from local storage
         var localItems = getLocalKitchenItems()
         localItems.removeAll { $0.id == itemId }
         if let encoded = try? JSONEncoder().encode(localItems) {
             UserDefaults.standard.set(encoded, forKey: "localKitchenItems")
+            print("✅ deleteKitchenItem: Successfully deleted item from local storage \(itemId)")
         }
     }
 
@@ -317,6 +375,22 @@ class FirebaseManager: ObservableObject {
     // MARK: - Food Search Functions
 
     func searchFoods(query: String) async throws -> [FoodSearchResult] {
+        let cacheKey = query.lowercased().trimmingCharacters(in: .whitespaces)
+
+        // Check cache first - instant results!
+        if let cached = searchCache[cacheKey] {
+            let age = Date().timeIntervalSince(cached.timestamp)
+            if age < cacheExpirationSeconds {
+                print("⚡️ Cache HIT - instant results for '\(query)' (cached \(Int(age))s ago)")
+                return cached.results
+            } else {
+                // Cache expired, remove it
+                searchCache.removeValue(forKey: cacheKey)
+            }
+        }
+
+        print("🔍 Cache MISS - fetching '\(query)' from server...")
+
         // Search in Firebase Cloud Functions
         guard let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/searchFoods") else {
             throw URLError(.badURL)
@@ -329,12 +403,42 @@ class FirebaseManager: ObservableObject {
         let requestBody = ["query": query]
         request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
 
+        let startTime = Date()
         let (data, _) = try await URLSession.shared.data(for: request)
+        let elapsed = Date().timeIntervalSince(startTime)
 
         let decoder = JSONDecoder()
         let response = try decoder.decode(FoodSearchResponse.self, from: data)
 
+        // Store in cache for next time
+        searchCache[cacheKey] = SearchCacheEntry(
+            results: response.foods,
+            timestamp: Date()
+        )
+        print("💾 Cached \(response.foods.count) results for '\(query)' (took \(Int(elapsed * 1000))ms)")
+
         return response.foods
+    }
+
+    /// Clear the search cache (useful for testing or memory management)
+    func clearSearchCache() {
+        searchCache.removeAll()
+        print("🗑️ Search cache cleared")
+    }
+
+    /// Pre-warm cache with popular searches for instant results
+    func prewarmSearchCache() async {
+        let popularSearches = ["chicken", "milk", "bread", "cheese", "apple", "banana"]
+        print("🔥 Pre-warming cache with popular searches...")
+
+        for search in popularSearches {
+            do {
+                _ = try await searchFoods(query: search)
+            } catch {
+                print("⚠️ Failed to cache '\(search)': \(error)")
+            }
+        }
+        print("✅ Cache pre-warming complete!")
     }
 
     func searchFoodsByBarcode(barcode: String) async throws -> [FoodSearchResult] {

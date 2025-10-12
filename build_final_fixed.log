@@ -1,0 +1,5 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project "NutraSafe Beta.xcodeproj" -scheme "NutraSafe Beta" -destination "platform=iOS Simulator,name=iPhone 16" build
+
+2025-09-26 13:38:28.238 xcodebuild[38266:28463778] Writing error result bundle to /var/folders/wq/2n5mcsxd3_7bh0trw1tyvtym0000gn/T/ResultBundle_2025-26-09_13-38-0028.xcresult
+xcodebuild: error: 'NutraSafe Beta.xcodeproj' does not exist.

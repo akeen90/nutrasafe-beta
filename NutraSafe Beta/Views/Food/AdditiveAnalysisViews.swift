@@ -322,77 +322,99 @@ struct DetailedAdditive {
 
 struct AdditiveCardView: View {
     let additive: DetailedAdditive
-    
+    @State private var isExpanded = false
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Header with name and risk indicator
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
-                        Text(additive.name)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.primary)
-                        
-                        if let code = additive.code {
-                            Text(code)
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.gray.opacity(0.15))
-                                .cornerRadius(4)
-                        }
-                    }
-                    
-                    HStack(spacing: 8) {
-                        Text(additive.purpose)
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.blue)
-                        
-                        Text("•")
-                            .foregroundColor(.secondary)
-                            .font(.system(size: 8))
-                        
-                        Text(additive.origin)
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
+        VStack(alignment: .leading, spacing: 0) {
+            // Header - always visible (tap to expand/collapse)
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    isExpanded.toggle()
                 }
-                
-                Spacer()
-                
-                VStack(alignment: .trailing, spacing: 4) {
-                    // Usage guidance indicator
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(getUsageColor())
-                            .frame(width: 6, height: 6)
-                        
-                        Text(getUsageGuidance(additive.riskLevel))
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(getUsageColor())
-                    }
-                    
-                    if additive.childWarning {
-                        HStack(spacing: 2) {
-                            Image(systemName: "exclamationmark.triangle.fill")
+            }) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text(additive.name)
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.primary)
+
+                            if let code = additive.code {
+                                Text(code)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.gray.opacity(0.15))
+                                    .cornerRadius(4)
+                            }
+                        }
+
+                        HStack(spacing: 8) {
+                            Text(additive.purpose)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(.blue)
+
+                            Text("•")
+                                .foregroundColor(.secondary)
                                 .font(.system(size: 8))
-                                .foregroundColor(.orange)
-                            Text("May affect children's behavior")
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundColor(.orange)
+
+                            Text(getOriginLabel(additive.origin))
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(getOriginColor(additive.origin))
                         }
                     }
+
+                    Spacer()
+
+                    VStack(alignment: .trailing, spacing: 4) {
+                        // Usage guidance indicator
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(getUsageColor())
+                                .frame(width: 6, height: 6)
+
+                            Text(getUsageGuidance(additive.riskLevel))
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(getUsageColor())
+                        }
+
+                        if additive.childWarning {
+                            HStack(spacing: 2) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.system(size: 8))
+                                    .foregroundColor(.orange)
+                                Text("May affect children's behavior")
+                                    .font(.system(size: 9, weight: .medium))
+                                    .foregroundColor(.orange)
+                            }
+                        }
+                    }
+
+                    // Chevron indicator
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .padding(.leading, 8)
                 }
             }
-            
-            // Description with parsed markdown-style formatting
-            AdditiveDescriptionView(text: additive.description)
-                .font(.system(size: 12, weight: .regular))
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.leading)
+            .buttonStyle(PlainButtonStyle())
+            .padding(12)
+
+            // Expanded details - only show when tapped
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 0) {
+                    Divider()
+                        .padding(.horizontal, 12)
+
+                    AdditiveDescriptionView(text: additive.description)
+                        .font(.system(size: 12, weight: .regular))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.leading)
+                        .padding(12)
+                }
+            }
         }
-        .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color.purple.opacity(0.05))
@@ -419,63 +441,113 @@ struct AdditiveCardView: View {
         default: return "Generally fine"
         }
     }
+
+    private func getOriginLabel(_ origin: String) -> String {
+        let lowercased = origin.lowercased()
+        switch lowercased {
+        case "synthetic": return "synthetic"
+        case "natural": return "natural"
+        case "plant": return "plant-based"
+        case "animal": return "animal-derived"
+        case "mineral": return "mineral"
+        case "insect": return "insect-derived"
+        case "fish": return "fish-derived"
+        case "dairy": return "dairy-derived"
+        case "mixed": return "natural & synthetic"
+        case "plant/animal": return "plant or animal"
+        case "natural/synthetic": return "natural or synthetic"
+        default: return origin
+        }
+    }
+
+    private func getOriginColor(_ origin: String) -> Color {
+        let lowercased = origin.lowercased()
+        switch lowercased {
+        case "synthetic": return .orange
+        case "natural", "plant": return .green
+        case "animal", "insect", "fish", "dairy": return .purple
+        case "mineral": return .blue
+        case "mixed", "plant/animal", "natural/synthetic": return .secondary
+        default: return .secondary
+        }
+    }
 }
 
 // MARK: - Additive Description Component
 
 struct AdditiveDescriptionView: View {
     let text: String
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            // Show simple, helpful summary instead of complex technical text
-            Text(getSimpleSummary())
-                .font(.system(size: 12, weight: .regular))
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.leading)
+        VStack(alignment: .leading, spacing: 8) {
+            // Parse and display the consumer guide sections
+            ForEach(getParsedSections(), id: \.title) { section in
+                if !section.content.isEmpty {
+                    VStack(alignment: .leading, spacing: 2) {
+                        if !section.title.isEmpty {
+                            Text(section.title)
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(.primary)
+                        }
+                        Text(section.content)
+                            .font(.system(size: 11, weight: .regular))
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
         }
     }
-    
-    private func getSimpleSummary() -> String {
-        // Extract the additive name/code from the text to provide targeted info
-        if text.contains("Sodium nitrite") || text.contains("E250") {
-            return "Keeps cured meats pink and prevents dangerous bacteria. Found in bacon, ham."
-        } else if text.contains("Sodium nitrate") || text.contains("E251") {
-            return "Preservative that converts to nitrite in your body. Used in cured meats."
-        } else if text.contains("Potassium nitrate") || text.contains("E252") {
-            return "Traditional meat curing salt. Prevents spoilage in processed meats."
-        } else if text.contains("Calcium carbonate") || text.contains("E170") {
-            return "Natural mineral used to add calcium and improve texture. Generally safe."
-        } else if text.contains("Sodium ascorbate") || text.contains("E301") {
-            return "Form of Vitamin C that prevents food from going bad. Actually beneficial for you."
-        } else if text.contains("Paprika extract") || text.contains("E160c") {
-            return "Natural red coloring from peppers. Much safer than artificial dyes."
-        } else if text.contains("Gelatin") || text.contains("GELATIN") {
-            return "Protein from animal bones/skin. Makes things gel-like. Not suitable for vegetarians."
-        } else if text.contains("Carmine") || text.contains("E120") {
-            return "Red coloring made from insects. Natural but not suitable for vegetarians/vegans."
-        } else if text.contains("Tartrazine") || text.contains("E102") {
-            return "Bright yellow artificial dye. May affect children's behavior."
-        } else if text.contains("BHA") || text.contains("E320") {
-            return "Synthetic preservative. Possible cancer risk. Many companies removing it."
-        } else if text.contains("BHT") || text.contains("E321") {
-            return "Synthetic preservative similar to BHA. Health concerns led many to avoid it."
-        } else if text.contains("MSG") || text.contains("E621") {
-            return "Flavor enhancer that makes food taste more savory. Some people get headaches from it."
-        } else if text.contains("Sulphur dioxide") || text.contains("E220") {
-            return "Preservative gas. Can trigger asthma attacks."
-        } else if text.contains("metabisulphite") || text.contains("E223") {
-            return "Preservative that releases sulfur dioxide. Can cause breathing problems."
-        } else if text.contains("Lecithin") || text.contains("LECITHIN") {
-            return "Natural emulsifier usually from soy or sunflower. Helps mix oil and water. Generally safe."
-        } else if text.contains("Titanium dioxide") || text.contains("E171") {
-            return "White powder for bright white color. Banned in EU due to DNA damage concerns."
-        } else {
-            // Fallback: try to extract a simple description from the first few lines
-            let lines = text.components(separatedBy: "\n").prefix(3)
-            return lines.joined(separator: " ").replacingOccurrences(of: "**", with: "")
-                .trimmingCharacters(in: .whitespacesAndNewlines)
+
+    private struct ConsumerGuideSection {
+        let title: String
+        let content: String
+    }
+
+    private func getParsedSections() -> [ConsumerGuideSection] {
+        var sections: [ConsumerGuideSection] = []
+        let lines = text.components(separatedBy: "\n")
+        var currentTitle = ""
+        var currentContent = ""
+
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            // Skip empty lines
+            if trimmed.isEmpty {
+                continue
+            }
+
+            // Check if it's a header (e.g., "**What is it?**")
+            if trimmed.hasPrefix("**") && trimmed.hasSuffix("**") {
+                // Save previous section if we have one
+                if !currentTitle.isEmpty || !currentContent.isEmpty {
+                    sections.append(ConsumerGuideSection(title: currentTitle, content: currentContent.trimmingCharacters(in: .whitespacesAndNewlines)))
+                }
+                // Start new section
+                currentTitle = trimmed.replacingOccurrences(of: "**", with: "").replacingOccurrences(of: ":", with: "")
+                currentContent = ""
+            } else {
+                // Add content to current section
+                if !currentContent.isEmpty {
+                    currentContent += " "
+                }
+                currentContent += trimmed
+            }
         }
+
+        // Add the last section
+        if !currentTitle.isEmpty || !currentContent.isEmpty {
+            sections.append(ConsumerGuideSection(title: currentTitle, content: currentContent.trimmingCharacters(in: .whitespacesAndNewlines)))
+        }
+
+        // If no sections were parsed, return the raw text as a single section
+        if sections.isEmpty {
+            let cleanText = text.replacingOccurrences(of: "**", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+            sections.append(ConsumerGuideSection(title: "", content: cleanText))
+        }
+
+        return sections
     }
     
     private var parsedSections: [AdditiveSection] {

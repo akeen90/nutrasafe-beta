@@ -56,7 +56,7 @@ struct ExerciseHistoryView: View {
                     .padding(.horizontal, 16)
                     
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
-                        StatCard(
+                        ExerciseStatCard(
                             title: "Best Set",
                             value: "185×8",
                             subtitle: "Personal record",
@@ -64,7 +64,7 @@ struct ExerciseHistoryView: View {
                             icon: "trophy.fill"
                         )
                         
-                        StatCard(
+                        ExerciseStatCard(
                             title: "Volume",
                             value: "4.4k",
                             subtitle: "Last workout",
@@ -72,7 +72,7 @@ struct ExerciseHistoryView: View {
                             icon: "scalemass"
                         )
                         
-                        StatCard(
+                        ExerciseStatCard(
                             title: "Frequency",
                             value: "2.3x",
                             subtitle: "Per week",
@@ -80,7 +80,7 @@ struct ExerciseHistoryView: View {
                             icon: "calendar"
                         )
                         
-                        StatCard(
+                        ExerciseStatCard(
                             title: "Trend",
                             value: "+5.7%",
                             subtitle: "This month",

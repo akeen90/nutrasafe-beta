@@ -15,50 +15,121 @@ struct KitchenTabView: View {
     @Binding var selectedTab: TabItem
     @State private var showingScanner = false
     @State private var showingCamera = false
+    @State private var showingAddSheet = false
+
+    // Temporary header counter until data is lifted to parent scope
+    private var expiringSoonCount: Int { 0 }
 
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                // Header
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
+                // Header - AAA Modern Design
+                HStack(spacing: 16) {
                         Text("Kitchen")
-                            .font(.system(size: 32, weight: .bold))
-                            .foregroundColor(.primary)
+                            .font(.system(size: 38, weight: .bold, design: .rounded))
+                            .frame(height: 44, alignment: .center)
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [
+                                        Color(red: 0.6, green: 0.3, blue: 0.8),
+                                        Color(red: 0.4, green: 0.5, blue: 0.9)
+                                    ],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
 
-                        Text("Track freshness & reduce waste")
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
-                    }
+                        Spacer()
 
-                    Spacer()
+                        Button(action: { showingSettings = true }) {
+                            ZStack {
+                                Circle()
+                                    .fill(.ultraThinMaterial)
+                                    .frame(width: 44, height: 44)
+                                    .overlay(
+                                        Circle()
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [.white.opacity(0.5), .white.opacity(0.1)],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                ),
+                                                lineWidth: 1.5
+                                            )
+                                    )
+                                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
 
-                    Button(action: {
-                        showingSettings = true
-                    }) {
-                        Image(systemName: "gearshape.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(.primary)
-                            .frame(width: 40, height: 40)
-                            .background(Color(.systemGray6))
-                            .clipShape(Circle())
-                    }
+                                Image(systemName: "gearshape.fill")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundColor(.primary)
+                                    .symbolRenderingMode(.hierarchical)
+                            }
+                        }
+
+                        Button(action: {
+                            // Set kitchen as default destination
+                            UserDefaults.standard.set("Kitchen", forKey: "preselectedDestination")
+                            selectedTab = .add
+                        }) {
+                            ZStack {
+                                // Glow effect
+                                Circle()
+                                    .fill(
+                                        RadialGradient(
+                                            colors: [Color.blue.opacity(0.4), Color.blue.opacity(0)],
+                                            center: .center,
+                                            startRadius: 5,
+                                            endRadius: 25
+                                        )
+                                    )
+                                    .frame(width: 50, height: 50)
+                                    .blur(radius: 10)
+
+                                Circle()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [
+                                                Color(red: 0.3, green: 0.5, blue: 1.0),
+                                                Color(red: 0.4, green: 0.4, blue: 0.9)
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .frame(width: 44, height: 44)
+                                    .overlay(
+                                        Circle()
+                                            .stroke(.white.opacity(0.3), lineWidth: 1.5)
+                                    )
+                                    .shadow(color: Color.blue.opacity(0.3), radius: 12, x: 0, y: 6)
+
+                                Image(systemName: "plus")
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundColor(.white)
+                            }
+                        }
+                        .buttonStyle(SpringyButtonStyle())
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 16)
-                .padding(.bottom, 8)
-                .background(Color(.systemBackground))
+                .padding(.top, 8)
 
-                // Main content
-                KitchenExpiryView(
-                    showingScanner: $showingScanner,
-                    showingCamera: $showingCamera,
-                    selectedTab: $selectedTab
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                ScrollView {
+                    VStack(spacing: 0) {
+                        // Main content
+                        KitchenExpiryView(
+                            showingScanner: $showingScanner,
+                            showingCamera: $showingCamera,
+                            selectedTab: $selectedTab
+                        )
+                        .frame(maxWidth: .infinity)
+                    }
+                }
             }
-            .background(Color(.systemBackground))
+            .background(Color(.systemGroupedBackground))
             .navigationBarHidden(true)
+        }
+        .fullScreenCover(isPresented: $showingAddSheet) {
+            AddKitchenItemSheet()
         }
         .sheet(isPresented: $showingScanner) {
             // Barcode scanner will be implemented
@@ -97,8 +168,15 @@ struct SegmentedContainer<Content: View>: View {
     @ViewBuilder var content: Content
     var body: some View {
         content
-            .padding(8)
-            .background(RoundedRectangle(cornerRadius: 10).fill(Color(.systemGray6)))
+            .font(.footnote.weight(.semibold))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 12)
+            .frame(minHeight: 44)
+            .background(RoundedRectangle(cornerRadius: 12).fill(Color(.systemGray6)))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color(.systemGray4), lineWidth: 1)
+            )
     }
 }
 
@@ -137,6 +215,7 @@ struct CounterPill: View {
 struct AddFoundFoodToKitchenSheet: View {
 @Environment(\.dismiss) var dismiss
     let food: FoodSearchResult
+    var onComplete: ((TabItem) -> Void)?
 
     @State private var expiryDate: Date = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
     @State private var isSaving = false
@@ -177,7 +256,7 @@ struct AddFoundFoodToKitchenSheet: View {
                         }
                     }
                     SectionCard(title: "EXPIRY") {
-                        HStack(spacing: 12) {
+                        HStack(spacing: 6) {
                             CounterPill(value: $expiryAmount, range: 1...365)
                             SegmentedContainer {
                                 Picker("Unit", selection: $expiryUnit) {
@@ -243,7 +322,10 @@ struct AddFoundFoodToKitchenSheet: View {
         do {
             try await FirebaseManager.shared.addKitchenItem(item)
             NotificationCenter.default.post(name: .kitchenInventoryUpdated, object: nil)
-            await MainActor.run { dismiss() }
+            await MainActor.run {
+                dismiss()
+                onComplete?(.kitchen)
+            }
         } catch {
             let ns = error as NSError
             print("Failed to save kitchen item: \(ns)\nAttempting dev anonymous sign-in if enabled…")
@@ -252,7 +334,10 @@ struct AddFoundFoodToKitchenSheet: View {
                     try await FirebaseManager.shared.signInAnonymously()
                     try await FirebaseManager.shared.addKitchenItem(item)
                     NotificationCenter.default.post(name: .kitchenInventoryUpdated, object: nil)
-                    await MainActor.run { dismiss() }
+                    await MainActor.run {
+                        dismiss()
+                        onComplete?(.kitchen)
+                    }
                     return
                 } catch {
                     // fall through to UI alert/sheet below
@@ -266,6 +351,7 @@ struct AddFoundFoodToKitchenSheet: View {
                     NotificationCenter.default.post(name: .kitchenInventoryUpdated, object: nil)
                     NotificationCenter.default.post(name: .navigateToKitchen, object: nil)
                     dismiss()
+                    onComplete?(.kitchen)
                 } else {
                     errorMessage = "\(ns.domain) (\(ns.code)): \(ns.localizedDescription)"
                     showErrorAlert = true
@@ -283,32 +369,190 @@ struct KitchenExpiryView: View {
 
     @State private var kitchenItems: [KitchenInventoryItem] = []
     @State private var isLoading: Bool = false
+    @State private var isRefreshing: Bool = false
     @State private var showClearAlert: Bool = false
+    @State private var showingAddSheet: Bool = false
+    @State private var searchText: String = ""
+
+    private var sortedItems: [KitchenInventoryItem] {
+        let filtered = searchText.isEmpty ? kitchenItems : kitchenItems.filter { item in
+            item.name.localizedCaseInsensitiveContains(searchText) ||
+            (item.brand?.localizedCaseInsensitiveContains(searchText) ?? false)
+        }
+        return filtered.sorted { $0.expiryDate < $1.expiryDate }
+    }
+
+    private var expiringSoonCount: Int {
+        kitchenItems.filter { $0.daysUntilExpiry <= 3 }.count
+    }
 
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 12) {
-                // Smart summary + actions
-                KitchenExpiryAlertsCard(items: kitchenItems, selectedTab: $selectedTab, onClearAll: {
-                    showClearAlert = true
-                })
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
+        Group {
+            if kitchenItems.isEmpty && !isLoading {
+                // Premium empty state
+                VStack(spacing: 0) {
+                    Spacer()
 
-                // Real items list (no fake data)
-                KitchenItemsListCard(items: kitchenItems)
-                    .padding(.horizontal, 16)
+                    VStack(spacing: 24) {
+                        // Large icon with background
+                        ZStack {
+                            Circle()
+                                .fill(Color.blue.opacity(0.12))
+                                .frame(width: 120, height: 120)
 
-                // Quick Add Item
-                KitchenQuickAddCard(
-                    showingScanner: $showingScanner,
-                    showingCamera: $showingCamera
-                )
-                .padding(.horizontal, 16)
+                            Image(systemName: "refrigerator.fill")
+                                .font(.system(size: 56, weight: .light))
+                                .foregroundColor(.blue)
+                                .symbolRenderingMode(.hierarchical)
+                        }
+                        .padding(.bottom, 8)
 
-                Rectangle()
-                    .fill(Color.clear)
-                    .frame(height: 100)
+                        VStack(spacing: 10) {
+                            Text("Your Kitchen is Empty")
+                                .font(.system(size: 24, weight: .semibold))
+                                .foregroundColor(.primary)
+
+                            Text("Start tracking your food to reduce waste\nand save money")
+                                .font(.system(size: 16))
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.horizontal, 32)
+                        }
+                    }
+
+                    Spacer()
+
+                    // Primary action with shadow
+                    VStack(spacing: 12) {
+                        Button(action: {
+                            // Set kitchen as default destination
+                            UserDefaults.standard.set("Kitchen", forKey: "preselectedDestination")
+                            selectedTab = .add
+                        }) {
+                            Label("Add Your First Item", systemImage: "plus.circle.fill")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(
+                                    LinearGradient(
+                                        colors: [Color.blue, Color.blue.opacity(0.9)],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                )
+                                .cornerRadius(14)
+                                .shadow(color: Color.blue.opacity(0.3), radius: 8, x: 0, y: 4)
+                        }
+
+                        Text("💡 Tip: Scan barcodes for instant details")
+                            .font(.system(size: 13))
+                            .foregroundColor(Color(.tertiaryLabel))
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 40)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(.systemGroupedBackground))
+            } else {
+                // Clean simple design with obvious item container
+                ScrollView {
+                    VStack(spacing: 16) {
+                        // Search bar
+                        HStack(spacing: 12) {
+                            HStack(spacing: 10) {
+                                Image(systemName: "magnifyingglass")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.secondary)
+
+                                TextField("Search your kitchen...", text: $searchText)
+                                    .font(.system(size: 16))
+                                    .textFieldStyle(PlainTextFieldStyle())
+
+                                if !searchText.isEmpty {
+                                    Button(action: { searchText = "" }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.system(size: 16))
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .background(Color.white)
+                            .cornerRadius(12)
+                            .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+
+                        // Stats cards
+                        HStack(spacing: 12) {
+                            KitchenStatCard(
+                                title: "Total Items",
+                                value: "\(sortedItems.count)",
+                                icon: "refrigerator.fill",
+                                color: .blue
+                            )
+
+                            KitchenStatCard(
+                                title: "Expiring Soon",
+                                value: "\(expiringSoonCount)",
+                                icon: "clock.badge.exclamationmark",
+                                color: expiringSoonCount > 0 ? Color.orange : Color.green
+                            )
+                        }
+                        .padding(.horizontal, 16)
+
+                        // Items container - CLEAR WHITE CARD
+                        VStack(spacing: 0) {
+                            // Header
+                            HStack {
+                                Text("Your Items")
+                                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                                    .foregroundColor(.primary)
+
+                                Spacer()
+
+                                Text("\(sortedItems.count) item\(sortedItems.count == 1 ? "" : "s")")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 16)
+                            .background(Color(.systemGray6))
+
+                            // Items list
+                            if sortedItems.isEmpty {
+                                VStack(spacing: 12) {
+                                    Image(systemName: "tray")
+                                        .font(.system(size: 48))
+                                        .foregroundColor(.secondary)
+                                    Text("No items yet")
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 60)
+                                .background(Color.white)
+                            } else {
+                                LazyVStack(spacing: 0) {
+                                    ForEach(sortedItems, id: \.id) { item in
+                                        CleanKitchenRow(item: item)
+                                    }
+                                }
+                                .background(Color.white)
+                            }
+                        }
+                        .background(Color.white)
+                        .cornerRadius(16)
+                        .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 16)
+                    }
+                }
+                .background(Color(.systemGroupedBackground))
             }
         }
         .onAppear { Task { await reloadKitchen() } }
@@ -326,17 +570,27 @@ struct KitchenExpiryView: View {
         } message: {
             Text("This will remove all items from your kitchen inventory.")
         }
-    }
+        .fullScreenCover(isPresented: $showingAddSheet) {
+            AddKitchenItemSheet()
+        }
+    } // End of var body: some View
 
     private func reloadKitchen() async {
         await MainActor.run { self.isLoading = true }
         do {
             let items: [KitchenInventoryItem] = try await FirebaseManager.shared.getKitchenItems()
+            print("🍳 KitchenView: Loaded \(items.count) items from Firebase")
+            for item in items {
+                print("  - \(item.name): \(item.daysUntilExpiry) days left")
+            }
             await MainActor.run {
                 self.kitchenItems = items
                 self.isLoading = false
+                print("🍳 KitchenView: kitchenItems set to \(self.kitchenItems.count) items")
+                print("🍳 KitchenView: sortedItems has \(self.sortedItems.count) items")
             }
         } catch {
+            print("❌ KitchenView: Error loading items: \(error)")
             await MainActor.run { self.isLoading = false }
         }
     }
@@ -429,13 +683,18 @@ struct KitchenExpiryAlertsCard: View {
             }
 
             // Status Cards Row
-            HStack(spacing: 12) {
+            HStack(spacing: 16) {
                 StatusCard(
                     title: "Expired",
                     count: expiredCount,
                     icon: "exclamationmark.triangle.fill",
                     color: .red,
-                    subtitle: "Remove now"
+                    subtitle: "Remove now",
+                    urgencyLevel: .critical,
+                    trend: expiredCount > 0 ? .up : nil,
+                    onTap: {
+                        selectedFilter = .expired
+                    }
                 )
 
                 StatusCard(
@@ -443,7 +702,12 @@ struct KitchenExpiryAlertsCard: View {
                     count: weekCount,
                     icon: "clock.fill",
                     color: .orange,
-                    subtitle: "Use soon"
+                    subtitle: "Use soon",
+                    urgencyLevel: .warning,
+                    trend: weekCount > 3 ? .up : .stable,
+                    onTap: {
+                        selectedFilter = .expiring
+                    }
                 )
 
                 StatusCard(
@@ -451,7 +715,12 @@ struct KitchenExpiryAlertsCard: View {
                     count: freshCount,
                     icon: "checkmark.circle.fill",
                     color: .green,
-                    subtitle: "Good to go"
+                    subtitle: "Good to go",
+                    urgencyLevel: .good,
+                    trend: .stable,
+                    onTap: {
+                        selectedFilter = .all
+                    }
                 )
             }
         }
@@ -471,74 +740,275 @@ struct StatusCard: View {
     let icon: String
     let color: Color
     let subtitle: String
+    let urgencyLevel: UrgencyLevel
+    let trend: TrendDirection?
+    let onTap: () -> Void
+
+    @State private var isPressed = false
+    @State private var animateCount = false
+    @State private var pulseAnimation = false
+
+    enum UrgencyLevel {
+        case critical, warning, good
+
+        var backgroundColor: Color {
+            switch self {
+            case .critical: return .red.opacity(0.1)
+            case .warning: return .orange.opacity(0.1)
+            case .good: return .green.opacity(0.1)
+            }
+        }
+
+        var borderColor: Color {
+            switch self {
+            case .critical: return .red.opacity(0.3)
+            case .warning: return .orange.opacity(0.3)
+            case .good: return .green.opacity(0.3)
+            }
+        }
+    }
+
+    enum TrendDirection {
+        case up, down, stable
+
+        var icon: String {
+            switch self {
+            case .up: return "arrow.up.circle.fill"
+            case .down: return "arrow.down.circle.fill"
+            case .stable: return "minus.circle.fill"
+            }
+        }
+
+        var color: Color {
+            switch self {
+            case .up: return .red
+            case .down: return .green
+            case .stable: return .secondary
+            }
+        }
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.system(size: 14))
-                    .foregroundColor(color)
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: 12) {
+                // Header with icon and trend - AAA Modern Design
+                HStack {
+                    ZStack {
+                        // Glow effect
+                        Circle()
+                            .fill(
+                                RadialGradient(
+                                    colors: [color.opacity(0.4), color.opacity(0)],
+                                    center: .center,
+                                    startRadius: 5,
+                                    endRadius: 30
+                                )
+                            )
+                            .frame(width: 60, height: 60)
+                            .blur(radius: 12)
 
-                Text(String(count))
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundColor(.primary)
+                        // Glassmorphic circle
+                        Circle()
+                            .fill(.ultraThinMaterial)
+                            .frame(width: 48, height: 48)
+                            .overlay(
+                                Circle()
+                                    .stroke(
+                                        LinearGradient(
+                                            colors: [color.opacity(0.6), color.opacity(0.3)],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                        lineWidth: 2.5
+                                    )
+                            )
+                            .shadow(color: color.opacity(0.25), radius: 12, x: 0, y: 6)
+
+                        Image(systemName: icon)
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [color, color.opacity(0.7)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .symbolRenderingMode(.hierarchical)
+                    }
+                    .scaleEffect(pulseAnimation && urgencyLevel == .critical ? 1.15 : 1.0)
+
+                    Spacer()
+
+                    if let trend = trend {
+                        ZStack {
+                            Circle()
+                                .fill(trend.color.opacity(0.15))
+                                .frame(width: 32, height: 32)
+
+                            Image(systemName: trend.icon)
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(trend.color)
+                        }
+                    }
+                }
+
+                // Count with animation - Enhanced Typography
+                HStack(alignment: .lastTextBaseline, spacing: 6) {
+                    Text(String(count))
+                        .font(.system(size: 36, weight: .bold, design: .rounded))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [color, color.opacity(0.7)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .scaleEffect(animateCount ? 1.2 : 1.0)
+
+                    if count > 0 && urgencyLevel == .critical {
+                        Image(systemName: "exclamationmark")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.red)
+                            .opacity(pulseAnimation ? 1.0 : 0.6)
+                    }
+                }
+
+                // Title and subtitle - Enhanced Typography
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.primary)
+
+                    Text(subtitle)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+
+                // Progress indicator for urgency - Modern Design
+                if urgencyLevel == .critical && count > 0 {
+                    HStack(spacing: 6) {
+                        ForEach(0..<3) { index in
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [.red, .red.opacity(0.7)],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .frame(width: index == 0 ? 24 : 12, height: 4)
+                                .opacity(pulseAnimation ? (index == 0 ? 1.0 : 0.5) : (index == 0 ? 0.8 : 0.3))
+                        }
+
+                        Spacer()
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(20)
+            .background(
+                ZStack {
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(.ultraThinMaterial)
+
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(
+                            LinearGradient(
+                                colors: [color.opacity(0.05), color.opacity(0)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(
+                            LinearGradient(
+                                colors: [color.opacity(0.4), color.opacity(0.2)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1.5
+                        )
+                )
+            )
+            .scaleEffect(isPressed ? 0.97 : 1.0)
+            .shadow(color: color.opacity(0.15), radius: 15, x: 0, y: 8)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.6).delay(0.1)) {
+                animateCount = true
             }
 
-            Text(title)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(.primary)
-
-            Text(subtitle)
-                .font(.system(size: 10))
-                .foregroundColor(.secondary)
+            if urgencyLevel == .critical && count > 0 {
+                withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
+                    pulseAnimation = true
+                }
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(Color(.systemBackground))
-        .cornerRadius(10)
+        .onLongPressGesture(minimumDuration: 0.01, maximumDistance: .infinity, perform: {
+            // Long press action
+        }, onPressingChanged: { pressing in
+            withAnimation(.easeInOut(duration: 0.1)) {
+                isPressed = pressing
+            }
+        })
+        .accessibilityLabel("\(title): \(count) items")
+        .accessibilityHint(subtitle)
     }
 }
 
 struct KitchenItemsListCard: View {
     let items: [KitchenInventoryItem]
 
-    var sortedItems: [KitchenInventoryItem] {
+    private var sortedItems: [KitchenInventoryItem] {
         items.sorted { $0.expiryDate < $1.expiryDate }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("Your Kitchen Items", systemImage: "cart.fill")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.blue)
+                HStack(spacing: 10) {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [.blue, .blue.opacity(0.85)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 32, height: 32)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white.opacity(0.25), lineWidth: 1)
+                            )
+                            .shadow(color: .blue.opacity(0.25), radius: 6, x: 0, y: 3)
+
+                        Image(systemName: "cart.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+                            .symbolRenderingMode(.hierarchical)
+                    }
+
+                    Text("Your Kitchen Items")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                }
                 Spacer()
-                Text("\(items.count)")
+                Text("\(sortedItems.count)")
                     .font(.system(size: 14))
                     .foregroundColor(.secondary)
             }
 
             if items.isEmpty {
-                HStack(spacing: 12) {
-                    Image(systemName: "tray")
-                        .foregroundColor(.secondary)
-                    Text("No items yet. Add something to get started.")
-                        .foregroundColor(.secondary)
-                    Spacer()
-                }
-                .padding()
-                .background(Color(.systemBackground))
-                .cornerRadius(10)
+                KitchenEmptyStateView()
             } else {
                 VStack(spacing: 0) {
                     ForEach(sortedItems.indices, id: \.self) { i in
                         let item = sortedItems[i]
-                        ModernExpiryRow(
-                            name: item.name,
-                            brand: item.brand ?? "",
-                            daysLeft: item.daysUntilExpiry,
-                            quantity: item.quantity
-                        )
+                        ModernExpiryRow(item: item)
                         if i < sortedItems.count - 1 {
                             Divider().padding(.leading, 44)
                         }
@@ -546,11 +1016,22 @@ struct KitchenItemsListCard: View {
                 }
                 .background(Color(.systemBackground))
                 .cornerRadius(10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color(.systemGray5), lineWidth: 1)
+                )
             }
         }
         .padding(16)
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .background(
+            RoundedRectangle(cornerRadius: 18)
+                .fill(.ultraThinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(Color(.systemGray4), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 4)
     }
 }
 
@@ -558,9 +1039,33 @@ struct KitchenCriticalExpiryCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("Expired Items", systemImage: "exclamationmark.triangle.fill")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.red)
+                HStack(spacing: 10) {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [.red, .red.opacity(0.85)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 32, height: 32)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white.opacity(0.25), lineWidth: 1)
+                            )
+                            .shadow(color: .red.opacity(0.25), radius: 6, x: 0, y: 3)
+
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+                            .symbolRenderingMode(.hierarchical)
+                    }
+
+                    Text("Expired Items")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                }
 
                 Spacer()
 
@@ -573,12 +1078,18 @@ struct KitchenCriticalExpiryCard: View {
 
             VStack(spacing: 0) {
                 ForEach(0..<3, id: \.self) { index in
-                        ModernExpiryRow(
-                            name: ["Greek Yoghurt", "Chicken Breast", "Baby Spinach"][index],
-                            brand: ["Fage", "Organic Valley", "Fresh Express"][index],
-                            daysLeft: index,
-                            quantity: ["2 cups", "1.5 lbs", "5 oz bag"][index]
-                        )
+                    let demoItem = KitchenInventoryItem(
+                        id: "demo-\(index)",
+                        name: ["Greek Yoghurt", "Chicken Breast", "Baby Spinach"][index],
+                        brand: ["Fage", "Organic Valley", "Fresh Express"][index],
+                        quantity: ["2 cups", "1.5 lbs", "5 oz bag"][index],
+                        expiryDate: Calendar.current.date(byAdding: .day, value: index, to: Date()) ?? Date(),
+                        addedDate: Date(),
+                        openedDate: nil,
+                        barcode: nil,
+                        category: nil
+                    )
+                    ModernExpiryRow(item: demoItem)
 
                     if index < 2 {
                         Divider()
@@ -588,10 +1099,21 @@ struct KitchenCriticalExpiryCard: View {
             }
             .background(Color(.systemBackground))
             .cornerRadius(10)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color(.systemGray5), lineWidth: 1)
+            )
         }
         .padding(16)
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .background(
+            RoundedRectangle(cornerRadius: 18)
+                .fill(.ultraThinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(Color(.systemGray4), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 4)
     }
 }
 
@@ -601,9 +1123,33 @@ struct KitchenWeeklyExpiryCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("This Week", systemImage: "calendar")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.orange)
+                HStack(spacing: 10) {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [.orange, .orange.opacity(0.85)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 32, height: 32)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white.opacity(0.25), lineWidth: 1)
+                            )
+                            .shadow(color: .orange.opacity(0.25), radius: 6, x: 0, y: 3)
+
+                        Image(systemName: "calendar")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+                            .symbolRenderingMode(.hierarchical)
+                    }
+
+                    Text("This Week")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                }
 
                 Spacer()
 
@@ -653,14 +1199,26 @@ struct KitchenWeeklyExpiryCard: View {
 
                                 ForEach(0..<3, id: \.self) { index in
                                     HStack {
-                                        Circle()
-                                            .fill(Color.orange.opacity(0.2))
-                                            .frame(width: 32, height: 32)
-                                            .overlay(
-                                                Image(systemName: "leaf")
-                                                    .font(.system(size: 14))
-                                                    .foregroundColor(.orange)
-                                            )
+                                        ZStack {
+                                            Circle()
+                                                .fill(
+                                                    LinearGradient(
+                                                        colors: [.orange.opacity(0.22), .orange.opacity(0.10)],
+                                                        startPoint: .topLeading,
+                                                        endPoint: .bottomTrailing
+                                                    )
+                                                )
+                                                .frame(width: 32, height: 32)
+                                                .overlay(
+                                                    Circle()
+                                                        .stroke(Color.orange.opacity(0.25), lineWidth: 1)
+                                                )
+
+                                            Image(systemName: "leaf")
+                                                .font(.system(size: 14))
+                                                .foregroundColor(.orange)
+                                                .symbolRenderingMode(.hierarchical)
+                                        }
 
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(section == "Next 1-2 Days" ?
@@ -673,7 +1231,8 @@ struct KitchenWeeklyExpiryCard: View {
                                                 ["1/2 gallon", "1 loaf", "8 oz block"][index] :
                                                 ["2 lbs bag", "1 lb bag", "6 pack"][index])
                                                 .font(.system(size: 12))
-                                                .foregroundColor(.secondary)
+                                                .foregroundColor(
+ .secondary)
                                         }
 
                                         Spacer()
@@ -699,27 +1258,238 @@ struct KitchenWeeklyExpiryCard: View {
             }
             .background(Color(.systemBackground))
             .cornerRadius(10)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color(.systemGray5), lineWidth: 1)
+            )
         }
         .padding(16)
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .background(
+            RoundedRectangle(cornerRadius: 18)
+                .fill(.ultraThinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(Color(.systemGray4), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 4)
     }
 }
+
+
+// MARK: - Filter Pills Component
+
+struct FilterPill: View {
+    let title: String
+    let isSelected: Bool
+    let color: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundColor(isSelected ? .white : color)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(isSelected ? color : color.opacity(0.1))
+                        .overlay(
+                            Capsule()
+                                .stroke(color.opacity(0.3), lineWidth: isSelected ? 0 : 1)
+                        )
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
+        .scaleEffect(isSelected ? 1.0 : 0.95)
+        .animation(.spring(response: 0.5, dampingFraction: 0.8, blendDuration: 0), value: isSelected)
+    }
+}
+
+// MARK: - Kitchen Empty State Component
+
+struct KitchenEmptyStateView: View {
+    @State private var animateIcons = false
+    @State private var currentTip = 0
+    @State private var showingDemo = false
+
+    private let tips = [
+        "Store herbs with stems in water like flowers to keep them fresh longer",
+        "Keep bananas away from other fruits to prevent premature ripening",
+        "Store potatoes in a cool, dark place but never in the refrigerator",
+        "Wrap lettuce and leafy greens in paper towels to absorb excess moisture"
+    ]
+
+    var body: some View {
+        VStack(spacing: 32) {
+            // Hero Animation
+            VStack(spacing: 16) {
+                ZStack {
+                    // Background glow
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [.green.opacity(0.3), .blue.opacity(0.2)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 100, height: 100)
+                        .scaleEffect(animateIcons ? 1.2 : 1.0)
+                        .opacity(animateIcons ? 0.7 : 0.4)
+
+                    // Main icon
+                    Image(systemName: "leaf.circle.fill")
+                        .font(.system(size: 48, weight: .light))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.green, .blue],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .scaleEffect(animateIcons ? 1.1 : 1.0)
+                        .rotationEffect(.degrees(animateIcons ? 5 : -5))
+                }
+
+                VStack(spacing: 8) {
+                    Text("Start Tracking Freshness")
+                        .font(.title2)
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.center)
+
+                    Text("Add your first item to begin reducing food waste and saving money")
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(2)
+                }
+            }
+
+            // Rotating Tips
+            VStack(spacing: 16) {
+                HStack {
+                    Image(systemName: "lightbulb.fill")
+                        .foregroundColor(.orange)
+                        .font(.system(size: 16))
+
+                    Text("Smart Tip")
+                        .font(.callout.weight(.semibold))
+                        .foregroundColor(.primary)
+
+                    Spacer()
+                }
+
+                Text(tips[currentTip])
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .move(edge: .trailing)),
+                        removal: .opacity.combined(with: .move(edge: .leading))
+                    ))
+                    .id("tip-\(currentTip)")
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.orange.opacity(0.1))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(.orange.opacity(0.2), lineWidth: 1)
+                    )
+            )
+
+            // Sample Items Preview
+            VStack(spacing: 8) {
+                HStack {
+                    Text("Sample Items")
+                        .font(.callout.weight(.semibold))
+                        .foregroundColor(.primary)
+
+                    Spacer()
+
+                    Button("Try Demo") {
+                        showingDemo = true
+                    }
+                    .font(.caption.weight(.medium))
+                    .foregroundColor(.blue)
+                    .font(.callout.weight(.medium)).foregroundColor(.white).padding(.horizontal, 16).frame(height: 36).background(RoundedRectangle(cornerRadius: 8).fill(.blue))
+                }
+
+                VStack(spacing: 0) {
+                    SampleItemRow(name: "Greek Yogurt", daysLeft: 3, color: .orange)
+                    Divider().padding(.leading, 44)
+                    SampleItemRow(name: "Baby Spinach", daysLeft: 1, color: .red)
+                    Divider().padding(.leading, 44)
+                    SampleItemRow(name: "Chicken Breast", daysLeft: 5, color: .green)
+                }
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color(.secondarySystemBackground))
+                )
+                .opacity(0.7)
+            }
+
+            // Quick Start Actions
+            VStack(spacing: 8) {
+                Text("Get Started")
+                    .font(.callout.weight(.semibold))
+                    .foregroundColor(.primary)
+
+                HStack(spacing: 16) {
+                    QuickStartButton(
+                        icon: "barcode.viewfinder",
+                        title: "Scan",
+                        color: .blue
+                    )
+
+                    QuickStartButton(
+                        icon: "plus.circle.fill",
+                        title: "Add",
+                        color: .green
+                    )
+
+                    QuickStartButton(
+                        icon: "camera.fill",
+                        title: "Photo",
+                        color: .orange
+                    )
+                }
+            }
+        }
+        .padding(24)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 2).repeatForever(autoreverses: true)) {
+                animateIcons = true
+            }
+
+            Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { _ in
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    currentTip = (currentTip + 1) % tips.count
+                }
+            }
+        }
+    }
+}
+
 
 // MARK: - Kitchen Expiry Item Management
 
 struct ModernExpiryRow: View {
-    let name: String
-    let brand: String
-    let daysLeft: Int
-    let quantity: String
+    let item: KitchenInventoryItem
     @State private var showingDetail = false
+    @State private var showingDeleteAlert = false
+
+    private var daysLeft: Int { item.daysUntilExpiry }
+    private var brandText: String { item.brand ?? "" }
 
     private var urgencyColor: Color {
         switch daysLeft {
         case 0: return .red
         case 1...2: return .orange
-        case 3...7: return .yellow
+        case 3...7: return .orange
         default: return .green
         }
     }
@@ -742,57 +1512,132 @@ struct ModernExpiryRow: View {
     }
 
     var body: some View {
-        Button(action: {
-            showingDetail = true
-        }) {
-            HStack(spacing: 12) {
-                // Icon
+        Button(action: { showingDetail = true }) {
+            HStack(spacing: 16) {
                 ZStack {
                     Circle()
-                        .fill(urgencyColor.opacity(0.1))
-                        .frame(width: 36, height: 36)
-
+                        .fill(urgencyColor.opacity(0.15))
+                        .frame(width: 40, height: 40)
                     Image(systemName: urgencyIcon)
-                        .font(.system(size: 16))
+                        .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(urgencyColor)
                 }
 
-            // Item Details
-            VStack(alignment: .leading, spacing: 2) {
-                Text(name)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.primary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(item.name)
+                        .font(.callout.weight(.semibold))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
 
-                HStack(spacing: 4) {
-                    Text(brand)
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
+                    HStack(spacing: 6) {
+                        if !brandText.isEmpty {
+                            Text(brandText)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
 
-                    Text("•")
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary)
+                            Text("•")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
 
-                    Text(quantity)
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
+                        Text(item.quantity)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(urgencyText)
+                        .font(.caption.weight(.bold))
+                        .foregroundColor(urgencyColor)
+
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(urgencyColor)
+                        .frame(width: max(20, 60 - CGFloat(daysLeft * 5)), height: 3)
+                        .opacity(daysLeft <= 7 ? 1.0 : 0.3)
                 }
             }
-
-            Spacer()
-
-            // Urgency
-            VStack(alignment: .trailing, spacing: 4) {
-                Text(urgencyText)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(urgencyColor)
-            }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(Color(.systemBackground))
         }
         .buttonStyle(PlainButtonStyle())
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button(action: markAsUsed) {
+                Label("Used", systemImage: "checkmark.circle.fill")
+            }
+            .tint(.green)
+
+            Button(action: extendExpiry) {
+                Label("Extend", systemImage: "calendar.badge.plus")
+            }
+            .tint(.blue)
+
+            Button(role: .destructive) {
+                showingDeleteAlert = true
+            } label: {
+                Label("Delete", systemImage: "trash.fill")
+            }
+        }
         .sheet(isPresented: $showingDetail) {
-            KitchenItemDetailView(itemName: name, brand: brand, daysLeft: daysLeft, quantity: quantity)
+            KitchenItemDetailView(item: item)
+        }
+        .alert("Delete Item", isPresented: $showingDeleteAlert) {
+            Button("Delete", role: .destructive) { confirmDelete() }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Are you sure you want to delete \(item.name) from your kitchen inventory?")
+        }
+    }
+
+    private func markAsUsed() {
+        // Haptic feedback for success action
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+
+        Task {
+            try? await FirebaseManager.shared.deleteKitchenItem(itemId: item.id)
+            NotificationCenter.default.post(name: .kitchenInventoryUpdated, object: nil)
+        }
+    }
+
+    private func extendExpiry() {
+        // Haptic feedback for neutral action
+        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+        impactFeedback.impactOccurred()
+        let calendar = Calendar.current
+        let newExpiry = calendar.date(byAdding: .day, value: 3, to: item.expiryDate) ?? item.expiryDate
+        let updated = KitchenInventoryItem(
+            id: item.id,
+            name: item.name,
+            brand: item.brand,
+            quantity: item.quantity,
+            expiryDate: newExpiry,
+            addedDate: item.addedDate,
+            openedDate: item.openedDate,
+            barcode: item.barcode,
+            category: item.category
+        )
+        Task {
+            try? await FirebaseManager.shared.updateKitchenItem(updated)
+            NotificationCenter.default.post(name: .kitchenInventoryUpdated, object: nil)
+        }
+    }
+
+    private func deleteItem() {
+        showingDeleteAlert = true
+    }
+
+    private func confirmDelete() {
+        // Haptic feedback for destructive action
+        let notificationFeedback = UINotificationFeedbackGenerator()
+        notificationFeedback.notificationOccurred(.warning)
+
+        Task {
+            try? await FirebaseManager.shared.deleteKitchenItem(itemId: item.id)
+            NotificationCenter.default.post(name: .kitchenInventoryUpdated, object: nil)
         }
     }
 }
@@ -904,83 +1749,149 @@ struct KitchenQuickAddCard: View {
     @State private var showingAddSheet = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Label("Quick Actions", systemImage: "bolt.fill")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.orange)
-
-                Spacer()
-            }
-
+        VStack(spacing: 16) {
             HStack(spacing: 12) {
-                QuickActionButton(
-                    icon: "barcode.viewfinder",
-                    title: "Scan Item",
-                    subtitle: "Add by barcode",
-                    color: .blue,
-                    action: {
-                        showingScanner = true
+                Button(action: {
+                    showingScanner = true
+                }) {
+                    HStack {
+                        Image(systemName: "barcode.viewfinder")
+                        Text("Scan")
                     }
-                )
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.blue)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(.blue.opacity(0.1))
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
 
-                QuickActionButton(
-                    icon: "camera.fill",
-                    title: "Photo Receipt",
-                    subtitle: "Import items",
-                    color: .green,
-                    action: {
-                        showingCamera = true
+                Button(action: {
+                    showingAddSheet = true
+                }) {
+                    HStack {
+                        Image(systemName: "plus")
+                        Text("Add")
                     }
-                )
-
-                QuickActionButton(
-                    icon: "plus.circle.fill",
-                    title: "Manual Add",
-                    subtitle: "Type details",
-                    color: .purple,
-                    action: {
-                        showingAddSheet = true
-                    }
-                )
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(.blue)
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
             }
         }
         .padding(16)
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemGray6))
+        )
         .fullScreenCover(isPresented: $showingAddSheet) {
             AddKitchenItemSheet()
         }
-        .onDisappear { showingAddSheet = false }
     }
 }
 
-struct QuickActionButton: View {
+struct EnhancedQuickActionButton: View {
     let icon: String
     let title: String
     let subtitle: String
+    let color: Color
+    let badge: String?
+    let action: () -> Void
+
+    @State private var isPressed = false
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 8) {
+                ZStack {
+                    // Background
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(color.opacity(0.1))
+                        .frame(height: 60)
+
+                    // Icon
+                    Image(systemName: icon)
+                        .font(.system(size: 24, weight: .medium))
+                        .foregroundColor(color)
+
+                    // Badge
+                    if let badge = badge {
+                        VStack {
+                            HStack {
+                                Spacer()
+                                Text(badge)
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(
+                                        Capsule()
+                                            .fill(.red)
+                                    )
+                                    .offset(x: 8, y: -8)
+                            }
+                            Spacer()
+                        }
+                    }
+                }
+
+                VStack(spacing: 2) {
+                    Text(title)
+                        .font(.callout.weight(.semibold))
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.center)
+
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+            }
+            .scaleEffect(isPressed ? 0.95 : 1.0)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .onLongPressGesture(minimumDuration: 0.01, maximumDistance: .infinity, perform: {
+            // Long press action
+        }, onPressingChanged: { pressing in
+            withAnimation(.easeInOut(duration: 0.1)) {
+                isPressed = pressing
+            }
+        })
+    }
+}
+
+struct SecondaryActionButton: View {
+    let icon: String
+    let title: String
     let color: Color
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 8) {
+            VStack(spacing: 4) {
                 Image(systemName: icon)
-                    .font(.system(size: 22))
+                    .font(.system(size: 16, weight: .medium))
                     .foregroundColor(color)
-                    .frame(width: 44, height: 44)
-                    .background(color.opacity(0.1))
-                    .cornerRadius(10)
+                    .frame(width: 32, height: 32)
+                    .background(
+                        Circle()
+                            .fill(color.opacity(0.1))
+                    )
 
                 Text(title)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.primary)
-
-                Text(subtitle)
-                    .font(.system(size: 10))
+                    .font(.caption2.weight(.medium))
                     .foregroundColor(.secondary)
+                    .lineLimit(1)
             }
-            .frame(maxWidth: .infinity)
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -1289,7 +2200,7 @@ struct ManualKitchenItemSheet: View {
                         }
                     }
                     SectionCard(title: "EXPIRY") {
-                        HStack(spacing: 12) {
+                        HStack(spacing: 6) {
                             CounterPill(value: $expiryAmount, range: 1...365)
                             SegmentedContainer {
                                 Picker("Unit", selection: $expiryUnit) {
@@ -1529,11 +2440,9 @@ struct FreshnessIndicatorView: View {
 struct KitchenItemDetailView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
-    let itemName: String
-    let brand: String?
-    let daysLeft: Int
-    let quantity: String
+    let item: KitchenInventoryItem
 
+    @State private var editedQuantity: String = ""
     @State private var editedExpiryDate: Date = Date()
     @State private var isOpened: Bool = false
     @State private var openedDate: Date = Date()
@@ -1547,6 +2456,11 @@ struct KitchenItemDetailView: View {
     @State private var expiryMode: ExpiryMode = .calendar
     @State private var expiryAmount: Int = 7
     @State private var expiryUnit: ExpiryUnit = .days
+
+    private var itemName: String { item.name }
+    private var brand: String? { item.brand }
+    private var daysLeft: Int { item.daysUntilExpiry }
+    private var quantity: String { editedQuantity }
 
     enum ExpiryMode {
         case calendar
@@ -1662,11 +2576,13 @@ struct KitchenItemDetailView: View {
                             .foregroundColor(.secondary)
 
                         // Mode Selector
-                        Picker("", selection: $expiryMode) {
-                            Text("Calendar").tag(ExpiryMode.calendar)
-                            Text("Select").tag(ExpiryMode.selector)
+                        SegmentedContainer {
+                            Picker("", selection: $expiryMode) {
+                                Text("Calendar").tag(ExpiryMode.calendar)
+                                Text("Select").tag(ExpiryMode.selector)
+                            }
+                            .pickerStyle(.segmented)
                         }
-                        .pickerStyle(.segmented)
 
                         if expiryMode == .calendar {
                             Button(action: { showDatePicker.toggle() }) {
@@ -1688,7 +2604,7 @@ struct KitchenItemDetailView: View {
                             .buttonStyle(PlainButtonStyle())
                         } else {
                             // Days/Weeks Selector
-                            HStack(spacing: 12) {
+                            HStack(spacing: 6) {
                                 // Amount picker
                                 HStack {
                                     Button(action: { if expiryAmount > 1 { expiryAmount -= 1 } }) {
@@ -1714,13 +2630,15 @@ struct KitchenItemDetailView: View {
                                         .fill(Color(.tertiarySystemBackground))
                                 )
 
-                                // Unit picker
-                                Picker("", selection: $expiryUnit) {
-                                    ForEach(ExpiryUnit.allCases, id: \.self) { unit in
-                                        Text(unit.rawValue).tag(unit)
+                                // Unit picker wrapped for consistency
+                                SegmentedContainer {
+                                    Picker("", selection: $expiryUnit) {
+                                        ForEach(ExpiryUnit.allCases, id: \.self) { unit in
+                                            Text(unit.rawValue).tag(unit)
+                                        }
                                     }
+                                    .pickerStyle(.segmented)
                                 }
-                                .pickerStyle(.segmented)
                             }
                         }
                     }
@@ -1852,7 +2770,15 @@ struct KitchenItemDetailView: View {
             }
         }
         .onAppear {
-            editedExpiryDate = Date().addingTimeInterval(TimeInterval(daysLeft * 24 * 60 * 60))
+            // Initialize state from item
+            editedQuantity = item.quantity
+            editedExpiryDate = item.expiryDate
+            if let opened = item.openedDate {
+                isOpened = true
+                openedDate = opened
+            }
+
+            let daysLeft = item.daysUntilExpiry
             expiryAmount = max(daysLeft, 1)
             expiryUnit = daysLeft > 14 ? .weeks : .days
             if expiryUnit == .weeks {
@@ -1891,16 +2817,56 @@ struct KitchenItemDetailView: View {
         impactFeedback.prepare()
         impactFeedback.impactOccurred()
 
-        // TODO: Implement save logic to update the kitchen item in Firebase
-        try? await Task.sleep(nanoseconds: 800_000_000)
+        print("KitchenItemDetailView: Starting save")
+        print("KitchenItemDetailView: Item ID: \(item.id)")
+        print("KitchenItemDetailView: Edited quantity: \(editedQuantity)")
+        print("KitchenItemDetailView: Edited expiry: \(editedExpiryDate)")
 
-        isSaving = false
+        // Create updated item with edits
+        let updatedItem = KitchenInventoryItem(
+            id: item.id,
+            name: item.name,
+            brand: item.brand,
+            quantity: editedQuantity,
+            expiryDate: editedExpiryDate,
+            addedDate: item.addedDate,
+            openedDate: isOpened ? openedDate : nil,
+            barcode: item.barcode,
+            category: item.category
+        )
 
-        // Success haptic
-        let successFeedback = UINotificationFeedbackGenerator()
-        successFeedback.notificationOccurred(.success)
+        print("KitchenItemDetailView: Created updated item")
 
-        dismiss()
+        // Save to Firebase
+        do {
+            print("KitchenItemDetailView: Calling updateKitchenItem")
+            try await FirebaseManager.shared.updateKitchenItem(updatedItem)
+            print("KitchenItemDetailView: Update successful!")
+            NotificationCenter.default.post(name: .kitchenInventoryUpdated, object: nil)
+
+            await MainActor.run {
+                isSaving = false
+
+                // Success haptic
+                let successFeedback = UINotificationFeedbackGenerator()
+                successFeedback.notificationOccurred(.success)
+
+                dismiss()
+            }
+        } catch {
+            print("❌ KitchenItemDetailView: Failed to update kitchen item")
+            print("❌ Error type: \(type(of: error))")
+            print("❌ Error description: \(error)")
+            print("❌ Error localized: \(error.localizedDescription)")
+            if let nsError = error as NSError? {
+                print("❌ Error domain: \(nsError.domain)")
+                print("❌ Error code: \(nsError.code)")
+                print("❌ Error userInfo: \(nsError.userInfo)")
+            }
+            await MainActor.run {
+                isSaving = false
+            }
+        }
     }
 }
 
@@ -2021,5 +2987,360 @@ private struct NutrientCard: View {
         .padding(.vertical, 12)
         .background(Color(.systemGray6))
         .cornerRadius(12)
+    }
+}
+
+// MARK: - Missing Components
+
+struct SampleItemRow: View {
+    let name: String
+    let daysLeft: Int
+    let color: Color
+
+    var body: some View {
+        HStack {
+            Circle()
+                .fill(color)
+                .frame(width: 12, height: 12)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(name)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.primary)
+
+                Text("\(daysLeft) days left")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+    }
+}
+
+struct QuickStartButton: View {
+    let icon: String
+    let title: String
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 20, weight: .medium))
+                .foregroundColor(.white)
+                .frame(width: 44, height: 44)
+                .background(
+                    Circle()
+                        .fill(color)
+                )
+
+            Text(title)
+                .font(.caption.weight(.medium))
+                .foregroundColor(.primary)
+        }
+    }
+}
+
+// MARK: - Clean Kitchen Row
+
+struct CleanKitchenRow: View {
+    let item: KitchenInventoryItem
+    @State private var showingDetail = false
+    @State private var isPressed = false
+    @State private var offset: CGFloat = 0
+
+    private var daysLeft: Int { item.daysUntilExpiry }
+
+    private var statusColor: Color {
+        switch daysLeft {
+        case ...0: return Color(red: 1.0, green: 0.27, blue: 0.23)
+        case 1...3: return Color(red: 1.0, green: 0.62, blue: 0.0)
+        default: return Color(red: 0.2, green: 0.78, blue: 0.35)
+        }
+    }
+
+    private var statusText: String {
+        switch daysLeft {
+        case ...0: return "Expired"
+        case 1: return "1 day left"
+        default: return "\(daysLeft) days"
+        }
+    }
+
+    private var statusIcon: String {
+        switch daysLeft {
+        case ...0: return "exclamationmark.triangle.fill"
+        case 1...3: return "clock.badge.exclamationmark"
+        default: return "checkmark.seal.fill"
+        }
+    }
+
+    private var categoryIcon: String {
+        // Default icon - could be enhanced with category logic
+        return "fork.knife"
+    }
+
+    private var categoryColor: Color {
+        // Default color - could be enhanced with category logic
+        return .blue
+    }
+
+    var body: some View {
+        ZStack {
+            // Delete button background (revealed on swipe)
+            HStack {
+                Spacer()
+                Button(action: {
+                    deleteItem()
+                }) {
+                    VStack {
+                        Image(systemName: "trash.fill")
+                            .font(.system(size: 22))
+                        Text("Delete")
+                            .font(.system(size: 12, weight: .medium))
+                    }
+                    .foregroundColor(.white)
+                    .frame(width: 80)
+                }
+                .frame(maxHeight: .infinity)
+                .background(Color.red)
+            }
+
+            // Main content
+            VStack(spacing: 0) {
+                HStack(spacing: 12) {
+                    // Item info
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(item.name)
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
+
+                        HStack(spacing: 6) {
+                            if let brand = item.brand, !brand.isEmpty {
+                                Text(brand)
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+
+                                Text("•")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Text(item.quantity)
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    Spacer()
+
+                    // Status badge
+                    Text(statusText)
+                        .font(.system(size: 13, weight: .semibold))
+                        .padding(.horizontal, 11)
+                        .padding(.vertical, 6)
+                        .foregroundColor(statusColor)
+                        .background(statusColor.opacity(0.15))
+                        .clipShape(Capsule())
+                        .overlay(
+                            Capsule()
+                                .strokeBorder(statusColor.opacity(0.3), lineWidth: 1)
+                        )
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+
+                // Divider line
+                Divider()
+                    .padding(.leading, 16)
+            }
+            .background(Color(.systemBackground))
+            .offset(x: offset)
+            .gesture(
+                DragGesture()
+                    .onChanged { gesture in
+                        // Only allow left swipe (negative offset)
+                        if gesture.translation.width < 0 {
+                            offset = gesture.translation.width
+                        }
+                    }
+                    .onEnded { gesture in
+                        if gesture.translation.width < -100 {
+                            // Full swipe - delete
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                offset = -UIScreen.main.bounds.width
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                deleteItem()
+                            }
+                        } else if gesture.translation.width < -40 {
+                            // Show delete button
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                offset = -80
+                            }
+                        } else {
+                            // Reset
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                offset = 0
+                            }
+                        }
+                    }
+            )
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if offset == 0 {
+                showingDetail = true
+            } else {
+                // Close swipe actions
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    offset = 0
+                }
+            }
+        }
+        .sheet(isPresented: $showingDetail) {
+            KitchenItemDetailView(item: item)
+        }
+    }
+
+    private func markAsUsed() {
+        Task {
+            try? await FirebaseManager.shared.deleteKitchenItem(itemId: item.id)
+            NotificationCenter.default.post(name: .kitchenInventoryUpdated, object: nil)
+        }
+    }
+
+    private func deleteItem() {
+        Task {
+            try? await FirebaseManager.shared.deleteKitchenItem(itemId: item.id)
+            NotificationCenter.default.post(name: .kitchenInventoryUpdated, object: nil)
+        }
+    }
+}
+
+// MARK: - Kitchen Stat Card Component
+
+struct KitchenStatCard: View {
+    let title: String
+    let value: String
+    let icon: String
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 14) {
+            // Icon with gradient background
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [color.opacity(0.22), color.opacity(0.10)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 50, height: 50)
+                    .overlay(
+                        Circle()
+                            .stroke(color.opacity(0.25), lineWidth: 1)
+                    )
+
+                Image(systemName: icon)
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundColor(color)
+                    .symbolRenderingMode(.hierarchical)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(value)
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [color, color.opacity(0.7)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+
+                Text(title)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 18)
+                .fill(.ultraThinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(Color(.systemGray4), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 4)
+    }
+}
+
+struct QuickActionCard: View {
+    let title: String
+    let icon: String
+    let color: Color
+    let action: () -> Void
+    @State private var isPressed = false
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [color, color.opacity(0.85)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 56, height: 56)
+                        .overlay(
+                            Circle()
+                                .stroke(Color.white.opacity(0.25), lineWidth: 1)
+                        )
+                        .shadow(color: color.opacity(0.25), radius: 8, x: 0, y: 4)
+
+                    Image(systemName: icon)
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundColor(.white)
+                        .symbolRenderingMode(.hierarchical)
+                }
+
+                Text(title)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.primary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 20)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(.ultraThinMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color(.systemGray4), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 4)
+            .scaleEffect(isPressed ? 0.95 : 1.0)
+            .animation(.easeInOut(duration: 0.15), value: isPressed)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in isPressed = true }
+                .onEnded { _ in isPressed = false }
+        )
     }
 }

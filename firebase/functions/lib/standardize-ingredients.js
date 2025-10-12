@@ -78,7 +78,7 @@ Output: "wheat flour, nuts, sesame"`;
             }
         };
         console.log('🔍 Sending standardization request to Gemini...');
-        const geminiResponse = await axios_1.default.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, geminiRequest, {
+        const geminiResponse = await axios_1.default.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`, geminiRequest, {
             headers: {
                 'Content-Type': 'application/json'
             },

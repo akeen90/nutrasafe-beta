@@ -158,8 +158,8 @@ export const fastSearchFoods = functions.https.onRequest(async (req, res) => {
 
 // Simplified food result formatting
 function formatFoodResult(id: string, data: any) {
-  const nutrition = data.nutritionData || {};
-  
+  const nutrition = data.nutritionData || data.nutrition || {};
+
   return {
     id: id,
     name: data.foodName || '',
@@ -174,6 +174,7 @@ function formatFoodResult(id: string, data: any) {
     sodium: extractNutritionValue(nutrition.sodium || (nutrition.salt ? nutrition.salt * 1000 : 0)),
     servingDescription: data.servingSize || '100g serving',
     ingredients: data.extractedIngredients || data.ingredients || null,
+    additives: data.additives || null,
     verifiedBy: data.verifiedBy || null,
     verificationMethod: data.verificationMethod || null,
     verifiedAt: data.verifiedAt || null

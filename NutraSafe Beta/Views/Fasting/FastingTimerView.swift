@@ -15,6 +15,7 @@ struct FastingTimerView: View {
     @State private var fastingStartTime = UserDefaults.standard.object(forKey: "fastingStartTime") as? Date
     @State private var fastingGoal = UserDefaults.standard.integer(forKey: "fastingGoal") == 0 ? 16 : UserDefaults.standard.integer(forKey: "fastingGoal")
     @State private var currentTime = Date()
+    @State private var showingSettings = false
     
     private var fastingDuration: TimeInterval {
         guard isFasting, let startTime = fastingStartTime else { return 0 }
@@ -29,7 +30,8 @@ struct FastingTimerView: View {
     private var formattedDuration: String {
         let hours = Int(fastingDuration) / 3600
         let minutes = (Int(fastingDuration) % 3600) / 60
-        return String(format: "%02d:%02d", hours, minutes)
+        let seconds = Int(fastingDuration) % 60
+        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
     }
     
     var body: some View {
@@ -45,11 +47,13 @@ struct FastingTimerView: View {
                         
                         Spacer()
                         
-                        Button("Settings") {
-                            // TODO: Add fasting settings
+                        Button(action: {
+                            showingSettings = true
+                        }) {
+                            Image(systemName: "gearshape.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(.secondary)
                         }
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.blue)
                     }
                     
                     // Circular Progress Timer
@@ -263,6 +267,9 @@ struct FastingTimerView: View {
         .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
             updateFastingState()
         }
+        .sheet(isPresented: $showingSettings) {
+            FastingSettingsView(fastingGoal: $fastingGoal)
+        }
     }
     
     // MARK: - Private Methods
@@ -313,27 +320,27 @@ struct FastingStageRow: View {
     
     var body: some View {
         HStack(spacing: 12) {
-            // Time badge
+            // Time badge - fixed width
             Text(hours)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundColor(isActive ? .white : color)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+                .frame(width: 60)
+                .padding(.vertical, 6)
                 .background(isActive ? color : Color(.systemGray5))
-                .cornerRadius(6)
-            
+                .cornerRadius(8)
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(isActive ? color : .primary)
-                
+
                 Text(description)
                     .font(.system(size: 14))
                     .foregroundColor(.secondary)
             }
-            
+
             Spacer()
-            
+
             if isActive {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 24))
@@ -351,27 +358,204 @@ struct FastingPresetButton: View {
     let title: String
     let subtitle: String
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 6) {
+            VStack(spacing: 4) {
                 Text(title)
                     .font(.system(size: 18, weight: .bold))
                     .foregroundColor(.primary)
-                
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+
                 Text(subtitle)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundColor(.secondary)
-                
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+
                 Text("\(hours) hours")
-                    .font(.system(size: 10))
+                    .font(.system(size: 9, weight: .medium))
                     .foregroundColor(.orange)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(Color(.systemGray6))
+            .cornerRadius(10)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Fasting Settings View
+
+struct FastingSettingsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var fastingGoal: Int
+    @State private var customGoal: Int
+    @State private var notificationsEnabled = UserDefaults.standard.bool(forKey: "fastingNotificationsEnabled")
+    @State private var reminderInterval = UserDefaults.standard.integer(forKey: "fastingReminderInterval") == 0 ? 4 : UserDefaults.standard.integer(forKey: "fastingReminderInterval")
+
+    init(fastingGoal: Binding<Int>) {
+        self._fastingGoal = fastingGoal
+        self._customGoal = State(initialValue: fastingGoal.wrappedValue)
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Fasting Goal")) {
+                    Picker("Goal Duration", selection: $customGoal) {
+                        ForEach([12, 14, 16, 18, 20, 22, 24], id: \.self) { hours in
+                            Text("\(hours) hours").tag(hours)
+                        }
+                    }
+                    .pickerStyle(.wheel)
+
+                    HStack {
+                        Text("Current Goal")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text("\(customGoal)h")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.orange)
+                    }
+                }
+
+                Section(header: Text("Quick Presets")) {
+                    HStack(spacing: 12) {
+                        PresetButton(title: "12h", subtitle: "Beginner", hours: 12, currentGoal: $customGoal)
+                        PresetButton(title: "16h", subtitle: "Popular", hours: 16, currentGoal: $customGoal)
+                        PresetButton(title: "18h", subtitle: "Advanced", hours: 18, currentGoal: $customGoal)
+                        PresetButton(title: "20h", subtitle: "Expert", hours: 20, currentGoal: $customGoal)
+                    }
+                    .listRowInsets(EdgeInsets())
+                    .padding(.vertical, 8)
+                }
+
+                Section(header: Text("Notifications"), footer: Text("Get reminders during your fasting window")) {
+                    Toggle("Enable Notifications", isOn: $notificationsEnabled)
+                        .tint(.blue)
+
+                    if notificationsEnabled {
+                        Picker("Reminder Interval", selection: $reminderInterval) {
+                            Text("Every 2 hours").tag(2)
+                            Text("Every 4 hours").tag(4)
+                            Text("Every 6 hours").tag(6)
+                            Text("Every 8 hours").tag(8)
+                        }
+                    }
+                }
+
+                Section(header: Text("About Intermittent Fasting")) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        InfoRow(icon: "clock.fill", color: .orange, title: "12:12", description: "Good for beginners, gentle fasting")
+                        InfoRow(icon: "flame.fill", color: .red, title: "16:8", description: "Most popular, effective fat burning")
+                        InfoRow(icon: "bolt.fill", color: .purple, title: "18:6", description: "Enhanced autophagy and ketosis")
+                        InfoRow(icon: "star.fill", color: .yellow, title: "20:4", description: "Advanced, maximum benefits")
+                    }
+                }
+            }
+            .navigationTitle("Fasting Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        saveSettings()
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private func saveSettings() {
+        fastingGoal = customGoal
+        UserDefaults.standard.set(customGoal, forKey: "fastingGoal")
+        UserDefaults.standard.set(notificationsEnabled, forKey: "fastingNotificationsEnabled")
+        UserDefaults.standard.set(reminderInterval, forKey: "fastingReminderInterval")
+
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+    }
+}
+
+// MARK: - Settings Components
+
+struct PresetButton: View {
+    let title: String
+    let subtitle: String
+    let hours: Int
+    @Binding var currentGoal: Int
+
+    var body: some View {
+        Button(action: {
+            currentGoal = hours
+            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+            impactFeedback.impactOccurred()
+        }) {
+            VStack(spacing: 4) {
+                Text(title)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(currentGoal == hours ? .white : .primary)
+                Text(subtitle)
+                    .font(.system(size: 11))
+                    .foregroundColor(currentGoal == hours ? .white.opacity(0.9) : .secondary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
-            .background(Color(.systemGray6))
-            .cornerRadius(12)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(currentGoal == hours ?
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.3, green: 0.5, blue: 1.0),
+                                Color(red: 0.5, green: 0.3, blue: 0.9)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ) :
+                        LinearGradient(
+                            colors: [Color(.systemGray6), Color(.systemGray6)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            )
         }
         .buttonStyle(PlainButtonStyle())
+    }
+}
+
+struct InfoRow: View {
+    let icon: String
+    let color: Color
+    let title: String
+    let description: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 20))
+                .foregroundColor(color)
+                .frame(width: 32, height: 32)
+                .background(color.opacity(0.15))
+                .cornerRadius(8)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.primary)
+                Text(description)
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+            }
+        }
     }
 }

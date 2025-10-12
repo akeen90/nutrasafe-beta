@@ -7,117 +7,27 @@ struct WorkoutMainContent: View {
     @State private var showingTemplates = false
 
     var body: some View {
-        VStack(spacing: 20) {
-            if workoutManager.isWorkoutActive {
-                // Active Workout Card
-                ActiveWorkoutCard()
-                    .environmentObject(workoutManager)
-            } else {
-                // No Active Workout - Enhanced Design
-                VStack(spacing: 0) {
-                    // Hero Section
-                    VStack(spacing: 24) {
-                        // Animated Icon with Gradient Background
-                        ZStack {
-                            Circle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [.blue.opacity(0.1), .purple.opacity(0.1)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .frame(width: 120, height: 120)
+        VStack(spacing: 0) {
+            // Primary action button - Hevy style (only 2 taps)
+            NavigationLink(destination: NewWorkoutView().environmentObject(workoutManager)) {
+                HStack {
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.white)
 
-                            Image(systemName: "figure.strengthtraining.traditional")
-                                .font(.system(size: 48, weight: .light))
-                                .foregroundStyle(
-                                    LinearGradient(
-                                        colors: [.blue, .purple],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                        }
-
-                        VStack(spacing: 8) {
-                            Text("Ready to Get Strong?")
-                                .font(.system(size: 28, weight: .bold, design: .rounded))
-                                .foregroundColor(.primary)
-                                .multilineTextAlignment(.center)
-
-                            Text("Track your workouts, build strength,\nand achieve your fitness goals")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                                .lineSpacing(2)
-                        }
-                    }
-                    .padding(.top, 40)
-                    .padding(.horizontal, 32)
-
-                    Spacer()
-
-                    // Action Buttons - Modern Design
-                    VStack(spacing: 16) {
-                        // Primary Action
-                        Button(action: {
-                            workoutManager.startWorkout()
-                        }) {
-                            HStack(spacing: 12) {
-                                Image(systemName: "plus.circle.fill")
-                                    .font(.system(size: 20, weight: .semibold))
-                                Text("Start Empty Workout")
-                                    .font(.system(size: 18, weight: .semibold))
-                            }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity, minHeight: 56)
-                            .background(
-                                LinearGradient(
-                                    colors: [.blue, .blue.opacity(0.8)],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                            )
-                            .cornerRadius(16)
-                            .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 4)
-                        }
-                        .buttonStyle(SpringyButtonStyle())
-
-                        // Secondary Action
-                        Button(action: { showingTemplates = true }) {
-                            HStack(spacing: 12) {
-                                Image(systemName: "doc.text.fill")
-                                    .font(.system(size: 18, weight: .medium))
-                                Text("Browse Templates")
-                                    .font(.system(size: 16, weight: .semibold))
-                            }
-                            .foregroundColor(.blue)
-                            .frame(maxWidth: .infinity, minHeight: 56)
-                            .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(.ultraThinMaterial)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 16)
-                                            .stroke(.blue.opacity(0.3), lineWidth: 1)
-                                    )
-                            )
-                        }
-                        .buttonStyle(SpringyButtonStyle())
-
-                        // Quick Stats Row
-                        HStack(spacing: 32) {
-                            QuickStatItem(icon: "flame.fill", title: "Calories", value: "0", color: .orange)
-                            QuickStatItem(icon: "timer", title: "Duration", value: "0:00", color: .green)
-                            QuickStatItem(icon: "dumbbell.fill", title: "Exercises", value: "0", color: .purple)
-                        }
-                        .padding(.top, 24)
-                    }
-                    .padding(.horizontal, 24)
-
-                    Spacer()
+                    Text("Start Empty Workout")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.white)
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(Color.blue)
+                .cornerRadius(12)
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+
+            Spacer()
         }
         .sheet(isPresented: $showingTemplates) {
             WorkoutTemplatesView(onSelectTemplate: { _ in
@@ -133,22 +43,21 @@ struct ActiveWorkoutCard: View {
     @EnvironmentObject var workoutManager: WorkoutManager
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Workout in Progress")
-                        .font(.caption)
+                        .font(.system(size: 12))
                         .foregroundColor(.secondary)
 
                     Text(workoutManager.workoutName)
-                        .font(.title3)
-                        .fontWeight(.bold)
+                        .font(.system(size: 20, weight: .bold))
                 }
 
                 Spacer()
 
                 Text(workoutManager.workoutDurationFormatted)
-                    .font(.system(size: 24, weight: .bold, design: .monospaced))
+                    .font(.system(size: 22, weight: .bold, design: .monospaced))
                     .foregroundColor(.blue)
             }
 
@@ -157,29 +66,33 @@ struct ActiveWorkoutCard: View {
             // Exercise Summary
             HStack {
                 Label("\(workoutManager.exercises.count) exercises", systemImage: "dumbbell.fill")
-                    .font(.caption)
+                    .font(.system(size: 12))
 
                 Spacer()
 
                 Label("\(Int(workoutManager.totalVolume)) lbs", systemImage: "scalemass")
-                    .font(.caption)
+                    .font(.system(size: 12))
             }
             .foregroundColor(.secondary)
 
             // Continue Button
             NavigationLink(destination: NewWorkoutView().environmentObject(workoutManager)) {
                 Text("Continue Workout")
-                    .font(.headline)
+                    .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.green)
-                    .cornerRadius(10)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.blue)
+                    )
+                    .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
             }
         }
-        .padding()
+        .padding(16)
         .background(Color(.systemGray6))
         .cornerRadius(12)
+        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
     }
 }
 
@@ -251,97 +164,103 @@ struct ExerciseTabView: View {
 
     var body: some View {
         NavigationView {
-            // If there's an active workout, show it directly
-            if workoutManager.isWorkoutActive {
-                NewWorkoutView()
-                    .environmentObject(workoutManager)
-            } else {
-                VStack(spacing: 0) {
-                    // Header
-                    HStack {
+            VStack(spacing: 0) {
+                // Header with tabs
+                VStack(spacing: 12) {
+                    HStack(spacing: 16) {
                         Text("Exercise")
-                            .font(.system(size: 32, weight: .bold))
-                            .foregroundColor(.primary)
+                            .font(.system(size: 38, weight: .bold, design: .rounded))
+                            .frame(height: 44, alignment: .center)
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [
+                                        Color(red: 0.9, green: 0.4, blue: 0.3),
+                                        Color(red: 0.7, green: 0.3, blue: 0.6)
+                                    ],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
 
                         Spacer()
 
-                        Button(action: {
-                            showingSettings = true
-                        }) {
-                            Image(systemName: "gearshape.fill")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(.primary)
-                                .frame(width: 44, height: 44)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12 + 2)
-                                        .fill(.ultraThinMaterial)
-                                        .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
-                                )
-                        }
-                        .buttonStyle(SpringyButtonStyle())
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
+                        Button(action: { showingSettings = true }) {
+                            ZStack {
+                                Circle()
+                                    .fill(.ultraThinMaterial)
+                                    .frame(width: 44, height: 44)
+                                    .overlay(
+                                        Circle()
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [.white.opacity(0.5), .white.opacity(0.1)],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                ),
+                                                lineWidth: 1.5
+                                            )
+                                    )
+                                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
 
-                    // Enhanced Sub-tab Picker
-                    HStack(spacing: 4) {
+                                Image(systemName: "gearshape.fill")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundColor(.primary)
+                                    .symbolRenderingMode(.hierarchical)
+                            }
+                        }
+                        .accessibilityLabel("Open exercise settings")
+                    }
+
+                    // Simple tab selector - Hevy style
+                    HStack(spacing: 0) {
                         ForEach(ExerciseSubTab.allCases, id: \.self) { tab in
                             Button(action: {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                withAnimation(.easeInOut(duration: 0.2)) {
                                     selectedExerciseSubTab = tab
                                 }
                             }) {
-                                VStack(spacing: 6) {
-                                    Image(systemName: tab.icon)
-                                        .font(.system(size: 18, weight: .semibold))
-
+                                VStack(spacing: 8) {
                                     Text(tab.rawValue)
-                                        .font(.system(size: 13, weight: .semibold))
-                                }
-                                .foregroundColor(selectedExerciseSubTab == tab ? .white : .primary)
-                                .frame(maxWidth: .infinity, minHeight: 60)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12)
+                                        .font(.system(size: 16, weight: selectedExerciseSubTab == tab ? .semibold : .regular))
+                                        .foregroundColor(selectedExerciseSubTab == tab ? .primary : .secondary)
+
+                                    Rectangle()
                                         .fill(selectedExerciseSubTab == tab ? Color.blue : Color.clear)
-                                        .shadow(color: selectedExerciseSubTab == tab ? .blue.opacity(0.3) : .clear, radius: 4, x: 0, y: 2)
-                                )
+                                        .frame(height: 2)
+                                }
+                                .frame(maxWidth: .infinity)
                             }
-                            .buttonStyle(SpringyButtonStyle())
                         }
                     }
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 4)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(.ultraThinMaterial)
-                            .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
-                    )
+                    .frame(height: 44)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+
+                // Main Content
+                ScrollView {
+                    VStack(spacing: 16) {
+                        switch selectedExerciseSubTab {
+                        case .workout:
+                            WorkoutMainContent()
+                                .environmentObject(workoutManager)
+                        case .history:
+                            WorkoutHistoryList()
+                        case .stats:
+                            ExerciseStatsDisplay()
+                        }
+                    }
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
-
-                    // Main Content based on selected sub-tab
-                    ScrollView {
-                        VStack(spacing: 16) {
-                            switch selectedExerciseSubTab {
-                            case .workout:
-                                WorkoutMainContent()
-                                    .environmentObject(workoutManager)
-                            case .history:
-                                WorkoutHistoryList()
-                            case .stats:
-                                ExerciseStatsDisplay()
-                            }
-                        }
-                        .padding()
-                    }
                 }
             }
+            .background(Color(.systemBackground).ignoresSafeArea())
         }
         .navigationViewStyle(StackNavigationViewStyle())
     }
 }
 
-// MARK: - Quick Stat Item Component
+// MARK: - Quick Stat Item Component (AAA Modern Design)
 struct QuickStatItem: View {
     let icon: String
     let title: String
@@ -349,26 +268,224 @@ struct QuickStatItem: View {
     let color: Color
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 10) {
             ZStack {
+                // Glow effect
                 Circle()
-                    .fill(color.opacity(0.15))
-                    .frame(width: 44, height: 44)
+                    .fill(
+                        RadialGradient(
+                            colors: [color.opacity(0.3), color.opacity(0)],
+                            center: .center,
+                            startRadius: 5,
+                            endRadius: 30
+                        )
+                    )
+                    .frame(width: 60, height: 60)
+                    .blur(radius: 8)
+
+                // Glassmorphic circle
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .frame(width: 48, height: 48)
+                    .overlay(
+                        Circle()
+                            .stroke(
+                                LinearGradient(
+                                    colors: [color.opacity(0.5), color.opacity(0.2)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 2
+                            )
+                    )
+                    .shadow(color: color.opacity(0.2), radius: 8, x: 0, y: 4)
 
                 Image(systemName: icon)
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundColor(color)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [color, color.opacity(0.7)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .symbolRenderingMode(.hierarchical)
             }
 
-            VStack(spacing: 2) {
+            VStack(spacing: 3) {
                 Text(value)
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
 
                 Text(title)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.secondary)
             }
         }
+    }
+}
+
+// MARK: - Sub-tab Selector (AAA Modern Design)
+struct ExerciseSubTabSelector: View {
+    @Binding var selectedTab: ExerciseTabView.ExerciseSubTab
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ForEach(ExerciseTabView.ExerciseSubTab.allCases, id: \.self) { tab in
+                Button(action: {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                        selectedTab = tab
+                    }
+                }) {
+                    HStack(spacing: 7) {
+                        Image(systemName: tab.icon)
+                            .font(.system(size: 15, weight: .semibold))
+                        Text(tab.rawValue)
+                            .font(.system(size: 15, weight: .semibold))
+                    }
+                    .foregroundStyle(
+                        selectedTab == tab ?
+                        LinearGradient(
+                            colors: [.white, .white.opacity(0.95)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ) :
+                        LinearGradient(
+                            colors: [.primary, .primary.opacity(0.8)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        Group {
+                            if selectedTab == tab {
+                                ZStack {
+                                    LinearGradient(
+                                        colors: [
+                                            Color(red: 0.3, green: 0.5, blue: 1.0),
+                                            Color(red: 0.5, green: 0.3, blue: 0.9)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+
+                                    LinearGradient(
+                                        colors: [.white.opacity(0.25), .clear],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                }
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(.white.opacity(0.3), lineWidth: 1.5)
+                                )
+                                .shadow(color: Color(red: 0.4, green: 0.4, blue: 0.9).opacity(0.3), radius: 8, x: 0, y: 4)
+                            } else {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(.ultraThinMaterial)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Color(.systemGray4), lineWidth: 1)
+                                    )
+                            }
+                        }
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+        .padding(6)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemGray6).opacity(0.5))
+        )
+    }
+}
+
+// MARK: - Exercise Quick Action Card (AAA Modern Design)
+struct ExerciseQuickActionCard: View {
+    let title: String
+    let icon: String
+    let color: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 14) {
+                ZStack {
+                    // Glow effect background
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [color.opacity(0.4), color.opacity(0)],
+                                center: .center,
+                                startRadius: 5,
+                                endRadius: 35
+                            )
+                        )
+                        .frame(width: 70, height: 70)
+                        .blur(radius: 10)
+
+                    // Glassmorphic circle
+                    Circle()
+                        .fill(.ultraThinMaterial)
+                        .frame(width: 56, height: 56)
+                        .overlay(
+                            Circle()
+                                .stroke(
+                                    LinearGradient(
+                                        colors: [color.opacity(0.6), color.opacity(0.2)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 2
+                                )
+                        )
+                        .shadow(color: color.opacity(0.25), radius: 12, x: 0, y: 6)
+
+                    Image(systemName: icon)
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [color, color.opacity(0.7)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .symbolRenderingMode(.hierarchical)
+                }
+
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.primary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 24)
+            .padding(.horizontal, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [.white.opacity(0.5), .white.opacity(0.1)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1.5
+                            )
+                    )
+            )
+            .shadow(color: .black.opacity(0.1), radius: 15, x: 0, y: 8)
+        }
+        .buttonStyle(SpringyButtonStyle())
     }
 }

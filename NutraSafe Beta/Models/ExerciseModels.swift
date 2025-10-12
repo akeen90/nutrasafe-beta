@@ -163,51 +163,99 @@ struct ExerciseEntry: Identifiable {
     }
 }
 
+enum SetType: String, Codable, CaseIterable {
+    case normal = "Normal"
+    case warmup = "Warm Up"
+    case dropset = "Drop Set"
+    case failure = "Failure"
+
+    var icon: String {
+        switch self {
+        case .normal: return "circle"
+        case .warmup: return "flame"
+        case .dropset: return "arrow.down.circle"
+        case .failure: return "exclamationmark.triangle"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .normal: return .primary
+        case .warmup: return .orange
+        case .dropset: return .purple
+        case .failure: return .red
+        }
+    }
+}
+
 struct WorkoutSet: Identifiable, Codable {
     let id = UUID()
     var weight: Double
     var reps: Int
     var isCompleted: Bool
+    var setType: SetType
+    var rpe: Int? // Rate of Perceived Exertion (6-10)
+    var note: String?
     let restTime: TimeInterval?
     let completedAt: Date
-    
-    init(weight: Double = 0.0, reps: Int = 0, isCompleted: Bool = false, restTime: TimeInterval? = nil) {
+
+    // Previous performance for comparison
+    var previousWeight: Double?
+    var previousReps: Int?
+
+    init(weight: Double = 0.0, reps: Int = 0, isCompleted: Bool = false, setType: SetType = .normal, rpe: Int? = nil, note: String? = nil, restTime: TimeInterval? = nil, previousWeight: Double? = nil, previousReps: Int? = nil) {
         self.weight = weight
         self.reps = reps
         self.isCompleted = isCompleted
+        self.setType = setType
+        self.rpe = rpe
+        self.note = note
         self.restTime = restTime
         self.completedAt = Date()
+        self.previousWeight = previousWeight
+        self.previousReps = previousReps
     }
 }
 
 struct WorkoutExercise: Identifiable, Codable {
     let id = UUID()
     let name: String
-    let sets: [WorkoutSet]
-    let notes: String?
+    var sets: [WorkoutSet]
+    var notes: String?
     let muscleGroups: [String] // e.g., ["Chest", "Shoulders", "Triceps"]
-    
-    init(name: String, sets: [WorkoutSet] = [], notes: String? = nil, muscleGroups: [String] = []) {
+    var supersetId: UUID? // Groups exercises into supersets
+    var restTimerSeconds: Int // Default rest between sets
+    var previousPerformance: [WorkoutSet]? // Last workout's sets for comparison
+
+    init(name: String, sets: [WorkoutSet] = [], notes: String? = nil, muscleGroups: [String] = [], supersetId: UUID? = nil, restTimerSeconds: Int = 90, previousPerformance: [WorkoutSet]? = nil) {
         self.name = name
         self.sets = sets
         self.notes = notes
         self.muscleGroups = muscleGroups
+        self.supersetId = supersetId
+        self.restTimerSeconds = restTimerSeconds
+        self.previousPerformance = previousPerformance
     }
-    
+
     // Calculate total volume (sets × reps × weight)
     var totalVolume: Double {
         return sets.reduce(0) { total, set in
             total + (Double(set.reps) * set.weight)
         }
     }
-    
+
     // Calculate personal records
     var maxWeight: Double {
         return sets.map { $0.weight }.max() ?? 0
     }
-    
+
     var maxReps: Int {
         return sets.map { $0.reps }.max() ?? 0
+    }
+
+    var best1RM: Double {
+        // Epley formula: weight * (1 + reps/30)
+        return sets.map { Double($0.weight) * (1.0 + Double($0.reps) / 30.0) }.max() ?? 0
     }
 }
 

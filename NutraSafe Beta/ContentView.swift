@@ -5,6 +5,10 @@ import Vision
 import UserNotifications
 import ActivityKit
 
+// Import the extracted view components
+// Note: These would typically be handled by proper module imports
+// For now, ensure all View files are included in your Xcode target
+
 // MARK: - Workout Manager
 class WorkoutManager: ObservableObject {
     static let shared = WorkoutManager()
@@ -748,6 +752,11 @@ class FatSecretService: ObservableObject {
                         case consumerInfo
                     }
                 }
+                
+                struct AdditiveSource: Codable {
+                    let name: String
+                    let url: String?
+                }
             }
         }
         
@@ -1344,42 +1353,45 @@ struct ContentView: View {
     @State private var deleteTrigger = false
     @StateObject private var workoutManager = WorkoutManager.shared
     @StateObject private var healthKitManager = HealthKitManager.shared
+    
+    // MARK: - Computed Views
+    @ViewBuilder
+    private var currentTabView: some View {
+        switch selectedTab {
+        case .diary:
+            DiaryTabView(
+                selectedFoodItems: $selectedFoodItems,
+                showingSettings: $showingSettings,
+                selectedTab: $selectedTab,
+                editTrigger: $editTrigger,
+                moveTrigger: $moveTrigger,
+                deleteTrigger: $deleteTrigger,
+                onEditFood: editSelectedFood,
+                onDeleteFoods: deleteSelectedFoods
+            )
+            .environmentObject(diaryDataManager)
+            .environmentObject(healthKitManager)
+        case .weight:
+            WeightTrackingView(showingSettings: $showingSettings)
+                .environmentObject(healthKitManager)
+        case .add:
+            AddTabView(selectedTab: $selectedTab)
+                .environmentObject(diaryDataManager)
+        case .food:
+            FoodTabView(showingSettings: $showingSettings)
+        case .kitchen:
+            KitchenTabView(showingSettings: $showingSettings, selectedTab: $selectedTab)
+        }
+    }
 
     var body: some View {
         NavigationView {
             ZStack {
                 // Main Content with padding for tab bar and potential workout progress bar
-            VStack {
-                switch selectedTab {
-                case .diary:
-                    DiaryTabView(
-                        selectedFoodItems: $selectedFoodItems,
-                        showingSettings: $showingSettings,
-                        selectedTab: $selectedTab,
-                        editTrigger: $editTrigger,
-                        moveTrigger: $moveTrigger,
-                        deleteTrigger: $deleteTrigger,
-                        onEditFood: editSelectedFood,
-                        onDeleteFoods: deleteSelectedFoods
-                    )
-                    .environmentObject(diaryDataManager)
-                    .environmentObject(healthKitManager)
-                case .exercise:
-                    ExerciseTabView(
-                        showingSettings: $showingSettings,
-                        selectedTab: $selectedTab
-                    )
-                    .environmentObject(workoutManager)
-                case .add:
-                    AddTabView(selectedTab: $selectedTab)
-                        .environmentObject(diaryDataManager)
-                case .food:
-                    FoodTabView(showingSettings: $showingSettings)
-                case .kitchen:
-                    KitchenTabView(showingSettings: $showingSettings, selectedTab: $selectedTab)
+                VStack {
+                    currentTabView
                 }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             
             // Custom Tab Bar positioned at bottom - hidden when in workout view
             if !workoutManager.isInWorkoutView {
@@ -1413,11 +1425,6 @@ struct ContentView: View {
                 .transition(.move(edge: .bottom))
                 .animation(.easeInOut(duration: 0.3), value: selectedFoodItems.isEmpty)
             }
-            
-            // Enhanced Workout Navigation Overlay
-            WorkoutNavigationOverlay(selectedTab: $selectedTab)
-                .environmentObject(workoutManager)
-            
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .sheet(isPresented: $showingSettings) {
@@ -1442,26 +1449,26 @@ struct ContentView: View {
 
 // MARK: - Tab Items
 enum TabItem: String, CaseIterable {
-    case diary = "diary"  
-    case exercise = "exercise"
+    case diary = "diary"
+    case weight = "progress"
     case add = "add"
     case food = "food"
     case kitchen = "kitchen"
-    
+
     var title: String {
         switch self {
         case .diary: return "Diary"
-        case .exercise: return "Exercise"
+        case .weight: return "Progress"
         case .add: return ""
         case .food: return "Food"
         case .kitchen: return "Kitchen"
         }
     }
-    
+
     var icon: String {
         switch self {
         case .diary: return "heart.circle"
-        case .exercise: return "figure.run"
+        case .weight: return "chart.line.uptrend.xyaxis"
         case .add: return "plus"
         case .food: return "fork.knife.circle"
         case .kitchen: return "refrigerator"
@@ -1497,6 +1504,992 @@ struct RoundedCorner: Shape {
 }
 
 // MARK: - Tab Views
+
+
+// MARK: - Weight Tracking View
+struct WeightTrackingView: View {
+    @Binding var showingSettings: Bool
+    @EnvironmentObject var healthKitManager: HealthKitManager
+
+    @State private var currentWeight: Double = UserDefaults.standard.double(forKey: "userWeight")
+    @State private var goalWeight: Double = UserDefaults.standard.double(forKey: "goalWeight")
+    @State private var userHeight: Double = {
+        let saved = UserDefaults.standard.double(forKey: "userHeight")
+        return saved > 0 ? saved : 175.0 // Default to 175cm if not set
+    }()
+    @State private var showingAddWeight = false
+    @State private var weightHistory: [WeightEntry] = []
+    @State private var showingHeightSetup = false
+
+    private var needsHeightSetup: Bool {
+        UserDefaults.standard.double(forKey: "userHeight") == 0
+    }
+
+    private var currentBMI: Double {
+        guard currentWeight > 0, userHeight > 0 else { return 0 }
+        let heightInMeters = userHeight / 100
+        return currentWeight / (heightInMeters * heightInMeters)
+    }
+
+    private var bmiCategory: (String, Color) {
+        let bmi = currentBMI
+        if bmi < 18.5 {
+            return ("Underweight", .orange)
+        } else if bmi < 25 {
+            return ("Healthy", .green)
+        } else if bmi < 30 {
+            return ("Overweight", .orange)
+        } else {
+            return ("Obese", .red)
+        }
+    }
+
+    private var totalProgress: Double {
+        guard goalWeight > 0, let firstEntry = weightHistory.last else { return 0 }
+        let startWeight = firstEntry.weight
+        let totalToLose = startWeight - goalWeight
+        let lostSoFar = startWeight - currentWeight
+        return totalToLose != 0 ? (lostSoFar / totalToLose) * 100 : 0
+    }
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                // Fixed Header
+                HStack(spacing: 16) {
+                    Text("Progress")
+                        .font(.system(size: 38, weight: .bold, design: .rounded))
+                        .frame(height: 44, alignment: .center)
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.6, green: 0.3, blue: 0.8),
+                                    Color(red: 0.4, green: 0.5, blue: 0.9)
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+
+                    Spacer()
+
+                    Button(action: { showingSettings = true }) {
+                        ZStack {
+                            Circle()
+                                .fill(.ultraThinMaterial)
+                                .frame(width: 44, height: 44)
+                                .overlay(
+                                    Circle()
+                                        .stroke(
+                                            LinearGradient(
+                                                colors: [.white.opacity(0.5), .white.opacity(0.1)],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            ),
+                                            lineWidth: 1.5
+                                        )
+                                )
+                                .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+
+                            Image(systemName: "gearshape.fill")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundColor(.primary)
+                                .symbolRenderingMode(.hierarchical)
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 12)
+                .background(Color(.systemBackground))
+
+                ScrollView {
+                    VStack(spacing: 24) {
+
+                    // Stats Grid - NOW AT TOP
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Summary")
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundColor(.primary)
+                            .padding(.horizontal, 20)
+
+                        HStack(spacing: 12) {
+                            // Current Weight
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Current")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                    Text(String(format: "%.1f", currentWeight))
+                                        .font(.system(size: 32, weight: .bold))
+                                        .foregroundStyle(
+                                            LinearGradient(
+                                                colors: [
+                                                    Color(red: 0.3, green: 0.5, blue: 1.0),
+                                                    Color(red: 0.5, green: 0.3, blue: 0.9)
+                                                ],
+                                                startPoint: .leading,
+                                                endPoint: .trailing
+                                            )
+                                        )
+                                    Text("kg")
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(Color(.systemBackground))
+                                    .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+                            )
+
+                            // Goal Weight
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Goal")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                    Text(goalWeight > 0 ? String(format: "%.1f", goalWeight) : "--")
+                                        .font(.system(size: 32, weight: .bold))
+                                        .foregroundColor(.green)
+                                    Text("kg")
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(Color(.systemBackground))
+                                    .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+                            )
+                        }
+                        .padding(.horizontal, 20)
+
+                        HStack(spacing: 12) {
+                            // Progress
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Progress")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                let startWeight = weightHistory.last?.weight ?? currentWeight
+                                let lost = max(startWeight - currentWeight, 0)
+                                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                    Text(String(format: "%.1f", lost))
+                                        .font(.system(size: 28, weight: .bold))
+                                        .foregroundColor(.green)
+                                    Text("kg")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(Color(.systemBackground))
+                                    .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+                            )
+
+                            // Remaining
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("To Go")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                let remaining = goalWeight > 0 ? max(currentWeight - goalWeight, 0) : 0
+                                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                    Text(String(format: "%.1f", remaining))
+                                        .font(.system(size: 28, weight: .bold))
+                                        .foregroundColor(.orange)
+                                    Text("kg")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(Color(.systemBackground))
+                                    .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+                            )
+                        }
+                        .padding(.horizontal, 20)
+                    }
+                    .padding(.top, 12)
+
+                    // Update Weight button - STAYS IN MIDDLE
+                    Button(action: { showingAddWeight = true }) {
+                        HStack {
+                            Text("Update Weight")
+                                .font(.system(size: 20, weight: .semibold))
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 24))
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color.orange)
+                        .cornerRadius(30)
+                    }
+                    .padding(.horizontal, 40)
+                    .padding(.top, 20)
+
+                    // Weight History or Empty State - NOW AT BOTTOM
+                    if !weightHistory.isEmpty {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("History")
+                                        .font(.system(size: 22, weight: .bold))
+                                        .foregroundColor(.primary)
+
+                                    Text("\(weightHistory.count) entries")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.secondary)
+                                }
+
+                                Spacer()
+
+                                // Mini trend indicator
+                                if weightHistory.count > 1 {
+                                    let latest = weightHistory.first?.weight ?? currentWeight
+                                    let previous = weightHistory[safe: 1]?.weight ?? latest
+                                    let change = latest - previous
+
+                                    HStack(spacing: 4) {
+                                        Image(systemName: change < 0 ? "arrow.down.right" : change > 0 ? "arrow.up.right" : "arrow.right")
+                                            .font(.system(size: 14, weight: .semibold))
+                                        Text(String(format: "%.1f kg", abs(change)))
+                                            .font(.system(size: 14, weight: .semibold))
+                                    }
+                                    .foregroundColor(change < 0 ? .green : change > 0 ? .red : .secondary)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill((change < 0 ? Color.green : change > 0 ? Color.red : Color.secondary).opacity(0.1))
+                                    )
+                                }
+                            }
+                            .padding(.horizontal, 20)
+
+                            // Weight entries list
+                            VStack(spacing: 8) {
+                                ForEach(Array(weightHistory.prefix(5).enumerated()), id: \.element.id) { index, entry in
+                                    WeightEntryRow(
+                                        entry: entry,
+                                        previousEntry: weightHistory[safe: index + 1],
+                                        isLatest: index == 0
+                                    )
+                                }
+
+                                if weightHistory.count > 5 {
+                                    Button(action: {
+                                        // TODO: Show full history
+                                    }) {
+                                        Text("View all \(weightHistory.count) entries")
+                                            .font(.system(size: 14, weight: .medium))
+                                            .foregroundColor(.blue)
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 12)
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                        }
+                        .padding(.top, 12)
+                    } else {
+                        // Empty State
+                        VStack(spacing: 16) {
+                            ZStack {
+                                Circle()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [
+                                                Color(red: 0.3, green: 0.5, blue: 1.0).opacity(0.1),
+                                                Color(red: 0.5, green: 0.3, blue: 0.9).opacity(0.1)
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .frame(width: 100, height: 100)
+
+                                Image(systemName: "chart.line.uptrend.xyaxis")
+                                    .font(.system(size: 48, weight: .light))
+                                    .foregroundStyle(
+                                        LinearGradient(
+                                            colors: [
+                                                Color(red: 0.3, green: 0.5, blue: 1.0),
+                                                Color(red: 0.5, green: 0.3, blue: 0.9)
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                            }
+                            .padding(.top, 20)
+
+                            VStack(spacing: 8) {
+                                Text("Track Your Weight Journey")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .multilineTextAlignment(.center)
+
+                                Text("Tap 'Update Weight' above to log your first entry and see your progress over time")
+                                    .font(.system(size: 15))
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .padding(.horizontal, 40)
+                        }
+                        .frame(height: 280)
+                        .frame(maxWidth: .infinity)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color(.systemGray6).opacity(0.5))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(
+                                    LinearGradient(
+                                        colors: [
+                                            Color(red: 0.3, green: 0.5, blue: 1.0).opacity(0.2),
+                                            Color(red: 0.5, green: 0.3, blue: 0.9).opacity(0.2)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 1
+                                )
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.top, 20)
+                    }
+
+                    }
+                    .padding(.bottom, 100)
+                }
+            }
+            .background(Color(.systemBackground))
+        }
+        .navigationViewStyle(StackNavigationViewStyle())
+        .sheet(isPresented: $showingAddWeight) {
+            AddWeightView(currentWeight: $currentWeight, weightHistory: $weightHistory)
+        }
+        .sheet(isPresented: $showingHeightSetup) {
+            HeightSetupView(userHeight: $userHeight)
+        }
+        .onAppear {
+            loadWeightHistory()
+            if needsHeightSetup {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    showingHeightSetup = true
+                }
+            }
+        }
+    }
+
+    private func loadWeightHistory() {
+        // Load from UserDefaults for now
+        if let data = UserDefaults.standard.data(forKey: "weightHistory"),
+           let decoded = try? JSONDecoder().decode([WeightEntry].self, from: data) {
+            weightHistory = decoded.sorted { $0.date > $1.date }
+        }
+    }
+}
+
+// MARK: - Array Extension for Safe Access
+extension Array {
+    subscript(safe index: Int) -> Element? {
+        return indices.contains(index) ? self[index] : nil
+    }
+}
+
+// MARK: - Weight Entry Row
+struct WeightEntryRow: View {
+    let entry: WeightEntry
+    let previousEntry: WeightEntry?
+    let isLatest: Bool
+
+    private var weightChange: Double? {
+        guard let previous = previousEntry else { return nil }
+        return entry.weight - previous.weight
+    }
+
+    var body: some View {
+        HStack(spacing: 16) {
+            // Date
+            VStack(alignment: .leading, spacing: 2) {
+                Text(entry.date, style: .date)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.primary)
+                Text(entry.date, style: .time)
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+            }
+            .frame(width: 90, alignment: .leading)
+
+            // Weight
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(String(format: "%.1f", entry.weight))
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(.primary)
+                    Text("kg")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+
+                if let bmi = entry.bmi {
+                    Text("BMI: \(String(format: "%.1f", bmi))")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            Spacer()
+
+            // Change indicator
+            if let change = weightChange {
+                HStack(spacing: 4) {
+                    Image(systemName: change < 0 ? "arrow.down" : "arrow.up")
+                        .font(.system(size: 12, weight: .bold))
+                    Text(String(format: "%.1f", abs(change)))
+                        .font(.system(size: 14, weight: .bold))
+                }
+                .foregroundColor(change < 0 ? .green : .red)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill((change < 0 ? Color.green : Color.red).opacity(0.15))
+                )
+            } else if isLatest {
+                Text("Latest")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.blue)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.blue.opacity(0.15))
+                    )
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
+        )
+    }
+}
+
+// MARK: - Weight Entry Model
+struct WeightEntry: Identifiable, Codable {
+    let id: UUID
+    let weight: Double
+    let date: Date
+    let bmi: Double?
+    let note: String?
+
+    init(id: UUID = UUID(), weight: Double, date: Date = Date(), bmi: Double? = nil, note: String? = nil) {
+        self.id = id
+        self.weight = weight
+        self.date = date
+        self.bmi = bmi
+        self.note = note
+    }
+}
+
+// MARK: - History Row
+struct WeightHistoryRow: View {
+    let entry: WeightEntry
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(String(format: "%.1f kg", entry.weight))
+                        .font(.system(size: 17, weight: .semibold))
+
+                    Text(entry.date, style: .date)
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                if let bmi = entry.bmi {
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("BMI")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Text(String(format: "%.1f", bmi))
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.blue)
+                    }
+                }
+            }
+
+            if let note = entry.note, !note.isEmpty {
+                Text(note)
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(Color(.systemGray6))
+        .cornerRadius(10)
+        .padding(.horizontal, 16)
+    }
+}
+
+// MARK: - Simple Chart
+struct SimpleWeightChart: View {
+    let entries: [WeightEntry]
+    let goalWeight: Double
+
+    private var sortedEntries: [WeightEntry] {
+        entries.sorted { $0.date < $1.date }
+    }
+
+    private var maxWeight: Double {
+        max(sortedEntries.map { $0.weight }.max() ?? 0, goalWeight)
+    }
+
+    private var minWeight: Double {
+        min(sortedEntries.map { $0.weight }.min() ?? 0, goalWeight)
+    }
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .bottomLeading) {
+                // Goal line
+                if goalWeight > 0 {
+                    let goalY = (1 - (goalWeight - minWeight) / (maxWeight - minWeight)) * geometry.size.height
+
+                    Path { path in
+                        path.move(to: CGPoint(x: 0, y: goalY))
+                        path.addLine(to: CGPoint(x: geometry.size.width, y: goalY))
+                    }
+                    .stroke(Color.green.opacity(0.5), style: StrokeStyle(lineWidth: 2, dash: [5, 5]))
+                }
+
+                // Weight line
+                if sortedEntries.count > 1 {
+                    Path { path in
+                        for (index, entry) in sortedEntries.enumerated() {
+                            let x = (CGFloat(index) / CGFloat(sortedEntries.count - 1)) * geometry.size.width
+                            let y = (1 - (entry.weight - minWeight) / (maxWeight - minWeight)) * geometry.size.height
+
+                            if index == 0 {
+                                path.move(to: CGPoint(x: x, y: y))
+                            } else {
+                                path.addLine(to: CGPoint(x: x, y: y))
+                            }
+                        }
+                    }
+                    .stroke(Color.blue, lineWidth: 3)
+                }
+
+                // Data points
+                ForEach(sortedEntries.indices, id: \.self) { index in
+                    let entry = sortedEntries[index]
+                    let x = (CGFloat(index) / CGFloat(max(sortedEntries.count - 1, 1))) * geometry.size.width
+                    let y = (1 - (entry.weight - minWeight) / max(maxWeight - minWeight, 1)) * geometry.size.height
+
+                    Circle()
+                        .fill(Color.blue)
+                        .frame(width: 8, height: 8)
+                        .position(x: x, y: y)
+                }
+            }
+        }
+        .padding(.vertical, 20)
+        .background(Color(.systemGray6).opacity(0.3))
+        .cornerRadius(12)
+    }
+}
+
+// MARK: - Weight Line Chart
+struct WeightLineChart: View {
+    let entries: [WeightEntry]
+    let goalWeight: Double
+    let startWeight: Double
+
+    var body: some View {
+        GeometryReader { geometry in
+            let maxWeight = max(entries.map { $0.weight }.max() ?? 0, goalWeight, startWeight) + 1
+            let minWeight = min(entries.map { $0.weight }.min() ?? 0, goalWeight) - 1
+            let range = maxWeight - minWeight
+
+            ZStack {
+                // Background card
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.systemBackground))
+                    .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+
+                VStack(spacing: 0) {
+                    // Subtle gridlines
+                    ForEach(0..<4) { i in
+                        Rectangle()
+                            .fill(Color(.systemGray6))
+                            .frame(height: 0.5)
+                            .padding(.horizontal, 20)
+
+                        if i < 3 {
+                            Spacer()
+                        }
+                    }
+                }
+                .frame(height: geometry.size.height - 40)
+                .padding(.top, 20)
+
+                // Line and area
+                if entries.count > 1 {
+                    // Gradient area under line
+                    Path { path in
+                        let points = entries.enumerated().map { index, entry -> CGPoint in
+                            let x = CGFloat(index) / CGFloat(max(entries.count - 1, 1)) * (geometry.size.width - 40) + 20
+                            let y = (1 - (entry.weight - minWeight) / range) * (geometry.size.height - 40) + 20
+                            return CGPoint(x: x, y: y)
+                        }
+
+                        if let first = points.first {
+                            path.move(to: CGPoint(x: first.x, y: geometry.size.height))
+                            path.addLine(to: first)
+
+                            for point in points.dropFirst() {
+                                path.addLine(to: point)
+                            }
+
+                            if let last = points.last {
+                                path.addLine(to: CGPoint(x: last.x, y: geometry.size.height))
+                            }
+                            path.closeSubpath()
+                        }
+                    }
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.3, green: 0.5, blue: 1.0).opacity(0.2),
+                                Color(red: 0.3, green: 0.5, blue: 1.0).opacity(0.0)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+
+                    // Line
+                    Path { path in
+                        let points = entries.enumerated().map { index, entry -> CGPoint in
+                            let x = CGFloat(index) / CGFloat(max(entries.count - 1, 1)) * (geometry.size.width - 40) + 20
+                            let y = (1 - (entry.weight - minWeight) / range) * (geometry.size.height - 40) + 20
+                            return CGPoint(x: x, y: y)
+                        }
+
+                        if let first = points.first {
+                            path.move(to: first)
+                            for point in points.dropFirst() {
+                                path.addLine(to: point)
+                            }
+                        }
+                    }
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.3, green: 0.5, blue: 1.0),
+                                Color(red: 0.5, green: 0.3, blue: 0.9)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ),
+                        style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round)
+                    )
+
+                    // Data points
+                    ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
+                        let x = CGFloat(index) / CGFloat(max(entries.count - 1, 1)) * (geometry.size.width - 40) + 20
+                        let y = (1 - (entry.weight - minWeight) / range) * (geometry.size.height - 40) + 20
+
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: 10, height: 10)
+                            .overlay(
+                                Circle()
+                                    .stroke(
+                                        LinearGradient(
+                                            colors: [
+                                                Color(red: 0.3, green: 0.5, blue: 1.0),
+                                                Color(red: 0.5, green: 0.3, blue: 0.9)
+                                            ],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ),
+                                        lineWidth: 3
+                                    )
+                            )
+                            .position(x: x, y: y)
+                    }
+                }
+
+                // Goal line
+                if goalWeight > 0 && goalWeight >= minWeight && goalWeight <= maxWeight {
+                    let goalY = (1 - (goalWeight - minWeight) / range) * (geometry.size.height - 40) + 20
+
+                    ZStack {
+                        Path { path in
+                            path.move(to: CGPoint(x: 20, y: goalY))
+                            path.addLine(to: CGPoint(x: geometry.size.width - 20, y: goalY))
+                        }
+                        .stroke(Color.green.opacity(0.4), style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
+
+                        HStack {
+                            Spacer()
+                            Text("Goal")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.green)
+                                .cornerRadius(6)
+                                .offset(y: goalY - 32)
+                                .padding(.trailing, 24)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Add Weight View
+struct AddWeightView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var currentWeight: Double
+    @Binding var weightHistory: [WeightEntry]
+
+    @State private var weight: String = ""
+    @State private var note: String = ""
+    @State private var date = Date()
+
+    private var calculatedBMI: Double? {
+        guard let weightValue = Double(weight) else { return nil }
+        let height = UserDefaults.standard.double(forKey: "userHeight")
+        guard height > 0 else { return nil }
+        let heightInMeters = height / 100
+        return weightValue / (heightInMeters * heightInMeters)
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Weight")) {
+                    HStack {
+                        TextField("Weight", text: $weight)
+                            .keyboardType(.decimalPad)
+                            .font(.system(size: 20, weight: .semibold))
+
+                        Text("kg")
+                            .foregroundColor(.secondary)
+                    }
+
+                    if let bmi = calculatedBMI {
+                        HStack {
+                            Text("BMI")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text(String(format: "%.1f", bmi))
+                                .font(.system(size: 17, weight: .semibold))
+                        }
+                    }
+                }
+
+                Section(header: Text("Date")) {
+                    DatePicker("Date", selection: $date, displayedComponents: [.date, .hourAndMinute])
+                }
+
+                Section(header: Text("Note (Optional)")) {
+                    TextField("Add a note", text: $note)
+                }
+            }
+            .navigationTitle("Log Weight")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        saveWeight()
+                    }
+                    .disabled(weight.isEmpty || Double(weight) == nil)
+                }
+            }
+        }
+    }
+
+    private func saveWeight() {
+        guard let weightValue = Double(weight) else { return }
+
+        let entry = WeightEntry(weight: weightValue, date: date, bmi: calculatedBMI, note: note.isEmpty ? nil : note)
+        weightHistory.append(entry)
+        weightHistory.sort { $0.date > $1.date }
+
+        // Save to UserDefaults
+        if let encoded = try? JSONEncoder().encode(weightHistory) {
+            UserDefaults.standard.set(encoded, forKey: "weightHistory")
+        }
+
+        // Update current weight
+        currentWeight = weightValue
+        UserDefaults.standard.set(weightValue, forKey: "userWeight")
+
+        dismiss()
+    }
+}
+
+// MARK: - Height Setup View
+struct HeightSetupView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var userHeight: Double
+
+    @State private var heightCm: String = ""
+    @State private var heightFeet: String = ""
+    @State private var heightInches: String = ""
+    @State private var useMetric: Bool = true
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 32) {
+                VStack(spacing: 16) {
+                    Image(systemName: "figure.stand")
+                        .font(.system(size: 60))
+                        .foregroundColor(.blue)
+
+                    Text("What's your height?")
+                        .font(.system(size: 28, weight: .bold))
+
+                    Text("We need this to calculate your BMI")
+                        .font(.system(size: 16))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.top, 40)
+
+                Picker("Unit", selection: $useMetric) {
+                    Text("Metric (cm)").tag(true)
+                    Text("Imperial (ft/in)").tag(false)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 40)
+
+                if useMetric {
+                    HStack(spacing: 12) {
+                        TextField("170", text: $heightCm)
+                            .keyboardType(.numberPad)
+                            .font(.system(size: 48, weight: .light, design: .rounded))
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: 200)
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+
+                        Text("cm")
+                            .font(.system(size: 24))
+                            .foregroundColor(.secondary)
+                    }
+                } else {
+                    HStack(spacing: 16) {
+                        VStack(spacing: 8) {
+                            TextField("5", text: $heightFeet)
+                                .keyboardType(.numberPad)
+                                .font(.system(size: 36, weight: .light, design: .rounded))
+                                .multilineTextAlignment(.center)
+                                .frame(width: 100)
+                                .padding()
+                                .background(Color(.systemGray6))
+                                .cornerRadius(12)
+
+                            Text("feet")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+
+                        VStack(spacing: 8) {
+                            TextField("9", text: $heightInches)
+                                .keyboardType(.numberPad)
+                                .font(.system(size: 36, weight: .light, design: .rounded))
+                                .multilineTextAlignment(.center)
+                                .frame(width: 100)
+                                .padding()
+                                .background(Color(.systemGray6))
+                                .cornerRadius(12)
+
+                            Text("inches")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+
+                Spacer()
+
+                Button(action: saveHeight) {
+                    Text("Continue")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(isValid ? Color.blue : Color.gray)
+                        .cornerRadius(12)
+                }
+                .disabled(!isValid)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 40)
+            }
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        .interactiveDismissDisabled(true)
+    }
+
+    private var isValid: Bool {
+        if useMetric {
+            return Double(heightCm) ?? 0 > 0
+        } else {
+            return (Double(heightFeet) ?? 0) > 0 || (Double(heightInches) ?? 0) > 0
+        }
+    }
+
+    private func saveHeight() {
+        var heightInCm: Double = 0
+
+        if useMetric {
+            heightInCm = Double(heightCm) ?? 0
+        } else {
+            let feet = Double(heightFeet) ?? 0
+            let inches = Double(heightInches) ?? 0
+            heightInCm = (feet * 12 + inches) * 2.54
+        }
+
+        userHeight = heightInCm
+        UserDefaults.standard.set(heightInCm, forKey: "userHeight")
+        dismiss()
+    }
+}
+
+
+
 // MARK: - Dead HomeTabView system removed - unreachable due to missing .home case in TabItem enum
 // This entire 563-line struct was confirmed dead code during forensic audit
 //
@@ -2300,7 +3293,7 @@ struct WorkoutSummaryCard: View {
                             .foregroundColor(.blue)
                             .frame(width: 24)
                         
-                        Text("\(exercise.sets) sets \(exercise.exerciseType)")
+                        Text("\(exercise.sets.count) sets \(exercise.exerciseType)")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.primary)
                         
@@ -2524,216 +3517,218 @@ extension DateFormatter {
     }()
 }
 
-// MARK: - Working Set Data Structure (Simple inline sets)
-struct WorkingSet: Identifiable {
-    let id = UUID()
-    var weight: String = ""
-    var reps: String = ""
-    var isCompleted: Bool = false
-}
-
 // MARK: - Exercise Workout Card Component
 struct ExerciseWorkoutCard: View {
     let exercise: String
-    let sets: [WorkoutSet]
+    @Binding var sets: [WorkoutSet]
     let onAddSet: (WorkoutSet) -> Void
     let onRemoveSet: (Int) -> Void
+    var onCompleteSet: ((Int) -> Void)? = nil
     let onMove: (Int, Int) -> Void
     let exerciseIndex: Int
     let totalExercises: Int
-    
-    @EnvironmentObject var restTimerManager: ExerciseRestTimerManager
-    @State private var workingSets: [WorkingSet] = []
-    @State private var restTime: String = "3:00" // Default 3 minutes for heavy lifting
-    @State private var showingRestTimePicker = false
-    
+
+    @State private var showingSetTypeMenu: Int? = nil
+    @State private var showingNotes = false
+    @State private var exerciseNotes: String = ""
+
     var body: some View {
-        VStack(spacing: 16) {
-            // Exercise Header
+        VStack(alignment: .leading, spacing: 12) {
+            // HEVY STYLE: Exercise Header
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(exercise)
-                        .font(.headline)
-                        .font(.headline.weight(.semibold))
-                    
-                    if !sets.isEmpty {
-                        Text("\(sets.count) sets completed")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
+                Text(exercise)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(.primary)
+
                 Spacer()
-                
-                // Rest Time Picker
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text("Rest Time")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    Button(action: {
-                        showingRestTimePicker = true
+
+                Menu {
+                    Button(action: { showingNotes = true }) {
+                        Label("Notes", systemImage: "note.text")
+                    }
+                    Button(role: .destructive, action: {
+                        // Delete handled via onRemoveSet callback
                     }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "timer")
-                                .font(.caption)
-                            Text(restTime)
-                                .font(.caption.weight(.medium).monospacedDigit())
-                        }
-                        .foregroundColor(.blue)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.blue.opacity(0.1))
-                        .cornerRadius(8)
+                        Label("Delete Exercise", systemImage: "trash")
                     }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .frame(width: 32, height: 32)
+                        .background(Color(.systemGray5))
+                        .clipShape(Circle())
                 }
             }
-            
-            // Simple Inline Sets
-            VStack(spacing: 8) {
-                // Sets header
-                HStack {
-                    Text("Sets")
-                        .font(.subheadline.weight(.medium))
-                    
-                    Spacer()
-                }
-                
-                // Working sets (inline editing)
-                ForEach(Array(workingSets.enumerated()), id: \.element.id) { index, workingSet in
-                    HStack {
-                        // Set number
-                        Text("\(index + 1)")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .frame(width: 25)
-                        
-                        // Weight input
-                        TextField("kg", text: Binding(
-                            get: { workingSets[index].weight },
-                            set: { workingSets[index].weight = $0 }
-                        ))
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .keyboardType(.decimalPad)
-                        .frame(width: 60)
-                        
-                        Text("kg")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        // Reps input
-                        TextField("reps", text: Binding(
-                            get: { workingSets[index].reps },
-                            set: { workingSets[index].reps = $0 }
-                        ))
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .keyboardType(.numberPad)
-                        .frame(width: 50)
-                        
-                        Text("reps")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        Spacer()
-                        
-                        // Complete button
-                        if !workingSet.isCompleted {
-                            Button(action: {
-                                completeWorkingSet(at: index)
-                            }) {
-                                Image(systemName: "checkmark.circle")
-                                    .foregroundColor(canCompleteSet(workingSet) ? .green : .gray)
-                                    .font(.title3)
-                            }
-                            .disabled(!canCompleteSet(workingSet))
-                        } else {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.green)
-                                .font(.title3)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-                
-                // Add Set Button (underneath sets)
-                Button(action: addEmptySet) {
-                    HStack {
-                        Image(systemName: "plus.circle")
-                            .foregroundColor(.blue)
-                        Text("Add Set")
-                            .foregroundColor(.blue)
-                    }
-                    .font(.subheadline)
-                    .padding(.vertical, 8)
+
+            // HEVY STYLE: Column Headers
+            HStack(spacing: 8) {
+                Text("SET")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.secondary)
+                    .frame(width: 40, alignment: .center)
+
+                Text("PREVIOUS")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.secondary)
+                    .frame(width: 70, alignment: .center)
+
+                Text("KG")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity)
-                    .background(Color.blue.opacity(0.1))
-                    .cornerRadius(8)
-                }
-                .padding(.top, 8)
-                
-                // Completed Sets Summary (if any)
-                if !sets.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Completed: \(sets.count) sets")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .padding(.top, 8)
-                    }
-                }
+
+                Text("REPS")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity)
+
+                Spacer()
+                    .frame(width: 40)
             }
+            .padding(.horizontal, 4)
+
+            // HEVY STYLE: Sets List
+            ForEach(Array(sets.enumerated()), id: \.offset) { index, set in
+                HStack(spacing: 8) {
+                    // Set Number Circle with Type Indicator
+                    Button(action: {
+                        showingSetTypeMenu = index
+                    }) {
+                        ZStack {
+                            Circle()
+                                .fill(set.setType == .normal ? Color(.systemGray5) : set.setType.color.opacity(0.2))
+                                .frame(width: 32, height: 32)
+
+                            if set.setType != .normal {
+                                Image(systemName: set.setType.icon)
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundColor(set.setType.color)
+                            } else {
+                                Text("\(index + 1)")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.primary)
+                            }
+                        }
+                    }
+                    .frame(width: 40)
+                    .confirmationDialog("Set Type", isPresented: Binding(
+                        get: { showingSetTypeMenu == index },
+                        set: { if !$0 { showingSetTypeMenu = nil } }
+                    )) {
+                        ForEach(SetType.allCases, id: \.self) { type in
+                            Button(type.rawValue) {
+                                sets[index].setType = type
+                                showingSetTypeMenu = nil
+                            }
+                        }
+                    }
+
+                    // Previous Performance
+                    Text("-")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                        .frame(width: 70, alignment: .center)
+
+                    // Weight Input
+                    TextField("0", value: $sets[index].weight, format: .number)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.center)
+                        .font(.system(size: 15, weight: .medium))
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 8)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(8)
+                        .frame(maxWidth: .infinity)
+
+                    // Reps Input
+                    TextField("0", value: $sets[index].reps, format: .number)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.center)
+                        .font(.system(size: 15, weight: .medium))
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 8)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(8)
+                        .frame(maxWidth: .infinity)
+
+                    // Complete Set Checkbox
+                    Button(action: {
+                        let generator = UIImpactFeedbackGenerator(style: .medium)
+                        generator.impactOccurred()
+
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                            sets[index].isCompleted.toggle()
+                        }
+
+                        if sets[index].isCompleted {
+                            onCompleteSet?(index)
+                        }
+                    }) {
+                        ZStack {
+                            Circle()
+                                .stroke(set.isCompleted ? Color.blue : Color(.systemGray4), lineWidth: 2)
+                                .frame(width: 28, height: 28)
+
+                            if set.isCompleted {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                    }
+                    .frame(width: 40)
+                }
+                .padding(.vertical, 4)
+            }
+
+            // HEVY STYLE: Add Set Button
+            Button(action: {
+                let newSet = WorkoutSet(
+                    weight: sets.last?.weight ?? 0,
+                    reps: sets.last?.reps ?? 0
+                )
+                onAddSet(newSet)
+            }) {
+                HStack(spacing: 6) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 14))
+                    Text("Add Set")
+                        .font(.system(size: 15, weight: .medium))
+                }
+                .foregroundColor(.blue)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(Color(.systemGray6))
+                .cornerRadius(8)
+            }
+            .buttonStyle(ScaleButtonStyle())
+            .padding(.top, 4)
         }
         .padding(16)
         .background(Color(.systemBackground))
         .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
-        .padding(.horizontal, 20)
-        .onAppear {
-            // Initialize with one empty set if no working sets exist
-            if workingSets.isEmpty {
-                workingSets.append(WorkingSet())
+        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+        .padding(.horizontal, 16)
+        .sheet(isPresented: $showingNotes) {
+            NavigationView {
+                VStack {
+                    TextEditor(text: $exerciseNotes)
+                        .padding()
+
+                    Spacer()
+                }
+                .navigationTitle("Exercise Notes")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") {
+                            showingNotes = false
+                        }
+                    }
+                }
             }
         }
-        .sheet(isPresented: $showingRestTimePicker) {
-            RestTimePickerView(selectedTime: $restTime)
-        }
-    }
-    
-    private func addEmptySet() {
-        workingSets.append(WorkingSet())
-    }
-    
-    private func canCompleteSet(_ workingSet: WorkingSet) -> Bool {
-        !workingSet.weight.isEmpty && !workingSet.reps.isEmpty &&
-        Double(workingSet.weight) ?? 0 > 0 && Int(workingSet.reps) ?? 0 > 0
-    }
-    
-    private func completeWorkingSet(at index: Int) {
-        guard index < workingSets.count else { return }
-        let workingSet = workingSets[index]
-        
-        guard let weight = Double(workingSet.weight),
-              let reps = Int(workingSet.reps),
-              weight > 0, reps > 0 else { return }
-        
-        // Mark as completed
-        // workingSets[index].completed = true // TODO: Fix WorkingSet model
-
-        // Create completed WorkoutSet
-        let completedSet = WorkoutSet(weight: weight, reps: reps, isCompleted: true)
-        onAddSet(completedSet)
-        
-        // Start rest timer with custom duration for this exercise
-        let restDuration = parseRestTime(restTime)
-        restTimerManager.startTimer(for: exercise, exerciseName: exercise, duration: restDuration)
-    }
-    
-    // Helper function to parse rest time from "M:SS" format to seconds
-    private func parseRestTime(_ timeString: String) -> TimeInterval {
-        let components = timeString.split(separator: ":").compactMap { Int($0) }
-        if components.count == 2 {
-            return TimeInterval(components[0] * 60 + components[1])
-        }
-        return 180 // Default to 3 minutes if parsing fails
     }
 }
 
@@ -2968,7 +3963,7 @@ struct ExerciseEntryView: View {
                     
                     Picker("Intensity", selection: $selectedIntensity) {
                         ForEach(ExerciseIntensity.allCases, id: \.self) { intensity in
-                            Text(intensity.rawValue.capitalized).tag(intensity)
+                            Text(intensity.description).tag(intensity)
                         }
                     }
                 }
@@ -3828,13 +4823,19 @@ struct AddFoodMainView: View {
     @Binding var selectedTab: TabItem
     @Environment(\.dismiss) private var dismiss
     @State private var selectedAddOption: AddOption = .search
-    
+    @State private var destination: AddDestination
+
+    enum AddDestination: String, CaseIterable {
+        case diary = "Diary"
+        case kitchen = "Kitchen"
+    }
+
     enum AddOption: String, CaseIterable {
         case search = "Search"
         case manual = "Manual"
         case barcode = "Barcode"
         case ai = "AI Scanner"
-        
+
         var icon: String {
             switch self {
             case .search: return "magnifyingglass"
@@ -3843,7 +4844,7 @@ struct AddFoodMainView: View {
             case .ai: return "camera.viewfinder"
             }
         }
-        
+
         var description: String {
             switch self {
             case .search: return "Search food database"
@@ -3853,22 +4854,31 @@ struct AddFoodMainView: View {
             }
         }
     }
-    
+
+    init(selectedTab: Binding<TabItem>, sourceDestination: AddDestination? = nil) {
+        self._selectedTab = selectedTab
+        self._destination = State(initialValue: sourceDestination ?? .diary)
+    }
+
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
                 // Header
                 VStack(spacing: 16) {
                     HStack {
-                        Text("Add Food")
+                        Text("Adding Food To")
                             .font(.system(size: 28, weight: .bold))
                             .foregroundColor(.primary)
-                        
+
                         Spacer()
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
-                    
+
+                    // Destination selector - Native Segmented Control
+                    DestinationSelector(selectedDestination: $destination)
+                        .padding(.horizontal, 16)
+
                     // Option selector
                     AddOptionSelector(selectedOption: $selectedAddOption)
                         .padding(.horizontal, 16)
@@ -3879,13 +4889,13 @@ struct AddFoodMainView: View {
                 Group {
                     switch selectedAddOption {
                     case .search:
-                        AddFoodSearchView(selectedTab: $selectedTab)
+                        AddFoodSearchView(selectedTab: $selectedTab, destination: $destination)
                     case .manual:
                         AddFoodManualView()
                     case .barcode:
-                        AddFoodBarcodeView(selectedTab: $selectedTab)
+                        AddFoodBarcodeView(selectedTab: $selectedTab, destination: $destination)
                     case .ai:
-                        AddFoodAIView(selectedTab: $selectedTab)
+                        AddFoodAIView(selectedTab: $selectedTab, destination: $destination)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -3902,9 +4912,62 @@ struct AddFoodMainView: View {
     }
 }
 
+struct DestinationSelector: View {
+    @Binding var selectedDestination: AddFoodMainView.AddDestination
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(AddFoodMainView.AddDestination.allCases, id: \.self) { destination in
+                Button(action: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        selectedDestination = destination
+                    }
+                }) {
+                    Text(destination.rawValue)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(
+                            selectedDestination == destination ?
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.6, green: 0.3, blue: 0.8),
+                                    Color(red: 0.4, green: 0.5, blue: 0.9)
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            ) :
+                            LinearGradient(
+                                colors: [Color.secondary, Color.secondary],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(
+                            ZStack {
+                                if selectedDestination == destination {
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color(.systemBackground))
+                                        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                                }
+                            }
+                        )
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+        .padding(4)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(.systemGray6))
+        )
+        .frame(height: 40)
+    }
+}
+
 struct AddOptionSelector: View {
     @Binding var selectedOption: AddFoodMainView.AddOption
-    
+
     var body: some View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 12) {
             ForEach(AddFoodMainView.AddOption.allCases, id: \.self) { option in

@@ -15,6 +15,7 @@ import Foundation
 // MARK: - Barcode Scanning View
 struct AddFoodBarcodeView: View {
     @Binding var selectedTab: TabItem
+    @Binding var destination: AddFoodMainView.AddDestination
     @State private var scannedProduct: FoodSearchResult?
     @State private var pendingContribution: PendingFoodContribution?
     @State private var isSearching = false
@@ -31,7 +32,7 @@ struct AddFoodBarcodeView: View {
                         .foregroundColor(.green)
                         .padding(.top, 20)
 
-                    FoodSearchResultRowEnhanced(food: product, sourceType: .barcode, selectedTab: $selectedTab)
+                    FoodSearchResultRowEnhanced(food: product, sourceType: .barcode, selectedTab: $selectedTab, destination: $destination)
                     .padding(.horizontal, 16)
 
                     Button("Scan Another") {

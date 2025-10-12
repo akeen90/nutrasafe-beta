@@ -983,8 +983,23 @@ struct LogReactionView: View {
     }
 
     private func autoLoadIngredientsFromFood(_ ingredients: [String]) {
+        // Apply instant client-side standardization
         let standardized = standardizeIngredients(ingredients)
         suspectedIngredients = standardized
+
+        // Then try AI refinement in background
+        Task {
+            do {
+                let aiRefined = try await standardizeIngredientsWithAI(standardized)
+                await MainActor.run {
+                    suspectedIngredients = aiRefined
+                    print("✨ AI refined to: \(aiRefined.joined(separator: ", "))")
+                }
+            } catch {
+                print("ℹ️ AI refinement unavailable, using client-side filter: \(error.localizedDescription)")
+                // Keep the client-side results, which are already pretty good
+            }
+        }
     }
 
     private func standardizeIngredients(_ ingredients: [String]) -> [String] {

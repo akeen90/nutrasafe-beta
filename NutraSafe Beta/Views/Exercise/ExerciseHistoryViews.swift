@@ -136,7 +136,7 @@ struct ExerciseStatsView: View {
                         .padding(.horizontal, 16)
                     
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
-                        StatCard(
+                        ExerciseStatCard(
                             title: "Workouts",
                             value: "4",
                             subtitle: "This week",
@@ -144,7 +144,7 @@ struct ExerciseStatsView: View {
                             icon: "dumbbell.fill"
                         )
                         
-                        StatCard(
+                        ExerciseStatCard(
                             title: "Total Time",
                             value: "3.2h",
                             subtitle: "Active time",
@@ -152,7 +152,7 @@ struct ExerciseStatsView: View {
                             icon: "clock"
                         )
                         
-                        StatCard(
+                        ExerciseStatCard(
                             title: "Volume",
                             value: "18.5k",
                             subtitle: "Pounds lifted",
@@ -160,7 +160,7 @@ struct ExerciseStatsView: View {
                             icon: "scalemass"
                         )
                         
-                        StatCard(
+                        ExerciseStatCard(
                             title: "Calories",
                             value: "1,240",
                             subtitle: "Burned",
@@ -317,9 +317,9 @@ struct WorkoutTemplateQuickCard: View {
     }
 }
 
-// MARK: - Stat Card
+// MARK: - Exercise Stat Card
 
-struct StatCard: View {
+struct ExerciseStatCard: View {
     let title: String
     let value: String
     let subtitle: String
@@ -327,36 +327,59 @@ struct StatCard: View {
     let icon: String
     
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 12) {
             HStack {
-                Image(systemName: icon)
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(color)
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [color.opacity(0.2), color.opacity(0.1)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 40, height: 40)
+                    
+                    Image(systemName: icon)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(color)
+                }
                 
                 Spacer()
             }
             
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(value)
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(.primary)
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.primary, .primary.opacity(0.8)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
                 
                 Text(title)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.primary)
                 
                 Text(subtitle)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 16)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 20)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemGray6))
+            RoundedRectangle(cornerRadius: 16)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(color.opacity(0.2), lineWidth: 1)
+                )
         )
+        .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 6)
     }
 }
 

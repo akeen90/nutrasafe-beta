@@ -65,8 +65,8 @@ async function searchVerifiedFoods(query: string): Promise<any[]> {
 
     return snapshot.docs.map(doc => {
       const data = doc.data();
-      const nutrition = data.nutritionData || {};
-      
+      const nutrition = data.nutritionData || data.nutrition || {};
+
       return {
         id: doc.id,
         name: data.foodName || '',

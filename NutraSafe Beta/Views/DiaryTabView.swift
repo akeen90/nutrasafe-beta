@@ -11,10 +11,12 @@ struct DiaryTabView: View {
     @State private var lunchFoods: [DiaryFoodItem] = []
     @State private var dinnerFoods: [DiaryFoodItem] = []
     @State private var snackFoods: [DiaryFoodItem] = []
-    @State private var isSelectionMode: Bool = false
     @State private var showingMoveSheet = false
     @State private var moveToDate = Date()
     @State private var moveToMeal = "Breakfast"
+    @State private var showingEditSheet = false
+    @State private var editingFood: DiaryFoodItem?
+    @State private var editingMealType = ""
     @Binding var selectedFoodItems: Set<String>
     @Binding var showingSettings: Bool
     @Binding var selectedTab: TabItem
@@ -73,8 +75,18 @@ struct DiaryTabView: View {
                     // Header with inline date picker
                     HStack {
                         Text("Diary")
-                            .font(.system(size: 32, weight: .bold))
-                            .foregroundColor(.primary)
+                            .font(.system(size: 38, weight: .bold, design: .rounded))
+                            .frame(height: 44, alignment: .center)
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [
+                                        Color(red: 0.6, green: 0.3, blue: 0.8),
+                                        Color(red: 0.4, green: 0.5, blue: 0.9)
+                                    ],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
 
                         Spacer()
 
@@ -102,15 +114,28 @@ struct DiaryTabView: View {
                         Button(action: {
                             showingSettings = true
                         }) {
-                            Image(systemName: "gearshape.fill")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(.primary)
-                                .frame(width: 44, height: 44)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12 + 2)
-                                        .fill(.ultraThinMaterial)
-                                        .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
-                                )
+                            ZStack {
+                                Circle()
+                                    .fill(.ultraThinMaterial)
+                                    .frame(width: 44, height: 44)
+                                    .overlay(
+                                        Circle()
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [.white.opacity(0.5), .white.opacity(0.1)],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                ),
+                                                lineWidth: 1.5
+                                            )
+                                    )
+                                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+
+                                Image(systemName: "gearshape.fill")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundColor(.primary)
+                                    .symbolRenderingMode(.hierarchical)
+                            }
                         }
                         .buttonStyle(SpringyButtonStyle())
                     }
@@ -156,8 +181,8 @@ struct DiaryTabView: View {
                                 color: Color(.systemOrange),
                                 selectedTab: $selectedTab,
                                 selectedFoodItems: $selectedFoodItems,
-                                isSelectionMode: $isSelectionMode,
-                                onEditFood: onEditFood
+                                onEditFood: onEditFood,
+                                onSaveNeeded: saveFoodData
                             )
 
                             DiaryMealCard(
@@ -168,8 +193,8 @@ struct DiaryTabView: View {
                                 color: Color(.systemGreen),
                                 selectedTab: $selectedTab,
                                 selectedFoodItems: $selectedFoodItems,
-                                isSelectionMode: $isSelectionMode,
-                                onEditFood: onEditFood
+                                onEditFood: onEditFood,
+                                onSaveNeeded: saveFoodData
                             )
 
                             DiaryMealCard(
@@ -180,8 +205,8 @@ struct DiaryTabView: View {
                                 color: Color(.systemBlue),
                                 selectedTab: $selectedTab,
                                 selectedFoodItems: $selectedFoodItems,
-                                isSelectionMode: $isSelectionMode,
-                                onEditFood: onEditFood
+                                onEditFood: onEditFood,
+                                onSaveNeeded: saveFoodData
                             )
 
                             DiaryMealCard(
@@ -192,8 +217,8 @@ struct DiaryTabView: View {
                                 color: Color(.systemPurple),
                                 selectedTab: $selectedTab,
                                 selectedFoodItems: $selectedFoodItems,
-                                isSelectionMode: $isSelectionMode,
-                                onEditFood: onEditFood
+                                onEditFood: onEditFood,
+                                onSaveNeeded: saveFoodData
                             )
                         }
                         .padding(.horizontal, 16)
@@ -206,10 +231,6 @@ struct DiaryTabView: View {
                             snacks: snackFoods
                         )
                         .padding(.horizontal, 16)
-
-                        // Hydration Tracking
-                        DiaryHydrationView()
-                            .padding(.horizontal, 16)
 
                         // Bottom padding for tab bar
                         Spacer()
@@ -261,6 +282,16 @@ struct DiaryTabView: View {
                 }
             )
         }
+        .sheet(isPresented: $showingEditSheet) {
+            if let food = editingFood {
+                FoodDetailViewFromSearch(
+                    food: food.toFoodSearchResult(),
+                    sourceType: .diary,
+                    selectedTab: $selectedTab,
+                    destination: .diary
+                )
+            }
+        }
     }
 
     // MARK: - Helper Methods
@@ -310,10 +341,14 @@ struct DiaryTabView: View {
         UserDefaults.standard.set("editing", forKey: "foodSearchMode")
         UserDefaults.standard.set(mealType, forKey: "editingMealType")
         UserDefaults.standard.set(selectedId, forKey: "editingFoodId")
+        UserDefaults.standard.set(food.quantity, forKey: "editingQuantity")
+        UserDefaults.standard.set(food.servingDescription, forKey: "editingServingDescription")
 
-        // Clear selection and navigate to Food tab
+        // Set state variables and show edit sheet
+        editingFood = food
+        editingMealType = mealType
         selectedFoodItems.removeAll()
-        selectedTab = .food
+        showingEditSheet = true
     }
 
     private func showMoveOptions() {
@@ -403,5 +438,11 @@ struct DiaryTabView: View {
         selectedFoodItems.removeAll()
 
         print("DiaryTabView: Successfully deleted \(itemCount) items")
+    }
+
+    private func saveFoodData() {
+        // Save all meals for the current selected date
+        diaryDataManager.saveFoodData(for: selectedDate, breakfast: breakfastFoods, lunch: lunchFoods, dinner: dinnerFoods, snacks: snackFoods)
+        print("DiaryTabView: Saved food data after swipe delete")
     }
 }

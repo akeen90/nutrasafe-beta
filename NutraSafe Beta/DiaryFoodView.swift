@@ -30,7 +30,6 @@ struct DiaryFoodView: View {
     @State private var snackFoods: [DiaryFoodItem] = []
     @State private var isLoading = true
     @State private var refreshCounter = 0
-    @State private var isSelectionMode = false
     @State private var editingFoodItem: DiaryFoodItem?
     @State private var originalMealType: String = ""
     @State private var showingEditFoodDetail = false
@@ -151,7 +150,13 @@ struct DiaryFoodView: View {
         
         print("DiaryFoodView: Delete completed - UI should update now")
     }
-    
+
+    private func saveFoodData() {
+        // Save all meals for the current selected date
+        DiaryDataManager.shared.saveFoodData(for: selectedDate, breakfast: breakfastFoods, lunch: lunchFoods, dinner: dinnerFoods, snacks: snackFoods)
+        print("DiaryFoodView: Saved food data after swipe delete")
+    }
+
     private func showMoveOptions() {
         // Initialize move date to current diary date
         moveToDate = selectedDate
@@ -278,11 +283,11 @@ struct DiaryFoodView: View {
                     color: .orange,
                     selectedTab: $selectedTab,
                     selectedFoodItems: $selectedFoodItems,
-                    isSelectionMode: $isSelectionMode,
-                    onEditFood: onEditFood
+                    onEditFood: onEditFood,
+                    onSaveNeeded: saveFoodData
                 )
                 .padding(.horizontal, 16)
-                
+
                 DiaryMealCard(
                     mealType: "Lunch",
                     targetCalories: 500,
@@ -291,11 +296,11 @@ struct DiaryFoodView: View {
                     color: .green,
                     selectedTab: $selectedTab,
                     selectedFoodItems: $selectedFoodItems,
-                    isSelectionMode: $isSelectionMode,
-                    onEditFood: onEditFood
+                    onEditFood: onEditFood,
+                    onSaveNeeded: saveFoodData
                 )
                 .padding(.horizontal, 16)
-                
+
                 DiaryMealCard(
                     mealType: "Dinner",
                     targetCalories: 600,
@@ -304,11 +309,11 @@ struct DiaryFoodView: View {
                     color: .purple,
                     selectedTab: $selectedTab,
                     selectedFoodItems: $selectedFoodItems,
-                    isSelectionMode: $isSelectionMode,
-                    onEditFood: onEditFood
+                    onEditFood: onEditFood,
+                    onSaveNeeded: saveFoodData
                 )
                 .padding(.horizontal, 16)
-                
+
                 DiaryMealCard(
                     mealType: "Snacks",
                     targetCalories: 200,
@@ -317,8 +322,8 @@ struct DiaryFoodView: View {
                     color: .blue,
                     selectedTab: $selectedTab,
                     selectedFoodItems: $selectedFoodItems,
-                    isSelectionMode: $isSelectionMode,
-                    onEditFood: onEditFood
+                    onEditFood: onEditFood,
+                    onSaveNeeded: saveFoodData
                 )
                 .padding(.horizontal, 16)
                 
@@ -387,7 +392,7 @@ struct DiaryFoodView: View {
         .sheet(isPresented: $showingEditFoodDetail) {
             if let food = editingFoodSearchResult {
                 NavigationView {
-                    FoodDetailViewFromSearch(food: food, sourceType: .search, selectedTab: $selectedTab)
+                    FoodDetailViewFromSearch(food: food, sourceType: .search, selectedTab: $selectedTab, destination: .diary)
                 }
             }
         }

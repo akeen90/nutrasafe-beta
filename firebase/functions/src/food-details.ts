@@ -46,31 +46,35 @@ export const getFoodDetails = functions.https.onRequest(async (req, res) => {
       foodName: data.foodName || '',
       brandName: data.brandName || '',
       barcode: data.barcode || '',
-      
+
       // This is the key fix! Map ingredients → extractedIngredients
       ingredients: data.extractedIngredients || data.ingredients || '',
       extractedIngredients: data.extractedIngredients || data.ingredients || '',
-      
-      // Complete nutrition data
-      nutritionData: data.nutritionData || {},
-      
+
+      // Complete nutrition data - support both nutritionData and nutrition fields
+      nutritionData: data.nutritionData || data.nutrition || {},
+      nutrition: data.nutrition || data.nutritionData || {},
+
+      // Additives from stored data
+      additives: data.additives || [],
+
       // Quality scores
       category: data.category || '',
       nutritionGrade: data.nutritionGrade || '',
       novaGroup: data.novaGroup || '',
-      
+
       // Images for display
       imageFrontUrl: data.imageFrontUrl || '',
       imageNutritionUrl: data.imageNutritionUrl || '',
       imageIngredientsUrl: data.imageIngredientsUrl || '',
-      
+
       // Product details
       servingSize: data.servingSize || '',
       servingQuantity: data.servingQuantity || '',
       packaging: data.packaging || '',
       stores: data.stores || '',
       countries: data.countries || '',
-      
+
       // Metadata
       verified: data.verified || false,
       isVerified: true,
