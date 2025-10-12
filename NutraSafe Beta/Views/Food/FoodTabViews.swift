@@ -984,9 +984,38 @@ struct LogReactionView: View {
 
     private func autoLoadIngredientsFromFood(_ ingredients: [String]) {
         // Automatically load ingredients when food is selected
-        let newIngredients = ingredients.compactMap { ingredient in
+        let newIngredients = ingredients.compactMap { ingredient -> String? in
             let cleaned = ingredient.trimmingCharacters(in: .whitespacesAndNewlines)
-            return cleaned.isEmpty ? nil : cleaned
+
+            // Filter out empty strings
+            guard !cleaned.isEmpty else { return nil }
+
+            // Filter out long text blocks (likely instructions or warnings)
+            // Real ingredients are typically short (e.g., "flour", "milk", "wheat")
+            guard cleaned.count < 50 else { return nil }
+
+            // Filter out text containing colons (these are usually labels/headers)
+            guard !cleaned.contains(":") else { return nil }
+
+            // Filter out text with multiple sentences (contains periods mid-text)
+            let periodCount = cleaned.filter { $0 == "." }.count
+            guard periodCount <= 1 else { return nil }
+
+            // Filter out common non-ingredient keywords
+            let excludeKeywords = [
+                "ALLERGEN", "STORAGE", "HOW TO", "NUTRITION", "PREPARE",
+                "REFRIGERATE", "BEST", "USE BY", "DEFROST", "COOKING",
+                "INSTRUCTIONS", "WARNING", "CONTAINS", "MAY CONTAIN"
+            ]
+
+            let upperCleaned = cleaned.uppercased()
+            for keyword in excludeKeywords {
+                if upperCleaned.contains(keyword) {
+                    return nil
+                }
+            }
+
+            return cleaned
         }
 
         // Clear existing ingredients and load new ones
@@ -998,10 +1027,38 @@ struct LogReactionView: View {
         guard let food = selectedFood,
               let ingredients = food.ingredients else { return }
 
-        // Parse and add ingredients from the food's ingredient list
-        let newIngredients = ingredients.compactMap { ingredient in
+        // Parse and add ingredients from the food's ingredient list with intelligent filtering
+        let newIngredients = ingredients.compactMap { ingredient -> String? in
             let cleaned = ingredient.trimmingCharacters(in: .whitespacesAndNewlines)
-            return cleaned.isEmpty ? nil : cleaned
+
+            // Filter out empty strings
+            guard !cleaned.isEmpty else { return nil }
+
+            // Filter out long text blocks (likely instructions or warnings)
+            guard cleaned.count < 50 else { return nil }
+
+            // Filter out text containing colons (labels/headers)
+            guard !cleaned.contains(":") else { return nil }
+
+            // Filter out text with multiple sentences
+            let periodCount = cleaned.filter { $0 == "." }.count
+            guard periodCount <= 1 else { return nil }
+
+            // Filter out common non-ingredient keywords
+            let excludeKeywords = [
+                "ALLERGEN", "STORAGE", "HOW TO", "NUTRITION", "PREPARE",
+                "REFRIGERATE", "BEST", "USE BY", "DEFROST", "COOKING",
+                "INSTRUCTIONS", "WARNING", "CONTAINS", "MAY CONTAIN"
+            ]
+
+            let upperCleaned = cleaned.uppercased()
+            for keyword in excludeKeywords {
+                if upperCleaned.contains(keyword) {
+                    return nil
+                }
+            }
+
+            return cleaned
         }
 
         for ingredient in newIngredients {
