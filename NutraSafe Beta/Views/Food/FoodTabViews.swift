@@ -334,30 +334,43 @@ struct FoodReactionListCard: View {
 
 struct FoodReactionRow: View {
     let reaction: FoodReaction
-    
+    @State private var showingDetail = false
+
     var body: some View {
-        HStack {
-            Circle()
-                .fill(severityColor(for: reaction.severity))
-                .frame(width: 8, height: 8)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(reaction.foodName)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(.primary)
-                
-                Text(reaction.symptoms.joined(separator: ", "))
+        Button(action: {
+            showingDetail = true
+        }) {
+            HStack {
+                Circle()
+                    .fill(severityColor(for: reaction.severity))
+                    .frame(width: 8, height: 8)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(reaction.foodName)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(.primary)
+
+                    Text(reaction.symptoms.joined(separator: ", "))
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                Text(formatDate(reaction.timestamp.dateValue()))
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
             }
-            
-            Spacer()
-            
-            Text(formatDate(reaction.timestamp.dateValue()))
-                .font(.system(size: 12))
-                .foregroundColor(.secondary)
+            .padding(.vertical, 4)
         }
-        .padding(.vertical, 4)
+        .buttonStyle(PlainButtonStyle())
+        .sheet(isPresented: $showingDetail) {
+            ReactionDetailView(reaction: reaction)
+        }
     }
     
     private func severityColor(for severity: ReactionSeverity) -> Color {
@@ -391,6 +404,7 @@ struct FoodReactionRow: View {
 
 struct FoodPatternAnalysisCard: View {
     @EnvironmentObject var reactionManager: ReactionManager
+    @State private var showOtherIngredients = false
 
     // Common allergens list
     private let knownAllergens = [
@@ -409,7 +423,7 @@ struct FoodPatternAnalysisCard: View {
         "molluscs", "oyster", "clam", "mussel"
     ]
 
-    private var topTriggers: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool)] {
+    private var allTriggers: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool)] {
         // Require at least 3 reactions before showing patterns
         guard reactionManager.reactions.count >= 3 else { return [] }
 
@@ -431,15 +445,16 @@ struct FoodPatternAnalysisCard: View {
             return (ingredient.capitalized, count, percentage, trend, isAllergen)
         }
 
-        // Sort: allergens first (by count), then others (by count)
-        let sorted = mapped.sorted { a, b in
-            if a.isAllergen != b.isAllergen {
-                return a.isAllergen // Allergens first
-            }
-            return a.count > b.count // Then by frequency
-        }
+        // Sort by frequency within each category
+        return mapped.sorted { $0.count > $1.count }
+    }
 
-        return Array(sorted.prefix(5)) // Show top 5
+    private var allergenTriggers: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool)] {
+        allTriggers.filter { $0.isAllergen }
+    }
+
+    private var otherTriggers: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool)] {
+        allTriggers.filter { !$0.isAllergen }
     }
 
     private func calculateTrend(for ingredient: String) -> PatternRow.Trend {
@@ -477,7 +492,7 @@ struct FoodPatternAnalysisCard: View {
                 .font(.system(size: 22, weight: .bold))
                 .foregroundColor(.primary)
 
-            if topTriggers.isEmpty {
+            if allTriggers.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "chart.bar")
                         .font(.system(size: 48))
@@ -492,13 +507,56 @@ struct FoodPatternAnalysisCard: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 30)
             } else {
-                VStack(spacing: 10) {
-                    ForEach(topTriggers, id: \.ingredient) { trigger in
-                        PatternRow(
-                            trigger: trigger.ingredient,
-                            frequency: "\(trigger.percentage)%",
-                            trend: trigger.trend
-                        )
+                VStack(alignment: .leading, spacing: 16) {
+                    // Known Allergens Section
+                    if !allergenTriggers.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Known Allergens")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.red)
+
+                            ForEach(allergenTriggers, id: \.ingredient) { trigger in
+                                PatternRow(
+                                    trigger: trigger.ingredient,
+                                    frequency: "\(trigger.percentage)%",
+                                    trend: trigger.trend
+                                )
+                            }
+                        }
+                    }
+
+                    // Other Ingredients Section (Expandable)
+                    if !otherTriggers.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Button(action: {
+                                withAnimation {
+                                    showOtherIngredients.toggle()
+                                }
+                            }) {
+                                HStack {
+                                    Text("Other Ingredients")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(.primary)
+
+                                    Spacer()
+
+                                    Image(systemName: showOtherIngredients ? "chevron.up" : "chevron.down")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .buttonStyle(PlainButtonStyle())
+
+                            if showOtherIngredients {
+                                ForEach(otherTriggers, id: \.ingredient) { trigger in
+                                    PatternRow(
+                                        trigger: trigger.ingredient,
+                                        frequency: "\(trigger.percentage)%",
+                                        trend: trigger.trend
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -516,10 +574,10 @@ struct PatternRow: View {
     let trigger: String
     let frequency: String
     let trend: Trend
-    
+
     enum Trend {
         case increasing, stable, decreasing
-        
+
         var icon: String {
             switch self {
             case .increasing: return "arrow.up"
@@ -527,7 +585,7 @@ struct PatternRow: View {
             case .decreasing: return "arrow.down"
             }
         }
-        
+
         var color: Color {
             switch self {
             case .increasing: return .red
@@ -536,23 +594,181 @@ struct PatternRow: View {
             }
         }
     }
-    
+
     var body: some View {
         HStack {
             Text(trigger)
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(.primary)
-            
+
             Spacer()
-            
+
             Text(frequency)
                 .font(.system(size: 14))
                 .foregroundColor(.secondary)
-            
+
             Image(systemName: trend.icon)
                 .font(.system(size: 12))
                 .foregroundColor(trend.color)
         }
+    }
+}
+
+// MARK: - Reaction Detail View
+struct ReactionDetailView: View {
+    let reaction: FoodReaction
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Food Info
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Food")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.secondary)
+
+                        Text(reaction.foodName)
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.primary)
+
+                        if let brand = reaction.foodBrand {
+                            Text(brand)
+                                .font(.system(size: 16))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    Divider()
+
+                    // Time & Severity
+                    HStack(spacing: 20) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("When")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.secondary)
+
+                            Text(formatFullDate(reaction.timestamp.dateValue()))
+                                .font(.system(size: 14))
+                                .foregroundColor(.primary)
+                        }
+
+                        Spacer()
+
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text("Severity")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.secondary)
+
+                            HStack(spacing: 4) {
+                                Circle()
+                                    .fill(severityColor(for: reaction.severity))
+                                    .frame(width: 8, height: 8)
+
+                                Text(severityText(for: reaction.severity))
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(severityColor(for: reaction.severity))
+                            }
+                        }
+                    }
+
+                    Divider()
+
+                    // Symptoms
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Symptoms")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.secondary)
+
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
+                            ForEach(reaction.symptoms, id: \.self) { symptom in
+                                Text(symptom)
+                                    .font(.system(size: 13))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(Color.blue.opacity(0.1))
+                                    .foregroundColor(.blue)
+                                    .cornerRadius(20)
+                            }
+                        }
+                    }
+
+                    Divider()
+
+                    // Suspected Ingredients
+                    if !reaction.suspectedIngredients.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Suspected Ingredients")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.secondary)
+
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
+                                ForEach(reaction.suspectedIngredients, id: \.self) { ingredient in
+                                    Text(ingredient)
+                                        .font(.system(size: 12))
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color.red.opacity(0.1))
+                                        .foregroundColor(.red)
+                                        .cornerRadius(20)
+                                }
+                            }
+                        }
+
+                        Divider()
+                    }
+
+                    // Notes
+                    if let notes = reaction.notes, !notes.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Notes")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.secondary)
+
+                            Text(notes)
+                                .font(.system(size: 14))
+                                .foregroundColor(.primary)
+                                .padding(12)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(8)
+                        }
+                    }
+                }
+                .padding(20)
+            }
+            .navigationTitle("Reaction Details")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarItems(
+                trailing: Button("Done") {
+                    dismiss()
+                }
+            )
+        }
+    }
+
+    private func severityColor(for severity: ReactionSeverity) -> Color {
+        switch severity {
+        case .mild: return .yellow
+        case .moderate: return .orange
+        case .severe: return .red
+        }
+    }
+
+    private func severityText(for severity: ReactionSeverity) -> String {
+        switch severity {
+        case .mild: return "Mild"
+        case .moderate: return "Moderate"
+        case .severe: return "Severe"
+        }
+    }
+
+    private func formatFullDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .long
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
 }
 
