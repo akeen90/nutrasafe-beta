@@ -392,8 +392,26 @@ struct FoodReactionRow: View {
 struct FoodPatternAnalysisCard: View {
     @EnvironmentObject var reactionManager: ReactionManager
 
-    private var topTriggers: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend)] {
-        guard !reactionManager.reactions.isEmpty else { return [] }
+    // Common allergens list
+    private let knownAllergens = [
+        "milk", "dairy", "lactose", "cream", "butter", "cheese", "yogurt", "whey", "casein",
+        "eggs", "egg", "albumin",
+        "peanuts", "peanut", "groundnut",
+        "nuts", "almond", "hazelnut", "walnut", "cashew", "pistachio", "pecan",
+        "wheat", "gluten", "barley", "rye", "oats",
+        "soy", "soya", "soybean", "tofu",
+        "fish", "salmon", "tuna", "cod",
+        "shellfish", "shrimp", "crab", "lobster", "prawn",
+        "sesame", "tahini",
+        "mustard",
+        "celery",
+        "lupin",
+        "molluscs", "oyster", "clam", "mussel"
+    ]
+
+    private var topTriggers: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool)] {
+        // Require at least 3 reactions before showing patterns
+        guard reactionManager.reactions.count >= 3 else { return [] }
 
         // Count ingredient frequencies
         var ingredientCounts: [String: Int] = [:]
@@ -404,15 +422,24 @@ struct FoodPatternAnalysisCard: View {
             }
         }
 
-        // Calculate percentages and get top 3
+        // Calculate percentages and determine if allergen
         let totalReactions = reactionManager.reactions.count
-        let sorted = ingredientCounts.sorted { $0.value > $1.value }.prefix(3)
-
-        return sorted.map { (ingredient, count) in
+        let mapped = ingredientCounts.map { (ingredient, count) -> (ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool) in
             let percentage = Int((Double(count) / Double(totalReactions)) * 100)
             let trend = calculateTrend(for: ingredient)
-            return (ingredient.capitalized, count, percentage, trend)
+            let isAllergen = knownAllergens.contains { ingredient.contains($0) }
+            return (ingredient.capitalized, count, percentage, trend, isAllergen)
         }
+
+        // Sort: allergens first (by count), then others (by count)
+        let sorted = mapped.sorted { a, b in
+            if a.isAllergen != b.isAllergen {
+                return a.isAllergen // Allergens first
+            }
+            return a.count > b.count // Then by frequency
+        }
+
+        return Array(sorted.prefix(5)) // Show top 5
     }
 
     private func calculateTrend(for ingredient: String) -> PatternRow.Trend {
