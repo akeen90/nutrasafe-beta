@@ -13,15 +13,11 @@ struct FoodTabView: View {
     enum FoodSubTab: String, CaseIterable {
         case reactions = "Reactions"
         case fasting = "Fasting"
-        case pending = "Pending"
-        case recipes = "Recipes"
-        
+
         var icon: String {
             switch self {
             case .reactions: return "exclamationmark.triangle.fill"
             case .fasting: return "clock.fill"
-            case .pending: return "hourglass.circle.fill"
-            case .recipes: return "book.closed.fill"
             }
         }
     }
@@ -29,32 +25,45 @@ struct FoodTabView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                // Header
+                // Header - Simplified Clean Design
                 VStack(spacing: 16) {
-                    HStack {
-                        Text("Food Hub")
-                            .font(.system(size: 32, weight: .bold))
-                            .foregroundColor(.primary)
-                        
+                    HStack(spacing: 16) {
+                        Text("Food")
+                            .font(.system(size: 38, weight: .bold, design: .rounded))
+                            .frame(height: 44, alignment: .center)
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [
+                                        Color(red: 0.6, green: 0.3, blue: 0.8),
+                                        Color(red: 0.4, green: 0.5, blue: 0.9)
+                                    ],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+
                         Spacer()
-                        
-                        Button(action: {
-                            showingSettings = true
-                        }) {
-                            Image(systemName: "gearshape.fill")
-                                .font(.system(size: 20))
-                                .foregroundColor(.primary)
-                                .frame(width: 40, height: 40)
-                                .background(Color(.systemGray6))
-                                .clipShape(Circle())
+
+                        Button(action: { showingSettings = true }) {
+                            ZStack {
+                                Circle()
+                                    .fill(.ultraThinMaterial)
+                                    .frame(width: 44, height: 44)
+                                Image(systemName: "gearshape.fill")
+                                    .font(.system(size: 20, weight: .semibold))
+                            }
                         }
                     }
                     .padding(.horizontal, 16)
-                    .padding(.top, 16)
-                    
-                    // Sub-tab selector
-                    FoodSubTabSelector(selectedTab: $selectedFoodSubTab)
-                        .padding(.horizontal, 16)
+                    .padding(.top, 8)
+
+                    // Sub-tab selector - Native Segmented Control
+                    SegmentedControlView(
+                        tabs: FoodSubTab.allCases,
+                        selectedTab: $selectedFoodSubTab
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
                 }
                 .background(Color(.systemBackground))
                 
@@ -71,10 +80,6 @@ struct FoodTabView: View {
                         FoodReactionsView()
                     case .fasting:
                         FastingTimerView()
-                    case .pending:
-                        PendingVerificationsView()
-                    case .recipes:
-                        RecipesView()
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -85,42 +90,60 @@ struct FoodTabView: View {
     }
 }
 
-// MARK: - Food Sub-Tab Selector
-struct FoodSubTabSelector: View {
-    @Binding var selectedTab: FoodTabView.FoodSubTab
-    
+// MARK: - Native Segmented Control
+struct SegmentedControlView<Tab: Hashable & CaseIterable & RawRepresentable>: View where Tab.RawValue == String {
+    let tabs: [Tab]
+    @Binding var selectedTab: Tab
+    @Namespace private var animation
+
     var body: some View {
         HStack(spacing: 0) {
-            ForEach(FoodTabView.FoodSubTab.allCases, id: \.self) { tab in
+            ForEach(tabs, id: \.self) { tab in
                 Button(action: {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8, blendDuration: 0)) {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                         selectedTab = tab
                     }
                 }) {
-                    VStack(spacing: 8) {
-                        Image(systemName: tab.icon)
-                            .font(.system(size: 16, weight: .semibold))
-                        
-                        Text(tab.rawValue)
-                            .font(.system(size: 12, weight: .medium))
-                    }
-                    .foregroundColor(selectedTab == tab ? .white : .primary)
-                    .frame(maxWidth: .infinity, minHeight: 60)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(selectedTab == tab ? Color.blue : Color.clear)
-                    )
+                    Text(tab.rawValue)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(
+                            selectedTab == tab ?
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.3, green: 0.5, blue: 1.0),
+                                    Color(red: 0.5, green: 0.3, blue: 0.9)
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            ) :
+                            LinearGradient(
+                                colors: [Color.secondary, Color.secondary],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(
+                            ZStack {
+                                if selectedTab == tab {
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color(.systemBackground))
+                                        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                                        .matchedGeometryEffect(id: "segmentedControl", in: animation)
+                                }
+                            }
+                        )
                 }
-                .buttonStyle(SpringyButtonStyle())
+                .buttonStyle(PlainButtonStyle())
             }
         }
-        .padding(.horizontal, 4)
-        .padding(.vertical, 4)
+        .padding(4)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.ultraThinMaterial)
-                .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(.systemGray6))
         )
+        .frame(height: 40)
     }
 }
 
@@ -146,6 +169,7 @@ struct FoodReactionsView: View {
 
                 // Pattern Analysis
                 FoodPatternAnalysisCard()
+                    .environmentObject(reactionManager)
                     .padding(.horizontal, 16)
 
                 Rectangle()
@@ -187,56 +211,58 @@ struct FoodReactionSummaryCard: View {
     @EnvironmentObject var reactionManager: ReactionManager
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Reaction Tracking")
-                .font(.system(size: 18, weight: .semibold))
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Overview")
+                .font(.system(size: 22, weight: .bold))
                 .foregroundColor(.primary)
 
-            HStack(spacing: 20) {
-                VStack(spacing: 4) {
-                    Text("\(reactionManager.monthlyCount)")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.red)
-                    Text("This month")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                }
-
-                VStack(spacing: 4) {
-                    Text("\(reactionManager.weeklyCount)")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.orange)
-                    Text("This week")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                }
-
-                VStack(spacing: 4) {
-                    Text("\(reactionManager.identificationRate)%")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.green)
-                    Text("Identified")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                }
-
-                Spacer()
+            HStack(spacing: 12) {
+                StatMiniCard(
+                    value: "\(reactionManager.monthlyCount)",
+                    label: "Month",
+                    color: .red
+                )
+                StatMiniCard(
+                    value: "\(reactionManager.weeklyCount)",
+                    label: "Week",
+                    color: .orange
+                )
+                StatMiniCard(
+                    value: "\(reactionManager.identificationRate)%",
+                    label: "ID Rate",
+                    color: .green
+                )
             }
 
-            Button(action: {
-                showingLogReaction = true
-            }) {
+            Button(action: { showingLogReaction = true }) {
                 HStack {
                     Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 18))
                     Text("Log Reaction")
+                        .font(.system(size: 16, weight: .semibold))
                 }
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.blue)
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.3, green: 0.5, blue: 1.0),
+                            Color(red: 0.5, green: 0.3, blue: 0.9)
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .cornerRadius(12)
             }
         }
-        .padding(16)
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+        )
         .sheet(isPresented: $showingLogReaction) {
             NavigationView {
                 LogReactionView(reactionManager: reactionManager)
@@ -245,32 +271,64 @@ struct FoodReactionSummaryCard: View {
     }
 }
 
+struct StatMiniCard: View {
+    let value: String
+    let label: String
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Text(value)
+                .font(.system(size: 24, weight: .bold))
+                .foregroundColor(color)
+            Text(label)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(color.opacity(0.1))
+        )
+    }
+}
+
 struct FoodReactionListCard: View {
     let title: String
     let reactions: [FoodReaction]
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             Text(title)
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(size: 22, weight: .bold))
                 .foregroundColor(.primary)
-            
+
             if reactions.isEmpty {
-                Text("No reactions logged")
-                    .font(.system(size: 14))
-                    .foregroundColor(.secondary)
-                    .padding(.vertical, 20)
+                VStack(spacing: 12) {
+                    Image(systemName: "checkmark.circle")
+                        .font(.system(size: 48))
+                        .foregroundColor(.green.opacity(0.6))
+                    Text("No reactions logged")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
             } else {
-                VStack(spacing: 8) {
+                VStack(spacing: 10) {
                     ForEach(reactions, id: \.id) { reaction in
                         FoodReactionRow(reaction: reaction)
                     }
                 }
             }
         }
-        .padding(16)
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+        )
     }
 }
 
@@ -332,27 +390,98 @@ struct FoodReactionRow: View {
 }
 
 struct FoodPatternAnalysisCard: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Pattern Analysis")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.primary)
-            
-            VStack(spacing: 8) {
-                PatternRow(trigger: "Dairy Products", frequency: "67%", trend: .increasing)
-                PatternRow(trigger: "Gluten", frequency: "34%", trend: .stable)
-                PatternRow(trigger: "Nuts", frequency: "12%", trend: .decreasing)
+    @EnvironmentObject var reactionManager: ReactionManager
+
+    private var topTriggers: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend)] {
+        guard !reactionManager.reactions.isEmpty else { return [] }
+
+        // Count ingredient frequencies
+        var ingredientCounts: [String: Int] = [:]
+        for reaction in reactionManager.reactions {
+            for ingredient in reaction.suspectedIngredients {
+                let normalized = ingredient.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+                ingredientCounts[normalized, default: 0] += 1
             }
-            
-            Button("View Full Analysis") {
-                print("View analysis tapped")
-            }
-            .font(.system(size: 14, weight: .medium))
-            .foregroundColor(.blue)
         }
-        .padding(16)
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+
+        // Calculate percentages and get top 3
+        let totalReactions = reactionManager.reactions.count
+        let sorted = ingredientCounts.sorted { $0.value > $1.value }.prefix(3)
+
+        return sorted.map { (ingredient, count) in
+            let percentage = Int((Double(count) / Double(totalReactions)) * 100)
+            let trend = calculateTrend(for: ingredient)
+            return (ingredient.capitalized, count, percentage, trend)
+        }
+    }
+
+    private func calculateTrend(for ingredient: String) -> PatternRow.Trend {
+        let calendar = Calendar.current
+        let now = Date()
+        let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: now) ?? now
+        let sixtyDaysAgo = calendar.date(byAdding: .day, value: -60, to: now) ?? now
+
+        // Recent reactions (last 30 days)
+        let recentCount = reactionManager.reactions.filter {
+            let date = $0.timestamp.dateValue()
+            return date >= thirtyDaysAgo && date <= now &&
+                   $0.suspectedIngredients.contains { $0.lowercased() == ingredient.lowercased() }
+        }.count
+
+        // Previous period (30-60 days ago)
+        let previousCount = reactionManager.reactions.filter {
+            let date = $0.timestamp.dateValue()
+            return date >= sixtyDaysAgo && date < thirtyDaysAgo &&
+                   $0.suspectedIngredients.contains { $0.lowercased() == ingredient.lowercased() }
+        }.count
+
+        if recentCount > previousCount {
+            return .increasing
+        } else if recentCount < previousCount {
+            return .decreasing
+        } else {
+            return .stable
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Patterns")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundColor(.primary)
+
+            if topTriggers.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "chart.bar")
+                        .font(.system(size: 48))
+                        .foregroundColor(.secondary.opacity(0.6))
+                    Text("Not enough data")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.secondary)
+                    Text("Log more reactions to see patterns")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 30)
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(topTriggers, id: \.ingredient) { trigger in
+                        PatternRow(
+                            trigger: trigger.ingredient,
+                            frequency: "\(trigger.percentage)%",
+                            trend: trigger.trend
+                        )
+                    }
+                }
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+        )
     }
 }
 
@@ -537,6 +666,8 @@ struct SpringyButtonStyle: ButtonStyle {
 // MARK: - Reaction Management
 class ReactionManager: ObservableObject {
     @Published var reactions: [FoodReaction] = []
+    @Published var isLoading = false
+    private let firebaseManager = FirebaseManager.shared
 
     var monthlyCount: Int {
         let currentDate = Date()
@@ -559,7 +690,7 @@ class ReactionManager: ObservableObject {
     }
 
     var identificationRate: Int {
-        guard !reactions.isEmpty else { return 85 }
+        guard !reactions.isEmpty else { return 0 }
         let identifiedCount = reactions.filter { !$0.suspectedIngredients.isEmpty }.count
         return Int((Double(identifiedCount) / Double(reactions.count)) * 100)
     }
@@ -568,17 +699,56 @@ class ReactionManager: ObservableObject {
         loadReactions()
     }
 
-    func addReaction(_ reaction: FoodReaction) {
-        reactions.append(reaction)
-        saveReactions()
+    func addReaction(_ reaction: FoodReaction) async {
+        // Add to local array first for immediate UI update
+        await MainActor.run {
+            reactions.insert(reaction, at: 0)
+        }
+
+        // Save to Firebase
+        do {
+            try await firebaseManager.saveReaction(reaction)
+        } catch {
+            print("Failed to save reaction: \(error)")
+        }
     }
 
     private func loadReactions() {
-        reactions = sampleReactions
+        isLoading = true
+        Task {
+            do {
+                let fetchedReactions = try await firebaseManager.getReactions()
+                await MainActor.run {
+                    self.reactions = fetchedReactions.sorted { $0.timestamp.dateValue() > $1.timestamp.dateValue() }
+                    self.isLoading = false
+                }
+            } catch {
+                print("Failed to load reactions: \(error)")
+                await MainActor.run {
+                    self.reactions = []
+                    self.isLoading = false
+                }
+            }
+        }
     }
 
-    private func saveReactions() {
-        print("Saving \(reactions.count) reactions")
+    func refreshReactions() async {
+        await MainActor.run {
+            isLoading = true
+        }
+
+        do {
+            let fetchedReactions = try await firebaseManager.getReactions()
+            await MainActor.run {
+                self.reactions = fetchedReactions.sorted { $0.timestamp.dateValue() > $1.timestamp.dateValue() }
+                self.isLoading = false
+            }
+        } catch {
+            print("Failed to refresh reactions: \(error)")
+            await MainActor.run {
+                self.isLoading = false
+            }
+        }
     }
 }
 
@@ -693,6 +863,7 @@ struct LogReactionView: View {
                                     .foregroundColor(symptoms.contains(symptom) ? .white : .primary)
                                     .cornerRadius(20)
                             }
+                            .buttonStyle(PlainButtonStyle())
                         }
                     }
 
@@ -805,8 +976,10 @@ struct LogReactionView: View {
             notes: notes.isEmpty ? nil : notes
         )
 
-        reactionManager.addReaction(reaction)
-        dismiss()
+        Task {
+            await reactionManager.addReaction(reaction)
+            dismiss()
+        }
     }
 
     private func autoLoadIngredientsFromFood(_ ingredients: [String]) {
