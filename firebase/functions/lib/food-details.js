@@ -43,8 +43,11 @@ exports.getFoodDetails = functions.https.onRequest(async (req, res) => {
             // This is the key fix! Map ingredients → extractedIngredients
             ingredients: data.extractedIngredients || data.ingredients || '',
             extractedIngredients: data.extractedIngredients || data.ingredients || '',
-            // Complete nutrition data
-            nutritionData: data.nutritionData || {},
+            // Complete nutrition data - support both nutritionData and nutrition fields
+            nutritionData: data.nutritionData || data.nutrition || {},
+            nutrition: data.nutrition || data.nutritionData || {},
+            // Additives from stored data
+            additives: data.additives || [],
             // Quality scores
             category: data.category || '',
             nutritionGrade: data.nutritionGrade || '',

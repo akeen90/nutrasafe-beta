@@ -27,3 +27,5 @@ export { analyzeAndCleanFoods, getCleansedFoods, exportCleansedFoods, deleteClea
 export { testCors } from './test-cors';
 export { detectLiveText } from './detect-live-text';
 export { processIngredientText } from './process-ingredient-text';
+export { replaceAllFoods } from './replace-foods-database';
+export { standardizeIngredients } from './standardize-ingredients';

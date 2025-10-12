@@ -20,7 +20,12 @@ if (!admin.apps.length) {
     admin.initializeApp();
 }
 // Fixed searchFoods function that properly maps ingredients field
-exports.searchFoods = functions.https.onRequest(async (req, res) => {
+exports.searchFoods = functions
+    .runWith({
+    timeoutSeconds: 30, // 30 second timeout - fast indexed search
+    memory: '512MB' // Reduced memory for faster cold starts
+})
+    .https.onRequest(async (req, res) => {
     // Set CORS headers
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -39,47 +44,66 @@ exports.searchFoods = functions.https.onRequest(async (req, res) => {
             return;
         }
         console.log(`Searching for: "${query}"`);
-        // Enhanced search with better matching and ranking
-        // Reduced for better performance
-        const searchLimit = 100; // Reduced from 500 for better performance
-        // Split query into words for multi-word search
+        // Split query into words for multi-strategy search
         const queryWords = query.toLowerCase().split(/\s+/).filter((word) => word.length > 0);
         const firstWord = queryWords[0];
-        // Simplified case-insensitive search strategy for better performance
-        const searchVariations = [];
-        if (firstWord) {
-            // Try capitalized first (most common for food names)
-            searchVariations.push(firstWord.charAt(0).toUpperCase() + firstWord.slice(1));
-            // Try lowercase if different
-            if (firstWord !== firstWord.charAt(0).toUpperCase() + firstWord.slice(1)) {
-                searchVariations.push(firstWord);
+        // FAST SEARCH: Use targeted queries instead of fetching everything
+        let allDocs = new Map();
+        // Helper function for fast targeted search
+        async function fastSearch(collectionName, searchTerm) {
+            const searches = [];
+            // Strategy 1: Capitalize first letter (e.g., "Charlie")
+            const capitalized = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
+            // Strategy 2: All lowercase (e.g., "charlie")
+            const lowercase = searchTerm.toLowerCase();
+            // Strategy 3: All uppercase (e.g., "CHARLIE")
+            const uppercase = searchTerm.toUpperCase();
+            // Run searches in parallel for speed
+            for (const term of [capitalized, lowercase, uppercase]) {
+                // Search foodName
+                searches.push(admin.firestore()
+                    .collection(collectionName)
+                    .where('foodName', '>=', term)
+                    .where('foodName', '<=', term + '\uf8ff')
+                    .limit(100)
+                    .get());
+                // Search brandName
+                searches.push(admin.firestore()
+                    .collection(collectionName)
+                    .where('brandName', '>=', term)
+                    .where('brandName', '<=', term + '\uf8ff')
+                    .limit(100)
+                    .get());
             }
+            const results = await Promise.allSettled(searches);
+            let count = 0;
+            results.forEach((result) => {
+                if (result.status === 'fulfilled') {
+                    result.value.docs.forEach((doc) => {
+                        if (!allDocs.has(doc.id)) {
+                            allDocs.set(doc.id, doc);
+                            count++;
+                        }
+                    });
+                }
+            });
+            return count;
         }
-        // Remove duplicates
-        const uniqueVariations = [...new Set(searchVariations)];
-        // Search with all variations and collect results
-        let allDocs = new Map(); // Use Map to avoid duplicates by document ID
-        for (const variation of uniqueVariations) {
-            try {
-                const snapshot = await admin.firestore()
-                    .collection('verifiedFoods')
-                    .where('foodName', '>=', variation)
-                    .where('foodName', '<=', variation + '\uf8ff')
-                    .limit(Math.max(1, Math.floor(searchLimit / uniqueVariations.length))) // Distribute limit across variations
-                    .get();
-                snapshot.docs.forEach(doc => {
-                    allDocs.set(doc.id, doc); // Map prevents duplicates
-                });
-            }
-            catch (error) {
-                console.log(`Search variation "${variation}" failed:`, error);
-            }
-        }
+        // Search both collections in parallel (much faster!)
+        const startTime = Date.now();
+        const [verifiedCount, foodsCount] = await Promise.all([
+            fastSearch('verifiedFoods', firstWord),
+            fastSearch('foods', firstWord)
+        ]);
+        const searchTime = Date.now() - startTime;
+        console.log(`⚡ Fast search completed in ${searchTime}ms - found ${allDocs.size} candidates (${verifiedCount} verified, ${foodsCount} foods)`);
         const verifiedSnapshot = { docs: Array.from(allDocs.values()) };
         // Convert to results and add relevance scoring
         let allResults = verifiedSnapshot.docs.map(doc => {
             const data = doc.data();
-            const nutrition = data.nutritionData || {};
+            if (!data)
+                return null; // Skip if no data
+            const nutrition = data.nutritionData || data.nutrition || {};
             const foodName = data.foodName || '';
             const brandName = data.brandName || '';
             // Calculate relevance score for ranking
@@ -150,7 +174,8 @@ exports.searchFoods = functions.https.onRequest(async (req, res) => {
                 // Add relevance score for sorting
                 _relevance: relevanceScore
             };
-        });
+        })
+            .filter(result => result !== null); // Remove null entries
         // Filter results that actually match the query and sort by relevance
         const filteredResults = allResults
             .filter(result => {
@@ -179,68 +204,116 @@ exports.searchFoods = functions.https.onRequest(async (req, res) => {
         res.status(500).json({ error: 'Failed to search foods' });
     }
 });
-// Helper function to calculate relevance score
+// Google-like relevance scoring
 function calculateRelevance(foodName, brandName, originalQuery, queryWords) {
     const name = foodName.toLowerCase();
     const brand = brandName.toLowerCase();
     const query = originalQuery.toLowerCase();
     let score = 0;
-    // Exact name match gets highest score
+    // Count how many query words match in brand and name
+    const brandMatches = queryWords.filter(word => brand.includes(word));
+    const nameMatches = queryWords.filter(word => name.includes(word));
+    const brandMatchRatio = brandMatches.length / queryWords.length;
+    const nameMatchRatio = nameMatches.length / queryWords.length;
+    // === TIER 1: EXACT MATCHES (1000-900 points) ===
     if (name === query) {
-        score += 1000;
+        return 1000; // Perfect name match
     }
-    // Exact brand match
-    else if (brand === query) {
-        score += 800;
+    if (brand === query) {
+        return 950; // Perfect brand match
     }
-    // Name starts with full query
-    else if (name.startsWith(query)) {
-        score += 500;
+    // === TIER 2: FULL QUERY STRING MATCHES (800-600 points) ===
+    if (brand.includes(query)) {
+        score = 800;
+        if (brand.startsWith(query))
+            score += 50; // Bonus for prefix
+        return score;
     }
-    // Brand starts with full query
-    else if (brand.startsWith(query)) {
-        score += 400;
+    if (name.includes(query)) {
+        score = 700;
+        if (name.startsWith(query))
+            score += 50; // Bonus for prefix
+        return score;
     }
-    // All query words found in name (for multi-word queries like "mars bar")
-    else if (queryWords.every(word => name.includes(word))) {
-        score += 300;
-        // Bonus if words appear in order
-        let lastIndex = -1;
-        let inOrder = true;
-        for (const word of queryWords) {
-            const index = name.indexOf(word, lastIndex + 1);
-            if (index <= lastIndex) {
-                inOrder = false;
-                break;
-            }
-            lastIndex = index;
-        }
-        if (inOrder)
+    // === TIER 3: ALL QUERY WORDS PRESENT (600-400 points) ===
+    if (brandMatchRatio === 1.0) {
+        score = 600;
+        // Bonus for words in order
+        if (wordsInOrder(brand, queryWords))
             score += 100;
-        // Bonus if query words appear at start of name
-        if (name.startsWith(queryWords[0])) {
+        // Bonus for starting with first word
+        if (brand.startsWith(queryWords[0]))
+            score += 75;
+        return score;
+    }
+    if (nameMatchRatio === 1.0) {
+        score = 500;
+        // Bonus for words in order
+        if (wordsInOrder(name, queryWords))
+            score += 100;
+        // Bonus for starting with first word
+        if (name.startsWith(queryWords[0]))
             score += 50;
-        }
+        return score;
     }
-    // Some query words found in name
+    // === TIER 4: PARTIAL MATCHES (400-200 points) ===
+    // Prioritize brand matches over name matches
+    if (brandMatchRatio >= 0.5) {
+        score = 400 * brandMatchRatio;
+        if (brand.startsWith(queryWords[0]))
+            score += 50;
+    }
+    else if (nameMatchRatio >= 0.5) {
+        score = 300 * nameMatchRatio;
+        if (name.startsWith(queryWords[0]))
+            score += 30;
+    }
     else {
-        const foundWords = queryWords.filter(word => name.includes(word));
-        score += foundWords.length * 50;
+        // Very weak match - just count any word matches
+        score = (brandMatches.length * 40) + (nameMatches.length * 20);
     }
-    // Bonus for shorter names (more precise matches)
-    score += Math.max(0, 100 - name.length);
+    // === TIER 5: QUALITY BONUSES (up to 100 points) ===
+    // Bonus for shorter, more precise matches
+    const lengthBonus = Math.max(0, 50 - Math.min(name.length, 50));
+    score += lengthBonus;
+    // Bonus for matches at word boundaries (e.g., "charlie" matches "Charlie Bigham's" better than "charliex")
+    if (hasWordBoundaryMatch(brand, queryWords[0]) || hasWordBoundaryMatch(name, queryWords[0])) {
+        score += 30;
+    }
     return score;
 }
-// Helper function to check if text matches query
+// Helper: Check if words appear in order in text
+function wordsInOrder(text, words) {
+    let lastIndex = -1;
+    for (const word of words) {
+        const index = text.indexOf(word, lastIndex + 1);
+        if (index <= lastIndex)
+            return false;
+        lastIndex = index;
+    }
+    return true;
+}
+// Helper: Check if word matches at word boundary
+function hasWordBoundaryMatch(text, word) {
+    // Check if word appears at start or after a space/punctuation
+    const regex = new RegExp(`(^|\\s|-)${word}`, 'i');
+    return regex.test(text);
+}
+// Helper function to check if text matches query (Google-like flexible matching)
 function matchesQuery(text, originalQuery, queryWords) {
     if (!text)
         return false;
     const lowerText = text.toLowerCase();
     const query = originalQuery.toLowerCase();
-    // Direct match
+    // Direct match of full query string (best match)
     if (lowerText.includes(query))
         return true;
-    // Multi-word match - at least one word must match
-    return queryWords.some(word => lowerText.includes(word));
+    // For single word queries, just check if word is present
+    if (queryWords.length === 1) {
+        return lowerText.includes(queryWords[0]);
+    }
+    // For multi-word queries: require at least 50% of words to match
+    const matchedWords = queryWords.filter(word => lowerText.includes(word));
+    return matchedWords.length >= Math.ceil(queryWords.length / 2);
 }
 //# sourceMappingURL=search-foods.js.map

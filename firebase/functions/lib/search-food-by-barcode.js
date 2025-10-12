@@ -55,11 +55,52 @@ exports.searchFoodByBarcode = functions.https.onRequest(async (req, res) => {
         }
         if (!foundFood) {
             console.log(`No food found with barcode: ${barcode}`);
-            res.json({
-                success: false,
-                error: 'Product not found',
-                message: 'No food found with this barcode in our database'
-            });
+            // Create placeholder entry for unknown barcode
+            const placeholderId = `barcode-${barcode}-${Date.now()}`;
+            const placeholderFood = {
+                id: placeholderId,
+                barcode: barcode,
+                name: `Unknown Product (${barcode})`,
+                brand: null,
+                status: 'pending_user_input',
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                contributedBy: 'barcode_scan',
+                needsUserData: true,
+                calories: 0,
+                protein: 0,
+                carbs: 0,
+                fat: 0,
+                fiber: 0,
+                sugar: 0,
+                sodium: 0,
+                ingredients: [],
+                verified: false
+            };
+            try {
+                // Add to pendingFoods collection for admin review
+                await admin.firestore()
+                    .collection('pendingFoods')
+                    .doc(placeholderId)
+                    .set(placeholderFood);
+                console.log(`Created placeholder entry for barcode: ${barcode}`);
+                // Return response indicating food needs user input
+                res.json({
+                    success: false,
+                    error: 'Product not found',
+                    message: 'No food found with this barcode in our database',
+                    action: 'user_contribution_needed',
+                    placeholder_id: placeholderId,
+                    barcode: barcode
+                });
+            }
+            catch (error) {
+                console.error('Error creating placeholder food:', error);
+                res.json({
+                    success: false,
+                    error: 'Product not found',
+                    message: 'No food found with this barcode in our database'
+                });
+            }
             return;
         }
         // Transform the food data to match iOS app expectations

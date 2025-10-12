@@ -983,44 +983,83 @@ struct LogReactionView: View {
     }
 
     private func autoLoadIngredientsFromFood(_ ingredients: [String]) {
-        // Automatically load ingredients when food is selected
-        let newIngredients = ingredients.compactMap { ingredient -> String? in
-            let cleaned = ingredient.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Show loading state while AI processes
+        Task {
+            // First apply basic client-side filtering for quick results
+            let basicFiltered = ingredients.compactMap { ingredient -> String? in
+                let cleaned = ingredient.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !cleaned.isEmpty else { return nil }
+                guard cleaned.count < 50 else { return nil }
+                guard !cleaned.contains(":") else { return nil }
 
-            // Filter out empty strings
-            guard !cleaned.isEmpty else { return nil }
+                let periodCount = cleaned.filter { $0 == "." }.count
+                guard periodCount <= 1 else { return nil }
 
-            // Filter out long text blocks (likely instructions or warnings)
-            // Real ingredients are typically short (e.g., "flour", "milk", "wheat")
-            guard cleaned.count < 50 else { return nil }
+                let excludeKeywords = [
+                    "ALLERGEN", "STORAGE", "HOW TO", "NUTRITION", "PREPARE",
+                    "REFRIGERATE", "BEST", "USE BY", "DEFROST", "COOKING",
+                    "INSTRUCTIONS", "WARNING", "CONTAINS", "MAY CONTAIN"
+                ]
 
-            // Filter out text containing colons (these are usually labels/headers)
-            guard !cleaned.contains(":") else { return nil }
-
-            // Filter out text with multiple sentences (contains periods mid-text)
-            let periodCount = cleaned.filter { $0 == "." }.count
-            guard periodCount <= 1 else { return nil }
-
-            // Filter out common non-ingredient keywords
-            let excludeKeywords = [
-                "ALLERGEN", "STORAGE", "HOW TO", "NUTRITION", "PREPARE",
-                "REFRIGERATE", "BEST", "USE BY", "DEFROST", "COOKING",
-                "INSTRUCTIONS", "WARNING", "CONTAINS", "MAY CONTAIN"
-            ]
-
-            let upperCleaned = cleaned.uppercased()
-            for keyword in excludeKeywords {
-                if upperCleaned.contains(keyword) {
-                    return nil
+                let upperCleaned = cleaned.uppercased()
+                for keyword in excludeKeywords {
+                    if upperCleaned.contains(keyword) {
+                        return nil
+                    }
                 }
+
+                return cleaned
             }
 
-            return cleaned
+            // Update UI with basic filtering immediately
+            await MainActor.run {
+                suspectedIngredients = basicFiltered
+            }
+
+            // Then call Gemini for AI-powered standardization
+            do {
+                let standardized = try await standardizeIngredientsWithAI(basicFiltered)
+                await MainActor.run {
+                    suspectedIngredients = standardized
+                }
+                print("✨ AI standardized ingredients: \(standardized.joined(separator: ", "))")
+            } catch {
+                print("⚠️ AI standardization failed, keeping basic filter: \(error)")
+                // Already have basic filtered results, so no need to update
+            }
+        }
+    }
+
+    private func standardizeIngredientsWithAI(_ ingredients: [String]) async throws -> [String] {
+        guard let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/standardizeIngredients") else {
+            throw NSError(domain: "StandardizeIngredients", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
         }
 
-        // Clear existing ingredients and load new ones
-        suspectedIngredients.removeAll()
-        suspectedIngredients.append(contentsOf: newIngredients)
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let requestBody: [String: Any] = ["data": ["ingredients": ingredients]]
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+        let response = try JSONDecoder().decode(StandardizeResponse.self, from: data)
+
+        guard response.result.success else {
+            throw NSError(domain: "StandardizeIngredients", code: -1, userInfo: [NSLocalizedDescriptionKey: response.result.error ?? "Unknown error"])
+        }
+
+        return response.result.standardizedIngredients
+    }
+
+    struct StandardizeResponse: Codable {
+        let result: StandardizeResult
+    }
+
+    struct StandardizeResult: Codable {
+        let success: Bool
+        let standardizedIngredients: [String]
+        let error: String?
     }
 
     private func loadIngredientsFromFood() {
