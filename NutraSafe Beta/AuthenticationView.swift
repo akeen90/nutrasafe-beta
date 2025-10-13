@@ -37,6 +37,7 @@ struct SignInView: View {
     @State private var showingError = false
     @State private var errorMessage = ""
     @State private var isLoading = false
+    @State private var showingPasswordReset = false
 
     var body: some View {
         ZStack {
@@ -64,7 +65,7 @@ struct SignInView: View {
                         .font(.system(size: 42, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
 
-                    Text("Track your food reactions")
+                    Text("Know what you eat")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.white.opacity(0.8))
                 }
@@ -94,9 +95,19 @@ struct SignInView: View {
 
                     // Password field
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Password")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.white)
+                        HStack {
+                            Text("Password")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.white)
+
+                            Spacer()
+
+                            Button(action: { showingPasswordReset = true }) {
+                                Text("Forgot Password?")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.9))
+                            }
+                        }
 
                         SecureField("", text: $password)
                             .textFieldStyle(PlainTextFieldStyle())
@@ -153,6 +164,9 @@ struct SignInView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text(errorMessage)
+        }
+        .sheet(isPresented: $showingPasswordReset) {
+            PasswordResetView()
         }
     }
 
@@ -222,7 +236,7 @@ struct SignUpView: View {
                         .font(.system(size: 36, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
 
-                    Text("Start tracking your food reactions")
+                    Text("Know what you eat")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.white.opacity(0.8))
                 }
@@ -398,5 +412,149 @@ class AuthenticationManager: ObservableObject {
         try Auth.auth().signOut()
         self.currentUser = nil
         self.isAuthenticated = false
+    }
+
+    func resetPassword(email: String) async throws {
+        try await Auth.auth().sendPasswordReset(withEmail: email)
+    }
+}
+
+// MARK: - Password Reset View
+struct PasswordResetView: View {
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var authManager = AuthenticationManager.shared
+
+    @State private var email = ""
+    @State private var isLoading = false
+    @State private var showingSuccess = false
+    @State private var showingError = false
+    @State private var errorMessage = ""
+
+    var body: some View {
+        NavigationView {
+            ZStack {
+                // Gradient background
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.6, green: 0.3, blue: 0.8),
+                        Color(red: 0.4, green: 0.5, blue: 0.9)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
+
+                VStack(spacing: 30) {
+                    Spacer()
+
+                    // Icon and title
+                    VStack(spacing: 16) {
+                        Image(systemName: "lock.rotation")
+                            .font(.system(size: 60))
+                            .foregroundColor(.white)
+
+                        Text("Reset Password")
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+
+                        Text("Enter your email address and we'll send you instructions to reset your password")
+                            .font(.system(size: 15, weight: .regular))
+                            .foregroundColor(.white.opacity(0.9))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                    }
+                    .padding(.bottom, 20)
+
+                    // Email field
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Email")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+
+                        TextField("", text: $email)
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .autocapitalization(.none)
+                            .keyboardType(.emailAddress)
+                            .padding()
+                            .background(Color.white.opacity(0.2))
+                            .cornerRadius(12)
+                            .foregroundColor(.white)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                            )
+                    }
+                    .padding(.horizontal, 32)
+
+                    // Reset button
+                    Button(action: resetPassword) {
+                        HStack {
+                            if isLoading {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            } else {
+                                Text("Send Reset Email")
+                                    .font(.system(size: 18, weight: .semibold))
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color.white)
+                        .foregroundColor(Color(red: 0.5, green: 0.4, blue: 0.85))
+                        .cornerRadius(12)
+                    }
+                    .disabled(email.isEmpty || isLoading)
+                    .opacity(email.isEmpty || isLoading ? 0.6 : 1.0)
+                    .padding(.horizontal, 32)
+
+                    Spacer()
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: { dismiss() }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "chevron.left")
+                            Text("Back")
+                        }
+                        .foregroundColor(.white)
+                        .font(.system(size: 16, weight: .medium))
+                    }
+                }
+            }
+        }
+        .alert("Success", isPresented: $showingSuccess) {
+            Button("OK") {
+                dismiss()
+            }
+        } message: {
+            Text("Password reset instructions have been sent to your email address")
+        }
+        .alert("Error", isPresented: $showingError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage)
+        }
+    }
+
+    private func resetPassword() {
+        isLoading = true
+
+        Task {
+            do {
+                try await authManager.resetPassword(email: email)
+                await MainActor.run {
+                    isLoading = false
+                    showingSuccess = true
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    showingError = true
+                    isLoading = false
+                }
+            }
+        }
     }
 }
