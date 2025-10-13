@@ -9,10 +9,12 @@ import SwiftUI
 
 // MARK: - Macro Progress View
 struct MacroProgressView: View {
+    @EnvironmentObject var firebaseManager: FirebaseManager
+    @EnvironmentObject var healthKitManager: HealthKitManager
+
     @State private var trackedFoods: [DiaryFoodItem] = []
     @State private var trackedExercises: [ExerciseEntry] = []
-    @State private var userCaloricGoal: Int = UserDefaults.standard.integer(forKey: "userCaloricGoal") == 0 ? 2000 : UserDefaults.standard.integer(forKey: "userCaloricGoal")
-    @EnvironmentObject var healthKitManager: HealthKitManager
+    @State private var userCaloricGoal: Int = 2000
     
     private var totalCaloriesConsumed: Int {
         trackedFoods.reduce(0) { $0 + $1.calories }
@@ -71,6 +73,24 @@ struct MacroProgressView: View {
         .padding(.vertical, 12)
         .background(Color(.systemGray6))
         .cornerRadius(12)
+        .onAppear {
+            Task {
+                await loadCaloricGoal()
+            }
+        }
+    }
+
+    private func loadCaloricGoal() async {
+        do {
+            let settings = try await firebaseManager.getUserSettings()
+            await MainActor.run {
+                if let goal = settings.caloricGoal {
+                    userCaloricGoal = goal
+                }
+            }
+        } catch {
+            print("❌ Error loading caloric goal: \(error.localizedDescription)")
+        }
     }
 }
 

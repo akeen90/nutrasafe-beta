@@ -11,11 +11,16 @@ import SwiftUI
 // MARK: - Fasting Timer Main View
 
 struct FastingTimerView: View {
-    @State private var isFasting = UserDefaults.standard.bool(forKey: "isFasting")
-    @State private var fastingStartTime = UserDefaults.standard.object(forKey: "fastingStartTime") as? Date
-    @State private var fastingGoal = UserDefaults.standard.integer(forKey: "fastingGoal") == 0 ? 16 : UserDefaults.standard.integer(forKey: "fastingGoal")
+    @EnvironmentObject var firebaseManager: FirebaseManager
+
+    @State private var isFasting = false
+    @State private var fastingStartTime: Date?
+    @State private var fastingGoal = 16
+    @State private var notificationsEnabled = false
+    @State private var reminderInterval = 4
     @State private var currentTime = Date()
     @State private var showingSettings = false
+    @State private var isLoading = true
     
     private var fastingDuration: TimeInterval {
         guard isFasting, let startTime = fastingStartTime else { return 0 }
@@ -259,53 +264,124 @@ struct FastingTimerView: View {
             }
         }
         .onAppear {
-            updateFastingState()
+            Task {
+                await loadFastingState()
+            }
         }
         .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
             currentTime = Date()
         }
-        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
-            updateFastingState()
-        }
         .sheet(isPresented: $showingSettings) {
-            FastingSettingsView(fastingGoal: $fastingGoal)
+            FastingSettingsView(
+                fastingGoal: $fastingGoal,
+                notificationsEnabled: $notificationsEnabled,
+                reminderInterval: $reminderInterval,
+                onSave: saveFastingSettings
+            )
+            .environmentObject(firebaseManager)
         }
     }
-    
+
     // MARK: - Private Methods
-    
-    private func updateFastingState() {
-        isFasting = UserDefaults.standard.bool(forKey: "isFasting")
-        fastingStartTime = UserDefaults.standard.object(forKey: "fastingStartTime") as? Date
-        fastingGoal = UserDefaults.standard.integer(forKey: "fastingGoal") == 0 ? 16 : UserDefaults.standard.integer(forKey: "fastingGoal")
+
+    private func loadFastingState() async {
+        do {
+            let state = try await firebaseManager.getFastingState()
+            await MainActor.run {
+                isFasting = state.isFasting
+                fastingStartTime = state.startTime
+                fastingGoal = state.goal
+                notificationsEnabled = state.notificationsEnabled
+                reminderInterval = state.reminderInterval
+                isLoading = false
+            }
+        } catch {
+            print("❌ Error loading fasting state: \(error.localizedDescription)")
+            await MainActor.run {
+                isLoading = false
+            }
+        }
     }
-    
+
     private func startFasting() {
         isFasting = true
         fastingStartTime = Date()
-        UserDefaults.standard.set(true, forKey: "isFasting")
-        UserDefaults.standard.set(fastingStartTime, forKey: "fastingStartTime")
-        
+
+        Task {
+            do {
+                try await firebaseManager.saveFastingState(
+                    isFasting: true,
+                    startTime: fastingStartTime,
+                    goal: fastingGoal,
+                    notificationsEnabled: notificationsEnabled,
+                    reminderInterval: reminderInterval
+                )
+            } catch {
+                print("❌ Error saving fasting start: \(error.localizedDescription)")
+            }
+        }
+
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
     }
-    
+
     private func stopFasting() {
         isFasting = false
         fastingStartTime = nil
-        UserDefaults.standard.set(false, forKey: "isFasting")
-        UserDefaults.standard.removeObject(forKey: "fastingStartTime")
-        
+
+        Task {
+            do {
+                try await firebaseManager.saveFastingState(
+                    isFasting: false,
+                    startTime: nil,
+                    goal: fastingGoal,
+                    notificationsEnabled: notificationsEnabled,
+                    reminderInterval: reminderInterval
+                )
+            } catch {
+                print("❌ Error saving fasting stop: \(error.localizedDescription)")
+            }
+        }
+
         let impactFeedback = UIImpactFeedbackGenerator(style: .heavy)
         impactFeedback.impactOccurred()
     }
-    
+
     private func setFastingGoal(_ hours: Int) {
         fastingGoal = hours
-        UserDefaults.standard.set(hours, forKey: "fastingGoal")
-        
+
+        Task {
+            do {
+                try await firebaseManager.saveFastingState(
+                    isFasting: isFasting,
+                    startTime: fastingStartTime,
+                    goal: hours,
+                    notificationsEnabled: notificationsEnabled,
+                    reminderInterval: reminderInterval
+                )
+            } catch {
+                print("❌ Error saving fasting goal: \(error.localizedDescription)")
+            }
+        }
+
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
         impactFeedback.impactOccurred()
+    }
+
+    private func saveFastingSettings() {
+        Task {
+            do {
+                try await firebaseManager.saveFastingState(
+                    isFasting: isFasting,
+                    startTime: fastingStartTime,
+                    goal: fastingGoal,
+                    notificationsEnabled: notificationsEnabled,
+                    reminderInterval: reminderInterval
+                )
+            } catch {
+                print("❌ Error saving fasting settings: \(error.localizedDescription)")
+            }
+        }
     }
 }
 
@@ -392,14 +468,19 @@ struct FastingPresetButton: View {
 
 struct FastingSettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var firebaseManager: FirebaseManager
     @Binding var fastingGoal: Int
+    @Binding var notificationsEnabled: Bool
+    @Binding var reminderInterval: Int
     @State private var customGoal: Int
-    @State private var notificationsEnabled = UserDefaults.standard.bool(forKey: "fastingNotificationsEnabled")
-    @State private var reminderInterval = UserDefaults.standard.integer(forKey: "fastingReminderInterval") == 0 ? 4 : UserDefaults.standard.integer(forKey: "fastingReminderInterval")
+    let onSave: () -> Void
 
-    init(fastingGoal: Binding<Int>) {
+    init(fastingGoal: Binding<Int>, notificationsEnabled: Binding<Bool>, reminderInterval: Binding<Int>, onSave: @escaping () -> Void) {
         self._fastingGoal = fastingGoal
+        self._notificationsEnabled = notificationsEnabled
+        self._reminderInterval = reminderInterval
         self._customGoal = State(initialValue: fastingGoal.wrappedValue)
+        self.onSave = onSave
     }
 
     var body: some View {
@@ -477,9 +558,7 @@ struct FastingSettingsView: View {
 
     private func saveSettings() {
         fastingGoal = customGoal
-        UserDefaults.standard.set(customGoal, forKey: "fastingGoal")
-        UserDefaults.standard.set(notificationsEnabled, forKey: "fastingNotificationsEnabled")
-        UserDefaults.standard.set(reminderInterval, forKey: "fastingReminderInterval")
+        onSave()
 
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()

@@ -551,9 +551,9 @@ class FirebaseManager: ObservableObject {
         print("✅ Weight entry deleted successfully")
     }
 
-    // MARK: - User Settings (Height, Goal Weight)
+    // MARK: - User Settings (Height, Goal Weight, Caloric Goal)
 
-    func saveUserSettings(height: Double?, goalWeight: Double?) async throws {
+    func saveUserSettings(height: Double?, goalWeight: Double?, caloricGoal: Int? = nil) async throws {
         ensureAuthStateLoaded()
 
         guard let userId = currentUser?.uid else {
@@ -567,13 +567,16 @@ class FirebaseManager: ObservableObject {
         if let goalWeight = goalWeight {
             data["goalWeight"] = goalWeight
         }
+        if let caloricGoal = caloricGoal {
+            data["caloricGoal"] = caloricGoal
+        }
 
         try await db.collection("users").document(userId)
             .collection("settings").document("preferences").setData(data, merge: true)
         print("✅ User settings saved successfully")
     }
 
-    func getUserSettings() async throws -> (height: Double?, goalWeight: Double?) {
+    func getUserSettings() async throws -> (height: Double?, goalWeight: Double?, caloricGoal: Int?) {
         ensureAuthStateLoaded()
 
         guard let userId = currentUser?.uid else {
@@ -584,13 +587,150 @@ class FirebaseManager: ObservableObject {
             .collection("settings").document("preferences").getDocument()
 
         guard let data = document.data() else {
-            return (nil, nil)
+            return (nil, nil, nil)
         }
 
         let height = data["height"] as? Double
         let goalWeight = data["goalWeight"] as? Double
+        let caloricGoal = data["caloricGoal"] as? Int
 
-        return (height, goalWeight)
+        return (height, goalWeight, caloricGoal)
+    }
+
+    // MARK: - Fasting Tracking
+
+    func saveFastingState(isFasting: Bool, startTime: Date?, goal: Int, notificationsEnabled: Bool, reminderInterval: Int) async throws {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save fasting state"])
+        }
+
+        var data: [String: Any] = [
+            "isFasting": isFasting,
+            "goal": goal,
+            "notificationsEnabled": notificationsEnabled,
+            "reminderInterval": reminderInterval
+        ]
+
+        if let startTime = startTime {
+            data["startTime"] = FirebaseFirestore.Timestamp(date: startTime)
+        }
+
+        try await db.collection("users").document(userId)
+            .collection("settings").document("fasting").setData(data, merge: true)
+        print("✅ Fasting state saved successfully")
+    }
+
+    func getFastingState() async throws -> (isFasting: Bool, startTime: Date?, goal: Int, notificationsEnabled: Bool, reminderInterval: Int) {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view fasting state"])
+        }
+
+        let document = try await db.collection("users").document(userId)
+            .collection("settings").document("fasting").getDocument()
+
+        guard let data = document.data() else {
+            return (false, nil, 16, false, 4) // Defaults
+        }
+
+        let isFasting = data["isFasting"] as? Bool ?? false
+        let startTime = (data["startTime"] as? FirebaseFirestore.Timestamp)?.dateValue()
+        let goal = data["goal"] as? Int ?? 16
+        let notificationsEnabled = data["notificationsEnabled"] as? Bool ?? false
+        let reminderInterval = data["reminderInterval"] as? Int ?? 4
+
+        return (isFasting, startTime, goal, notificationsEnabled, reminderInterval)
+    }
+
+    // MARK: - User-Submitted Food Data
+
+    func saveUserSubmittedFood(_ food: [String: Any]) async throws {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to submit foods"])
+        }
+
+        let foodId = food["id"] as? String ?? UUID().uuidString
+        try await db.collection("users").document(userId)
+            .collection("submittedFoods").document(foodId).setData(food, merge: true)
+        print("✅ User submitted food saved successfully")
+    }
+
+    func getUserSubmittedFoods() async throws -> [[String: Any]] {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view submitted foods"])
+        }
+
+        let snapshot = try await db.collection("users").document(userId)
+            .collection("submittedFoods").getDocuments()
+
+        return snapshot.documents.map { $0.data() }
+    }
+
+    func saveUserIngredients(foodKey: String, ingredients: String) async throws {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save ingredients"])
+        }
+
+        let data: [String: Any] = [
+            "ingredients": ingredients,
+            "timestamp": FirebaseFirestore.Timestamp(date: Date())
+        ]
+
+        try await db.collection("users").document(userId)
+            .collection("customIngredients").document(foodKey).setData(data, merge: true)
+        print("✅ User ingredients saved successfully")
+    }
+
+    func getUserIngredients(foodKey: String) async throws -> String? {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view ingredients"])
+        }
+
+        let document = try await db.collection("users").document(userId)
+            .collection("customIngredients").document(foodKey).getDocument()
+
+        return document.data()?["ingredients"] as? String
+    }
+
+    func saveVerifiedFood(foodKey: String) async throws {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to verify foods"])
+        }
+
+        let data: [String: Any] = [
+            "foodKey": foodKey,
+            "timestamp": FirebaseFirestore.Timestamp(date: Date())
+        ]
+
+        try await db.collection("users").document(userId)
+            .collection("verifiedFoods").document(foodKey).setData(data)
+        print("✅ Verified food saved successfully")
+    }
+
+    func getVerifiedFoods() async throws -> [String] {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view verified foods"])
+        }
+
+        let snapshot = try await db.collection("users").document(userId)
+            .collection("verifiedFoods").getDocuments()
+
+        return snapshot.documents.compactMap { $0.data()["foodKey"] as? String }
     }
 }
 
