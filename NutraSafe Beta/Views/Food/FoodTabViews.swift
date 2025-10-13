@@ -352,7 +352,7 @@ struct FoodReactionListCard: View {
                                         await reactionManager.deleteReaction(reaction)
                                     }
                                 } label: {
-                                    Label("Delete", systemImage: "trash")
+                                    Image(systemName: "trash")
                                 }
                             }
                     }
