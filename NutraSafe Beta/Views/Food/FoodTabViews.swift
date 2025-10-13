@@ -251,8 +251,8 @@ struct FoodReactionSummaryCard: View {
                     color: .orange
                 )
                 StatMiniCard(
-                    value: "\(reactionManager.identificationRate)%",
-                    label: "ID Rate",
+                    value: "\(reactionManager.reactions.count)",
+                    label: "Total",
                     color: .green
                 )
             }
