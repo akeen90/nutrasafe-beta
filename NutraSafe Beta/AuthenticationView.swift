@@ -413,7 +413,13 @@ class AuthenticationManager: ObservableObject {
     }
 
     func resetPassword(email: String) async throws {
-        try await Auth.auth().sendPasswordReset(withEmail: email)
+        // Configure action code settings to handle the reset properly
+        let actionCodeSettings = ActionCodeSettings()
+        actionCodeSettings.url = URL(string: "https://nutrasafe-705c7.firebaseapp.com")
+        actionCodeSettings.handleCodeInApp = false
+        actionCodeSettings.setIOSBundleID("com.nutrasafe.beta")
+
+        try await Auth.auth().sendPasswordReset(withEmail: email, actionCodeSettings: actionCodeSettings)
     }
 }
 
