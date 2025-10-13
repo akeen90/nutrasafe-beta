@@ -1890,15 +1890,6 @@ struct FoodSearchResultRowForReaction: View {
 
                 Spacer()
 
-                VStack(spacing: 4) {
-                    Text("\(Int(food.calories))")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.primary)
-                    Text("kcal")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                }
-
                 Image(systemName: "chevron.right")
                     .font(.system(size: 14))
                     .foregroundColor(.secondary)
