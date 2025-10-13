@@ -160,10 +160,23 @@ class FirebaseManager: ObservableObject {
     // MARK: - Food Reactions
 
     func saveReaction(_ reaction: FoodReaction) async throws {
-        guard let userId = currentUser?.uid else { return }
+        ensureAuthStateLoaded()
+
+        // Ensure user is signed in (use anonymous if needed)
+        if currentUser == nil && AppConfig.Features.allowAnonymousAuth {
+            try await signInAnonymously()
+        }
+
+        guard let userId = currentUser?.uid else {
+            print("⚠️ saveReaction: No user authenticated - cannot save reaction")
+            return
+        }
+
+        print("💾 Saving reaction to Firebase for user: \(userId)")
         let reactionData = reaction.toDictionary()
         try await db.collection("users").document(userId)
             .collection("reactions").document(reaction.id.uuidString).setData(reactionData)
+        print("✅ Reaction saved successfully")
     }
 
     // MARK: - Kitchen Inventory
@@ -466,21 +479,48 @@ class FirebaseManager: ObservableObject {
     }
 
     func getReactions() async throws -> [FoodReaction] {
-        guard let userId = currentUser?.uid else { return [] }
+        ensureAuthStateLoaded()
+
+        // Ensure user is signed in (use anonymous if needed)
+        if currentUser == nil && AppConfig.Features.allowAnonymousAuth {
+            try? await signInAnonymously()
+        }
+
+        guard let userId = currentUser?.uid else {
+            print("⚠️ getReactions: No user authenticated - returning empty array")
+            return []
+        }
+
+        print("📥 Loading reactions from Firebase for user: \(userId)")
         let snapshot = try await db.collection("users").document(userId)
             .collection("reactions")
             .order(by: "date", descending: true)
             .getDocuments()
 
-        return snapshot.documents.compactMap { doc in
+        let reactions = snapshot.documents.compactMap { doc in
             FoodReaction.fromDictionary(doc.data())
         }
+        print("✅ Loaded \(reactions.count) reactions from Firebase")
+        return reactions
     }
 
     func deleteReaction(reactionId: UUID) async throws {
-        guard let userId = currentUser?.uid else { return }
+        ensureAuthStateLoaded()
+
+        // Ensure user is signed in (use anonymous if needed)
+        if currentUser == nil && AppConfig.Features.allowAnonymousAuth {
+            try await signInAnonymously()
+        }
+
+        guard let userId = currentUser?.uid else {
+            print("⚠️ deleteReaction: No user authenticated - cannot delete reaction")
+            return
+        }
+
+        print("🗑️ Deleting reaction from Firebase for user: \(userId)")
         try await db.collection("users").document(userId)
             .collection("reactions").document(reactionId.uuidString).delete()
+        print("✅ Reaction deleted successfully")
     }
     
     // MARK: - Safe Foods

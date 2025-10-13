@@ -95,14 +95,9 @@ enum AppConfig {
         static let isOfflineModeEnabled = false
         static let isAnalyticsEnabled = Environment.current == .production
         
-        // Development-only: silently sign in anonymously if no user session is present
-        // Production will always require explicit auth
-        static let allowAnonymousAuth: Bool = {
-            #if DEBUG
-            return true
-            #else
-            return false
-            #endif
-        }()
+        // Allow anonymous authentication to save user data (reactions, kitchen items, etc.)
+        // This enables users to use the app immediately without account creation
+        // Users can upgrade to full accounts later to enable cross-device sync
+        static let allowAnonymousAuth: Bool = true
     }
 }
