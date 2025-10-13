@@ -31,3 +31,4 @@ Thumbs.db# API Keys
 .env
 *.key
 TraeDerivedData/
+buildOut/
