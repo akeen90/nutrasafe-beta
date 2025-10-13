@@ -1,0 +1,402 @@
+//
+//  AuthenticationView.swift
+//  NutraSafe Beta
+//
+//  Email/password authentication flow
+//
+
+import SwiftUI
+import FirebaseAuth
+
+struct AuthenticationView: View {
+    @StateObject private var authManager = AuthenticationManager.shared
+    @State private var showingSignUp = false
+
+    var body: some View {
+        if authManager.isAuthenticated {
+            // User is signed in, show main app
+            ContentView()
+        } else {
+            // User is not signed in, show auth screen
+            if showingSignUp {
+                SignUpView(showingSignUp: $showingSignUp)
+            } else {
+                SignInView(showingSignUp: $showingSignUp)
+            }
+        }
+    }
+}
+
+// MARK: - Sign In View
+struct SignInView: View {
+    @Binding var showingSignUp: Bool
+    @StateObject private var authManager = AuthenticationManager.shared
+
+    @State private var email = ""
+    @State private var password = ""
+    @State private var showingError = false
+    @State private var errorMessage = ""
+    @State private var isLoading = false
+
+    var body: some View {
+        ZStack {
+            // Gradient background
+            LinearGradient(
+                colors: [
+                    Color(red: 0.6, green: 0.3, blue: 0.8),
+                    Color(red: 0.4, green: 0.5, blue: 0.9)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            VStack(spacing: 30) {
+                Spacer()
+
+                // Logo/Title
+                VStack(spacing: 12) {
+                    Image(systemName: "heart.text.square.fill")
+                        .font(.system(size: 80))
+                        .foregroundColor(.white)
+
+                    Text("NutraSafe")
+                        .font(.system(size: 42, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+
+                    Text("Track your food reactions")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white.opacity(0.8))
+                }
+                .padding(.bottom, 40)
+
+                // Sign In Form
+                VStack(spacing: 16) {
+                    // Email field
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Email")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+
+                        TextField("", text: $email)
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .autocapitalization(.none)
+                            .keyboardType(.emailAddress)
+                            .padding()
+                            .background(Color.white.opacity(0.2))
+                            .cornerRadius(12)
+                            .foregroundColor(.white)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                            )
+                    }
+
+                    // Password field
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Password")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+
+                        SecureField("", text: $password)
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .padding()
+                            .background(Color.white.opacity(0.2))
+                            .cornerRadius(12)
+                            .foregroundColor(.white)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                            )
+                    }
+
+                    // Sign In Button
+                    Button(action: signIn) {
+                        HStack {
+                            if isLoading {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            } else {
+                                Text("Sign In")
+                                    .font(.system(size: 18, weight: .semibold))
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color.white)
+                        .foregroundColor(Color(red: 0.5, green: 0.4, blue: 0.85))
+                        .cornerRadius(12)
+                    }
+                    .disabled(email.isEmpty || password.isEmpty || isLoading)
+                    .opacity(email.isEmpty || password.isEmpty || isLoading ? 0.6 : 1.0)
+                    .padding(.top, 8)
+                }
+                .padding(.horizontal, 32)
+
+                // Sign Up Link
+                Button(action: { showingSignUp = true }) {
+                    HStack(spacing: 4) {
+                        Text("Don't have an account?")
+                            .foregroundColor(.white.opacity(0.8))
+                        Text("Sign Up")
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                    }
+                    .font(.system(size: 16))
+                }
+                .padding(.top, 8)
+
+                Spacer()
+            }
+        }
+        .alert("Error", isPresented: $showingError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage)
+        }
+    }
+
+    private func signIn() {
+        isLoading = true
+
+        Task {
+            do {
+                try await authManager.signIn(email: email, password: password)
+            } catch {
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    showingError = true
+                    isLoading = false
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Sign Up View
+struct SignUpView: View {
+    @Binding var showingSignUp: Bool
+    @StateObject private var authManager = AuthenticationManager.shared
+
+    @State private var email = ""
+    @State private var password = ""
+    @State private var confirmPassword = ""
+    @State private var showingError = false
+    @State private var errorMessage = ""
+    @State private var isLoading = false
+
+    var body: some View {
+        ZStack {
+            // Gradient background
+            LinearGradient(
+                colors: [
+                    Color(red: 0.6, green: 0.3, blue: 0.8),
+                    Color(red: 0.4, green: 0.5, blue: 0.9)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            VStack(spacing: 30) {
+                // Back button
+                HStack {
+                    Button(action: { showingSignUp = false }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "chevron.left")
+                            Text("Back")
+                        }
+                        .foregroundColor(.white)
+                        .font(.system(size: 16, weight: .medium))
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 20)
+
+                Spacer()
+
+                // Title
+                VStack(spacing: 12) {
+                    Text("Create Account")
+                        .font(.system(size: 36, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+
+                    Text("Start tracking your food reactions")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white.opacity(0.8))
+                }
+                .padding(.bottom, 20)
+
+                // Sign Up Form
+                VStack(spacing: 16) {
+                    // Email field
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Email")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+
+                        TextField("", text: $email)
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .autocapitalization(.none)
+                            .keyboardType(.emailAddress)
+                            .padding()
+                            .background(Color.white.opacity(0.2))
+                            .cornerRadius(12)
+                            .foregroundColor(.white)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                            )
+                    }
+
+                    // Password field
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Password")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+
+                        SecureField("", text: $password)
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .padding()
+                            .background(Color.white.opacity(0.2))
+                            .cornerRadius(12)
+                            .foregroundColor(.white)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                            )
+                    }
+
+                    // Confirm Password field
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Confirm Password")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+
+                        SecureField("", text: $confirmPassword)
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .padding()
+                            .background(Color.white.opacity(0.2))
+                            .cornerRadius(12)
+                            .foregroundColor(.white)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                            )
+                    }
+
+                    // Sign Up Button
+                    Button(action: signUp) {
+                        HStack {
+                            if isLoading {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            } else {
+                                Text("Create Account")
+                                    .font(.system(size: 18, weight: .semibold))
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color.white)
+                        .foregroundColor(Color(red: 0.5, green: 0.4, blue: 0.85))
+                        .cornerRadius(12)
+                    }
+                    .disabled(!isFormValid || isLoading)
+                    .opacity(isFormValid && !isLoading ? 1.0 : 0.6)
+                    .padding(.top, 8)
+                }
+                .padding(.horizontal, 32)
+
+                Spacer()
+            }
+        }
+        .alert("Error", isPresented: $showingError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage)
+        }
+    }
+
+    private var isFormValid: Bool {
+        !email.isEmpty && !password.isEmpty && !confirmPassword.isEmpty && password == confirmPassword && password.count >= 6
+    }
+
+    private func signUp() {
+        guard password == confirmPassword else {
+            errorMessage = "Passwords do not match"
+            showingError = true
+            return
+        }
+
+        guard password.count >= 6 else {
+            errorMessage = "Password must be at least 6 characters"
+            showingError = true
+            return
+        }
+
+        isLoading = true
+
+        Task {
+            do {
+                try await authManager.signUp(email: email, password: password)
+                await MainActor.run {
+                    showingSignUp = false
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    showingError = true
+                    isLoading = false
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Authentication Manager
+class AuthenticationManager: ObservableObject {
+    static let shared = AuthenticationManager()
+
+    @Published var isAuthenticated = false
+    @Published var currentUser: User?
+
+    private init() {
+        // Check if user is already signed in
+        if let user = Auth.auth().currentUser {
+            self.isAuthenticated = true
+            self.currentUser = user
+        }
+
+        // Listen for auth state changes
+        Auth.auth().addStateDidChangeListener { [weak self] _, user in
+            DispatchQueue.main.async {
+                self?.isAuthenticated = user != nil
+                self?.currentUser = user
+            }
+        }
+    }
+
+    func signIn(email: String, password: String) async throws {
+        let result = try await Auth.auth().signIn(withEmail: email, password: password)
+        await MainActor.run {
+            self.currentUser = result.user
+            self.isAuthenticated = true
+        }
+    }
+
+    func signUp(email: String, password: String) async throws {
+        let result = try await Auth.auth().createUser(withEmail: email, password: password)
+        await MainActor.run {
+            self.currentUser = result.user
+            self.isAuthenticated = true
+        }
+    }
+
+    func signOut() throws {
+        try Auth.auth().signOut()
+        self.currentUser = nil
+        self.isAuthenticated = false
+    }
+}

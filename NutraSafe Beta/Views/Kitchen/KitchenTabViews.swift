@@ -328,21 +328,7 @@ struct AddFoundFoodToKitchenSheet: View {
             }
         } catch {
             let ns = error as NSError
-            print("Failed to save kitchen item: \(ns)\nAttempting dev anonymous sign-in if enabled…")
-            if ns.domain == "NutraSafeAuth", AppConfig.Features.allowAnonymousAuth {
-                do {
-                    try await FirebaseManager.shared.signInAnonymously()
-                    try await FirebaseManager.shared.addKitchenItem(item)
-                    NotificationCenter.default.post(name: .kitchenInventoryUpdated, object: nil)
-                    await MainActor.run {
-                        dismiss()
-                        onComplete?(.kitchen)
-                    }
-                    return
-                } catch {
-                    // fall through to UI alert/sheet below
-                }
-            }
+            print("Failed to save kitchen item: \(ns)")
             await MainActor.run {
                 isSaving = false
                 // Silently fail for permission errors - just close the sheet
@@ -2272,18 +2258,7 @@ struct ManualKitchenItemSheet: View {
                 await MainActor.run { dismiss() }
             } catch {
                 let ns = error as NSError
-                print("Error saving kitchen item: \(ns)\nAttempting dev anonymous sign-in if enabled…")
-                if ns.domain == "NutraSafeAuth", AppConfig.Features.allowAnonymousAuth {
-                    do {
-                        try await FirebaseManager.shared.signInAnonymously()
-                        try await FirebaseManager.shared.addKitchenItem(kitchenItem)
-                        NotificationCenter.default.post(name: .kitchenInventoryUpdated, object: nil)
-                        await MainActor.run { dismiss() }
-                        return
-                    } catch {
-                        // proceed to user-facing alert below
-                    }
-                }
+                print("Error saving kitchen item: \(ns)")
                 await MainActor.run {
                     isSaving = false
                     // Silently fail for permission errors - just close the sheet

@@ -61,6 +61,7 @@
 		F71736FEB2E843E18F674753 /* FastingTimerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 034F60AA8BCB4662A86709D4 /* FastingTimerView.swift */; };
 		F852EC8DB69C7DD65CB989F6 /* NewWorkoutCreationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 808B579B94C3DF670FA530BD /* NewWorkoutCreationView.swift */; };
 		FDACD6EE052840C79A707950 /* AddTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0B6A2D7294D44D9A25481CE /* AddTabView.swift */; };
+		AUTH1234567890123456789001 /* AuthenticationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AUTH1234567890123456789002 /* AuthenticationView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -117,6 +118,7 @@
 		FA2F7F8ABA91448198A8CB77 /* NutraSafe Beta/Views/Diary/DiaryComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Diary/DiaryComponents.swift"; sourceTree = "<group>"; };
 		FEAB7CC556B14207BD435571 /* AddFoodAIView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFoodAIView.swift; sourceTree = "<group>"; };
 		FF612B9BEC774EC78502B67C /* FoodDetailViewFromSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodDetailViewFromSearch.swift; sourceTree = "<group>"; };
+		AUTH1234567890123456789002 /* AuthenticationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -219,6 +221,7 @@
 			children = (
 				AB77ABAB2E686D0E00857409 /* NutraSafe BetaDebug.entitlements */,
 				A1234567890123456789012001 /* NutraSafeBetaApp.swift */,
+				AUTH1234567890123456789002 /* AuthenticationView.swift */,
 				A1234567890123456789012002 /* ContentView.swift */,
 				9F3154C223B4431D8E04C5DC /* DiaryFoodView.swift */,
 				1E2302F2CAB144499FF8B394 /* Views */,
@@ -347,6 +350,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AUTH1234567890123456789001 /* AuthenticationView.swift in Sources */,
 				A1234567890123456789012302 /* ContentView.swift in Sources */,
 				268D1D75597D466999B66291 /* DiaryFoodView.swift in Sources */,
 				A1234567890123456789012301 /* NutraSafeBetaApp.swift in Sources */,

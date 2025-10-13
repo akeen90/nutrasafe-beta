@@ -36,9 +36,9 @@ struct NutraSafeBetaApp: App {
 struct MainAppView: View {
     @EnvironmentObject var firebaseManager: FirebaseManager
     @EnvironmentObject var healthKitManager: HealthKitManager
-    
+
     var body: some View {
-        ContentView()
+        AuthenticationView()
             .onAppear {
                 Task { await healthKitManager.requestAuthorization() }
             }

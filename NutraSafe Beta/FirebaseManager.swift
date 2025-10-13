@@ -38,7 +38,7 @@ class FirebaseManager: ObservableObject {
         }
     }
     
-    // Ensure our cached auth state is populated even if the listener hasn’t fired yet
+    // Ensure our cached auth state is populated even if the listener hasn't fired yet
     private func ensureAuthStateLoaded() {
         initializeFirebaseServices()
         if self.currentUser == nil {
@@ -47,43 +47,11 @@ class FirebaseManager: ObservableObject {
                 self.currentUser = user
                 self.isAuthenticated = user != nil
             }
-            
-            // If still no user and dev flag allows, attempt anonymous sign-in
-            if user == nil && AppConfig.Features.allowAnonymousAuth {
-                Task {
-                    do { try await self.signInAnonymously() } catch { /* ignore; will require explicit sign-in */ }
-                }
-            }
         }
     }
     
     // MARK: - Authentication
-    
-    func signInAnonymously() async throws {
-        initializeFirebaseServices()
-        do {
-            let result = try await auth.signInAnonymously()
-            await MainActor.run {
-                self.currentUser = result.user
-                self.isAuthenticated = true
-            }
-        } catch {
-            let ns = error as NSError
-            // Map common configuration errors to clearer messages
-            if ns.domain == AuthErrorDomain {
-                if ns.code == AuthErrorCode.operationNotAllowed.rawValue {
-                    throw NSError(domain: "NutraSafeAuth", code: ns.code, userInfo: [NSLocalizedDescriptionKey: "Anonymous sign-in is disabled in your Firebase project. Enable it in Firebase Console > Authentication > Sign-in method > Anonymous."])
-                }
-            }
-            throw error
-        }
-    }
 
-    // Ensure we have a signed-in user (anonymous is fine)
-    func ensureSignedIn() async throws {
-        if currentUser == nil { try await signInAnonymously() }
-    }
-    
     func signOut() throws {
         try auth.signOut()
         Task { @MainActor in
@@ -162,14 +130,9 @@ class FirebaseManager: ObservableObject {
     func saveReaction(_ reaction: FoodReaction) async throws {
         ensureAuthStateLoaded()
 
-        // Ensure user is signed in (use anonymous if needed)
-        if currentUser == nil && AppConfig.Features.allowAnonymousAuth {
-            try await signInAnonymously()
-        }
-
         guard let userId = currentUser?.uid else {
             print("⚠️ saveReaction: No user authenticated - cannot save reaction")
-            return
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save reactions"])
         }
 
         print("💾 Saving reaction to Firebase for user: \(userId)")
@@ -183,29 +146,12 @@ class FirebaseManager: ObservableObject {
 
     func addKitchenItem(_ item: KitchenInventoryItem) async throws {
         ensureAuthStateLoaded()
-        // If dev flag allows, try anonymous sign-in just-in-time
-        if currentUser == nil && AppConfig.Features.allowAnonymousAuth {
-            do {
-                try await signInAnonymously()
-            } catch {
-                print("Anonymous sign-in failed: \(error)")
-                // Continue anyway - we'll store locally
-            }
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to add kitchen items"])
         }
 
-        // Try to get userId after auth attempt
-        if let userId = currentUser?.uid ?? auth.currentUser?.uid {
-            do {
-                try await addKitchenItemHelper(item, userId: userId)
-            } catch {
-                // If Firebase fails, store locally
-                saveKitchenItemLocally(item)
-            }
-        } else {
-            // No user - store locally
-            print("No user available - storing kitchen item locally")
-            saveKitchenItemLocally(item)
-        }
+        try await addKitchenItemHelper(item, userId: userId)
     }
 
     // Local storage helpers
@@ -237,30 +183,12 @@ class FirebaseManager: ObservableObject {
 
     func getKitchenItems() async throws -> [KitchenInventoryItem] {
         ensureAuthStateLoaded()
-        if AppConfig.Features.allowAnonymousAuth && auth.currentUser == nil { try? await signInAnonymously() }
 
-        var allItems: [KitchenInventoryItem] = []
-
-        // Get Firebase items if user is authenticated
-        if let userId = currentUser?.uid ?? auth.currentUser?.uid {
-            do {
-                let firebaseItems = try await getKitchenItemsHelper(userId: userId)
-                allItems.append(contentsOf: firebaseItems)
-            } catch {
-                print("Failed to get Firebase items: \(error)")
-            }
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view kitchen items"])
         }
 
-        // Always include local items
-        let localItems = getLocalKitchenItems()
-        allItems.append(contentsOf: localItems)
-
-        // Remove duplicates based on ID
-        let uniqueItems = Array(Dictionary(grouping: allItems, by: { $0.id })
-            .compactMapValues { $0.first }.values)
-
-        // Sort by expiry date
-        return uniqueItems.sorted { $0.expiryDate < $1.expiryDate }
+        return try await getKitchenItemsHelper(userId: userId)
     }
 
     private func getKitchenItemsHelper(userId: String) async throws -> [KitchenInventoryItem] {
@@ -281,108 +209,44 @@ class FirebaseManager: ObservableObject {
     func updateKitchenItem(_ item: KitchenInventoryItem) async throws {
         ensureAuthStateLoaded()
 
-        // Try to authenticate if not already
-        if AppConfig.Features.allowAnonymousAuth && auth.currentUser == nil {
-            print("updateKitchenItem: No user, attempting anonymous sign-in...")
-            do {
-                try await signInAnonymously()
-            } catch {
-                print("❌ updateKitchenItem: Anonymous sign-in failed: \(error)")
-                // Continue to local storage fallback
-            }
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to update kitchen items"])
         }
 
-        // Try Firebase first if we have a user
-        if let userId = currentUser?.uid ?? auth.currentUser?.uid {
-            print("updateKitchenItem: Using userId: \(userId)")
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(item)
+        let dict = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] ?? [:]
 
-            let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(item)
-            let dict = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] ?? [:]
-
-            do {
-                try await db.collection("users").document(userId)
-                    .collection("kitchenInventory").document(item.id).setData(dict, merge: true)
-                print("✅ updateKitchenItem: Successfully updated item in Firebase \(item.id)")
-                return
-            } catch {
-                print("❌ updateKitchenItem: Firebase update failed: \(error)")
-                // Fall through to local storage
-            }
-        }
-
-        // Fallback to local storage update
-        print("updateKitchenItem: Updating item locally")
-        var localItems = getLocalKitchenItems()
-        if let index = localItems.firstIndex(where: { $0.id == item.id }) {
-            localItems[index] = item
-            if let encoded = try? JSONEncoder().encode(localItems) {
-                UserDefaults.standard.set(encoded, forKey: "localKitchenItems")
-                print("✅ updateKitchenItem: Successfully updated item locally \(item.id)")
-            }
-        } else {
-            print("⚠️ updateKitchenItem: Item not found locally, adding it")
-            saveKitchenItemLocally(item)
-        }
+        try await db.collection("users").document(userId)
+            .collection("kitchenInventory").document(item.id).setData(dict, merge: true)
+        print("✅ updateKitchenItem: Successfully updated item in Firebase \(item.id)")
     }
 
     func deleteKitchenItem(itemId: String) async throws {
         ensureAuthStateLoaded()
 
-        // Try to authenticate if not already
-        if AppConfig.Features.allowAnonymousAuth && auth.currentUser == nil {
-            print("deleteKitchenItem: No user, attempting anonymous sign-in...")
-            do {
-                try await signInAnonymously()
-            } catch {
-                print("❌ deleteKitchenItem: Anonymous sign-in failed: \(error)")
-                // Continue to local storage
-            }
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to delete kitchen items"])
         }
 
-        // Try Firebase first if we have a user
-        if let userId = currentUser?.uid ?? auth.currentUser?.uid {
-            print("deleteKitchenItem: Using userId: \(userId)")
-
-            do {
-                try await db.collection("users").document(userId)
-                    .collection("kitchenInventory").document(itemId).delete()
-                print("✅ deleteKitchenItem: Successfully deleted item from Firebase \(itemId)")
-            } catch {
-                print("❌ deleteKitchenItem: Firebase delete failed: \(error)")
-                // Continue to local storage deletion
-            }
-        }
-
-        // Always delete from local storage
-        var localItems = getLocalKitchenItems()
-        localItems.removeAll { $0.id == itemId }
-        if let encoded = try? JSONEncoder().encode(localItems) {
-            UserDefaults.standard.set(encoded, forKey: "localKitchenItems")
-            print("✅ deleteKitchenItem: Successfully deleted item from local storage \(itemId)")
-        }
+        try await db.collection("users").document(userId)
+            .collection("kitchenInventory").document(itemId).delete()
+        print("✅ deleteKitchenItem: Successfully deleted item from Firebase \(itemId)")
     }
 
     func clearKitchenInventory() async throws {
         ensureAuthStateLoaded()
-        if AppConfig.Features.allowAnonymousAuth && auth.currentUser == nil { try? await signInAnonymously() }
 
-        // Clear Firebase items if user is authenticated
-        if let userId = currentUser?.uid ?? auth.currentUser?.uid {
-            do {
-                let snapshot = try await db.collection("users").document(userId)
-                    .collection("kitchenInventory").getDocuments()
-                for doc in snapshot.documents {
-                    try await doc.reference.delete()
-                }
-            } catch {
-                print("Failed to clear Firebase items: \(error)")
-            }
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to clear kitchen inventory"])
         }
 
-        // Clear local storage
-        UserDefaults.standard.removeObject(forKey: "localKitchenItems")
+        let snapshot = try await db.collection("users").document(userId)
+            .collection("kitchenInventory").getDocuments()
+        for doc in snapshot.documents {
+            try await doc.reference.delete()
+        }
     }
 
     // MARK: - Food Search Functions
@@ -481,14 +345,9 @@ class FirebaseManager: ObservableObject {
     func getReactions() async throws -> [FoodReaction] {
         ensureAuthStateLoaded()
 
-        // Ensure user is signed in (use anonymous if needed)
-        if currentUser == nil && AppConfig.Features.allowAnonymousAuth {
-            try? await signInAnonymously()
-        }
-
         guard let userId = currentUser?.uid else {
             print("⚠️ getReactions: No user authenticated - returning empty array")
-            return []
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view reactions"])
         }
 
         print("📥 Loading reactions from Firebase for user: \(userId)")
@@ -507,14 +366,9 @@ class FirebaseManager: ObservableObject {
     func deleteReaction(reactionId: UUID) async throws {
         ensureAuthStateLoaded()
 
-        // Ensure user is signed in (use anonymous if needed)
-        if currentUser == nil && AppConfig.Features.allowAnonymousAuth {
-            try await signInAnonymously()
-        }
-
         guard let userId = currentUser?.uid else {
             print("⚠️ deleteReaction: No user authenticated - cannot delete reaction")
-            return
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to delete reactions"])
         }
 
         print("🗑️ Deleting reaction from Firebase for user: \(userId)")
