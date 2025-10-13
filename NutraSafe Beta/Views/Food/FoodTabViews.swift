@@ -149,7 +149,7 @@ struct SegmentedControlView<Tab: Hashable & CaseIterable & RawRepresentable>: Vi
 
 // MARK: - Food Sub Views
 struct FoodReactionsView: View {
-    @StateObject private var reactionManager = ReactionManager()
+    @ObservedObject private var reactionManager = ReactionManager.shared
 
     var body: some View {
         ScrollView {
@@ -1033,6 +1033,8 @@ struct SpringyButtonStyle: ButtonStyle {
 
 // MARK: - Reaction Management
 class ReactionManager: ObservableObject {
+    static let shared = ReactionManager()
+
     @Published var reactions: [FoodReaction] = []
     @Published var isLoading = false
     private let firebaseManager = FirebaseManager.shared
@@ -1063,7 +1065,7 @@ class ReactionManager: ObservableObject {
         return Int((Double(identifiedCount) / Double(reactions.count)) * 100)
     }
 
-    init() {
+    private init() {
         loadReactions()
     }
 
