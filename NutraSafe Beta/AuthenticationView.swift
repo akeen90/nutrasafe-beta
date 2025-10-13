@@ -537,6 +537,13 @@ struct PasswordResetView: View {
     }
 
     private func resetPassword() {
+        // Validate email format
+        guard email.contains("@") && email.contains(".") else {
+            errorMessage = "Please enter a valid email address"
+            showingError = true
+            return
+        }
+
         isLoading = true
 
         Task {
@@ -546,9 +553,19 @@ struct PasswordResetView: View {
                     isLoading = false
                     showingSuccess = true
                 }
-            } catch {
+            } catch let error as NSError {
                 await MainActor.run {
-                    errorMessage = error.localizedDescription
+                    // Handle specific Firebase Auth error codes
+                    switch error.code {
+                    case 17011: // User not found
+                        errorMessage = "No account found with this email address. Please check the email or create a new account."
+                    case 17008: // Invalid email
+                        errorMessage = "Invalid email address format. Please check and try again."
+                    case 17010: // Too many requests
+                        errorMessage = "Too many reset attempts. Please try again later."
+                    default:
+                        errorMessage = "Unable to send reset email. Please check your email address and try again."
+                    }
                     showingError = true
                     isLoading = false
                 }
