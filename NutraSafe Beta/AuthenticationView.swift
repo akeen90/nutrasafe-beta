@@ -95,19 +95,9 @@ struct SignInView: View {
 
                     // Password field
                     VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Password")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.white)
-
-                            Spacer()
-
-                            Button(action: { showingPasswordReset = true }) {
-                                Text("Forgot Password?")
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.9))
-                            }
-                        }
+                        Text("Password")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
 
                         SecureField("", text: $password)
                             .textFieldStyle(PlainTextFieldStyle())
@@ -143,6 +133,14 @@ struct SignInView: View {
                     .padding(.top, 8)
                 }
                 .padding(.horizontal, 32)
+
+                // Forgot Password Link
+                Button(action: { showingPasswordReset = true }) {
+                    Text("Forgot Password?")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(.white.opacity(0.9))
+                }
+                .padding(.top, 4)
 
                 // Sign Up Link
                 Button(action: { showingSignUp = true }) {
