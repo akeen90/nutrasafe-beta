@@ -663,7 +663,8 @@ struct FoodReaction: Identifiable, Codable {
             "symptoms": symptoms,
             "severity": severity.rawValue,
             "notes": notes ?? "",
-            "dateLogged": timestamp // Use same timestamp for both
+            "dateLogged": timestamp, // Use same timestamp for both
+            "date": timestamp // Match query field name
         ]
 
         // Add new fields

@@ -2,6 +2,7 @@ import Foundation
 import Firebase
 import FirebaseFirestore
 import FirebaseAuth
+import FirebaseStorage
 
 class FirebaseManager: ObservableObject {
     static let shared = FirebaseManager()
@@ -54,6 +55,19 @@ class FirebaseManager: ObservableObject {
 
     func signOut() throws {
         try auth.signOut()
+
+        // Clear any residual UserDefaults data to prevent leakage between accounts
+        UserDefaults.standard.removeObject(forKey: "userWeight")
+        UserDefaults.standard.removeObject(forKey: "goalWeight")
+        UserDefaults.standard.removeObject(forKey: "userHeight")
+        UserDefaults.standard.removeObject(forKey: "weightHistory")
+        print("🧹 Cleared local UserDefaults data on sign out")
+
+        // Clear ReactionManager data to prevent leakage between accounts
+        Task { @MainActor in
+            ReactionManager.shared.clearData()
+        }
+
         Task { @MainActor in
             self.currentUser = nil
             self.isAuthenticated = false
@@ -103,17 +117,37 @@ class FirebaseManager: ObservableObject {
     
     func getFoodEntries(for date: Date) async throws -> [FoodEntry] {
         guard let userId = currentUser?.uid else { return [] }
-        
+
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
         let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-        
+
         let snapshot = try await db.collection("users").document(userId)
             .collection("foodEntries")
             .whereField("date", isGreaterThanOrEqualTo: FirebaseFirestore.Timestamp(date: startOfDay))
             .whereField("date", isLessThan: FirebaseFirestore.Timestamp(date: endOfDay))
             .getDocuments()
-        
+
+        return snapshot.documents.compactMap { doc in
+            FoodEntry.fromDictionary(doc.data())
+        }
+    }
+
+    // Get food entries for the past N days for nutritional analysis
+    func getFoodEntriesForPeriod(days: Int) async throws -> [FoodEntry] {
+        guard let userId = currentUser?.uid else { return [] }
+
+        let calendar = Calendar.current
+        let endDate = Date()
+        guard let startDate = calendar.date(byAdding: .day, value: -days, to: endDate) else { return [] }
+
+        let snapshot = try await db.collection("users").document(userId)
+            .collection("foodEntries")
+            .whereField("date", isGreaterThanOrEqualTo: FirebaseFirestore.Timestamp(date: startDate))
+            .whereField("date", isLessThanOrEqualTo: FirebaseFirestore.Timestamp(date: endDate))
+            .order(by: "date", descending: true)
+            .getDocuments()
+
         return snapshot.documents.compactMap { doc in
             FoodEntry.fromDictionary(doc.data())
         }
@@ -488,6 +522,35 @@ class FirebaseManager: ObservableObject {
 
     // MARK: - Weight Tracking
 
+    func uploadWeightPhoto(_ image: UIImage) async throws -> String {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to upload photos"])
+        }
+
+        // Compress image to JPEG
+        guard let imageData = image.jpegData(compressionQuality: 0.7) else {
+            throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to compress image"])
+        }
+
+        // Create unique filename
+        let filename = "\(UUID().uuidString).jpg"
+        let storageRef = Storage.storage().reference()
+        let photoRef = storageRef.child("weightPhotos/\(userId)/\(filename)")
+
+        // Upload image
+        let metadata = StorageMetadata()
+        metadata.contentType = "image/jpeg"
+
+        _ = try await photoRef.putDataAsync(imageData, metadata: metadata)
+
+        // Get download URL
+        let downloadURL = try await photoRef.downloadURL()
+        print("✅ Weight photo uploaded successfully: \(downloadURL.absoluteString)")
+        return downloadURL.absoluteString
+    }
+
     func saveWeightEntry(_ entry: WeightEntry) async throws {
         ensureAuthStateLoaded()
 
@@ -495,13 +558,24 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save weight entries"])
         }
 
-        let entryData: [String: Any] = [
+        var entryData: [String: Any] = [
             "id": entry.id.uuidString,
             "weight": entry.weight,
             "date": FirebaseFirestore.Timestamp(date: entry.date),
             "bmi": entry.bmi as Any,
             "note": entry.note as Any
         ]
+
+        // Add optional fields
+        if let photoURL = entry.photoURL {
+            entryData["photoURL"] = photoURL
+        }
+        if let waistSize = entry.waistSize {
+            entryData["waistSize"] = waistSize
+        }
+        if let dressSize = entry.dressSize {
+            entryData["dressSize"] = dressSize
+        }
 
         try await db.collection("users").document(userId)
             .collection("weightHistory").document(entry.id.uuidString).setData(entryData)
@@ -531,8 +605,11 @@ class FirebaseManager: ObservableObject {
 
             let bmi = data["bmi"] as? Double
             let note = data["note"] as? String
+            let photoURL = data["photoURL"] as? String
+            let waistSize = data["waistSize"] as? Double
+            let dressSize = data["dressSize"] as? String
 
-            return WeightEntry(id: id, weight: weight, date: timestamp.dateValue(), bmi: bmi, note: note)
+            return WeightEntry(id: id, weight: weight, date: timestamp.dateValue(), bmi: bmi, note: note, photoURL: photoURL, waistSize: waistSize, dressSize: dressSize)
         }
 
         print("✅ Loaded \(entries.count) weight entries from Firebase")
@@ -576,7 +653,7 @@ class FirebaseManager: ObservableObject {
         print("✅ User settings saved successfully")
     }
 
-    func getUserSettings() async throws -> (height: Double?, goalWeight: Double?, caloricGoal: Int?) {
+    func getUserSettings() async throws -> (height: Double?, goalWeight: Double?, caloricGoal: Int?, proteinPercent: Int?, carbsPercent: Int?, fatPercent: Int?) {
         ensureAuthStateLoaded()
 
         guard let userId = currentUser?.uid else {
@@ -587,14 +664,35 @@ class FirebaseManager: ObservableObject {
             .collection("settings").document("preferences").getDocument()
 
         guard let data = document.data() else {
-            return (nil, nil, nil)
+            return (nil, nil, nil, nil, nil, nil)
         }
 
         let height = data["height"] as? Double
         let goalWeight = data["goalWeight"] as? Double
         let caloricGoal = data["caloricGoal"] as? Int
+        let proteinPercent = data["proteinPercent"] as? Int
+        let carbsPercent = data["carbsPercent"] as? Int
+        let fatPercent = data["fatPercent"] as? Int
 
-        return (height, goalWeight, caloricGoal)
+        return (height, goalWeight, caloricGoal, proteinPercent, carbsPercent, fatPercent)
+    }
+
+    func saveMacroPercentages(protein: Int, carbs: Int, fat: Int) async throws {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save macro settings"])
+        }
+
+        let data: [String: Any] = [
+            "proteinPercent": protein,
+            "carbsPercent": carbs,
+            "fatPercent": fat
+        ]
+
+        try await db.collection("users").document(userId)
+            .collection("settings").document("preferences").setData(data, merge: true)
+        print("✅ Macro percentages saved successfully")
     }
 
     // MARK: - Fasting Tracking

@@ -231,6 +231,11 @@ struct WeightTrackingView: View {
                         .background(Color.white)
                     }
 
+                    // Weight History Section
+                    WeightHistorySection(weightHistory: $weightHistory, currentWeight: $currentWeight)
+                        .environmentObject(firebaseManager)
+                        .padding(.top, 30)
+
                 }
                 .padding(.bottom, 100)
             }
@@ -608,6 +613,523 @@ struct AddWeightView: View {
                 print("❌ Error saving weight entry: \(error.localizedDescription)")
             }
         }
+    }
+}
+
+// MARK: - Weight History Section with Calendar
+struct WeightHistorySection: View {
+    @Binding var weightHistory: [WeightEntry]
+    @Binding var currentWeight: Double
+    @EnvironmentObject var firebaseManager: FirebaseManager
+    @State private var showingCalendar = false
+    @State private var selectedDate: Date?
+    @State private var filteredEntries: [WeightEntry] = []
+    @State private var showingDeleteAlert = false
+    @State private var entryToDelete: WeightEntry?
+
+    private var displayedEntries: [WeightEntry] {
+        if let selected = selectedDate {
+            return weightHistory.filter { Calendar.current.isDate($0.date, inSameDayAs: selected) }
+        }
+        return Array(weightHistory.prefix(10))
+    }
+
+    private var datesWithEntries: Set<Date> {
+        Set(weightHistory.map { Calendar.current.startOfDay(for: $0.date) })
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Header
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("History")
+                        .font(.system(size: 22, weight: .bold))
+
+                    Text("\(weightHistory.count) entries")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                Button(action: { showingCalendar.toggle() }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 16))
+                        Text(selectedDate != nil ? "Filter: \(formattedFilterDate())" : "View Calendar")
+                            .font(.system(size: 14, weight: .medium))
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color(red: 0.2, green: 0.6, blue: 0.8))
+                    .cornerRadius(20)
+                }
+            }
+            .padding(.horizontal, 16)
+
+            // Clear filter button
+            if selectedDate != nil {
+                Button(action: { selectedDate = nil }) {
+                    HStack {
+                        Image(systemName: "xmark.circle.fill")
+                        Text("Clear filter")
+                    }
+                    .font(.system(size: 14))
+                    .foregroundColor(.red)
+                    .padding(.horizontal, 16)
+                }
+            }
+
+            // Entries list
+            if displayedEntries.isEmpty {
+                VStack(spacing: 16) {
+                    Image(systemName: "chart.line.downtrend.xyaxis")
+                        .font(.system(size: 48))
+                        .foregroundColor(.secondary.opacity(0.6))
+
+                    Text(selectedDate != nil ? "No entries for this date" : "No weight entries yet")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.secondary)
+
+                    Text(selectedDate != nil ? "Try selecting a different date" : "Tap 'Weigh-in' to add your first entry")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+            } else {
+                LazyVStack(spacing: 12) {
+                    ForEach(displayedEntries) { entry in
+                        WeightHistoryDetailRow(entry: entry)
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    entryToDelete = entry
+                                    showingDeleteAlert = true
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
+                    }
+                }
+                .padding(.horizontal, 16)
+
+                if selectedDate == nil && weightHistory.count > 10 {
+                    Text("Showing 10 most recent entries")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, 8)
+                }
+            }
+        }
+        .sheet(isPresented: $showingCalendar) {
+            WeightCalendarView(
+                selectedDate: $selectedDate,
+                datesWithEntries: datesWithEntries,
+                weightHistory: weightHistory
+            )
+        }
+        .alert("Delete Entry", isPresented: $showingDeleteAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                if let entry = entryToDelete {
+                    deleteEntry(entry)
+                }
+            }
+        } message: {
+            Text("Are you sure you want to delete this weight entry?")
+        }
+    }
+
+    private func formattedFilterDate() -> String {
+        guard let date = selectedDate else { return "" }
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter.string(from: date)
+    }
+
+    private func deleteEntry(_ entry: WeightEntry) {
+        Task {
+            do {
+                try await firebaseManager.deleteWeightEntry(entry.id)
+                await MainActor.run {
+                    weightHistory.removeAll { $0.id == entry.id }
+                    if let latest = weightHistory.first {
+                        currentWeight = latest.weight
+                    } else {
+                        currentWeight = 0
+                    }
+                }
+            } catch {
+                print("❌ Error deleting weight entry: \(error.localizedDescription)")
+            }
+        }
+    }
+}
+
+// MARK: - Weight History Detail Row
+struct WeightHistoryDetailRow: View {
+    let entry: WeightEntry
+
+    private var changeFromPrevious: Double? {
+        // This would need access to previous entry - simplified for now
+        return nil
+    }
+
+    var body: some View {
+        HStack(spacing: 16) {
+            // Date column
+            VStack(alignment: .leading, spacing: 4) {
+                Text(formattedDay(entry.date))
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.secondary)
+
+                Text(formattedDate(entry.date))
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary.opacity(0.8))
+
+                Text(formattedTime(entry.date))
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary.opacity(0.6))
+            }
+            .frame(width: 80, alignment: .leading)
+
+            // Weight display
+            VStack(alignment: .leading, spacing: 4) {
+                Text(String(format: "%.1f", entry.weight))
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.primary)
+
+                Text("kg")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            // BMI
+            if let bmi = entry.bmi {
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text("BMI")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.secondary)
+
+                    Text(String(format: "%.1f", bmi))
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(bmiColor(bmi))
+                }
+            }
+
+            // Change indicator
+            if let change = changeFromPrevious {
+                VStack(spacing: 2) {
+                    Image(systemName: change > 0 ? "arrow.up" : "arrow.down")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(change > 0 ? .red : .green)
+
+                    Text(String(format: "%.1f", abs(change)))
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding(16)
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+    }
+
+    private func formattedDay(_ date: Date) -> String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) {
+            return "Today"
+        } else if calendar.isDateInYesterday(date) {
+            return "Yesterday"
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "EEEE"
+            return formatter.string(from: date)
+        }
+    }
+
+    private func formattedDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d MMM yyyy"
+        return formatter.string(from: date)
+    }
+
+    private func formattedTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter.string(from: date)
+    }
+
+    private func bmiColor(_ bmi: Double) -> Color {
+        if bmi < 18.5 {
+            return .orange
+        } else if bmi < 25 {
+            return .green
+        } else if bmi < 30 {
+            return .orange
+        } else {
+            return .red
+        }
+    }
+}
+
+// MARK: - Calendar View
+struct WeightCalendarView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var selectedDate: Date?
+    let datesWithEntries: Set<Date>
+    let weightHistory: [WeightEntry]
+
+    @State private var currentMonth = Date()
+
+    private var calendar: Calendar {
+        Calendar.current
+    }
+
+    private var monthYearString: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM yyyy"
+        return formatter.string(from: currentMonth)
+    }
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                // Month navigation
+                HStack {
+                    Button(action: previousMonth) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .frame(width: 44, height: 44)
+                    }
+
+                    Spacer()
+
+                    Text(monthYearString)
+                        .font(.system(size: 20, weight: .bold))
+
+                    Spacer()
+
+                    Button(action: nextMonth) {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .frame(width: 44, height: 44)
+                    }
+                }
+                .padding()
+
+                // Weekday headers
+                HStack(spacing: 0) {
+                    ForEach(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], id: \.self) { day in
+                        Text(day)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+
+                // Calendar grid
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
+                    ForEach(daysInMonth(), id: \.self) { date in
+                        if let date = date {
+                            CalendarDayCell(
+                                date: date,
+                                isSelected: isSelected(date),
+                                hasEntry: hasEntry(date),
+                                isCurrentMonth: isInCurrentMonth(date),
+                                entriesForDate: entriesForDate(date)
+                            )
+                            .onTapGesture {
+                                if hasEntry(date) {
+                                    selectedDate = date
+                                    dismiss()
+                                }
+                            }
+                        } else {
+                            Color.clear
+                                .aspectRatio(1, contentMode: .fit)
+                        }
+                    }
+                }
+                .padding()
+
+                Spacer()
+
+                // Legend
+                HStack(spacing: 24) {
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(Color(red: 0.2, green: 0.6, blue: 0.8))
+                            .frame(width: 8, height: 8)
+                        Text("Has entries")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                    }
+
+                    HStack(spacing: 8) {
+                        Circle()
+                            .stroke(Color(red: 0.2, green: 0.6, blue: 0.8), lineWidth: 2)
+                            .frame(width: 8, height: 8)
+                        Text("Selected")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Select Date")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") {
+                        dismiss()
+                    }
+                }
+
+                if selectedDate != nil {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Clear Filter") {
+                            selectedDate = nil
+                            dismiss()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func daysInMonth() -> [Date?] {
+        guard let monthInterval = calendar.dateInterval(of: .month, for: currentMonth),
+              let monthFirstWeek = calendar.dateInterval(of: .weekOfMonth, for: monthInterval.start) else {
+            return []
+        }
+
+        var days: [Date?] = []
+        var date = monthFirstWeek.start
+
+        while date < monthInterval.end {
+            if calendar.isDate(date, equalTo: monthInterval.start, toGranularity: .month) {
+                days.append(date)
+            } else if days.count > 0 {
+                days.append(nil)
+            }
+
+            date = calendar.date(byAdding: .day, value: 1, to: date)!
+
+            if calendar.isDate(date, equalTo: monthInterval.end, toGranularity: .month) {
+                break
+            }
+        }
+
+        // Fill remaining spots in the last week
+        while days.count % 7 != 0 {
+            days.append(nil)
+        }
+
+        return days
+    }
+
+    private func isSelected(_ date: Date) -> Bool {
+        guard let selected = selectedDate else { return false }
+        return calendar.isDate(date, inSameDayAs: selected)
+    }
+
+    private func hasEntry(_ date: Date) -> Bool {
+        datesWithEntries.contains(calendar.startOfDay(for: date))
+    }
+
+    private func isInCurrentMonth(_ date: Date) -> Bool {
+        calendar.isDate(date, equalTo: currentMonth, toGranularity: .month)
+    }
+
+    private func entriesForDate(_ date: Date) -> [WeightEntry] {
+        weightHistory.filter { calendar.isDate($0.date, inSameDayAs: date) }
+    }
+
+    private func previousMonth() {
+        currentMonth = calendar.date(byAdding: .month, value: -1, to: currentMonth) ?? currentMonth
+    }
+
+    private func nextMonth() {
+        currentMonth = calendar.date(byAdding: .month, value: 1, to: currentMonth) ?? currentMonth
+    }
+}
+
+// MARK: - Calendar Day Cell
+struct CalendarDayCell: View {
+    let date: Date
+    let isSelected: Bool
+    let hasEntry: Bool
+    let isCurrentMonth: Bool
+    let entriesForDate: [WeightEntry]
+
+    private var dayNumber: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d"
+        return formatter.string(from: date)
+    }
+
+    private var isToday: Bool {
+        Calendar.current.isDateInToday(date)
+    }
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(dayNumber)
+                .font(.system(size: 16, weight: isToday ? .bold : .regular))
+                .foregroundColor(textColor)
+
+            if hasEntry {
+                Circle()
+                    .fill(Color(red: 0.2, green: 0.6, blue: 0.8))
+                    .frame(width: 6, height: 6)
+            } else {
+                Color.clear
+                    .frame(width: 6, height: 6)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .aspectRatio(1, contentMode: .fit)
+        .background(backgroundColor)
+        .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(borderColor, lineWidth: isSelected ? 2 : 0)
+        )
+    }
+
+    private var textColor: Color {
+        if !isCurrentMonth {
+            return .secondary.opacity(0.3)
+        }
+        if isToday {
+            return Color(red: 0.2, green: 0.6, blue: 0.8)
+        }
+        return .primary
+    }
+
+    private var backgroundColor: Color {
+        if isSelected {
+            return Color(red: 0.2, green: 0.6, blue: 0.8).opacity(0.1)
+        }
+        if isToday {
+            return Color(red: 0.2, green: 0.6, blue: 0.8).opacity(0.05)
+        }
+        return Color.clear
+    }
+
+    private var borderColor: Color {
+        Color(red: 0.2, green: 0.6, blue: 0.8)
     }
 }
 

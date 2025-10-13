@@ -1433,6 +1433,39 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .navigateToKitchen)) { _ in
             selectedTab = .kitchen
         }
+        .onAppear {
+            // Preload all tab data for instant display
+            Task {
+                // 1. Preload today's diary data
+                let today = Date()
+                _ = diaryDataManager.getFoodData(for: today)
+                print("📊 Preloaded diary data for today")
+
+                // 2. Preload weight history for Progress tab
+                do {
+                    _ = try await FirebaseManager.shared.getWeightHistory()
+                    print("⚖️ Preloaded weight history")
+                } catch {
+                    print("⚠️ Failed to preload weight history: \(error)")
+                }
+
+                // 3. Preload kitchen items for Kitchen tab
+                do {
+                    let _: [KitchenInventoryItem] = try await FirebaseManager.shared.getKitchenItems()
+                    print("🍳 Preloaded kitchen items")
+                } catch {
+                    print("⚠️ Failed to preload kitchen items: \(error)")
+                }
+
+                // 4. Preload reactions for Reactions tab
+                do {
+                    _ = try await FirebaseManager.shared.getReactions()
+                    print("⚠️ Preloaded reactions")
+                } catch {
+                    print("⚠️ Failed to preload reactions: \(error)")
+                }
+            }
+        }
         }
     }
     
@@ -1510,19 +1543,25 @@ struct RoundedCorner: Shape {
 struct WeightTrackingView: View {
     @Binding var showingSettings: Bool
     @EnvironmentObject var healthKitManager: HealthKitManager
+    @EnvironmentObject var firebaseManager: FirebaseManager
 
-    @State private var currentWeight: Double = UserDefaults.standard.double(forKey: "userWeight")
-    @State private var goalWeight: Double = UserDefaults.standard.double(forKey: "goalWeight")
-    @State private var userHeight: Double = {
-        let saved = UserDefaults.standard.double(forKey: "userHeight")
-        return saved > 0 ? saved : 175.0 // Default to 175cm if not set
-    }()
+    @State private var currentWeight: Double = 0
+    @State private var goalWeight: Double = 0
+    @State private var userHeight: Double = 0 // 0 means not set
     @State private var showingAddWeight = false
     @State private var weightHistory: [WeightEntry] = []
     @State private var showingHeightSetup = false
+    @State private var isLoadingData = true
+    @State private var hasCheckedHeight = false
+
+    // Entry management
+    @State private var selectedEntry: WeightEntry?
+    @State private var showingEditWeight = false
+    @State private var entryToDelete: WeightEntry?
+    @State private var showingDeleteConfirmation = false
 
     private var needsHeightSetup: Bool {
-        UserDefaults.standard.double(forKey: "userHeight") == 0
+        userHeight == 0 && hasCheckedHeight // Only prompt if height is truly not set
     }
 
     private var currentBMI: Double {
@@ -1785,6 +1824,21 @@ struct WeightTrackingView: View {
                                         previousEntry: weightHistory[safe: index + 1],
                                         isLatest: index == 0
                                     )
+                                    .contextMenu {
+                                        Button {
+                                            selectedEntry = entry
+                                            showingEditWeight = true
+                                        } label: {
+                                            Label("Edit", systemImage: "pencil")
+                                        }
+
+                                        Button(role: .destructive) {
+                                            entryToDelete = entry
+                                            showingDeleteConfirmation = true
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                    }
                                 }
 
                                 if weightHistory.count > 5 {
@@ -1878,10 +1932,38 @@ struct WeightTrackingView: View {
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .sheet(isPresented: $showingAddWeight) {
-            AddWeightView(currentWeight: $currentWeight, weightHistory: $weightHistory)
+            AddWeightView(currentWeight: $currentWeight, weightHistory: $weightHistory, userHeight: $userHeight)
+                .environmentObject(firebaseManager)
+        }
+        .sheet(isPresented: $showingEditWeight) {
+            if let entry = selectedEntry {
+                EditWeightView(
+                    entry: entry,
+                    currentWeight: $currentWeight,
+                    weightHistory: $weightHistory,
+                    userHeight: $userHeight,
+                    onSave: { loadWeightHistory() }
+                )
+                .environmentObject(firebaseManager)
+            }
         }
         .sheet(isPresented: $showingHeightSetup) {
             HeightSetupView(userHeight: $userHeight)
+                .environmentObject(firebaseManager)
+        }
+        .alert("Delete Weight Entry?", isPresented: $showingDeleteConfirmation) {
+            Button("Cancel", role: .cancel) {
+                entryToDelete = nil
+            }
+            Button("Delete", role: .destructive) {
+                if let entry = entryToDelete {
+                    deleteWeightEntry(entry)
+                }
+            }
+        } message: {
+            if let entry = entryToDelete {
+                Text("Are you sure you want to delete the weight entry from \(entry.date, style: .date)?")
+            }
         }
         .onAppear {
             loadWeightHistory()
@@ -1894,10 +1976,65 @@ struct WeightTrackingView: View {
     }
 
     private func loadWeightHistory() {
-        // Load from UserDefaults for now
-        if let data = UserDefaults.standard.data(forKey: "weightHistory"),
-           let decoded = try? JSONDecoder().decode([WeightEntry].self, from: data) {
-            weightHistory = decoded.sorted { $0.date > $1.date }
+        isLoadingData = true
+        Task {
+            do {
+                // Load weight history from Firebase
+                let history = try await firebaseManager.getWeightHistory()
+
+                // Load settings from Firebase
+                let settings = try await firebaseManager.getUserSettings()
+
+                await MainActor.run {
+                    weightHistory = history
+
+                    // Set current weight from most recent entry
+                    if let latest = history.first {
+                        currentWeight = latest.weight
+                    }
+
+                    // Load height and goal weight from settings
+                    if let height = settings.height {
+                        userHeight = height
+                    }
+                    if let goal = settings.goalWeight {
+                        goalWeight = goal
+                    }
+
+                    hasCheckedHeight = true // Mark that we've checked Firebase
+                    isLoadingData = false
+                }
+            } catch {
+                print("Error loading weight data from Firebase: \(error)")
+                await MainActor.run {
+                    hasCheckedHeight = true
+                    isLoadingData = false
+                }
+            }
+        }
+    }
+
+    private func deleteWeightEntry(_ entry: WeightEntry) {
+        Task {
+            do {
+                try await firebaseManager.deleteWeightEntry(id: entry.id)
+                await MainActor.run {
+                    weightHistory.removeAll { $0.id == entry.id }
+                    // Update current weight if we deleted the most recent entry
+                    if let latest = weightHistory.first {
+                        currentWeight = latest.weight
+                    } else {
+                        currentWeight = 0
+                    }
+                    entryToDelete = nil
+                }
+                print("✅ Weight entry deleted successfully")
+            } catch {
+                print("❌ Error deleting weight entry: \(error)")
+                await MainActor.run {
+                    entryToDelete = nil
+                }
+            }
         }
     }
 }
@@ -1989,20 +2126,106 @@ struct WeightEntryRow: View {
     }
 }
 
+// MARK: - Weight Unit System
+enum WeightUnit: String, CaseIterable, Codable {
+    case kg = "Kilograms (kg)"
+    case lbs = "Pounds (lbs)"
+    case stones = "Stones & Pounds (st/lbs)"
+
+    var shortName: String {
+        switch self {
+        case .kg: return "kg"
+        case .lbs: return "lbs"
+        case .stones: return "st"
+        }
+    }
+
+    // Convert from kg (storage format) to display format
+    func fromKg(_ kg: Double) -> (primary: Double, secondary: Double?) {
+        switch self {
+        case .kg:
+            return (kg, nil)
+        case .lbs:
+            return (kg * 2.20462, nil)
+        case .stones:
+            let totalPounds = kg * 2.20462
+            let stones = floor(totalPounds / 14)
+            let pounds = totalPounds.truncatingRemainder(dividingBy: 14)
+            return (stones, pounds)
+        }
+    }
+
+    // Convert from display format to kg (storage format)
+    func toKg(primary: Double, secondary: Double? = nil) -> Double {
+        switch self {
+        case .kg:
+            return primary
+        case .lbs:
+            return primary / 2.20462
+        case .stones:
+            let totalPounds = (primary * 14) + (secondary ?? 0)
+            return totalPounds / 2.20462
+        }
+    }
+}
+
+// MARK: - Height Unit System
+enum HeightUnit: String, CaseIterable, Codable {
+    case cm = "Centimeters (cm)"
+    case ftIn = "Feet & Inches (ft/in)"
+
+    var shortName: String {
+        switch self {
+        case .cm: return "cm"
+        case .ftIn: return "ft"
+        }
+    }
+
+    // Convert from cm (storage format) to display format
+    func fromCm(_ cm: Double) -> (primary: Double, secondary: Double?) {
+        switch self {
+        case .cm:
+            return (cm, nil)
+        case .ftIn:
+            let totalInches = cm / 2.54
+            let feet = floor(totalInches / 12)
+            let inches = totalInches.truncatingRemainder(dividingBy: 12)
+            return (feet, inches)
+        }
+    }
+
+    // Convert from display format to cm (storage format)
+    func toCm(primary: Double, secondary: Double? = nil) -> Double {
+        switch self {
+        case .cm:
+            return primary
+        case .ftIn:
+            let totalInches = (primary * 12) + (secondary ?? 0)
+            return totalInches * 2.54
+        }
+    }
+}
+
 // MARK: - Weight Entry Model
 struct WeightEntry: Identifiable, Codable {
     let id: UUID
-    let weight: Double
+    let weight: Double // Always stored in kg
     let date: Date
     let bmi: Double?
     let note: String?
+    let photoURL: String? // Firebase Storage path
+    let waistSize: Double? // Waist measurement in cm
+    let dressSize: String? // Dress size (UK/US format)
 
-    init(id: UUID = UUID(), weight: Double, date: Date = Date(), bmi: Double? = nil, note: String? = nil) {
+    init(id: UUID = UUID(), weight: Double, date: Date = Date(), bmi: Double? = nil, note: String? = nil, photoURL: String? = nil, waistSize: Double? = nil, dressSize: String? = nil) {
         self.id = id
         self.weight = weight
         self.date = date
         self.bmi = bmi
         self.note = note
+        self.photoURL = photoURL
+        self.waistSize = waistSize
+        self.dressSize = dressSize
     }
 }
 
@@ -2273,32 +2496,118 @@ struct WeightLineChart: View {
 // MARK: - Add Weight View
 struct AddWeightView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var firebaseManager: FirebaseManager
     @Binding var currentWeight: Double
     @Binding var weightHistory: [WeightEntry]
+    @Binding var userHeight: Double
 
-    @State private var weight: String = ""
+    @AppStorage("weightUnit") private var selectedUnit: WeightUnit = .kg
+    @AppStorage("heightUnit") private var selectedHeightUnit: HeightUnit = .cm
+    @AppStorage("userGender") private var userGender: Gender = .other
+    @State private var primaryWeight: String = "" // kg, lbs, or stones
+    @State private var secondaryWeight: String = "" // pounds (for stones only)
+    @State private var primaryHeight: String = "" // cm or feet
+    @State private var secondaryHeight: String = "" // inches (for ft/in only)
     @State private var note: String = ""
     @State private var date = Date()
 
+    // Photo picker
+    @State private var selectedPhoto: UIImage? = nil
+    @State private var showingImagePicker = false
+
+    // Measurements
+    @State private var waistSize: String = ""
+    @State private var dressSize: String = ""
+
+    private var weightInKg: Double? {
+        guard let primary = Double(primaryWeight) else { return nil }
+        let secondary = selectedUnit == .stones ? Double(secondaryWeight) : nil
+        return selectedUnit.toKg(primary: primary, secondary: secondary)
+    }
+
+    private var heightInCm: Double? {
+        guard let primary = Double(primaryHeight) else { return nil }
+        let secondary = selectedHeightUnit == .ftIn ? Double(secondaryHeight) : nil
+        return selectedHeightUnit.toCm(primary: primary, secondary: secondary)
+    }
+
     private var calculatedBMI: Double? {
-        guard let weightValue = Double(weight) else { return nil }
-        let height = UserDefaults.standard.double(forKey: "userHeight")
-        guard height > 0 else { return nil }
-        let heightInMeters = height / 100
-        return weightValue / (heightInMeters * heightInMeters)
+        guard let weightKg = weightInKg else { return nil }
+        guard let heightCm = heightInCm, heightCm > 0 else { return nil }
+        let heightInMeters = heightCm / 100
+        return weightKg / (heightInMeters * heightInMeters)
     }
 
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Weight")) {
-                    HStack {
-                        TextField("Weight", text: $weight)
-                            .keyboardType(.decimalPad)
-                            .font(.system(size: 20, weight: .semibold))
+                Section(header: Text("Height")) {
+                    Picker("Height Unit", selection: $selectedHeightUnit) {
+                        ForEach(HeightUnit.allCases, id: \.self) { unit in
+                            Text(unit.rawValue).tag(unit)
+                        }
+                    }
+                    .pickerStyle(.segmented)
 
-                        Text("kg")
-                            .foregroundColor(.secondary)
+                    if selectedHeightUnit == .ftIn {
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                TextField("Feet", text: $primaryHeight)
+                                    .keyboardType(.numberPad)
+                                    .font(.system(size: 20, weight: .semibold))
+                                Text("ft").foregroundColor(.secondary).font(.caption)
+                            }
+                            VStack(alignment: .leading, spacing: 4) {
+                                TextField("Inches", text: $secondaryHeight)
+                                    .keyboardType(.decimalPad)
+                                    .font(.system(size: 20, weight: .semibold))
+                                Text("in").foregroundColor(.secondary).font(.caption)
+                            }
+                        }
+                    } else {
+                        HStack {
+                            TextField("Height", text: $primaryHeight)
+                                .keyboardType(.decimalPad)
+                                .font(.system(size: 20, weight: .semibold))
+
+                            Text(selectedHeightUnit.shortName)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+
+                Section(header: Text("Weight")) {
+                    Picker("Weight Unit", selection: $selectedUnit) {
+                        ForEach(WeightUnit.allCases, id: \.self) { unit in
+                            Text(unit.rawValue).tag(unit)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
+                    if selectedUnit == .stones {
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                TextField("Stones", text: $primaryWeight)
+                                    .keyboardType(.decimalPad)
+                                    .font(.system(size: 20, weight: .semibold))
+                                Text("st").foregroundColor(.secondary).font(.caption)
+                            }
+                            VStack(alignment: .leading, spacing: 4) {
+                                TextField("Pounds", text: $secondaryWeight)
+                                    .keyboardType(.decimalPad)
+                                    .font(.system(size: 20, weight: .semibold))
+                                Text("lbs").foregroundColor(.secondary).font(.caption)
+                            }
+                        }
+                    } else {
+                        HStack {
+                            TextField("Weight", text: $primaryWeight)
+                                .keyboardType(.decimalPad)
+                                .font(.system(size: 20, weight: .semibold))
+
+                            Text(selectedUnit.shortName)
+                                .foregroundColor(.secondary)
+                        }
                     }
 
                     if let bmi = calculatedBMI {
@@ -2314,6 +2623,41 @@ struct AddWeightView: View {
 
                 Section(header: Text("Date")) {
                     DatePicker("Date", selection: $date, displayedComponents: [.date, .hourAndMinute])
+                }
+
+                // Photo Section
+                Section(header: Text("Progress Photo (Optional)")) {
+                    Button(action: {
+                        showingImagePicker = true
+                    }) {
+                        HStack {
+                            Image(systemName: "camera.fill")
+                                .foregroundColor(.blue)
+                            if let photo = selectedPhoto {
+                                Image(uiImage: photo)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 60, height: 60)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                Text("Change Photo")
+                            } else {
+                                Text("Add Progress Photo")
+                            }
+                        }
+                    }
+                }
+
+                // Measurements Section (conditional based on gender)
+                if userGender == .female {
+                    Section(header: Text("Measurements (Optional)")) {
+                        TextField("Dress Size (e.g., UK 12)", text: $dressSize)
+                            .keyboardType(.default)
+                    }
+                } else {
+                    Section(header: Text("Measurements (Optional)")) {
+                        TextField("Waist Size (cm)", text: $waistSize)
+                            .keyboardType(.decimalPad)
+                    }
                 }
 
                 Section(header: Text("Note (Optional)")) {
@@ -2333,35 +2677,380 @@ struct AddWeightView: View {
                     Button("Save") {
                         saveWeight()
                     }
-                    .disabled(weight.isEmpty || Double(weight) == nil)
+                    .disabled(primaryWeight.isEmpty || weightInKg == nil)
                 }
+            }
+            .onAppear {
+                // Pre-populate height fields from userHeight
+                if userHeight > 0 {
+                    let converted = selectedHeightUnit.fromCm(userHeight)
+                    primaryHeight = String(format: converted.secondary != nil ? "%.0f" : "%.1f", converted.primary)
+                    if let secondary = converted.secondary {
+                        secondaryHeight = String(format: "%.1f", secondary)
+                    }
+                }
+            }
+            .sheet(isPresented: $showingImagePicker) {
+                ImagePicker(selectedImage: $selectedPhoto) { _ in }
             }
         }
     }
 
     private func saveWeight() {
-        guard let weightValue = Double(weight) else { return }
+        guard let weightKg = weightInKg else { return }
 
-        let entry = WeightEntry(weight: weightValue, date: date, bmi: calculatedBMI, note: note.isEmpty ? nil : note)
-        weightHistory.append(entry)
-        weightHistory.sort { $0.date > $1.date }
+        // Save to Firebase
+        Task {
+            do {
+                // Upload photo if one was selected
+                var photoURL: String? = nil
+                if let photo = selectedPhoto {
+                    photoURL = try await firebaseManager.uploadWeightPhoto(photo)
+                }
 
-        // Save to UserDefaults
-        if let encoded = try? JSONEncoder().encode(weightHistory) {
-            UserDefaults.standard.set(encoded, forKey: "weightHistory")
+                // Parse measurements
+                let waist = waistSize.isEmpty ? nil : Double(waistSize)
+                let dress = dressSize.isEmpty ? nil : dressSize
+
+                // Create entry with all fields
+                let entry = WeightEntry(
+                    weight: weightKg,
+                    date: date,
+                    bmi: calculatedBMI,
+                    note: note.isEmpty ? nil : note,
+                    photoURL: photoURL,
+                    waistSize: waist,
+                    dressSize: dress
+                )
+
+                try await firebaseManager.saveWeightEntry(entry)
+
+                // Save height changes if user modified it
+                if let heightCm = heightInCm, heightCm != userHeight {
+                    try await firebaseManager.saveUserSettings(height: heightCm, goalWeight: nil)
+                }
+
+                await MainActor.run {
+                    // Update local state
+                    weightHistory.insert(entry, at: 0)
+                    weightHistory.sort { $0.date > $1.date }
+                    currentWeight = weightKg
+
+                    // Update height if changed
+                    if let heightCm = heightInCm, heightCm != userHeight {
+                        userHeight = heightCm
+                    }
+
+                    dismiss()
+                }
+            } catch {
+                print("Error saving weight entry: \(error)")
+                // TODO: Show error alert to user
+            }
         }
+    }
+}
 
-        // Update current weight
-        currentWeight = weightValue
-        UserDefaults.standard.set(weightValue, forKey: "userWeight")
+// MARK: - Edit Weight View
+struct EditWeightView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var firebaseManager: FirebaseManager
+    let entry: WeightEntry
+    @Binding var currentWeight: Double
+    @Binding var weightHistory: [WeightEntry]
+    @Binding var userHeight: Double  // Changed from let to @Binding
+    let onSave: () -> Void
 
-        dismiss()
+    @AppStorage("weightUnit") private var selectedUnit: WeightUnit = .kg
+    @AppStorage("heightUnit") private var selectedHeightUnit: HeightUnit = .cm  // NEW
+    @AppStorage("userGender") private var userGender: Gender = .other
+    @State private var primaryWeight: String = ""
+    @State private var secondaryWeight: String = ""
+    @State private var primaryHeight: String = ""  // NEW
+    @State private var secondaryHeight: String = ""  // NEW
+    @State private var note: String = ""
+    @State private var date = Date()
+
+    // Photo picker
+    @State private var selectedPhoto: UIImage? = nil
+    @State private var showingImagePicker = false
+
+    // Measurements
+    @State private var waistSize: String = ""
+    @State private var dressSize: String = ""
+
+    private var weightInKg: Double? {
+        guard let primary = Double(primaryWeight) else { return nil }
+        let secondary = selectedUnit == .stones ? Double(secondaryWeight) : nil
+        return selectedUnit.toKg(primary: primary, secondary: secondary)
+    }
+
+    private var heightInCm: Double? {  // NEW
+        guard let primary = Double(primaryHeight) else { return nil }
+        let secondary = selectedHeightUnit == .ftIn ? Double(secondaryHeight) : nil
+        return selectedHeightUnit.toCm(primary: primary, secondary: secondary)
+    }
+
+    private var calculatedBMI: Double? {
+        guard let weightKg = weightInKg else { return nil }
+        guard let heightCm = heightInCm, heightCm > 0 else { return nil }  // Updated to use heightInCm
+        let heightInMeters = heightCm / 100
+        return weightKg / (heightInMeters * heightInMeters)
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Height")) {
+                    Picker("Height Unit", selection: $selectedHeightUnit) {
+                        ForEach(HeightUnit.allCases, id: \.self) { unit in
+                            Text(unit.rawValue).tag(unit)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
+                    if selectedHeightUnit == .ftIn {
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                TextField("Feet", text: $primaryHeight)
+                                    .keyboardType(.numberPad)
+                                    .font(.system(size: 20, weight: .semibold))
+                                Text("ft").foregroundColor(.secondary).font(.caption)
+                            }
+                            VStack(alignment: .leading, spacing: 4) {
+                                TextField("Inches", text: $secondaryHeight)
+                                    .keyboardType(.decimalPad)
+                                    .font(.system(size: 20, weight: .semibold))
+                                Text("in").foregroundColor(.secondary).font(.caption)
+                            }
+                        }
+                    } else {
+                        HStack {
+                            TextField("Height", text: $primaryHeight)
+                                .keyboardType(.decimalPad)
+                                .font(.system(size: 20, weight: .semibold))
+
+                            Text(selectedHeightUnit.shortName)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+
+                Section(header: Text("Weight")) {
+                    Picker("Weight Unit", selection: $selectedUnit) {
+                        ForEach(WeightUnit.allCases, id: \.self) { unit in
+                            Text(unit.rawValue).tag(unit)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
+                    if selectedUnit == .stones {
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                TextField("Stones", text: $primaryWeight)
+                                    .keyboardType(.decimalPad)
+                                    .font(.system(size: 20, weight: .semibold))
+
+                                Text("st")
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                            }
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                TextField("Pounds", text: $secondaryWeight)
+                                    .keyboardType(.decimalPad)
+                                    .font(.system(size: 20, weight: .semibold))
+
+                                Text("lbs")
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                            }
+                        }
+                    } else {
+                        HStack {
+                            TextField("Weight", text: $primaryWeight)
+                                .keyboardType(.decimalPad)
+                                .font(.system(size: 20, weight: .semibold))
+
+                            Text(selectedUnit.shortName)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    if let bmi = calculatedBMI {
+                        HStack {
+                            Text("BMI")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text(String(format: "%.1f", bmi))
+                                .font(.system(size: 17, weight: .semibold))
+                        }
+                    }
+                }
+
+                Section(header: Text("Date")) {
+                    DatePicker("Date", selection: $date, displayedComponents: [.date, .hourAndMinute])
+                }
+
+                Section(header: Text("Progress Photo (Optional)")) {
+                    Button(action: {
+                        showingImagePicker = true
+                    }) {
+                        HStack {
+                            Image(systemName: "camera.fill")
+                                .foregroundColor(.blue)
+                            if let photo = selectedPhoto {
+                                Image(uiImage: photo)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 60, height: 60)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                Text("Change Photo")
+                            } else if let existingPhotoURL = entry.photoURL {
+                                // Show existing photo indicator
+                                Image(systemName: "photo.fill")
+                                    .foregroundColor(.gray)
+                                Text("Change Photo (has existing)")
+                            } else {
+                                Text("Add Progress Photo")
+                            }
+                        }
+                    }
+                }
+
+                if userGender == .female {
+                    Section(header: Text("Measurements (Optional)")) {
+                        TextField("Dress Size (e.g., UK 12)", text: $dressSize)
+                            .keyboardType(.default)
+                    }
+                } else {
+                    Section(header: Text("Measurements (Optional)")) {
+                        TextField("Waist Size (cm)", text: $waistSize)
+                            .keyboardType(.decimalPad)
+                    }
+                }
+
+                Section(header: Text("Note (Optional)")) {
+                    TextField("Add a note", text: $note)
+                }
+            }
+            .navigationTitle("Edit Weight")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        saveWeight()
+                    }
+                    .disabled(weightInKg == nil)
+                }
+            }
+            .onAppear {
+                // Pre-populate with existing entry data (convert from kg to selected unit)
+                let converted = selectedUnit.fromKg(entry.weight)
+                primaryWeight = String(format: "%.1f", converted.primary)
+                if let secondary = converted.secondary {
+                    secondaryWeight = String(format: "%.1f", secondary)
+                }
+
+                // Pre-populate height fields from userHeight
+                if userHeight > 0 {
+                    let convertedHeight = selectedHeightUnit.fromCm(userHeight)
+                    primaryHeight = String(format: convertedHeight.secondary != nil ? "%.0f" : "%.1f", convertedHeight.primary)
+                    if let secondary = convertedHeight.secondary {
+                        secondaryHeight = String(format: "%.1f", secondary)
+                    }
+                }
+
+                date = entry.date
+                note = entry.note ?? ""
+
+                // Pre-populate measurement fields
+                if let waist = entry.waistSize {
+                    waistSize = String(format: "%.1f", waist)
+                }
+                if let dress = entry.dressSize {
+                    dressSize = dress
+                }
+            }
+            .sheet(isPresented: $showingImagePicker) {
+                ImagePicker(selectedImage: $selectedPhoto) { _ in }
+            }
+        }
+    }
+
+    private func saveWeight() {
+        guard let weightKg = weightInKg else { return }  // Convert to kg
+
+        // Save to Firebase
+        Task {
+            do {
+                // Upload new photo if one was selected, otherwise keep existing
+                var photoURL: String? = entry.photoURL
+                if let photo = selectedPhoto {
+                    photoURL = try await firebaseManager.uploadWeightPhoto(photo)
+                }
+
+                // Parse measurements
+                let waist = waistSize.isEmpty ? nil : Double(waistSize)
+                let dress = dressSize.isEmpty ? nil : dressSize
+
+                // Create updated entry with same ID
+                let updatedEntry = WeightEntry(
+                    id: entry.id,
+                    weight: weightKg,  // Store in kg
+                    date: date,
+                    bmi: calculatedBMI,
+                    note: note.isEmpty ? nil : note,
+                    photoURL: photoURL,
+                    waistSize: waist,
+                    dressSize: dress
+                )
+
+                try await firebaseManager.saveWeightEntry(updatedEntry)
+
+                // Save height changes if user modified it
+                if let heightCm = heightInCm, heightCm != userHeight {
+                    try await firebaseManager.saveUserSettings(height: heightCm, goalWeight: nil)
+                }
+
+                await MainActor.run {
+                    // Update local state
+                    if let index = weightHistory.firstIndex(where: { $0.id == entry.id }) {
+                        weightHistory[index] = updatedEntry
+                        weightHistory.sort { $0.date > $1.date }
+                    }
+
+                    // Update current weight if this was the most recent entry
+                    if let latest = weightHistory.first {
+                        currentWeight = latest.weight
+                    }
+
+                    // Update height if changed
+                    if let heightCm = heightInCm, heightCm != userHeight {
+                        userHeight = heightCm
+                    }
+
+                    onSave()
+                    dismiss()
+                }
+            } catch {
+                print("Error updating weight entry: \(error)")
+                // TODO: Show error alert to user
+            }
+        }
     }
 }
 
 // MARK: - Height Setup View
 struct HeightSetupView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var firebaseManager: FirebaseManager
     @Binding var userHeight: Double
 
     @State private var heightCm: String = ""
@@ -2482,9 +3171,19 @@ struct HeightSetupView: View {
             heightInCm = (feet * 12 + inches) * 2.54
         }
 
-        userHeight = heightInCm
-        UserDefaults.standard.set(heightInCm, forKey: "userHeight")
-        dismiss()
+        // Save to Firebase
+        Task {
+            do {
+                try await firebaseManager.saveUserSettings(height: heightInCm, goalWeight: nil)
+                await MainActor.run {
+                    userHeight = heightInCm
+                    dismiss()
+                }
+            } catch {
+                print("Error saving height: \(error)")
+                // TODO: Show error alert to user
+            }
+        }
     }
 }
 
@@ -5136,127 +5835,17 @@ struct AddFoodManualView: View {
 // MARK: - Sample search results data has been extracted to Views/Food/FoodSearchViews.swift
 // This sample data was moved as part of Phase 12A food search system extraction
 
-// MARK: - Settings View
-struct SettingsView: View {
-    @Environment(\.dismiss) private var dismiss
-    
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                LazyVStack(spacing: 16) {
-                    
-                    // Profile Section
-                    SettingsSection(title: "Profile") {
-                        SettingsRow(icon: "person.fill", title: "Personal Information", action: {})
-                        SettingsRow(icon: "target", title: "Goals & Targets", action: {})
-                        SettingsRow(icon: "heart.text.square", title: "Health Conditions", action: {})
-                        SettingsRow(icon: "exclamationmark.triangle", title: "Allergies & Intolerances", action: {})
-                    }
-                    
-                    // Data & Sync Section
-                    SettingsSection(title: "Data & Sync") {
-                        SettingsRow(icon: "heart.circle", title: "Apple Health", action: {})
-                        SettingsRow(icon: "icloud", title: "Cloud Sync", action: {})
-                        SettingsRow(icon: "arrow.up.doc", title: "Export Data", action: {})
-                        SettingsRow(icon: "arrow.down.doc", title: "Import Data", action: {})
-                    }
-                    
-                    // Notifications Section
-                    SettingsSection(title: "Notifications") {
-                        SettingsRow(icon: "bell", title: "Meal Reminders", action: {})
-                        SettingsRow(icon: "clock", title: "Water Reminders", action: {})
-                        SettingsRow(icon: "refrigerator", title: "Food Expiry Alerts", action: {})
-                    }
-                    
-                    // App Settings Section
-                    SettingsSection(title: "App Settings") {
-                        SettingsRow(icon: "textformat", title: "Units & Measurements", action: {})
-                        SettingsRow(icon: "moon", title: "Dark Mode", action: {})
-                        SettingsRow(icon: "lock", title: "Privacy & Security", action: {})
-                        SettingsRow(icon: "questionmark.circle", title: "Help & Support", action: {})
-                    }
-                    
-                    // About Section
-                    SettingsSection(title: "About") {
-                        SettingsRow(icon: "info.circle", title: "Version 1.0.0 (Beta)", action: {})
-                        SettingsRow(icon: "doc.text", title: "Terms & Conditions", action: {})
-                        SettingsRow(icon: "hand.raised", title: "Privacy Policy", action: {})
-                    }
-                    
-                    Rectangle()
-                        .fill(Color.clear)
-                        .frame(height: 40)
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
-            }
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
-            }
-        }
-    }
-}
-
-struct SettingsSection<Content: View>: View {
-    let title: String
-    let content: Content
-    
-    init(title: String, @ViewBuilder content: () -> Content) {
-        self.title = title
-        self.content = content()
-    }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.primary)
-                .padding(.horizontal, 16)
-            
-            VStack(spacing: 0) {
-                content
-            }
-            .background(Color(.systemGray6))
-            .cornerRadius(12)
-        }
-    }
-}
-
-struct SettingsRow: View {
-    let icon: String
-    let title: String
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.system(size: 16))
-                    .foregroundColor(.blue)
-                    .frame(width: 24)
-                
-                Text(title)
-                    .font(.system(size: 16))
-                    .foregroundColor(.primary)
-                
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
+// MARK: - Settings View extracted to Views/Settings/SettingsView.swift
+// The comprehensive settings interface was extracted as part of settings implementation:
+// - SettingsView: Main settings interface with account management, nutrition goals, and preferences
+// - AccountSection: User account management with sign out, password reset, and account deletion
+// - SettingsSection: Reusable section container component
+// - SettingsRow: Individual settings row with icon and action
+// - AboutSection: App version, terms, privacy policy, and health disclaimer
+// Total extracted: 120+ lines of settings functionality
+//
+// PHASE 1 (Completed): Account section with functional sign out button
+// PHASE 2-5: To be implemented in future iterations
 
 // MARK: - Professional Summary Card extracted to Views/Diary/ProfessionalSummaryViews.swift
 // This comprehensive professional nutrition visualization system was moved as part of Phase 13A extraction:

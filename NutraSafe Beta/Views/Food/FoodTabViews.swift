@@ -200,6 +200,13 @@ struct FoodReactionsView: View {
                     .frame(height: 100)
             }
         }
+        .alert("Error", isPresented: $reactionManager.showingError) {
+            Button("OK", role: .cancel) {
+                reactionManager.errorMessage = nil
+            }
+        } message: {
+            Text(reactionManager.errorMessage ?? "Unknown error occurred")
+        }
     }
 }
 
@@ -572,6 +579,43 @@ struct FoodPatternAnalysisCard: View {
         allTriggers.filter { !$0.isAllergen }
     }
 
+    // Group allergen triggers by their base allergen category with category percentage
+    private var groupedAllergenTriggers: [(category: String, percentage: Int, ingredients: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend)])] {
+        var grouped: [String: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend)]] = [:]
+
+        for trigger in allergenTriggers {
+            guard let category = trigger.baseAllergen else { continue }
+
+            let ingredient = (
+                ingredient: trigger.ingredient,
+                count: trigger.count,
+                percentage: trigger.percentage,
+                trend: trigger.trend
+            )
+
+            if grouped[category] != nil {
+                grouped[category]?.append(ingredient)
+            } else {
+                grouped[category] = [ingredient]
+            }
+        }
+
+        // Sort ingredients within each category by frequency
+        for category in grouped.keys {
+            grouped[category]?.sort { $0.count > $1.count }
+        }
+
+        // Calculate category percentage (highest percentage ingredient in that category)
+        // and convert to sorted array
+        let groupedArray = grouped.map { (category, ingredients) -> (category: String, percentage: Int, ingredients: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend)]) in
+            let maxPercentage = ingredients.map { $0.percentage }.max() ?? 0
+            return (category: category, percentage: maxPercentage, ingredients: ingredients)
+        }
+
+        // Sort by category percentage (highest first)
+        return groupedArray.sorted { $0.percentage > $1.percentage }
+    }
+
     private func calculateTrend(for ingredient: String) -> PatternRow.Trend {
         let calendar = Calendar.current
         let now = Date()
@@ -623,19 +667,18 @@ struct FoodPatternAnalysisCard: View {
                 .padding(.vertical, 30)
             } else {
                 VStack(alignment: .leading, spacing: 16) {
-                    // Known Allergens Section
+                    // Known Allergens Section (Grouped)
                     if !allergenTriggers.isEmpty {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Known Allergens")
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(.red)
 
-                            ForEach(allergenTriggers, id: \.ingredient) { trigger in
-                                PatternRow(
-                                    trigger: trigger.ingredient,
-                                    frequency: "\(trigger.percentage)%",
-                                    trend: trigger.trend,
-                                    baseAllergen: trigger.baseAllergen
+                            ForEach(groupedAllergenTriggers, id: \.category) { group in
+                                GroupedAllergenSection(
+                                    allergenCategory: group.category,
+                                    categoryPercentage: group.percentage,
+                                    ingredients: group.ingredients
                                 )
                             }
                         }
@@ -684,6 +727,73 @@ struct FoodPatternAnalysisCard: View {
                 .fill(Color(.systemBackground))
                 .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
         )
+    }
+}
+
+// MARK: - Grouped Allergen Section
+struct GroupedAllergenSection: View {
+    let allergenCategory: String
+    let categoryPercentage: Int
+    let ingredients: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend)]
+    @State private var isExpanded = true
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Category header
+            Button(action: {
+                withAnimation {
+                    isExpanded.toggle()
+                }
+            }) {
+                HStack {
+                    Text(allergenCategory)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.red)
+
+                    Spacer()
+
+                    Text("\(categoryPercentage)%")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.red.opacity(0.8))
+
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 4)
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            // Grouped ingredients
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(ingredients, id: \.ingredient) { ingredient in
+                        HStack {
+                            Circle()
+                                .fill(Color.red.opacity(0.3))
+                                .frame(width: 6, height: 6)
+                                .padding(.leading, 8)
+
+                            Text(ingredient.ingredient)
+                                .font(.system(size: 14))
+                                .foregroundColor(.primary)
+
+                            Spacer()
+
+                            Text("\(ingredient.percentage)%")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+
+                            Image(systemName: ingredient.trend.icon)
+                                .font(.system(size: 11))
+                                .foregroundColor(ingredient.trend.color)
+                        }
+                    }
+                }
+                .padding(.leading, 4)
+            }
+        }
+        .padding(.vertical, 4)
     }
 }
 
@@ -1037,6 +1147,8 @@ class ReactionManager: ObservableObject {
 
     @Published var reactions: [FoodReaction] = []
     @Published var isLoading = false
+    @Published var errorMessage: String?
+    @Published var showingError = false
     private let firebaseManager = FirebaseManager.shared
 
     var monthlyCount: Int {
@@ -1080,6 +1192,12 @@ class ReactionManager: ObservableObject {
             try await firebaseManager.saveReaction(reaction)
         } catch {
             print("Failed to save reaction: \(error)")
+            await MainActor.run {
+                errorMessage = "Failed to save reaction: \(error.localizedDescription)"
+                showingError = true
+                // Remove from local array since save failed
+                reactions.removeAll { $0.id == reaction.id }
+            }
         }
     }
 
@@ -1138,6 +1256,15 @@ class ReactionManager: ObservableObject {
                 reactions.sort { $0.timestamp.dateValue() > $1.timestamp.dateValue() }
             }
         }
+    }
+
+    func clearData() {
+        // Clear all reactions from memory when user logs out
+        reactions.removeAll()
+        isLoading = false
+        errorMessage = nil
+        showingError = false
+        print("🧹 Cleared ReactionManager data")
     }
 }
 
