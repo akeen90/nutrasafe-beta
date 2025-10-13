@@ -11,19 +11,18 @@ import HealthKit
 struct WeightTrackingView: View {
     @Binding var showingSettings: Bool
     @EnvironmentObject var healthKitManager: HealthKitManager
+    @EnvironmentObject var firebaseManager: FirebaseManager
 
-    @State private var currentWeight: Double = UserDefaults.standard.double(forKey: "userWeight")
-    @State private var goalWeight: Double = UserDefaults.standard.double(forKey: "goalWeight")
-    @State private var userHeight: Double = {
-        let saved = UserDefaults.standard.double(forKey: "userHeight")
-        return saved > 0 ? saved : 175.0 // Default to 175cm if not set
-    }()
+    @State private var currentWeight: Double = 0
+    @State private var goalWeight: Double = 0
+    @State private var userHeight: Double = 0
     @State private var showingAddWeight = false
     @State private var weightHistory: [WeightEntry] = []
     @State private var showingHeightSetup = false
+    @State private var isLoading = true
 
     private var needsHeightSetup: Bool {
-        UserDefaults.standard.double(forKey: "userHeight") == 0
+        userHeight == 0
     }
 
     private var currentBMI: Double {
@@ -239,26 +238,54 @@ struct WeightTrackingView: View {
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .sheet(isPresented: $showingAddWeight) {
-            AddWeightView(currentWeight: $currentWeight, weightHistory: $weightHistory)
+            AddWeightView(currentWeight: $currentWeight, weightHistory: $weightHistory, userHeight: userHeight)
+                .environmentObject(firebaseManager)
         }
         .sheet(isPresented: $showingHeightSetup) {
             HeightSetupView(userHeight: $userHeight)
+                .environmentObject(firebaseManager)
         }
         .onAppear {
-            loadWeightHistory()
-            if needsHeightSetup {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    showingHeightSetup = true
-                }
+            Task {
+                await loadDataFromFirebase()
             }
         }
     }
 
-    private func loadWeightHistory() {
-        // Load from UserDefaults for now
-        if let data = UserDefaults.standard.data(forKey: "weightHistory"),
-           let decoded = try? JSONDecoder().decode([WeightEntry].self, from: data) {
-            weightHistory = decoded.sorted { $0.date > $1.date }
+    private func loadDataFromFirebase() async {
+        do {
+            // Load weight history from Firebase
+            let entries = try await firebaseManager.getWeightHistory()
+            await MainActor.run {
+                weightHistory = entries.sorted { $0.date > $1.date }
+                if let latest = entries.first {
+                    currentWeight = latest.weight
+                }
+            }
+
+            // Load user settings from Firebase
+            let settings = try await firebaseManager.getUserSettings()
+            await MainActor.run {
+                if let height = settings.height {
+                    userHeight = height
+                }
+                if let goal = settings.goalWeight {
+                    goalWeight = goal
+                }
+                isLoading = false
+
+                // Show height setup if needed
+                if needsHeightSetup {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        showingHeightSetup = true
+                    }
+                }
+            }
+        } catch {
+            print("❌ Error loading weight data from Firebase: \(error.localizedDescription)")
+            await MainActor.run {
+                isLoading = false
+            }
         }
     }
 }
@@ -494,8 +521,10 @@ struct WeightBarChart: View {
 // MARK: - Add Weight View
 struct AddWeightView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var firebaseManager: FirebaseManager
     @Binding var currentWeight: Double
     @Binding var weightHistory: [WeightEntry]
+    let userHeight: Double
 
     @State private var weight: String = ""
     @State private var note: String = ""
@@ -503,9 +532,8 @@ struct AddWeightView: View {
 
     private var calculatedBMI: Double? {
         guard let weightValue = Double(weight) else { return nil }
-        let height = UserDefaults.standard.double(forKey: "userHeight")
-        guard height > 0 else { return nil }
-        let heightInMeters = height / 100
+        guard userHeight > 0 else { return nil }
+        let heightInMeters = userHeight / 100
         return weightValue / (heightInMeters * heightInMeters)
     }
 
@@ -564,25 +592,29 @@ struct AddWeightView: View {
         guard let weightValue = Double(weight) else { return }
 
         let entry = WeightEntry(weight: weightValue, date: date, bmi: calculatedBMI, note: note.isEmpty ? nil : note)
-        weightHistory.append(entry)
-        weightHistory.sort { $0.date > $1.date }
 
-        // Save to UserDefaults
-        if let encoded = try? JSONEncoder().encode(weightHistory) {
-            UserDefaults.standard.set(encoded, forKey: "weightHistory")
+        Task {
+            do {
+                // Save to Firebase
+                try await firebaseManager.saveWeightEntry(entry)
+
+                await MainActor.run {
+                    weightHistory.append(entry)
+                    weightHistory.sort { $0.date > $1.date }
+                    currentWeight = weightValue
+                    dismiss()
+                }
+            } catch {
+                print("❌ Error saving weight entry: \(error.localizedDescription)")
+            }
         }
-
-        // Update current weight
-        currentWeight = weightValue
-        UserDefaults.standard.set(weightValue, forKey: "userWeight")
-
-        dismiss()
     }
 }
 
 // MARK: - Height Setup View
 struct HeightSetupView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var firebaseManager: FirebaseManager
     @Binding var userHeight: Double
 
     @State private var heightCm: String = ""
@@ -703,8 +735,18 @@ struct HeightSetupView: View {
             heightInCm = (feet * 12 + inches) * 2.54
         }
 
-        userHeight = heightInCm
-        UserDefaults.standard.set(heightInCm, forKey: "userHeight")
-        dismiss()
+        Task {
+            do {
+                // Save to Firebase
+                try await firebaseManager.saveUserSettings(height: heightInCm, goalWeight: nil)
+
+                await MainActor.run {
+                    userHeight = heightInCm
+                    dismiss()
+                }
+            } catch {
+                print("❌ Error saving height: \(error.localizedDescription)")
+            }
+        }
     }
 }

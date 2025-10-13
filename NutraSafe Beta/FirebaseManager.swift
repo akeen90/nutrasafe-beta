@@ -485,6 +485,113 @@ class FirebaseManager: ObservableObject {
             .collection("pendingVerifications").document(verificationId)
             .updateData(["status": status.rawValue])
     }
+
+    // MARK: - Weight Tracking
+
+    func saveWeightEntry(_ entry: WeightEntry) async throws {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save weight entries"])
+        }
+
+        let entryData: [String: Any] = [
+            "id": entry.id.uuidString,
+            "weight": entry.weight,
+            "date": FirebaseFirestore.Timestamp(date: entry.date),
+            "bmi": entry.bmi as Any,
+            "note": entry.note as Any
+        ]
+
+        try await db.collection("users").document(userId)
+            .collection("weightHistory").document(entry.id.uuidString).setData(entryData)
+        print("✅ Weight entry saved successfully")
+    }
+
+    func getWeightHistory() async throws -> [WeightEntry] {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view weight history"])
+        }
+
+        let snapshot = try await db.collection("users").document(userId)
+            .collection("weightHistory")
+            .order(by: "date", descending: true)
+            .getDocuments()
+
+        let entries = snapshot.documents.compactMap { doc -> WeightEntry? in
+            guard let data = doc.data() as? [String: Any],
+                  let idString = data["id"] as? String,
+                  let id = UUID(uuidString: idString),
+                  let weight = data["weight"] as? Double,
+                  let timestamp = data["date"] as? FirebaseFirestore.Timestamp else {
+                return nil
+            }
+
+            let bmi = data["bmi"] as? Double
+            let note = data["note"] as? String
+
+            return WeightEntry(id: id, weight: weight, date: timestamp.dateValue(), bmi: bmi, note: note)
+        }
+
+        print("✅ Loaded \(entries.count) weight entries from Firebase")
+        return entries
+    }
+
+    func deleteWeightEntry(id: UUID) async throws {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to delete weight entries"])
+        }
+
+        try await db.collection("users").document(userId)
+            .collection("weightHistory").document(id.uuidString).delete()
+        print("✅ Weight entry deleted successfully")
+    }
+
+    // MARK: - User Settings (Height, Goal Weight)
+
+    func saveUserSettings(height: Double?, goalWeight: Double?) async throws {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save settings"])
+        }
+
+        var data: [String: Any] = [:]
+        if let height = height {
+            data["height"] = height
+        }
+        if let goalWeight = goalWeight {
+            data["goalWeight"] = goalWeight
+        }
+
+        try await db.collection("users").document(userId)
+            .collection("settings").document("preferences").setData(data, merge: true)
+        print("✅ User settings saved successfully")
+    }
+
+    func getUserSettings() async throws -> (height: Double?, goalWeight: Double?) {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view settings"])
+        }
+
+        let document = try await db.collection("users").document(userId)
+            .collection("settings").document("preferences").getDocument()
+
+        guard let data = document.data() else {
+            return (nil, nil)
+        }
+
+        let height = data["height"] as? Double
+        let goalWeight = data["goalWeight"] as? Double
+
+        return (height, goalWeight)
+    }
 }
 
 extension Notification.Name {
