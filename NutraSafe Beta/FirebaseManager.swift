@@ -152,7 +152,31 @@ class FirebaseManager: ObservableObject {
             FoodEntry.fromDictionary(doc.data())
         }
     }
-    
+
+    // Delete all food entries older than today (for clearing test data)
+    func deleteOldFoodEntries() async throws {
+        guard let userId = currentUser?.uid else { return }
+
+        // Get the start of today
+        let calendar = Calendar.current
+        let startOfToday = calendar.startOfDay(for: Date())
+
+        // Query for all entries before today
+        let snapshot = try await db.collection("users").document(userId)
+            .collection("foodEntries")
+            .whereField("date", isLessThan: FirebaseFirestore.Timestamp(date: startOfToday))
+            .getDocuments()
+
+        print("🗑️ Deleting \(snapshot.documents.count) old food entries...")
+
+        // Delete each old entry
+        for document in snapshot.documents {
+            try await document.reference.delete()
+        }
+
+        print("✅ Deleted \(snapshot.documents.count) old food entries")
+    }
+
     func deleteFoodEntry(entryId: String) async throws {
         guard let userId = currentUser?.uid else { return }
         try await db.collection("users").document(userId)

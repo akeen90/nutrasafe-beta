@@ -9,8 +9,10 @@ struct ImprovedMicronutrientView: View {
     let dinner: [DiaryFoodItem]
     let snacks: [DiaryFoodItem]
     @State private var showingDetailedInsights = false
+    @State private var showingTieredInsights = false
     @State private var historicalAnalysis: HistoricalNutrientAnalysis?
     @State private var isLoading = false
+    @EnvironmentObject var firebaseManager: FirebaseManager
 
     private var allFoods: [DiaryFoodItem] {
         breakfast + lunch + dinner + snacks
@@ -57,50 +59,95 @@ struct ImprovedMicronutrientView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
             } else {
-                // Show insights button with loading indicator
-                Button(action: {
-                    loadHistoricalData()
-                }) {
-                    HStack(spacing: 12) {
-                        if isLoading {
-                            ProgressView()
-                                .frame(width: 32, height: 32)
-                        } else {
+                // Show both insights buttons
+                VStack(spacing: 12) {
+                    // Tiered Insights Button (Day/Week/Month)
+                    Button(action: {
+                        showingTieredInsights = true
+                    }) {
+                        HStack(spacing: 12) {
                             ZStack {
                                 Circle()
-                                    .fill(LinearGradient(gradient: Gradient(colors: [.blue, .purple]), startPoint: .topLeading, endPoint: .bottomTrailing))
+                                    .fill(LinearGradient(gradient: Gradient(colors: [.blue, .cyan]), startPoint: .topLeading, endPoint: .bottomTrailing))
                                     .frame(width: 32, height: 32)
 
-                                Image(systemName: "chart.line.uptrend.xyaxis")
+                                Image(systemName: "calendar.badge.clock")
                                     .font(.system(size: 14, weight: .medium))
                                     .foregroundColor(.white)
                             }
-                        }
 
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("View Nutritional Insights")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(.primary)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Macro Insights: Day / Week / Month")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(.primary)
 
-                            Text(isLoading ? "Analyzing your nutrition history..." : "See what vitamins & minerals you're missing")
-                                .font(.system(size: 11))
+                                Text("Track your consistency over time")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .medium))
                                 .foregroundColor(.secondary)
                         }
-
-                        Spacer()
-
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.secondary)
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 16)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
                     }
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, 16)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
+                    .buttonStyle(PlainButtonStyle())
+
+                    // Micronutrient insights button with loading indicator
+                    Button(action: {
+                        loadHistoricalData()
+                    }) {
+                        HStack(spacing: 12) {
+                            if isLoading {
+                                ProgressView()
+                                    .frame(width: 32, height: 32)
+                            } else {
+                                ZStack {
+                                    Circle()
+                                        .fill(LinearGradient(gradient: Gradient(colors: [.green, .mint]), startPoint: .topLeading, endPoint: .bottomTrailing))
+                                        .frame(width: 32, height: 32)
+
+                                    Image(systemName: "leaf.fill")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(.white)
+                                }
+                            }
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Vitamin & Mineral Insights")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(.primary)
+
+                                Text(isLoading ? "Analyzing your nutrition history..." : "See what vitamins & minerals you're missing")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 16)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .disabled(isLoading)
                 }
-                .buttonStyle(PlainButtonStyle())
-                .disabled(isLoading)
             }
+        }
+        .sheet(isPresented: $showingTieredInsights) {
+            TieredNutritionInsightsView()
+                .environmentObject(firebaseManager)
         }
         .sheet(isPresented: $showingDetailedInsights) {
             DetailedMicronutrientInsightsView(
@@ -120,8 +167,18 @@ struct ImprovedMicronutrientView: View {
                 // Load past 30 days of food entries
                 let entries = try await FirebaseManager.shared.getFoodEntriesForPeriod(days: 30)
 
-                // Analyze the historical data
-                let analysis = analyzeHistoricalNutrition(entries: entries)
+                // Load user settings for macro targets
+                let settings = try await firebaseManager.getUserSettings()
+                let calorieGoal = Double(settings.caloricGoal ?? 2000)
+                let proteinPercent = Double(settings.proteinPercent ?? 30) / 100.0
+
+                // Calculate daily targets from settings
+                // Protein: 4 cal/g
+                let proteinTarget = (calorieGoal * proteinPercent) / 4.0
+                let fiberTarget: Double = 30.0  // Standard recommendation
+
+                // Analyze the historical data with settings-based targets
+                let analysis = analyzeHistoricalNutrition(entries: entries, proteinTarget: proteinTarget, fiberTarget: fiberTarget)
 
                 await MainActor.run {
                     self.historicalAnalysis = analysis
@@ -139,142 +196,311 @@ struct ImprovedMicronutrientView: View {
         }
     }
 
-    private func analyzeHistoricalNutrition(entries: [FoodEntry]) -> HistoricalNutrientAnalysis {
-        // Group entries by week
-        let calendar = Calendar.current
-        var weeklyData: [Int: WeeklyNutrientData] = [:]
+    // MARK: - Nutrient Food Mapping
 
-        for entry in entries {
-            let weekOfYear = calendar.component(.weekOfYear, from: entry.date)
+    private func getNutrientsInFood(_ foodName: String, entry: FoodEntry) -> [String] {
+        let name = foodName.lowercased()
+        var nutrients: [String] = []
 
-            if weeklyData[weekOfYear] == nil {
-                weeklyData[weekOfYear] = WeeklyNutrientData()
-            }
-
-            weeklyData[weekOfYear]?.addEntry(entry)
+        // Protein - tracked directly from actual data
+        if entry.protein > 10 {
+            nutrients.append("Protein")
         }
 
-        // Calculate average nutrient intake
-        let weeks = weeklyData.values
-        guard !weeks.isEmpty else {
+        // Fiber - tracked directly from actual data (any significant amount)
+        if let fiber = entry.fiber, fiber > 1 {
+            nutrients.append("Fiber")
+        }
+
+        // Use real micronutrient data if available, otherwise fall back to keyword matching
+        if let micronutrients = entry.micronutrientProfile {
+            // Real data from ingredient analysis - check vitamins
+            if let vitaminC = micronutrients.vitamins["vitaminC"], vitaminC > 1 {
+                nutrients.append("Vitamin C")
+            }
+            if let vitaminD = micronutrients.vitamins["vitaminD"], vitaminD > 0.5 {
+                nutrients.append("Vitamin D")
+            }
+            // Check for any B vitamins
+            let bVitamins = ["thiamine", "riboflavin", "niacin", "pantothenicAcid", "vitaminB6", "biotin", "folate", "vitaminB12"]
+            let hasBVitamins = bVitamins.contains { vitaminKey in
+                if let amount = micronutrients.vitamins[vitaminKey], amount > 0.1 {
+                    return true
+                }
+                return false
+            }
+            if hasBVitamins {
+                nutrients.append("B Vitamins")
+            }
+
+            // Real data from ingredient analysis - check minerals
+            if let calcium = micronutrients.minerals["calcium"], calcium > 50 {
+                nutrients.append("Calcium")
+            }
+            if let iron = micronutrients.minerals["iron"], iron > 0.5 {
+                nutrients.append("Iron")
+            }
+            if let magnesium = micronutrients.minerals["magnesium"], magnesium > 20 {
+                nutrients.append("Magnesium")
+            }
+            if let zinc = micronutrients.minerals["zinc"], zinc > 0.5 {
+                nutrients.append("Zinc")
+            }
+
+            // Omega-3 estimation (still use fat as proxy)
+            if entry.fat > 10 || name.contains("salmon") || name.contains("tuna") || name.contains("mackerel") ||
+               name.contains("sardine") || name.contains("walnut") || name.contains("chia") ||
+               name.contains("flax") || name.contains("hemp") {
+                nutrients.append("Omega-3")
+            }
+        } else {
+            // Fallback to keyword-based matching if no micronutrient profile available
+            // Calcium - use legacy field if available
+            if let calcium = entry.calcium, calcium > 50 {
+                nutrients.append("Calcium")
+            }
+
+            // Iron - keyword-based
+            if entry.protein > 15 || name.contains("beef") || name.contains("steak") || name.contains("liver") ||
+               name.contains("spinach") || name.contains("kale") || name.contains("lentil") ||
+               name.contains("bean") || name.contains("fortified") || name.contains("cereal") ||
+               name.contains("tofu") || name.contains("quinoa") {
+                nutrients.append("Iron")
+            }
+
+            // Vitamin C - keyword-based
+            if name.contains("orange") || name.contains("lemon") || name.contains("lime") ||
+               name.contains("strawber") || name.contains("kiwi") || name.contains("mango") ||
+               name.contains("pepper") || name.contains("broccoli") || name.contains("tomato") ||
+               name.contains("citrus") || name.contains("berry") {
+                nutrients.append("Vitamin C")
+            }
+
+            // Omega-3 - keyword-based
+            if name.contains("salmon") || name.contains("tuna") || name.contains("mackerel") ||
+               name.contains("sardine") || name.contains("walnut") || name.contains("chia") ||
+               name.contains("flax") || name.contains("hemp") || entry.fat > 10 {
+                nutrients.append("Omega-3")
+            }
+
+            // Vitamin D - keyword-based
+            if name.contains("milk") || name.contains("salmon") || name.contains("tuna") ||
+               name.contains("egg") || name.contains("fortified") || name.contains("mushroom") {
+                nutrients.append("Vitamin D")
+            }
+
+            // B Vitamins - keyword-based
+            if name.contains("whole grain") || name.contains("brown rice") || name.contains("oat") ||
+               name.contains("chicken") || name.contains("beef") || name.contains("egg") ||
+               name.contains("lentil") || name.contains("bean") || name.contains("avocado") {
+                nutrients.append("B Vitamins")
+            }
+
+            // Magnesium - keyword-based
+            if name.contains("almond") || name.contains("cashew") || name.contains("pumpkin seed") ||
+               name.contains("spinach") || name.contains("whole grain") || name.contains("black bean") ||
+               name.contains("dark chocolate") || name.contains("avocado") {
+                nutrients.append("Magnesium")
+            }
+
+            // Zinc - keyword-based
+            if name.contains("beef") || name.contains("pork") || name.contains("chicken") ||
+               name.contains("oyster") || name.contains("crab") || name.contains("cashew") ||
+               name.contains("chickpea") || name.contains("lentil") {
+                nutrients.append("Zinc")
+            }
+        }
+
+        return nutrients
+    }
+
+    private func analyzeHistoricalNutrition(entries: [FoodEntry], proteinTarget: Double, fiberTarget: Double) -> HistoricalNutrientAnalysis {
+        // Count unique days with food entries
+        let calendar = Calendar.current
+        let uniqueDays = Set(entries.map { calendar.startOfDay(for: $0.date) })
+        let totalDaysTracked = uniqueDays.count
+
+        // Debug: Print the dates we found
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .medium
+        print("🔍 Micronutrient Analysis Debug:")
+        print("   Total entries found: \(entries.count)")
+        print("   Unique days: \(totalDaysTracked)")
+        for date in uniqueDays.sorted() {
+            let entriesOnDay = entries.filter { calendar.isDate($0.date, inSameDayAs: date) }
+            print("   - \(dateFormatter.string(from: date)): \(entriesOnDay.count) entries")
+        }
+
+        guard totalDaysTracked > 0 else {
             return HistoricalNutrientAnalysis(
                 totalDaysTracked: 0,
-                averageDailyProtein: 0,
-                averageDailyFiber: 0,
-                averageDailyIron: 0,
-                averageDailyCalcium: 0,
-                averageDailyVitaminC: 0,
-                averageDailyOmega3: 0,
                 deficientNutrients: [],
                 adequateNutrients: [],
                 recommendedFoods: []
             )
         }
 
-        let avgProtein = weeks.map { $0.protein }.reduce(0, +) / Double(weeks.count)
-        let avgFiber = weeks.map { $0.fiber }.reduce(0, +) / Double(weeks.count)
-        let avgIron = weeks.map { $0.estimatedIron }.reduce(0, +) / Double(weeks.count)
-        let avgCalcium = weeks.map { $0.estimatedCalcium }.reduce(0, +) / Double(weeks.count)
-        let avgVitaminC = weeks.map { $0.estimatedVitaminC }.reduce(0, +) / Double(weeks.count)
-        let avgOmega3 = weeks.map { $0.estimatedOmega3 }.reduce(0, +) / Double(weeks.count)
+        // Track total grams for macros (Protein & Fiber)
+        var totalProtein: Double = 0
+        var totalFiber: Double = 0
 
-        // Identify deficiencies (using daily recommended values)
+        // Track which nutrients appear on which days, with food names (for micros)
+        var nutrientDaysMap: [String: Set<Date>] = [:]
+        var nutrientFoodsMap: [String: Set<String>] = [:]
+
+        // Process each entry
+        for entry in entries {
+            let dayStart = calendar.startOfDay(for: entry.date)
+            let nutrients = getNutrientsInFood(entry.foodName, entry: entry)
+
+            // Sum up macros
+            totalProtein += entry.protein
+            totalFiber += (entry.fiber ?? 0)
+
+            for nutrient in nutrients {
+                // Track the day (for micros)
+                if nutrientDaysMap[nutrient] == nil {
+                    nutrientDaysMap[nutrient] = Set()
+                }
+                nutrientDaysMap[nutrient]?.insert(dayStart)
+
+                // Track the food name
+                if nutrientFoodsMap[nutrient] == nil {
+                    nutrientFoodsMap[nutrient] = Set()
+                }
+                nutrientFoodsMap[nutrient]?.insert(entry.foodName)
+            }
+        }
+
+        // Calculate targets for period
+        let proteinGoal = proteinTarget * Double(totalDaysTracked)
+        let fiberGoal = fiberTarget * Double(totalDaysTracked)
+
+        // Analyze each nutrient
         var deficient: [NutrientDeficiency] = []
-        var adequate: [String] = []
+        var adequate: [NutrientInfo] = []
 
-        // Protein: RDA ~50g/day
-        if avgProtein < 40 {
-            deficient.append(NutrientDeficiency(
-                name: "Protein",
-                currentIntake: avgProtein,
-                recommendedIntake: 50,
-                severity: avgProtein < 30 ? .high : .moderate,
-                foodSources: ["chicken breast", "fish", "eggs", "tofu", "lentils", "Greek yogurt"]
-            ))
-        } else {
-            adequate.append("Protein")
-        }
+        let allNutrients = ["Protein", "Fiber", "Iron", "Calcium", "Vitamin C", "Omega-3", "Vitamin D", "B Vitamins", "Magnesium", "Zinc"]
 
-        // Fiber: RDA ~25-30g/day
-        if avgFiber < 20 {
-            deficient.append(NutrientDeficiency(
-                name: "Fiber",
-                currentIntake: avgFiber,
-                recommendedIntake: 25,
-                severity: avgFiber < 15 ? .high : .moderate,
-                foodSources: ["oats", "beans", "broccoli", "apples", "whole grain bread", "chia seeds"]
-            ))
-        } else {
-            adequate.append("Fiber")
-        }
+        for nutrient in allNutrients {
+            let foodsEaten = Array(nutrientFoodsMap[nutrient] ?? []).prefix(10).map { String($0) }
 
-        // Iron: RDA ~18mg/day
-        if avgIron < 14 {
-            deficient.append(NutrientDeficiency(
-                name: "Iron",
-                currentIntake: avgIron,
-                recommendedIntake: 18,
-                severity: avgIron < 10 ? .high : .moderate,
-                foodSources: ["spinach", "red meat", "lentils", "fortified cereals", "dark chocolate"]
-            ))
-        } else {
-            adequate.append("Iron")
-        }
+            // Handle macros vs micros differently
+            if nutrient == "Protein" || nutrient == "Fiber" {
+                // Gram-based tracking for macros
+                let currentGrams = nutrient == "Protein" ? totalProtein : totalFiber
+                let goalGrams = nutrient == "Protein" ? proteinGoal : fiberGoal
+                let percentage = (currentGrams / goalGrams) * 100
 
-        // Calcium: RDA ~1000mg/day
-        if avgCalcium < 800 {
-            deficient.append(NutrientDeficiency(
-                name: "Calcium",
-                currentIntake: avgCalcium,
-                recommendedIntake: 1000,
-                severity: avgCalcium < 600 ? .high : .moderate,
-                foodSources: ["milk", "cheese", "yogurt", "fortified plant milk", "sardines", "kale"]
-            ))
-        } else {
-            adequate.append("Calcium")
-        }
+                if percentage >= 80 {
+                    // Doing well - create NutrientInfo for macros too
+                    adequate.append(NutrientInfo(
+                        name: nutrient,
+                        daysWithNutrient: 0, // Not used for macros
+                        totalDays: totalDaysTracked,
+                        foodsEaten: foodsEaten
+                    ))
+                } else {
+                    // Deficient
+                    let severity: DeficiencySeverity = percentage < 60 ? .high : .moderate
 
-        // Vitamin C: RDA ~90mg/day
-        if avgVitaminC < 70 {
-            deficient.append(NutrientDeficiency(
-                name: "Vitamin C",
-                currentIntake: avgVitaminC,
-                recommendedIntake: 90,
-                severity: avgVitaminC < 50 ? .high : .moderate,
-                foodSources: ["oranges", "strawberries", "bell peppers", "broccoli", "kiwi"]
-            ))
-        } else {
-            adequate.append("Vitamin C")
-        }
+                    deficient.append(NutrientDeficiency(
+                        name: nutrient,
+                        currentIntake: currentGrams,
+                        recommendedIntake: goalGrams,
+                        severity: severity,
+                        foodSources: getFoodSources(for: nutrient),
+                        foodsEaten: foodsEaten,
+                        isFrequencyBased: false,
+                        totalDays: totalDaysTracked
+                    ))
+                }
+            } else {
+                // Day-based tracking for micronutrients
+                let daysWithNutrient = nutrientDaysMap[nutrient]?.count ?? 0
+                let frequency = Double(daysWithNutrient) / Double(totalDaysTracked) * 100
 
-        // Omega-3: RDA ~1-2g/day
-        if avgOmega3 < 1.0 {
-            deficient.append(NutrientDeficiency(
-                name: "Omega-3 Fatty Acids",
-                currentIntake: avgOmega3,
-                recommendedIntake: 1.5,
-                severity: avgOmega3 < 0.5 ? .high : .moderate,
-                foodSources: ["salmon", "sardines", "walnuts", "chia seeds", "flaxseed", "hemp seeds"]
-            ))
-        } else {
-            adequate.append("Omega-3")
+                // Determine threshold based on nutrient type
+                let goodThreshold: Double
+                let moderateThreshold: Double
+
+                switch nutrient {
+                case "Iron", "Calcium", "B Vitamins":
+                    // Essential micronutrients - need regular intake
+                    goodThreshold = 70
+                    moderateThreshold = 50
+                case "Vitamin C", "Vitamin D":
+                    // Important but can be stored
+                    goodThreshold = 60
+                    moderateThreshold = 40
+                default:
+                    // Omega-3, Magnesium, Zinc - beneficial but less frequent
+                    goodThreshold = 50
+                    moderateThreshold = 30
+                }
+
+                if frequency >= goodThreshold {
+                    // Doing well
+                    adequate.append(NutrientInfo(
+                        name: nutrient,
+                        daysWithNutrient: daysWithNutrient,
+                        totalDays: totalDaysTracked,
+                        foodsEaten: foodsEaten
+                    ))
+                } else {
+                    // Deficient
+                    let severity: DeficiencySeverity = frequency < moderateThreshold ? .high : .moderate
+
+                    deficient.append(NutrientDeficiency(
+                        name: nutrient,
+                        currentIntake: Double(daysWithNutrient),
+                        recommendedIntake: Double(totalDaysTracked),
+                        severity: severity,
+                        foodSources: getFoodSources(for: nutrient),
+                        foodsEaten: foodsEaten,
+                        isFrequencyBased: true,
+                        totalDays: totalDaysTracked
+                    ))
+                }
+            }
         }
 
         // Generate personalized recommendations
         let recommendations = generateRecommendations(deficiencies: deficient)
 
         return HistoricalNutrientAnalysis(
-            totalDaysTracked: entries.count > 0 ? min(30, entries.count) : 0,
-            averageDailyProtein: avgProtein,
-            averageDailyFiber: avgFiber,
-            averageDailyIron: avgIron,
-            averageDailyCalcium: avgCalcium,
-            averageDailyVitaminC: avgVitaminC,
-            averageDailyOmega3: avgOmega3,
+            totalDaysTracked: totalDaysTracked,
             deficientNutrients: deficient,
             adequateNutrients: adequate,
             recommendedFoods: recommendations
         )
+    }
+
+    private func getFoodSources(for nutrient: String) -> [String] {
+        switch nutrient {
+        case "Protein":
+            return ["chicken breast", "fish", "eggs", "tofu", "lentils", "Greek yogurt"]
+        case "Fiber":
+            return ["oats", "beans", "broccoli", "apples", "whole grain bread", "chia seeds"]
+        case "Iron":
+            return ["spinach", "red meat", "lentils", "fortified cereals", "dark chocolate"]
+        case "Calcium":
+            return ["milk", "cheese", "yogurt", "fortified plant milk", "sardines", "kale"]
+        case "Vitamin C":
+            return ["oranges", "strawberries", "bell peppers", "broccoli", "kiwi"]
+        case "Omega-3":
+            return ["salmon", "sardines", "walnuts", "chia seeds", "flaxseed"]
+        case "Vitamin D":
+            return ["salmon", "fortified milk", "eggs", "mushrooms", "tuna"]
+        case "B Vitamins":
+            return ["whole grains", "eggs", "chicken", "beans", "leafy greens"]
+        case "Magnesium":
+            return ["almonds", "spinach", "black beans", "avocado", "dark chocolate"]
+        case "Zinc":
+            return ["beef", "chickpeas", "cashews", "pumpkin seeds", "oysters"]
+        default:
+            return []
+        }
     }
 
     private func generateRecommendations(deficiencies: [NutrientDeficiency]) -> [String] {
@@ -290,7 +516,15 @@ struct ImprovedMicronutrientView: View {
 
         if !highPriority.isEmpty {
             let nutrient = highPriority[0]
-            recommendations.append("You're averaging \(String(format: "%.1f", nutrient.currentIntake))\(nutrient.unit) of \(nutrient.name) daily, but need \(String(format: "%.1f", nutrient.recommendedIntake))\(nutrient.unit). Try adding \(nutrient.foodSources.prefix(2).joined(separator: " or ")) to your meals.")
+            let days = Int(nutrient.currentIntake)
+            let total = Int(nutrient.recommendedIntake)
+            let percent = Int(nutrient.percentageOfTarget)
+
+            if nutrient.isFrequencyBased {
+                recommendations.append("You ate \(nutrient.name)-rich foods on \(days) of \(total) days (\(percent)%). Try adding \(nutrient.foodSources.prefix(2).joined(separator: " or ")) to more of your daily meals.")
+            } else {
+                recommendations.append("You had \(nutrient.name) on \(days) of \(total) days tracked. Aim to include \(nutrient.foodSources.prefix(2).joined(separator: " or ")) in more meals.")
+            }
         }
 
         if !moderatePriority.isEmpty {
@@ -306,30 +540,41 @@ struct ImprovedMicronutrientView: View {
 
 struct HistoricalNutrientAnalysis {
     let totalDaysTracked: Int
-    let averageDailyProtein: Double
-    let averageDailyFiber: Double
-    let averageDailyIron: Double
-    let averageDailyCalcium: Double
-    let averageDailyVitaminC: Double
-    let averageDailyOmega3: Double
     let deficientNutrients: [NutrientDeficiency]
-    let adequateNutrients: [String]
+    let adequateNutrients: [NutrientInfo]
     let recommendedFoods: [String]
+}
+
+struct NutrientInfo: Identifiable {
+    let id = UUID()
+    let name: String
+    let daysWithNutrient: Int
+    let totalDays: Int
+    let foodsEaten: [String]  // Actual food names eaten containing this nutrient
+
+    var frequency: Double {
+        guard totalDays > 0 else { return 0 }
+        return Double(daysWithNutrient) / Double(totalDays) * 100
+    }
 }
 
 struct NutrientDeficiency: Identifiable {
     let id = UUID()
     let name: String
-    let currentIntake: Double
-    let recommendedIntake: Double
+    let currentIntake: Double  // For macros: total grams, For micros: days with nutrient
+    let recommendedIntake: Double  // For macros: total grams for period, For micros: total days tracked
     let severity: DeficiencySeverity
     let foodSources: [String]
+    let foodsEaten: [String]  // Actual foods user has eaten
+    let isFrequencyBased: Bool  // true for vitamins/minerals, false for macros
+    let totalDays: Int  // Total days in analysis period
 
     var unit: String {
+        if isFrequencyBased {
+            return "days"
+        }
         switch name {
-        case "Protein", "Fiber": return "g"
-        case "Iron", "Calcium", "Vitamin C": return "mg"
-        case "Omega-3 Fatty Acids": return "g"
+        case "Protein", "Fiber": return "g/day"
         default: return ""
         }
     }
@@ -337,6 +582,29 @@ struct NutrientDeficiency: Identifiable {
     var percentageOfTarget: Double {
         guard recommendedIntake > 0 else { return 0 }
         return (currentIntake / recommendedIntake) * 100
+    }
+
+    // Daily average for macros
+    var dailyAverage: Double {
+        guard totalDays > 0, !isFrequencyBased else { return currentIntake }
+        return currentIntake / Double(totalDays)
+    }
+
+    var dailyTarget: Double {
+        guard totalDays > 0, !isFrequencyBased else { return recommendedIntake }
+        return recommendedIntake / Double(totalDays)
+    }
+
+    var frequencyText: String {
+        if isFrequencyBased {
+            let days = Int(currentIntake)
+            let total = Int(recommendedIntake)
+            let totalDayWord = total == 1 ? "day" : "days"
+            return "\(days) of \(total) \(totalDayWord)"
+        } else {
+            // Show daily averages for macros
+            return "\(String(format: "%.1f", dailyAverage))\(unit) of \(String(format: "%.1f", dailyTarget))\(unit)"
+        }
     }
 }
 
@@ -402,7 +670,7 @@ struct DetailedMicronutrientInsightsView: View {
                             .font(.system(size: 28, weight: .bold))
 
                         if let analysis = historicalAnalysis, analysis.totalDaysTracked > 0 {
-                            Text("Based on \(analysis.totalDaysTracked) days of food tracking")
+                            Text("Based on \(analysis.totalDaysTracked) \(analysis.totalDaysTracked == 1 ? "day" : "days") of food tracking")
                                 .font(.system(size: 15))
                                 .foregroundColor(.secondary)
                         } else {
@@ -436,27 +704,13 @@ struct DetailedMicronutrientInsightsView: View {
                                     .font(.system(size: 20, weight: .bold))
                                     .padding(.horizontal)
 
-                                // Simple vertical list instead of flow layout
-                                VStack(alignment: .leading, spacing: 8) {
-                                    ForEach(analysis.adequateNutrients, id: \.self) { nutrient in
-                                        HStack(spacing: 6) {
-                                            Image(systemName: "checkmark.circle.fill")
-                                                .font(.system(size: 14))
-                                                .foregroundColor(.green)
-
-                                            Text(nutrient)
-                                                .font(.system(size: 14, weight: .medium))
-                                                .foregroundColor(.primary)
-
-                                            Spacer()
-                                        }
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 8)
-                                        .background(Color.green.opacity(0.1))
-                                        .cornerRadius(8)
+                                // Rich context cards for adequate nutrients
+                                VStack(alignment: .leading, spacing: 12) {
+                                    ForEach(analysis.adequateNutrients) { nutrient in
+                                        AdequateNutrientCard(nutrient: nutrient)
+                                            .padding(.horizontal)
                                     }
                                 }
-                                .padding(.horizontal)
                             }
                         }
 
@@ -512,9 +766,15 @@ struct DetailedMicronutrientInsightsView: View {
                         Text("About This Analysis")
                             .font(.system(size: 16, weight: .semibold))
 
-                        Text("This analysis tracks your food intake over the past 30 days to identify patterns in vitamin and mineral consumption. Recommendations are based on standard daily values for adults.")
-                            .font(.system(size: 13))
-                            .foregroundColor(.secondary)
+                        if let analysis = historicalAnalysis, analysis.totalDaysTracked > 0 {
+                            Text("This analysis is based on \(analysis.totalDaysTracked) \(analysis.totalDaysTracked == 1 ? "day" : "days") of food tracking. Macro targets are calculated from your daily calorie and protein goals. Micronutrient recommendations are based on frequency of consumption patterns.")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                        } else {
+                            Text("This analysis tracks your food intake to identify patterns in vitamin and mineral consumption. Macro targets are calculated from your personal calorie goals. Start logging foods to see insights.")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                        }
                     }
                     .padding()
                     .background(Color(.systemGray6))
@@ -561,13 +821,23 @@ struct DeficiencyCard: View {
                 Spacer()
 
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text("\(String(format: "%.1f", deficiency.currentIntake))\(deficiency.unit)")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(.primary)
+                    if deficiency.isFrequencyBased {
+                        Text("\(Int(deficiency.currentIntake)) \(deficiency.unit)")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.primary)
 
-                    Text("of \(String(format: "%.1f", deficiency.recommendedIntake))\(deficiency.unit)")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
+                        Text("of \(Int(deficiency.recommendedIntake)) \(deficiency.unit)")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("\(String(format: "%.1f", deficiency.dailyAverage))\(deficiency.unit)")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.primary)
+
+                        Text("of \(String(format: "%.1f", deficiency.dailyTarget))\(deficiency.unit)")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
                 }
             }
 
@@ -585,9 +855,23 @@ struct DeficiencyCard: View {
             }
             .frame(height: 8)
 
-            // Food sources
+            // Foods you've eaten (if any)
+            if !deficiency.foodsEaten.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Foods you've eaten:")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+
+                    Text(deficiency.foodsEaten.prefix(5).joined(separator: ", "))
+                        .font(.system(size: 13))
+                        .foregroundColor(.primary)
+                        .lineLimit(3)
+                }
+            }
+
+            // Good sources suggestions
             VStack(alignment: .leading, spacing: 4) {
-                Text("Good sources:")
+                Text("Good sources to try:")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.secondary)
 
@@ -598,6 +882,71 @@ struct DeficiencyCard: View {
         }
         .padding()
         .background(Color(.systemGray6))
+        .cornerRadius(12)
+    }
+}
+
+// MARK: - Adequate Nutrient Card
+
+struct AdequateNutrientCard: View {
+    let nutrient: NutrientInfo
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header with frequency
+            HStack(alignment: .top) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(.green)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(nutrient.name)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.primary)
+
+                    Text("\(nutrient.daysWithNutrient) of \(nutrient.totalDays) \(nutrient.totalDays == 1 ? "day" : "days") (\(Int(nutrient.frequency))%)")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.green)
+                }
+
+                Spacer()
+            }
+
+            // Progress bar
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color(.systemGray5))
+                        .frame(height: 8)
+
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.green)
+                        .frame(width: geometry.size.width * CGFloat(min(nutrient.frequency / 100, 1.0)), height: 8)
+                }
+            }
+            .frame(height: 8)
+
+            // Foods eaten
+            if !nutrient.foodsEaten.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Foods eaten:")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+
+                    Text(nutrient.foodsEaten.prefix(5).joined(separator: ", "))
+                        .font(.system(size: 13))
+                        .foregroundColor(.primary)
+                        .lineLimit(3)
+                }
+            }
+
+            // Encouragement
+            Text("Keep up the great work!")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.green)
+        }
+        .padding()
+        .background(Color.green.opacity(0.1))
         .cornerRadius(12)
     }
 }

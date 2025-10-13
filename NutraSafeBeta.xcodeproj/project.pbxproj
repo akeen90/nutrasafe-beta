@@ -16,6 +16,7 @@
 		26E954E4A2634655AB0F1224 /* FoodDetailViewFromSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF612B9BEC774EC78502B67C /* FoodDetailViewFromSearch.swift */; };
 		29D367726D67105B346DE618 /* WorkoutMainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92713389E2C3E565FA044EEA /* WorkoutMainView.swift */; };
 		2E53183EE64A45B69C083DE9A9F83A00 /* MicronutrientViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A80F06223FA34D089685F25FC74A7AD5 /* MicronutrientViews.swift */; };
+		38C809B984494E9AAAC0A629 /* TieredNutritionInsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A130ECBE056421B8414A491 /* TieredNutritionInsightsView.swift */; };
 		33EB9D561C3E50EAAC7808E5 /* ExerciseDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD0445EF20CB33BC5F982D0 /* ExerciseDetailViews.swift */; };
 		346E6CF82ED74EC78387979DCBB178CD /* ProfessionalSummaryViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFD9F648F59C4B7EA1CE6A9850464D04 /* ProfessionalSummaryViews.swift */; };
 		355701060BA04A179DB1DA38 /* NutraSafe Beta/Views/Diary/DiaryExerciseComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9BF68D365EE4EFCAC81C56F /* NutraSafe Beta/Views/Diary/DiaryExerciseComponents.swift */; };
@@ -96,6 +97,7 @@
 		A1234567890123456789012015 /* LiveIngredientScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveIngredientScannerView.swift; sourceTree = "<group>"; };
 		A1234567890123456789012016 /* TestLiveScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestLiveScannerView.swift; sourceTree = "<group>"; };
 		A80F06223FA34D089685F25FC74A7AD5 /* MicronutrientViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicronutrientViews.swift; sourceTree = "<group>"; };
+		8A130ECBE056421B8414A491 /* TieredNutritionInsightsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TieredNutritionInsightsView.swift; sourceTree = "<group>"; };
 		AA30481671D941A4B06DB063 /* ExerciseTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseTabView.swift; sourceTree = "<group>"; };
 		AB77ABAB2E686D0E00857409 /* NutraSafe BetaDebug.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "NutraSafe BetaDebug.entitlements"; sourceTree = "<group>"; };
 		AFD9F648F59C4B7EA1CE6A9850464D04 /* ProfessionalSummaryViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfessionalSummaryViews.swift; sourceTree = "<group>"; };
@@ -198,6 +200,7 @@
 				EE1E506F81E64504BA776F466B03D0BC /* DiaryDailySummaryCard.swift */,
 				21E673F6B8D947F9B6F2005EFFAE8B5B /* DiaryHydrationView.swift */,
 				A80F06223FA34D089685F25FC74A7AD5 /* MicronutrientViews.swift */,
+				8A130ECBE056421B8414A491 /* TieredNutritionInsightsView.swift */,
 				AFD9F648F59C4B7EA1CE6A9850464D04 /* ProfessionalSummaryViews.swift */,
 			);
 			path = Diary;
@@ -386,6 +389,7 @@
 				F274CF78968B4290ADA3C260F96936CE /* KitchenTabViews.swift in Sources */,
 				C25D926B5B5C401FAA66D06BFDC87598 /* WorkoutNavigationOverlays.swift in Sources */,
 				2E53183EE64A45B69C083DE9A9F83A00 /* MicronutrientViews.swift in Sources */,
+				38C809B984494E9AAAC0A629 /* TieredNutritionInsightsView.swift in Sources */,
 				B1234567890123456789CM02 /* CoreModels.swift in Sources */,
 				B1234567890123456789EM02 /* ExerciseModels.swift in Sources */,
 				B1234567890123456789FS02 /* FoodSafetyModels.swift in Sources */,

@@ -12,22 +12,24 @@ struct PersistentBottomMenu: View {
     let selectedCount: Int
     let onEdit: () -> Void
     let onMove: () -> Void
+    let onCopy: () -> Void
     let onStar: () -> Void
     let onDelete: () -> Void
     let onCancel: () -> Void
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Clean, minimal actions that replace nav area
             HStack(spacing: 20) {
                 // X button to cancel selection
                 SlimActionButton(icon: "xmark", title: "Cancel", color: .secondary, action: onCancel)
-                
+
                 if selectedCount == 1 {
                     SlimActionButton(icon: "pencil", title: "Edit", color: .green, action: onEdit)
                 }
-                
+
                 SlimActionButton(icon: "arrow.up.arrow.down", title: "Move", color: .orange, action: onMove)
+                SlimActionButton(icon: "doc.on.doc", title: "Copy", color: .blue, action: onCopy)
                 SlimActionButton(icon: "star", title: "Star", color: .yellow, action: onStar)
                 SlimActionButton(icon: "trash", title: "Delete", color: .red, action: onDelete)
             }

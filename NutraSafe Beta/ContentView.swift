@@ -1350,6 +1350,7 @@ struct ContentView: View {
     @State private var showingMoveMenu = false
     @State private var editTrigger = false
     @State private var moveTrigger = false
+    @State private var copyTrigger = false
     @State private var deleteTrigger = false
     @StateObject private var workoutManager = WorkoutManager.shared
     @StateObject private var healthKitManager = HealthKitManager.shared
@@ -1365,6 +1366,7 @@ struct ContentView: View {
                 selectedTab: $selectedTab,
                 editTrigger: $editTrigger,
                 moveTrigger: $moveTrigger,
+                copyTrigger: $copyTrigger,
                 deleteTrigger: $deleteTrigger,
                 onEditFood: editSelectedFood,
                 onDeleteFoods: deleteSelectedFoods
@@ -1411,6 +1413,9 @@ struct ContentView: View {
                         onEdit: editSelectedFood,
                         onMove: {
                             moveTrigger = true
+                        },
+                        onCopy: {
+                            copyTrigger = true
                         },
                         onStar: {
                             // TODO: Implement star

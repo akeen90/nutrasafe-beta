@@ -966,6 +966,242 @@ struct DateRollerPicker: View {
     }
 }
 
+// MARK: - Copy Food Bottom Sheet
+
+struct CopyFoodBottomSheet: View {
+    let selectedCount: Int
+    let currentDate: Date
+    @Binding var copyToDate: Date
+    @Binding var copyToMeal: String
+    let onCopy: () -> Void
+    let onCancel: () -> Void
+
+    private let mealOptions = ["Breakfast", "Lunch", "Dinner", "Snacks"]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Drag indicator (custom for better visibility)
+            RoundedRectangle(cornerRadius: 3)
+                .fill(Color(.systemGray3))
+                .frame(width: 40, height: 6)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
+
+            // Header with food count badge
+            VStack(spacing: 12) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Copy Food")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.primary)
+
+                        HStack(spacing: 6) {
+                            Image(systemName: "doc.on.doc.fill")
+                                .foregroundColor(.blue)
+                                .font(.system(size: 16))
+
+                            Text("\(selectedCount) item\(selectedCount > 1 ? "s" : "") selected")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    Spacer()
+
+                    // Selected count badge
+                    Text("\(selectedCount)")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(width: 28, height: 28)
+                        .background(Color.blue)
+                        .clipShape(Circle())
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+
+                // Subtle divider
+                Rectangle()
+                    .fill(Color(.systemGray5))
+                    .frame(height: 1)
+                    .padding(.horizontal, 20)
+            }
+
+            // Date Selector in ScrollView
+            ScrollView {
+                VStack(spacing: 16) {
+                    // Date Selector Card
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Image(systemName: "calendar")
+                                .foregroundColor(.blue)
+                                .font(.system(size: 18))
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Select Date")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+
+                                Text(formatDateWithDayName(copyToDate))
+                                    .font(.subheadline)
+                                    .foregroundColor(.blue)
+                                    .fontWeight(.medium)
+                            }
+
+                            Spacer()
+                        }
+
+                        // iOS-style date picker roller
+                        VStack(spacing: 8) {
+                            Text("Select date")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+
+                            DateRollerPicker(selection: $copyToDate)
+                                .frame(height: 120)
+                        }
+
+                        // Enhanced date picker
+                        HStack {
+                            Image(systemName: "calendar.badge.clock")
+                                .foregroundColor(.secondary)
+                                .font(.system(size: 16))
+
+                            DatePicker("", selection: $copyToDate, displayedComponents: .date)
+                                .datePickerStyle(.compact)
+                                .labelsHidden()
+                                .scaleEffect(0.9)
+
+                            Spacer()
+                        }
+                        .padding(.top, 8)
+                    }
+                    .padding(.all, 24)
+                    .background(Color(.systemBackground))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color(.systemGray5), lineWidth: 1)
+                    )
+                    .cornerRadius(16)
+                    .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 16)
+            }
+
+            // Fixed Meal Selector (always visible)
+            VStack(spacing: 16) {
+                Rectangle()
+                    .fill(Color(.systemGray6))
+                    .frame(height: 1)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Image(systemName: "fork.knife")
+                            .foregroundColor(.green)
+                            .font(.system(size: 18))
+
+                        Text("Select Meal")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+
+                        Spacer()
+                    }
+
+                    Picker("Meal", selection: $copyToMeal) {
+                        ForEach(mealOptions, id: \.self) { meal in
+                            Text(meal)
+                                .font(.system(size: 14, weight: .medium))
+                                .tag(meal)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .colorScheme(.light)
+                }
+                .padding(.horizontal, 20)
+            }
+
+            // Enhanced action buttons with better styling
+            VStack(spacing: 12) {
+                Rectangle()
+                    .fill(Color(.systemGray6))
+                    .frame(height: 1)
+
+                HStack(spacing: 14) {
+                    Button(action: onCancel) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 16, weight: .medium))
+                            Text("Cancel")
+                                .fontWeight(.medium)
+                        }
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(14)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(Color(.systemGray4), lineWidth: 0.5)
+                        )
+                    }
+
+                    Button(action: onCopy) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "doc.on.doc")
+                                .font(.system(size: 16, weight: .semibold))
+                            Text("Copy Items")
+                                .font(.headline.weight(.semibold))
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            LinearGradient(
+                                gradient: Gradient(colors: [Color.blue, Color.blue.opacity(0.9)]),
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .cornerRadius(14)
+                        .shadow(color: Color.blue.opacity(0.3), radius: 8, x: 0, y: 4)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 34) // Safe area padding
+            }
+            .background(Color(.systemGray6).opacity(0.3))
+        }
+    }
+
+    private func formatDateWithDayName(_ date: Date) -> String {
+        let calendar = Calendar.current
+        let now = Date()
+
+        if calendar.isDate(date, inSameDayAs: now) {
+            return "Today"
+        } else if calendar.isDate(date, inSameDayAs: calendar.date(byAdding: .day, value: -1, to: now) ?? now) {
+            return "Yesterday"
+        } else if calendar.isDate(date, inSameDayAs: calendar.date(byAdding: .day, value: 1, to: now) ?? now) {
+            return "Tomorrow"
+        } else {
+            let daysDiff = calendar.dateComponents([.day], from: date, to: now).day ?? 0
+            if abs(daysDiff) <= 6 {
+                // Show day name for current week
+                let formatter = DateFormatter()
+                formatter.dateFormat = "EEEE"
+                return formatter.string(from: date)
+            } else {
+                // Show full date for older entries
+                let formatter = DateFormatter()
+                formatter.dateFormat = "d MMM"
+                return formatter.string(from: date)
+            }
+        }
+    }
+}
+
 // MARK: - Presentation Modifier for iOS compatibility
 
 struct PresentationModifier: ViewModifier {

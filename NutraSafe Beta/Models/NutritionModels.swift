@@ -725,6 +725,8 @@ struct FoodEntry: Identifiable, Codable {
     let fiber: Double?
     let sugar: Double?
     let sodium: Double?
+    let calcium: Double?
+    let micronutrientProfile: MicronutrientProfile?
     let mealType: MealType
     let date: Date
     let dateLogged: Date
@@ -732,7 +734,7 @@ struct FoodEntry: Identifiable, Codable {
     init(id: String = UUID().uuidString, userId: String, foodName: String, brandName: String? = nil,
          servingSize: Double, servingUnit: String, calories: Double, protein: Double,
          carbohydrates: Double, fat: Double, fiber: Double? = nil, sugar: Double? = nil,
-         sodium: Double? = nil, mealType: MealType, date: Date, dateLogged: Date = Date()) {
+         sodium: Double? = nil, calcium: Double? = nil, micronutrientProfile: MicronutrientProfile? = nil, mealType: MealType, date: Date, dateLogged: Date = Date()) {
         self.id = id
         self.userId = userId
         self.foodName = foodName
@@ -746,13 +748,15 @@ struct FoodEntry: Identifiable, Codable {
         self.fiber = fiber
         self.sugar = sugar
         self.sodium = sodium
+        self.calcium = calcium
+        self.micronutrientProfile = micronutrientProfile
         self.mealType = mealType
         self.date = date
         self.dateLogged = dateLogged
     }
 
     func toDictionary() -> [String: Any] {
-        return [
+        var dict: [String: Any] = [
             "id": id,
             "userId": userId,
             "foodName": foodName,
@@ -766,10 +770,20 @@ struct FoodEntry: Identifiable, Codable {
             "fiber": fiber ?? 0.0,
             "sugar": sugar ?? 0.0,
             "sodium": sodium ?? 0.0,
+            "calcium": calcium ?? 0.0,
             "mealType": mealType.rawValue,
             "date": Timestamp(date: date),
             "dateLogged": Timestamp(date: dateLogged)
         ]
+
+        // Add micronutrient profile if available
+        if let micronutrients = micronutrientProfile,
+           let micronutrientsData = try? JSONEncoder().encode(micronutrients),
+           let micronutrientsDict = try? JSONSerialization.jsonObject(with: micronutrientsData, options: []) as? [String: Any] {
+            dict["micronutrientProfile"] = micronutrientsDict
+        }
+
+        return dict
     }
 
     static func fromDictionary(_ data: [String: Any]) -> FoodEntry? {
@@ -789,6 +803,13 @@ struct FoodEntry: Identifiable, Codable {
             return nil
         }
 
+        // Deserialize micronutrient profile if available
+        var micronutrientProfile: MicronutrientProfile? = nil
+        if let micronutrientsDict = data["micronutrientProfile"] as? [String: Any],
+           let micronutrientsData = try? JSONSerialization.data(withJSONObject: micronutrientsDict, options: []) {
+            micronutrientProfile = try? JSONDecoder().decode(MicronutrientProfile.self, from: micronutrientsData)
+        }
+
         return FoodEntry(
             id: id,
             userId: userId,
@@ -803,6 +824,8 @@ struct FoodEntry: Identifiable, Codable {
             fiber: data["fiber"] as? Double,
             sugar: data["sugar"] as? Double,
             sodium: data["sodium"] as? Double,
+            calcium: data["calcium"] as? Double,
+            micronutrientProfile: micronutrientProfile,
             mealType: mealType,
             date: dateTimestamp.dateValue(),
             dateLogged: dateLoggedTimestamp.dateValue()
@@ -944,6 +967,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
     let fiber: Double
     let sugar: Double
     let sodium: Double
+    let calcium: Double
     let servingDescription: String
     let quantity: Double
     let time: String?
@@ -952,8 +976,9 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
     let ingredients: [String]?
     let additives: [NutritionAdditiveInfo]?
     let barcode: String?
+    let micronutrientProfile: MicronutrientProfile?
 
-    init(id: UUID = UUID(), name: String, brand: String? = nil, calories: Int, protein: Double, carbs: Double, fat: Double, fiber: Double = 0, sugar: Double = 0, sodium: Double = 0, servingDescription: String = "100g serving", quantity: Double = 1.0, time: String? = nil, processedScore: String? = nil, sugarLevel: String? = nil, ingredients: [String]? = nil, additives: [NutritionAdditiveInfo]? = nil, barcode: String? = nil) {
+    init(id: UUID = UUID(), name: String, brand: String? = nil, calories: Int, protein: Double, carbs: Double, fat: Double, fiber: Double = 0, sugar: Double = 0, sodium: Double = 0, calcium: Double = 0, servingDescription: String = "100g serving", quantity: Double = 1.0, time: String? = nil, processedScore: String? = nil, sugarLevel: String? = nil, ingredients: [String]? = nil, additives: [NutritionAdditiveInfo]? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil) {
         self.id = id
         self.name = name
         self.brand = brand
@@ -964,6 +989,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
         self.fiber = fiber
         self.sugar = sugar
         self.sodium = sodium
+        self.calcium = calcium
         self.servingDescription = servingDescription
         self.quantity = quantity
         self.time = time
@@ -972,6 +998,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
         self.ingredients = ingredients
         self.additives = additives
         self.barcode = barcode
+        self.micronutrientProfile = micronutrientProfile
     }
 
     static func == (lhs: DiaryFoodItem, rhs: DiaryFoodItem) -> Bool {
@@ -1043,6 +1070,58 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
 
         // Default to 100g if no weight found
         return 100.0
+    }
+
+    // Convert DiaryFoodItem to FoodEntry for Firebase sync
+    func toFoodEntry(userId: String, mealType: MealType, date: Date) -> FoodEntry {
+        let servingSize = extractServingSize(from: servingDescription)
+
+        return FoodEntry(
+            id: self.id.uuidString,
+            userId: userId,
+            foodName: self.name,
+            brandName: self.brand,
+            servingSize: servingSize * self.quantity,
+            servingUnit: "g",
+            calories: Double(self.calories),
+            protein: self.protein,
+            carbohydrates: self.carbs,
+            fat: self.fat,
+            fiber: self.fiber,
+            sugar: self.sugar,
+            sodium: self.sodium,
+            calcium: self.calcium,
+            micronutrientProfile: self.micronutrientProfile,
+            mealType: mealType,
+            date: date,
+            dateLogged: Date()
+        )
+    }
+
+    // Convert FoodEntry from Firebase back to DiaryFoodItem
+    static func fromFoodEntry(_ entry: FoodEntry) -> DiaryFoodItem {
+        return DiaryFoodItem(
+            id: UUID(uuidString: entry.id) ?? UUID(),
+            name: entry.foodName,
+            brand: entry.brandName,
+            calories: Int(entry.calories),
+            protein: entry.protein,
+            carbs: entry.carbohydrates,
+            fat: entry.fat,
+            fiber: entry.fiber ?? 0,
+            sugar: entry.sugar ?? 0,
+            sodium: entry.sodium ?? 0,
+            calcium: entry.calcium ?? 0,
+            servingDescription: "\(entry.servingSize)\(entry.servingUnit) serving",
+            quantity: 1.0, // Quantity is already included in servingSize from Firebase
+            time: nil,
+            processedScore: nil,
+            sugarLevel: nil,
+            ingredients: nil,
+            additives: nil,
+            barcode: nil,
+            micronutrientProfile: entry.micronutrientProfile
+        )
     }
 }
 

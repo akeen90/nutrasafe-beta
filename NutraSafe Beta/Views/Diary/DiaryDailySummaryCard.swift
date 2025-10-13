@@ -20,13 +20,13 @@ struct DiaryDailySummaryCard: View {
     let dinnerFoods: [DiaryFoodItem]
     let snackFoods: [DiaryFoodItem]
     @EnvironmentObject var healthKitManager: HealthKitManager
-    
+    @EnvironmentObject var firebaseManager: FirebaseManager
+
     // MARK: - Daily Goals
-    // Standard daily goals based on research
-    private let calorieGoal: Double = 1800
-    private let proteinGoal: Double = 135 // 30% of calories
-    private let carbGoal: Double = 225 // 50% of calories  
-    private let fatGoal: Double = 40 // 20% of calories
+    @State private var calorieGoal: Double = 1800
+    @State private var proteinGoal: Double = 135
+    @State private var carbGoal: Double = 225
+    @State private var fatGoal: Double = 40
     
     // MARK: - Body
     var body: some View {
@@ -150,16 +150,16 @@ struct DiaryDailySummaryCard: View {
                 
                 // Right side - Enhanced Progress bars
                 VStack(alignment: .leading, spacing: 12) {
-                    // Today header with improved typography
+                    // Date header with improved typography
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 4) {
-                            Text("Today")
+                            Text(formatDateForDaily(currentDate))
                                 .font(.system(size: 22, weight: .bold, design: .rounded))
                                 .foregroundColor(.primary)
-                            
+
                             Spacer()
                         }
-                        
+
                         Text("of \(Int(calorieGoal)) calories")
                             .font(.system(size: 13, weight: .medium, design: .rounded))
                             .foregroundColor(.secondary.opacity(0.9))
@@ -213,6 +213,42 @@ struct DiaryDailySummaryCard: View {
                 .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
                 .shadow(color: Color.black.opacity(0.04), radius: 1, x: 0, y: 1)
         )
+        .onAppear {
+            Task {
+                await loadNutritionGoals()
+            }
+        }
+        .onChange(of: currentDate) { _ in
+            Task {
+                await loadNutritionGoals()
+            }
+        }
+    }
+
+    // MARK: - Data Loading
+    private func loadNutritionGoals() async {
+        do {
+            let settings = try await firebaseManager.getUserSettings()
+
+            await MainActor.run {
+                // Update calorie goal
+                calorieGoal = Double(settings.caloricGoal ?? 2000)
+
+                // Calculate macro goals based on percentages
+                let proteinPercent = Double(settings.proteinPercent ?? 30) / 100.0
+                let carbsPercent = Double(settings.carbsPercent ?? 40) / 100.0
+                let fatPercent = Double(settings.fatPercent ?? 30) / 100.0
+
+                // Convert calorie percentages to grams
+                // Protein: 4 cal/g, Carbs: 4 cal/g, Fat: 9 cal/g
+                proteinGoal = (calorieGoal * proteinPercent) / 4.0
+                carbGoal = (calorieGoal * carbsPercent) / 4.0
+                fatGoal = (calorieGoal * fatPercent) / 9.0
+            }
+        } catch {
+            print("⚠️ Failed to load nutrition goals: \(error.localizedDescription)")
+            // Keep default values if loading fails
+        }
     }
     
     // MARK: - Helper Methods

@@ -283,6 +283,7 @@ struct DiaryFoodView: View {
                     color: .orange,
                     selectedTab: $selectedTab,
                     selectedFoodItems: $selectedFoodItems,
+                    currentDate: selectedDate,
                     onEditFood: onEditFood,
                     onSaveNeeded: saveFoodData
                 )
@@ -296,6 +297,7 @@ struct DiaryFoodView: View {
                     color: .green,
                     selectedTab: $selectedTab,
                     selectedFoodItems: $selectedFoodItems,
+                    currentDate: selectedDate,
                     onEditFood: onEditFood,
                     onSaveNeeded: saveFoodData
                 )
@@ -309,6 +311,7 @@ struct DiaryFoodView: View {
                     color: .purple,
                     selectedTab: $selectedTab,
                     selectedFoodItems: $selectedFoodItems,
+                    currentDate: selectedDate,
                     onEditFood: onEditFood,
                     onSaveNeeded: saveFoodData
                 )
@@ -322,6 +325,7 @@ struct DiaryFoodView: View {
                     color: .blue,
                     selectedTab: $selectedTab,
                     selectedFoodItems: $selectedFoodItems,
+                    currentDate: selectedDate,
                     onEditFood: onEditFood,
                     onSaveNeeded: saveFoodData
                 )

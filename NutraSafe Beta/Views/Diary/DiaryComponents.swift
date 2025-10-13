@@ -16,6 +16,7 @@ struct DiaryMealCard: View {
     let color: Color
     @Binding var selectedTab: TabItem
     @Binding var selectedFoodItems: Set<String>
+    let currentDate: Date
     let onEditFood: () -> Void
     let onSaveNeeded: () -> Void
     
@@ -146,8 +147,9 @@ struct DiaryMealCard: View {
                     
                     // Add more button
                     Button(action: {
-                        // Store the selected meal type and navigate to add tab
+                        // Store the selected meal type and date, then navigate to add tab
                         UserDefaults.standard.set(mealType, forKey: "preselectedMealType")
+                        UserDefaults.standard.set(currentDate.timeIntervalSince1970, forKey: "preselectedDate")
                         selectedTab = .add
                     }) {
                         HStack(spacing: 8) {
@@ -170,8 +172,9 @@ struct DiaryMealCard: View {
             } else {
                 // Empty state add button
                 Button(action: {
-                    // Store the selected meal type and navigate to add tab
+                    // Store the selected meal type and date, then navigate to add tab
                     UserDefaults.standard.set(mealType, forKey: "preselectedMealType")
+                    UserDefaults.standard.set(currentDate.timeIntervalSince1970, forKey: "preselectedDate")
                     selectedTab = .add
                 }) {
                     HStack {
@@ -235,39 +238,11 @@ struct DiaryFoodRow: View {
 
                 // Food name and details
                 VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
-                        Text(food.name)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(.primary)
-                            .lineLimit(2)
-                            .multilineTextAlignment(.leading)
-
-                        // Nutrition grade badge
-                        if let score = food.processedScore, !score.isEmpty {
-                            Text(score)
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 1)
-                                .background(processedScoreColor(score))
-                                .cornerRadius(4)
-                        }
-
-                        // Sugar level warning
-                        if food.sugarLevel == "High" {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .font(.system(size: 10))
-                                .foregroundColor(.orange)
-                        }
-
-                        // Allergen warning (if ingredients contain common allergens)
-                        if let ingredients = food.ingredients,
-                           containsCommonAllergens(ingredients) {
-                            Image(systemName: "exclamationmark.shield.fill")
-                                .font(.system(size: 10))
-                                .foregroundColor(.red)
-                        }
-                    }
+                    Text(food.name)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.primary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
 
                     // Serving size and quantity
                     HStack(spacing: 4) {

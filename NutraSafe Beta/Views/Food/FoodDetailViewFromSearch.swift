@@ -61,7 +61,9 @@ struct FoodDetailViewFromSearch: View {
     @State private var isEditingMode = false
     @State private var originalMealType = ""
     @State private var quantityMultiplier: Double = 1.0 // New quantity multiplier
-    @State private var servingSizeText: String = "" // Editable serving size
+    @State private var servingSizeText: String = "" // Editable serving size (legacy)
+    @State private var servingAmount: String = "1" // Split serving size - amount only
+    @State private var servingUnit: String = "g" // Split serving size - unit only
     @State private var showingKitchenAddSheet: Bool = false
     
     // Micronutrient data
@@ -108,6 +110,33 @@ struct FoodDetailViewFromSearch: View {
     
     private let mealOptions = ["Breakfast", "Lunch", "Dinner", "Snacks"]
     private let quantityOptions: [Double] = [0.5, 1.0, 2.0, 3.0, 4.0, 5.0]
+    private let servingUnitOptions = ["g", "ml", "cup", "tbsp", "tsp", "oz"]
+
+    // Convert between units (all conversions to/from grams)
+    private func convertUnit(value: Double, from: String, to: String) -> Double {
+        // First convert to grams
+        let grams: Double
+        switch from.lowercased() {
+        case "g": grams = value
+        case "ml": grams = value // 1ml water = 1g (approximation)
+        case "cup": grams = value * 240 // 1 cup = 240g (water/milk)
+        case "tbsp": grams = value * 15 // 1 tbsp = 15g
+        case "tsp": grams = value * 5 // 1 tsp = 5g
+        case "oz": grams = value * 28.35 // 1 oz = 28.35g
+        default: grams = value
+        }
+
+        // Then convert from grams to target unit
+        switch to.lowercased() {
+        case "g": return grams
+        case "ml": return grams // 1g water = 1ml (approximation)
+        case "cup": return grams / 240
+        case "tbsp": return grams / 15
+        case "tsp": return grams / 5
+        case "oz": return grams / 28.35
+        default: return grams
+        }
+    }
     
     private var currentWeight: Double {
         let grams = Double(gramsAmount) ?? 100.0
@@ -118,33 +147,42 @@ struct FoodDetailViewFromSearch: View {
         currentWeight / 100
     }
     
-    // Extract the actual serving size from editable serving size text
+    // Extract the actual serving size from split serving amount and unit
     private var actualServingSize: Double {
-        let textToUse = servingSizeText.isEmpty ? (displayFood.servingDescription ?? "100g") : servingSizeText
-        
-        // Try to extract numbers from serving description like "39.4g", "1 container (150g)" or "1/2 cup (98g)"
-        let patterns = [
-            #"(\d+(?:\.\d+)?)\s*g"#,  // Match "39.4g" or "39.4 g"
-            #"\((\d+(?:\.\d+)?)\s*g\)"#  // Match "(150g)" in parentheses
-        ]
-        
-        for pattern in patterns {
-            if let regex = try? NSRegularExpression(pattern: pattern, options: []),
-               let match = regex.firstMatch(in: textToUse, options: [], range: NSRange(location: 0, length: textToUse.count)),
-               let range = Range(match.range(at: 1), in: textToUse) {
-                return Double(String(textToUse[range])) ?? 100
+        // Get the amount and unit
+        let amount = Double(servingAmount) ?? 1.0
+        let unit = servingUnit
+
+        // Convert the amount in the current unit to grams
+        return convertUnit(value: amount, from: unit, to: "g")
+    }
+
+    // Parse serving description into amount and unit
+    private func parseServingDescription(_ description: String) -> (amount: String, unit: String) {
+        let text = description.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Common patterns:
+        // "1 portion (345 g)" -> amount: "1", unit: "portion (345 g)"
+        // "345g" -> amount: "345", unit: "g"
+        // "1 slice" -> amount: "1", unit: "slice"
+        // "100ml" -> amount: "100", unit: "ml"
+
+        // Try to match number at the start
+        if let regex = try? NSRegularExpression(pattern: #"^(\d+(?:\.\d+)?)\s*(.+)$"#, options: []) {
+            if let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) {
+                if let amountRange = Range(match.range(at: 1), in: text),
+                   let unitRange = Range(match.range(at: 2), in: text) {
+                    let amount = String(text[amountRange])
+                    let unit = String(text[unitRange])
+                    return (amount, unit)
+                }
             }
         }
-        
-        // If just a number is entered (like "39.4"), assume it's grams
-        if let number = Double(textToUse.trimmingCharacters(in: .whitespacesAndNewlines)) {
-            return number
-        }
-        
-        // Fallback to 100g if no weight found
-        return 100
+
+        // Fallback: treat entire text as amount "1" and unit
+        return ("1", text)
     }
-    
+
     private var perServingMultiplier: Double {
         actualServingSize / 100
     }
@@ -628,13 +666,38 @@ struct FoodDetailViewFromSearch: View {
                     // Serving and Meal Controls Section
                     servingControlsSection
                         .onAppear {
-                            if servingSizeText.isEmpty {
-                                servingSizeText = food.servingDescription ?? "1 serving"
+                            if servingAmount == "1" && servingUnit == "g" {
+                                // Extract number and unit from serving description
+                                let description = food.servingDescription ?? "100g"
+
+                                // Try to extract grams from patterns like "1 portion (345 g)" or "345g"
+                                let patterns = [
+                                    #"\((\d+(?:\.\d+)?)\s*g\)"#,  // Match "(345 g)" in parentheses
+                                    #"^(\d+(?:\.\d+)?)\s*g$"#      // Match "345g" at start
+                                ]
+
+                                var found = false
+                                for pattern in patterns {
+                                    if let regex = try? NSRegularExpression(pattern: pattern, options: []),
+                                       let match = regex.firstMatch(in: description, options: [], range: NSRange(location: 0, length: description.count)),
+                                       let range = Range(match.range(at: 1), in: description) {
+                                        servingAmount = String(description[range])  // Just the number
+                                        servingUnit = "g"  // Just the unit
+                                        found = true
+                                        break
+                                    }
+                                }
+
+                                // Fallback to 100g if no grams found
+                                if !found {
+                                    servingAmount = "100"
+                                    servingUnit = "g"
+                                }
                             }
-                            
+
                             // Load micronutrients when view appears
                             loadMicronutrients()
-                            
+
                             // Check for preselected meal type from diary
                             if let preselectedMeal = UserDefaults.standard.string(forKey: "preselectedMealType") {
                                 selectedMeal = preselectedMeal
@@ -1013,6 +1076,9 @@ struct FoodDetailViewFromSearch: View {
         let totalSugar = displayFood.sugar * (servingSize / 100) * quantityMultiplier
         let totalSodium = displayFood.sodium * (servingSize / 100) * quantityMultiplier
 
+        // Generate micronutrient profile from food data
+        let micronutrientProfile = MicronutrientManager.shared.getMicronutrientProfile(for: displayFood, quantity: (servingSize / 100) * quantityMultiplier)
+
         // Create diary entry
         let diaryEntry = DiaryFoodItem(
             name: displayFood.name,
@@ -1031,7 +1097,8 @@ struct FoodDetailViewFromSearch: View {
             sugarLevel: getSugarLevel(),
             ingredients: displayFood.ingredients,
             additives: displayFood.additives,
-            barcode: displayFood.barcode
+            barcode: displayFood.barcode,
+            micronutrientProfile: micronutrientProfile
         )
 
         // Add to diary or kitchen based on destination
@@ -1040,11 +1107,20 @@ struct FoodDetailViewFromSearch: View {
             showingKitchenAddSheet = true
         } else {
             // Add to diary using DiaryDataManager
-            print("FoodDetailView: About to add food '\(diaryEntry.name)' to meal '\(selectedMeal)'")
-            print("FoodDetailView: DiaryEntry details - Calories: \(diaryEntry.calories), Protein: \(diaryEntry.protein), Serving: \(diaryEntry.servingDescription), Quantity: \(diaryEntry.quantity)")
-            diaryDataManager.addFoodItem(diaryEntry, to: selectedMeal, for: Date())
+            // Get the preselected date from UserDefaults, or use today if not available
+            let targetDate: Date
+            if let preselectedTimestamp = UserDefaults.standard.object(forKey: "preselectedDate") as? Double {
+                targetDate = Date(timeIntervalSince1970: preselectedTimestamp)
+                // Don't clear yet - DiaryTabView needs to read it to navigate to the correct date
+            } else {
+                targetDate = Date()
+            }
 
-            print("FoodDetailView: Successfully added \(diaryEntry.name) to \(selectedMeal)")
+            print("FoodDetailView: About to add food '\(diaryEntry.name)' to meal '\(selectedMeal)' on date '\(targetDate)'")
+            print("FoodDetailView: DiaryEntry details - Calories: \(diaryEntry.calories), Protein: \(diaryEntry.protein), Serving: \(diaryEntry.servingDescription), Quantity: \(diaryEntry.quantity)")
+            diaryDataManager.addFoodItem(diaryEntry, to: selectedMeal, for: targetDate)
+
+            print("FoodDetailView: Successfully added \(diaryEntry.name) to \(selectedMeal) on \(targetDate)")
 
             // Navigate back to diary
             selectedTab = .diary
@@ -1850,11 +1926,43 @@ struct FoodDetailViewFromSearch: View {
                             .font(.system(size: 11, weight: .bold, design: .rounded))
                             .foregroundColor(.secondary)
                             .tracking(0.5)
-                        
-                        // Editable serving size field
-                        TextField("Enter serving size", text: $servingSizeText)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .font(.system(size: 14, weight: .medium))
+
+                        // Serving size: Number + Unit selector
+                        HStack(spacing: 8) {
+                            // Number input (just the number)
+                            TextField("100", text: $servingAmount)
+                                .keyboardType(.decimalPad)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .font(.system(size: 14, weight: .medium))
+                                .frame(maxWidth: 80)
+
+                            // Unit picker
+                            Menu {
+                                ForEach(servingUnitOptions, id: \.self) { unit in
+                                    Button(unit) {
+                                        // Convert the current value to the new unit
+                                        if let currentValue = Double(servingAmount) {
+                                            let convertedValue = convertUnit(value: currentValue, from: servingUnit, to: unit)
+                                            servingAmount = String(format: "%.1f", convertedValue)
+                                        }
+                                        servingUnit = unit
+                                    }
+                                }
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Text(servingUnit)
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(.primary)
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(Color.gray.opacity(0.15))
+                                .cornerRadius(8)
+                            }
+                        }
                     }
                     
                     Spacer()

@@ -14,6 +14,9 @@ struct DiaryTabView: View {
     @State private var showingMoveSheet = false
     @State private var moveToDate = Date()
     @State private var moveToMeal = "Breakfast"
+    @State private var showingCopySheet = false
+    @State private var copyToDate = Date()
+    @State private var copyToMeal = "Breakfast"
     @State private var showingEditSheet = false
     @State private var editingFood: DiaryFoodItem?
     @State private var editingMealType = ""
@@ -22,6 +25,7 @@ struct DiaryTabView: View {
     @Binding var selectedTab: TabItem
     @Binding var editTrigger: Bool
     @Binding var moveTrigger: Bool
+    @Binding var copyTrigger: Bool
     @Binding var deleteTrigger: Bool
     let onEditFood: () -> Void
     let onDeleteFoods: () -> Void
@@ -90,25 +94,56 @@ struct DiaryTabView: View {
 
                         Spacer()
 
-                        // Date Selector - now inline with Diary title
-                        Button(action: {
-                            showingDatePicker.toggle()
-                        }) {
-                            HStack {
-                                Text(selectedDate, style: .date)
-                                    .font(.system(size: 16, weight: .medium))
+                        // Date navigation arrows
+                        HStack(spacing: 8) {
+                            Button(action: {
+                                selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
+                            }) {
+                                Image(systemName: "chevron.left")
+                                    .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(.primary)
-
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(.secondary)
+                                    .frame(width: 32, height: 32)
+                                    .background(
+                                        Circle()
+                                            .fill(.ultraThinMaterial)
+                                    )
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(.ultraThinMaterial)
-                            )
+
+                            // Date Selector - now inline with Diary title
+                            Button(action: {
+                                showingDatePicker.toggle()
+                            }) {
+                                HStack(spacing: 6) {
+                                    Text(formatDateShort(selectedDate))
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(.primary)
+                                        .fixedSize()
+                                        .lineLimit(1)
+
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 10)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(.ultraThinMaterial)
+                                )
+                            }
+
+                            Button(action: {
+                                selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
+                            }) {
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.primary)
+                                    .frame(width: 32, height: 32)
+                                    .background(
+                                        Circle()
+                                            .fill(.ultraThinMaterial)
+                                    )
+                            }
                         }
 
                         Button(action: {
@@ -142,14 +177,77 @@ struct DiaryTabView: View {
 
                     // Expanded date picker (when shown)
                     if showingDatePicker {
-                        DatePicker(
-                            "Select Date",
-                            selection: $selectedDate,
-                            displayedComponents: .date
-                        )
-                        .datePickerStyle(GraphicalDatePickerStyle())
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 8)
+                        VStack(spacing: 0) {
+                            // Month navigation header
+                            HStack {
+                                Text(formatMonthYear(selectedDate))
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundColor(.primary)
+
+                                Spacer()
+
+                                // Today button
+                                Button(action: {
+                                    selectedDate = Date()
+                                    showingDatePicker = false
+                                }) {
+                                    Text("Today")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(.blue)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(Color.blue.opacity(0.1))
+                                        )
+                                }
+
+                                // Month navigation arrows
+                                HStack(spacing: 8) {
+                                    Button(action: {
+                                        if let newDate = Calendar.current.date(byAdding: .month, value: -1, to: selectedDate) {
+                                            selectedDate = newDate
+                                        }
+                                    }) {
+                                        Image(systemName: "chevron.left")
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundColor(.blue)
+                                            .frame(width: 32, height: 32)
+                                            .background(
+                                                Circle()
+                                                    .fill(Color.blue.opacity(0.1))
+                                            )
+                                    }
+
+                                    Button(action: {
+                                        if let newDate = Calendar.current.date(byAdding: .month, value: 1, to: selectedDate) {
+                                            selectedDate = newDate
+                                        }
+                                    }) {
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundColor(.blue)
+                                            .frame(width: 32, height: 32)
+                                            .background(
+                                                Circle()
+                                                    .fill(Color.blue.opacity(0.1))
+                                            )
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.top, 8)
+                            .padding(.bottom, 12)
+
+                            DatePicker(
+                                "Select Date",
+                                selection: $selectedDate,
+                                displayedComponents: .date
+                            )
+                            .datePickerStyle(GraphicalDatePickerStyle())
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 8)
+                        }
                     }
                 }
                 .padding(.horizontal, 16)
@@ -181,6 +279,7 @@ struct DiaryTabView: View {
                                 color: Color(.systemOrange),
                                 selectedTab: $selectedTab,
                                 selectedFoodItems: $selectedFoodItems,
+                                currentDate: selectedDate,
                                 onEditFood: onEditFood,
                                 onSaveNeeded: saveFoodData
                             )
@@ -193,6 +292,7 @@ struct DiaryTabView: View {
                                 color: Color(.systemGreen),
                                 selectedTab: $selectedTab,
                                 selectedFoodItems: $selectedFoodItems,
+                                currentDate: selectedDate,
                                 onEditFood: onEditFood,
                                 onSaveNeeded: saveFoodData
                             )
@@ -205,6 +305,7 @@ struct DiaryTabView: View {
                                 color: Color(.systemBlue),
                                 selectedTab: $selectedTab,
                                 selectedFoodItems: $selectedFoodItems,
+                                currentDate: selectedDate,
                                 onEditFood: onEditFood,
                                 onSaveNeeded: saveFoodData
                             )
@@ -217,6 +318,7 @@ struct DiaryTabView: View {
                                 color: Color(.systemPurple),
                                 selectedTab: $selectedTab,
                                 selectedFoodItems: $selectedFoodItems,
+                                currentDate: selectedDate,
                                 onEditFood: onEditFood,
                                 onSaveNeeded: saveFoodData
                             )
@@ -241,6 +343,12 @@ struct DiaryTabView: View {
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .onAppear {
+            // Check if there's a preselected date from adding food
+            if let preselectedTimestamp = UserDefaults.standard.object(forKey: "preselectedDate") as? Double {
+                selectedDate = Date(timeIntervalSince1970: preselectedTimestamp)
+                // Clear it now that we've read and applied it
+                UserDefaults.standard.removeObject(forKey: "preselectedDate")
+            }
             loadFoodData()
         }
         .onChange(of: selectedDate) { _ in
@@ -259,6 +367,14 @@ struct DiaryTabView: View {
                 showMoveOptions()
                 DispatchQueue.main.async {
                     moveTrigger = false // Reset trigger
+                }
+            }
+        }
+        .onChange(of: copyTrigger) { triggered in
+            if triggered {
+                showCopyOptions()
+                DispatchQueue.main.async {
+                    copyTrigger = false // Reset trigger
                 }
             }
         }
@@ -282,6 +398,18 @@ struct DiaryTabView: View {
                 }
             )
         }
+        .sheet(isPresented: $showingCopySheet) {
+            CopyFoodBottomSheet(
+                selectedCount: selectedFoodItems.count,
+                currentDate: selectedDate,
+                copyToDate: $copyToDate,
+                copyToMeal: $copyToMeal,
+                onCopy: performCopy,
+                onCancel: {
+                    showingCopySheet = false
+                }
+            )
+        }
         .sheet(isPresented: $showingEditSheet) {
             if let food = editingFood {
                 FoodDetailViewFromSearch(
@@ -297,12 +425,26 @@ struct DiaryTabView: View {
     // MARK: - Helper Methods
     private func loadFoodData() {
         print("DiaryTabView: Loading food data for date: \(selectedDate)")
-        let (breakfast, lunch, dinner, snacks) = diaryDataManager.getFoodData(for: selectedDate)
-        breakfastFoods = breakfast
-        lunchFoods = lunch
-        dinnerFoods = dinner
-        snackFoods = snacks
-        print("DiaryTabView: Loaded \(breakfast.count) breakfast, \(lunch.count) lunch, \(dinner.count) dinner, \(snacks.count) snack items")
+        Task {
+            do {
+                let (breakfast, lunch, dinner, snacks) = try await diaryDataManager.getFoodDataAsync(for: selectedDate)
+                await MainActor.run {
+                    breakfastFoods = breakfast
+                    lunchFoods = lunch
+                    dinnerFoods = dinner
+                    snackFoods = snacks
+                    print("DiaryTabView: Loaded \(breakfast.count) breakfast, \(lunch.count) lunch, \(dinner.count) dinner, \(snacks.count) snack items from Firebase")
+                }
+            } catch {
+                print("DiaryTabView: Error loading food data from Firebase: \(error.localizedDescription)")
+                await MainActor.run {
+                    breakfastFoods = []
+                    lunchFoods = []
+                    dinnerFoods = []
+                    snackFoods = []
+                }
+            }
+        }
     }
 
     private func editSelectedFood() {
@@ -421,6 +563,91 @@ struct DiaryTabView: View {
         print("DiaryTabView: Move completed - moved \(itemsToMove.count) items")
     }
 
+    private func showCopyOptions() {
+        print("DiaryTabView: Showing copy options for \(selectedFoodItems.count) items")
+        // Initialize copy date to current diary date
+        copyToDate = selectedDate
+        copyToMeal = "Breakfast" // Default meal
+        showingCopySheet = true
+    }
+
+    private func performCopy() {
+        let itemCount = selectedFoodItems.count
+        var itemsToCopy: [DiaryFoodItem] = []
+
+        print("DiaryTabView: Starting copy of \(itemCount) items to \(copyToMeal) on \(copyToDate)")
+
+        // Collect the selected food items from all meals
+        for selectedId in selectedFoodItems {
+            // Find and collect the items to copy
+            if let food = breakfastFoods.first(where: { $0.id.uuidString == selectedId }) {
+                itemsToCopy.append(food)
+            } else if let food = lunchFoods.first(where: { $0.id.uuidString == selectedId }) {
+                itemsToCopy.append(food)
+            } else if let food = dinnerFoods.first(where: { $0.id.uuidString == selectedId }) {
+                itemsToCopy.append(food)
+            } else if let food = snackFoods.first(where: { $0.id.uuidString == selectedId }) {
+                itemsToCopy.append(food)
+            }
+        }
+
+        // Create new copies with new IDs
+        let copiedItems = itemsToCopy.map { item in
+            DiaryFoodItem(
+                id: UUID(), // New ID for the copy
+                name: item.name,
+                brand: item.brand,
+                calories: item.calories,
+                protein: item.protein,
+                carbs: item.carbs,
+                fat: item.fat,
+                fiber: item.fiber,
+                sugar: item.sugar,
+                sodium: item.sodium,
+                servingDescription: item.servingDescription,
+                quantity: item.quantity,
+                time: item.time,
+                processedScore: item.processedScore,
+                sugarLevel: item.sugarLevel,
+                ingredients: item.ingredients,
+                additives: item.additives,
+                barcode: item.barcode
+            )
+        }
+
+        // Get target date data and add copied items
+        let (targetBreakfast, targetLunch, targetDinner, targetSnacks) = diaryDataManager.getFoodData(for: copyToDate)
+
+        // Add items to target meal
+        switch copyToMeal.lowercased() {
+        case "breakfast":
+            let updatedBreakfast = targetBreakfast + copiedItems
+            diaryDataManager.saveFoodData(for: copyToDate, breakfast: updatedBreakfast, lunch: targetLunch, dinner: targetDinner, snacks: targetSnacks)
+        case "lunch":
+            let updatedLunch = targetLunch + copiedItems
+            diaryDataManager.saveFoodData(for: copyToDate, breakfast: targetBreakfast, lunch: updatedLunch, dinner: targetDinner, snacks: targetSnacks)
+        case "dinner":
+            let updatedDinner = targetDinner + copiedItems
+            diaryDataManager.saveFoodData(for: copyToDate, breakfast: targetBreakfast, lunch: targetLunch, dinner: updatedDinner, snacks: targetSnacks)
+        case "snacks":
+            let updatedSnacks = targetSnacks + copiedItems
+            diaryDataManager.saveFoodData(for: copyToDate, breakfast: targetBreakfast, lunch: targetLunch, dinner: targetDinner, snacks: updatedSnacks)
+        default:
+            print("DiaryTabView: Unknown target meal: \(copyToMeal)")
+        }
+
+        // If copying to current date, reload data to reflect changes
+        if Calendar.current.isDate(copyToDate, inSameDayAs: selectedDate) {
+            loadFoodData()
+        }
+
+        // Close sheet and clear selection
+        showingCopySheet = false
+        selectedFoodItems.removeAll()
+
+        print("DiaryTabView: Copy completed - copied \(copiedItems.count) items")
+    }
+
     private func deleteSelectedFoods() {
         let itemCount = selectedFoodItems.count
         print("DiaryTabView: Starting delete of \(itemCount) items")
@@ -444,5 +671,18 @@ struct DiaryTabView: View {
         // Save all meals for the current selected date
         diaryDataManager.saveFoodData(for: selectedDate, breakfast: breakfastFoods, lunch: lunchFoods, dinner: dinnerFoods, snacks: snackFoods)
         print("DiaryTabView: Saved food data after swipe delete")
+    }
+
+    // MARK: - Date Formatting
+    private func formatDateShort(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd/MM/yy"
+        return formatter.string(from: date)
+    }
+
+    private func formatMonthYear(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM yyyy"
+        return formatter.string(from: date)
     }
 }

@@ -452,18 +452,43 @@ class DiaryDataManager: ObservableObject {
         return "\(type)_\(formatter.string(from: date))"
     }
     
-    // Food data methods
+    // Food data methods - NOW LOADS FROM FIREBASE (source of truth)
     func getFoodData(for date: Date) -> ([DiaryFoodItem], [DiaryFoodItem], [DiaryFoodItem], [DiaryFoodItem]) {
-        let breakfastKey = keyForDate(date, type: "breakfast")
-        let lunchKey = keyForDate(date, type: "lunch")
-        let dinnerKey = keyForDate(date, type: "dinner")
-        let snacksKey = keyForDate(date, type: "snacks")
-        
-        let breakfast = loadFoodItems(key: breakfastKey)
-        let lunch = loadFoodItems(key: lunchKey)
-        let dinner = loadFoodItems(key: dinnerKey)
-        let snacks = loadFoodItems(key: snacksKey)
-        
+        // Return empty arrays initially - will be populated via async Firebase load
+        // The calling view should use Task to call getFoodDataAsync instead
+        return ([], [], [], [])
+    }
+
+    // New async method that loads from Firebase
+    func getFoodDataAsync(for date: Date) async throws -> ([DiaryFoodItem], [DiaryFoodItem], [DiaryFoodItem], [DiaryFoodItem]) {
+        // Load from Firebase (single source of truth)
+        let foodEntries = try await FirebaseManager.shared.getFoodEntries(for: date)
+
+        print("DiaryDataManager: Loaded \(foodEntries.count) food entries from Firebase for date \(date)")
+
+        // Separate entries by meal type
+        var breakfast: [DiaryFoodItem] = []
+        var lunch: [DiaryFoodItem] = []
+        var dinner: [DiaryFoodItem] = []
+        var snacks: [DiaryFoodItem] = []
+
+        for entry in foodEntries {
+            let diaryItem = DiaryFoodItem.fromFoodEntry(entry)
+
+            switch entry.mealType {
+            case .breakfast:
+                breakfast.append(diaryItem)
+            case .lunch:
+                lunch.append(diaryItem)
+            case .dinner:
+                dinner.append(diaryItem)
+            case .snacks:
+                snacks.append(diaryItem)
+            }
+        }
+
+        print("DiaryDataManager: Separated into - Breakfast: \(breakfast.count), Lunch: \(lunch.count), Dinner: \(dinner.count), Snacks: \(snacks.count)")
+
         return (breakfast, lunch, dinner, snacks)
     }
     
@@ -512,9 +537,48 @@ class DiaryDataManager: ObservableObject {
         default:
             print("DiaryDataManager: ERROR - Unknown meal type: \(meal)")
         }
-        
+
         // Add to recent foods for quick access in search
         addToRecentFoods(item)
+
+        // Sync to Firebase immediately
+        syncFoodItemToFirebase(item, meal: meal, date: date)
+    }
+
+    // MARK: - Firebase Sync
+
+    private func syncFoodItemToFirebase(_ item: DiaryFoodItem, meal: String, date: Date) {
+        Task {
+            do {
+                // Get the current user ID from FirebaseManager
+                guard let userId = FirebaseManager.shared.currentUser?.uid else {
+                    print("DiaryDataManager: Cannot sync to Firebase - no user logged in")
+                    return
+                }
+
+                // Convert meal string to MealType enum
+                let mealType: MealType
+                switch meal.lowercased() {
+                case "breakfast": mealType = .breakfast
+                case "lunch": mealType = .lunch
+                case "dinner": mealType = .dinner
+                case "snacks": mealType = .snacks
+                default:
+                    print("DiaryDataManager: Cannot sync to Firebase - invalid meal type: \(meal)")
+                    return
+                }
+
+                // Convert DiaryFoodItem to FoodEntry
+                let foodEntry = item.toFoodEntry(userId: userId, mealType: mealType, date: date)
+
+                // Save to Firebase
+                try await FirebaseManager.shared.saveFoodEntry(foodEntry)
+
+                print("DiaryDataManager: Successfully synced '\(item.name)' to Firebase")
+            } catch {
+                print("DiaryDataManager: Failed to sync to Firebase: \(error.localizedDescription)")
+            }
+        }
     }
     
     // Workout data methods
