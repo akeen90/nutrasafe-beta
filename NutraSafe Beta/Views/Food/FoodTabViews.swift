@@ -406,24 +406,100 @@ struct FoodPatternAnalysisCard: View {
     @EnvironmentObject var reactionManager: ReactionManager
     @State private var showOtherIngredients = false
 
-    // Common allergens list
-    private let knownAllergens = [
-        "milk", "dairy", "lactose", "cream", "butter", "cheese", "yogurt", "whey", "casein",
-        "eggs", "egg", "albumin",
-        "peanuts", "peanut", "groundnut",
-        "nuts", "almond", "hazelnut", "walnut", "cashew", "pistachio", "pecan",
-        "wheat", "gluten", "barley", "rye", "oats",
-        "soy", "soya", "soybean", "tofu",
-        "fish", "salmon", "tuna", "cod",
-        "shellfish", "shrimp", "crab", "lobster", "prawn",
-        "sesame", "tahini",
-        "mustard",
-        "celery",
-        "lupin",
-        "molluscs", "oyster", "clam", "mussel"
-    ]
+    // UK's 14 Major Allergens - Base Categories
+    private func getBaseAllergen(for ingredient: String) -> String? {
+        let lower = ingredient.lowercased()
 
-    private var allTriggers: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool)] {
+        // Milk and dairy products
+        if lower.contains("milk") || lower.contains("dairy") || lower.contains("lactose") ||
+           lower.contains("cream") || lower.contains("butter") || lower.contains("cheese") ||
+           lower.contains("yogurt") || lower.contains("yoghurt") || lower.contains("whey") ||
+           lower.contains("casein") || lower.contains("ghee") {
+            return "Milk"
+        }
+
+        // Eggs
+        if lower.contains("egg") || lower.contains("albumin") || lower.contains("mayonnaise") {
+            return "Eggs"
+        }
+
+        // Peanuts (separate from tree nuts)
+        if lower.contains("peanut") || lower.contains("groundnut") {
+            return "Peanuts"
+        }
+
+        // Tree nuts
+        if lower.contains("almond") || lower.contains("hazelnut") || lower.contains("walnut") ||
+           lower.contains("cashew") || lower.contains("pistachio") || lower.contains("pecan") ||
+           lower.contains("brazil nut") || lower.contains("macadamia") || lower.contains("nut") {
+            return "Tree Nuts"
+        }
+
+        // Cereals containing gluten
+        if lower.contains("wheat") || lower.contains("gluten") || lower.contains("barley") ||
+           lower.contains("rye") || lower.contains("oats") || lower.contains("spelt") ||
+           lower.contains("kamut") {
+            return "Gluten"
+        }
+
+        // Soya
+        if lower.contains("soy") || lower.contains("soya") || lower.contains("soybean") ||
+           lower.contains("tofu") || lower.contains("edamame") {
+            return "Soya"
+        }
+
+        // Fish
+        if lower.contains("fish") || lower.contains("salmon") || lower.contains("tuna") ||
+           lower.contains("cod") || lower.contains("haddock") || lower.contains("trout") ||
+           lower.contains("mackerel") {
+            return "Fish"
+        }
+
+        // Crustaceans
+        if lower.contains("shellfish") || lower.contains("shrimp") || lower.contains("crab") ||
+           lower.contains("lobster") || lower.contains("prawn") || lower.contains("crayfish") ||
+           lower.contains("langoustine") {
+            return "Crustaceans"
+        }
+
+        // Molluscs
+        if lower.contains("mollusc") || lower.contains("oyster") || lower.contains("clam") ||
+           lower.contains("mussel") || lower.contains("squid") || lower.contains("octopus") ||
+           lower.contains("snail") || lower.contains("whelk") {
+            return "Molluscs"
+        }
+
+        // Sesame
+        if lower.contains("sesame") || lower.contains("tahini") {
+            return "Sesame"
+        }
+
+        // Mustard
+        if lower.contains("mustard") {
+            return "Mustard"
+        }
+
+        // Celery
+        if lower.contains("celery") || lower.contains("celeriac") {
+            return "Celery"
+        }
+
+        // Lupin
+        if lower.contains("lupin") || lower.contains("lupine") {
+            return "Lupin"
+        }
+
+        // Sulphites
+        if lower.contains("sulphite") || lower.contains("sulfite") || lower.contains("sulphur dioxide") ||
+           lower.contains("sulfur dioxide") || lower.contains("e220") || lower.contains("e221") ||
+           lower.contains("e222") || lower.contains("e223") || lower.contains("e224") {
+            return "Sulphites"
+        }
+
+        return nil
+    }
+
+    private var allTriggers: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool, baseAllergen: String?)] {
         // Require at least 3 reactions before showing patterns
         guard reactionManager.reactions.count >= 3 else { return [] }
 
@@ -438,22 +514,23 @@ struct FoodPatternAnalysisCard: View {
 
         // Calculate percentages and determine if allergen
         let totalReactions = reactionManager.reactions.count
-        let mapped = ingredientCounts.map { (ingredient, count) -> (ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool) in
+        let mapped = ingredientCounts.map { (ingredient, count) -> (ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool, baseAllergen: String?) in
             let percentage = Int((Double(count) / Double(totalReactions)) * 100)
             let trend = calculateTrend(for: ingredient)
-            let isAllergen = knownAllergens.contains { ingredient.contains($0) }
-            return (ingredient.capitalized, count, percentage, trend, isAllergen)
+            let baseAllergen = getBaseAllergen(for: ingredient)
+            let isAllergen = baseAllergen != nil
+            return (ingredient.capitalized, count, percentage, trend, isAllergen, baseAllergen)
         }
 
         // Sort by frequency within each category
         return mapped.sorted { $0.count > $1.count }
     }
 
-    private var allergenTriggers: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool)] {
+    private var allergenTriggers: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool, baseAllergen: String?)] {
         allTriggers.filter { $0.isAllergen }
     }
 
-    private var otherTriggers: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool)] {
+    private var otherTriggers: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool, baseAllergen: String?)] {
         allTriggers.filter { !$0.isAllergen }
     }
 
@@ -519,7 +596,8 @@ struct FoodPatternAnalysisCard: View {
                                 PatternRow(
                                     trigger: trigger.ingredient,
                                     frequency: "\(trigger.percentage)%",
-                                    trend: trigger.trend
+                                    trend: trigger.trend,
+                                    baseAllergen: trigger.baseAllergen
                                 )
                             }
                         }
@@ -536,7 +614,7 @@ struct FoodPatternAnalysisCard: View {
                                 HStack {
                                     Text("Other Ingredients")
                                         .font(.system(size: 16, weight: .semibold))
-                                        .foregroundColor(.primary)
+                                        .foregroundColor(.blue)
 
                                     Spacer()
 
@@ -552,7 +630,8 @@ struct FoodPatternAnalysisCard: View {
                                     PatternRow(
                                         trigger: trigger.ingredient,
                                         frequency: "\(trigger.percentage)%",
-                                        trend: trigger.trend
+                                        trend: trigger.trend,
+                                        baseAllergen: trigger.baseAllergen
                                     )
                                 }
                             }
@@ -574,6 +653,7 @@ struct PatternRow: View {
     let trigger: String
     let frequency: String
     let trend: Trend
+    let baseAllergen: String?
 
     enum Trend {
         case increasing, stable, decreasing
@@ -597,9 +677,16 @@ struct PatternRow: View {
 
     var body: some View {
         HStack {
-            Text(trigger)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.primary)
+            // Display ingredient with base allergen in brackets if available
+            if let baseAllergen = baseAllergen {
+                Text("\(trigger) (\(baseAllergen))")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.primary)
+            } else {
+                Text(trigger)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.primary)
+            }
 
             Spacer()
 
