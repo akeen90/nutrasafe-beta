@@ -471,10 +471,16 @@ class FirebaseManager: ObservableObject {
             .collection("reactions")
             .order(by: "date", descending: true)
             .getDocuments()
-        
+
         return snapshot.documents.compactMap { doc in
             FoodReaction.fromDictionary(doc.data())
         }
+    }
+
+    func deleteReaction(reactionId: UUID) async throws {
+        guard let userId = currentUser?.uid else { return }
+        try await db.collection("users").document(userId)
+            .collection("reactions").document(reactionId.uuidString).delete()
     }
     
     // MARK: - Safe Foods

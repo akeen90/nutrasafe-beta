@@ -165,12 +165,35 @@ struct FoodReactionsView: View {
                     title: "Recent Reactions",
                     reactions: Array(reactionManager.reactions.prefix(10))
                 )
+                .environmentObject(reactionManager)
                 .padding(.horizontal, 16)
 
                 // Pattern Analysis
                 FoodPatternAnalysisCard()
                     .environmentObject(reactionManager)
                     .padding(.horizontal, 16)
+
+                // Info Notice for Patterns
+                if reactionManager.reactions.count < 3 {
+                    VStack(spacing: 8) {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 20))
+                            .foregroundColor(.blue)
+
+                        Text("Log at least 3 reactions to see patterns")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .padding(.horizontal, 20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.blue.opacity(0.1))
+                    )
+                    .padding(.horizontal, 16)
+                }
 
                 Rectangle()
                     .fill(Color.clear)
@@ -297,6 +320,7 @@ struct StatMiniCard: View {
 struct FoodReactionListCard: View {
     let title: String
     let reactions: [FoodReaction]
+    @EnvironmentObject var reactionManager: ReactionManager
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -319,6 +343,15 @@ struct FoodReactionListCard: View {
                 VStack(spacing: 10) {
                     ForEach(reactions, id: \.id) { reaction in
                         FoodReactionRow(reaction: reaction)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    Task {
+                                        await reactionManager.deleteReaction(reaction)
+                                    }
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
                     }
                 }
             }
@@ -1077,6 +1110,25 @@ class ReactionManager: ObservableObject {
             print("Failed to refresh reactions: \(error)")
             await MainActor.run {
                 self.isLoading = false
+            }
+        }
+    }
+
+    func deleteReaction(_ reaction: FoodReaction) async {
+        // Remove from local array first for immediate UI update
+        await MainActor.run {
+            reactions.removeAll { $0.id == reaction.id }
+        }
+
+        // Delete from Firebase
+        do {
+            try await firebaseManager.deleteReaction(reactionId: reaction.id)
+        } catch {
+            print("Failed to delete reaction: \(error)")
+            // Re-add if deletion failed
+            await MainActor.run {
+                reactions.insert(reaction, at: 0)
+                reactions.sort { $0.timestamp.dateValue() > $1.timestamp.dateValue() }
             }
         }
     }
