@@ -340,9 +340,12 @@ struct FoodReactionListCard: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 40)
             } else {
-                VStack(spacing: 10) {
+                List {
                     ForEach(reactions, id: \.id) { reaction in
                         FoodReactionRow(reaction: reaction)
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(top: 5, leading: 0, bottom: 5, trailing: 0))
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                 Button(role: .destructive) {
                                     Task {
@@ -354,6 +357,8 @@ struct FoodReactionListCard: View {
                             }
                     }
                 }
+                .listStyle(PlainListStyle())
+                .frame(height: CGFloat(reactions.count * 60))
             }
         }
         .padding(20)
