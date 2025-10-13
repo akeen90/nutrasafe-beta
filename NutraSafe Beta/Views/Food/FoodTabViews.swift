@@ -1531,6 +1531,7 @@ struct FoodReactionSearchView: View {
     @State private var isSearching = false
     @State private var showingLiveScanner = false
     @State private var searchTask: Task<Void, Never>?
+    @FocusState private var isSearchFieldFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1542,6 +1543,7 @@ struct FoodReactionSearchView: View {
 
                     TextField("Search foods...", text: $searchText)
                         .textFieldStyle(PlainTextFieldStyle())
+                        .focused($isSearchFieldFocused)
                         .onChange(of: searchText, perform: { newValue in
                             performLiveSearch(query: newValue)
                         })
@@ -1678,6 +1680,10 @@ struct FoodReactionSearchView: View {
                 // Handle scanned ingredients
                 handleScannedIngredients(scannedText)
             }
+        }
+        .onAppear {
+            // Automatically focus the search field when the view appears
+            isSearchFieldFocused = true
         }
         .onDisappear {
             searchTask?.cancel()
