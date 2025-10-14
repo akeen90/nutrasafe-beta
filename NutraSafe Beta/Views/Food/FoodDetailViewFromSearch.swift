@@ -493,7 +493,7 @@ struct FoodDetailViewFromSearch: View {
     // MARK: - Allergen Warning Banner View
     private var allergenWarningBanner: some View {
         VStack(alignment: .center, spacing: 12) {
-            // Header with warning icon
+            // Header with warning icons on both sides
             HStack(spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 20, weight: .bold))
@@ -501,6 +501,10 @@ struct FoodDetailViewFromSearch: View {
 
                 Text("ALLERGEN WARNING")
                     .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.white)
+
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 20, weight: .bold))
                     .foregroundColor(.white)
             }
 
