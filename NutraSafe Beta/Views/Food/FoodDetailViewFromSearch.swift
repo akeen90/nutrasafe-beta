@@ -1106,7 +1106,8 @@ struct FoodDetailViewFromSearch: View {
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundColor(.secondary)
                     .tracking(0.5)
-                
+                    .padding(.horizontal, 4)
+
                 VStack(spacing: 8) {
                     nutritionRowModern("Protein", perServing: adjustedProtein, per100g: displayFood.protein, unit: "g")
                     nutritionRowModern("Carbs", perServing: adjustedCarbs, per100g: displayFood.carbs, unit: "g")
@@ -1115,9 +1116,11 @@ struct FoodDetailViewFromSearch: View {
                     nutritionRowModern("Sugar", perServing: adjustedSugar, per100g: displayFood.sugar, unit: "g")
                     nutritionRowModern("Salt", perServing: adjustedSalt, per100g: saltPer100g, unit: "g")
                 }
+                .padding(.bottom, 4)
             }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 20)
         .background(Color(.systemGray6))
         .cornerRadius(16)
     }
@@ -1705,9 +1708,16 @@ struct FoodDetailViewFromSearch: View {
                 }
             }
         }
-        .padding(.horizontal, 16)
-        .background(.blue.opacity(0.3 - 0.22))
-        .cornerRadius(12)
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(.systemBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color.blue.opacity(0.3), lineWidth: 2)
+                )
+                .shadow(color: Color.blue.opacity(0.1), radius: 8, x: 0, y: 2)
+        )
     }
     
     private var ingredientInReviewSection: some View {
