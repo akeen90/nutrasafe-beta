@@ -314,6 +314,76 @@ struct FoodDetailViewFromSearch: View {
         case verified, pending, unverified, clientVerified, userVerified, none
     }
     
+    // Standardize ingredients to UK spelling and grammar
+    private func standardizeToUKSpelling(_ ingredient: String) -> String {
+        var standardized = ingredient
+
+        // US to UK spelling conversions (food-specific)
+        let spellingMap: [String: String] = [
+            // Common food spellings
+            "flavor": "flavour",
+            "flavoring": "flavouring",
+            "flavored": "flavoured",
+            "color": "colour",
+            "coloring": "colouring",
+            "colored": "coloured",
+            "favorite": "favourite",
+            "honor": "honour",
+            "labor": "labour",
+
+            // Chemical/additive spellings
+            "sulfur": "sulphur",
+            "sulfate": "sulphate",
+            "sulfite": "sulphite",
+            "aluminum": "aluminium",
+            "fiber": "fibre",
+
+            // Food terms
+            "center": "centre",
+            "liter": "litre",
+            "meter": "metre",
+            "milliliter": "millilitre",
+            "gram": "gramme",
+
+            // -ize to -ise
+            "stabilizer": "stabiliser",
+            "stabilized": "stabilised",
+            "emulsifier": "emulsifier", // Already correct
+            "crystallize": "crystallise",
+            "crystallized": "crystallised",
+            "caramelize": "caramelise",
+            "caramelized": "caramelised",
+            "pasteurize": "pasteurise",
+            "pasteurized": "pasteurised",
+            "homogenize": "homogenise",
+            "homogenized": "homogenised",
+
+            // -or to -our
+            "vapor": "vapour"
+        ]
+
+        // Apply all spelling conversions (case-insensitive word boundary matching)
+        for (us, uk) in spellingMap {
+            // Match whole words only
+            let pattern = "\\b\(us)\\b"
+            if let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) {
+                let range = NSRange(standardized.startIndex..., in: standardized)
+                standardized = regex.stringByReplacingMatches(
+                    in: standardized,
+                    range: range,
+                    withTemplate: uk
+                )
+            }
+        }
+
+        // Capitalize first letter
+        if !standardized.isEmpty {
+            standardized = standardized.prefix(1).uppercased() + standardized.dropFirst()
+        }
+
+        return standardized.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     private func getIngredientsStatus() -> IngredientsStatus {
         let submittedFoods = UserDefaults.standard.array(forKey: "submittedFoodsForReview") as? [String] ?? []
         let clientVerifiedFoods = UserDefaults.standard.array(forKey: "clientVerifiedFoods") as? [String] ?? []
@@ -371,36 +441,36 @@ struct FoodDetailViewFromSearch: View {
                 !ingredient.contains("Processing ingredient image...") && !ingredient.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             }
             if !realIngredients.isEmpty {
-                return realIngredients
+                return realIngredients.map { standardizeToUKSpelling($0) }
             }
         }
-        
+
         // Check for user-verified ingredients first (from photo verification)
         let foodKey = "\(food.name)|\(food.brand ?? "")"
         let userVerifiedFoods = UserDefaults.standard.array(forKey: "userVerifiedFoods") as? [String] ?? []
-        
+
         if userVerifiedFoods.contains(foodKey) {
             // Try to get the clean ingredients array first (from Gemini AI extraction)
             if let userIngredientsArray = UserDefaults.standard.array(forKey: "userIngredientsArray_\(foodKey)") as? [String] {
-                return userIngredientsArray
+                return userIngredientsArray.map { standardizeToUKSpelling($0) }
             }
             // Fallback to clean ingredients text, split by comma
             else if let userIngredientsText = UserDefaults.standard.string(forKey: "userIngredients_\(foodKey)") {
-                return userIngredientsText.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+                return userIngredientsText.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }.map { standardizeToUKSpelling($0) }
             }
         }
-        
+
         // If no user-verified ingredients, check for submitted pending ingredients
         let submittedFoods = UserDefaults.standard.array(forKey: "submittedFoodsForReview") as? [String] ?? []
-        
+
         if submittedFoods.contains(foodKey) {
             // Get submitted ingredients from local storage
             if let submittedData = UserDefaults.standard.data(forKey: "submittedIngredients_\(foodKey)"),
                let ingredients = try? JSONDecoder().decode([String].self, from: submittedData) {
-                return ingredients
+                return ingredients.map { standardizeToUKSpelling($0) }
             }
         }
-        
+
         // If no ingredients found, return nil
         return nil
     }
