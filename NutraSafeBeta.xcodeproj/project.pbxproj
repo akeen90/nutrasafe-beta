@@ -60,7 +60,7 @@
 		C25D926B5B5C401FAA66D06BFDC87598 /* WorkoutNavigationOverlays.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F7561B2EBC74941A13A75D612F2083E /* WorkoutNavigationOverlays.swift */; };
 		C5E688C40C9917A682C67426 /* WorkoutTemplatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81B075B7D4370913A69A23F0 /* WorkoutTemplatesView.swift */; };
 		EA81BC11E57FB5223BF659FD /* WeightTrainingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D228677FCE7C1E8D0664B4A5 /* WeightTrainingView.swift */; };
-		F274CF78968B4290ADA3C260F96936CE /* KitchenTabViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4841D8FB19F4A7091A7DD0A429B645E /* KitchenTabViews.swift */; };
+		F274CF78968B4290ADA3C260F96936CE /* FridgeTabViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4841D8FB19F4A7091A7DD0A429B645E /* FridgeTabViews.swift */; };
 		F71736FEB2E843E18F674753 /* FastingTimerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 034F60AA8BCB4662A86709D4 /* FastingTimerView.swift */; };
 		F852EC8DB69C7DD65CB989F6 /* NewWorkoutCreationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 808B579B94C3DF670FA530BD /* NewWorkoutCreationView.swift */; };
 		FDACD6EE052840C79A707950 /* AddTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0B6A2D7294D44D9A25481CE /* AddTabView.swift */; };
@@ -115,7 +115,7 @@
 		C0D23EEA8C59479AB6188B94 /* NutraSafe Beta/Views/Components/ActionButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Components/ActionButtons.swift"; sourceTree = "<group>"; };
 		C9BF68D365EE4EFCAC81C56F /* NutraSafe Beta/Views/Diary/DiaryExerciseComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Diary/DiaryExerciseComponents.swift"; sourceTree = "<group>"; };
 		D228677FCE7C1E8D0664B4A5 /* WeightTrainingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightTrainingView.swift; sourceTree = "<group>"; };
-		D4841D8FB19F4A7091A7DD0A429B645E /* KitchenTabViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KitchenTabViews.swift; sourceTree = "<group>"; };
+		D4841D8FB19F4A7091A7DD0A429B645E /* FridgeTabViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FridgeTabViews.swift; sourceTree = "<group>"; };
 		EE1E506F81E64504BA776F466B03D0BC /* DiaryDailySummaryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryDailySummaryCard.swift; sourceTree = "<group>"; };
 		EF86AB54327E46EA98DD76AB /* FoodManagementViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodManagementViews.swift; sourceTree = "<group>"; };
 		F424654E4CD941D1B3565C0B /* FoodSearchViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodSearchViews.swift; sourceTree = "<group>"; };
@@ -153,12 +153,12 @@
 			path = Food;
 			sourceTree = "<group>";
 		};
-		18B13EA519C9484C8C19C526541913C9 /* Kitchen */ = {
+		18B13EA519C9484C8C19C526541913C9 /* Fridge */ = {
 			isa = PBXGroup;
 			children = (
-				D4841D8FB19F4A7091A7DD0A429B645E /* KitchenTabViews.swift */,
+				D4841D8FB19F4A7091A7DD0A429B645E /* FridgeTabViews.swift */,
 			);
-			path = Kitchen;
+			path = Fridge;
 			sourceTree = "<group>";
 		};
 		1E2302F2CAB144499FF8B394 /* Views */ = {
@@ -169,7 +169,7 @@
 				C91EC7F15CCB619E4879A3C8 /* Exercise */,
 				2DF585D9E80C4490A72B6467 /* Fasting */,
 				069C2B19784643F385FFCD7C /* Food */,
-				18B13EA519C9484C8C19C526541913C9 /* Kitchen */,
+				18B13EA519C9484C8C19C526541913C9 /* Fridge */,
 				43138BC44E1C41359750CBA3 /* DiaryTabView.swift */,
 				AA30481671D941A4B06DB063 /* ExerciseTabView.swift */,
 				C0B6A2D7294D44D9A25481CE /* AddTabView.swift */,
@@ -383,7 +383,7 @@
 				24D3ACC266DD4F91AE1F1045B7BE8F34 /* BarcodeScanningViews.swift in Sources */,
 				8699C16F52A0459784A27CD7D0AF30C9 /* FoodTabViews.swift in Sources */,
 				346E6CF82ED74EC78387979DCBB178CD /* ProfessionalSummaryViews.swift in Sources */,
-				F274CF78968B4290ADA3C260F96936CE /* KitchenTabViews.swift in Sources */,
+				F274CF78968B4290ADA3C260F96936CE /* FridgeTabViews.swift in Sources */,
 				C25D926B5B5C401FAA66D06BFDC87598 /* WorkoutNavigationOverlays.swift in Sources */,
 				2E53183EE64A45B69C083DE9A9F83A00 /* MicronutrientViews.swift in Sources */,
 				B1234567890123456789CM02 /* CoreModels.swift in Sources */,

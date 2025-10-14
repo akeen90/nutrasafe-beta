@@ -1,16 +1,16 @@
 //
-//  KitchenTabViews.swift
+//  FridgeTabViews.swift
 //  NutraSafe Beta
 //
-//  Kitchen management and expiry tracking system
+//  Fridge management and expiry tracking system
 //  Extracted from ContentView.swift as part of Phase 15 modularization
 //
 
 import SwiftUI
 
-// MARK: - Kitchen Tab Main View
+// MARK: - Fridge Tab Main View
 
-struct KitchenTabView: View {
+struct FridgeTabView: View {
     @Binding var showingSettings: Bool
     @Binding var selectedTab: TabItem
     @State private var showingScanner = false
@@ -25,7 +25,7 @@ struct KitchenTabView: View {
             VStack(spacing: 0) {
                 // Header - AAA Modern Design
                 HStack(spacing: 16) {
-                        Text("Kitchen")
+                        Text("Fridge")
                             .font(.system(size: 38, weight: .bold, design: .rounded))
                             .frame(height: 44, alignment: .center)
                             .foregroundStyle(
@@ -67,8 +67,8 @@ struct KitchenTabView: View {
                         }
 
                         Button(action: {
-                            // Set kitchen as default destination
-                            UserDefaults.standard.set("Kitchen", forKey: "preselectedDestination")
+                            // Set fridge as default destination
+                            UserDefaults.standard.set("Fridge", forKey: "preselectedDestination")
                             selectedTab = .add
                         }) {
                             ZStack {
@@ -116,7 +116,7 @@ struct KitchenTabView: View {
                 ScrollView {
                     VStack(spacing: 0) {
                         // Main content
-                        KitchenExpiryView(
+                        FridgeExpiryView(
                             showingScanner: $showingScanner,
                             showingCamera: $showingCamera,
                             selectedTab: $selectedTab
@@ -129,7 +129,7 @@ struct KitchenTabView: View {
             .navigationBarHidden(true)
         }
         .fullScreenCover(isPresented: $showingAddSheet) {
-            AddKitchenItemSheet()
+            AddFridgeItemSheet()
         }
         .sheet(isPresented: $showingScanner) {
             // Barcode scanner will be implemented
@@ -212,7 +212,7 @@ struct CounterPill: View {
     }
 }
 
-struct AddFoundFoodToKitchenSheet: View {
+struct AddFoundFoodToFridgeSheet: View {
 @Environment(\.dismiss) var dismiss
     let food: FoodSearchResult
     var onComplete: ((TabItem) -> Void)?
@@ -282,7 +282,7 @@ struct AddFoundFoodToKitchenSheet: View {
             }
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("Add to Kitchen")
+            .navigationTitle("Add to Fridge")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -311,7 +311,7 @@ struct AddFoundFoodToKitchenSheet: View {
     private func save() async {
         guard !isSaving else { return }
         await MainActor.run { self.isSaving = true }
-        let item = KitchenInventoryItem(
+        let item = FridgeInventoryItem(
             name: food.name,
             brand: food.brand,
             quantity: "1",
@@ -320,24 +320,24 @@ struct AddFoundFoodToKitchenSheet: View {
             openedDate: openedMode == .today ? Date() : openedDate
         )
         do {
-            try await FirebaseManager.shared.addKitchenItem(item)
-            NotificationCenter.default.post(name: .kitchenInventoryUpdated, object: nil)
+            try await FirebaseManager.shared.addFridgeItem(item)
+            NotificationCenter.default.post(name: .fridgeInventoryUpdated, object: nil)
             await MainActor.run {
                 dismiss()
-                onComplete?(.kitchen)
+                onComplete?(.fridge)
             }
         } catch {
             let ns = error as NSError
-            print("Failed to save kitchen item: \(ns)")
+            print("Failed to save fridge item: \(ns)")
             await MainActor.run {
                 isSaving = false
                 // Silently fail for permission errors - just close the sheet
                 if ns.domain == "FIRFirestoreErrorDomain" && ns.code == 7 {
                     // Missing permissions - post notifications and dismiss without error
-                    NotificationCenter.default.post(name: .kitchenInventoryUpdated, object: nil)
-                    NotificationCenter.default.post(name: .navigateToKitchen, object: nil)
+                    NotificationCenter.default.post(name: .fridgeInventoryUpdated, object: nil)
+                    NotificationCenter.default.post(name: .navigateToFridge, object: nil)
                     dismiss()
-                    onComplete?(.kitchen)
+                    onComplete?(.fridge)
                 } else {
                     errorMessage = "\(ns.domain) (\(ns.code)): \(ns.localizedDescription)"
                     showErrorAlert = true
@@ -347,21 +347,21 @@ struct AddFoundFoodToKitchenSheet: View {
     }
 }
 
-// MARK: - Kitchen Sub Views
-struct KitchenExpiryView: View {
+// MARK: - Fridge Sub Views
+struct FridgeExpiryView: View {
     @Binding var showingScanner: Bool
     @Binding var showingCamera: Bool
     @Binding var selectedTab: TabItem
 
-    @State private var kitchenItems: [KitchenInventoryItem] = []
+    @State private var fridgeItems: [FridgeInventoryItem] = []
     @State private var isLoading: Bool = false
     @State private var isRefreshing: Bool = false
     @State private var showClearAlert: Bool = false
     @State private var showingAddSheet: Bool = false
     @State private var searchText: String = ""
 
-    private var sortedItems: [KitchenInventoryItem] {
-        let filtered = searchText.isEmpty ? kitchenItems : kitchenItems.filter { item in
+    private var sortedItems: [FridgeInventoryItem] {
+        let filtered = searchText.isEmpty ? fridgeItems : fridgeItems.filter { item in
             item.name.localizedCaseInsensitiveContains(searchText) ||
             (item.brand?.localizedCaseInsensitiveContains(searchText) ?? false)
         }
@@ -369,12 +369,12 @@ struct KitchenExpiryView: View {
     }
 
     private var expiringSoonCount: Int {
-        kitchenItems.filter { $0.daysUntilExpiry <= 3 }.count
+        fridgeItems.filter { $0.daysUntilExpiry <= 3 }.count
     }
 
     var body: some View {
         Group {
-            if kitchenItems.isEmpty && !isLoading {
+            if fridgeItems.isEmpty && !isLoading {
                 // Premium empty state
                 VStack(spacing: 0) {
                     Spacer()
@@ -394,7 +394,7 @@ struct KitchenExpiryView: View {
                         .padding(.bottom, 8)
 
                         VStack(spacing: 10) {
-                            Text("Your Kitchen is Empty")
+                            Text("Your Fridge is Empty")
                                 .font(.system(size: 24, weight: .semibold))
                                 .foregroundColor(.primary)
 
@@ -412,8 +412,8 @@ struct KitchenExpiryView: View {
                     // Primary action with shadow
                     VStack(spacing: 12) {
                         Button(action: {
-                            // Set kitchen as default destination
-                            UserDefaults.standard.set("Kitchen", forKey: "preselectedDestination")
+                            // Set fridge as default destination
+                            UserDefaults.standard.set("Fridge", forKey: "preselectedDestination")
                             selectedTab = .add
                         }) {
                             Label("Add Your First Item", systemImage: "plus.circle.fill")
@@ -452,7 +452,7 @@ struct KitchenExpiryView: View {
                                     .font(.system(size: 16, weight: .medium))
                                     .foregroundColor(.secondary)
 
-                                TextField("Search your kitchen...", text: $searchText)
+                                TextField("Search your fridge...", text: $searchText)
                                     .font(.system(size: 16))
                                     .textFieldStyle(PlainTextFieldStyle())
 
@@ -475,14 +475,14 @@ struct KitchenExpiryView: View {
 
                         // Stats cards
                         HStack(spacing: 12) {
-                            KitchenStatCard(
+                            FridgeStatCard(
                                 title: "Total Items",
                                 value: "\(sortedItems.count)",
                                 icon: "refrigerator.fill",
                                 color: .blue
                             )
 
-                            KitchenStatCard(
+                            FridgeStatCard(
                                 title: "Expiring Soon",
                                 value: "\(expiringSoonCount)",
                                 icon: "clock.badge.exclamationmark",
@@ -525,7 +525,7 @@ struct KitchenExpiryView: View {
                             } else {
                                 LazyVStack(spacing: 0) {
                                     ForEach(sortedItems, id: \.id) { item in
-                                        CleanKitchenRow(item: item)
+                                        CleanFridgeRow(item: item)
                                     }
                                 }
                                 .background(Color.white)
@@ -541,51 +541,51 @@ struct KitchenExpiryView: View {
                 .background(Color(.systemGroupedBackground))
             }
         }
-        .onAppear { Task { await reloadKitchen() } }
-        .onReceive(NotificationCenter.default.publisher(for: .kitchenInventoryUpdated)) { _ in
-            Task { await reloadKitchen() }
+        .onAppear { Task { await reloadFridge() } }
+        .onReceive(NotificationCenter.default.publisher(for: .fridgeInventoryUpdated)) { _ in
+            Task { await reloadFridge() }
         }
-        .alert("Clear all kitchen items?", isPresented: $showClearAlert) {
+        .alert("Clear all fridge items?", isPresented: $showClearAlert) {
             Button("Delete All", role: .destructive) {
                 Task {
-                    try? await FirebaseManager.shared.clearKitchenInventory()
-                    await reloadKitchen()
+                    try? await FirebaseManager.shared.clearFridgeInventory()
+                    await reloadFridge()
                 }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This will remove all items from your kitchen inventory.")
+            Text("This will remove all items from your fridge inventory.")
         }
         .fullScreenCover(isPresented: $showingAddSheet) {
-            AddKitchenItemSheet()
+            AddFridgeItemSheet()
         }
     } // End of var body: some View
 
-    private func reloadKitchen() async {
+    private func reloadFridge() async {
         await MainActor.run { self.isLoading = true }
         do {
-            let items: [KitchenInventoryItem] = try await FirebaseManager.shared.getKitchenItems()
-            print("🍳 KitchenView: Loaded \(items.count) items from Firebase")
+            let items: [FridgeInventoryItem] = try await FirebaseManager.shared.getFridgeItems()
+            print("🍳 FridgeView: Loaded \(items.count) items from Firebase")
             for item in items {
                 print("  - \(item.name): \(item.daysUntilExpiry) days left")
             }
             await MainActor.run {
-                self.kitchenItems = items
+                self.fridgeItems = items
                 self.isLoading = false
-                print("🍳 KitchenView: kitchenItems set to \(self.kitchenItems.count) items")
-                print("🍳 KitchenView: sortedItems has \(self.sortedItems.count) items")
+                print("🍳 FridgeView: fridgeItems set to \(self.fridgeItems.count) items")
+                print("🍳 FridgeView: sortedItems has \(self.sortedItems.count) items")
             }
         } catch {
-            print("❌ KitchenView: Error loading items: \(error)")
+            print("❌ FridgeView: Error loading items: \(error)")
             await MainActor.run { self.isLoading = false }
         }
     }
 }
 
-// MARK: - Kitchen Expiry Alert Cards
+// MARK: - Fridge Expiry Alert Cards
 
-struct KitchenExpiryAlertsCard: View {
-    let items: [KitchenInventoryItem]
+struct FridgeExpiryAlertsCard: View {
+    let items: [FridgeInventoryItem]
     @State private var selectedFilter: ExpiryFilter = .all
     @State private var showingAddSheet = false
     @Binding var selectedTab: TabItem
@@ -714,7 +714,7 @@ struct KitchenExpiryAlertsCard: View {
         .background(Color(.systemGray6))
         .cornerRadius(12)
         .fullScreenCover(isPresented: $showingAddSheet) {
-            AddKitchenItemSheet()
+            AddFridgeItemSheet()
         }
         .onDisappear { showingAddSheet = false }
     }
@@ -945,10 +945,10 @@ struct StatusCard: View {
     }
 }
 
-struct KitchenItemsListCard: View {
-    let items: [KitchenInventoryItem]
+struct FridgeItemsListCard: View {
+    let items: [FridgeInventoryItem]
 
-    private var sortedItems: [KitchenInventoryItem] {
+    private var sortedItems: [FridgeInventoryItem] {
         items.sorted { $0.expiryDate < $1.expiryDate }
     }
 
@@ -978,7 +978,7 @@ struct KitchenItemsListCard: View {
                             .symbolRenderingMode(.hierarchical)
                     }
 
-                    Text("Your Kitchen Items")
+                    Text("Your Fridge Items")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.primary)
                 }
@@ -989,7 +989,7 @@ struct KitchenItemsListCard: View {
             }
 
             if items.isEmpty {
-                KitchenEmptyStateView()
+                FridgeEmptyStateView()
             } else {
                 VStack(spacing: 0) {
                     ForEach(sortedItems.indices, id: \.self) { i in
@@ -1021,7 +1021,7 @@ struct KitchenItemsListCard: View {
     }
 }
 
-struct KitchenCriticalExpiryCard: View {
+struct FridgeCriticalExpiryCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -1064,7 +1064,7 @@ struct KitchenCriticalExpiryCard: View {
 
             VStack(spacing: 0) {
                 ForEach(0..<3, id: \.self) { index in
-                    let demoItem = KitchenInventoryItem(
+                    let demoItem = FridgeInventoryItem(
                         id: "demo-\(index)",
                         name: ["Greek Yoghurt", "Chicken Breast", "Baby Spinach"][index],
                         brand: ["Fage", "Organic Valley", "Fresh Express"][index],
@@ -1103,7 +1103,7 @@ struct KitchenCriticalExpiryCard: View {
     }
 }
 
-struct KitchenWeeklyExpiryCard: View {
+struct FridgeWeeklyExpiryCard: View {
     @State private var expandedSections: Set<String> = []
 
     var body: some View {
@@ -1293,9 +1293,9 @@ struct FilterPill: View {
     }
 }
 
-// MARK: - Kitchen Empty State Component
+// MARK: - Fridge Empty State Component
 
-struct KitchenEmptyStateView: View {
+struct FridgeEmptyStateView: View {
     @State private var animateIcons = false
     @State private var currentTip = 0
     @State private var showingDemo = false
@@ -1461,10 +1461,10 @@ struct KitchenEmptyStateView: View {
 }
 
 
-// MARK: - Kitchen Expiry Item Management
+// MARK: - Fridge Expiry Item Management
 
 struct ModernExpiryRow: View {
-    let item: KitchenInventoryItem
+    let item: FridgeInventoryItem
     @State private var showingDetail = false
     @State private var showingDeleteAlert = false
 
@@ -1568,13 +1568,13 @@ struct ModernExpiryRow: View {
             }
         }
         .sheet(isPresented: $showingDetail) {
-            KitchenItemDetailView(item: item)
+            FridgeItemDetailView(item: item)
         }
         .alert("Delete Item", isPresented: $showingDeleteAlert) {
             Button("Delete", role: .destructive) { confirmDelete() }
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("Are you sure you want to delete \(item.name) from your kitchen inventory?")
+            Text("Are you sure you want to delete \(item.name) from your fridge inventory?")
         }
     }
 
@@ -1584,8 +1584,8 @@ struct ModernExpiryRow: View {
         impactFeedback.impactOccurred()
 
         Task {
-            try? await FirebaseManager.shared.deleteKitchenItem(itemId: item.id)
-            NotificationCenter.default.post(name: .kitchenInventoryUpdated, object: nil)
+            try? await FirebaseManager.shared.deleteFridgeItem(itemId: item.id)
+            NotificationCenter.default.post(name: .fridgeInventoryUpdated, object: nil)
         }
     }
 
@@ -1595,7 +1595,7 @@ struct ModernExpiryRow: View {
         impactFeedback.impactOccurred()
         let calendar = Calendar.current
         let newExpiry = calendar.date(byAdding: .day, value: 3, to: item.expiryDate) ?? item.expiryDate
-        let updated = KitchenInventoryItem(
+        let updated = FridgeInventoryItem(
             id: item.id,
             name: item.name,
             brand: item.brand,
@@ -1607,8 +1607,8 @@ struct ModernExpiryRow: View {
             category: item.category
         )
         Task {
-            try? await FirebaseManager.shared.updateKitchenItem(updated)
-            NotificationCenter.default.post(name: .kitchenInventoryUpdated, object: nil)
+            try? await FirebaseManager.shared.updateFridgeItem(updated)
+            NotificationCenter.default.post(name: .fridgeInventoryUpdated, object: nil)
         }
     }
 
@@ -1622,15 +1622,15 @@ struct ModernExpiryRow: View {
         notificationFeedback.notificationOccurred(.warning)
 
         Task {
-            try? await FirebaseManager.shared.deleteKitchenItem(itemId: item.id)
-            NotificationCenter.default.post(name: .kitchenInventoryUpdated, object: nil)
+            try? await FirebaseManager.shared.deleteFridgeItem(itemId: item.id)
+            NotificationCenter.default.post(name: .fridgeInventoryUpdated, object: nil)
         }
     }
 }
 
-// Removed KitchenExpiryDayRow - replaced with expandable day sections in KitchenWeeklyExpiryCard
+// Removed FridgeExpiryDayRow - replaced with expandable day sections in FridgeWeeklyExpiryCard
 
-struct KitchenFreshItemsCard: View {
+struct FridgeFreshItemsCard: View {
     @State private var isExpanded = false
 
     var body: some View {
@@ -1727,9 +1727,9 @@ struct KitchenFreshItemsCard: View {
     }
 }
 
-// MARK: - Kitchen Quick Add Interface
+// MARK: - Fridge Quick Add Interface
 
-struct KitchenQuickAddCard: View {
+struct FridgeQuickAddCard: View {
     @Binding var showingScanner: Bool
     @Binding var showingCamera: Bool
     @State private var showingAddSheet = false
@@ -1780,7 +1780,7 @@ struct KitchenQuickAddCard: View {
                 .fill(Color(.systemGray6))
         )
         .fullScreenCover(isPresented: $showingAddSheet) {
-            AddKitchenItemSheet()
+            AddFridgeItemSheet()
         }
     }
 }
@@ -1883,7 +1883,7 @@ struct SecondaryActionButton: View {
     }
 }
 
-struct KitchenBarcodeScanSheet: View {
+struct FridgeBarcodeScanSheet: View {
     @Environment(\.dismiss) var dismiss
     @State private var isSearching = false
     @State private var scannedFood: FoodSearchResult?
@@ -1918,7 +1918,7 @@ struct KitchenBarcodeScanSheet: View {
         }
         .navigationViewStyle(StackNavigationViewStyle())
 .sheet(item: $scannedFood) { food in
-            AddFoundFoodToKitchenSheet(food: food)
+            AddFoundFoodToFridgeSheet(food: food)
         }
     }
 
@@ -1947,7 +1947,7 @@ struct KitchenBarcodeScanSheet: View {
     }
 }
 
-struct AddKitchenItemSheet: View {
+struct AddFridgeItemSheet: View {
     @Environment(\.dismiss) var dismiss
     @State private var showingManualAdd = false
     @State private var showingSearch = false
@@ -1960,7 +1960,7 @@ struct AddKitchenItemSheet: View {
                 // Header
                 VStack(spacing: 16) {
                     HStack {
-                        Text("Add to Kitchen")
+                        Text("Add to Fridge")
                             .font(.system(size: 28, weight: .bold))
                             .foregroundColor(.primary)
                         Spacer()
@@ -1981,14 +1981,14 @@ struct AddKitchenItemSheet: View {
                 Group {
                     switch selectedOption {
                     case .search:
-                        KitchenInlineSearchView()
+                        FridgeInlineSearchView()
                     case .manual:
-                        ManualKitchenItemSheet()
+                        ManualFridgeItemSheet()
                     case .barcode:
-                        KitchenBarcodeScanSheet()
+                        FridgeBarcodeScanSheet()
                     case .ai:
-                        // No AI importer for kitchen yet; show search for now
-                        KitchenInlineSearchView()
+                        // No AI importer for fridge yet; show search for now
+                        FridgeInlineSearchView()
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1997,7 +1997,7 @@ struct AddKitchenItemSheet: View {
             .toolbar { }
         }
         .navigationViewStyle(StackNavigationViewStyle())
-        .onReceive(NotificationCenter.default.publisher(for: .kitchenInventoryUpdated)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .fridgeInventoryUpdated)) { _ in
             Task { @MainActor in
                 dismiss()
             }
@@ -2005,8 +2005,8 @@ struct AddKitchenItemSheet: View {
     }
 }
 
-// Inline search content for Add-to-Kitchen sheet, without its own navigation bar
-struct KitchenInlineSearchView: View {
+// Inline search content for Add-to-Fridge sheet, without its own navigation bar
+struct FridgeInlineSearchView: View {
     @State private var query: String = ""
     @State private var isSearching = false
     @State private var results: [FoodSearchResult] = []
@@ -2081,8 +2081,8 @@ Text(food.name)
             }
         }
         .sheet(item: $selectedFood) { food in
-            // For Kitchen flow, open the expiry-tracking add form directly
-            AddFoundFoodToKitchenSheet(food: food)
+            // For Fridge flow, open the expiry-tracking add form directly
+            AddFoundFoodToFridgeSheet(food: food)
         }
     }
 
@@ -2100,7 +2100,7 @@ Text(food.name)
                 // Request was cancelled due to a new keystroke; ignore
                 return
             }
-            print("Kitchen inline search error: \(error)")
+            print("Fridge inline search error: \(error)")
             self.isSearching = false
         }
     }
@@ -2147,7 +2147,7 @@ struct AddOptionButton: View {
     }
 }
 
-struct ManualKitchenItemSheet: View {
+struct ManualFridgeItemSheet: View {
     @Environment(\.dismiss) var dismiss
     @State private var itemName = ""
     @State private var brand = ""
@@ -2215,7 +2215,7 @@ struct ManualKitchenItemSheet: View {
 .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { saveKitchenItem() }) {
+                    Button(action: { saveFridgeItem() }) {
                         if isSaving { ProgressView().scaleEffect(0.8) } else { Text("Add").font(.system(size: 16, weight: .semibold)) }
                     }
                     .disabled(itemName.isEmpty || isSaving)
@@ -2239,10 +2239,10 @@ struct ManualKitchenItemSheet: View {
         expiryDate = Calendar.current.date(byAdding: comps, to: Date()) ?? Date()
     }
 
-    private func saveKitchenItem() {
+    private func saveFridgeItem() {
         isSaving = true
 
-        let kitchenItem = KitchenInventoryItem(
+        let fridgeItem = FridgeInventoryItem(
             name: itemName,
             brand: brand.isEmpty ? nil : brand,
             quantity: "1",
@@ -2253,19 +2253,19 @@ struct ManualKitchenItemSheet: View {
 
         Task {
             do {
-                try await FirebaseManager.shared.addKitchenItem(kitchenItem)
-                NotificationCenter.default.post(name: .kitchenInventoryUpdated, object: nil)
+                try await FirebaseManager.shared.addFridgeItem(fridgeItem)
+                NotificationCenter.default.post(name: .fridgeInventoryUpdated, object: nil)
                 await MainActor.run { dismiss() }
             } catch {
                 let ns = error as NSError
-                print("Error saving kitchen item: \(ns)")
+                print("Error saving fridge item: \(ns)")
                 await MainActor.run {
                     isSaving = false
                     // Silently fail for permission errors - just close the sheet
                     if ns.domain == "FIRFirestoreErrorDomain" && ns.code == 7 {
                         // Missing permissions - post notifications and dismiss without error
-                        NotificationCenter.default.post(name: .kitchenInventoryUpdated, object: nil)
-                        NotificationCenter.default.post(name: .navigateToKitchen, object: nil)
+                        NotificationCenter.default.post(name: .fridgeInventoryUpdated, object: nil)
+                        NotificationCenter.default.post(name: .navigateToFridge, object: nil)
                         dismiss()
                     } else {
                         errorMessageManual = "\(ns.domain) (\(ns.code)): \(ns.localizedDescription)"
@@ -2280,18 +2280,18 @@ struct ManualKitchenItemSheet: View {
 // MARK: - Preview Support
 
 #if DEBUG
-struct KitchenTabView_Previews: PreviewProvider {
+struct FridgeTabView_Previews: PreviewProvider {
     static var previews: some View {
-        KitchenTabView(
+        FridgeTabView(
             showingSettings: .constant(false),
-            selectedTab: .constant(.kitchen)
+            selectedTab: .constant(.fridge)
         )
     }
 }
 #endif
 
 // Fallback inline implementation to ensure sheet compiles within this target
-struct KitchenSearchSheet: View {
+struct FridgeSearchSheet: View {
     @Environment(\.dismiss) var dismiss
     @State private var query: String = ""
     @State private var isSearching = false
@@ -2351,7 +2351,7 @@ Text(food.name)
         }
         .navigationViewStyle(StackNavigationViewStyle())
 .sheet(item: $selectedFood) { selectedFood in
-            AddFoundFoodToKitchenSheet(food: selectedFood)
+            AddFoundFoodToFridgeSheet(food: selectedFood)
         }
     }
 
@@ -2366,13 +2366,13 @@ Text(food.name)
                 self.isSearching = false
             }
         } catch {
-            print("Kitchen search error: \(error)")
+            print("Fridge search error: \(error)")
             await MainActor.run { self.isSearching = false }
         }
     }
 }
 
-// MARK: - Kitchen Item Detail View Components
+// MARK: - Fridge Item Detail View Components
 
 struct FreshnessIndicatorView: View {
     let freshnessScore: Double
@@ -2411,11 +2411,11 @@ struct FreshnessIndicatorView: View {
     }
 }
 
-// MARK: - Kitchen Item Detail View
-struct KitchenItemDetailView: View {
+// MARK: - Fridge Item Detail View
+struct FridgeItemDetailView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
-    let item: KitchenInventoryItem
+    let item: FridgeInventoryItem
 
     @State private var editedQuantity: String = ""
     @State private var editedExpiryDate: Date = Date()
@@ -2792,13 +2792,13 @@ struct KitchenItemDetailView: View {
         impactFeedback.prepare()
         impactFeedback.impactOccurred()
 
-        print("KitchenItemDetailView: Starting save")
-        print("KitchenItemDetailView: Item ID: \(item.id)")
-        print("KitchenItemDetailView: Edited quantity: \(editedQuantity)")
-        print("KitchenItemDetailView: Edited expiry: \(editedExpiryDate)")
+        print("FridgeItemDetailView: Starting save")
+        print("FridgeItemDetailView: Item ID: \(item.id)")
+        print("FridgeItemDetailView: Edited quantity: \(editedQuantity)")
+        print("FridgeItemDetailView: Edited expiry: \(editedExpiryDate)")
 
         // Create updated item with edits
-        let updatedItem = KitchenInventoryItem(
+        let updatedItem = FridgeInventoryItem(
             id: item.id,
             name: item.name,
             brand: item.brand,
@@ -2810,14 +2810,14 @@ struct KitchenItemDetailView: View {
             category: item.category
         )
 
-        print("KitchenItemDetailView: Created updated item")
+        print("FridgeItemDetailView: Created updated item")
 
         // Save to Firebase
         do {
-            print("KitchenItemDetailView: Calling updateKitchenItem")
-            try await FirebaseManager.shared.updateKitchenItem(updatedItem)
-            print("KitchenItemDetailView: Update successful!")
-            NotificationCenter.default.post(name: .kitchenInventoryUpdated, object: nil)
+            print("FridgeItemDetailView: Calling updateFridgeItem")
+            try await FirebaseManager.shared.updateFridgeItem(updatedItem)
+            print("FridgeItemDetailView: Update successful!")
+            NotificationCenter.default.post(name: .fridgeInventoryUpdated, object: nil)
 
             await MainActor.run {
                 isSaving = false
@@ -2829,7 +2829,7 @@ struct KitchenItemDetailView: View {
                 dismiss()
             }
         } catch {
-            print("❌ KitchenItemDetailView: Failed to update kitchen item")
+            print("❌ FridgeItemDetailView: Failed to update fridge item")
             print("❌ Error type: \(type(of: error))")
             print("❌ Error description: \(error)")
             print("❌ Error localized: \(error.localizedDescription)")
@@ -3018,10 +3018,10 @@ struct QuickStartButton: View {
     }
 }
 
-// MARK: - Clean Kitchen Row
+// MARK: - Clean Fridge Row
 
-struct CleanKitchenRow: View {
-    let item: KitchenInventoryItem
+struct CleanFridgeRow: View {
+    let item: FridgeInventoryItem
     @State private var showingDetail = false
     @State private var isPressed = false
     @State private var offset: CGFloat = 0
@@ -3177,28 +3177,28 @@ struct CleanKitchenRow: View {
             }
         }
         .sheet(isPresented: $showingDetail) {
-            KitchenItemDetailView(item: item)
+            FridgeItemDetailView(item: item)
         }
     }
 
     private func markAsUsed() {
         Task {
-            try? await FirebaseManager.shared.deleteKitchenItem(itemId: item.id)
-            NotificationCenter.default.post(name: .kitchenInventoryUpdated, object: nil)
+            try? await FirebaseManager.shared.deleteFridgeItem(itemId: item.id)
+            NotificationCenter.default.post(name: .fridgeInventoryUpdated, object: nil)
         }
     }
 
     private func deleteItem() {
         Task {
-            try? await FirebaseManager.shared.deleteKitchenItem(itemId: item.id)
-            NotificationCenter.default.post(name: .kitchenInventoryUpdated, object: nil)
+            try? await FirebaseManager.shared.deleteFridgeItem(itemId: item.id)
+            NotificationCenter.default.post(name: .fridgeInventoryUpdated, object: nil)
         }
     }
 }
 
-// MARK: - Kitchen Stat Card Component
+// MARK: - Fridge Stat Card Component
 
-struct KitchenStatCard: View {
+struct FridgeStatCard: View {
     let title: String
     let value: String
     let icon: String

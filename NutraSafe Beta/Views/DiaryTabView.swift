@@ -178,15 +178,9 @@ struct DiaryTabView: View {
                     // Expanded date picker (when shown)
                     if showingDatePicker {
                         VStack(spacing: 0) {
-                            // Month navigation header
+                            // Today button
                             HStack {
-                                Text(formatMonthYear(selectedDate))
-                                    .font(.system(size: 20, weight: .semibold))
-                                    .foregroundColor(.primary)
-
                                 Spacer()
-
-                                // Today button
                                 Button(action: {
                                     selectedDate = Date()
                                     showingDatePicker = false
@@ -201,43 +195,9 @@ struct DiaryTabView: View {
                                                 .fill(Color.blue.opacity(0.1))
                                         )
                                 }
-
-                                // Month navigation arrows
-                                HStack(spacing: 8) {
-                                    Button(action: {
-                                        if let newDate = Calendar.current.date(byAdding: .month, value: -1, to: selectedDate) {
-                                            selectedDate = newDate
-                                        }
-                                    }) {
-                                        Image(systemName: "chevron.left")
-                                            .font(.system(size: 14, weight: .semibold))
-                                            .foregroundColor(.blue)
-                                            .frame(width: 32, height: 32)
-                                            .background(
-                                                Circle()
-                                                    .fill(Color.blue.opacity(0.1))
-                                            )
-                                    }
-
-                                    Button(action: {
-                                        if let newDate = Calendar.current.date(byAdding: .month, value: 1, to: selectedDate) {
-                                            selectedDate = newDate
-                                        }
-                                    }) {
-                                        Image(systemName: "chevron.right")
-                                            .font(.system(size: 14, weight: .semibold))
-                                            .foregroundColor(.blue)
-                                            .frame(width: 32, height: 32)
-                                            .background(
-                                                Circle()
-                                                    .fill(Color.blue.opacity(0.1))
-                                            )
-                                    }
-                                }
                             }
                             .padding(.horizontal, 16)
                             .padding(.top, 8)
-                            .padding(.bottom, 12)
 
                             DatePicker(
                                 "Select Date",

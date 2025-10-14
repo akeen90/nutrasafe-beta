@@ -1,25 +1,25 @@
 //
-//  SimpleKitchenTabView.swift
+//  SimpleFridgeTabView.swift
 //  NutraSafe Beta
 //
-//  Simplified kitchen view for basic functionality
+//  Simplified fridge view for basic functionality
 //
 
 import SwiftUI
 
-struct SimpleKitchenTabView: View {
+struct SimpleFridgeTabView: View {
     @Binding var showingSettings: Bool
     @Binding var selectedTab: TabItem
     @State private var showingAddItem = false
     @State private var showingScanner = false
-    @State private var inventoryItems: [KitchenInventoryItem] = []
+    @State private var inventoryItems: [FridgeInventoryItem] = []
     
     var body: some View {
         NavigationView {
             VStack {
                 // Header
                 HStack {
-                    Text("Smart Kitchen")
+                    Text("Smart Fridge")
                         .font(.largeTitle)
                         .bold()
                     
@@ -56,7 +56,7 @@ struct SimpleKitchenTabView: View {
                             .font(.system(size: 50))
                             .foregroundColor(.secondary)
                         
-                        Text("Your Kitchen is Empty")
+                        Text("Your Fridge is Empty")
                             .font(.title2)
                             .bold()
                         
@@ -68,7 +68,7 @@ struct SimpleKitchenTabView: View {
                 } else {
                     List {
                         ForEach(inventoryItems) { item in
-                            KitchenItemRow(item: item)
+                            FridgeItemRow(item: item)
                         }
                         .onDelete(perform: deleteItems)
                     }
@@ -79,7 +79,7 @@ struct SimpleKitchenTabView: View {
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .sheet(isPresented: $showingAddItem) {
-            AddKitchenItemView { item in
+            AddFridgeItemView { item in
                 inventoryItems.append(item)
             }
         }
@@ -104,13 +104,13 @@ struct SimpleKitchenTabView: View {
     private func saveInventoryItems() {
         // Save to UserDefaults
         if let data = try? JSONEncoder().encode(inventoryItems) {
-            UserDefaults.standard.set(data, forKey: "kitchenInventory")
+            UserDefaults.standard.set(data, forKey: "fridgeInventory")
         }
     }
     
-    private func getSampleInventoryItems() -> [KitchenInventoryItem] {
+    private func getSampleInventoryItems() -> [FridgeInventoryItem] {
         return [
-            KitchenInventoryItem(
+            FridgeInventoryItem(
                 name: "Milk",
                 brand: "Organic Valley",
                 quantity: "1 gallon",
@@ -118,7 +118,7 @@ struct SimpleKitchenTabView: View {
                 addedDate: Date(),
                 category: "Dairy"
             ),
-            KitchenInventoryItem(
+            FridgeInventoryItem(
                 name: "Bread",
                 brand: "Dave's Killer Bread",
                 quantity: "1 loaf",
@@ -126,7 +126,7 @@ struct SimpleKitchenTabView: View {
                 addedDate: Calendar.current.date(byAdding: .day, value: -5, to: Date())!,
                 category: "Bakery"
             ),
-            KitchenInventoryItem(
+            FridgeInventoryItem(
                 name: "Bananas",
                 quantity: "6 pieces",
                 expiryDate: Calendar.current.date(byAdding: .day, value: 2, to: Date())!,
@@ -137,8 +137,8 @@ struct SimpleKitchenTabView: View {
     }
 }
 
-struct KitchenItemRow: View {
-    let item: KitchenInventoryItem
+struct FridgeItemRow: View {
+    let item: FridgeInventoryItem
     
     var body: some View {
         HStack {
@@ -177,9 +177,9 @@ struct KitchenItemRow: View {
     }
 }
 
-struct AddKitchenItemView: View {
+struct AddFridgeItemView: View {
     @Environment(\.dismiss) private var dismiss
-    let onSave: (KitchenInventoryItem) -> Void
+    let onSave: (FridgeInventoryItem) -> Void
     
     @State private var name = ""
     @State private var brand = ""
@@ -212,7 +212,7 @@ struct AddKitchenItemView: View {
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Save") {
-                        let item = KitchenInventoryItem(
+                        let item = FridgeInventoryItem(
                             name: name,
                             brand: brand.isEmpty ? nil : brand,
                             quantity: quantity,
@@ -231,5 +231,5 @@ struct AddKitchenItemView: View {
 }
 
 #Preview {
-    SimpleKitchenTabView(showingSettings: .constant(false), selectedTab: .constant(.kitchen))
+    SimpleFridgeTabView(showingSettings: .constant(false), selectedTab: .constant(.fridge))
 }

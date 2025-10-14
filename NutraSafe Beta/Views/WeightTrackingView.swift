@@ -830,7 +830,7 @@ struct WeightHistoryDetailRow: View {
                         .font(.system(size: 12, weight: .bold))
                         .foregroundColor(change > 0 ? .red : .green)
 
-                    Text(String(format: "%.1f", abs(change)))
+                    Text(String(format: "%.1f kg", abs(change)))
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.secondary)
                 }

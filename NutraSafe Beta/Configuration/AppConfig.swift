@@ -95,7 +95,7 @@ enum AppConfig {
         static let isOfflineModeEnabled = false
         static let isAnalyticsEnabled = Environment.current == .production
         
-        // Allow anonymous authentication to save user data (reactions, kitchen items, etc.)
+        // Allow anonymous authentication to save user data (reactions, fridge items, etc.)
         // This enables users to use the app immediately without account creation
         // Users can upgrade to full accounts later to enable cross-device sync
         static let allowAnonymousAuth: Bool = true

@@ -17,10 +17,10 @@ struct AddTabView: View {
     }
 
     private func determineDestination() -> AddFoodMainView.AddDestination? {
-        // Check if there's a preselected destination from Kitchen or other tabs
+        // Check if there's a preselected destination from Fridge or other tabs
         if let preselected = UserDefaults.standard.string(forKey: "preselectedDestination") {
-            if preselected == "Kitchen" {
-                return .kitchen
+            if preselected == "Fridge" {
+                return .fridge
             }
         }
         // Otherwise use the passed sourceDestination

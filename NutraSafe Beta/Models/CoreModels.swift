@@ -15,8 +15,8 @@ struct BoundingBox: Codable {
     let height: Double
 }
 
-// MARK: - Kitchen Inventory Models
-struct KitchenInventoryItem: Codable, Identifiable {
+// MARK: - Fridge Inventory Models
+struct FridgeInventoryItem: Codable, Identifiable {
     let id: String
     let name: String
     let brand: String?

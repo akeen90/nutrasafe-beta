@@ -1375,8 +1375,8 @@ struct ContentView: View {
                         .environmentObject(diaryDataManager)
                 case .food:
                     FoodTabView(showingSettings: $showingSettings)
-                case .kitchen:
-                    KitchenTabView(showingSettings: $showingSettings, selectedTab: $selectedTab)
+                case .fridge:
+                    FridgeTabView(showingSettings: $showingSettings, selectedTab: $selectedTab)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1418,8 +1418,8 @@ struct ContentView: View {
         .sheet(isPresented: $showingSettings) {
             SettingsView()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .navigateToKitchen)) { _ in
-            selectedTab = .kitchen
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToFridge)) { _ in
+            selectedTab = .fridge
         }
         }
     }
@@ -1441,7 +1441,7 @@ enum TabItem: String, CaseIterable {
     case exercise = "exercise"
     case add = "add"
     case food = "food"
-    case kitchen = "kitchen"
+    case fridge = "fridge"
     
     var title: String {
         switch self {
@@ -1449,7 +1449,7 @@ enum TabItem: String, CaseIterable {
         case .exercise: return "Exercise"
         case .add: return ""
         case .food: return "Food"
-        case .kitchen: return "Kitchen"
+        case .fridge: return "Fridge"
         }
     }
     
@@ -1459,7 +1459,7 @@ enum TabItem: String, CaseIterable {
         case .exercise: return "figure.run"
         case .add: return "plus"
         case .food: return "fork.knife.circle"
-        case .kitchen: return "refrigerator"
+        case .fridge: return "refrigerator"
         }
     }
 }
@@ -1577,8 +1577,8 @@ struct RoundedCorner: Shape {
 //                    HomeDiaryOverviewCard()
 //                        .padding(.horizontal, 16)
 //                    
-//                    // Kitchen Expiry Alerts
-//                    HomeKitchenAlertsCard()
+//                    // Fridge Expiry Alerts
+//                    HomeFridgeAlertsCard()
 //                        .padding(.horizontal, 16)
 //                    
 //                    // Food Insights
@@ -1790,37 +1790,37 @@ struct RoundedCorner: Shape {
 //    }
 //}
 
-//struct HomeKitchenAlertsCard: View {
+//struct HomeFridgeAlertsCard: View {
 //    var body: some View {
 //        VStack(alignment: .leading, spacing: 12) {
 //            HStack {
-//                Text("Kitchen Alerts")
+//                Text("Fridge Alerts")
 //                    .font(.system(size: 18, weight: .semibold))
 //                    .foregroundColor(.primary)
 //                
 //                Spacer()
 //                
 //                Button("Manage") {
-//                    print("Manage kitchen tapped")
+//                    print("Manage fridge tapped")
 //                }
 //                .font(.system(size: 14, weight: .medium))
 //                .foregroundColor(.blue)
 //            }
 //            
 //            VStack(spacing: 8) {
-//                HomeKitchenAlertRow(
+//                HomeFridgeAlertRow(
 //                    item: "Greek Yoghurt",
 //                    daysLeft: 2,
 //                    urgency: .high
 //                )
 //                
-//                HomeKitchenAlertRow(
+//                HomeFridgeAlertRow(
 //                    item: "Chicken Breast",
 //                    daysLeft: 1,
 //                    urgency: .critical
 //                )
 //                
-//                HomeKitchenAlertRow(
+//                HomeFridgeAlertRow(
 //                    item: "Spinach",
 //                    daysLeft: 4,
 //                    urgency: .medium
@@ -1833,7 +1833,7 @@ struct RoundedCorner: Shape {
 //    }
 //}
 
-//struct HomeKitchenAlertRow: View {
+//struct HomeFridgeAlertRow: View {
 //    let item: String
 //    let daysLeft: Int
 //    let urgency: AlertUrgency
@@ -3801,18 +3801,18 @@ struct ModernMacroItem: View {
 // - sampleReactions: Sample data for food reactions
 // Total extracted: 558 lines of comprehensive food tracking functionality
 // 
-// MARK: - KitchenTabView System moved to Views/Kitchen/KitchenTabViews.swift
+// MARK: - FridgeTabView System moved to Views/Fridge/FridgeTabViews.swift
 // The following components were extracted as part of Phase 15 ContentView.swift modularization effort:
-// - KitchenTabView: Main kitchen interface with sub-tab navigation
-// - KitchenSubTabSelector: Sub-tab selector for kitchen sections
-// - KitchenExpiryView: Food expiry management dashboard
-// - KitchenExpiryAlertsCard: Expiry alerts summary
-// - KitchenCriticalExpiryCard: Critical expiring items
-// - KitchenWeeklyExpiryCard: Weekly expiry schedule
-// - KitchenExpiryItemRow: Individual expiry item display
-// - KitchenExpiryDayRow: Daily expiry schedule row
-// - KitchenQuickAddCard: Quick add item interface
-// Total extracted: 385+ lines of comprehensive kitchen management functionality
+// - FridgeTabView: Main fridge interface with sub-tab navigation
+// - FridgeSubTabSelector: Sub-tab selector for fridge sections
+// - FridgeExpiryView: Food expiry management dashboard
+// - FridgeExpiryAlertsCard: Expiry alerts summary
+// - FridgeCriticalExpiryCard: Critical expiring items
+// - FridgeWeeklyExpiryCard: Weekly expiry schedule
+// - FridgeExpiryItemRow: Individual expiry item display
+// - FridgeExpiryDayRow: Daily expiry schedule row
+// - FridgeQuickAddCard: Quick add item interface
+// Total extracted: 385+ lines of comprehensive fridge management functionality
 // 
 // 
 // MARK: - Add Food Main View

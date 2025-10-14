@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct KitchenSearchSheet: View {
+struct FridgeSearchSheet: View {
     @Environment(\.dismiss) var dismiss
     @State private var query: String = ""
     @State private var isSearching = false
@@ -91,8 +91,8 @@ Text(food.name)
         }
         .sheet(isPresented: $showAddForm) {
             if let selectedFood = selectedFood {
-                // Go straight to the Kitchen expiry form (not the diary-style food page)
-                AddFoundFoodToKitchenSheet(food: selectedFood)
+                // Go straight to the Fridge expiry form (not the diary-style food page)
+                AddFoundFoodToFridgeSheet(food: selectedFood)
             }
         }
     }
@@ -113,7 +113,7 @@ Text(food.name)
                 // cancelled due to new keystroke
                 return
             }
-            print("Kitchen search error: \(error)")
+            print("Fridge search error: \(error)")
             await MainActor.run { self.isSearching = false }
         }
     }
@@ -135,7 +135,7 @@ private struct MacroPill: View {
     }
 }
 
-struct AddFoundFoodToKitchenSheet: View {
+struct AddFoundFoodToFridgeSheet: View {
     @Environment(\.dismiss) var dismiss
     let food: FoodSearchResult
     @State private var quantity: String = "1"
@@ -160,7 +160,7 @@ struct AddFoundFoodToKitchenSheet: View {
                     DatePicker("Expiry Date", selection: $expiryDate, displayedComponents: .date)
                 }
             }
-            .navigationTitle("Add to Kitchen")
+            .navigationTitle("Add to Fridge")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -176,7 +176,7 @@ struct AddFoundFoodToKitchenSheet: View {
     private func save() async {
         guard !isSaving else { return }
         isSaving = true
-        let item = KitchenInventoryItem(
+        let item = FridgeInventoryItem(
             name: food.name,
             brand: food.brand,
             quantity: quantity.isEmpty ? "1" : quantity,
@@ -187,15 +187,15 @@ struct AddFoundFoodToKitchenSheet: View {
             category: nil
         )
         do {
-            try await FirebaseManager.shared.addKitchenItem(item)
+            try await FirebaseManager.shared.addFridgeItem(item)
             await MainActor.run { dismiss() }
         } catch {
             let ns = error as NSError
-            print("Failed to save kitchen item: \(ns)\nAttempting dev anonymous sign-in if enabled…")
+            print("Failed to save fridge item: \(ns)\nAttempting dev anonymous sign-in if enabled…")
             if ns.domain == "NutraSafeAuth", AppConfig.Features.allowAnonymousAuth {
                 do {
                     try await FirebaseManager.shared.signInAnonymously()
-                    try await FirebaseManager.shared.addKitchenItem(item)
+                    try await FirebaseManager.shared.addFridgeItem(item)
                     await MainActor.run { dismiss() }
                     return
                 } catch {
@@ -203,13 +203,13 @@ struct AddFoundFoodToKitchenSheet: View {
                 }
             }
             let finalError = error as NSError
-            print("Final error saving kitchen item: \(finalError)")
+            print("Final error saving fridge item: \(finalError)")
             await MainActor.run {
                 // Silently fail for permission errors - just close the sheet
                 if finalError.domain == "FIRFirestoreErrorDomain" && finalError.code == 7 {
                     // Missing permissions - post notifications and dismiss without error
-                    NotificationCenter.default.post(name: .kitchenInventoryUpdated, object: nil)
-                    NotificationCenter.default.post(name: .navigateToKitchen, object: nil)
+                    NotificationCenter.default.post(name: .fridgeInventoryUpdated, object: nil)
+                    NotificationCenter.default.post(name: .navigateToFridge, object: nil)
                     dismiss()
                 } else {
                     isSaving = false

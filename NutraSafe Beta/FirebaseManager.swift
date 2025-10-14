@@ -153,6 +153,22 @@ class FirebaseManager: ObservableObject {
         }
     }
 
+    // Get food entries within a specific date range for calendar view
+    func getFoodEntriesInRange(from startDate: Date, to endDate: Date) async throws -> [FoodEntry] {
+        guard let userId = currentUser?.uid else { return [] }
+
+        let snapshot = try await db.collection("users").document(userId)
+            .collection("foodEntries")
+            .whereField("date", isGreaterThanOrEqualTo: FirebaseFirestore.Timestamp(date: startDate))
+            .whereField("date", isLessThanOrEqualTo: FirebaseFirestore.Timestamp(date: endDate))
+            .order(by: "date", descending: false)
+            .getDocuments()
+
+        return snapshot.documents.compactMap { doc in
+            FoodEntry.fromDictionary(doc.data())
+        }
+    }
+
     // Delete all food entries older than today (for clearing test data)
     func deleteOldFoodEntries() async throws {
         guard let userId = currentUser?.uid else { return }
@@ -200,58 +216,58 @@ class FirebaseManager: ObservableObject {
         print("✅ Reaction saved successfully")
     }
 
-    // MARK: - Kitchen Inventory
+    // MARK: - Fridge Inventory
 
-    func addKitchenItem(_ item: KitchenInventoryItem) async throws {
+    func addFridgeItem(_ item: FridgeInventoryItem) async throws {
         ensureAuthStateLoaded()
 
         guard let userId = currentUser?.uid else {
-            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to add kitchen items"])
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to add fridge items"])
         }
 
-        try await addKitchenItemHelper(item, userId: userId)
+        try await addFridgeItemHelper(item, userId: userId)
     }
 
     // Local storage helpers
-    private func saveKitchenItemLocally(_ item: KitchenInventoryItem) {
-        var localItems = getLocalKitchenItems()
+    private func saveFridgeItemLocally(_ item: FridgeInventoryItem) {
+        var localItems = getLocalFridgeItems()
         localItems.append(item)
         if let encoded = try? JSONEncoder().encode(localItems) {
-            UserDefaults.standard.set(encoded, forKey: "localKitchenItems")
+            UserDefaults.standard.set(encoded, forKey: "localFridgeItems")
         }
     }
 
-    private func getLocalKitchenItems() -> [KitchenInventoryItem] {
-        guard let data = UserDefaults.standard.data(forKey: "localKitchenItems"),
-              let items = try? JSONDecoder().decode([KitchenInventoryItem].self, from: data) else {
+    private func getLocalFridgeItems() -> [FridgeInventoryItem] {
+        guard let data = UserDefaults.standard.data(forKey: "localFridgeItems"),
+              let items = try? JSONDecoder().decode([FridgeInventoryItem].self, from: data) else {
             return []
         }
         return items
     }
 
-    private func addKitchenItemHelper(_ item: KitchenInventoryItem, userId: String) async throws {
+    private func addFridgeItemHelper(_ item: FridgeInventoryItem, userId: String) async throws {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         let data = try encoder.encode(item)
         let dict = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] ?? [:]
 
         try await db.collection("users").document(userId)
-            .collection("kitchenInventory").document(item.id).setData(dict)
+            .collection("fridgeInventory").document(item.id).setData(dict)
     }
 
-    func getKitchenItems() async throws -> [KitchenInventoryItem] {
+    func getFridgeItems() async throws -> [FridgeInventoryItem] {
         ensureAuthStateLoaded()
 
         guard let userId = currentUser?.uid else {
-            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view kitchen items"])
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view fridge items"])
         }
 
-        return try await getKitchenItemsHelper(userId: userId)
+        return try await getFridgeItemsHelper(userId: userId)
     }
 
-    private func getKitchenItemsHelper(userId: String) async throws -> [KitchenInventoryItem] {
+    private func getFridgeItemsHelper(userId: String) async throws -> [FridgeInventoryItem] {
         let snapshot = try await db.collection("users").document(userId)
-            .collection("kitchenInventory")
+            .collection("fridgeInventory")
             .order(by: "expiryDate", descending: false)
             .getDocuments()
 
@@ -260,15 +276,15 @@ class FirebaseManager: ObservableObject {
 
         return snapshot.documents.compactMap { doc in
             guard let data = try? JSONSerialization.data(withJSONObject: doc.data(), options: []) else { return nil }
-            return try? decoder.decode(KitchenInventoryItem.self, from: data)
+            return try? decoder.decode(FridgeInventoryItem.self, from: data)
         }
     }
 
-    func updateKitchenItem(_ item: KitchenInventoryItem) async throws {
+    func updateFridgeItem(_ item: FridgeInventoryItem) async throws {
         ensureAuthStateLoaded()
 
         guard let userId = currentUser?.uid else {
-            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to update kitchen items"])
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to update fridge items"])
         }
 
         let encoder = JSONEncoder()
@@ -277,31 +293,31 @@ class FirebaseManager: ObservableObject {
         let dict = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] ?? [:]
 
         try await db.collection("users").document(userId)
-            .collection("kitchenInventory").document(item.id).setData(dict, merge: true)
-        print("✅ updateKitchenItem: Successfully updated item in Firebase \(item.id)")
+            .collection("fridgeInventory").document(item.id).setData(dict, merge: true)
+        print("✅ updateFridgeItem: Successfully updated item in Firebase \(item.id)")
     }
 
-    func deleteKitchenItem(itemId: String) async throws {
+    func deleteFridgeItem(itemId: String) async throws {
         ensureAuthStateLoaded()
 
         guard let userId = currentUser?.uid else {
-            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to delete kitchen items"])
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to delete fridge items"])
         }
 
         try await db.collection("users").document(userId)
-            .collection("kitchenInventory").document(itemId).delete()
-        print("✅ deleteKitchenItem: Successfully deleted item from Firebase \(itemId)")
+            .collection("fridgeInventory").document(itemId).delete()
+        print("✅ deleteFridgeItem: Successfully deleted item from Firebase \(itemId)")
     }
 
-    func clearKitchenInventory() async throws {
+    func clearFridgeInventory() async throws {
         ensureAuthStateLoaded()
 
         guard let userId = currentUser?.uid else {
-            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to clear kitchen inventory"])
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to clear fridge inventory"])
         }
 
         let snapshot = try await db.collection("users").document(userId)
-            .collection("kitchenInventory").getDocuments()
+            .collection("fridgeInventory").getDocuments()
         for doc in snapshot.documents {
             try await doc.reference.delete()
         }
@@ -445,24 +461,24 @@ class FirebaseManager: ObservableObject {
     }
     
     
-    // MARK: - Kitchen Items
+    // MARK: - Fridge Items
     
-    func saveKitchenItem(_ item: KitchenItem) async throws {
+    func saveFridgeItem(_ item: FridgeItem) async throws {
         guard let userId = currentUser?.uid else { return }
         let itemData = item.toDictionary()
         try await db.collection("users").document(userId)
-            .collection("kitchenItems").document(item.id.uuidString).setData(itemData)
+            .collection("fridgeItems").document(item.id.uuidString).setData(itemData)
     }
     
-    func getKitchenItems() async throws -> [KitchenItem] {
+    func getFridgeItems() async throws -> [FridgeItem] {
         guard let userId = currentUser?.uid else { return [] }
         let snapshot = try await db.collection("users").document(userId)
-            .collection("kitchenItems")
+            .collection("fridgeItems")
             .order(by: "expiryDate")
             .getDocuments()
         
         return snapshot.documents.compactMap { doc in
-            KitchenItem.fromDictionary(doc.data())
+            FridgeItem.fromDictionary(doc.data())
         }
     }
 
@@ -677,7 +693,7 @@ class FirebaseManager: ObservableObject {
         print("✅ User settings saved successfully")
     }
 
-    func getUserSettings() async throws -> (height: Double?, goalWeight: Double?, caloricGoal: Int?, proteinPercent: Int?, carbsPercent: Int?, fatPercent: Int?) {
+    func getUserSettings() async throws -> (height: Double?, goalWeight: Double?, caloricGoal: Int?, proteinPercent: Int?, carbsPercent: Int?, fatPercent: Int?, allergens: [Allergen]?) {
         ensureAuthStateLoaded()
 
         guard let userId = currentUser?.uid else {
@@ -688,7 +704,7 @@ class FirebaseManager: ObservableObject {
             .collection("settings").document("preferences").getDocument()
 
         guard let data = document.data() else {
-            return (nil, nil, nil, nil, nil, nil)
+            return (nil, nil, nil, nil, nil, nil, nil)
         }
 
         let height = data["height"] as? Double
@@ -697,8 +713,9 @@ class FirebaseManager: ObservableObject {
         let proteinPercent = data["proteinPercent"] as? Int
         let carbsPercent = data["carbsPercent"] as? Int
         let fatPercent = data["fatPercent"] as? Int
+        let allergens = (data["allergens"] as? [String])?.compactMap { Allergen(rawValue: $0) }
 
-        return (height, goalWeight, caloricGoal, proteinPercent, carbsPercent, fatPercent)
+        return (height, goalWeight, caloricGoal, proteinPercent, carbsPercent, fatPercent, allergens)
     }
 
     func saveMacroPercentages(protein: Int, carbs: Int, fat: Int) async throws {
@@ -717,6 +734,21 @@ class FirebaseManager: ObservableObject {
         try await db.collection("users").document(userId)
             .collection("settings").document("preferences").setData(data, merge: true)
         print("✅ Macro percentages saved successfully")
+    }
+
+    func saveAllergens(_ allergens: [Allergen]) async throws {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save allergens"])
+        }
+
+        let allergenStrings = allergens.map { $0.rawValue }
+        let data: [String: Any] = ["allergens": allergenStrings]
+
+        try await db.collection("users").document(userId)
+            .collection("settings").document("preferences").setData(data, merge: true)
+        print("✅ Allergens saved successfully")
     }
 
     // MARK: - Fasting Tracking
@@ -857,8 +889,8 @@ class FirebaseManager: ObservableObject {
 }
 
 extension Notification.Name {
-    static let kitchenInventoryUpdated = Notification.Name("kitchenInventoryUpdated")
-    static let navigateToKitchen = Notification.Name("navigateToKitchen")
+    static let fridgeInventoryUpdated = Notification.Name("fridgeInventoryUpdated")
+    static let navigateToFridge = Notification.Name("navigateToFridge")
 }
 
 // MARK: - Response Models for Food Search

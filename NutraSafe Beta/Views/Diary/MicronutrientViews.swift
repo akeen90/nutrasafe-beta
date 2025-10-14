@@ -349,18 +349,24 @@ struct ImprovedMicronutrientView: View {
                     foodsEaten: foodsEaten
                 ))
             } else {
-                // Deficient
-                let severity: DeficiencySeverity = frequency < moderateThreshold ? .high : .moderate
+                // Determine status based on frequency
+                let status: NutrientStatus
+                if frequency >= 40 {
+                    status = .inconsistent
+                } else {
+                    status = .needsTracking
+                }
 
                 deficient.append(NutrientDeficiency(
                     name: nutrient,
                     currentIntake: Double(daysWithNutrient),
                     recommendedIntake: Double(totalDaysTracked),
-                    severity: severity,
+                    status: status,
                     foodSources: getFoodSources(for: nutrient),
                     foodsEaten: foodsEaten,
                     isFrequencyBased: true,
-                    totalDays: totalDaysTracked
+                    totalDays: totalDaysTracked,
+                    trend: nil  // Will add trend calculation later
                 ))
             }
         }
@@ -406,12 +412,12 @@ struct ImprovedMicronutrientView: View {
 
         var recommendations: [String] = []
 
-        // Prioritize high-severity deficiencies
-        let highPriority = deficiencies.filter { $0.severity == .high }
-        let moderatePriority = deficiencies.filter { $0.severity == .moderate }
+        // Prioritize nutrients that need more tracking
+        let needsTracking = deficiencies.filter { $0.status == .needsTracking }
+        let inconsistent = deficiencies.filter { $0.status == .inconsistent }
 
-        if !highPriority.isEmpty {
-            let nutrient = highPriority[0]
+        if !needsTracking.isEmpty {
+            let nutrient = needsTracking[0]
             let days = Int(nutrient.currentIntake)
             let total = Int(nutrient.recommendedIntake)
             let percent = Int(nutrient.percentageOfTarget)
@@ -423,8 +429,8 @@ struct ImprovedMicronutrientView: View {
             }
         }
 
-        if !moderatePriority.isEmpty {
-            let nutrient = moderatePriority[0]
+        if !inconsistent.isEmpty {
+            let nutrient = inconsistent[0]
             recommendations.append("Consider increasing your \(nutrient.name) intake by eating more \(nutrient.foodSources.prefix(3).joined(separator: ", ")).")
         }
 
@@ -459,11 +465,12 @@ struct NutrientDeficiency: Identifiable {
     let name: String
     let currentIntake: Double  // For macros: total grams, For micros: days with nutrient
     let recommendedIntake: Double  // For macros: total grams for period, For micros: total days tracked
-    let severity: DeficiencySeverity
+    let status: NutrientStatus
     let foodSources: [String]
     let foodsEaten: [String]  // Actual foods user has eaten
     let isFrequencyBased: Bool  // true for vitamins/minerals, false for macros
     let totalDays: Int  // Total days in analysis period
+    let trend: TrendDirection?  // Trend compared to previous period
 
     var unit: String {
         if isFrequencyBased {
@@ -502,27 +509,10 @@ struct NutrientDeficiency: Identifiable {
             return "\(String(format: "%.1f", dailyAverage))\(unit) of \(String(format: "%.1f", dailyTarget))\(unit)"
         }
     }
-}
 
-enum DeficiencySeverity {
-    case high
-    case moderate
-    case low
-
-    var color: Color {
-        switch self {
-        case .high: return .red
-        case .moderate: return .orange
-        case .low: return .yellow
-        }
-    }
-
-    var label: String {
-        switch self {
-        case .high: return "Let's Boost This"
-        case .moderate: return "Room for Improvement"
-        case .low: return "Nearly There"
-        }
+    var frequency: Double {
+        guard recommendedIntake > 0 else { return 0 }
+        return (currentIntake / recommendedIntake) * 100
     }
 }
 
@@ -574,6 +564,7 @@ struct DetailedMicronutrientInsightsView: View {
     @State private var selectedPeriod: TimePeriod = .month
     @State private var periodAnalysis: HistoricalNutrientAnalysis?
     @State private var isLoadingPeriod = false
+    @State private var showingCalendarTracker = false
     @EnvironmentObject var firebaseManager: FirebaseManager
 
     var body: some View {
@@ -621,11 +612,58 @@ struct DetailedMicronutrientInsightsView: View {
                     }
                     .padding(.horizontal)
 
+                    // Calendar Tracker Button
+                    Button(action: {
+                        showingCalendarTracker = true
+                    }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "calendar")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.green)
+
+                            Text("View Nutrient Calendar")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(.primary)
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                    }
+                    .padding(.horizontal)
+
                     if let analysis = currentAnalysis, analysis.totalDaysTracked > 0 {
-                        // Nutrients that could use more attention
-                        if !analysis.deficientNutrients.isEmpty {
+                        // Check if we have minimum data threshold
+                        if analysis.totalDaysTracked < 3 {
+                            // Show "keep tracking" message for insufficient data
+                            VStack(spacing: 16) {
+                                Image(systemName: "chart.line.uptrend.xyaxis")
+                                    .font(.system(size: 48))
+                                    .foregroundColor(.green)
+
+                                Text("Keep Tracking")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+
+                                Text("You've tracked \(analysis.totalDaysTracked) \(analysis.totalDaysTracked == 1 ? "day" : "days") so far. Track at least 3 days to see meaningful nutrient patterns.")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 40)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 60)
+                        } else {
+                            // Show full analysis with 3+ days of data
+                            // Nutrients that could use more attention
+                            if !analysis.deficientNutrients.isEmpty {
                             VStack(alignment: .leading, spacing: 12) {
-                                Text("Vitamins & Minerals to Boost")
+                                Text("Nutrient Patterns")
                                     .font(.system(size: 20, weight: .bold))
                                     .padding(.horizontal)
 
@@ -679,6 +717,7 @@ struct DetailedMicronutrientInsightsView: View {
                                 }
                             }
                         }
+                        }  // Close the else block for 3+ days of data
                     } else {
                         // Empty state
                         VStack(spacing: 16) {
@@ -730,6 +769,10 @@ struct DetailedMicronutrientInsightsView: View {
                     }
                 }
             }
+        }
+        .sheet(isPresented: $showingCalendarTracker) {
+            NutrientCalendarTrackerView()
+                .environmentObject(firebaseManager)
         }
         .onAppear {
             // Initialize with historicalAnalysis (month view)
@@ -860,18 +903,24 @@ struct DetailedMicronutrientInsightsView: View {
                     foodsEaten: foodsEaten
                 ))
             } else {
-                // Deficient
-                let severity: DeficiencySeverity = frequency < moderateThreshold ? .high : .moderate
+                // Determine status based on frequency
+                let status: NutrientStatus
+                if frequency >= 40 {
+                    status = .inconsistent
+                } else {
+                    status = .needsTracking
+                }
 
                 deficient.append(NutrientDeficiency(
                     name: nutrient,
                     currentIntake: Double(daysWithNutrient),
                     recommendedIntake: Double(totalDaysTracked),
-                    severity: severity,
+                    status: status,
                     foodSources: getFoodSources(for: nutrient),
                     foodsEaten: foodsEaten,
                     isFrequencyBased: true,
-                    totalDays: totalDaysTracked
+                    totalDays: totalDaysTracked,
+                    trend: nil  // Will add trend calculation later
                 ))
             }
         }
@@ -1023,12 +1072,12 @@ struct DetailedMicronutrientInsightsView: View {
 
         var recommendations: [String] = []
 
-        // Prioritize high-severity deficiencies
-        let highPriority = deficiencies.filter { $0.severity == .high }
-        let moderatePriority = deficiencies.filter { $0.severity == .moderate }
+        // Prioritize nutrients that need more tracking
+        let needsTracking = deficiencies.filter { $0.status == .needsTracking }
+        let inconsistent = deficiencies.filter { $0.status == .inconsistent }
 
-        if !highPriority.isEmpty {
-            let nutrient = highPriority[0]
+        if !needsTracking.isEmpty {
+            let nutrient = needsTracking[0]
             let days = Int(nutrient.currentIntake)
             let total = Int(nutrient.recommendedIntake)
             let percent = Int(nutrient.percentageOfTarget)
@@ -1040,8 +1089,8 @@ struct DetailedMicronutrientInsightsView: View {
             }
         }
 
-        if !moderatePriority.isEmpty {
-            let nutrient = moderatePriority[0]
+        if !inconsistent.isEmpty {
+            let nutrient = inconsistent[0]
             recommendations.append("Consider increasing your \(nutrient.name) intake by eating more \(nutrient.foodSources.prefix(3).joined(separator: ", ")).")
         }
 
@@ -1062,13 +1111,9 @@ struct DeficiencyCard: View {
                         .font(.system(size: 18, weight: .semibold))
 
                     HStack(spacing: 6) {
-                        Circle()
-                            .fill(deficiency.severity.color)
-                            .frame(width: 8, height: 8)
-
-                        Text(deficiency.severity.label)
+                        Text("\(Int(deficiency.frequency))% frequency")
                             .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(deficiency.severity.color)
+                            .foregroundColor(.secondary)
                     }
                 }
 
@@ -1103,7 +1148,7 @@ struct DeficiencyCard: View {
                         .frame(height: 8)
 
                     RoundedRectangle(cornerRadius: 4)
-                        .fill(deficiency.severity.color)
+                        .fill(deficiency.status.color)
                         .frame(width: geometry.size.width * CGFloat(min(deficiency.percentageOfTarget / 100, 1.0)), height: 8)
                 }
             }
@@ -1202,5 +1247,416 @@ struct AdequateNutrientCard: View {
         .padding()
         .background(Color.green.opacity(0.1))
         .cornerRadius(12)
+    }
+}
+
+// MARK: - Nutrient Calendar Tracker
+
+struct NutrientCalendarTrackerView: View {
+    @EnvironmentObject var firebaseManager: FirebaseManager
+    @State private var selectedDate: Date?
+    @State private var foodEntries: [FoodEntry] = []
+    @State private var nutrientMap: [Date: [String: [String]]] = [:] // Date -> Nutrient -> [Foods]
+    @State private var currentMonth: Date = Date()
+    @State private var isLoading = true
+
+    private let calendar = Calendar.current
+    private let allNutrients = ["Iron", "Calcium", "Vitamin C", "Omega-3", "Vitamin D", "B Vitamins", "Magnesium", "Zinc"]
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Header
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Nutrient Calendar")
+                            .font(.system(size: 28, weight: .bold))
+
+                        Text("Track your nutrient intake over time")
+                            .font(.system(size: 15))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal)
+                    .padding(.top)
+
+                    // Month Navigation
+                    HStack {
+                        Button(action: {
+                            currentMonth = calendar.date(byAdding: .month, value: -1, to: currentMonth) ?? currentMonth
+                            loadMonthData()
+                        }) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.primary)
+                        }
+
+                        Spacer()
+
+                        Text(monthYearString(from: currentMonth))
+                            .font(.system(size: 20, weight: .semibold))
+
+                        Spacer()
+
+                        Button(action: {
+                            let nextMonth = calendar.date(byAdding: .month, value: 1, to: currentMonth) ?? currentMonth
+                            if nextMonth <= Date() {
+                                currentMonth = nextMonth
+                                loadMonthData()
+                            }
+                        }) {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(canGoToNextMonth() ? .primary : .gray.opacity(0.3))
+                        }
+                        .disabled(!canGoToNextMonth())
+                    }
+                    .padding(.horizontal)
+
+                    if isLoading {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 60)
+                    } else {
+                        // Calendar Grid
+                        CalendarGridView(
+                            month: currentMonth,
+                            nutrientMap: nutrientMap,
+                            selectedDate: $selectedDate
+                        )
+                        .padding(.horizontal)
+
+                        // Selected Day Detail
+                        if let selected = selectedDate, let nutrients = nutrientMap[calendar.startOfDay(for: selected)] {
+                            DayNutrientDetailView(date: selected, nutrients: nutrients)
+                                .padding(.horizontal)
+                        }
+                    }
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Today") {
+                        currentMonth = Date()
+                        selectedDate = Date()
+                        loadMonthData()
+                    }
+                    .foregroundColor(.green)
+                }
+            }
+        }
+        .onAppear {
+            loadMonthData()
+        }
+    }
+
+    private func loadMonthData() {
+        isLoading = true
+
+        Task {
+            do {
+                // Get start and end of month
+                let components = calendar.dateComponents([.year, .month], from: currentMonth)
+                guard let monthStart = calendar.date(from: components),
+                      let monthEnd = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: monthStart) else {
+                    await MainActor.run { isLoading = false }
+                    return
+                }
+
+                // Load all entries for this month
+                let entries = try await FirebaseManager.shared.getFoodEntriesInRange(from: monthStart, to: monthEnd)
+
+                // Process entries to build nutrient map
+                var map: [Date: [String: [String]]] = [:]
+
+                for entry in entries {
+                    let dayStart = calendar.startOfDay(for: entry.date)
+                    let nutrients = getNutrientsInFood(entry.foodName, entry: entry)
+
+                    if map[dayStart] == nil {
+                        map[dayStart] = [:]
+                    }
+
+                    for nutrient in nutrients {
+                        if map[dayStart]?[nutrient] == nil {
+                            map[dayStart]?[nutrient] = []
+                        }
+                        map[dayStart]?[nutrient]?.append(entry.foodName)
+                    }
+                }
+
+                await MainActor.run {
+                    self.foodEntries = entries
+                    self.nutrientMap = map
+                    self.isLoading = false
+                }
+            } catch {
+                print("Error loading calendar data: \(error)")
+                await MainActor.run {
+                    self.isLoading = false
+                }
+            }
+        }
+    }
+
+    private func getNutrientsInFood(_ foodName: String, entry: FoodEntry) -> [String] {
+        let name = foodName.lowercased()
+        var nutrients: [String] = []
+
+        // Use same logic as ImprovedMicronutrientView
+        if let micronutrients = entry.micronutrientProfile {
+            if let vitaminC = micronutrients.vitamins["vitaminC"], vitaminC > 1 {
+                nutrients.append("Vitamin C")
+            }
+            if let vitaminD = micronutrients.vitamins["vitaminD"], vitaminD > 0.5 {
+                nutrients.append("Vitamin D")
+            }
+            let bVitamins = ["thiamine", "riboflavin", "niacin", "pantothenicAcid", "vitaminB6", "biotin", "folate", "vitaminB12"]
+            let hasBVitamins = bVitamins.contains { vitaminKey in
+                if let amount = micronutrients.vitamins[vitaminKey], amount > 0.1 {
+                    return true
+                }
+                return false
+            }
+            if hasBVitamins {
+                nutrients.append("B Vitamins")
+            }
+
+            if let calcium = micronutrients.minerals["calcium"], calcium > 50 {
+                nutrients.append("Calcium")
+            }
+            if let iron = micronutrients.minerals["iron"], iron > 0.5 {
+                nutrients.append("Iron")
+            }
+            if let magnesium = micronutrients.minerals["magnesium"], magnesium > 20 {
+                nutrients.append("Magnesium")
+            }
+            if let zinc = micronutrients.minerals["zinc"], zinc > 0.5 {
+                nutrients.append("Zinc")
+            }
+
+            if entry.fat > 10 || name.contains("salmon") || name.contains("tuna") || name.contains("mackerel") ||
+               name.contains("sardine") || name.contains("walnut") || name.contains("chia") ||
+               name.contains("flax") || name.contains("hemp") {
+                nutrients.append("Omega-3")
+            }
+        } else {
+            // Fallback keyword matching (simplified for brevity)
+            if name.contains("iron") || entry.protein > 15 { nutrients.append("Iron") }
+            if name.contains("calcium") || name.contains("milk") { nutrients.append("Calcium") }
+            if name.contains("orange") || name.contains("vitamin c") { nutrients.append("Vitamin C") }
+            if name.contains("salmon") || name.contains("fish") { nutrients.append("Omega-3") }
+        }
+
+        return nutrients
+    }
+
+    private func monthYearString(from date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM yyyy"
+        return formatter.string(from: date)
+    }
+
+    private func canGoToNextMonth() -> Bool {
+        guard let nextMonth = calendar.date(byAdding: .month, value: 1, to: currentMonth) else {
+            return false
+        }
+        return nextMonth <= Date()
+    }
+}
+
+// MARK: - Calendar Grid
+
+struct CalendarGridView: View {
+    let month: Date
+    let nutrientMap: [Date: [String: [String]]]
+    @Binding var selectedDate: Date?
+
+    private let calendar = Calendar.current
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
+
+    var body: some View {
+        VStack(spacing: 8) {
+            // Weekday headers
+            HStack(spacing: 4) {
+                ForEach(["S", "M", "T", "W", "T", "F", "S"], id: \.self) { day in
+                    Text(day)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+
+            // Calendar days
+            LazyVGrid(columns: columns, spacing: 4) {
+                ForEach(daysInMonth(), id: \.self) { date in
+                    if let date = date {
+                        CalendarDayCell(
+                            date: date,
+                            nutrients: nutrientMap[calendar.startOfDay(for: date)] ?? [:],
+                            isSelected: selectedDate.map { calendar.isDate($0, inSameDayAs: date) } ?? false,
+                            isToday: calendar.isDateInToday(date)
+                        )
+                        .onTapGesture {
+                            selectedDate = date
+                        }
+                    } else {
+                        Color.clear
+                            .frame(height: 60)
+                    }
+                }
+            }
+        }
+    }
+
+    private func daysInMonth() -> [Date?] {
+        guard let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: month)),
+              let monthRange = calendar.range(of: .day, in: .month, for: monthStart) else {
+            return []
+        }
+
+        let firstWeekday = calendar.component(.weekday, from: monthStart)
+        let leadingEmptyDays = firstWeekday - 1
+
+        var days: [Date?] = Array(repeating: nil, count: leadingEmptyDays)
+
+        for day in monthRange {
+            if let date = calendar.date(byAdding: .day, value: day - 1, to: monthStart) {
+                days.append(date)
+            }
+        }
+
+        return days
+    }
+}
+
+// MARK: - Calendar Day Cell
+
+struct CalendarDayCell: View {
+    let date: Date
+    let nutrients: [String: [String]]
+    let isSelected: Bool
+    let isToday: Bool
+
+    private let calendar = Calendar.current
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text("\(calendar.component(.day, from: date))")
+                .font(.system(size: 14, weight: isToday ? .bold : .regular))
+                .foregroundColor(isToday ? .green : .primary)
+
+            // Nutrient indicator dots
+            HStack(spacing: 2) {
+                ForEach(Array(nutrients.keys.prefix(3)), id: \.self) { nutrient in
+                    Circle()
+                        .fill(colorForNutrient(nutrient))
+                        .frame(width: 4, height: 4)
+                }
+
+                if nutrients.count > 3 {
+                    Text("+\(nutrients.count - 3)")
+                        .font(.system(size: 8, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+            }
+            .frame(height: 10)
+        }
+        .frame(height: 60)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(isSelected ? Color.green.opacity(0.2) : (nutrients.isEmpty ? Color.clear : Color(.systemGray6)))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(isSelected ? Color.green : Color.clear, lineWidth: 2)
+        )
+    }
+
+    private func colorForNutrient(_ nutrient: String) -> Color {
+        switch nutrient {
+        case "Iron": return .red
+        case "Calcium": return .blue
+        case "Vitamin C": return .orange
+        case "Omega-3": return .teal
+        case "Vitamin D": return .yellow
+        case "B Vitamins": return .purple
+        case "Magnesium": return .green
+        case "Zinc": return .gray
+        default: return .gray
+        }
+    }
+}
+
+// MARK: - Day Nutrient Detail
+
+struct DayNutrientDetailView: View {
+    let date: Date
+    let nutrients: [String: [String]]
+
+    private let calendar = Calendar.current
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(dateString(from: date))
+                .font(.system(size: 20, weight: .bold))
+
+            if nutrients.isEmpty {
+                Text("No nutrients tracked on this day")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 20)
+            } else {
+                ForEach(Array(nutrients.keys.sorted()), id: \.self) { nutrient in
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Circle()
+                                .fill(colorForNutrient(nutrient))
+                                .frame(width: 12, height: 12)
+
+                            Text(nutrient)
+                                .font(.system(size: 16, weight: .semibold))
+                        }
+
+                        Text("Foods eaten:")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.secondary)
+
+                        Text(nutrients[nutrient]?.joined(separator: ", ") ?? "")
+                            .font(.system(size: 13))
+                            .foregroundColor(.primary)
+                            .lineLimit(3)
+                    }
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+                }
+            }
+        }
+        .padding()
+        .background(Color(.systemGray5))
+        .cornerRadius(16)
+    }
+
+    private func dateString(from date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE, MMM d"
+        return formatter.string(from: date)
+    }
+
+    private func colorForNutrient(_ nutrient: String) -> Color {
+        switch nutrient {
+        case "Iron": return .red
+        case "Calcium": return .blue
+        case "Vitamin C": return .orange
+        case "Omega-3": return .teal
+        case "Vitamin D": return .yellow
+        case "B Vitamins": return .purple
+        case "Magnesium": return .green
+        case "Zinc": return .gray
+        default: return .gray
+        }
     }
 }

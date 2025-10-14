@@ -64,7 +64,7 @@ struct FoodDetailViewFromSearch: View {
     @State private var servingSizeText: String = "" // Editable serving size (legacy)
     @State private var servingAmount: String = "1" // Split serving size - amount only
     @State private var servingUnit: String = "g" // Split serving size - unit only
-    @State private var showingKitchenAddSheet: Bool = false
+    @State private var showingFridgeAddSheet: Bool = false
 
     // Micronutrient data
     @StateObject private var micronutrientManager = MicronutrientManager.shared
@@ -87,7 +87,7 @@ struct FoodDetailViewFromSearch: View {
             }
         } else {
             // Reflect destination selection
-            return destination == .kitchen ? "Add to Kitchen" : "Add to Diary"
+            return destination == .fridge ? "Add to Fridge" : "Add to Diary"
         }
     }
     
@@ -1192,10 +1192,10 @@ struct FoodDetailViewFromSearch: View {
                 photoType: .barcode
             )
         }
-        // Kitchen add flow
-        .sheet(isPresented: $showingKitchenAddSheet) {
-            // Reuse Kitchen add sheet for details like expiry/location
-            AddFoundFoodToKitchenSheet(food: food) { tab in
+        // Fridge add flow
+        .sheet(isPresented: $showingFridgeAddSheet) {
+            // Reuse Fridge add sheet for details like expiry/location
+            AddFoundFoodToFridgeSheet(food: food) { tab in
                 selectedTab = tab
                 dismiss()
             }
@@ -1386,10 +1386,10 @@ struct FoodDetailViewFromSearch: View {
             micronutrientProfile: micronutrientProfile
         )
 
-        // Add to diary or kitchen based on destination
-        if destination == .kitchen {
-            // Show kitchen detail sheet where user can set expiry, location, etc.
-            showingKitchenAddSheet = true
+        // Add to diary or fridge based on destination
+        if destination == .fridge {
+            // Show fridge detail sheet where user can set expiry, location, etc.
+            showingFridgeAddSheet = true
         } else {
             // Add to diary using DiaryDataManager
             // Get the preselected date from UserDefaults, or use today if not available
@@ -2303,7 +2303,7 @@ struct FoodDetailViewFromSearch: View {
                 }
                 
                 // Meal Time Selector (Diary only)
-                if sourceType != .kitchen {
+                if sourceType != .fridge {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("MEAL TIME")
                             .font(.system(size: 11, weight: .bold, design: .rounded))
@@ -2336,8 +2336,8 @@ struct FoodDetailViewFromSearch: View {
                 
                 // Add Button
                 Button(action: {
-                    if destination == .kitchen {
-                        showingKitchenAddSheet = true
+                    if destination == .fridge {
+                        showingFridgeAddSheet = true
                     } else {
                         addToFoodLog()
                     }
