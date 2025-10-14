@@ -316,7 +316,26 @@ struct FoodDetailViewFromSearch: View {
     
     // Standardize ingredients to UK spelling and grammar
     private func standardizeToUKSpelling(_ ingredient: String) -> String {
-        var standardized = ingredient
+        var standardized = ingredient.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Remove multiple consecutive spaces
+        while standardized.contains("  ") {
+            standardized = standardized.replacingOccurrences(of: "  ", with: " ")
+        }
+
+        // Fix common punctuation issues
+        standardized = standardized.replacingOccurrences(of: " ,", with: ",")
+        standardized = standardized.replacingOccurrences(of: " .", with: ".")
+        standardized = standardized.replacingOccurrences(of: "( ", with: "(")
+        standardized = standardized.replacingOccurrences(of: " )", with: ")")
+        standardized = standardized.replacingOccurrences(of: " :", with: ":")
+
+        // Ensure space after commas (for proper ingredient separation)
+        standardized = standardized.replacingOccurrences(of: ",", with: ", ")
+        // Then remove double spaces that might have been created
+        while standardized.contains("  ") {
+            standardized = standardized.replacingOccurrences(of: "  ", with: " ")
+        }
 
         // US to UK spelling conversions (food-specific)
         let spellingMap: [String: String] = [
@@ -324,31 +343,39 @@ struct FoodDetailViewFromSearch: View {
             "flavor": "flavour",
             "flavoring": "flavouring",
             "flavored": "flavoured",
+            "flavorings": "flavourings",
             "color": "colour",
             "coloring": "colouring",
             "colored": "coloured",
+            "colorings": "colourings",
             "favorite": "favourite",
+            "favorites": "favourites",
             "honor": "honour",
             "labor": "labour",
 
             // Chemical/additive spellings
             "sulfur": "sulphur",
             "sulfate": "sulphate",
+            "sulfates": "sulphates",
             "sulfite": "sulphite",
+            "sulfites": "sulphites",
             "aluminum": "aluminium",
             "fiber": "fibre",
+            "fibers": "fibres",
 
             // Food terms
             "center": "centre",
             "liter": "litre",
+            "liters": "litres",
             "meter": "metre",
+            "meters": "metres",
             "milliliter": "millilitre",
-            "gram": "gramme",
+            "milliliters": "millilitres",
 
-            // -ize to -ise
+            // -ize to -ise (common food industry terms)
             "stabilizer": "stabiliser",
+            "stabilizers": "stabilisers",
             "stabilized": "stabilised",
-            "emulsifier": "emulsifier", // Already correct
             "crystallize": "crystallise",
             "crystallized": "crystallised",
             "caramelize": "caramelise",
@@ -357,9 +384,12 @@ struct FoodDetailViewFromSearch: View {
             "pasteurized": "pasteurised",
             "homogenize": "homogenise",
             "homogenized": "homogenised",
+            "optimize": "optimise",
+            "optimized": "optimised",
 
             // -or to -our
-            "vapor": "vapour"
+            "vapor": "vapour",
+            "vapors": "vapours"
         ]
 
         // Apply all spelling conversions (case-insensitive word boundary matching)
@@ -376,9 +406,77 @@ struct FoodDetailViewFromSearch: View {
             }
         }
 
-        // Capitalize first letter
+        // Fix common grammar issues
+        // Convert all-caps words to proper case (except known abbreviations)
+        let knownAbbreviations = ["E", "B", "C", "D", "K", "GMO", "BHA", "BHT", "TBHQ", "MSG", "DNA", "RNA", "USA", "UK", "EU"]
+        let words = standardized.components(separatedBy: " ")
+        var correctedWords: [String] = []
+
+        for word in words {
+            // Check if word is all uppercase and longer than 2 characters
+            if word.count > 2 && word.uppercased() == word && !word.contains("(") && !word.contains(")") {
+                // Check if it's not a known abbreviation
+                let isAbbreviation = knownAbbreviations.contains { abbr in
+                    word.hasPrefix(abbr) && (word.count == abbr.count || !word.dropFirst(abbr.count).first!.isLetter)
+                }
+
+                if !isAbbreviation {
+                    // Convert to lowercase, will be properly capitalized later
+                    correctedWords.append(word.lowercased())
+                } else {
+                    correctedWords.append(word)
+                }
+            } else {
+                correctedWords.append(word)
+            }
+        }
+        standardized = correctedWords.joined(separator: " ")
+
+        // Proper capitalization rules for ingredients
+        // Capitalize first letter only
         if !standardized.isEmpty {
-            standardized = standardized.prefix(1).uppercased() + standardized.dropFirst()
+            standardized = standardized.prefix(1).uppercased() + standardized.dropFirst().lowercased()
+        }
+
+        // Re-capitalize words that should always be capitalized (E-numbers, vitamins)
+        // E-numbers (e.g., E100, E330)
+        let eNumberPattern = "\\be\\d+"
+        if let eRegex = try? NSRegularExpression(pattern: eNumberPattern, options: [.caseInsensitive]) {
+            let matches = eRegex.matches(in: standardized, range: NSRange(standardized.startIndex..., in: standardized))
+            for match in matches.reversed() {
+                if let range = Range(match.range, in: standardized) {
+                    let eNumber = String(standardized[range]).uppercased()
+                    standardized.replaceSubrange(range, with: eNumber)
+                }
+            }
+        }
+
+        // Vitamins (e.g., vitamin B12, vitamin C)
+        let vitaminPattern = "vitamin\\s+([a-z]\\d*)"
+        if let vitRegex = try? NSRegularExpression(pattern: vitaminPattern, options: [.caseInsensitive]) {
+            let matches = vitRegex.matches(in: standardized, range: NSRange(standardized.startIndex..., in: standardized))
+            for match in matches.reversed() {
+                if let range = Range(match.range, in: standardized),
+                   let vitRange = Range(match.range(at: 1), in: standardized) {
+                    let vitamin = String(standardized[vitRange]).uppercased()
+                    let replacement = "vitamin " + vitamin
+                    standardized.replaceSubrange(range, with: replacement)
+                }
+            }
+        }
+
+        // Capitalize proper nouns (common food ingredients)
+        let properNouns = ["riboflavin", "thiamin", "niacin", "ribonucleotide", "ribonucleotides"]
+        for noun in properNouns {
+            let pattern = "\\b\(noun)\\b"
+            if let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) {
+                let range = NSRange(standardized.startIndex..., in: standardized)
+                standardized = regex.stringByReplacingMatches(
+                    in: standardized,
+                    range: range,
+                    withTemplate: noun.lowercased()
+                )
+            }
         }
 
         return standardized.trimmingCharacters(in: .whitespacesAndNewlines)
