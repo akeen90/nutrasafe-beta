@@ -1318,7 +1318,7 @@ Check labels carefully - choose naturally colored alternatives, especially for c
 Must be labeled clearly - products containing it must carry hyperactivity warnings`,
             effects_verdict: 'caution',
             synonyms: ['tartrazine', 'yellow 5', 'fd&c yellow 5'],
-            matches: ['tartrazine', 'yellow'],
+            matches: ['tartrazine', 'yellow 5', 'fd&c yellow 5', 'e102'],
             sources: []
         },
         'E282': {
