@@ -178,9 +178,12 @@ struct DiaryTabView: View {
                     // Expanded date picker (when shown)
                     if showingDatePicker {
                         VStack(spacing: 0) {
-                            // Today button
-                            HStack {
-                                Spacer()
+                            // Month/Year header with Today button and navigation arrows
+                            HStack(spacing: 12) {
+                                Text(formatMonthYear(selectedDate))
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundColor(.primary)
+
                                 Button(action: {
                                     selectedDate = Date()
                                     showingDatePicker = false
@@ -195,9 +198,35 @@ struct DiaryTabView: View {
                                                 .fill(Color.blue.opacity(0.1))
                                         )
                                 }
+
+                                Spacer()
+
+                                // Month navigation arrows
+                                HStack(spacing: 12) {
+                                    Button(action: {
+                                        if let newDate = Calendar.current.date(byAdding: .month, value: -1, to: selectedDate) {
+                                            selectedDate = newDate
+                                        }
+                                    }) {
+                                        Image(systemName: "chevron.left")
+                                            .font(.system(size: 16, weight: .semibold))
+                                            .foregroundColor(.blue)
+                                    }
+
+                                    Button(action: {
+                                        if let newDate = Calendar.current.date(byAdding: .month, value: 1, to: selectedDate) {
+                                            selectedDate = newDate
+                                        }
+                                    }) {
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 16, weight: .semibold))
+                                            .foregroundColor(.blue)
+                                    }
+                                }
                             }
                             .padding(.horizontal, 16)
-                            .padding(.top, 8)
+                            .padding(.top, 12)
+                            .padding(.bottom, 8)
 
                             DatePicker(
                                 "Select Date",
