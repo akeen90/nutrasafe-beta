@@ -1304,6 +1304,7 @@ struct FoodDetailViewFromSearch: View {
                         .foregroundColor(.orange)
                 }
             }
+            .padding(.top, 8)
             .padding(.horizontal, 20)
 
             if let ingredientsList = getIngredientsList() {
@@ -1616,8 +1617,8 @@ struct FoodDetailViewFromSearch: View {
     
     
     private var ingredientVerificationSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .center, spacing: 16) {
+            VStack(alignment: .center, spacing: 12) {
                 HStack {
                     Image(systemName: "star.circle.fill")
                         .font(.title2)
@@ -1626,17 +1627,18 @@ struct FoodDetailViewFromSearch: View {
                         .font(.system(size: 22, weight: .bold))
                         .foregroundColor(.primary)
                 }
-                
+
                 Text("To get the most of this food's benefits, verify it yourself! This only takes 30 seconds and unlocks the complete nutritional profile.")
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.primary)
                     .lineLimit(nil)
-                
+                    .multilineTextAlignment(.center)
+
                 Text("Add photos to unlock verified:")
                     .font(.system(size: 15, weight: .medium))
                     .foregroundColor(.secondary)
                     .lineLimit(nil)
-                
+
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
                         Image(systemName: "checkmark.circle.fill")
