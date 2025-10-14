@@ -1136,7 +1136,7 @@ struct FoodDetailViewFromSearch: View {
             Text(String(format: unit == "mg" ? "%.0f" : "%.1f", perServing))
                 .font(.system(size: 16, weight: .semibold, design: .rounded))
                 .foregroundColor(.primary)
-                .frame(width: 40, alignment: .trailing)
+                .frame(width: 55, alignment: .trailing)
             
             // Unit column (left aligned, consistent position)
             Text(unit)
