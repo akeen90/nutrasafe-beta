@@ -593,7 +593,6 @@ struct FoodDetailViewFromSearch: View {
         let additiveDatabase = [
             // Artificial Colors - Common in candy like Nerds
             ("brilliant blue fcf", "E133", "Artificial Color", "Synthetic", true, "Moderate", "Bright blue synthetic dye used to make foods look appealing. Made in laboratories from petroleum-based chemicals."),
-            ("tartrazine", "E102", "Artificial Color", "Synthetic", true, "High", "Yellow synthetic dye that can trigger hyperactivity and attention problems in children. Made from coal tar derivatives."),
             ("sunset yellow fcf", "E110", "Artificial Color", "Synthetic", true, "High", "Orange-yellow synthetic dye linked to behavioral issues in children. Created from petroleum-based chemicals."),
             ("allura red", "E129", "Artificial Color", "Synthetic", true, "High", "Bright red synthetic dye that may cause hyperactivity. Common in candies and processed foods."),
             ("quinoline yellow", "E104", "Artificial Color", "Synthetic", true, "High", "Yellow synthetic dye that requires warning labels about potential effects on children's behavior."),
@@ -1294,18 +1293,19 @@ struct FoodDetailViewFromSearch: View {
     
     private var ingredientsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack {
+            VStack(spacing: 4) {
                 Text("Ingredients")
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.primary)
 
                 if getIngredientsStatus() == .pending {
-                    Text("(⏳ Awaiting Verification)")
-                        .font(.system(size: 12).italic())
+                    Text("⏳ Awaiting Verification")
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.orange)
                 }
             }
-            .padding(.top, 8)
-            .padding(.horizontal, 20)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
 
             if let ingredientsList = getIngredientsList() {
                 let cleanIngredients = ingredientsList
