@@ -65,10 +65,15 @@ struct FoodDetailViewFromSearch: View {
     @State private var servingAmount: String = "1" // Split serving size - amount only
     @State private var servingUnit: String = "g" // Split serving size - unit only
     @State private var showingKitchenAddSheet: Bool = false
-    
+
     // Micronutrient data
     @StateObject private var micronutrientManager = MicronutrientManager.shared
     @State private var currentMicronutrients: MicronutrientProfile?
+
+    // Allergen warning
+    @EnvironmentObject var firebaseManager: FirebaseManager
+    @State private var userAllergens: [Allergen] = []
+    @State private var detectedUserAllergens: [Allergen] = []
     
     // Watch tabs (Additive Watch, Allergy Watch, Vitamins & Minerals)
     @State private var selectedWatchTab: WatchTab = .additives
@@ -444,8 +449,105 @@ struct FoodDetailViewFromSearch: View {
         
         return detectedAllergens
     }
-    
-    
+
+    // Load user's allergens from Firebase and detect which ones are in this food
+    private func loadAndDetectUserAllergens() async {
+        do {
+            let settings = try await firebaseManager.getUserSettings()
+            let savedAllergens = settings.allergens ?? []
+
+            await MainActor.run {
+                userAllergens = savedAllergens
+                detectedUserAllergens = detectUserAllergensInFood(userAllergens: savedAllergens)
+            }
+        } catch {
+            print("Failed to load user allergens: \(error.localizedDescription)")
+        }
+    }
+
+    // Check if food contains any of the user's allergens
+    private func detectUserAllergensInFood(userAllergens: [Allergen]) -> [Allergen] {
+        // Get food name and ingredients
+        let foodName = displayFood.name.lowercased()
+        let brand = displayFood.brand?.lowercased() ?? ""
+        let ingredients = getIngredientsList()?.map { $0.lowercased() } ?? []
+
+        let searchText = ([foodName, brand] + ingredients).joined(separator: " ")
+
+        var detected: [Allergen] = []
+
+        for allergen in userAllergens {
+            // Check if any of the allergen's keywords appear in the food
+            let found = allergen.keywords.contains { keyword in
+                searchText.contains(keyword.lowercased())
+            }
+
+            if found {
+                detected.append(allergen)
+            }
+        }
+
+        return detected
+    }
+
+    // MARK: - Allergen Warning Banner View
+    private var allergenWarningBanner: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header with warning icon
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.white)
+
+                Text("ALLERGEN WARNING")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.white)
+
+                Spacer()
+            }
+
+            // Warning message
+            Text("This food contains allergens you've marked:")
+                .font(.system(size: 14))
+                .foregroundColor(.white.opacity(0.9))
+
+            // List of detected allergens in a wrapping layout
+            let columns = [
+                GridItem(.adaptive(minimum: 100), spacing: 8)
+            ]
+
+            LazyVGrid(columns: columns, alignment: .center, spacing: 8) {
+                ForEach(detectedUserAllergens, id: \.rawValue) { allergen in
+                    HStack(spacing: 6) {
+                        Text(allergen.icon)
+                            .font(.system(size: 16))
+
+                        Text(allergen.displayName)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.white.opacity(0.2))
+                    .cornerRadius(16)
+                    .fixedSize(horizontal: true, vertical: false)
+                }
+            }
+        }
+        .padding(16)
+        .background(
+            LinearGradient(
+                colors: [Color.red, Color.orange],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .cornerRadius(12)
+        .shadow(color: Color.red.opacity(0.3), radius: 8, x: 0, y: 4)
+    }
+
+
     private func getDetectedAdditives() -> [DetailedAdditive] {
         print("getDetectedAdditives: displayFood.additives = \(String(describing: displayFood.additives))")
         print("getDetectedAdditives: displayFood.name = \(displayFood.name)")
@@ -661,8 +763,12 @@ struct FoodDetailViewFromSearch: View {
             ScrollView {
                 VStack(spacing: 24) {
                     foodHeaderView
-                    
-                    
+
+                    // Allergen Warning Banner - Show only if allergens detected
+                    if !detectedUserAllergens.isEmpty {
+                        allergenWarningBanner
+                    }
+
                     // Serving and Meal Controls Section
                     servingControlsSection
                         .onAppear {
@@ -740,6 +846,11 @@ struct FoodDetailViewFromSearch: View {
             }
         }
         .onAppear {
+            // Load user allergens and detect if present in this food
+            Task {
+                await loadAndDetectUserAllergens()
+            }
+
             // Check if nutrition data is missing (for any food - editing or fresh search)
             if food.calories == 0 || (food.fiber == 0 && food.sugar == 0 && food.sodium == 0) {
                 // Try to fetch fresh data from Firebase
@@ -2043,6 +2154,7 @@ struct FoodDetailViewFromSearch: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, 16)
+                    .padding(.vertical, 16)
                     .background(.green)
                     .cornerRadius(12)
                 }
