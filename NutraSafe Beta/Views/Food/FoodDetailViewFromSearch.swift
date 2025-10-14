@@ -492,7 +492,7 @@ struct FoodDetailViewFromSearch: View {
 
     // MARK: - Allergen Warning Banner View
     private var allergenWarningBanner: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .center, spacing: 12) {
             // Header with warning icon
             HStack(spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")
@@ -502,21 +502,17 @@ struct FoodDetailViewFromSearch: View {
                 Text("ALLERGEN WARNING")
                     .font(.system(size: 16, weight: .bold))
                     .foregroundColor(.white)
-
-                Spacer()
             }
 
             // Warning message
             Text("This food contains allergens you've marked:")
                 .font(.system(size: 14))
                 .foregroundColor(.white.opacity(0.9))
+                .multilineTextAlignment(.center)
 
-            // List of detected allergens in a wrapping layout
-            let columns = [
-                GridItem(.adaptive(minimum: 100), spacing: 8)
-            ]
-
-            LazyVGrid(columns: columns, alignment: .center, spacing: 8) {
+            // List of detected allergens in a centered wrapping layout
+            HStack(spacing: 8) {
+                Spacer(minLength: 0)
                 ForEach(detectedUserAllergens, id: \.rawValue) { allergen in
                     HStack(spacing: 6) {
                         Text(allergen.icon)
@@ -526,14 +522,16 @@ struct FoodDetailViewFromSearch: View {
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(.white)
                             .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .background(Color.white.opacity(0.2))
                     .cornerRadius(16)
-                    .fixedSize(horizontal: true, vertical: false)
                 }
+                Spacer(minLength: 0)
             }
+            .frame(maxWidth: .infinity)
         }
         .padding(16)
         .background(
@@ -1042,14 +1040,15 @@ struct FoodDetailViewFromSearch: View {
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundColor(.secondary)
                     .tracking(0.5)
-                
+                    .padding(.horizontal, 20)
+
                 // Per serving first
                 HStack(alignment: .bottom, spacing: 8) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Per Serving")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(.primary)
-                        
+
                         HStack(alignment: .bottom, spacing: 4) {
                             Text(String(format: "%.0f", adjustedCalories))
                                 .font(.system(size: 28, weight: .bold, design: .rounded))
@@ -1059,20 +1058,20 @@ struct FoodDetailViewFromSearch: View {
                                 .foregroundColor(.secondary)
                                 .padding(.bottom, 2)
                         }
-                        
+
                         Text("\(quantityMultiplier == 0.5 ? "½" : String(format: "%.0f", quantityMultiplier))× \(servingSizeText.isEmpty ? (food.servingDescription ?? "serving") : servingSizeText)")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.secondary)
                     }
-                    
+
                     Spacer()
-                    
+
                     // Per 100g second
                     VStack(alignment: .trailing, spacing: 4) {
                         Text("Per 100g")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(.primary)
-                        
+
                         HStack(alignment: .bottom, spacing: 4) {
                             Text(String(format: "%.0f", displayFood.calories))
                                 .font(.system(size: 24, weight: .bold, design: .rounded))
@@ -1084,15 +1083,16 @@ struct FoodDetailViewFromSearch: View {
                         }
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(.blue.opacity(0.3 - 0.22))
+                        .fill(Color(.systemBackground))
                         .overlay(
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(.blue.opacity(0.2), lineWidth: 1)
+                                .stroke(Color(.systemGray4), lineWidth: 1.5)
                         )
+                        .shadow(color: Color.black.opacity(0.03), radius: 2, x: 0, y: 1)
                 )
             }
             
@@ -1290,25 +1290,37 @@ struct FoodDetailViewFromSearch: View {
             HStack {
                 Text("Ingredients")
                     .font(.system(size: 18, weight: .semibold))
-                
+
                 if getIngredientsStatus() == .pending {
                     Text("(⏳ Awaiting Verification)")
                         .font(.system(size: 12).italic())
                         .foregroundColor(.orange)
                 }
             }
-            
+            .padding(.horizontal, 20)
+
             if let ingredientsList = getIngredientsList() {
                 let cleanIngredients = ingredientsList
                     .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                     .filter { !$0.isEmpty }
                     .joined(separator: ", ")
-                
+
                 Text(cleanIngredients.isEmpty ? "No ingredients found" : cleanIngredients)
                     .font(.system(size: 14))
                     .foregroundColor(.primary)
                     .lineLimit(nil)
                     .multilineTextAlignment(.leading)
+                    .padding(20)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color(.systemBackground))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(Color(.systemGray4), lineWidth: 1.5)
+                            )
+                            .shadow(color: Color.black.opacity(0.03), radius: 2, x: 0, y: 1)
+                    )
             } else {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
