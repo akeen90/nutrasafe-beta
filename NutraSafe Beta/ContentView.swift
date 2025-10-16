@@ -5869,8 +5869,26 @@ struct AddFoodMainView: View {
                     DestinationSelector(selectedDestination: $destination)
                         .padding(.horizontal, 16)
 
-                    // Compact option selector above search
-                    HStack(spacing: 8) {
+                    // Option selector - evenly distributed like Diary/Fridge above
+                    HStack(spacing: 0) {
+                        // Search button
+                        Button(action: { selectedAddOption = .search }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "magnifyingglass")
+                                    .font(.system(size: 14, weight: .medium))
+                                Text("Search")
+                                    .font(.system(size: 14, weight: .medium))
+                            }
+                            .foregroundColor(selectedAddOption == .search ? .white : .primary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(selectedAddOption == .search ? Color.blue : Color(.systemGray6))
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+
                         // Manual button
                         Button(action: { selectedAddOption = .manual }) {
                             HStack(spacing: 6) {
@@ -5880,8 +5898,8 @@ struct AddFoodMainView: View {
                                     .font(.system(size: 14, weight: .medium))
                             }
                             .foregroundColor(selectedAddOption == .manual ? .white : .primary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
                             .background(
                                 RoundedRectangle(cornerRadius: 8)
                                     .fill(selectedAddOption == .manual ? Color.blue : Color(.systemGray6))
@@ -5898,16 +5916,14 @@ struct AddFoodMainView: View {
                                     .font(.system(size: 14, weight: .medium))
                             }
                             .foregroundColor(selectedAddOption == .barcode ? .white : .primary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
                             .background(
                                 RoundedRectangle(cornerRadius: 8)
                                     .fill(selectedAddOption == .barcode ? Color.blue : Color(.systemGray6))
                             )
                         }
                         .buttonStyle(PlainButtonStyle())
-
-                        Spacer()
                     }
                     .padding(.horizontal, 16)
                 }
