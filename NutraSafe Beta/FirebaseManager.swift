@@ -978,6 +978,94 @@ class FirebaseManager: ObservableObject {
 
         return snapshot.documents.first?.data()
     }
+
+    // MARK: - User Added Foods (Manual Entry)
+
+    /// Save a manually added food to the global userAdded collection (accessible by all users)
+    func saveUserAddedFood(_ food: [String: Any]) async throws -> String {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to add foods"])
+        }
+
+        guard let foodName = food["foodName"] as? String else {
+            throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Food name is required"])
+        }
+
+        // Check for profanity
+        if containsProfanity(foodName) {
+            throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Food name contains inappropriate language. Please use appropriate terms."])
+        }
+
+        // Also check brand name if present
+        if let brandName = food["brandName"] as? String, containsProfanity(brandName) {
+            throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Brand name contains inappropriate language. Please use appropriate terms."])
+        }
+
+        // Generate unique food ID
+        let foodId = "userFood_\(UUID().uuidString)"
+
+        // Prepare food data
+        var foodData = food
+        foodData["id"] = foodId
+        foodData["userId"] = userId
+        foodData["timestamp"] = FirebaseFirestore.Timestamp(date: Date())
+        foodData["source"] = "manual_entry"
+        foodData["isUserAdded"] = true
+
+        // Save to global userAdded collection (accessible by all users)
+        try await db.collection("userAdded")
+            .document(foodId)
+            .setData(foodData)
+
+        print("✅ User added food saved: \(foodId)")
+        return foodId
+    }
+
+    /// Search user-added foods by name
+    func searchUserAddedFoods(query: String) async throws -> [[String: Any]] {
+        let searchTerm = query.lowercased().trimmingCharacters(in: .whitespaces)
+
+        // Search in userAdded collection
+        let snapshot = try await db.collection("userAdded")
+            .whereField("foodName", isGreaterThanOrEqualTo: searchTerm)
+            .whereField("foodName", isLessThan: searchTerm + "\u{f8ff}")
+            .limit(to: 20)
+            .getDocuments()
+
+        return snapshot.documents.map { $0.data() }
+    }
+
+    /// Get a specific user-added food by ID
+    func getUserAddedFood(foodId: String) async throws -> [String: Any]? {
+        let document = try await db.collection("userAdded")
+            .document(foodId)
+            .getDocument()
+
+        return document.data()
+    }
+
+    /// Profanity filter - basic implementation
+    private func containsProfanity(_ text: String) -> Bool {
+        let lowercased = text.lowercased()
+
+        // Common profanity list (basic implementation)
+        let profanityList = [
+            "fuck", "shit", "damn", "bitch", "ass", "bastard", "cunt",
+            "dick", "piss", "cock", "whore", "slut", "wanker", "bollocks",
+            "arse", "bugger", "bloody", "crap", "twat", "prick", "tosser"
+        ]
+
+        // Check for exact matches or words containing profanity
+        for profanity in profanityList {
+            if lowercased.contains(profanity) {
+                return true
+            }
+        }
+
+        return false
+    }
 }
 
 extension Notification.Name {

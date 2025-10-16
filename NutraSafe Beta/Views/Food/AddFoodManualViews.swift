@@ -109,6 +109,8 @@ struct ManualFoodDetailEntryView: View {
     // UI State
     @State private var showingIngredients = false
     @State private var isSaving = false
+    @State private var showingError = false
+    @State private var errorMessage = ""
 
     let servingUnits = ["g", "ml", "oz", "cup", "tbsp", "tsp", "piece", "slice", "serving"]
     let fridgeLocations = ["General", "Fridge", "Freezer", "Pantry", "Cupboard"]
@@ -348,6 +350,11 @@ struct ManualFoodDetailEntryView: View {
                     }
                 }
             }
+            .alert("Error", isPresented: $showingError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(errorMessage)
+            }
         }
     }
 
@@ -376,28 +383,88 @@ struct ManualFoodDetailEntryView: View {
         // Create ingredients list from text
         let ingredients = ingredientsText.isEmpty ? nil : ingredientsText.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }
 
-        // Parse nutrition values
+        // Parse nutrition values (all per 100g as entered)
         let caloriesValue = Double(calories) ?? 0
         let proteinValue = Double(protein) ?? 0
         let carbsValue = Double(carbs) ?? 0
         let fatValue = Double(fat) ?? 0
+        let fiberValue = Double(fiber) ?? 0
+        let sugarValue = Double(sugar) ?? 0
+        let sodiumValue = Double(sodium) ?? 0
+        let servingSizeValue = Double(servingSize) ?? 100
         let brandValue = brand.isEmpty ? nil : brand
 
-        // For now, just log the manual food entry
-        // In future, this would integrate with the existing add food flow
-        print("✅ Manual food created:")
-        print("  Name: \(foodName)")
-        print("  Brand: \(brandValue ?? "None")")
-        print("  Calories: \(caloriesValue)")
-        print("  Protein: \(proteinValue)g")
-        print("  Carbs: \(carbsValue)g")
-        print("  Fat: \(fatValue)g")
-        if let ingredients = ingredients {
-            print("  Ingredients: \(ingredients.joined(separator: ", "))")
-        }
+        do {
+            // Prepare food data for userAdded collection
+            var foodData: [String: Any] = [
+                "foodName": foodName,
+                "servingSize": servingSizeValue,
+                "servingUnit": servingUnit,
+                "calories": caloriesValue,
+                "protein": proteinValue,
+                "carbohydrates": carbsValue,
+                "fat": fatValue
+            ]
 
-        // TODO: Integrate with existing diary add flow
-        // This would typically navigate to FoodDetailViewFromSearch with the manual food data
+            // Add optional fields
+            if let brandValue = brandValue {
+                foodData["brandName"] = brandValue
+            }
+            if fiberValue > 0 {
+                foodData["fiber"] = fiberValue
+            }
+            if sugarValue > 0 {
+                foodData["sugars"] = sugarValue
+            }
+            if sodiumValue > 0 {
+                foodData["sodium"] = sodiumValue
+            }
+            if let ingredients = ingredients {
+                foodData["ingredients"] = ingredients.joined(separator: ", ")
+            }
+
+            // Save to userAdded collection (with profanity check)
+            let foodId = try await FirebaseManager.shared.saveUserAddedFood(foodData)
+            print("✅ Manual food saved to userAdded collection: \(foodId)")
+
+            // Now add to user's diary
+            let diaryEntry = DiaryFoodItem(
+                id: UUID().uuidString,
+                name: foodName,
+                brand: brandValue,
+                servingSize: servingSizeValue,
+                servingUnit: servingUnit,
+                calories: Int(caloriesValue),
+                protein: proteinValue,
+                carbs: carbsValue,
+                fat: fatValue,
+                fiber: fiberValue > 0 ? fiberValue : nil,
+                sugar: sugarValue > 0 ? sugarValue : nil,
+                sodium: sodiumValue > 0 ? sodiumValue : nil,
+                meal: .breakfast, // Will be updated based on destination
+                date: Date(),
+                ingredients: ingredients
+            )
+
+            // Add to diary via DiaryDataManager
+            await MainActor.run {
+                diaryDataManager.addFood(diaryEntry)
+                print("✅ Food added to user's diary")
+            }
+
+            // Switch to diary tab to show the added food
+            await MainActor.run {
+                selectedTab = .diary
+            }
+
+        } catch {
+            // Show error to user
+            await MainActor.run {
+                errorMessage = error.localizedDescription
+                showingError = true
+                print("❌ Error saving manual food: \(error.localizedDescription)")
+            }
+        }
     }
 
     private func saveFoodToFridge() async {
