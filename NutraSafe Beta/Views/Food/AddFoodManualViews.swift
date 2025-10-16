@@ -34,7 +34,7 @@ struct AddFoodManualView: View {
 
             // Description
             Text(destination == .fridge
-                 ? "Add custom food item to your fridge with expiry tracking"
+                 ? "Add custom food item with use-by date tracking"
                  : "Add custom food item to your diary with complete nutrition data")
                 .font(.system(size: 16))
                 .foregroundColor(.secondary)

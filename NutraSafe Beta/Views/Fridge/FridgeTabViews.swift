@@ -2158,6 +2158,7 @@ struct AddOptionButton: View {
 struct ManualFridgeItemSheet: View {
     @Environment(\.dismiss) var dismiss
     @State private var itemName = ""
+    @State private var brand = ""
     @State private var useByDate = Date().addingTimeInterval(7 * 24 * 60 * 60)
     @State private var isSaving = false
     @State private var showErrorAlertManual = false
@@ -2168,6 +2169,7 @@ struct ManualFridgeItemSheet: View {
             Form {
                 Section {
                     TextField("Item name", text: $itemName)
+                    TextField("Brand (optional)", text: $brand)
                 }
 
                 Section {
@@ -2206,7 +2208,7 @@ struct ManualFridgeItemSheet: View {
 
         let fridgeItem = FridgeInventoryItem(
             name: itemName,
-            brand: nil,
+            brand: brand.isEmpty ? nil : brand,
             quantity: "1",
             expiryDate: useByDate,
             addedDate: Date(),
