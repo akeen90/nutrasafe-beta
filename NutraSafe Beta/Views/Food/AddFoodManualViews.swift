@@ -429,26 +429,31 @@ struct ManualFoodDetailEntryView: View {
 
             // Now add to user's diary
             let diaryEntry = DiaryFoodItem(
-                id: UUID().uuidString,
+                id: UUID(),
                 name: foodName,
                 brand: brandValue,
-                servingSize: servingSizeValue,
-                servingUnit: servingUnit,
                 calories: Int(caloriesValue),
                 protein: proteinValue,
                 carbs: carbsValue,
                 fat: fatValue,
-                fiber: fiberValue > 0 ? fiberValue : nil,
-                sugar: sugarValue > 0 ? sugarValue : nil,
-                sodium: sodiumValue > 0 ? sodiumValue : nil,
-                meal: .breakfast, // Will be updated based on destination
-                date: Date(),
-                ingredients: ingredients
+                fiber: fiberValue,
+                sugar: sugarValue,
+                sodium: sodiumValue,
+                calcium: 0,
+                servingDescription: "\(servingSizeValue)\(servingUnit) serving",
+                quantity: 1.0,
+                time: nil,
+                processedScore: nil,
+                sugarLevel: nil,
+                ingredients: ingredients,
+                additives: nil,
+                barcode: nil,
+                micronutrientProfile: nil
             )
 
             // Add to diary via DiaryDataManager
             await MainActor.run {
-                diaryDataManager.addFood(diaryEntry)
+                diaryDataManager.addFoodItem(diaryEntry, to: "breakfast", for: Date())
                 print("✅ Food added to user's diary")
             }
 
