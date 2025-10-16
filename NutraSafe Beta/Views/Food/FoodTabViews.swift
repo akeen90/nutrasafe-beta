@@ -286,13 +286,14 @@ struct FoodReactionSummaryCard: View {
                 )
                 .cornerRadius(12)
             }
+            .buttonStyle(SpringyButtonStyle())
         }
-        .padding(20)
+        .padding(AppSpacing.large)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+            RoundedRectangle(cornerRadius: AppRadius.medium)
+                .fill(AppColors.cardBackgroundElevated)
         )
+        .cardShadow()
         .sheet(isPresented: $showingLogReaction) {
             NavigationView {
                 LogReactionView(reactionManager: reactionManager)
@@ -368,12 +369,12 @@ struct FoodReactionListCard: View {
                 .frame(height: CGFloat(reactions.count * 60))
             }
         }
-        .padding(20)
+        .padding(AppSpacing.large)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+            RoundedRectangle(cornerRadius: AppRadius.medium)
+                .fill(AppColors.cardBackgroundElevated)
         )
+        .cardShadow()
     }
 }
 
@@ -692,7 +693,9 @@ struct FoodPatternAnalysisCard: View {
                     if !otherTriggers.isEmpty {
                         VStack(alignment: .leading, spacing: 0) {
                             Button(action: {
-                                showOtherIngredients.toggle()
+                                withAnimation(AppAnimation.spring) {
+                                    showOtherIngredients.toggle()
+                                }
                             }) {
                                 HStack(alignment: .center, spacing: 12) {
                                     Text("Other Ingredients")
@@ -732,20 +735,19 @@ struct FoodPatternAnalysisCard: View {
                                     }
                                 }
                                 .padding(.top, 16)
-                                .transition(.identity)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
                             }
                         }
                     }
                 }
-                .animation(.none, value: showOtherIngredients)
             }
         }
-        .padding(20)
+        .padding(AppSpacing.large)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+            RoundedRectangle(cornerRadius: AppRadius.medium)
+                .fill(AppColors.cardBackgroundElevated)
         )
+        .cardShadow()
     }
 }
 
@@ -1147,12 +1149,24 @@ struct RecipeRow: View {
 }
 
 // MARK: - Button Styles
+
+/// Premium button style with satisfying press feedback
 struct SpringyButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.92 : 1.0)
-            .opacity(configuration.isPressed ? 0.8 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.6, blendDuration: 0), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+            .opacity(configuration.isPressed ? 0.85 : 1.0)
+            .animation(AppAnimation.bouncy, value: configuration.isPressed)
+    }
+}
+
+/// Card button style with subtle press effect
+struct CardButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .brightness(configuration.isPressed ? -0.05 : 0)
+            .animation(AppAnimation.quick, value: configuration.isPressed)
     }
 }
 
