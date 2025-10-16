@@ -114,8 +114,8 @@ struct FridgeTabView: View {
                 .padding(.top, 8)
 
                 // Subtitle description
-                Text("Track opened items and monitor expiry dates to reduce food waste")
-                    .font(.system(size: 15))
+                Text("Track opened items and monitor expiry dates")
+                    .font(.system(size: 14))
                     .foregroundColor(.secondary)
                     .padding(.horizontal, 16)
                     .padding(.top, 4)
@@ -533,16 +533,12 @@ struct FridgeExpiryView: View {
                                 .padding(.vertical, 60)
                                 .background(Color.white)
                             } else {
-                                LazyVStack(spacing: 0) {
-                                    ForEach(Array(sortedItems.enumerated()), id: \.element.id) { index, item in
+                                LazyVStack(spacing: 8) {
+                                    ForEach(sortedItems, id: \.id) { item in
                                         CleanFridgeRow(item: item)
-
-                                        if index < sortedItems.count - 1 {
-                                            Divider()
-                                                .padding(.leading, 98) // Align with text content (70px image + 14px spacing + 14px padding)
-                                        }
                                     }
                                 }
+                                .padding(8)
                                 .background(Color.white)
                             }
                         }
@@ -3050,12 +3046,12 @@ struct PlaceholderImageView: View {
 
             VStack(spacing: 4) {
                 Image(systemName: "basket.fill")
-                    .font(.system(size: 24, weight: .medium))
+                    .font(.system(size: 20, weight: .medium))
                     .foregroundColor(.secondary)
                     .symbolRenderingMode(.hierarchical)
             }
         }
-        .frame(width: 70, height: 70)
+        .frame(width: 56, height: 56)
     }
 }
 
@@ -3123,7 +3119,7 @@ struct CleanFridgeRow: View {
             }
 
             // Main content - Modern card design with product image
-            HStack(spacing: 14) {
+            HStack(spacing: 12) {
                 // Product image or placeholder
                 Group {
                     if let imageURL = item.imageURL, let url = URL(string: imageURL) {
@@ -3135,8 +3131,8 @@ struct CleanFridgeRow: View {
                                 image
                                     .resizable()
                                     .aspectRatio(contentMode: .fill)
-                                    .frame(width: 70, height: 70)
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    .frame(width: 56, height: 56)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
                             case .failure(_):
                                 PlaceholderImageView()
                             @unknown default:
@@ -3147,45 +3143,45 @@ struct CleanFridgeRow: View {
                         PlaceholderImageView()
                     }
                 }
-                .frame(width: 70, height: 70)
+                .frame(width: 56, height: 56)
                 .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
 
                 // Item info
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(item.name)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(.primary)
                         .lineLimit(2)
 
-                    HStack(spacing: 6) {
+                    HStack(spacing: 4) {
                         if let brand = item.brand, !brand.isEmpty {
                             Text(brand)
-                                .font(.system(size: 13))
+                                .font(.system(size: 12))
                                 .foregroundColor(.secondary)
                                 .lineLimit(1)
 
                             Text("•")
-                                .font(.system(size: 13))
+                                .font(.system(size: 12))
                                 .foregroundColor(.secondary)
                         }
 
                         Text(item.quantity)
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.secondary)
                     }
 
                     // Status badge with icon
-                    HStack(spacing: 5) {
+                    HStack(spacing: 4) {
                         Image(systemName: statusIcon)
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.system(size: 10, weight: .semibold))
                             .foregroundColor(statusColor)
 
                         Text(statusText)
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.system(size: 11, weight: .semibold))
                             .foregroundColor(statusColor)
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
                     .background(
                         Capsule()
                             .fill(statusColor.opacity(0.12))
@@ -3200,10 +3196,10 @@ struct CleanFridgeRow: View {
 
                 // Chevron
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.secondary)
             }
-            .padding(14)
+            .padding(12)
             .background(Color(.systemBackground))
             .offset(x: offset)
             .gesture(
@@ -3278,7 +3274,7 @@ struct FridgeStatCard: View {
     var subtitle: String? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             // Icon with gradient background
             ZStack {
                 Circle()
@@ -3289,21 +3285,21 @@ struct FridgeStatCard: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 56, height: 56)
+                    .frame(width: 44, height: 44)
                     .overlay(
                         Circle()
                             .stroke(color.opacity(0.25), lineWidth: 1.5)
                     )
 
                 Image(systemName: icon)
-                    .font(.system(size: 26, weight: .semibold))
+                    .font(.system(size: 20, weight: .semibold))
                     .foregroundColor(color)
                     .symbolRenderingMode(.hierarchical)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(value)
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
                     .foregroundStyle(
                         LinearGradient(
                             colors: [color, color.opacity(0.7)],
@@ -3314,19 +3310,19 @@ struct FridgeStatCard: View {
                     .minimumScaleFactor(0.8)
 
                 Text(title)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.primary)
 
                 if let subtitle = subtitle {
                     Text(subtitle)
-                        .font(.system(size: 11))
+                        .font(.system(size: 10))
                         .foregroundColor(.secondary)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
-        .padding(16)
+        .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 16)
