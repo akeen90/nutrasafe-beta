@@ -57,12 +57,40 @@ struct NutritionProcessingScore {
 
 class ProcessingScorer {
     static let shared = ProcessingScorer()
-    
+
+    // Expose database version for re-analysis comparison
+    private(set) var databaseVersion: String = "2025.1"
+
     private init() {}
-    
+
+    // Public method to analyze additives in ingredients
+    func analyzeAdditives(in ingredientsText: String) -> [AdditiveInfo] {
+        print("⚗️ [ProcessingScorer] analyzeAdditives() called")
+        print("⚗️ [ProcessingScorer] Input text: '\(ingredientsText)'")
+        print("⚗️ [ProcessingScorer] Text length: \(ingredientsText.count) characters")
+        print("⚗️ [ProcessingScorer] Database status: \(comprehensiveAdditives != nil ? "LOADED (\(comprehensiveAdditives!.count) additives)" : "NOT LOADED")")
+        print("⚗️ [ProcessingScorer] Database version: \(databaseVersion)")
+
+        let analysis = analyseAdditives(in: ingredientsText)
+
+        print("⚗️ [ProcessingScorer] Analysis complete")
+        print("⚗️ [ProcessingScorer] Comprehensive additives found: \(analysis.comprehensiveAdditives.count)")
+
+        if !analysis.comprehensiveAdditives.isEmpty {
+            print("⚗️ [ProcessingScorer] Detected:")
+            for additive in analysis.comprehensiveAdditives {
+                print("   - \(additive.eNumber): \(additive.name)")
+            }
+        } else {
+            print("⚠️ [ProcessingScorer] NO ADDITIVES FOUND IN ANALYSIS!")
+        }
+
+        return analysis.comprehensiveAdditives
+    }
+
     func calculateProcessingScore(for foodName: String, ingredients: String? = nil, sugarPer100g: Double? = nil) -> NutritionProcessingScore {
         let foodLower = foodName.lowercased()
-        
+
         // CRITICAL: If no real ingredients provided, return "Not enough data" for anything that's not obviously unprocessed
         guard let ingredients = ingredients, !ingredients.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             // Only allow high scores for very obviously unprocessed single foods
@@ -131,9 +159,16 @@ class ProcessingScorer {
             totalScore -= (additiveAnalysis.preservatives.count * 10) // Heavy penalty for preservatives
             
             // Extra penalty for multiple artificial colors (common in candy)
+            // Use specific artificial color names, not generic color words
+            let artificialColorNames = [
+                "tartrazine", "e102",
+                "sunset yellow", "yellow 5", "yellow 6", "fd&c yellow",
+                "allura red", "red 40", "red 3", "fd&c red",
+                "brilliant blue", "blue fcf", "fd&c blue",
+                "erythrosine", "carmoisine", "azorubine", "quinoline yellow"
+            ]
             let colorAdditives = additiveAnalysis.additives.filter { additive in
-                additive.contains("blue") || additive.contains("yellow") || additive.contains("red") ||
-                additive.contains("tartrazine") || additive.contains("brilliant") || additive.contains("sunset")
+                artificialColorNames.contains { additive.contains($0) }
             }
             if colorAdditives.count >= 2 {
                 totalScore -= 20  // Multiple artificial colors penalty (candy indicator)
@@ -284,48 +319,322 @@ class ProcessingScorer {
         let hasAllergenWarnings: Bool
     }
     
-    private var comprehensiveAdditives: [String: AdditiveInfo]? = {
-        guard let path = Bundle.main.path(forResource: "comprehensiveAdditives", ofType: "json"),
-              let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
-              let additives = try? JSONDecoder().decode([String: AdditiveInfo].self, from: data) else {
-            print("Warning: Could not load comprehensive additives database")
+    private lazy var comprehensiveAdditives: [String: AdditiveInfo]? = {
+        print("🔍 Attempting to load master additives database...")
+
+        guard let path = Bundle.main.path(forResource: "additives_master_database", ofType: "json") else {
+            print("❌ ERROR: additives_master_database.json not found in bundle!")
+            print("📦 Bundle path: \(Bundle.main.bundlePath)")
+            print("📁 Looking for: additives_master_database.json")
             return nil
         }
+
+        print("✅ Found database file at: \(path)")
+
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
+            print("❌ ERROR: Could not read data from \(path)")
+            return nil
+        }
+
+        print("✅ Loaded \(data.count) bytes of data")
+
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            print("❌ ERROR: Could not parse JSON from data")
+            return nil
+        }
+
+        print("✅ Parsed JSON successfully")
+
+        // Check metadata and extract version
+        if let metadata = json["metadata"] as? [String: Any] {
+            print("📊 Database metadata:")
+            let version = metadata["version"] as? String ?? "2025.1"
+            print("   - Version: \(version)")
+            print("   - Total additives: \(metadata["total_additives"] as? Int ?? 0)")
+            print("   - Last updated: \(metadata["last_updated"] as? String ?? "unknown")")
+
+            // Store the version
+            ProcessingScorer.shared.databaseVersion = version
+        }
+
+        var additives: [String: AdditiveInfo] = [:]
+
+        // Parse the nested category structure
+        // Structure: categories -> ranges -> additives (3 levels, not 4!)
+        if let categories = json["categories"] as? [String: Any] {
+            print("✅ Found \(categories.count) categories in database")
+            for (categoryName, categoryData) in categories {
+                if let categoryDict = categoryData as? [String: Any] {
+                    print("   📂 Category: \(categoryName)")
+                    // Level 2: Iterate through E-number ranges (e.g., "E100-E199")
+                    for (rangeName, rangeData) in categoryDict {
+                        if let rangeDict = rangeData as? [String: Any] {
+                            print("      📊 Range: \(rangeName) with \(rangeDict.count) additives")
+                            // Level 3: Iterate through individual additives (directly, no groups level!)
+                            for (code, additiveData) in rangeDict {
+                                if let additiveDict = additiveData as? [String: Any],
+                                   let name = additiveDict["name"] as? String {
+
+                                    let safety = additiveDict["safety"] as? String ?? "neutral"
+                                    let concerns = additiveDict["concerns"] as? String ?? ""
+                                    let synonyms = additiveDict["synonyms"] as? [String] ?? []
+                                    let originString = additiveDict["origin"] as? String ?? "unknown"
+                                    let uses = additiveDict["uses"] as? String ?? ""
+
+                                    // Map safety to verdict
+                                    let verdict: AdditiveVerdict
+                                    switch safety.lowercased() {
+                                    case "positive": verdict = .neutral
+                                    case "caution": verdict = .caution
+                                    case "avoid": verdict = .avoid
+                                    default: verdict = .neutral
+                                    }
+
+                                    // Determine category from the categoryName (top level)
+                                    let additiveCategory: AdditiveCategory
+                                    if categoryName.contains("color") || categoryName.contains("colour") {
+                                        additiveCategory = .colour
+                                    } else if categoryName.contains("preserv") {
+                                        additiveCategory = .preservative
+                                    } else {
+                                        additiveCategory = .other
+                                    }
+
+                                    // Map origin string to AdditiveOrigin enum
+                                    let origin = Self.mapOrigin(originString)
+
+                                    // Check for warnings in concerns
+                                    let hasChildWarning = concerns.lowercased().contains("child") || concerns.lowercased().contains("hyperactivity")
+                                    let hasSulphitesWarning = concerns.lowercased().contains("sulphite") || concerns.lowercased().contains("sulfite")
+
+                                    // Build informative overview
+                                    let overview: String
+                                    if !uses.isEmpty && !originString.isEmpty {
+                                        overview = "\(name) is a \(categoryName) additive from \(originString) origin. Typically used in \(uses)."
+                                    } else if !originString.isEmpty {
+                                        overview = "\(name) is a \(categoryName) additive from \(originString) origin."
+                                    } else {
+                                        overview = "\(name) used as a \(categoryName)."
+                                    }
+
+                                    let additiveInfo = AdditiveInfo(
+                                        id: code,
+                                        eNumber: code,
+                                        name: name,
+                                        group: Self.mapCategoryToGroup(categoryName),
+                                        isPermittedGB: true,
+                                        isPermittedNI: true,
+                                        isPermittedEU: !concerns.lowercased().contains("banned"),
+                                        statusNotes: concerns.isEmpty ? nil : concerns,
+                                        hasChildWarning: hasChildWarning,
+                                        hasPKUWarning: false,
+                                        hasPolyolsWarning: false,
+                                        hasSulphitesAllergenLabel: hasSulphitesWarning,
+                                        category: additiveCategory,
+                                        origin: origin,
+                                        overview: overview,
+                                        typicalUses: uses,
+                                        effectsSummary: concerns.isEmpty ? "Generally recognized as safe when used as directed." : concerns,
+                                        effectsVerdict: verdict,
+                                        synonyms: synonyms,
+                                        insNumber: nil,
+                                        sources: [],
+                                        consumerInfo: nil
+                                    )
+
+                                    additives[code] = additiveInfo
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        print("✅ Loaded \(additives.count) additives from master database")
         return additives
     }()
+
+    private static func mapCategoryToGroup(_ categoryName: String) -> AdditiveGroup {
+        let lower = categoryName.lowercased()
+        if lower.contains("color") || lower.contains("colour") {
+            return .colour
+        } else if lower.contains("preserv") {
+            return .preservative
+        } else if lower.contains("antioxidant") {
+            return .antioxidant
+        } else if lower.contains("emuls") {
+            return .emulsifier
+        } else if lower.contains("stab") {
+            return .stabilizer
+        } else if lower.contains("thick") {
+            return .thickener
+        } else if lower.contains("sweet") {
+            return .sweetener
+        } else if lower.contains("flavour") || lower.contains("flavor") {
+            return .flavourEnhancer
+        } else if lower.contains("acid") {
+            return .acidRegulator
+        } else {
+            return .other
+        }
+    }
+
+    private static func mapOrigin(_ originString: String) -> AdditiveOrigin {
+        let lower = originString.lowercased()
+
+        // Map origin strings from JSON to AdditiveOrigin enum
+        // Priority order matters!
+        if lower.contains("animal") {
+            return .animal
+        } else if lower.contains("plant") {
+            return .plant
+        } else if lower.contains("mineral") {
+            return .mineral
+        } else if lower.contains("ferment") || lower.contains("microbial") {
+            // Fermentation is a natural process, map to plant-based
+            return .plant
+        } else if lower.contains("synthetic") && !lower.contains("natural") {
+            return .synthetic
+        } else {
+            // Default for unknown/mixed origins
+            return .syntheticPlantMineral
+        }
+    }
     
+    // MARK: - Helper: Word Boundary Matching
+
+    private func matchesWithWordBoundary(text: String, pattern: String) -> Bool {
+        // Escape special regex characters in the pattern
+        let escapedPattern = NSRegularExpression.escapedPattern(for: pattern)
+
+        // Use word boundaries (\b) to ensure we match complete words/codes only
+        let regexPattern = "\\b\(escapedPattern)\\b"
+
+        guard let regex = try? NSRegularExpression(pattern: regexPattern, options: .caseInsensitive) else {
+            return false
+        }
+
+        let range = NSRange(text.startIndex..., in: text)
+        return regex.firstMatch(in: text, range: range) != nil
+    }
+
+    // MARK: - Helper: Text Normalization
+
+    private func normalizeIngredientText(_ text: String) -> String {
+        var normalized = text.lowercased()
+
+        // Add spaces around punctuation to create word boundaries
+        // This helps detect "Colour: paprika extract" as "paprika extract"
+        normalized = normalized.replacingOccurrences(of: ":", with: " : ")
+        normalized = normalized.replacingOccurrences(of: ";", with: " ; ")
+        normalized = normalized.replacingOccurrences(of: ",", with: " , ")
+        normalized = normalized.replacingOccurrences(of: "(", with: " ( ")
+        normalized = normalized.replacingOccurrences(of: ")", with: " ) ")
+
+        // Remove extra spaces
+        normalized = normalized.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+
+        // Normalize E-number formats (e-102 → e102, e 102 → e102)
+        normalized = normalized.replacingOccurrences(of: "e-", with: "e")
+        normalized = normalized.replacingOccurrences(of: "e ", with: "e")
+
+        return normalized.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    // MARK: - Helper: Match Confidence Scoring
+
+    private func calculateMatchConfidence(additive: AdditiveInfo, text: String) -> Double {
+        var score = 0.0
+        let normalized = normalizeIngredientText(text)
+
+        var matchDetails: [String] = []
+
+        // E-number exact match with word boundaries (highest confidence)
+        if matchesWithWordBoundary(text: normalized, pattern: additive.eNumber.lowercased()) {
+            score += 0.95
+            matchDetails.append("E-number")
+        }
+
+        // Full name exact match with word boundaries
+        if matchesWithWordBoundary(text: normalized, pattern: additive.name.lowercased()) {
+            score += 0.85
+            matchDetails.append("Name")
+        }
+
+        // Synonym matches (with word boundaries)
+        for synonym in additive.synonyms {
+            if !synonym.isEmpty && matchesWithWordBoundary(text: normalized, pattern: synonym.lowercased()) {
+                score += 0.70
+                matchDetails.append("Synonym: \(synonym)")
+                break
+            }
+        }
+
+        // Debug logging for Tartrazine specifically
+        if additive.eNumber == "E102" && score > 0 {
+            print("🐛 [DEBUG] E102 Tartrazine matched!")
+            print("   Normalized text: '\(normalized)'")
+            print("   Match types: \(matchDetails.joined(separator: ", "))")
+            print("   Confidence: \(score)")
+        }
+
+        return min(score, 1.0)  // Cap at 100%
+    }
+
     private func analyseAdditives(in food: String) -> AdditiveAnalysis {
+        print("🔬 [analyseAdditives] Starting analysis")
+        print("🔬 [analyseAdditives] Input text: '\(food)'")
+
         let foodLower = food.lowercased()
+        let normalizedFood = normalizeIngredientText(food)
+        print("🔬 [analyseAdditives] Normalized text: '\(normalizedFood)'")
+
         var detectedAdditives: [AdditiveInfo] = []
         var eNumbers: [String] = []
         var additives: [String] = []
         var preservatives: [String] = []
         var goodAdditives: [String] = []
-        
+
         // Use comprehensive database if available
         if let comprehensiveDB = comprehensiveAdditives {
-            // Check for E-numbers and additive names
+            print("🔬 [analyseAdditives] Database available with \(comprehensiveDB.count) additives")
+            print("🔬 [analyseAdditives] Starting matching loop...")
+
+            var matchCount = 0
+            // Check for E-numbers and additive names with word boundary detection
             for (code, additiveInfo) in comprehensiveDB {
-                // Check E-number code
-                if foodLower.contains(code.lowercased()) {
-                    detectedAdditives.append(additiveInfo)
-                    eNumbers.append(code)
-                    continue
-                }
-                
-                // Check additive name and synonyms
-                for searchTerm in additiveInfo.synonyms {
-                    if foodLower.contains(searchTerm.lowercased()) {
+                // Calculate match confidence with word boundaries
+                let confidence = calculateMatchConfidence(additive: additiveInfo, text: normalizedFood)
+
+                // Only include matches with confidence >= 60%
+                if confidence >= 0.6 {
+                    matchCount += 1
+                    print("🔬 [analyseAdditives] MATCH #\(matchCount): \(code) - \(additiveInfo.name) (confidence: \(confidence))")
+
+                    // Check if already detected (avoid duplicates)
+                    if !detectedAdditives.contains(where: { $0.eNumber == additiveInfo.eNumber }) {
                         detectedAdditives.append(additiveInfo)
+
+                        // If E-number matched directly, add to eNumbers array
+                        if matchesWithWordBoundary(text: normalizedFood, pattern: code.lowercased()) {
+                            eNumbers.append(code)
+                        }
+
+                        // Categorize additive
                         if additiveInfo.category.rawValue.lowercased().contains("preservative") {
                             preservatives.append(additiveInfo.name)
                         } else {
                             additives.append(additiveInfo.name)
                         }
-                        break
                     }
                 }
             }
+
+            print("🔬 [analyseAdditives] Matching loop complete. Total matches: \(matchCount)")
+            print("🔬 [analyseAdditives] Detected additives: \(detectedAdditives.count)")
+        } else {
+            print("⚠️ [analyseAdditives] Database NOT available! Using fallback analysis")
         }
         
         // Fallback to basic analysis if comprehensive database not available
@@ -337,20 +646,21 @@ class ProcessingScorer {
                 "e621", "e627", "e631", "e635", "e951", "e952", "e954", "e955"
             ]
             
-            // Common bad additives (fallback) - Enhanced for color detection
+            // Common bad additives (fallback) - Enhanced for specific additive detection
             let badAdditives = [
                 "monosodium glutamate", "msg", "high fructose corn syrup", "glucose syrup",
                 "sodium nitrite", "sodium nitrate", "potassium sorbate", "sodium benzoate",
                 "artificial colours", "artificial flavours", "artificial colors", "artificial flavors",
-                "trans fat", "hydrogenated oil", "palm fat", "palm oil", 
+                "trans fat", "hydrogenated oil", "palm fat", "palm oil",
                 "emulsifier", "lecithin", "stabiliser", "thickener",
                 "aspartame", "sucralose", "syrup", "modified starch",
-                // Color additives that should be heavily penalized
+                // Specific artificial color additives (not generic color words)
                 "brilliant blue fcf", "brilliant blue", "blue fcf", "fd&c blue",
-                "tartrazine", "yellow 5", "fd&c yellow 5", "sunset yellow fcf", "sunset yellow",
-                "yellow 6", "fd&c yellow 6", "allura red", "red 40", "fd&c red 40",
-                "red 3", "erythrosine", "carmine", "cochineal", "carmoisine", "azorubine",
-                "quinoline yellow", "green s", "patent blue", "indigo carmine",
+                "tartrazine", "e102", "yellow 5", "yellow 6", "fd&c yellow 5", "fd&c yellow 6",
+                "sunset yellow fcf", "sunset yellow", "quinoline yellow",
+                "allura red", "red 40", "red 3", "fd&c red 40", "fd&c red 3",
+                "erythrosine", "carmine", "cochineal", "carmoisine", "azorubine",
+                "green s", "patent blue", "indigo carmine",
                 "corn syrup", "invert sugar", "dextrose"
             ]
             

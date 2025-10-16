@@ -194,17 +194,9 @@ struct FoodSearchResultRowEnhanced: View {
                     VStack(spacing: 6) {
                         HStack(spacing: 8) {
                             MacroValue(value: food.carbs, label: "Carb", color: .orange)
-                            MacroValue(value: food.fat, label: "Fat", color: .purple) 
+                            MacroValue(value: food.fat, label: "Fat", color: .purple)
                             MacroValue(value: food.protein, label: "Prot", color: .red)
                         }
-                        
-                        Text(food.servingSize)
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(.secondary)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color(.systemGray6))
-                            .cornerRadius(10)
                     }
                     
                     // Column 3: Grades (Fixed width)
@@ -250,13 +242,6 @@ struct FoodSearchResultRowEnhanced: View {
                                     }
                                 }
                             }
-                        }
-                        
-                        // Verification status
-                        if food.isVerified {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 14))
-                                .foregroundColor(.green)
                         }
                     }
                     .frame(width: 70)
@@ -358,96 +343,130 @@ struct AddFoodSearchView: View {
     @State private var originalMealType = ""
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Search Bar
-            VStack(spacing: 12) {
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.secondary)
-                    
-                    TextField("Search foods...", text: $searchText)
-                        .textFieldStyle(PlainTextFieldStyle())
-                        .onChange(of: searchText, perform: { newValue in
-                            performLiveSearch(query: newValue)
-                        })
-                        .onSubmit {
-                            performSearch()
-                        }
-                    
-                    if !searchText.isEmpty {
-                        Button(action: { searchText = "" }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.secondary)
+        GeometryReader { geometry in
+            VStack(spacing: 0) {
+                // Search Bar
+                VStack(spacing: 12) {
+                    HStack {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(.secondary)
+
+                        TextField("Search foods...", text: $searchText)
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .onChange(of: searchText, perform: { newValue in
+                                performLiveSearch(query: newValue)
+                            })
+                            .onSubmit {
+                                performSearch()
+                            }
+
+                        if !searchText.isEmpty {
+                            Button(action: { searchText = "" }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.secondary)
+                            }
                         }
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
-            }
-            
-            // Results
-            if isSearching {
-                VStack {
-                    Spacer()
-                    ProgressView("Searching...")
-                    Spacer()
-                }
-            } else if searchResults.isEmpty && !searchText.isEmpty {
-                VStack {
-                    Spacer()
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 48))
-                        .foregroundColor(.secondary)
-                    Text("No results found")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(.secondary)
-                        .padding(.top, 8)
-                    Spacer()
-                }
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 8) {
-                        // Show recent foods when search is empty
-                        if searchText.isEmpty && !recentFoods.isEmpty {
-                            // Recent Foods Section
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack {
-                                    Image(systemName: "clock.arrow.circlepath")
-                                        .foregroundColor(.blue)
-                                        .font(.system(size: 16, weight: .medium))
-                                    Text("Recent Foods")
-                                        .font(.system(size: 18, weight: .semibold))
-                                        .foregroundColor(.primary)
-                                    Spacer()
-                                }
-                                .padding(.horizontal, 16)
-                                .padding(.top, 16)
-                                
-                                ForEach(recentFoods, id: \.id) { recentFood in
-                                    let searchResult = convertToSearchResult(recentFood)
-                                    FoodSearchResultRowEnhanced(food: searchResult, selectedTab: $selectedTab, destination: $destination)
+
+                // Results
+                if isSearching {
+                    VStack {
+                        Spacer()
+                        ProgressView("Searching...")
+                        Spacer()
+                    }
+                    .frame(height: geometry.size.height - keyboardHeight - 80) // Adjust for search bar
+                } else if searchResults.isEmpty && !searchText.isEmpty {
+                    VStack {
+                        Spacer()
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 48))
+                            .foregroundColor(.secondary)
+                        Text("No results found")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .padding(.top, 8)
+                        Spacer()
+                    }
+                    .frame(height: geometry.size.height - keyboardHeight - 80)
+                } else {
+                    ScrollViewReader { scrollProxy in
+                        ScrollView {
+                            LazyVStack(spacing: 8) {
+                                // Show recent foods when search is empty
+                                if searchText.isEmpty && !recentFoods.isEmpty {
+                                    // Recent Foods Section
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        HStack {
+                                            Image(systemName: "clock.arrow.circlepath")
+                                                .foregroundColor(.blue)
+                                                .font(.system(size: 16, weight: .medium))
+                                            Text("Recent Foods")
+                                                .font(.system(size: 18, weight: .semibold))
+                                                .foregroundColor(.primary)
+                                            Spacer()
+                                        }
                                         .padding(.horizontal, 16)
+                                        .padding(.top, 16)
+
+                                        ForEach(recentFoods, id: \.id) { recentFood in
+                                            let searchResult = convertToSearchResult(recentFood)
+                                            FoodSearchResultRowEnhanced(food: searchResult, selectedTab: $selectedTab, destination: $destination)
+                                                .padding(.horizontal, 16)
+                                        }
+                                    }
+                                }
+
+                                // Show search results when searching
+                                ForEach(Array(searchResults.enumerated()), id: \.element.id) { index, food in
+                                    FoodSearchResultRowEnhanced(food: food, selectedTab: $selectedTab, destination: $destination)
+                                        .id("result_\(index)")
+                                }
+
+                                // Spacer for keyboard
+                                Rectangle()
+                                    .fill(Color.clear)
+                                    .frame(height: keyboardHeight > 0 ? keyboardHeight + 20 : 80)
+                                    .id("bottom_spacer")
+                            }
+                            .padding(.horizontal, searchText.isEmpty ? 0 : 16)
+                            .padding(.top, searchText.isEmpty ? 0 : 16)
+                        }
+                        .frame(maxHeight: .infinity)
+                        .modifier(ScrollDismissModifier())
+                        .onChange(of: searchResults.count) { newCount in
+                            // Auto-scroll to show first result when results appear
+                            if newCount > 0 {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                    withAnimation(.easeOut(duration: 0.3)) {
+                                        scrollProxy.scrollTo("result_0", anchor: .top)
+                                    }
                                 }
                             }
                         }
-
-                        // Show search results when searching
-                        ForEach(searchResults, id: \.id) { food in
-                            FoodSearchResultRowEnhanced(food: food, selectedTab: $selectedTab, destination: $destination)
+                        .onChange(of: keyboardHeight) { height in
+                            // Also scroll when keyboard appears if we have results
+                            if height > 0 && !searchResults.isEmpty {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    withAnimation(.easeOut(duration: 0.3)) {
+                                        scrollProxy.scrollTo("result_0", anchor: .top)
+                                    }
+                                }
+                            }
                         }
                     }
-                    .padding(.horizontal, searchText.isEmpty ? 0 : 16)
-                    .padding(.top, searchText.isEmpty ? 0 : 16)
-                    .padding(.bottom, max(24, keyboardHeight))
                 }
-                .modifier(ScrollDismissModifier())
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .animation(.easeInOut(duration: 0.3), value: keyboardHeight)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
             setupKeyboardObservers()
             checkForEditingMode()

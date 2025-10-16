@@ -1233,79 +1233,48 @@ class AdditiveWatchService {
     
     // REMOVED: Local analysis method - now using Firebase Cloud Function as SINGLE SOURCE OF TRUTH
     
-    // Firebase Cloud Function analysis - SINGLE SOURCE OF TRUTH  
+    // Local comprehensive additive analysis using ProcessingScorer
     func analyzeIngredients(_ ingredients: [String], completion: @escaping (AdditiveDetectionResult) -> Void) {
-        // Default empty result if Firebase call fails
-        let fallbackResult = AdditiveDetectionResult(detectedAdditives: [], childWarnings: [], hasChildConcernAdditives: false, analysisConfidence: 0.0, processingScore: nil, comprehensiveWarnings: nil)
-        
-        guard let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/analyzeAdditivesEnhanced") else {
-            print("❌ Error: Invalid Firebase Cloud Function URL")
-            completion(fallbackResult)
-            return
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        let requestBody = ["ingredients": ingredients.joined(separator: ", ")]
-        
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-        } catch {
-            print("❌ Failed to encode request: \(error)")
-            completion(fallbackResult)
-            return
-        }
-        
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            DispatchQueue.main.async {
-                if let error = error {
-                    print("❌ Enhanced additive analysis error: \(error)")
-                    completion(fallbackResult)
-                    return
-                }
-                
-                guard let data = data else {
-                    print("❌ No data received from enhanced analysis")
-                    completion(fallbackResult)
-                    return
-                }
-                
-                do {
-                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                       let success = json["success"] as? Bool, success {
-                        
-                        // Parse processing score
-                        let processingScore = self.parseProcessingScore(json["processing"] as? [String: Any])
-                        
-                        // Parse comprehensive warnings
-                        let warnings = self.parseWarnings(json["warnings"] as? [String: Any])
-                        
-                        // Parse detected additives
-                        let enhancedAdditives = self.parseEnhancedAdditives(json["additives"] as? [[String: Any]])
-                        
-                        // Create enhanced result
-                        let enhancedResult = AdditiveDetectionResult(
-                            detectedAdditives: enhancedAdditives.isEmpty ? fallbackResult.detectedAdditives : enhancedAdditives,
-                            childWarnings: enhancedAdditives.filter { $0.hasChildWarning },
-                            hasChildConcernAdditives: warnings?.childWarnings.isEmpty == false,
-                            analysisConfidence: (json["metadata"] as? [String: Any])?["confidence"] as? Double ?? fallbackResult.analysisConfidence,
-                            processingScore: processingScore,
-                            comprehensiveWarnings: warnings
-                        )
-                        
-                        completion(enhancedResult)
-                    } else {
-                        print("❌ Enhanced analysis failed, using fallback")
-                        completion(fallbackResult)
-                    }
-                } catch {
-                    print("❌ Failed to parse enhanced analysis response: \(error)")
-                    completion(fallbackResult)
-                }
+        print("🔬 [AdditiveWatchService] Starting local comprehensive additive analysis")
+        print("🔬 [AdditiveWatchService] Input ingredients array: \(ingredients)")
+        print("🔬 [AdditiveWatchService] Ingredients count: \(ingredients.count)")
+
+        let ingredientsText = ingredients.joined(separator: ", ")
+        print("🔬 [AdditiveWatchService] Joined ingredients text: '\(ingredientsText)'")
+
+        // Use ProcessingScorer's exposed additive analysis method
+        let detectedAdditives = ProcessingScorer.shared.analyzeAdditives(in: ingredientsText)
+
+        print("✅ [AdditiveWatchService] Additive analysis complete!")
+        print("✅ [AdditiveWatchService] Total additives detected: \(detectedAdditives.count)")
+
+        // Extract child warnings
+        let childWarnings = detectedAdditives.filter { $0.hasChildWarning }
+        print("✅ [AdditiveWatchService] Child warnings: \(childWarnings.count)")
+
+        // Build result
+        let result = AdditiveDetectionResult(
+            detectedAdditives: detectedAdditives,
+            childWarnings: childWarnings,
+            hasChildConcernAdditives: !childWarnings.isEmpty,
+            analysisConfidence: 0.95, // High confidence for local analysis
+            processingScore: nil,
+            comprehensiveWarnings: nil
+        )
+
+        // Log detected additives for debugging
+        if !detectedAdditives.isEmpty {
+            print("✅ [AdditiveWatchService] Detected additives:")
+            for additive in detectedAdditives {
+                print("   - \(additive.eNumber): \(additive.name)")
             }
-        }.resume()
+        } else {
+            print("⚠️ [AdditiveWatchService] NO ADDITIVES DETECTED IN SERVICE!")
+        }
+
+        DispatchQueue.main.async {
+            completion(result)
+        }
     }
     
     private func parseProcessingScore(_ processing: [String: Any]?) -> ProcessingAnalysisResult? {
@@ -1384,33 +1353,76 @@ class AdditiveWatchService {
         return additives
     }
     
+    // MARK: - Helper: Word Boundary Matching
+
+    private func matchesWithWordBoundary(text: String, pattern: String) -> Bool {
+        // Escape special regex characters in the pattern
+        let escapedPattern = NSRegularExpression.escapedPattern(for: pattern)
+
+        // Use word boundaries (\b) to ensure we match complete words/codes only
+        let regexPattern = "\\b\(escapedPattern)\\b"
+
+        guard let regex = try? NSRegularExpression(pattern: regexPattern, options: .caseInsensitive) else {
+            return false
+        }
+
+        let range = NSRange(text.startIndex..., in: text)
+        return regex.firstMatch(in: text, range: range) != nil
+    }
+
+    // MARK: - Helper: Text Normalization
+
+    private func normalizeIngredientText(_ text: String) -> String {
+        var normalized = text.lowercased()
+
+        // Add spaces around punctuation to create word boundaries
+        // This helps detect "Colour: paprika extract" as "paprika extract"
+        normalized = normalized.replacingOccurrences(of: ":", with: " : ")
+        normalized = normalized.replacingOccurrences(of: ";", with: " ; ")
+        normalized = normalized.replacingOccurrences(of: ",", with: " , ")
+        normalized = normalized.replacingOccurrences(of: "(", with: " ( ")
+        normalized = normalized.replacingOccurrences(of: ")", with: " ) ")
+
+        // Remove extra spaces
+        normalized = normalized.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+
+        // Normalize E-number formats (e-102 → e102, e 102 → e102)
+        normalized = normalized.replacingOccurrences(of: "e-", with: "e")
+        normalized = normalized.replacingOccurrences(of: "e ", with: "e")
+
+        return normalized.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     private func calculateMatchScore(additive: AdditiveInfo, text: String) -> Double {
         var score = 0.0
-        
-        // Check E-number match (highest priority)
-        if text.contains(additive.eNumber.lowercased()) {
-            score += 0.9
+        let normalized = normalizeIngredientText(text)
+
+        // E-number exact match with word boundaries (highest priority)
+        if matchesWithWordBoundary(text: normalized, pattern: additive.eNumber.lowercased()) {
+            score += 0.95
         }
-        
-        // Check name match
-        if text.contains(additive.name.lowercased()) {
-            score += 0.8
+
+        // Full name exact match with word boundaries
+        if matchesWithWordBoundary(text: normalized, pattern: additive.name.lowercased()) {
+            score += 0.85
         }
-        
-        // Check synonyms
+
+        // Synonym matches (with word boundaries)
         for synonym in additive.synonyms {
-            if text.contains(synonym.lowercased()) {
-                score += 0.6
+            if !synonym.isEmpty && matchesWithWordBoundary(text: normalized, pattern: synonym.lowercased()) {
+                score += 0.70
                 break
             }
         }
-        
-        // Check INS number if available
-        if let insNumber = additive.insNumber, text.contains(insNumber) {
-            score += 0.7
+
+        // Check INS number if available (with word boundaries)
+        if let insNumber = additive.insNumber, !insNumber.isEmpty {
+            if matchesWithWordBoundary(text: normalized, pattern: insNumber.lowercased()) {
+                score += 0.75
+            }
         }
-        
-        return min(score, 1.0)
+
+        return min(score, 1.0)  // Cap at 100%
     }
     
     private func parseCSV(_ content: String) -> [AdditiveInfo] {
@@ -1432,13 +1444,15 @@ class AdditiveWatchService {
     
     private func parseCSVLine(_ line: String) -> AdditiveInfo? {
         let components = parseCSVComponents(line)
-        guard components.count >= 16 else { 
+        guard components.count >= 16 else {
             print("❌ CSV line has \(components.count) components, need at least 16. Line: \(line.prefix(100))")
             return nil
         }
-        
-        let synonyms = components.count > 16 ? components[16].split(separator: ";").map { $0.trimmingCharacters(in: .whitespaces) } : []
-        
+
+        // Parse and clean synonyms
+        let rawSynonyms = components.count > 16 ? components[16].split(separator: ";").map { $0.trimmingCharacters(in: .whitespaces) } : []
+        let synonyms = cleanSynonyms(rawSynonyms, eNumber: components[0])
+
         return AdditiveInfo(
             id: components[0],
             eNumber: components[0],
@@ -1463,6 +1477,37 @@ class AdditiveWatchService {
             sources: [],
             consumerInfo: nil
         )
+    }
+
+    // MARK: - Helper: Clean Synonyms
+
+    private func cleanSynonyms(_ rawSynonyms: [String], eNumber: String) -> [String] {
+        // Generic single-word terms that should be excluded (too broad)
+        let blacklist = ["red", "yellow", "blue", "green", "orange", "white", "black", "brown",
+                         "pink", "purple", "color", "colour", "dye"]
+
+        return rawSynonyms.filter { synonym in
+            let lower = synonym.lowercased()
+
+            // Always keep E-numbers and INS numbers
+            if lower.starts(with: "e") || lower.starts(with: "ins") {
+                return true
+            }
+
+            // Always keep multi-word synonyms (more specific)
+            if lower.contains(" ") {
+                return true
+            }
+
+            // Filter out generic single-word terms
+            if blacklist.contains(lower) {
+                print("🧹 Filtered out generic synonym '\(synonym)' for \(eNumber)")
+                return false
+            }
+
+            // Keep everything else
+            return true
+        }
     }
     
     private func parseOrigin(_ originString: String) -> AdditiveOrigin {

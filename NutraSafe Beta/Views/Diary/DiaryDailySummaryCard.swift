@@ -197,22 +197,12 @@ struct DiaryDailySummaryCard: View {
                 }
             }
         }
-        .padding(24)
+        .padding(AppSpacing.xLarge)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            Color(.systemBackground),
-                            Color(.systemBackground).opacity(0.95)
-                        ]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
-                .shadow(color: Color.black.opacity(0.04), radius: 1, x: 0, y: 1)
+            RoundedRectangle(cornerRadius: AppRadius.medium)
+                .fill(AppColors.cardBackgroundElevated)
         )
+        .cardShadow()
         .onAppear {
             Task {
                 await loadNutritionGoals()

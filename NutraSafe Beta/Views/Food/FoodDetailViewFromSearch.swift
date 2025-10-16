@@ -723,9 +723,59 @@ struct FoodDetailViewFromSearch: View {
         print("getDetectedAdditives: displayFood.name = \(displayFood.name)")
         print("getDetectedAdditives: displayFood.calories = \(displayFood.calories)")
 
-        // First check if we have Firebase additive data
+        // Check if we need to re-analyze due to outdated database version
+        let currentDBVersion = ProcessingScorer.shared.databaseVersion
+        let savedDBVersion = displayFood.additivesDatabaseVersion
+
+        print("📊 Database versions - Current: \(currentDBVersion), Saved: \(savedDBVersion ?? "nil (legacy)")")
+
+        // Re-analyze if:
+        // 1. No saved version (legacy data)
+        // 2. Saved version is different from current version
+        // 3. We have ingredients to analyze
+        let hasIngredients = displayFood.ingredients != nil && !displayFood.ingredients!.isEmpty
+        let needsReAnalysis = (savedDBVersion == nil || savedDBVersion != currentDBVersion) && hasIngredients
+
+        if needsReAnalysis {
+            print("🔄 RE-ANALYZING: Database version outdated or missing")
+            print("   - Saved version: \(savedDBVersion ?? "none")")
+            print("   - Current version: \(currentDBVersion)")
+            print("   - Ingredients available: \(displayFood.ingredients?.count ?? 0)")
+
+            // Perform fresh analysis with current database
+            let ingredientsText = displayFood.ingredients!.joined(separator: ", ")
+            let freshAdditives = ProcessingScorer.shared.analyzeAdditives(in: ingredientsText)
+
+            print("🔄 Fresh analysis complete: Found \(freshAdditives.count) additives")
+
+            // Convert fresh analysis to DetailedAdditive format
+            return freshAdditives.map { additive in
+                let riskLevel: String
+                if additive.effectsVerdict == .avoid {
+                    riskLevel = "High"
+                } else if additive.effectsVerdict == .caution {
+                    riskLevel = "Moderate"
+                } else {
+                    riskLevel = "Low"
+                }
+
+                let description = additive.consumerInfo ?? "No detailed information available for this additive."
+
+                return DetailedAdditive(
+                    name: additive.name,
+                    code: additive.eNumber,
+                    purpose: additive.group.rawValue.capitalized,
+                    origin: additive.origin.rawValue.capitalized,
+                    childWarning: additive.hasChildWarning,
+                    riskLevel: riskLevel,
+                    description: description
+                )
+            }
+        }
+
+        // Use saved Firebase additive data if version is current
         if let firebaseAdditives = displayFood.additives, !firebaseAdditives.isEmpty {
-            print("getDetectedAdditives: Found \(firebaseAdditives.count) additives")
+            print("getDetectedAdditives: Using saved data - \(firebaseAdditives.count) additives")
             return firebaseAdditives.map { additive in
                 let riskLevel: String
                 if additive.effectsVerdict == "avoid" {
@@ -2459,61 +2509,71 @@ struct FoodDetailViewFromSearch: View {
     // MARK: - Combined Watch Tabs Section
     private var watchTabsSection: some View {
         VStack(spacing: 0) {
-            // Tab Selector
-            HStack(spacing: 0) {
+            // Modern Tab Selector with pill design
+            HStack(spacing: 8) {
                 ForEach(WatchTab.allCases, id: \.self) { tab in
                     Button(action: {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
                             selectedWatchTab = tab
                         }
                     }) {
-                        HStack(spacing: 8) {
-                            Image(systemName: tab.icon)
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(selectedWatchTab == tab ? tab.color : .secondary)
-                            
+                        VStack(spacing: 6) {
+                            ZStack {
+                                // Background circle for icon
+                                Circle()
+                                    .fill(selectedWatchTab == tab ? tab.color : Color(.systemGray5))
+                                    .frame(width: 44, height: 44)
+
+                                Image(systemName: tab.icon)
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundColor(selectedWatchTab == tab ? .white : .secondary)
+                            }
+
                             Text(tab.rawValue)
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(selectedWatchTab == tab ? .primary : .secondary)
+                                .font(.system(size: 11, weight: selectedWatchTab == tab ? .semibold : .medium))
+                                .foregroundColor(selectedWatchTab == tab ? tab.color : .secondary)
+                                .multilineTextAlignment(.center)
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
                         .background(
-                            selectedWatchTab == tab 
-                                ? tab.color.opacity(0.05)
-                                : Color.clear
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(selectedWatchTab == tab ? tab.color.opacity(0.08) : Color.clear)
                         )
-                        .overlay(
-                            Rectangle()
-                                .frame(height: 2)
-                                .foregroundColor(selectedWatchTab == tab ? tab.color : Color.clear)
-                                .animation(.spring(response: 0.3), value: selectedWatchTab),
-                            alignment: .bottom
-                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
+            .background(Color(.systemBackground))
+
+            Divider()
+                .padding(.horizontal, 16)
+
+            // Tab Content - Wrapped in ScrollView to prevent overflow
+            ScrollView {
+                VStack(spacing: 0) {
+                    switch selectedWatchTab {
+                    case .additives:
+                        additivesContent
+                    case .allergies:
+                        allergensContent
+                    case .vitamins:
+                        vitaminsContent
                     }
                 }
             }
-            .background(Color(.systemGray6))
-            .cornerRadius(12, corners: [.topLeft, .topRight])
-            
-            // Tab Content
-            VStack(spacing: 0) {
-                switch selectedWatchTab {
-                case .additives:
-                    additivesContent
-                case .allergies:
-                    allergensContent
-                case .vitamins:
-                    vitaminsContent
-                }
-            }
-            .background(Color(.systemGray6))
-            .cornerRadius(12, corners: [.bottomLeft, .bottomRight])
+            .frame(maxHeight: 400) // Limit height to prevent tab overlap
+            .background(Color(.systemBackground))
         }
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(.systemGray6))
-                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                .fill(Color(.systemBackground))
+                .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
         )
     }
     
@@ -2543,33 +2603,30 @@ struct FoodDetailViewFromSearch: View {
     private var allergensContent: some View {
         VStack(alignment: .leading, spacing: 12) {
             let potentialAllergens = getPotentialAllergens()
-            
+
             if !potentialAllergens.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(potentialAllergens.sorted(), id: \.self) { allergen in
-                        HStack(spacing: 12) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.red)
-                            
-                            Text(allergen)
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.primary)
-                            
-                            Spacer()
-                        }
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 12)
-                        .background(.red.opacity(0.05))
-                        .cornerRadius(8)
+                        AllergenWarningCard(allergenName: allergen)
                     }
                 }
             } else {
-                Text("No common allergens detected")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 24)
+                VStack(spacing: 12) {
+                    Image(systemName: "checkmark.shield.fill")
+                        .font(.system(size: 40))
+                        .foregroundColor(.green)
+
+                    Text("No Common Allergens Detected")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+
+                    Text("Based on the ingredient list, no common allergens were found")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 32)
             }
         }
         .padding(16)
@@ -2579,22 +2636,34 @@ struct FoodDetailViewFromSearch: View {
     private var vitaminsContent: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let micronutrients = currentMicronutrients {
-                Text("This is a source of:")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.primary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                
-                VStack(alignment: .leading, spacing: 12) {
-                    // Show significant vitamins and minerals in alphabetical order
-                    let availableNutrients = getAvailableNutrients(micronutrients)
-                    ForEach(availableNutrients.sorted(), id: \.self) { nutrientName in
-                        VitaminMineralRow(name: nutrientName, confidence: .estimated)
+                let availableNutrients = getAvailableNutrients(micronutrients)
+
+                if !availableNutrients.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(availableNutrients.sorted(), id: \.self) { nutrientName in
+                            NutrientCard(nutrientName: nutrientName, micronutrients: micronutrients)
+                        }
                     }
+                } else {
+                    VStack(spacing: 12) {
+                        Image(systemName: "drop.fill")
+                            .font(.system(size: 40))
+                            .foregroundColor(.blue.opacity(0.5))
+
+                        Text("Low Micronutrient Content")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.primary)
+
+                        Text("This food doesn't contain significant amounts of vitamins or minerals")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 32)
                 }
             } else {
-                Text("Loading vitamin and mineral data...")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
+                ProgressView()
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 24)
             }
@@ -2862,22 +2931,469 @@ struct FoodDetailViewFromSearch: View {
 
 // MARK: - Supporting Components (also extracted from ContentView.swift)
 
+// MARK: - Modern Card Components
+
+struct AllergenWarningCard: View {
+    let allergenName: String
+    @State private var isExpanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    isExpanded.toggle()
+                }
+            }) {
+                HStack(alignment: .center, spacing: 12) {
+                    // Warning icon
+                    ZStack {
+                        Circle()
+                            .fill(Color.red.opacity(0.15))
+                            .frame(width: 44, height: 44)
+
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(.red)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(allergenName)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.primary)
+
+                        Text("Detected in ingredients")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.secondary)
+                }
+                .padding(12)
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 12) {
+                    Divider()
+                        .padding(.horizontal, 12)
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        AllergenInfoRow(
+                            icon: "info.circle.fill",
+                            title: "What to know",
+                            content: getAllergenInfo(allergenName),
+                            color: .blue
+                        )
+
+                        AllergenInfoRow(
+                            icon: "heart.text.square.fill",
+                            title: "Common sources",
+                            content: getCommonSources(allergenName),
+                            color: .orange
+                        )
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 12)
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color(.systemBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(Color.red.opacity(0.2), lineWidth: 1.5)
+                )
+        )
+        .shadow(color: Color.red.opacity(0.08), radius: 8, x: 0, y: 2)
+    }
+
+    private func getAllergenInfo(_ allergen: String) -> String {
+        let lower = allergen.lowercased()
+
+        if lower.contains("dairy") || lower.contains("milk") {
+            return "This product contains dairy ingredients, which may cause reactions in people with lactose intolerance or milk allergies."
+        } else if lower.contains("gluten") || lower.contains("wheat") {
+            return "Contains gluten, which should be avoided by people with celiac disease or gluten sensitivity."
+        } else if lower.contains("peanut") {
+            return "Contains peanuts, one of the most common and potentially severe food allergens."
+        } else if lower.contains("tree nut") || lower.contains("nut") {
+            return "Contains tree nuts, which can cause severe allergic reactions in sensitive individuals."
+        } else if lower.contains("soy") {
+            return "Contains soy, a common allergen that some people need to avoid."
+        } else if lower.contains("egg") {
+            return "Contains eggs, which can cause allergic reactions in some people."
+        } else if lower.contains("fish") {
+            return "Contains fish, a common allergen that must be avoided by those with fish allergies."
+        } else if lower.contains("shellfish") {
+            return "Contains shellfish, which can cause severe allergic reactions."
+        } else if lower.contains("sesame") {
+            return "Contains sesame, a recognized allergen that affects many people."
+        } else if lower.contains("mustard") {
+            return "Contains mustard, which is a known allergen, especially common in European countries."
+        } else {
+            return "This allergen has been detected in the ingredients list and may cause reactions in sensitive individuals."
+        }
+    }
+
+    private func getCommonSources(_ allergen: String) -> String {
+        let lower = allergen.lowercased()
+
+        if lower.contains("dairy") || lower.contains("milk") {
+            return "Milk, cheese, butter, cream, yogurt, whey, casein, lactose"
+        } else if lower.contains("gluten") || lower.contains("wheat") {
+            return "Wheat, barley, rye, bread, pasta, cereals, baked goods"
+        } else if lower.contains("peanut") {
+            return "Peanut butter, peanut oil, some snack foods, some sauces"
+        } else if lower.contains("tree nut") || lower.contains("nut") {
+            return "Almonds, cashews, walnuts, pecans, pistachios, nut oils"
+        } else if lower.contains("soy") {
+            return "Soy sauce, tofu, edamame, soy protein, soy lecithin"
+        } else if lower.contains("egg") {
+            return "Eggs, mayonnaise, some baked goods, egg albumin"
+        } else if lower.contains("fish") {
+            return "Salmon, tuna, cod, haddock, fish sauce, anchovy paste"
+        } else if lower.contains("shellfish") {
+            return "Shrimp, crab, lobster, prawns, crayfish"
+        } else if lower.contains("sesame") {
+            return "Sesame seeds, tahini, sesame oil, some breads"
+        } else if lower.contains("mustard") {
+            return "Mustard seeds, mustard powder, prepared mustard, some sauces"
+        } else {
+            return "Check ingredient list for specific sources"
+        }
+    }
+}
+
+struct AllergenInfoRow: View {
+    let icon: String
+    let title: String
+    let content: String
+    let color: Color
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 14))
+                .foregroundColor(color)
+                .frame(width: 20)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.primary)
+
+                Text(content)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+}
+
+struct NutrientCard: View {
+    let nutrientName: String
+    let micronutrients: MicronutrientProfile
+    @State private var isExpanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    isExpanded.toggle()
+                }
+            }) {
+                HStack(alignment: .center, spacing: 12) {
+                    // Nutrient icon
+                    ZStack {
+                        Circle()
+                            .fill(getNutrientColor().opacity(0.15))
+                            .frame(width: 44, height: 44)
+
+                        Image(systemName: getNutrientIcon())
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(getNutrientColor())
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(nutrientName)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.primary)
+
+                        Text(getNutrientCategory())
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.secondary)
+                }
+                .padding(12)
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 12) {
+                    Divider()
+                        .padding(.horizontal, 12)
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        NutrientInfoRow(
+                            icon: "info.circle.fill",
+                            title: "What does it do?",
+                            content: getNutrientFunction(),
+                            color: .blue
+                        )
+
+                        NutrientInfoRow(
+                            icon: "heart.fill",
+                            title: "Health benefits",
+                            content: getNutrientBenefits(),
+                            color: .pink
+                        )
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 12)
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color(.systemBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(getNutrientColor().opacity(0.2), lineWidth: 1.5)
+                )
+        )
+        .shadow(color: getNutrientColor().opacity(0.08), radius: 8, x: 0, y: 2)
+    }
+
+    private func getNutrientIcon() -> String {
+        let lower = nutrientName.lowercased()
+
+        if lower.contains("vitamin a") {
+            return "eye.fill"
+        } else if lower.contains("vitamin c") {
+            return "cross.case.fill"
+        } else if lower.contains("vitamin d") {
+            return "sun.max.fill"
+        } else if lower.contains("vitamin e") {
+            return "shield.fill"
+        } else if lower.contains("vitamin k") {
+            return "drop.fill"
+        } else if lower.contains("vitamin b") || lower.contains("thiamine") || lower.contains("riboflavin") || lower.contains("niacin") || lower.contains("folate") || lower.contains("biotin") || lower.contains("pantothenic") {
+            return "bolt.fill"
+        } else if lower.contains("calcium") {
+            return "figure.walk"
+        } else if lower.contains("iron") {
+            return "heart.circle.fill"
+        } else if lower.contains("potassium") {
+            return "waveform.path.ecg"
+        } else if lower.contains("magnesium") {
+            return "sparkles"
+        } else if lower.contains("zinc") {
+            return "bandage.fill"
+        } else {
+            return "leaf.fill"
+        }
+    }
+
+    private func getNutrientColor() -> Color {
+        let lower = nutrientName.lowercased()
+
+        if lower.contains("vitamin") {
+            return .orange
+        } else if lower.contains("calcium") || lower.contains("magnesium") || lower.contains("phosphorus") {
+            return .blue
+        } else if lower.contains("iron") || lower.contains("zinc") || lower.contains("copper") {
+            return .red
+        } else if lower.contains("potassium") || lower.contains("sodium") {
+            return .purple
+        } else {
+            return .green
+        }
+    }
+
+    private func getNutrientCategory() -> String {
+        let lower = nutrientName.lowercased()
+
+        if lower.contains("vitamin") {
+            return "Essential vitamin"
+        } else {
+            return "Essential mineral"
+        }
+    }
+
+    private func getNutrientFunction() -> String {
+        let lower = nutrientName.lowercased()
+
+        if lower.contains("vitamin a") {
+            return "Supports vision, immune function, and skin health"
+        } else if lower.contains("vitamin c") {
+            return "Powerful antioxidant that supports immune system and collagen production"
+        } else if lower.contains("vitamin d") {
+            return "Helps absorb calcium and supports bone health and immune function"
+        } else if lower.contains("vitamin e") {
+            return "Acts as an antioxidant protecting cells from damage"
+        } else if lower.contains("vitamin k") {
+            return "Essential for blood clotting and bone health"
+        } else if lower.contains("thiamine") || lower.contains("b1") {
+            return "Helps convert food into energy and supports nerve function"
+        } else if lower.contains("riboflavin") || lower.contains("b2") {
+            return "Important for energy production and cellular function"
+        } else if lower.contains("niacin") || lower.contains("b3") {
+            return "Supports metabolism, skin health, and nervous system"
+        } else if lower.contains("vitamin b6") {
+            return "Aids in protein metabolism and red blood cell formation"
+        } else if lower.contains("folate") {
+            return "Crucial for DNA synthesis and cell division"
+        } else if lower.contains("vitamin b12") {
+            return "Essential for nerve function and red blood cell formation"
+        } else if lower.contains("biotin") || lower.contains("b7") {
+            return "Supports hair, skin, and nail health"
+        } else if lower.contains("pantothenic") || lower.contains("b5") {
+            return "Important for energy production and hormone synthesis"
+        } else if lower.contains("calcium") {
+            return "Builds and maintains strong bones and teeth"
+        } else if lower.contains("iron") {
+            return "Essential for oxygen transport in blood"
+        } else if lower.contains("potassium") {
+            return "Regulates fluid balance and supports heart function"
+        } else if lower.contains("magnesium") {
+            return "Supports muscle and nerve function, energy production"
+        } else if lower.contains("zinc") {
+            return "Supports immune function and wound healing"
+        } else if lower.contains("phosphorus") {
+            return "Essential for bone health and energy production"
+        } else if lower.contains("selenium") {
+            return "Acts as an antioxidant and supports thyroid function"
+        } else if lower.contains("copper") {
+            return "Helps form red blood cells and maintains nerve cells"
+        } else if lower.contains("manganese") {
+            return "Supports bone formation and nutrient metabolism"
+        } else if lower.contains("chromium") {
+            return "Helps regulate blood sugar levels"
+        } else if lower.contains("iodine") {
+            return "Essential for thyroid hormone production"
+        } else if lower.contains("molybdenum") {
+            return "Helps break down certain amino acids"
+        } else {
+            return "Plays an important role in bodily functions"
+        }
+    }
+
+    private func getNutrientBenefits() -> String {
+        let lower = nutrientName.lowercased()
+
+        if lower.contains("vitamin a") {
+            return "Supports healthy vision, especially in low light, and maintains healthy skin"
+        } else if lower.contains("vitamin c") {
+            return "Boosts immune system, aids wound healing, and helps maintain healthy skin"
+        } else if lower.contains("vitamin d") {
+            return "Strengthens bones, supports muscle function, and boosts mood"
+        } else if lower.contains("vitamin e") {
+            return "Protects cells from oxidative stress and supports skin health"
+        } else if lower.contains("vitamin k") {
+            return "Helps prevent excessive bleeding and supports bone strength"
+        } else if lower.contains("thiamine") || lower.contains("b1") {
+            return "Maintains healthy nervous system and supports heart function"
+        } else if lower.contains("riboflavin") || lower.contains("b2") {
+            return "Promotes healthy skin, eyes, and nervous system"
+        } else if lower.contains("niacin") || lower.contains("b3") {
+            return "Improves cholesterol levels and brain function"
+        } else if lower.contains("vitamin b6") {
+            return "Supports brain development and immune function"
+        } else if lower.contains("folate") {
+            return "Prevents birth defects and supports healthy cell growth"
+        } else if lower.contains("vitamin b12") {
+            return "Prevents anemia and supports energy levels"
+        } else if lower.contains("biotin") || lower.contains("b7") {
+            return "Promotes healthy hair growth and strong nails"
+        } else if lower.contains("pantothenic") || lower.contains("b5") {
+            return "Supports adrenal function and reduces stress"
+        } else if lower.contains("calcium") {
+            return "Prevents osteoporosis and supports muscle contraction"
+        } else if lower.contains("iron") {
+            return "Prevents anemia and supports energy levels"
+        } else if lower.contains("potassium") {
+            return "Helps maintain healthy blood pressure and reduces stroke risk"
+        } else if lower.contains("magnesium") {
+            return "Supports heart health, bone strength, and reduces migraine frequency"
+        } else if lower.contains("zinc") {
+            return "Boosts immune system and accelerates wound healing"
+        } else if lower.contains("phosphorus") {
+            return "Supports kidney function and muscle recovery"
+        } else if lower.contains("selenium") {
+            return "Protects against oxidative stress and supports reproduction"
+        } else if lower.contains("copper") {
+            return "Supports brain health and immune function"
+        } else if lower.contains("manganese") {
+            return "Supports bone health and wound healing"
+        } else if lower.contains("chromium") {
+            return "May improve insulin sensitivity and blood sugar control"
+        } else if lower.contains("iodine") {
+            return "Supports healthy metabolism and brain development"
+        } else if lower.contains("molybdenum") {
+            return "Supports liver detoxification processes"
+        } else {
+            return "Contributes to overall health and wellbeing"
+        }
+    }
+}
+
+struct NutrientInfoRow: View {
+    let icon: String
+    let title: String
+    let content: String
+    let color: Color
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 14))
+                .foregroundColor(color)
+                .frame(width: 20)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.primary)
+
+                Text(content)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+}
+
 struct VitaminMineralRow: View {
     let name: String
     let confidence: MicronutrientConfidence
-    
+
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "leaf.fill")
                 .font(.system(size: 16, weight: .medium))
                 .foregroundColor(.green)
-            
+
             Text(name)
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(.primary)
-            
+
             Spacer()
-            
+
             // Confidence badge only
             Circle()
                 .fill(confidence.color.opacity(0.9))

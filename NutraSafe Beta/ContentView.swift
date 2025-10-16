@@ -1560,8 +1560,7 @@ struct WeightTrackingView: View {
     @State private var hasCheckedHeight = false
 
     // Entry management
-    @State private var selectedEntry: WeightEntry?
-    @State private var showingEditWeight = false
+    @State private var editingEntry: WeightEntry?  // Changed from selectedEntry to editingEntry for clarity
     @State private var entryToDelete: WeightEntry?
     @State private var showingDeleteConfirmation = false
 
@@ -1831,13 +1830,11 @@ struct WeightTrackingView: View {
                                     )
                                     .onTapGesture {
                                         print("📍 Tapped entry: \(entry.date)")
-                                        selectedEntry = entry
-                                        print("📍 Selected entry set: \(selectedEntry?.date ?? Date())")
+                                        editingEntry = entry
                                     }
                                     .contextMenu {
                                         Button {
-                                            selectedEntry = entry
-                                            showingEditWeight = true
+                                            editingEntry = entry
                                         } label: {
                                             Label("Edit", systemImage: "pencil")
                                         }
@@ -1945,49 +1942,19 @@ struct WeightTrackingView: View {
             AddWeightView(currentWeight: $currentWeight, weightHistory: $weightHistory, userHeight: $userHeight)
                 .environmentObject(firebaseManager)
         }
-        .sheet(isPresented: $showingEditWeight) {
-            if let entry = selectedEntry {
-                EditWeightView(
-                    entry: entry,
-                    currentWeight: $currentWeight,
-                    weightHistory: $weightHistory,
-                    userHeight: $userHeight,
-                    onSave: { loadWeightHistory() }
-                )
-                .environmentObject(firebaseManager)
-            }
-        }
         .sheet(isPresented: $showingHeightSetup) {
             HeightSetupView(userHeight: $userHeight)
                 .environmentObject(firebaseManager)
         }
-        .sheet(item: $selectedEntry) { entry in
-            ProgressWeightEntryDetailView(
+        .sheet(item: $editingEntry) { entry in
+            EditWeightView(
                 entry: entry,
-                onEdit: {
-                    // Delay opening edit sheet until detail sheet is dismissed
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        selectedEntry = entry
-                        showingEditWeight = true
-                    }
-                }
+                currentWeight: $currentWeight,
+                weightHistory: $weightHistory,
+                userHeight: $userHeight,
+                onSave: { loadWeightHistory() }
             )
             .environmentObject(firebaseManager)
-            .onAppear {
-                print("📍 Sheet opened with entry: \(entry.date)")
-            }
-        }
-        .sheet(isPresented: $showingEditWeight) {
-            if let entry = selectedEntry {
-                EditWeightView(
-                    entry: entry,
-                    currentWeight: $currentWeight,
-                    weightHistory: $weightHistory,
-                    userHeight: $userHeight,
-                    onSave: { loadWeightHistory() }
-                )
-                .environmentObject(firebaseManager)
-            }
         }
         .alert("Delete Weight Entry?", isPresented: $showingDeleteConfirmation) {
             Button("Cancel", role: .cancel) {
@@ -2991,6 +2958,8 @@ struct EditWeightView: View {
     @State private var secondaryHeight: String = ""  // NEW
     @State private var note: String = ""
     @State private var date = Date()
+    @State private var previousUnit: WeightUnit = .kg  // Track previous unit for conversions
+    @State private var previousHeightUnit: HeightUnit = .cm  // Track previous height unit
 
     // Photo picker
     @State private var selectedPhoto: UIImage? = nil
@@ -3171,7 +3140,19 @@ struct EditWeightView: View {
                     .disabled(weightInKg == nil)
                 }
             }
+            .onChange(of: selectedUnit) { newUnit in
+                convertWeight(from: previousUnit, to: newUnit)
+                previousUnit = newUnit  // Update after conversion
+            }
+            .onChange(of: selectedHeightUnit) { newUnit in
+                convertHeight(from: previousHeightUnit, to: newUnit)
+                previousHeightUnit = newUnit  // Update after conversion
+            }
             .onAppear {
+                // Initialize previous units to current units
+                previousUnit = selectedUnit
+                previousHeightUnit = selectedHeightUnit
+
                 // Pre-populate with existing entry data (convert from kg to selected unit)
                 let converted = selectedUnit.fromKg(entry.weight)
                 primaryWeight = String(format: "%.1f", converted.primary)
@@ -3182,9 +3163,9 @@ struct EditWeightView: View {
                 // Pre-populate height fields from userHeight
                 if userHeight > 0 {
                     let convertedHeight = selectedHeightUnit.fromCm(userHeight)
-                    primaryHeight = String(format: convertedHeight.secondary != nil ? "%.0f" : "%.1f", convertedHeight.primary)
+                    primaryHeight = String(format: convertedHeight.secondary != nil ? "%.0f" : "%.0f", convertedHeight.primary)
                     if let secondary = convertedHeight.secondary {
-                        secondaryHeight = String(format: "%.1f", secondary)
+                        secondaryHeight = String(format: "%.0f", secondary)
                     }
                 }
 
@@ -3201,6 +3182,83 @@ struct EditWeightView: View {
             }
             .sheet(isPresented: $showingImagePicker) {
                 ImagePicker(selectedImage: $selectedPhoto) { _ in }
+            }
+        }
+    }
+
+    private func convertWeight(from oldUnit: WeightUnit, to newUnit: WeightUnit) {
+        print("🔄 EditWeightView: Converting weight from \(oldUnit.rawValue) to \(newUnit.rawValue)")
+        print("   Current primaryWeight: '\(primaryWeight)', secondaryWeight: '\(secondaryWeight)'")
+
+        withAnimation(.easeInOut(duration: 0.2)) {
+            // First, get current weight in kg for conversion
+            guard let primary = Double(primaryWeight), primary > 0 else { return }
+            let secondary = !secondaryWeight.isEmpty ? Double(secondaryWeight) : nil
+
+            // Convert from old unit to kg
+            let kg = oldUnit.toKg(primary: primary, secondary: secondary)
+            print("   Intermediate kg value: \(kg) kg")
+
+            if newUnit == .kg {
+                // Converting TO kg
+                self.primaryWeight = String(format: "%.1f", kg)
+                print("   ✅ Converted to \(self.primaryWeight) kg")
+
+                // Clear secondary field after delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self.secondaryWeight = ""
+                }
+            } else if newUnit == .stones {
+                // Converting TO stones/lbs
+                let converted = WeightUnit.stones.fromKg(kg)
+
+                // Update stones/lbs fields FIRST
+                self.primaryWeight = String(format: "%.0f", converted.primary)
+                self.secondaryWeight = String(format: "%.1f", converted.secondary ?? 0)
+                print("   ✅ Converted to \(self.primaryWeight) st \(self.secondaryWeight) lbs")
+            } else if newUnit == .lbs {
+                // Converting TO lbs
+                let converted = WeightUnit.lbs.fromKg(kg)
+                self.primaryWeight = String(format: "%.1f", converted.primary)
+                print("   ✅ Converted to \(self.primaryWeight) lbs")
+
+                // Clear secondary field after delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self.secondaryWeight = ""
+                }
+            }
+        }
+    }
+
+    private func convertHeight(from oldUnit: HeightUnit, to newUnit: HeightUnit) {
+        print("🔄 EditWeightView: Converting height from \(oldUnit.rawValue) to \(newUnit.rawValue)")
+        print("   Current primaryHeight: '\(primaryHeight)', secondaryHeight: '\(secondaryHeight)'")
+
+        withAnimation(.easeInOut(duration: 0.2)) {
+            guard let primary = Double(primaryHeight), primary > 0 else { return }
+            let secondary = !secondaryHeight.isEmpty ? Double(secondaryHeight) : nil
+
+            // Convert from old unit to cm
+            let cm = oldUnit.toCm(primary: primary, secondary: secondary)
+            print("   Intermediate cm value: \(cm) cm")
+
+            if newUnit == .cm {
+                // Converting TO cm
+                self.primaryHeight = String(format: "%.0f", cm)
+                print("   ✅ Converted to \(self.primaryHeight) cm")
+
+                // Clear secondary field after delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self.secondaryHeight = ""
+                }
+            } else if newUnit == .ftIn {
+                // Converting TO feet/inches
+                let converted = HeightUnit.ftIn.fromCm(cm)
+
+                // Update ft/in fields FIRST
+                self.primaryHeight = String(format: "%.0f", converted.primary)
+                self.secondaryHeight = String(format: "%.0f", converted.secondary ?? 0)
+                print("   ✅ Converted to \(self.primaryHeight) ft \(self.secondaryHeight) in")
             }
         }
     }

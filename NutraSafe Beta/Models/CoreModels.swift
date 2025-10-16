@@ -26,10 +26,11 @@ struct FridgeInventoryItem: Codable, Identifiable {
     let openedDate: Date?
     let barcode: String?
     let category: String?
+    let imageURL: String?
 
     init(id: String = UUID().uuidString, name: String, brand: String? = nil,
          quantity: String, expiryDate: Date, addedDate: Date,
-         openedDate: Date? = nil, barcode: String? = nil, category: String? = nil) {
+         openedDate: Date? = nil, barcode: String? = nil, category: String? = nil, imageURL: String? = nil) {
         self.id = id
         self.name = name
         self.brand = brand
@@ -39,6 +40,7 @@ struct FridgeInventoryItem: Codable, Identifiable {
         self.openedDate = openedDate
         self.barcode = barcode
         self.category = category
+        self.imageURL = imageURL
     }
 
     var daysUntilExpiry: Int {

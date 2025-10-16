@@ -177,9 +177,28 @@ struct DiaryTabView: View {
 
                     // Expanded date picker (when shown)
                     if showingDatePicker {
-                        VStack(spacing: 0) {
-                            // Month/Year header with Today button and navigation arrows
-                            HStack(spacing: 12) {
+                        ZStack(alignment: .top) {
+                            // Native iOS calendar (with its header hidden by overlay)
+                            DatePicker(
+                                "Select Date",
+                                selection: $selectedDate,
+                                displayedComponents: .date
+                            )
+                            .datePickerStyle(GraphicalDatePickerStyle())
+                            .padding(.horizontal, 16)
+                            .padding(.top, 8)
+                            .padding(.bottom, 8)
+
+                            // White overlay to hide native calendar header
+                            VStack(spacing: 0) {
+                                Color(UIColor.systemBackground)
+                                    .frame(height: 50)
+                                Spacer()
+                            }
+                            .allowsHitTesting(false)
+
+                            // Custom calendar header with Today button
+                            HStack {
                                 Text(formatMonthYear(selectedDate))
                                     .font(.system(size: 20, weight: .bold))
                                     .foregroundColor(.primary)
@@ -201,12 +220,10 @@ struct DiaryTabView: View {
 
                                 Spacer()
 
-                                // Month navigation arrows
+                                // Month navigation buttons
                                 HStack(spacing: 12) {
                                     Button(action: {
-                                        if let newDate = Calendar.current.date(byAdding: .month, value: -1, to: selectedDate) {
-                                            selectedDate = newDate
-                                        }
+                                        selectedDate = Calendar.current.date(byAdding: .month, value: -1, to: selectedDate) ?? selectedDate
                                     }) {
                                         Image(systemName: "chevron.left")
                                             .font(.system(size: 16, weight: .semibold))
@@ -214,9 +231,7 @@ struct DiaryTabView: View {
                                     }
 
                                     Button(action: {
-                                        if let newDate = Calendar.current.date(byAdding: .month, value: 1, to: selectedDate) {
-                                            selectedDate = newDate
-                                        }
+                                        selectedDate = Calendar.current.date(byAdding: .month, value: 1, to: selectedDate) ?? selectedDate
                                     }) {
                                         Image(systemName: "chevron.right")
                                             .font(.system(size: 16, weight: .semibold))
@@ -224,18 +239,8 @@ struct DiaryTabView: View {
                                     }
                                 }
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.top, 12)
-                            .padding(.bottom, 8)
-
-                            DatePicker(
-                                "Select Date",
-                                selection: $selectedDate,
-                                displayedComponents: .date
-                            )
-                            .datePickerStyle(GraphicalDatePickerStyle())
-                            .padding(.horizontal, 16)
-                            .padding(.bottom, 8)
+                            .padding(.horizontal, 24)
+                            .padding(.top, 16)
                         }
                     }
                 }

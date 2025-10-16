@@ -51,12 +51,15 @@ struct ImprovedMicronutrientView: View {
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.secondary)
                     }
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, 16)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
+                    .padding(.vertical, AppSpacing.small)
+                    .padding(.horizontal, AppSpacing.medium)
                 }
-                .buttonStyle(PlainButtonStyle())
+                .buttonStyle(SpringyButtonStyle())
+                .background(
+                    RoundedRectangle(cornerRadius: AppRadius.medium)
+                        .fill(AppColors.cardBackgroundElevated)
+                )
+                .cardShadow()
             } else {
                 // Micronutrient insights button with loading indicator
                 Button(action: {
@@ -94,12 +97,15 @@ struct ImprovedMicronutrientView: View {
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundColor(.secondary)
                         }
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 16)
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
+                        .padding(.vertical, AppSpacing.small)
+                        .padding(.horizontal, AppSpacing.medium)
                     }
-                    .buttonStyle(PlainButtonStyle())
+                    .buttonStyle(SpringyButtonStyle())
+                    .background(
+                        RoundedRectangle(cornerRadius: AppRadius.medium)
+                            .fill(AppColors.cardBackgroundElevated)
+                    )
+                    .cardShadow()
                     .disabled(isLoading)
             }
         }
@@ -631,10 +637,14 @@ struct DetailedMicronutrientInsightsView: View {
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundColor(.secondary)
                         }
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
+                        .padding(AppSpacing.medium)
                     }
+                    .buttonStyle(SpringyButtonStyle())
+                    .background(
+                        RoundedRectangle(cornerRadius: AppRadius.medium)
+                            .fill(AppColors.cardBackgroundElevated)
+                    )
+                    .cardShadow()
                     .padding(.horizontal)
 
                     if let analysis = currentAnalysis, analysis.totalDaysTracked > 0 {
@@ -710,9 +720,12 @@ struct DetailedMicronutrientInsightsView: View {
                                             .foregroundColor(.primary)
                                             .fixedSize(horizontal: false, vertical: true)
                                     }
-                                    .padding()
-                                    .background(Color(.systemGray6))
-                                    .cornerRadius(12)
+                                    .padding(AppSpacing.medium)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: AppRadius.medium)
+                                            .fill(AppColors.cardBackgroundElevated)
+                                    )
+                                    .cardShadow()
                                     .padding(.horizontal)
                                 }
                             }
@@ -754,9 +767,12 @@ struct DetailedMicronutrientInsightsView: View {
                                 .foregroundColor(.secondary)
                         }
                     }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
+                    .padding(AppSpacing.medium)
+                    .background(
+                        RoundedRectangle(cornerRadius: AppRadius.medium)
+                            .fill(AppColors.cardBackgroundElevated)
+                    )
+                    .cardShadow()
                     .padding(.horizontal)
                     .padding(.bottom)
                 }
@@ -1179,9 +1195,12 @@ struct DeficiencyCard: View {
                     .foregroundColor(.primary)
             }
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .padding(AppSpacing.medium)
+        .background(
+            RoundedRectangle(cornerRadius: AppRadius.medium)
+                .fill(AppColors.cardBackgroundElevated)
+        )
+        .cardShadow()
     }
 }
 
@@ -1244,9 +1263,12 @@ struct AdequateNutrientCard: View {
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(.green)
         }
-        .padding()
-        .background(Color.green.opacity(0.1))
-        .cornerRadius(12)
+        .padding(AppSpacing.medium)
+        .background(
+            RoundedRectangle(cornerRadius: AppRadius.medium)
+                .fill(Color.green.opacity(0.1))
+        )
+        .cardShadow()
     }
 }
 
@@ -1629,15 +1651,20 @@ struct DayNutrientDetailView: View {
                             .foregroundColor(.primary)
                             .lineLimit(3)
                     }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
+                    .padding(AppSpacing.small)
+                    .background(
+                        RoundedRectangle(cornerRadius: AppRadius.small)
+                            .fill(AppColors.cardBackground)
+                    )
                 }
             }
         }
-        .padding()
-        .background(Color(.systemGray5))
-        .cornerRadius(16)
+        .padding(AppSpacing.medium)
+        .background(
+            RoundedRectangle(cornerRadius: AppRadius.large)
+                .fill(AppColors.cardBackgroundElevated)
+        )
+        .cardShadow()
     }
 
     private func dateString(from date: Date) -> String {

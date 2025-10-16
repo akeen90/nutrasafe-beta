@@ -84,73 +84,173 @@ struct LiveIngredientScannerView: View {
                         .onDisappear {
                             scannerService.stopScanning()
                         }
+                        .gesture(
+                            DragGesture(minimumDistance: 0)
+                                .onEnded { value in
+                                    // Convert tap location to normalized camera coordinates
+                                    let locationInView = value.location
+                                    if let preview = scannerService.getPreviewLayer() {
+                                        let viewSize = preview.bounds.size
+                                        let normalizedPoint = CGPoint(
+                                            x: locationInView.x / viewSize.width,
+                                            y: locationInView.y / viewSize.height
+                                        )
+                                        scannerService.focusAt(point: normalizedPoint)
+                                    }
+                                }
+                        )
                     
-                    // Text Detection Overlay
+                    // Show all detected text in gray (non-highlighted)
                     if !scannerService.textBlocks.isEmpty {
-                        TextDetectionOverlay(textBlocks: scannerService.textBlocks)
+                        TextDetectionOverlay(
+                            textBlocks: scannerService.textBlocks.filter { block in
+                                !scannerService.highlightedRegions.contains(where: { $0.id == block.id })
+                            },
+                            isHighlighted: false,
+                            scanningStep: scannerService.scanningStep
+                        )
                     }
-                    
-                    // Scanning Frame
-                    ScanningFrameView()
-                    
+
+                    // Text Detection Overlay - Show highlighted regions in color
+                    if !scannerService.highlightedRegions.isEmpty {
+                        TextDetectionOverlay(
+                            textBlocks: scannerService.highlightedRegions,
+                            isHighlighted: true,
+                            scanningStep: scannerService.scanningStep
+                        )
+                    }
+
                     // Processing Overlay
                     if isProcessing {
                         ProcessingOverlay(message: processingMessage)
+                    }
+
+                    // Completion Checkmark Overlay - Only show when actually advancing to next step
+                    if scannerService.showCompletionCheckmark && scannerService.scanningStep == .complete {
+                        ZStack {
+                            Color.clear
+                            VStack {
+                                Spacer()
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 80))
+                                    .foregroundColor(.green)
+                                    .shadow(color: .black.opacity(0.5), radius: 10)
+                                    .scaleEffect(scannerService.showCompletionCheckmark ? 1.0 : 0.5)
+                                    .opacity(scannerService.showCompletionCheckmark ? 1.0 : 0.0)
+                                    .animation(.spring(response: 0.4, dampingFraction: 0.6), value: scannerService.showCompletionCheckmark)
+                                Spacer()
+                            }
+                        }
                     }
                 }
                 
                 // Bottom Info Panel
                 VStack(spacing: 12) {
-                    // Stats
-                    HStack(spacing: 20) {
-                        VStack(spacing: 4) {
-                            Text("Confidence")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.gray)
-                            Text("\\(Int(scannerService.confidence * 100))%")
-                                .font(.system(size: 16, weight: .semibold))
+                    // Current Step Indicator
+                    VStack(spacing: 8) {
+                        HStack {
+                            Circle()
+                                .fill(scannerService.scanningStep == .ingredients ? Color.blue : Color.green)
+                                .frame(width: 12, height: 12)
+                            Text(scannerService.scanningStep.rawValue.capitalized)
+                                .font(.system(size: 16, weight: .bold))
                                 .foregroundColor(.white)
-                        }
-                        
-                        VStack(spacing: 4) {
-                            Text("Text Blocks")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.gray)
-                            Text("\\(scannerService.accumulatedText.count)")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
-                        }
-                        
-                        Spacer()
-                        
-                        Button(action: {
-                            scannerService.accumulatedText.removeAll()
-                        }) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "trash")
-                                Text("Clear")
+                            Spacer()
+                            if scannerService.isReadyToComplete {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(.green)
+                                    Text("Ready")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(.green)
+                                }
                             }
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.red)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .foregroundColor(Color.red.opacity(0.1))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .stroke(Color.red.opacity(0.3), lineWidth: 1)
-                                    )
-                            )
                         }
-                        .disabled(scannerService.accumulatedText.isEmpty)
+
+                        Text(scannerService.scanningStep.instructions)
+                            .font(.system(size: 12))
+                            .foregroundColor(.gray)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    
+                    .padding(.bottom, 8)
+
+                    // Stats and Actions
+                    VStack(spacing: 12) {
+                        // Stats Row
+                        HStack(spacing: 20) {
+                            VStack(spacing: 4) {
+                                Text("Quality")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.gray)
+                                HStack(spacing: 4) {
+                                    Image(systemName: qualityIcon(for: scannerService.confidence))
+                                        .font(.system(size: 14))
+                                        .foregroundColor(qualityColor(for: scannerService.confidence))
+                                    Text(qualityText(for: scannerService.confidence))
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundColor(qualityColor(for: scannerService.confidence))
+                                }
+                            }
+
+                            VStack(spacing: 4) {
+                                Text("Items Found")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.gray)
+                                Text("\(scannerService.accumulatedText.count)")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                            }
+
+                            Spacer()
+                        }
+
+                        // Action Buttons Row
+                        if scannerService.scanningStep != .complete {
+                            HStack(spacing: 12) {
+                                Button(action: {
+                                    scannerService.forceComplete()
+                                }) {
+                                    HStack {
+                                        Text("Skip")
+                                            .font(.system(size: 16, weight: .medium))
+                                    }
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .foregroundColor(Color.orange.opacity(0.8))
+                                    )
+                                }
+
+                                if scannerService.isReadyToComplete, let nextStep = scannerService.scanningStep.nextStep {
+                                    Button(action: {
+                                        scannerService.advanceToNextStep()
+                                    }) {
+                                        HStack(spacing: 6) {
+                                            Text(nextStep == .complete ? "Finish" : "Next")
+                                                .font(.system(size: 16, weight: .semibold))
+                                            Image(systemName: "arrow.right")
+                                                .font(.system(size: 14, weight: .semibold))
+                                        }
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 12)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .foregroundColor(Color.green)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // Live Text Preview
                     if !scannerService.detectedText.isEmpty {
                         ScrollView {
                             Text(scannerService.detectedText)
-                                .font(.system(size: 13, weight: .regular, design: .monospaced))
+                                .font(.system(size: 14, weight: .regular))
                                 .foregroundColor(.white)
                                 .padding(12)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -159,12 +259,17 @@ struct LiveIngredientScannerView: View {
                                         .fill(Color.white.opacity(0.1))
                                 )
                         }
-                        .frame(maxHeight: 120)
+                        .frame(maxHeight: 100)
                     } else {
-                        Text("Point camera at text to start scanning")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.gray)
-                            .padding(.vertical, 20)
+                        VStack(spacing: 8) {
+                            Image(systemName: "text.viewfinder")
+                                .font(.system(size: 24))
+                                .foregroundColor(.gray)
+                            Text("Point camera at ingredients list")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.gray)
+                        }
+                        .padding(.vertical, 20)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -190,7 +295,39 @@ struct LiveIngredientScannerView: View {
             return "barcode"
         }
     }
-    
+
+    private func qualityIcon(for confidence: Double) -> String {
+        if confidence >= 0.8 {
+            return "checkmark.circle.fill"
+        } else if confidence >= 0.5 {
+            return "exclamationmark.circle.fill"
+        } else {
+            return "xmark.circle.fill"
+        }
+    }
+
+    private func qualityColor(for confidence: Double) -> Color {
+        if confidence >= 0.8 {
+            return .green
+        } else if confidence >= 0.5 {
+            return .yellow
+        } else {
+            return .red
+        }
+    }
+
+    private func qualityText(for confidence: Double) -> String {
+        if confidence >= 0.8 {
+            return "Excellent"
+        } else if confidence >= 0.6 {
+            return "Good"
+        } else if confidence >= 0.4 {
+            return "Fair"
+        } else {
+            return "Poor"
+        }
+    }
+
     private func finalizeScan() {
         guard !scannerService.accumulatedText.isEmpty else { return }
         
@@ -218,51 +355,86 @@ struct LiveIngredientScannerView: View {
 
 struct CameraPreviewView: UIViewRepresentable {
     let previewLayer: AVCaptureVideoPreviewLayer?
-    
-    func makeUIView(context: Context) -> UIView {
-        let view = UIView()
+
+    func makeUIView(context: Context) -> PreviewView {
+        let view = PreviewView()
         view.backgroundColor = .black
-        
+
+        // Add the preview layer immediately if available
         if let previewLayer = previewLayer {
-            previewLayer.frame = view.bounds
+            previewLayer.videoGravity = .resizeAspectFill
             view.layer.addSublayer(previewLayer)
+            view.previewLayer = previewLayer
         }
-        
+
         return view
     }
-    
-    func updateUIView(_ uiView: UIView, context: Context) {
-        if let previewLayer = previewLayer {
-            previewLayer.frame = uiView.bounds
+
+    func updateUIView(_ uiView: PreviewView, context: Context) {
+        // Always update the frame
+        DispatchQueue.main.async {
+            if let previewLayer = previewLayer {
+                if uiView.previewLayer == nil {
+                    // Layer doesn't exist yet, add it
+                    previewLayer.videoGravity = .resizeAspectFill
+                    uiView.layer.addSublayer(previewLayer)
+                    uiView.previewLayer = previewLayer
+                }
+
+                // Update the frame
+                previewLayer.frame = uiView.bounds
+            }
+        }
+    }
+
+    class PreviewView: UIView {
+        var previewLayer: AVCaptureVideoPreviewLayer?
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            previewLayer?.frame = bounds
         }
     }
 }
 
 struct TextDetectionOverlay: View {
     let textBlocks: [LiveTextScannerService.TextBlock]
-    
+    let isHighlighted: Bool
+    let scanningStep: LiveTextScannerService.ScanningStep
+
+    private var highlightColor: Color {
+        if !isHighlighted {
+            return .white.opacity(0.2)
+        }
+
+        switch scanningStep {
+        case .ingredients:
+            return .green  // Green for ingredients
+        case .nutrition:
+            return .blue   // Blue for nutrition
+        case .complete:
+            return .green
+        }
+    }
+
+    private var strokeWidth: CGFloat {
+        isHighlighted ? 2 : 1
+    }
+
     var body: some View {
         GeometryReader { geometry in
             ForEach(textBlocks) { block in
                 let rect = convertBoundingBox(block.boundingBox, to: geometry.size)
-                
+
                 Rectangle()
-                    .stroke(Color.green, lineWidth: 2)
-                    .background(Color.green.opacity(0.1))
+                    .stroke(highlightColor, lineWidth: strokeWidth)
+                    .background(isHighlighted ? highlightColor.opacity(0.15) : Color.clear)
                     .frame(width: rect.width, height: rect.height)
                     .position(x: rect.midX, y: rect.midY)
-                    .overlay(
-                        Text(block.text)
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(.white)
-                            .background(Color.black.opacity(0.7))
-                            .position(x: rect.midX, y: rect.maxY + 10),
-                        alignment: .topLeading
-                    )
             }
         }
     }
-    
+
     private func convertBoundingBox(_ boundingBox: CGRect, to size: CGSize) -> CGRect {
         let rect = VNImageRectForNormalizedRect(boundingBox, Int(size.width), Int(size.height))
         return CGRect(
@@ -271,47 +443,6 @@ struct TextDetectionOverlay: View {
             width: rect.width,
             height: rect.height
         )
-    }
-}
-
-struct ScanningFrameView: View {
-    var body: some View {
-        GeometryReader { geometry in
-            let frameSize = CGSize(
-                width: min(geometry.size.width * 0.8, 300),
-                height: min(geometry.size.height * 0.4, 200)
-            )
-            
-            Rectangle()
-                .stroke(Color.white, lineWidth: 2)
-                .frame(width: frameSize.width, height: frameSize.height)
-                .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
-                .overlay(
-                    VStack {
-                        HStack {
-                            RoundedRectangle(cornerRadius: 2)
-                                .fill(Color.blue)
-                                .frame(width: 20, height: 3)
-                            Spacer()
-                            RoundedRectangle(cornerRadius: 2)
-                                .fill(Color.blue)
-                                .frame(width: 20, height: 3)
-                        }
-                        Spacer()
-                        HStack {
-                            RoundedRectangle(cornerRadius: 2)
-                                .fill(Color.blue)
-                                .frame(width: 20, height: 3)
-                            Spacer()
-                            RoundedRectangle(cornerRadius: 2)
-                                .fill(Color.blue)
-                                .frame(width: 20, height: 3)
-                        }
-                    }
-                    .frame(width: frameSize.width - 4, height: frameSize.height - 4)
-                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
-                )
-        }
     }
 }
 
@@ -393,7 +524,9 @@ struct ScanResultsView: View {
                             }
                             
                             HStack {
-                                Text("Confidence: \\(Int(result.confidence * 100))%")
+                                Image(systemName: "checkmark.seal.fill")
+                                    .foregroundColor(.green)
+                                Text("Scan Quality: \(result.confidence >= 0.8 ? "Excellent" : result.confidence >= 0.5 ? "Good" : "Fair")")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                                 Spacer()

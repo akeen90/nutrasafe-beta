@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.analyzeAdditivesEnhanced = void 0;
+exports.analyzeAdditivesEnhanced = exports.DATABASE_VERSION = void 0;
 exports.loadAdditiveDatabase = loadAdditiveDatabase;
 exports.analyzeIngredientsForAdditives = analyzeIngredientsForAdditives;
 exports.calculateProcessingScore = calculateProcessingScore;
@@ -12,27 +12,36 @@ const path = require("path");
 let COMPREHENSIVE_ADDITIVES_DB = {};
 let PROCESSING_RULES;
 let DATABASE_LOADED = false;
+exports.DATABASE_VERSION = '2025.1'; // Master JSON database version - exported for other modules
 // Load comprehensive additives database
 function loadAdditiveDatabase() {
     if (DATABASE_LOADED)
         return;
     try {
-        // First try to load the comprehensive CSV database
-        const comprehensiveCSVPath = path.join(__dirname, './uk_additives_with_grades_403_5744a8e4.csv');
-        if (fs.existsSync(comprehensiveCSVPath)) {
-            console.log('🚀 Loading comprehensive 403 additives from CSV with rich consumer data');
-            loadComprehensiveCSV(comprehensiveCSVPath);
+        // PRIORITY 1: Try to load the master 6,247-additive JSON database
+        const masterJSONPath = path.join(__dirname, './additives_master_database.json');
+        if (fs.existsSync(masterJSONPath)) {
+            console.log('🚀 Loading master 6,247-additive JSON database (matches iOS app)');
+            loadMasterJSONDatabase(masterJSONPath);
         }
         else {
-            // Fallback to simplified JSON
-            const essentialAdditivesPath = path.join(__dirname, './essential-additives.json');
-            if (fs.existsSync(essentialAdditivesPath)) {
-                console.log('🚀 Loading comprehensive 403 additives database');
-                loadEssentialAdditives(essentialAdditivesPath);
+            // FALLBACK 1: Try comprehensive CSV database
+            const comprehensiveCSVPath = path.join(__dirname, './uk_additives_with_grades_403_5744a8e4.csv');
+            if (fs.existsSync(comprehensiveCSVPath)) {
+                console.log('⚠️ Master JSON not found, falling back to 403 additives from CSV');
+                loadComprehensiveCSV(comprehensiveCSVPath);
             }
             else {
-                console.log('⚠️ Essential additives file not found, using fallback data');
-                loadFallbackData();
+                // FALLBACK 2: Try simplified JSON
+                const essentialAdditivesPath = path.join(__dirname, './essential-additives.json');
+                if (fs.existsSync(essentialAdditivesPath)) {
+                    console.log('⚠️ CSV not found, falling back to essential additives database');
+                    loadEssentialAdditives(essentialAdditivesPath);
+                }
+                else {
+                    console.log('⚠️ No database files found, using fallback data');
+                    loadFallbackData();
+                }
             }
         }
         // Load processing rules
@@ -57,6 +66,148 @@ function loadAdditiveDatabase() {
         DATABASE_LOADED = true;
     }
 }
+// Load master 6,247-additive JSON database (4-level nested structure)
+function loadMasterJSONDatabase(jsonPath) {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+    console.log('📊 Loading master JSON database from:', jsonPath);
+    const jsonContent = fs.readFileSync(jsonPath, 'utf-8');
+    const database = JSON.parse(jsonContent);
+    if (!database.categories) {
+        console.error('❌ Invalid JSON structure - missing categories');
+        return;
+    }
+    // Extract database version from metadata
+    if (database.metadata && database.metadata.version) {
+        exports.DATABASE_VERSION = database.metadata.version;
+        console.log(`📌 Database version: ${exports.DATABASE_VERSION}`);
+    }
+    let loadedCount = 0;
+    // Navigate the 4-level structure: categories -> range -> group -> additive
+    for (const categoryKey in database.categories) {
+        const category = database.categories[categoryKey];
+        // Level 2: Range (e.g., "E100-E199")
+        for (const rangeKey in category) {
+            const range = category[rangeKey];
+            // Level 3: Group (e.g., "colours")
+            for (const groupKey in range) {
+                const group = range[groupKey];
+                // Level 4: Individual additives
+                for (const eNumber in group) {
+                    const rawAdditive = group[eNumber];
+                    try {
+                        // Convert master JSON format to AdditiveInfo format
+                        const additive = {
+                            code: eNumber.toUpperCase(),
+                            name: rawAdditive.name || 'Unknown',
+                            category: mapCategoryToGroup(groupKey),
+                            permitted_GB: ((_a = rawAdditive.regulatory) === null || _a === void 0 ? void 0 : _a.GB) !== 'banned',
+                            permitted_NI: ((_b = rawAdditive.regulatory) === null || _b === void 0 ? void 0 : _b.NI) !== 'banned',
+                            permitted_EU: ((_c = rawAdditive.regulatory) === null || _c === void 0 ? void 0 : _c.EU) !== 'banned',
+                            status_notes: ((_d = rawAdditive.regulatory) === null || _d === void 0 ? void 0 : _d.notes) || undefined,
+                            child_warning: ((_e = rawAdditive.warnings) === null || _e === void 0 ? void 0 : _e.child_hyperactivity) === true,
+                            PKU_warning: ((_f = rawAdditive.warnings) === null || _f === void 0 ? void 0 : _f.PKU) === true,
+                            polyols_warning: ((_g = rawAdditive.warnings) === null || _g === void 0 ? void 0 : _g.polyol_laxative) === true,
+                            sulphites_allergen_label: ((_h = rawAdditive.warnings) === null || _h === void 0 ? void 0 : _h.sulphite_allergen) === true,
+                            origin: rawAdditive.origin || 'unknown',
+                            consumer_guide: formatConsumerGuide(rawAdditive),
+                            effects_verdict: mapRiskToVerdict(rawAdditive.risk_level),
+                            synonyms: rawAdditive.synonyms || [],
+                            matches: [
+                                ((_j = rawAdditive.name) === null || _j === void 0 ? void 0 : _j.toLowerCase()) || '',
+                                ...(rawAdditive.synonyms || []).map((s) => s.toLowerCase()),
+                                eNumber.toLowerCase()
+                            ].filter(m => m.length > 0),
+                            sources: rawAdditive.sources || []
+                        };
+                        COMPREHENSIVE_ADDITIVES_DB[eNumber.toUpperCase()] = additive;
+                        // Also index by synonyms for better matching
+                        for (const synonym of additive.synonyms) {
+                            const upperSynonym = synonym.toUpperCase();
+                            if (synonym && !COMPREHENSIVE_ADDITIVES_DB[upperSynonym]) {
+                                COMPREHENSIVE_ADDITIVES_DB[upperSynonym] = additive;
+                            }
+                        }
+                        loadedCount++;
+                    }
+                    catch (error) {
+                        console.error(`❌ Error parsing additive ${eNumber}:`, error);
+                    }
+                }
+            }
+        }
+    }
+    console.log(`📊 Successfully loaded ${loadedCount} additives from master JSON database`);
+}
+// Helper function to map category names to groups
+function mapCategoryToGroup(groupName) {
+    const groupMap = {
+        'colours': 'colour',
+        'colors': 'colour',
+        'preservatives': 'preservative',
+        'antioxidants': 'antioxidant',
+        'sweeteners': 'sweetener',
+        'emulsifiers': 'emulsifier',
+        'stabilizers': 'stabilizer',
+        'stabilisers': 'stabilizer',
+        'thickeners': 'thickener',
+        'gelling_agents': 'gelling agent',
+        'glazing_agents': 'glazing agent',
+        'flavour_enhancers': 'flavour enhancer',
+        'acids': 'acid',
+        'acidity_regulators': 'acidity regulator',
+        'anticaking_agents': 'anticaking agent',
+        'antifoaming_agents': 'antifoaming agent',
+        'bulking_agents': 'bulking agent',
+        'carriers': 'carrier',
+        'foaming_agents': 'foaming agent',
+        'humectants': 'humectant',
+        'propellants': 'propellant',
+        'raising_agents': 'raising agent',
+        'sequestrants': 'sequestrant'
+    };
+    return groupMap[groupName.toLowerCase()] || groupName.toLowerCase();
+}
+// Helper function to map risk level to effects verdict
+function mapRiskToVerdict(riskLevel) {
+    if (!riskLevel)
+        return 'neutral';
+    const risk = riskLevel.toLowerCase();
+    if (risk.includes('high') || risk.includes('avoid') || risk.includes('banned'))
+        return 'avoid';
+    if (risk.includes('medium') || risk.includes('caution') || risk.includes('limit'))
+        return 'caution';
+    return 'neutral';
+}
+// Helper function to format consumer guide from master JSON data
+function formatConsumerGuide(rawAdditive) {
+    var _a, _b;
+    const sections = [
+        `**What is it?**\n${rawAdditive.description || rawAdditive.name || 'No description available'}`,
+        `**Why is it added to food?**\n${rawAdditive.purpose || 'Purpose not specified'}`,
+        `**Found in these foods:**\n${rawAdditive.common_uses || 'Common uses not specified'}`,
+        `**For parents - child safety:**\n${((_a = rawAdditive.warnings) === null || _a === void 0 ? void 0 : _a.child_hyperactivity) ? '⚠️ May affect activity and attention in children' : 'No specific guidance available for children'}`,
+        `**Who should be extra careful:**\n${formatWarnings(rawAdditive.warnings)}`,
+        `**Health impact summary:**\n${rawAdditive.health_effects || 'Health impact information not available'}`,
+        `**What you can do:**\n${rawAdditive.consumer_advice || 'No specific consumer guidance available'}`,
+        `**UK regulatory notes:**\n${((_b = rawAdditive.regulatory) === null || _b === void 0 ? void 0 : _b.notes) || 'No additional UK-specific information'}`
+    ];
+    return sections.join('\n\n');
+}
+// Helper function to format warnings text
+function formatWarnings(warnings) {
+    if (!warnings)
+        return 'No specific population warnings identified';
+    const warningTexts = [];
+    if (warnings.PKU)
+        warningTexts.push('People with PKU should avoid');
+    if (warnings.polyol_laxative)
+        warningTexts.push('May cause digestive upset in sensitive individuals');
+    if (warnings.sulphite_allergen)
+        warningTexts.push('Asthmatics and people with sulphite sensitivity');
+    if (warnings.allergen)
+        warningTexts.push(warnings.allergen);
+    return warningTexts.length > 0 ? warningTexts.join(', ') : 'No specific population warnings identified';
+}
 /* Temporarily disabled CSV parsing
 function parseComprehensiveCSV(csvContent: string) {
   const lines = csvContent.split('\n');
@@ -71,7 +222,7 @@ function parseComprehensiveCSV(csvContent: string) {
       if (columns.length >= 19) {
         const code = columns[0].trim();
         const sources = parseSourcesFromJSON(columns[19] || '[]');
-        
+
         const additive: AdditiveInfo = {
           code,
           name: columns[1].trim(),
@@ -118,7 +269,7 @@ function parseCSVLine(line: string): string[] {
 
   while (i < line.length) {
     const char = line[i];
-    
+
     if (char === '"') {
       if (inQuotes && i + 1 < line.length && line[i + 1] === '"') {
         current += '"';
@@ -132,21 +283,14 @@ function parseCSVLine(line: string): string[] {
     } else {
       current += char;
     }
-    
+
     i++;
   }
-  
+
   result.push(current);
   return result;
 }
 */
-// function parseSourcesFromJSON(sourcesStr: string): Array<{title: string, url: string, covers: string}> {
-//   try {
-//     return JSON.parse(sourcesStr) || [];
-//   } catch {
-//     return [];
-//   }
-// }
 function loadComprehensiveCSV(csvPath) {
     console.log('📊 Loading comprehensive CSV with rich consumer data from:', csvPath);
     const csvContent = fs.readFileSync(csvPath, 'utf-8');
@@ -1520,7 +1664,7 @@ exports.analyzeAdditivesEnhanced = functions.https.onRequest(async (req, res) =>
             metadata: {
                 totalAdditives: analysisResult.detectedAdditives.length,
                 confidence: analysisResult.confidence,
-                databaseVersion: PROCESSING_RULES.version
+                databaseVersion: exports.DATABASE_VERSION
             }
         };
         console.log(`🔬 Enhanced additive analysis: ${analysisResult.detectedAdditives.length} additives detected, score: ${processingScore.totalScore}, grade: ${grade.grade}`);

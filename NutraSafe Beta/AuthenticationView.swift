@@ -379,6 +379,8 @@ class AuthenticationManager: ObservableObject {
         if let user = Auth.auth().currentUser {
             self.isAuthenticated = true
             self.currentUser = user
+            // Load reactions for existing user
+            ReactionManager.shared.reloadIfAuthenticated()
         }
 
         // Listen for auth state changes
@@ -386,6 +388,11 @@ class AuthenticationManager: ObservableObject {
             DispatchQueue.main.async {
                 self?.isAuthenticated = user != nil
                 self?.currentUser = user
+
+                // Load reactions when user authenticates
+                if user != nil {
+                    ReactionManager.shared.reloadIfAuthenticated()
+                }
             }
         }
     }

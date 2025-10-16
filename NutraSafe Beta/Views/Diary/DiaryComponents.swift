@@ -40,9 +40,9 @@ struct DiaryMealCard: View {
                     Text("DESC/SERVING")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.secondary)
-                    
+
                     Spacer()
-                    
+
                     HStack(spacing: 0) {
                         Text("KCAL")
                             .font(.system(size: 11, weight: .medium))
@@ -65,38 +65,38 @@ struct DiaryMealCard: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
             }
-            
+
             // Rounded pill-style meal header like MyFitnessPal
             HStack {
                 HStack(spacing: 8) {
                     Circle()
                         .fill(color)
                         .frame(width: 12, height: 12)
-                    
+
                     Text(mealType.uppercased())
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.primary)
                 }
-                
+
                 Spacer()
-                
+
                 // Calories and macros in header like MyFitnessPal
                 HStack(spacing: 0) {
                     Text("\(currentCalories)")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(.primary)
                         .frame(width: 50, alignment: .trailing)
-                    
+
                     Text("\(String(format: "%.1f", totalProtein))")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.secondary)
                         .frame(width: 50, alignment: .trailing)
-                    
+
                     Text("\(String(format: "%.1f", totalCarbs))")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.secondary)
                         .frame(width: 50, alignment: .trailing)
-                    
+
                     Text("\(String(format: "%.1f", totalFat))")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.secondary)
@@ -107,7 +107,7 @@ struct DiaryMealCard: View {
             .padding(.vertical, 10)
             .background(Color(.systemGray6))
             .cornerRadius(8)
-            
+
             // Food items section - directly under header
             if !foods.isEmpty {
                 VStack(spacing: 0) {
@@ -137,14 +137,13 @@ struct DiaryMealCard: View {
                         )
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
-                        .background(Color(.systemBackground))
-                        
+
                         if food.id != foods.last?.id {
                             Divider()
                                 .padding(.horizontal, 16)
                         }
                     }
-                    
+
                     // Add more button
                     Button(action: {
                         // Store the selected meal type and date, then navigate to add tab
@@ -156,18 +155,17 @@ struct DiaryMealCard: View {
                             Image(systemName: "plus")
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(.blue)
-                            
+
                             Text("Add more")
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(.blue)
-                            
+
                             Spacer()
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
                     }
-                    .buttonStyle(PlainButtonStyle())
-                    .background(Color(.systemBackground))
+                    .buttonStyle(SpringyButtonStyle())
                 }
             } else {
                 // Empty state add button
@@ -181,20 +179,24 @@ struct DiaryMealCard: View {
                         Image(systemName: "plus.circle")
                             .font(.system(size: 16))
                             .foregroundColor(.blue)
-                        
+
                         Text("Add \(mealType.lowercased())")
                             .font(.system(size: 15, weight: .medium))
                             .foregroundColor(.blue)
-                        
+
                         Spacer()
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                 }
-                .buttonStyle(PlainButtonStyle())
-                .background(Color(.systemBackground))
+                .buttonStyle(SpringyButtonStyle())
             }
         }
+        .background(
+            RoundedRectangle(cornerRadius: AppRadius.medium)
+                .fill(AppColors.cardBackgroundElevated)
+        )
+        .cardShadow()
     }
     
     private func deleteFood(at offsets: IndexSet) {

@@ -153,13 +153,13 @@ struct SectionCard<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title).font(.system(size: 12, weight: .semibold)).foregroundColor(.secondary)
-            VStack(alignment: .leading, spacing: 12) { content }
-                .padding(14)
-                .background(RoundedRectangle(cornerRadius: 14).fill(Color(.systemBackground)))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(Color(.systemGray5), lineWidth: 1)
+            VStack(alignment: .leading, spacing: AppSpacing.small) { content }
+                .padding(AppSpacing.small)
+                .background(
+                    RoundedRectangle(cornerRadius: AppRadius.medium)
+                        .fill(AppColors.cardBackgroundElevated)
                 )
+                .cardShadow()
         }
     }
 }
@@ -479,14 +479,16 @@ struct FridgeExpiryView: View {
                                 title: "Total Items",
                                 value: "\(sortedItems.count)",
                                 icon: "refrigerator.fill",
-                                color: .blue
+                                color: .blue,
+                                subtitle: sortedItems.count == 0 ? "No items yet" : "In your fridge"
                             )
 
                             FridgeStatCard(
                                 title: "Expiring Soon",
                                 value: "\(expiringSoonCount)",
                                 icon: "clock.badge.exclamationmark",
-                                color: expiringSoonCount > 0 ? Color.orange : Color.green
+                                color: expiringSoonCount > 0 ? Color.orange : Color.green,
+                                subtitle: expiringSoonCount == 0 ? "All items fresh" : expiringSoonCount == 1 ? "Use it today" : "Within 3 days"
                             )
                         }
                         .padding(.horizontal, 16)
@@ -524,8 +526,13 @@ struct FridgeExpiryView: View {
                                 .background(Color.white)
                             } else {
                                 LazyVStack(spacing: 0) {
-                                    ForEach(sortedItems, id: \.id) { item in
+                                    ForEach(Array(sortedItems.enumerated()), id: \.element.id) { index, item in
                                         CleanFridgeRow(item: item)
+
+                                        if index < sortedItems.count - 1 {
+                                            Divider()
+                                                .padding(.leading, 98) // Align with text content (70px image + 14px spacing + 14px padding)
+                                        }
                                     }
                                 }
                                 .background(Color.white)
@@ -1986,9 +1993,6 @@ struct AddFridgeItemSheet: View {
                         ManualFridgeItemSheet()
                     case .barcode:
                         FridgeBarcodeScanSheet()
-                    case .ai:
-                        // No AI importer for fridge yet; show search for now
-                        FridgeInlineSearchView()
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -2937,18 +2941,18 @@ struct SignInSheet: View {
     }
 }
 
-private struct NutrientCard: View {
+private struct FridgeNutrientCard: View {
     let title: String
     let value: String
     let unit: String
     let color: Color
-    
+
     var body: some View {
         VStack(spacing: 8) {
             Text(title)
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
-            
+
             HStack(alignment: .lastTextBaseline, spacing: 2) {
                 Text(value)
                     .font(.system(size: 24, weight: .bold))
@@ -3020,6 +3024,33 @@ struct QuickStartButton: View {
 
 // MARK: - Clean Fridge Row
 
+// MARK: - Placeholder Image View for Products
+struct PlaceholderImageView: View {
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 12)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(.systemGray6),
+                            Color(.systemGray5)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            VStack(spacing: 4) {
+                Image(systemName: "basket.fill")
+                    .font(.system(size: 24, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .symbolRenderingMode(.hierarchical)
+            }
+        }
+        .frame(width: 70, height: 70)
+    }
+}
+
 struct CleanFridgeRow: View {
     let item: FridgeInventoryItem
     @State private var showingDetail = false
@@ -3083,55 +3114,88 @@ struct CleanFridgeRow: View {
                 .background(Color.red)
             }
 
-            // Main content
-            VStack(spacing: 0) {
-                HStack(spacing: 12) {
-                    // Item info
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(item.name)
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .lineLimit(1)
-
-                        HStack(spacing: 6) {
-                            if let brand = item.brand, !brand.isEmpty {
-                                Text(brand)
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.secondary)
-
-                                Text("•")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.secondary)
+            // Main content - Modern card design with product image
+            HStack(spacing: 14) {
+                // Product image or placeholder
+                Group {
+                    if let imageURL = item.imageURL, let url = URL(string: imageURL) {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .empty:
+                                PlaceholderImageView()
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: 70, height: 70)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                            case .failure(_):
+                                PlaceholderImageView()
+                            @unknown default:
+                                PlaceholderImageView()
                             }
+                        }
+                    } else {
+                        PlaceholderImageView()
+                    }
+                }
+                .frame(width: 70, height: 70)
+                .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
 
-                            Text(item.quantity)
-                                .font(.system(size: 14))
+                // Item info
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(item.name)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .lineLimit(2)
+
+                    HStack(spacing: 6) {
+                        if let brand = item.brand, !brand.isEmpty {
+                            Text(brand)
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+
+                            Text("•")
+                                .font(.system(size: 13))
                                 .foregroundColor(.secondary)
                         }
+
+                        Text(item.quantity)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.secondary)
                     }
 
-                    Spacer()
+                    // Status badge with icon
+                    HStack(spacing: 5) {
+                        Image(systemName: statusIcon)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(statusColor)
 
-                    // Status badge
-                    Text(statusText)
-                        .font(.system(size: 13, weight: .semibold))
-                        .padding(.horizontal, 11)
-                        .padding(.vertical, 6)
-                        .foregroundColor(statusColor)
-                        .background(statusColor.opacity(0.15))
-                        .clipShape(Capsule())
-                        .overlay(
-                            Capsule()
-                                .strokeBorder(statusColor.opacity(0.3), lineWidth: 1)
-                        )
+                        Text(statusText)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(statusColor)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(
+                        Capsule()
+                            .fill(statusColor.opacity(0.12))
+                            .overlay(
+                                Capsule()
+                                    .strokeBorder(statusColor.opacity(0.3), lineWidth: 1)
+                            )
+                    )
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
 
-                // Divider line
-                Divider()
-                    .padding(.leading, 16)
+                Spacer()
+
+                // Chevron
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.secondary)
             }
+            .padding(14)
             .background(Color(.systemBackground))
             .offset(x: offset)
             .gesture(
@@ -3203,9 +3267,10 @@ struct FridgeStatCard: View {
     let value: String
     let icon: String
     let color: Color
+    var subtitle: String? = nil
 
     var body: some View {
-        HStack(spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             // Icon with gradient background
             ZStack {
                 Circle()
@@ -3216,21 +3281,21 @@ struct FridgeStatCard: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 50, height: 50)
+                    .frame(width: 56, height: 56)
                     .overlay(
                         Circle()
-                            .stroke(color.opacity(0.25), lineWidth: 1)
+                            .stroke(color.opacity(0.25), lineWidth: 1.5)
                     )
 
                 Image(systemName: icon)
-                    .font(.system(size: 24, weight: .semibold))
+                    .font(.system(size: 26, weight: .semibold))
                     .foregroundColor(color)
                     .symbolRenderingMode(.hierarchical)
             }
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(value)
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundStyle(
                         LinearGradient(
                             colors: [color, color.opacity(0.7)],
@@ -3238,24 +3303,32 @@ struct FridgeStatCard: View {
                             endPoint: .bottomTrailing
                         )
                     )
+                    .minimumScaleFactor(0.8)
 
                 Text(title)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
-            }
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.primary)
 
-            Spacer()
+                if let subtitle = subtitle {
+                    Text(subtitle)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
         }
-        .padding(18)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 18)
-                .fill(.ultraThinMaterial)
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 18)
-                .stroke(Color(.systemGray4), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(color.opacity(0.15), lineWidth: 2)
         )
+        .shadow(color: color.opacity(0.12), radius: 8, x: 0, y: 4)
         .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 4)
     }
 }

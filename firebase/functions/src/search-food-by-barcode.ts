@@ -1,6 +1,6 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import { analyzeIngredientsForAdditives, calculateProcessingScore, determineGrade, loadAdditiveDatabase } from './additive-analyzer-enhanced';
+import { analyzeIngredientsForAdditives, calculateProcessingScore, determineGrade, loadAdditiveDatabase, DATABASE_VERSION } from './additive-analyzer-enhanced';
 
 // Initialize Firebase Admin if not already initialized
 if (!admin.apps.length) {
@@ -180,9 +180,10 @@ export const searchFoodByBarcode = functions.https.onRequest(async (req, res) =>
       
       // Include ingredients as a string (what the iOS app expects)
       ingredients: ingredientsString || '',
-      
+
       // Include additive analysis
       additives: additiveAnalysis || [],
+      additivesDatabaseVersion: DATABASE_VERSION, // Database version used for analysis
       processing_score: processingInfo?.score || 0,
       processing_grade: processingInfo?.grade || 'A',
       processing_label: processingInfo?.label || 'Minimal processing',

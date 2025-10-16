@@ -27,7 +27,6 @@ struct DatabasePhotoPromptView: View {
     @State private var showingIngredientsCamera = false
     @State private var showingNutritionCamera = false
     @State private var showingBarcodeCamera = false
-    @State private var showingLiveScanner = false
     @State private var currentPhotoType: PhotoType = .ingredients
     @Environment(\.dismiss) private var dismiss
     
@@ -58,7 +57,7 @@ struct DatabasePhotoPromptView: View {
                 ScrollView {
                     VStack(spacing: 24) {
                         // Ingredients Photo Section
-                        EnhancedPhotoCaptureSection(
+                        PhotoCaptureSection(
                             title: "📝 Ingredients List",
                             description: "Get accurate allergen warnings & ingredient analysis",
                             image: ingredientsImage,
@@ -66,11 +65,7 @@ struct DatabasePhotoPromptView: View {
                                 currentPhotoType = .ingredients
                                 showingIngredientsCamera = true
                             },
-                            onLiveScan: {
-                                showingLiveScanner = true
-                            },
-                            onRemove: { ingredientsImage = nil },
-                            showLiveScanOption: true
+                            onRemove: { ingredientsImage = nil }
                         )
                         
                         // Nutrition Label Section
@@ -126,7 +121,7 @@ struct DatabasePhotoPromptView: View {
                         onSkip()
                         dismiss()
                     }) {
-                        Text(ingredientsImage != nil || nutritionImage != nil || barcodeImage != nil ? "Skip & Add to Log" : "Skip - Just Add to Log")
+                        Text("Just Add to Log")
                             .fontWeight(.medium)
                             .foregroundColor(.blue)
                     }
@@ -181,9 +176,6 @@ struct DatabasePhotoPromptView: View {
                 },
                 photoType: .barcode
             )
-        }
-        .sheet(isPresented: $showingLiveScanner) {
-            LiveIngredientScannerView()
         }
     }
     

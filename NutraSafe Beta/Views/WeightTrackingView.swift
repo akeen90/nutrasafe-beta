@@ -548,7 +548,6 @@ struct AddWeightView: View {
     @State private var selectedPhoto: UIImage?
     @State private var showingPhotoPicker = false
     @State private var isUploading = false
-    @State private var formId = UUID() // Force form recreation on unit change
 
     private var weightInKg: Double? {
         if useMetric {
@@ -577,7 +576,6 @@ struct AddWeightView: View {
                     .pickerStyle(.segmented)
                     .onChange(of: useMetric) { newValue in
                         convertWeight(toMetric: newValue)
-                        formId = UUID() // Force view update
                     }
 
                     if useMetric {
@@ -585,7 +583,6 @@ struct AddWeightView: View {
                             TextField("Weight", text: $weight)
                                 .keyboardType(.decimalPad)
                                 .font(.system(size: 20, weight: .semibold))
-                                .id("weight-kg-\(formId)") // Force recreation
 
                             Text("kg")
                                 .foregroundColor(.secondary)
@@ -599,7 +596,6 @@ struct AddWeightView: View {
                                 TextField("0", text: $weightStone)
                                     .keyboardType(.numberPad)
                                     .font(.system(size: 18, weight: .semibold))
-                                    .id("weight-stone-\(formId)") // Force recreation
                             }
 
                             VStack(alignment: .leading, spacing: 4) {
@@ -609,7 +605,6 @@ struct AddWeightView: View {
                                 TextField("0", text: $weightLbs)
                                     .keyboardType(.decimalPad)
                                     .font(.system(size: 18, weight: .semibold))
-                                    .id("weight-lbs-\(formId)") // Force recreation
                             }
                         }
                     }
@@ -687,7 +682,8 @@ struct AddWeightView: View {
         print("🔄 Converting weight. toMetric: \(toMetric)")
         print("   Current weight: '\(weight)', weightStone: '\(weightStone)', weightLbs: '\(weightLbs)'")
 
-        DispatchQueue.main.async {
+        // Use animation to ensure smooth transition
+        withAnimation(.easeInOut(duration: 0.2)) {
             if toMetric {
                 // Converting from stone/lbs to kg
                 let stoneValue = Double(self.weightStone) ?? 0
@@ -698,11 +694,14 @@ struct AddWeightView: View {
                 if stoneValue > 0 || lbsValue > 0 {
                     let totalLbs = stoneValue * 14 + lbsValue
                     let kg = totalLbs * 0.453592
+                    // Update kg field FIRST
                     self.weight = String(format: "%.1f", kg)
                     print("   ✅ Converted to \(self.weight) kg")
-                    // Clear stone/lbs fields after conversion
-                    self.weightStone = ""
-                    self.weightLbs = ""
+                    // Then clear stone/lbs fields after a tiny delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        self.weightStone = ""
+                        self.weightLbs = ""
+                    }
                 } else {
                     print("   ⚠️ No stone/lbs values to convert")
                 }
@@ -712,11 +711,14 @@ struct AddWeightView: View {
                     let totalLbs = kg / 0.453592
                     let stone = Int(totalLbs / 14)
                     let lbs = totalLbs.truncatingRemainder(dividingBy: 14)
+                    // Update stone/lbs fields FIRST
                     self.weightStone = "\(stone)"
                     self.weightLbs = String(format: "%.1f", lbs)
                     print("   ✅ Converted to \(stone) st \(String(format: "%.1f", lbs)) lbs")
-                    // Clear kg field after conversion
-                    self.weight = ""
+                    // Then clear kg field after a tiny delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        self.weight = ""
+                    }
                 } else {
                     print("   ⚠️ No kg value to convert")
                 }
@@ -1492,7 +1494,6 @@ struct HeightSetupView: View {
     @State private var heightFeet: String = ""
     @State private var heightInches: String = ""
     @State private var useMetric: Bool = true
-    @State private var formId = UUID() // Force form recreation on unit change
 
     var body: some View {
         NavigationView {
@@ -1520,7 +1521,6 @@ struct HeightSetupView: View {
                 .padding(.horizontal, 40)
                 .onChange(of: useMetric) { newValue in
                     convertHeight(toMetric: newValue)
-                    formId = UUID() // Force view update
                 }
 
                 if useMetric {
@@ -1533,7 +1533,6 @@ struct HeightSetupView: View {
                             .padding()
                             .background(Color(.systemGray6))
                             .cornerRadius(12)
-                            .id("height-cm-\(formId)") // Force recreation
 
                         Text("cm")
                             .font(.system(size: 24))
@@ -1550,7 +1549,6 @@ struct HeightSetupView: View {
                                 .padding()
                                 .background(Color(.systemGray6))
                                 .cornerRadius(12)
-                                .id("height-feet-\(formId)") // Force recreation
 
                             Text("feet")
                                 .font(.system(size: 14))
@@ -1566,7 +1564,6 @@ struct HeightSetupView: View {
                                 .padding()
                                 .background(Color(.systemGray6))
                                 .cornerRadius(12)
-                                .id("height-inches-\(formId)") // Force recreation
 
                             Text("inches")
                                 .font(.system(size: 14))
@@ -1607,7 +1604,8 @@ struct HeightSetupView: View {
         print("🔄 Converting height. toMetric: \(toMetric)")
         print("   Current heightCm: '\(heightCm)', heightFeet: '\(heightFeet)', heightInches: '\(heightInches)'")
 
-        DispatchQueue.main.async {
+        // Use animation to ensure smooth transition
+        withAnimation(.easeInOut(duration: 0.2)) {
             if toMetric {
                 // Converting from ft/inches to cm
                 let feetValue = Double(self.heightFeet) ?? 0
@@ -1618,11 +1616,14 @@ struct HeightSetupView: View {
                 if feetValue > 0 || inchesValue > 0 {
                     let totalInches = feetValue * 12 + inchesValue
                     let cm = totalInches * 2.54
+                    // Update cm field FIRST
                     self.heightCm = String(format: "%.0f", cm)
                     print("   ✅ Converted to \(self.heightCm) cm")
-                    // Clear ft/inches fields after conversion
-                    self.heightFeet = ""
-                    self.heightInches = ""
+                    // Then clear ft/inches fields after a tiny delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        self.heightFeet = ""
+                        self.heightInches = ""
+                    }
                 } else {
                     print("   ⚠️ No ft/inches values to convert")
                 }
@@ -1632,11 +1633,14 @@ struct HeightSetupView: View {
                     let totalInches = cm / 2.54
                     let feet = Int(totalInches / 12)
                     let inches = totalInches.truncatingRemainder(dividingBy: 12)
+                    // Update ft/inches fields FIRST
                     self.heightFeet = "\(feet)"
                     self.heightInches = String(format: "%.0f", inches)
                     print("   ✅ Converted to \(feet) ft \(String(format: "%.0f", inches)) in")
-                    // Clear cm field after conversion
-                    self.heightCm = ""
+                    // Then clear cm field after a tiny delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        self.heightCm = ""
+                    }
                 } else {
                     print("   ⚠️ No cm value to convert")
                 }

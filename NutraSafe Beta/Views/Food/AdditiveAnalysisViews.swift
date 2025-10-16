@@ -153,14 +153,24 @@ struct AdditiveWatchView: View {
     }
     
     private func analyzeAdditives() {
-        print("🧪 Starting enhanced additive analysis for ingredients: \(ingredients)")
-        // TODO: Fix AdditiveWatchService when available
-        // AdditiveWatchService.shared.analyzeIngredients(ingredients) { result in
-        //     DispatchQueue.main.async {
-        //         print("🧪 Enhanced additive analysis complete - found \(result.detectedAdditives.count) additives")
-        //         self.additiveResult = result
-        //     }
-        // }
+        print("🧪 [AdditiveWatchView] Starting enhanced additive analysis")
+        print("🧪 [AdditiveWatchView] Ingredients array count: \(ingredients.count)")
+        print("🧪 [AdditiveWatchView] Ingredients: \(ingredients)")
+
+        // Use AdditiveWatchService which now uses local comprehensive database
+        AdditiveWatchService.shared.analyzeIngredients(ingredients) { result in
+            print("🧪 [AdditiveWatchView] Analysis complete!")
+            print("🧪 [AdditiveWatchView] Detected additives count: \(result.detectedAdditives.count)")
+            if !result.detectedAdditives.isEmpty {
+                print("🧪 [AdditiveWatchView] Detected additives:")
+                for additive in result.detectedAdditives {
+                    print("   - \(additive.eNumber): \(additive.name)")
+                }
+            } else {
+                print("🧪 [AdditiveWatchView] ⚠️ NO ADDITIVES DETECTED")
+            }
+            self.additiveResult = result
+        }
     }
 }
 
@@ -183,17 +193,16 @@ struct AdditiveCard: View {
                         HStack(spacing: 6) {
                             Text("⚗️")
                                 .font(.system(size: 14))
-                            
+
                             Text(additive.name)
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundColor(.primary)
-                            
-                            // TODO: Fix when hasChildWarning is available
-                            // if additive.hasChildWarning {
-                            //     Image(systemName: "exclamationmark.triangle.fill")
-                            //         .foregroundColor(.orange)
-                            //         .font(.system(size: 10))
-                            // }
+
+                            if additive.hasChildWarning {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.orange)
+                                    .font(.system(size: 10))
+                            }
                         }
                         
                         Text(additive.group.displayName)
@@ -293,18 +302,16 @@ struct AdditiveCard: View {
     
     private func safetyIndicator(verdict: AdditiveVerdict) -> some View {
         Circle()
-            .fill(Color.gray) // TODO: Fix when verdict.color is available
+            .fill(verdict.color)
             .frame(width: 8, height: 8)
     }
     
     private func safetyIcon(verdict: AdditiveVerdict) -> String {
-        // TODO: Fix when verdict cases are available
-        return "checkmark.circle"
-        // switch verdict {
-        // case .neutral: return "checkmark.circle"
-        // case .caution: return "exclamationmark.triangle"
-        // case .avoid: return "xmark.circle"
-        // }
+        switch verdict {
+        case .neutral: return "checkmark.circle"
+        case .caution: return "exclamationmark.triangle"
+        case .avoid: return "xmark.circle"
+        }
     }
 }
 
@@ -332,95 +339,99 @@ struct AdditiveCardView: View {
                     isExpanded.toggle()
                 }
             }) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        // Name and code
                         HStack(spacing: 6) {
                             Text(additive.name)
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(.system(size: 15, weight: .semibold))
                                 .foregroundColor(.primary)
 
                             if let code = additive.code {
                                 Text(code)
                                     .font(.system(size: 11, weight: .medium))
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(.white)
                                     .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(Color.gray.opacity(0.15))
-                                    .cornerRadius(4)
+                                    .padding(.vertical, 3)
+                                    .background(Color.purple.opacity(0.7))
+                                    .cornerRadius(6)
                             }
                         }
 
-                        HStack(spacing: 8) {
-                            Text(additive.purpose)
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(.blue)
+                        // User-friendly information row
+                        VStack(alignment: .leading, spacing: 3) {
+                            HStack(spacing: 6) {
+                                Image(systemName: getOriginIcon(additive.origin))
+                                    .font(.system(size: 10))
+                                    .foregroundColor(getOriginColor(additive.origin))
+                                Text(getOriginLabel(additive.origin))
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(.secondary)
+                            }
 
-                            Text("•")
-                                .foregroundColor(.secondary)
-                                .font(.system(size: 8))
-
-                            Text(getOriginLabel(additive.origin))
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(getOriginColor(additive.origin))
+                            if additive.childWarning {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .font(.system(size: 9))
+                                        .foregroundColor(.orange)
+                                    Text("May affect children")
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundColor(.orange)
+                                }
+                            }
                         }
                     }
 
                     Spacer()
 
-                    VStack(alignment: .trailing, spacing: 4) {
-                        // Usage guidance indicator
-                        HStack(spacing: 4) {
-                            Circle()
-                                .fill(getUsageColor())
-                                .frame(width: 6, height: 6)
+                    // Safety indicator
+                    VStack(spacing: 4) {
+                        Circle()
+                            .fill(getUsageColor())
+                            .frame(width: 10, height: 10)
 
-                            Text(getUsageGuidance(additive.riskLevel))
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundColor(getUsageColor())
-                        }
-
-                        if additive.childWarning {
-                            HStack(spacing: 2) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .font(.system(size: 8))
-                                    .foregroundColor(.orange)
-                                Text("May affect children's behavior")
-                                    .font(.system(size: 9, weight: .medium))
-                                    .foregroundColor(.orange)
-                            }
-                        }
+                        Text(getUsageGuidance(additive.riskLevel))
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(getUsageColor())
+                            .multilineTextAlignment(.center)
                     }
 
                     // Chevron indicator
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.secondary)
-                        .padding(.leading, 8)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.purple)
                 }
             }
             .buttonStyle(PlainButtonStyle())
-            .padding(12)
+            .padding(14)
 
             // Expanded details - only show when tapped
             if isExpanded {
-                VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 12) {
                     Divider()
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, 14)
 
-                    AdditiveDescriptionView(text: additive.description)
-                        .font(.system(size: 12, weight: .regular))
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.leading)
-                        .padding(12)
+                    VStack(alignment: .leading, spacing: 12) {
+                        // What is it (Purpose)
+                        AdditiveInfoRow(icon: "info.circle.fill", title: "What is it?", content: getPurposeDescription(additive.purpose), color: .blue)
+
+                        // Where is it from
+                        AdditiveInfoRow(icon: "leaf.fill", title: "Where is it from?", content: getOriginDescription(additive.origin), color: getOriginColor(additive.origin))
+
+                        // Any risks
+                        AdditiveInfoRow(icon: getRiskIcon(), title: "Any risks?", content: getRiskDescription(), color: getUsageColor())
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 14)
                 }
             }
         }
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.purple.opacity(0.05))
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color.purple.opacity(0.06))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.purple.opacity(0.2), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Color.purple.opacity(0.25), lineWidth: 1.5)
                 )
         )
     }
@@ -444,31 +455,187 @@ struct AdditiveCardView: View {
 
     private func getOriginLabel(_ origin: String) -> String {
         let lowercased = origin.lowercased()
+
+        // Handle complex origin strings (e.g., "Synthetic/Plant/Mineral (Varies By Specification)")
+        if lowercased.contains("varies by specification") || lowercased.contains("syntheticplantmineral") {
+            return "Varied origin"
+        }
+
         switch lowercased {
-        case "synthetic": return "synthetic"
-        case "natural": return "natural"
-        case "plant": return "plant-based"
-        case "animal": return "animal-derived"
-        case "mineral": return "mineral"
-        case "insect": return "insect-derived"
-        case "fish": return "fish-derived"
-        case "dairy": return "dairy-derived"
-        case "mixed": return "natural & synthetic"
-        case "plant/animal": return "plant or animal"
-        case "natural/synthetic": return "natural or synthetic"
-        default: return origin
+        case "synthetic": return "Synthetic"
+        case "natural": return "Natural"
+        case "plant": return "Plant-based"
+        case "animal": return "Animal-derived"
+        case "mineral": return "Mineral"
+        case "insect": return "Insect-derived"
+        case "fish": return "Fish-derived"
+        case "dairy": return "Dairy-derived"
+        case "mixed": return "Natural & synthetic"
+        case "plant/animal": return "Plant or animal"
+        case "natural/synthetic": return "Natural or synthetic"
+        case "plant (turmeric)": return "Plant (turmeric)"
+        case "synthetic/microbial": return "Synthetic/Microbial"
+        default:
+            // Clean up long complex strings
+            if origin.count > 30 {
+                if origin.contains("Synthetic") {
+                    return "Synthetic"
+                }
+                if origin.contains("Plant") {
+                    return "Plant-based"
+                }
+                if origin.contains("Natural") {
+                    return "Natural"
+                }
+                return "Varied origin"
+            }
+            return origin
         }
     }
 
     private func getOriginColor(_ origin: String) -> Color {
         let lowercased = origin.lowercased()
+
+        // Handle complex origin strings
+        if lowercased.contains("varies") || lowercased.contains("syntheticplantmineral") {
+            return .secondary
+        }
+
         switch lowercased {
         case "synthetic": return .orange
         case "natural", "plant": return .green
         case "animal", "insect", "fish", "dairy": return .purple
         case "mineral": return .blue
         case "mixed", "plant/animal", "natural/synthetic": return .secondary
-        default: return .secondary
+        default:
+            // Determine color based on content
+            if origin.contains("Synthetic") {
+                return .orange
+            }
+            if origin.contains("Plant") || origin.contains("Natural") {
+                return .green
+            }
+            if origin.contains("Animal") {
+                return .purple
+            }
+            if origin.contains("Mineral") {
+                return .blue
+            }
+            return .secondary
+        }
+    }
+
+    private func getOriginIcon(_ origin: String) -> String {
+        let lowercased = origin.lowercased()
+
+        if lowercased.contains("plant") || lowercased.contains("natural") {
+            return "leaf.fill"
+        } else if lowercased.contains("synthetic") {
+            return "flask.fill"
+        } else if lowercased.contains("animal") {
+            return "pawprint.fill"
+        } else if lowercased.contains("mineral") {
+            return "circle.hexagongrid.fill"
+        } else {
+            return "questionmark.circle.fill"
+        }
+    }
+
+    private func getPurposeDescription(_ purpose: String) -> String {
+        let lower = purpose.lowercased()
+
+        if lower.contains("emulsifier") {
+            return "Helps mix ingredients that normally don't combine (like oil and water)"
+        } else if lower.contains("colour") || lower.contains("color") {
+            return "Adds or enhances color to make food more visually appealing"
+        } else if lower.contains("preserv") {
+            return "Helps food stay fresh longer by preventing spoilage"
+        } else if lower.contains("antioxidant") {
+            return "Prevents food from going rancid and extends shelf life"
+        } else if lower.contains("stabil") {
+            return "Helps maintain food texture and prevents separation"
+        } else if lower.contains("thick") {
+            return "Increases thickness and improves texture"
+        } else if lower.contains("sweet") {
+            return "Provides sweetness with fewer or no calories"
+        } else if lower.contains("flavour") || lower.contains("flavor") {
+            return "Enhances or adds flavor to food"
+        } else if lower.contains("acid") {
+            return "Controls acidity and adds tartness"
+        } else {
+            return purpose
+        }
+    }
+
+    private func getOriginDescription(_ origin: String) -> String {
+        let lower = origin.lowercased()
+
+        if lower.contains("plant") {
+            return "Derived from plants - a natural source"
+        } else if lower.contains("synthetic") {
+            return "Made in a laboratory using chemical processes"
+        } else if lower.contains("animal") {
+            return "Derived from animals"
+        } else if lower.contains("mineral") {
+            return "Extracted from minerals or rocks"
+        } else if lower.contains("ferment") {
+            return "Produced through fermentation - a natural process"
+        } else if lower.contains("varied") {
+            return "Can come from multiple sources depending on manufacturer"
+        } else {
+            return origin
+        }
+    }
+
+    private func getRiskIcon() -> String {
+        switch additive.riskLevel {
+        case "High": return "exclamationmark.triangle.fill"
+        case "Moderate": return "exclamationmark.circle.fill"
+        default: return "checkmark.circle.fill"
+        }
+    }
+
+    private func getRiskDescription() -> String {
+        if additive.childWarning {
+            return "Some studies suggest this may affect children's behavior. " + getUsageGuidance(additive.riskLevel) + "."
+        }
+
+        switch additive.riskLevel {
+        case "High":
+            return "Best avoided if possible. May have health concerns for sensitive individuals."
+        case "Moderate":
+            return "Generally safe in small amounts. Consider limiting regular consumption."
+        default:
+            return "Generally recognized as safe for most people when consumed as part of food."
+        }
+    }
+}
+
+// MARK: - Additive Info Row Component
+
+struct AdditiveInfoRow: View {
+    let icon: String
+    let title: String
+    let content: String
+    let color: Color
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 14))
+                .foregroundColor(color)
+                .frame(width: 20)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.primary)
+
+                Text(content)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 }

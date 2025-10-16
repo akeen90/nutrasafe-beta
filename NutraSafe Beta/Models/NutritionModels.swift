@@ -28,12 +28,13 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     let confidence: Double? // For AI recognition results
     let isVerified: Bool // Indicates if food comes from internal verified database
     let additives: [NutritionAdditiveInfo]?
+    let additivesDatabaseVersion: String? // Database version used for additive analysis
     let processingScore: Int?
     let processingGrade: String?
     let processingLabel: String?
     let barcode: String?
 
-    init(id: String, name: String, brand: String? = nil, calories: Double, protein: Double, carbs: Double, fat: Double, fiber: Double, sugar: Double, sodium: Double, servingDescription: String? = nil, ingredients: [String]? = nil, confidence: Double? = nil, isVerified: Bool = false, additives: [NutritionAdditiveInfo]? = nil, processingScore: Int? = nil, processingGrade: String? = nil, processingLabel: String? = nil, barcode: String? = nil) {
+    init(id: String, name: String, brand: String? = nil, calories: Double, protein: Double, carbs: Double, fat: Double, fiber: Double, sugar: Double, sodium: Double, servingDescription: String? = nil, ingredients: [String]? = nil, confidence: Double? = nil, isVerified: Bool = false, additives: [NutritionAdditiveInfo]? = nil, additivesDatabaseVersion: String? = nil, processingScore: Int? = nil, processingGrade: String? = nil, processingLabel: String? = nil, barcode: String? = nil) {
         self.id = id
         self.name = name
         self.brand = brand
@@ -49,6 +50,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         self.confidence = confidence
         self.isVerified = isVerified
         self.additives = additives
+        self.additivesDatabaseVersion = additivesDatabaseVersion
         self.processingScore = processingScore
         self.processingGrade = processingGrade
         self.processingLabel = processingLabel
@@ -74,6 +76,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         case verificationMethod
         case verifiedAt
         case additives
+        case additivesDatabaseVersion
         case processingScore
         case processingGrade
         case processingLabel
@@ -172,6 +175,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         let hasVerifier = (try? c.decodeIfPresent(String.self, forKey: .verifiedBy)) != nil || (try? c.decodeIfPresent(String.self, forKey: .verificationMethod)) != nil || (try? c.decodeIfPresent(String.self, forKey: .verifiedAt)) != nil
         self.isVerified = hasVerifier
         self.additives = try? c.decode([NutritionAdditiveInfo].self, forKey: .additives)
+        self.additivesDatabaseVersion = try? c.decode(String.self, forKey: .additivesDatabaseVersion)
         self.processingScore = try? c.decode(Int.self, forKey: .processingScore)
         self.processingGrade = try? c.decode(String.self, forKey: .processingGrade)
         self.processingLabel = try? c.decode(String.self, forKey: .processingLabel)

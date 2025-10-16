@@ -36,11 +36,49 @@ struct NutraSafeBetaApp: App {
 struct MainAppView: View {
     @EnvironmentObject var firebaseManager: FirebaseManager
     @EnvironmentObject var healthKitManager: HealthKitManager
+    @AppStorage("appearanceMode") private var appearanceModeString: String = AppearanceMode.system.rawValue
+
+    private var appearanceMode: AppearanceMode {
+        AppearanceMode(rawValue: appearanceModeString) ?? .system
+    }
 
     var body: some View {
         AuthenticationView()
+            .preferredColorScheme(appearanceMode.colorScheme)
+            .id(appearanceModeString) // Force view refresh when theme changes
             .onAppear {
                 Task { await healthKitManager.requestAuthorization() }
             }
+    }
+}
+
+// MARK: - Supporting Enums for Theme
+enum AppearanceMode: String, CaseIterable {
+    case light = "light"
+    case dark = "dark"
+    case system = "system"
+
+    var displayName: String {
+        switch self {
+        case .light: return "Light"
+        case .dark: return "Dark"
+        case .system: return "System"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .light: return "sun.max.fill"
+        case .dark: return "moon.fill"
+        case .system: return "circle.lefthalf.filled"
+        }
+    }
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .light: return .light
+        case .dark: return .dark
+        case .system: return nil
+        }
     }
 }

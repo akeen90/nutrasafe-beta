@@ -214,6 +214,8 @@ struct AccountSection: View {
 
 struct AboutSection: View {
     @State private var showingHealthDisclaimer = false
+    @State private var showingTermsAndConditions = false
+    @State private var showingPrivacyPolicy = false
 
     var body: some View {
         SettingsSection(title: "About") {
@@ -245,9 +247,7 @@ struct AboutSection: View {
                 title: "Terms & Conditions",
                 iconColor: .blue,
                 action: {
-                    if let url = URL(string: "https://nutrasafe-705c7.web.app/terms") {
-                        UIApplication.shared.open(url)
-                    }
+                    showingTermsAndConditions = true
                 }
             )
 
@@ -259,9 +259,7 @@ struct AboutSection: View {
                 title: "Privacy Policy",
                 iconColor: .blue,
                 action: {
-                    if let url = URL(string: "https://nutrasafe-705c7.web.app/privacy") {
-                        UIApplication.shared.open(url)
-                    }
+                    showingPrivacyPolicy = true
                 }
             )
 
@@ -279,6 +277,12 @@ struct AboutSection: View {
         }
         .sheet(isPresented: $showingHealthDisclaimer) {
             HealthDisclaimerView()
+        }
+        .sheet(isPresented: $showingTermsAndConditions) {
+            TermsAndConditionsView()
+        }
+        .sheet(isPresented: $showingPrivacyPolicy) {
+            PrivacyPolicyView()
         }
     }
 
@@ -402,25 +406,33 @@ struct NutritionGoalsSection: View {
             } else {
                 // Daily Caloric Goal
                 VStack(spacing: 0) {
-                    HStack {
-                        Image(systemName: "flame.fill")
-                            .font(.system(size: 16))
-                            .foregroundColor(.orange)
-                            .frame(width: 24)
-
-                        Text("Daily Caloric Goal")
-                            .font(.system(size: 16))
-                            .foregroundColor(.primary)
-
-                        Spacer()
-
-                        Stepper(value: $caloricGoal, in: 1000...5000, step: 50) {
-                            Text("\(caloricGoal) cal")
-                                .font(.system(size: 16, weight: .semibold))
+                    VStack(spacing: 8) {
+                        HStack {
+                            Image(systemName: "flame.fill")
+                                .font(.system(size: 16))
                                 .foregroundColor(.orange)
+                                .frame(width: 24)
+
+                            Text("Daily Caloric Goal")
+                                .font(.system(size: 16))
+                                .foregroundColor(.primary)
+
+                            Spacer()
                         }
-                        .onChange(of: caloricGoal) { newValue in
-                            saveCaloricGoal(newValue)
+
+                        HStack {
+                            Spacer()
+
+                            Stepper(value: $caloricGoal, in: 1000...5000, step: 50) {
+                                Text("\(formatNumber(caloricGoal)) cal")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundColor(.orange)
+                            }
+                            .onChange(of: caloricGoal) { newValue in
+                                saveCaloricGoal(newValue)
+                            }
+
+                            Spacer()
                         }
                     }
                     .padding(.horizontal, 16)
@@ -460,25 +472,33 @@ struct NutritionGoalsSection: View {
                         .padding(.leading, 52)
 
                     // Fasting Goal
-                    HStack {
-                        Image(systemName: "clock.fill")
-                            .font(.system(size: 16))
-                            .foregroundColor(.purple)
-                            .frame(width: 24)
-
-                        Text("Fasting Goal")
-                            .font(.system(size: 16))
-                            .foregroundColor(.primary)
-
-                        Spacer()
-
-                        Stepper(value: $fastingGoalHours, in: 8...24, step: 1) {
-                            Text("\(fastingGoalHours) hours")
-                                .font(.system(size: 16, weight: .semibold))
+                    VStack(spacing: 8) {
+                        HStack {
+                            Image(systemName: "clock.fill")
+                                .font(.system(size: 16))
                                 .foregroundColor(.purple)
+                                .frame(width: 24)
+
+                            Text("Fasting Goal")
+                                .font(.system(size: 16))
+                                .foregroundColor(.primary)
+
+                            Spacer()
                         }
-                        .onChange(of: fastingGoalHours) { newValue in
-                            saveFastingGoal(newValue)
+
+                        HStack {
+                            Spacer()
+
+                            Stepper(value: $fastingGoalHours, in: 8...24, step: 1) {
+                                Text("\(fastingGoalHours) hours")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundColor(.purple)
+                            }
+                            .onChange(of: fastingGoalHours) { newValue in
+                                saveFastingGoal(newValue)
+                            }
+
+                            Spacer()
                         }
                     }
                     .padding(.horizontal, 16)
@@ -581,12 +601,20 @@ struct NutritionGoalsSection: View {
             }
         }
     }
+
+    private func formatNumber(_ number: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.groupingSeparator = ","
+        return formatter.string(from: NSNumber(value: number)) ?? "\(number)"
+    }
 }
 
 // MARK: - Progress Goals Section (PHASE 3)
 
 struct ProgressGoalsSection: View {
     @EnvironmentObject var firebaseManager: FirebaseManager
+    @AppStorage("unitSystem") private var unitSystem: UnitSystem = .metric
 
     @State private var currentWeight: Double?
     @State private var goalWeight: Double?
@@ -628,9 +656,10 @@ struct ProgressGoalsSection: View {
                             Spacer()
 
                             if let weight = currentWeight {
-                                Text(String(format: "%.1f kg", weight))
+                                Text(formatWeight(weight))
                                     .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(.blue)
+                                    .fixedSize()
                             } else {
                                 Text("Not set")
                                     .font(.system(size: 16))
@@ -664,9 +693,10 @@ struct ProgressGoalsSection: View {
                             Spacer()
 
                             if let goal = goalWeight {
-                                Text(String(format: "%.1f kg", goal))
+                                Text(formatWeight(goal))
                                     .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(.green)
+                                    .fixedSize()
                             } else {
                                 Text("Not set")
                                     .font(.system(size: 16))
@@ -700,9 +730,10 @@ struct ProgressGoalsSection: View {
                             Spacer()
 
                             if let h = height {
-                                Text(String(format: "%.0f cm", h))
+                                Text(formatHeight(h))
                                     .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(.purple)
+                                    .fixedSize()
                             } else {
                                 Text("Not set")
                                     .font(.system(size: 16))
@@ -723,30 +754,39 @@ struct ProgressGoalsSection: View {
                         Divider()
                             .padding(.leading, 52)
 
-                        HStack {
-                            Image(systemName: "heart.text.square.fill")
-                                .font(.system(size: 16))
-                                .foregroundColor(.pink)
-                                .frame(width: 24)
+                        Button(action: { }) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "heart.text.square.fill")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.pink)
+                                    .frame(width: 24)
 
-                            Text("BMI")
-                                .font(.system(size: 16))
-                                .foregroundColor(.primary)
+                                Text("BMI")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.primary)
 
-                            Spacer()
+                                Spacer()
 
-                            let bmi = calculateBMI(weight: w, heightCm: h)
-                            Text(String(format: "%.1f", bmi))
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(bmiColor(bmi))
+                                let bmi = calculateBMI(weight: w, heightCm: h)
+                                HStack(spacing: 8) {
+                                    Text(bmiCategory(bmi))
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.secondary)
 
-                            Text(bmiCategory(bmi))
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                                .padding(.leading, 4)
+                                    Text(String(format: "%.1f", bmi))
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(bmiColor(bmi))
+                                }
+                                .fixedSize()
+
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
+                        .buttonStyle(PlainButtonStyle())
                     }
 
                     Divider()
@@ -914,6 +954,28 @@ struct ProgressGoalsSection: View {
         case 18.5..<25: return .green
         case 25..<30: return .orange
         default: return .red
+        }
+    }
+
+    private func formatWeight(_ kg: Double) -> String {
+        switch unitSystem {
+        case .metric:
+            return String(format: "%.1f kg", kg)
+        case .imperial:
+            let lbs = kg * 2.20462
+            return String(format: "%.1f lbs", lbs)
+        }
+    }
+
+    private func formatHeight(_ cm: Double) -> String {
+        switch unitSystem {
+        case .metric:
+            return String(format: "%.0f cm", cm)
+        case .imperial:
+            let totalInches = cm / 2.54
+            let feet = Int(totalInches / 12)
+            let inches = Int(totalInches.truncatingRemainder(dividingBy: 12))
+            return "\(feet)' \(inches)\""
         }
     }
 }
@@ -1309,47 +1371,72 @@ struct HealthSafetySection: View {
 // MARK: - App Preferences Section (PHASE 5)
 
 struct AppPreferencesSection: View {
+    @AppStorage("appearanceMode") private var appearanceMode: AppearanceMode = .system
+    @AppStorage("unitSystem") private var unitSystem: UnitSystem = .metric
+
+    @State private var showingThemeSelector = false
+    @State private var showingUnitsSelector = false
+    @State private var showingDataPrivacy = false
+
     var body: some View {
         SettingsSection(title: "App Preferences") {
             VStack(spacing: 0) {
                 // Theme
-                SettingsRow(
-                    icon: "paintbrush.fill",
-                    title: "Theme",
-                    iconColor: .purple,
-                    action: {
-                        // TODO: Implement theme selection (Dark/Light/Auto)
-                        print("Theme selection")
+                Button(action: { showingThemeSelector = true }) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "paintbrush.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.purple)
+                            .frame(width: 24)
+
+                        Text("Theme")
+                            .font(.system(size: 16))
+                            .foregroundColor(.primary)
+
+                        Spacer()
+
+                        Text(appearanceMode.displayName)
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
                     }
-                )
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                }
+                .buttonStyle(PlainButtonStyle())
 
                 Divider()
                     .padding(.leading, 52)
 
                 // Units
-                SettingsRow(
-                    icon: "ruler.fill",
-                    title: "Units",
-                    iconColor: .blue,
-                    action: {
-                        // TODO: Implement unit preferences (Metric/Imperial)
-                        print("Unit preferences")
-                    }
-                )
+                Button(action: { showingUnitsSelector = true }) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "ruler.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.blue)
+                            .frame(width: 24)
 
-                Divider()
-                    .padding(.leading, 52)
+                        Text("Units")
+                            .font(.system(size: 16))
+                            .foregroundColor(.primary)
 
-                // Language
-                SettingsRow(
-                    icon: "globe",
-                    title: "Language",
-                    iconColor: .green,
-                    action: {
-                        // TODO: Implement language selection
-                        print("Language selection")
+                        Spacer()
+
+                        Text(unitSystem.displayName)
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
                     }
-                )
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                }
+                .buttonStyle(PlainButtonStyle())
 
                 Divider()
                     .padding(.leading, 52)
@@ -1360,10 +1447,385 @@ struct AppPreferencesSection: View {
                     title: "Data & Privacy",
                     iconColor: .orange,
                     action: {
-                        // TODO: Show data & privacy settings
-                        print("Data & privacy settings")
+                        showingDataPrivacy = true
                     }
                 )
+            }
+        }
+        .sheet(isPresented: $showingThemeSelector) {
+            ThemeSelectorView(selectedTheme: $appearanceMode)
+        }
+        .sheet(isPresented: $showingUnitsSelector) {
+            UnitsSelectorView(selectedUnit: $unitSystem)
+        }
+        .sheet(isPresented: $showingDataPrivacy) {
+            DataPrivacyView()
+        }
+    }
+}
+
+// MARK: - Supporting Enums for App Preferences
+
+enum UnitSystem: String, CaseIterable {
+    case metric = "metric"
+    case imperial = "imperial"
+
+    var displayName: String {
+        switch self {
+        case .metric: return "Metric"
+        case .imperial: return "Imperial"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .metric: return "chart.bar.fill"
+        case .imperial: return "scalemass.fill"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .metric: return "Kilograms, centimetres, litres"
+        case .imperial: return "Pounds, inches, fluid ounces"
+        }
+    }
+}
+
+// MARK: - Theme Selector View
+
+struct ThemeSelectorView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var selectedTheme: AppearanceMode
+
+    var body: some View {
+        NavigationView {
+            List {
+                Section {
+                    Text("Choose how NutraSafe appears on your device")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
+
+                Section {
+                    ForEach(AppearanceMode.allCases, id: \.self) { mode in
+                        Button(action: {
+                            selectedTheme = mode
+                            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                            impactFeedback.impactOccurred()
+                        }) {
+                            HStack(spacing: 16) {
+                                Image(systemName: mode.icon)
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.purple)
+                                    .frame(width: 32)
+
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(mode.displayName)
+                                        .font(.system(size: 16))
+                                        .foregroundColor(.primary)
+
+                                    if mode == .system {
+                                        Text("Matches system settings")
+                                            .font(.system(size: 13))
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+
+                                Spacer()
+
+                                if selectedTheme == mode {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.system(size: 22))
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
+            }
+            .navigationTitle("Theme")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        let notificationFeedback = UINotificationFeedbackGenerator()
+                        notificationFeedback.notificationOccurred(.success)
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Units Selector View
+
+struct UnitsSelectorView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var selectedUnit: UnitSystem
+
+    var body: some View {
+        NavigationView {
+            List {
+                Section {
+                    Text("Choose your preferred measurement system")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
+
+                Section {
+                    ForEach(UnitSystem.allCases, id: \.self) { system in
+                        Button(action: {
+                            selectedUnit = system
+                            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                            impactFeedback.impactOccurred()
+                        }) {
+                            HStack(spacing: 16) {
+                                Image(systemName: system.icon)
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.blue)
+                                    .frame(width: 32)
+
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(system.displayName)
+                                        .font(.system(size: 16))
+                                        .foregroundColor(.primary)
+
+                                    Text(system.description)
+                                        .font(.system(size: 13))
+                                        .foregroundColor(.secondary)
+                                }
+
+                                Spacer()
+
+                                if selectedUnit == system {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.system(size: 22))
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
+
+                Section {
+                    Text("Weight and height values will be converted automatically when you switch between metric and imperial units.")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Units")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        let notificationFeedback = UINotificationFeedbackGenerator()
+                        notificationFeedback.notificationOccurred(.success)
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Data & Privacy View
+
+struct DataPrivacyView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var firebaseManager: FirebaseManager
+
+    @State private var showingExportData = false
+    @State private var showingDeleteDataConfirmation = false
+    @State private var isExporting = false
+    @State private var isDeleting = false
+    @State private var showingError = false
+    @State private var errorMessage = ""
+    @State private var showingSuccess = false
+    @State private var successMessage = ""
+
+    var body: some View {
+        NavigationView {
+            List {
+                Section {
+                    Text("Manage your personal data and privacy settings")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
+
+                Section(header: Text("Your Data")) {
+                    Button(action: { showingExportData = true }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.system(size: 16))
+                                .foregroundColor(.blue)
+                                .frame(width: 24)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Export Data")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.primary)
+
+                                Text("Download all your app data")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+
+                    Button(action: { showingDeleteDataConfirmation = true }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "trash.fill")
+                                .font(.system(size: 16))
+                                .foregroundColor(.red)
+                                .frame(width: 24)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Delete All Data")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.red)
+
+                                Text("Permanently remove all your data")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+
+                Section(header: Text("Storage")) {
+                    HStack {
+                        Image(systemName: "internaldrive")
+                            .font(.system(size: 16))
+                            .foregroundColor(.purple)
+                            .frame(width: 24)
+
+                        Text("Data Storage")
+                            .font(.system(size: 16))
+
+                        Spacer()
+
+                        Text("Firebase Cloud")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 4)
+                }
+
+                Section(header: Text("Privacy")) {
+                    Button(action: {
+                        if let url = URL(string: "https://nutrasafe-705c7.web.app/privacy") {
+                            UIApplication.shared.open(url)
+                        }
+                    }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "hand.raised.fill")
+                                .font(.system(size: 16))
+                                .foregroundColor(.orange)
+                                .frame(width: 24)
+
+                            Text("Privacy Policy")
+                                .font(.system(size: 16))
+                                .foregroundColor(.primary)
+
+                            Spacer()
+
+                            Image(systemName: "arrow.up.right.square")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+            .navigationTitle("Data & Privacy")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .alert("Export Data", isPresented: $showingExportData) {
+            Button("Cancel", role: .cancel) { }
+            Button("Export") {
+                exportUserData()
+            }
+        } message: {
+            Text("Data export feature coming soon. You'll be able to download all your data in JSON format.")
+        }
+        .alert("Delete All Data", isPresented: $showingDeleteDataConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                deleteAllUserData()
+            }
+        } message: {
+            Text("This will permanently delete all your diary entries, weight history, settings, and allergen data. This action cannot be undone.")
+        }
+        .alert("Error", isPresented: $showingError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage)
+        }
+        .alert("Success", isPresented: $showingSuccess) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(successMessage)
+        }
+    }
+
+    private func exportUserData() {
+        // TODO: Implement data export
+        errorMessage = "Data export feature is coming soon!"
+        showingError = true
+    }
+
+    private func deleteAllUserData() {
+        isDeleting = true
+        Task {
+            do {
+                // Delete all user data from Firestore
+                try await firebaseManager.deleteAllUserData()
+                await MainActor.run {
+                    successMessage = "All your data has been permanently deleted."
+                    showingSuccess = true
+                    isDeleting = false
+
+                    // Dismiss after a delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        dismiss()
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Failed to delete data: \(error.localizedDescription)"
+                    showingError = true
+                    isDeleting = false
+                }
             }
         }
     }

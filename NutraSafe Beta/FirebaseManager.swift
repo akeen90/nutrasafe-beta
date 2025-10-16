@@ -73,7 +73,45 @@ class FirebaseManager: ObservableObject {
             self.isAuthenticated = false
         }
     }
-    
+
+    func deleteAllUserData() async throws {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to delete data"])
+        }
+
+        print("🗑️ Starting to delete all user data for user: \(userId)")
+
+        // Delete all subcollections
+        let collections = [
+            "foodEntries",
+            "reactions",
+            "fridgeInventory",
+            "fridgeItems",
+            "exerciseEntries",
+            "pendingVerifications",
+            "weightHistory",
+            "settings",
+            "safeFoods",
+            "submittedFoods",
+            "customIngredients",
+            "verifiedFoods"
+        ]
+
+        for collection in collections {
+            let snapshot = try await db.collection("users").document(userId)
+                .collection(collection).getDocuments()
+
+            print("   Deleting \(snapshot.documents.count) documents from \(collection)...")
+            for document in snapshot.documents {
+                try await document.reference.delete()
+            }
+        }
+
+        print("✅ All user data deleted successfully")
+    }
+
     // MARK: - Email/Password Authentication
     
     func signIn(email: String, password: String) async throws {
@@ -591,6 +629,22 @@ class FirebaseManager: ObservableObject {
         return downloadURL.absoluteString
     }
 
+    func downloadWeightPhoto(from urlString: String) async throws -> UIImage {
+        guard let url = URL(string: urlString) else {
+            throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid photo URL"])
+        }
+
+        // Download image data from URL
+        let (data, _) = try await URLSession.shared.data(from: url)
+
+        guard let image = UIImage(data: data) else {
+            throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to create image from data"])
+        }
+
+        print("✅ Weight photo downloaded successfully")
+        return image
+    }
+
     func saveWeightEntry(_ entry: WeightEntry) async throws {
         ensureAuthStateLoaded()
 
@@ -885,6 +939,44 @@ class FirebaseManager: ObservableObject {
             .collection("verifiedFoods").getDocuments()
 
         return snapshot.documents.compactMap { $0.data()["foodKey"] as? String }
+    }
+
+    // MARK: - User Enhanced Product Data
+
+    func saveUserEnhancedProduct(data: [String: Any]) async throws {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save enhanced product data"])
+        }
+
+        guard let barcode = data["barcode"] as? String else {
+            throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Barcode is required for enhanced product data"])
+        }
+
+        // Save to global userEnhancedProductData collection for all users to access
+        let productId = "product_\(barcode)_\(UUID().uuidString)"
+        var enhancedData = data
+        enhancedData["userId"] = userId
+        enhancedData["timestamp"] = FirebaseFirestore.Timestamp(date: Date())
+        enhancedData["status"] = "pending_review" // Admin can review before making it public
+
+        try await db.collection("userEnhancedProductData")
+            .document(productId)
+            .setData(enhancedData)
+
+        print("✅ User enhanced product data saved: \(productId)")
+    }
+
+    func getUserEnhancedProduct(barcode: String) async throws -> [String: Any]? {
+        // Search for user-enhanced product data by barcode
+        let snapshot = try await db.collection("userEnhancedProductData")
+            .whereField("barcode", isEqualTo: barcode)
+            .whereField("status", isEqualTo: "approved") // Only return approved data
+            .limit(to: 1)
+            .getDocuments()
+
+        return snapshot.documents.first?.data()
     }
 }
 

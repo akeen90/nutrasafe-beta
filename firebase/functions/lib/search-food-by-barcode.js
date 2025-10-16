@@ -155,6 +155,7 @@ exports.searchFoodByBarcode = functions.https.onRequest(async (req, res) => {
             ingredients: ingredientsString || '',
             // Include additive analysis
             additives: additiveAnalysis || [],
+            additivesDatabaseVersion: additive_analyzer_enhanced_1.DATABASE_VERSION, // Database version used for analysis
             processing_score: (processingInfo === null || processingInfo === void 0 ? void 0 : processingInfo.score) || 0,
             processing_grade: (processingInfo === null || processingInfo === void 0 ? void 0 : processingInfo.grade) || 'A',
             processing_label: (processingInfo === null || processingInfo === void 0 ? void 0 : processingInfo.label) || 'Minimal processing',
