@@ -153,109 +153,36 @@ struct FoodSearchResultRowEnhanced: View {
                 showingFoodDetail = true
             }
         }) {
-            VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
                 // Product name and brand
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(food.name)
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .multilineTextAlignment(.leading)
-                            .lineLimit(2)
-                        
-                        if let brand = food.brand {
-                            Text(brand)
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
-                }
-                
-                // Three-column content layout
-                HStack(alignment: .top, spacing: 12) {
-                    // Column 1: Calories (Fixed width)
-                    VStack(spacing: 2) {
-                        Text("\(Int(perServingCalories))")
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(.primary)
-                        Text("kcal")
-                            .font(.system(size: 10, weight: .medium))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(food.name)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(2)
+
+                    if let brand = food.brand {
+                        Text(brand)
+                            .font(.system(size: 12))
                             .foregroundColor(.secondary)
                     }
-                    .frame(width: 50)
-                    
-                    // Column 2: Macronutrients (Flexible)
-                    VStack(spacing: 6) {
-                        HStack(spacing: 8) {
-                            MacroValue(value: food.carbs, label: "Carb", color: .orange)
-                            MacroValue(value: food.fat, label: "Fat", color: .purple)
-                            MacroValue(value: food.protein, label: "Prot", color: .red)
-                        }
-                    }
-                    
-                    // Column 3: Grades (Fixed width)
-                    VStack(spacing: 8) {
-                        // Grades in horizontal layout
-                        HStack(spacing: 6) {
-                            VStack(spacing: 2) {
-                                Circle()
-                                    .fill(nutritionScore.color)
-                                    .frame(width: 28, height: 28)
-                                    .overlay(
-                                        Text(nutritionScore.rawValue)
-                                            .font(.system(size: 12, weight: .bold))
-                                            .foregroundColor(.white)
-                                    )
-                                VStack(spacing: 0) {
-                                    Text("Process")
-                                        .font(.system(size: 8, weight: .medium))
-                                        .foregroundColor(.secondary)
-                                    Text("Score")
-                                        .font(.system(size: 8, weight: .medium))
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                            
-                            if sugarGrade != .unknown {
-                                VStack(spacing: 2) {
-                                    Circle()
-                                        .fill(sugarGrade.color)
-                                        .frame(width: 28, height: 28)
-                                        .overlay(
-                                            Text(sugarGrade.rawValue)
-                                                .font(.system(size: 12, weight: .bold))
-                                                .foregroundColor(.white)
-                                        )
-                                    VStack(spacing: 0) {
-                                        Text("Sugar")
-                                            .font(.system(size: 8, weight: .medium))
-                                            .foregroundColor(.secondary)
-                                        Text("Level")
-                                            .font(.system(size: 8, weight: .medium))
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .frame(width: 70)
                 }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
             }
-            .padding(.vertical, 12)
+            .padding(.vertical, 10)
             .padding(.horizontal, 14)
         }
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.08), radius: 3, x: 0, y: 2)
+        .background(Color(.systemGray6))
+        .cornerRadius(10)
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color(.systemGray6), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color(.systemGray5), lineWidth: 0.5)
         )
         .contentShape(Rectangle())
         .scaleEffect(isPressed ? 0.98 : 1.0)
