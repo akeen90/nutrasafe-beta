@@ -113,6 +113,14 @@ struct FridgeTabView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
 
+                // Subtitle description
+                Text("Track opened items and monitor expiry dates to reduce food waste")
+                    .font(.system(size: 15))
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 4)
+                    .padding(.bottom, 8)
+
                 ScrollView {
                     VStack(spacing: 0) {
                         // Main content
