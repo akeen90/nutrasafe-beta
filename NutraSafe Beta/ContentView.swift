@@ -1499,7 +1499,7 @@ enum TabItem: String, CaseIterable {
         case .weight: return "Progress"
         case .add: return ""
         case .food: return "Food"
-        case .fridge: return "Fridge"
+        case .fridge: return "Use By"
         }
     }
 

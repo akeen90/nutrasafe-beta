@@ -25,7 +25,7 @@ struct FridgeTabView: View {
             VStack(spacing: 0) {
                 // Header - AAA Modern Design
                 HStack(spacing: 16) {
-                        Text("Fridge")
+                        Text("Use By")
                             .font(.system(size: 38, weight: .bold, design: .rounded))
                             .frame(height: 44, alignment: .center)
                             .foregroundStyle(
@@ -68,7 +68,7 @@ struct FridgeTabView: View {
 
                         Button(action: {
                             // Set fridge as default destination
-                            UserDefaults.standard.set("Fridge", forKey: "preselectedDestination")
+                            UserDefaults.standard.set("Use By", forKey: "preselectedDestination")
                             selectedTab = .add
                         }) {
                             ZStack {
@@ -290,7 +290,7 @@ struct AddFoundFoodToFridgeSheet: View {
             }
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("Add to Fridge")
+            .navigationTitle("Add to Use By")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -402,7 +402,7 @@ struct FridgeExpiryView: View {
                         .padding(.bottom, 8)
 
                         VStack(spacing: 10) {
-                            Text("Your Fridge is Empty")
+                            Text("No Items Yet")
                                 .font(.system(size: 24, weight: .semibold))
                                 .foregroundColor(.primary)
 
@@ -421,7 +421,7 @@ struct FridgeExpiryView: View {
                     VStack(spacing: 12) {
                         Button(action: {
                             // Set fridge as default destination
-                            UserDefaults.standard.set("Fridge", forKey: "preselectedDestination")
+                            UserDefaults.standard.set("Use By", forKey: "preselectedDestination")
                             selectedTab = .add
                         }) {
                             Label("Add Your First Item", systemImage: "plus.circle.fill")
@@ -989,7 +989,7 @@ struct FridgeItemsListCard: View {
                             .symbolRenderingMode(.hierarchical)
                     }
 
-                    Text("Your Fridge Items")
+                    Text("Your Items")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.primary)
                 }
@@ -1971,7 +1971,7 @@ struct AddFridgeItemSheet: View {
                 // Header
                 VStack(spacing: 16) {
                     HStack {
-                        Text("Add to Fridge")
+                        Text("Add to Use By")
                             .font(.system(size: 28, weight: .bold))
                             .foregroundColor(.primary)
                         Spacer()
@@ -2158,78 +2158,41 @@ struct AddOptionButton: View {
 struct ManualFridgeItemSheet: View {
     @Environment(\.dismiss) var dismiss
     @State private var itemName = ""
-    @State private var brand = ""
-    @State private var expiryDate = Date().addingTimeInterval(7 * 24 * 60 * 60)
+    @State private var useByDate = Date().addingTimeInterval(7 * 24 * 60 * 60)
     @State private var isSaving = false
     @State private var showErrorAlertManual = false
     @State private var errorMessageManual: String? = nil
-    @State private var openedMode: OpenedMode = .today
-    @State private var openedDate: Date = Date()
-    @State private var expiryAmount: Int = 7
-    @State private var expiryUnit: ExpiryUnit = .days
-
-    enum OpenedMode { case today, chooseDate }
-    enum ExpiryUnit: String, CaseIterable { case days = "Days", weeks = "Weeks" }
 
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(spacing: 16) {
-                    SectionCard(title: "ITEM DETAILS") {
-                        VStack(alignment: .leading, spacing: 12) {
-                            TextField("Item name", text: $itemName).textFieldStyle(.roundedBorder)
-                            TextField("Brand (optional)", text: $brand).textFieldStyle(.roundedBorder)
-                        }
-                    }
-                    SectionCard(title: "OPENED") {
-                        SegmentedContainer {
-                            Picker("", selection: $openedMode) {
-                                Text("Opened Today").tag(OpenedMode.today)
-                                Text("Choose Date").tag(OpenedMode.chooseDate)
-                            }.pickerStyle(.segmented)
-                        }
-                        if openedMode == .chooseDate {
-                            DatePicker("Opened Date", selection: $openedDate, displayedComponents: .date)
-                                .datePickerStyle(.compact)
-                        }
-                    }
-                    SectionCard(title: "EXPIRY") {
-                        HStack(spacing: 6) {
-                            CounterPill(value: $expiryAmount, range: 1...365)
-                            SegmentedContainer {
-                                Picker("Unit", selection: $expiryUnit) {
-                                    ForEach(ExpiryUnit.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                                }.pickerStyle(.segmented)
-                            }
-                        }
-                        .onChange(of: expiryAmount) { _ in recalcExpiry() }
-                        .onChange(of: expiryUnit) { _ in recalcExpiry() }
-                        HStack {
-                            Text("Expiry Date").font(.system(size: 14, weight: .medium)).foregroundColor(.secondary)
-                            Spacer()
-                            DatePicker("Expiry Date", selection: $expiryDate, displayedComponents: .date)
-                                .labelsHidden()
-                                .datePickerStyle(.compact)
-                        }
-                    }
+            Form {
+                Section {
+                    TextField("Item name", text: $itemName)
                 }
-                .padding(16)
-.onAppear { 
-                recalcExpiry()
+
+                Section {
+                    DatePicker("Use By Date", selection: $useByDate, displayedComponents: .date)
+                        .datePickerStyle(.automatic)
+                }
             }
-            }
-            .navigationTitle("Manual Entry")
+            .navigationTitle("Add Item")
             .navigationBarTitleDisplayMode(.inline)
-.toolbar {
-                ToolbarItem(placement: .navigationBarLeading) { Button("Cancel") { dismiss() } }
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") { dismiss() }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { saveFridgeItem() }) {
-                        if isSaving { ProgressView().scaleEffect(0.8) } else { Text("Add").font(.system(size: 16, weight: .semibold)) }
+                        if isSaving {
+                            ProgressView().scaleEffect(0.8)
+                        } else {
+                            Text("Add").font(.system(size: 16, weight: .semibold))
+                        }
                     }
                     .disabled(itemName.isEmpty || isSaving)
                 }
             }
-            .alert("Couldn’t save item", isPresented: $showErrorAlertManual, actions: {
+            .alert("Couldn't save item", isPresented: $showErrorAlertManual, actions: {
                 Button("OK", role: .cancel) {}
             }, message: {
                 Text(errorMessageManual ?? "Unknown error")
@@ -2238,25 +2201,16 @@ struct ManualFridgeItemSheet: View {
         .navigationViewStyle(StackNavigationViewStyle())
     }
 
-    private func recalcExpiry() {
-        var comps = DateComponents()
-        switch expiryUnit {
-        case .days: comps.day = expiryAmount
-        case .weeks: comps.day = expiryAmount * 7
-        }
-        expiryDate = Calendar.current.date(byAdding: comps, to: Date()) ?? Date()
-    }
-
     private func saveFridgeItem() {
         isSaving = true
 
         let fridgeItem = FridgeInventoryItem(
             name: itemName,
-            brand: brand.isEmpty ? nil : brand,
+            brand: nil,
             quantity: "1",
-            expiryDate: expiryDate,
+            expiryDate: useByDate,
             addedDate: Date(),
-            openedDate: openedMode == .today ? Date() : openedDate
+            openedDate: Date()
         )
 
         Task {
