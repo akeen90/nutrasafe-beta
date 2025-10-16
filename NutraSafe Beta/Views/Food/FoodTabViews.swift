@@ -153,7 +153,7 @@ struct FoodReactionsView: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(spacing: 12) {
+            VStack(spacing: 12) {
                 // Reaction Summary
                 FoodReactionSummaryCard()
                     .environmentObject(reactionManager)
@@ -666,59 +666,78 @@ struct FoodPatternAnalysisCard: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 30)
             } else {
-                VStack(alignment: .leading, spacing: 16) {
-                    // Known Allergens Section (Grouped)
+                VStack(alignment: .leading, spacing: 0) {
+                    // Known Allergens Section (Simplified)
                     if !allergenTriggers.isEmpty {
-                        VStack(alignment: .leading, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 0) {
                             Text("Known Allergens")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.red)
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.primary)
+                                .padding(.bottom, 20)
 
-                            ForEach(groupedAllergenTriggers, id: \.category) { group in
-                                GroupedAllergenSection(
-                                    allergenCategory: group.category,
-                                    categoryPercentage: group.percentage,
-                                    ingredients: group.ingredients
-                                )
-                            }
-                        }
-                    }
-
-                    // Other Ingredients Section (Expandable)
-                    if !otherTriggers.isEmpty {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Button(action: {
-                                withAnimation {
-                                    showOtherIngredients.toggle()
-                                }
-                            }) {
-                                HStack {
-                                    Text("Other Ingredients")
-                                        .font(.system(size: 16, weight: .semibold))
-                                        .foregroundColor(.blue)
-
-                                    Spacer()
-
-                                    Image(systemName: showOtherIngredients ? "chevron.up" : "chevron.down")
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                            .buttonStyle(PlainButtonStyle())
-
-                            if showOtherIngredients {
-                                ForEach(otherTriggers, id: \.ingredient) { trigger in
-                                    PatternRow(
-                                        trigger: trigger.ingredient,
-                                        frequency: "\(trigger.percentage)%",
-                                        trend: trigger.trend,
-                                        baseAllergen: trigger.baseAllergen
+                            VStack(alignment: .leading, spacing: 0) {
+                                ForEach(groupedAllergenTriggers, id: \.category) { group in
+                                    SimplifiedAllergenGroup(
+                                        allergenCategory: group.category,
+                                        categoryPercentage: group.percentage,
+                                        ingredients: group.ingredients
                                     )
                                 }
                             }
                         }
+                        .padding(.bottom, 28)
+                    }
+
+                    // Other Ingredients Section (Expandable)
+                    if !otherTriggers.isEmpty {
+                        VStack(alignment: .leading, spacing: 0) {
+                            Button(action: {
+                                showOtherIngredients.toggle()
+                            }) {
+                                HStack(alignment: .center, spacing: 12) {
+                                    Text("Other Ingredients")
+                                        .font(.system(size: 18, weight: .bold))
+                                        .foregroundColor(.primary)
+
+                                    Spacer()
+
+                                    Image(systemName: showOtherIngredients ? "chevron.up.circle.fill" : "chevron.down.circle.fill")
+                                        .font(.system(size: 20))
+                                        .foregroundColor(.secondary.opacity(0.5))
+                                }
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(PlainButtonStyle())
+
+                            if showOtherIngredients {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    ForEach(otherTriggers, id: \.ingredient) { trigger in
+                                        HStack(spacing: 10) {
+                                            Text("—")
+                                                .font(.system(size: 14, weight: .medium))
+                                                .foregroundColor(.secondary)
+
+                                            Text(trigger.ingredient)
+                                                .font(.system(size: 15))
+                                                .foregroundColor(.primary)
+
+                                            Spacer()
+
+                                            // Subtle percentage indicator
+                                            Text("\(trigger.percentage)%")
+                                                .font(.system(size: 13, weight: .medium))
+                                                .foregroundColor(.secondary.opacity(0.6))
+                                        }
+                                        .padding(.leading, 4)
+                                    }
+                                }
+                                .padding(.top, 16)
+                                .transition(.identity)
+                            }
+                        }
                     }
                 }
+                .animation(.none, value: showOtherIngredients)
             }
         }
         .padding(20)
@@ -730,70 +749,66 @@ struct FoodPatternAnalysisCard: View {
     }
 }
 
-// MARK: - Grouped Allergen Section
-struct GroupedAllergenSection: View {
+// MARK: - Simplified Allergen Group
+struct SimplifiedAllergenGroup: View {
     let allergenCategory: String
     let categoryPercentage: Int
     let ingredients: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend)]
-    @State private var isExpanded = true
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Category header
-            Button(action: {
-                withAnimation {
-                    isExpanded.toggle()
-                }
-            }) {
-                HStack {
-                    Text(allergenCategory)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.red)
+        VStack(alignment: .leading, spacing: 0) {
+            // Category header with percentage badge
+            HStack(alignment: .center, spacing: 12) {
+                Text(allergenCategory)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.primary)
 
-                    Spacer()
+                Spacer()
 
-                    Text("\(categoryPercentage)%")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.red.opacity(0.8))
-
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(.secondary)
-                }
-                .padding(.vertical, 4)
+                // Percentage badge
+                Text("\(categoryPercentage)%")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(.red)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.red.opacity(0.12))
+                    )
             }
-            .buttonStyle(PlainButtonStyle())
+            .padding(.bottom, 12)
 
-            // Grouped ingredients
-            if isExpanded {
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(ingredients, id: \.ingredient) { ingredient in
-                        HStack {
-                            Circle()
-                                .fill(Color.red.opacity(0.3))
-                                .frame(width: 6, height: 6)
-                                .padding(.leading, 8)
+            // Ingredient list - clean design with dashes and subtle percentages
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(ingredients, id: \.ingredient) { ingredient in
+                    HStack(spacing: 10) {
+                        Text("—")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.secondary)
 
-                            Text(ingredient.ingredient)
-                                .font(.system(size: 14))
-                                .foregroundColor(.primary)
+                        Text(ingredient.ingredient)
+                            .font(.system(size: 15))
+                            .foregroundColor(.primary)
 
-                            Spacer()
+                        Spacer()
 
-                            Text("\(ingredient.percentage)%")
-                                .font(.system(size: 13))
-                                .foregroundColor(.secondary)
-
-                            Image(systemName: ingredient.trend.icon)
-                                .font(.system(size: 11))
-                                .foregroundColor(ingredient.trend.color)
-                        }
+                        // Subtle percentage indicator
+                        Text("\(ingredient.percentage)%")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.secondary.opacity(0.6))
                     }
+                    .padding(.leading, 4)
                 }
-                .padding(.leading, 4)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 16)
+        .padding(.bottom, 8)
+        .overlay(
+            Rectangle()
+                .fill(Color(.systemGray5))
+                .frame(height: 1),
+            alignment: .bottom
+        )
     }
 }
 
@@ -1178,6 +1193,12 @@ class ReactionManager: ObservableObject {
     }
 
     private init() {
+        // Don't load reactions immediately on init - wait for auth to be ready
+        // Reactions will be loaded when user is authenticated via reloadIfAuthenticated()
+    }
+
+    // Public method to reload reactions - should be called after successful authentication
+    func reloadIfAuthenticated() {
         loadReactions()
     }
 
