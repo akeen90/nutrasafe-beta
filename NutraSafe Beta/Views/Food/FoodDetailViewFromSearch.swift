@@ -75,7 +75,7 @@ struct FoodDetailViewFromSearch: View {
     @State private var userAllergens: [Allergen] = []
     @State private var detectedUserAllergens: [Allergen] = []
     
-    // Watch tabs (Additive Watch, Allergy Watch, Vitamins & Minerals)
+    // Watch tabs (Additive Analysis, Allergy Watch, Vitamins & Minerals)
     @State private var selectedWatchTab: WatchTab = .additives
     
     private var buttonText: String {
@@ -92,7 +92,7 @@ struct FoodDetailViewFromSearch: View {
     }
     
     enum WatchTab: String, CaseIterable {
-        case additives = "Additive Watch"
+        case additives = "Additive Analysis"
         case allergies = "Allergy Watch"
         case vitamins = "Vitamins & Minerals"
         
@@ -2577,7 +2577,7 @@ struct FoodDetailViewFromSearch: View {
         )
     }
     
-    // MARK: - Additive Watch Content
+    // MARK: - Additive Analysis Content
     private var additivesContent: some View {
         VStack(alignment: .leading, spacing: 12) {
             let detectedAdditives = getDetectedAdditives()

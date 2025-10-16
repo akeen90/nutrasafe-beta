@@ -9,7 +9,7 @@
 import SwiftUI
 import Foundation
 
-// MARK: - Additive Watch Component
+// MARK: - Additive Analysis Component
 
 struct AdditiveWatchView: View {
     let ingredients: [String]
@@ -33,7 +33,7 @@ struct AdditiveWatchView: View {
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(.blue)
                         
-                        Text("Additive Watch")
+                        Text("Additive Analysis")
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundColor(.primary)
                     }
