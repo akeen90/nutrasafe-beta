@@ -1829,6 +1829,11 @@ struct WeightTrackingView: View {
                                         previousEntry: weightHistory[safe: index + 1],
                                         isLatest: index == 0
                                     )
+                                    .onTapGesture {
+                                        print("📍 Tapped entry: \(entry.date)")
+                                        selectedEntry = entry
+                                        print("📍 Selected entry set: \(selectedEntry?.date ?? Date())")
+                                    }
                                     .contextMenu {
                                         Button {
                                             selectedEntry = entry
@@ -1955,6 +1960,34 @@ struct WeightTrackingView: View {
         .sheet(isPresented: $showingHeightSetup) {
             HeightSetupView(userHeight: $userHeight)
                 .environmentObject(firebaseManager)
+        }
+        .sheet(item: $selectedEntry) { entry in
+            ProgressWeightEntryDetailView(
+                entry: entry,
+                onEdit: {
+                    // Delay opening edit sheet until detail sheet is dismissed
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        selectedEntry = entry
+                        showingEditWeight = true
+                    }
+                }
+            )
+            .environmentObject(firebaseManager)
+            .onAppear {
+                print("📍 Sheet opened with entry: \(entry.date)")
+            }
+        }
+        .sheet(isPresented: $showingEditWeight) {
+            if let entry = selectedEntry {
+                EditWeightView(
+                    entry: entry,
+                    currentWeight: $currentWeight,
+                    weightHistory: $weightHistory,
+                    userHeight: $userHeight,
+                    onSave: { loadWeightHistory() }
+                )
+                .environmentObject(firebaseManager)
+            }
         }
         .alert("Delete Weight Entry?", isPresented: $showingDeleteConfirmation) {
             Button("Cancel", role: .cancel) {
@@ -2100,7 +2133,7 @@ struct WeightEntryRow: View {
                 HStack(spacing: 4) {
                     Image(systemName: change < 0 ? "arrow.down" : "arrow.up")
                         .font(.system(size: 12, weight: .bold))
-                    Text(String(format: "%.1f", abs(change)))
+                    Text(String(format: "%.1f kg", abs(change)))
                         .font(.system(size: 14, weight: .bold))
                 }
                 .foregroundColor(change < 0 ? .green : .red)
@@ -2131,11 +2164,194 @@ struct WeightEntryRow: View {
     }
 }
 
+// MARK: - Progress Tab Weight Entry Detail View
+struct ProgressWeightEntryDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var firebaseManager: FirebaseManager
+    let entry: WeightEntry
+    @State private var photoImage: UIImage?
+    @State private var isLoadingPhoto = false
+    let onEdit: () -> Void
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    // Photo section
+                    if entry.photoURL != nil {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Progress Photo")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.primary)
+
+                            if let image = photoImage {
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .cornerRadius(12)
+                                    .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                            } else if isLoadingPhoto {
+                                ProgressView()
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 200)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                    }
+
+                    // Weight & BMI section
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Measurements")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.primary)
+
+                        HStack(spacing: 32) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Weight")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.secondary)
+                                Text(String(format: "%.1f kg", entry.weight))
+                                    .font(.system(size: 24, weight: .bold))
+                                    .foregroundColor(.blue)
+                            }
+
+                            if let bmi = entry.bmi {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("BMI")
+                                        .font(.system(size: 13))
+                                        .foregroundColor(.secondary)
+                                    Text(String(format: "%.1f", bmi))
+                                        .font(.system(size: 24, weight: .bold))
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 16)
+
+                    // Additional measurements
+                    if entry.waistSize != nil || entry.dressSize != nil {
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Additional Measurements")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.primary)
+
+                            if let waist = entry.waistSize {
+                                HStack {
+                                    Text("Waist Size")
+                                        .font(.system(size: 15))
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                    Text(String(format: "%.1f cm", waist))
+                                        .font(.system(size: 15, weight: .semibold))
+                                }
+                            }
+
+                            if let dress = entry.dressSize {
+                                HStack {
+                                    Text("Dress Size")
+                                        .font(.system(size: 15))
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                    Text(dress)
+                                        .font(.system(size: 15, weight: .semibold))
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                    }
+
+                    // Date section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Date")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.primary)
+
+                        Text(entry.date, style: .date)
+                            .font(.system(size: 15))
+                        Text(entry.date, style: .time)
+                            .font(.system(size: 15))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 16)
+
+                    // Note section
+                    if let note = entry.note, !note.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Note")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.primary)
+
+                            Text(note)
+                                .font(.system(size: 15))
+                                .foregroundColor(.primary)
+                        }
+                        .padding(.horizontal, 16)
+                    }
+
+                    // Edit button
+                    Button(action: {
+                        // First dismiss this sheet
+                        dismiss()
+                        // Then trigger the edit action after a delay
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            onEdit()
+                        }
+                    }) {
+                        HStack {
+                            Image(systemName: "pencil")
+                            Text("Edit Entry")
+                        }
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color.blue)
+                        .cornerRadius(12)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                }
+                .padding(.vertical, 16)
+            }
+            .navigationTitle("Weight Entry")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                // Load photo if available
+                if let photoURL = entry.photoURL {
+                    isLoadingPhoto = true
+                    Task {
+                        do {
+                            let image = try await firebaseManager.downloadWeightPhoto(from: photoURL)
+                            await MainActor.run {
+                                photoImage = image
+                                isLoadingPhoto = false
+                            }
+                        } catch {
+                            print("❌ Error loading photo: \(error.localizedDescription)")
+                            await MainActor.run {
+                                isLoadingPhoto = false
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Weight Unit System
 enum WeightUnit: String, CaseIterable, Codable {
     case kg = "Kilograms (kg)"
     case lbs = "Pounds (lbs)"
-    case stones = "Stones & Pounds (st/lbs)"
+    case stones = "Stones & lbs"
 
     var shortName: String {
         switch self {
@@ -5553,14 +5769,12 @@ struct AddFoodMainView: View {
         case search = "Search"
         case manual = "Manual"
         case barcode = "Barcode"
-        case ai = "AI Scanner"
 
         var icon: String {
             switch self {
             case .search: return "magnifyingglass"
             case .manual: return "square.and.pencil"
             case .barcode: return "barcode.viewfinder"
-            case .ai: return "camera.viewfinder"
             }
         }
 
@@ -5569,7 +5783,6 @@ struct AddFoodMainView: View {
             case .search: return "Search food database"
             case .manual: return "Enter manually"
             case .barcode: return "Scan product barcode"
-            case .ai: return "AI-powered food recognition"
             }
         }
     }
@@ -5610,11 +5823,9 @@ struct AddFoodMainView: View {
                     case .search:
                         AddFoodSearchView(selectedTab: $selectedTab, destination: $destination)
                     case .manual:
-                        AddFoodManualView()
+                        AddFoodManualView(selectedTab: $selectedTab, destination: $destination)
                     case .barcode:
                         AddFoodBarcodeView(selectedTab: $selectedTab, destination: $destination)
-                    case .ai:
-                        AddFoodAIView(selectedTab: $selectedTab, destination: $destination)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -5733,93 +5944,13 @@ struct AddOptionSelector: View {
 
 // MARK: - Add Food Views
 
-struct AddFoodManualView: View {
-    @State private var foodName = ""
-    @State private var calories = ""
-    @State private var protein = ""
-    @State private var carbs = ""
-    @State private var fat = ""
-    @State private var servingSize = ""
-    @State private var servingUnit = "g"
-    
-    let servingUnits = ["g", "ml", "cup", "tbsp", "tsp", "piece", "slice"]
-    
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                // Food Name
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Food Name")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.primary)
-                    
-                    TextField("Enter food name...", text: $foodName)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                }
-                
-                // Serving Size
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Serving Size")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.primary)
-                    
-                    HStack {
-                        TextField("Amount", text: $servingSize)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .keyboardType(.decimalPad)
-                        
-                        Picker("Unit", selection: $servingUnit) {
-                            ForEach(servingUnits, id: \.self) { unit in
-                                Text(unit).tag(unit)
-                            }
-                        }
-                        .pickerStyle(MenuPickerStyle())
-                        .frame(width: 80)
-                    }
-                }
-                
-                // Nutrition Facts
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Nutrition Facts (per serving)")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.primary)
-                    
-                    VStack(spacing: 12) {
-                        NutritionInputRow(label: "Energy", value: $calories, unit: "kcal")
-                        NutritionInputRow(label: "Protein", value: $protein, unit: "g")
-                        NutritionInputRow(label: "Carbs", value: $carbs, unit: "g")
-                        NutritionInputRow(label: "Fat", value: $fat, unit: "g")
-                    }
-                }
-                
-                // Add Button
-                Button(action: {
-                    addManualFood()
-                }) {
-                    Text("Add Food")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(foodName.isEmpty || calories.isEmpty ? Color.gray : Color.blue)
-                        .cornerRadius(12)
-                }
-                .disabled(foodName.isEmpty || calories.isEmpty)
-                
-                Rectangle()
-                    .fill(Color.clear)
-                    .frame(height: 100)
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 16)
-        }
-    }
-    
-    private func addManualFood() {
-        print("Adding manual food: \(foodName)")
-        // Implementation for adding manual food
-    }
-}
+// MARK: - AddFoodManualView has been extracted to Views/Food/AddFoodManualViews.swift
+// This comprehensive manual food entry system was moved as part of manual add enhancement:
+// - AddFoodManualView: Main manual add view with navigation to detail entry
+// - ManualFoodDetailEntryView: Full food entry form with all FoodSearchResult fields
+// - Support for both diary and fridge destinations with appropriate fields
+// - FridgeItem models for expiry tracking and location management
+// Total extracted: 450+ lines of comprehensive manual entry functionality
 
 // MARK: - Barcode Scanning System has been extracted to Views/Food/BarcodeScanningViews.swift
 // This comprehensive barcode scanning system was moved as part of Phase 14 ContentView.swift modularization effort.

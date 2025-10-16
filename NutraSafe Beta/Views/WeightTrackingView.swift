@@ -298,17 +298,23 @@ struct WeightTrackingView: View {
 // MARK: - Weight Entry Model
 struct WeightEntry: Identifiable, Codable {
     let id: UUID
-    let weight: Double
+    let weight: Double // Always stored in kg
     let date: Date
     let bmi: Double?
     let note: String?
+    let photoURL: String? // Firebase Storage path
+    let waistSize: Double? // Waist measurement in cm
+    let dressSize: String? // Dress size (UK/US format)
 
-    init(id: UUID = UUID(), weight: Double, date: Date = Date(), bmi: Double? = nil, note: String? = nil) {
+    init(id: UUID = UUID(), weight: Double, date: Date = Date(), bmi: Double? = nil, note: String? = nil, photoURL: String? = nil, waistSize: Double? = nil, dressSize: String? = nil) {
         self.id = id
         self.weight = weight
         self.date = date
         self.bmi = bmi
         self.note = note
+        self.photoURL = photoURL
+        self.waistSize = waistSize
+        self.dressSize = dressSize
     }
 }
 
@@ -534,9 +540,27 @@ struct AddWeightView: View {
     @State private var weight: String = ""
     @State private var note: String = ""
     @State private var date = Date()
+    @State private var useMetric: Bool = true // kg vs stone/lbs
+    @State private var weightStone: String = ""
+    @State private var weightLbs: String = ""
+    @State private var waistSize: String = ""
+    @State private var dressSize: String = ""
+    @State private var selectedPhoto: UIImage?
+    @State private var showingPhotoPicker = false
+    @State private var isUploading = false
+    @State private var formId = UUID() // Force form recreation on unit change
+
+    private var weightInKg: Double? {
+        if useMetric {
+            return Double(weight)
+        } else {
+            guard let stone = Double(weightStone), let lbs = Double(weightLbs) else { return nil }
+            return (stone * 14 + lbs) * 0.453592 // Convert to kg
+        }
+    }
 
     private var calculatedBMI: Double? {
-        guard let weightValue = Double(weight) else { return nil }
+        guard let weightValue = weightInKg else { return nil }
         guard userHeight > 0 else { return nil }
         let heightInMeters = userHeight / 100
         return weightValue / (heightInMeters * heightInMeters)
@@ -546,13 +570,48 @@ struct AddWeightView: View {
         NavigationView {
             Form {
                 Section(header: Text("Weight")) {
-                    HStack {
-                        TextField("Weight", text: $weight)
-                            .keyboardType(.decimalPad)
-                            .font(.system(size: 20, weight: .semibold))
+                    Picker("Unit", selection: $useMetric) {
+                        Text("Kilograms (kg)").tag(true)
+                        Text("Stones & lbs").tag(false)
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: useMetric) { newValue in
+                        convertWeight(toMetric: newValue)
+                        formId = UUID() // Force view update
+                    }
 
-                        Text("kg")
-                            .foregroundColor(.secondary)
+                    if useMetric {
+                        HStack {
+                            TextField("Weight", text: $weight)
+                                .keyboardType(.decimalPad)
+                                .font(.system(size: 20, weight: .semibold))
+                                .id("weight-kg-\(formId)") // Force recreation
+
+                            Text("kg")
+                                .foregroundColor(.secondary)
+                        }
+                    } else {
+                        HStack(spacing: 16) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Stone")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                TextField("0", text: $weightStone)
+                                    .keyboardType(.numberPad)
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .id("weight-stone-\(formId)") // Force recreation
+                            }
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Pounds")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                TextField("0", text: $weightLbs)
+                                    .keyboardType(.decimalPad)
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .id("weight-lbs-\(formId)") // Force recreation
+                            }
+                        }
                     }
 
                     if let bmi = calculatedBMI {
@@ -562,6 +621,34 @@ struct AddWeightView: View {
                             Spacer()
                             Text(String(format: "%.1f", bmi))
                                 .font(.system(size: 17, weight: .semibold))
+                        }
+                    }
+                }
+
+                Section(header: Text("Optional Measurements")) {
+                    HStack {
+                        TextField("Waist (cm)", text: $waistSize)
+                            .keyboardType(.decimalPad)
+                        Text("cm")
+                            .foregroundColor(.secondary)
+                    }
+
+                    TextField("Dress Size (e.g., UK 12, US 8)", text: $dressSize)
+                }
+
+                Section(header: Text("Photo (Optional)")) {
+                    if let photo = selectedPhoto {
+                        Image(uiImage: photo)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 200)
+                            .cornerRadius(8)
+
+                        Button("Change Photo", action: { showingPhotoPicker = true })
+                            .foregroundColor(.blue)
+                    } else {
+                        Button(action: { showingPhotoPicker = true }) {
+                            Label("Add Photo", systemImage: "camera.fill")
                         }
                     }
                 }
@@ -587,19 +674,80 @@ struct AddWeightView: View {
                     Button("Save") {
                         saveWeight()
                     }
-                    .disabled(weight.isEmpty || Double(weight) == nil)
+                    .disabled(weightInKg == nil || isUploading)
+                }
+            }
+            .sheet(isPresented: $showingPhotoPicker) {
+                ImagePicker(image: $selectedPhoto)
+            }
+        }
+    }
+
+    private func convertWeight(toMetric: Bool) {
+        print("🔄 Converting weight. toMetric: \(toMetric)")
+        print("   Current weight: '\(weight)', weightStone: '\(weightStone)', weightLbs: '\(weightLbs)'")
+
+        DispatchQueue.main.async {
+            if toMetric {
+                // Converting from stone/lbs to kg
+                let stoneValue = Double(self.weightStone) ?? 0
+                let lbsValue = Double(self.weightLbs) ?? 0
+                print("   Stone: \(stoneValue), Lbs: \(lbsValue)")
+
+                // Only convert if at least one field has a value
+                if stoneValue > 0 || lbsValue > 0 {
+                    let totalLbs = stoneValue * 14 + lbsValue
+                    let kg = totalLbs * 0.453592
+                    self.weight = String(format: "%.1f", kg)
+                    print("   ✅ Converted to \(self.weight) kg")
+                    // Clear stone/lbs fields after conversion
+                    self.weightStone = ""
+                    self.weightLbs = ""
+                } else {
+                    print("   ⚠️ No stone/lbs values to convert")
+                }
+            } else {
+                // Converting from kg to stone/lbs
+                if let kg = Double(self.weight), kg > 0 {
+                    let totalLbs = kg / 0.453592
+                    let stone = Int(totalLbs / 14)
+                    let lbs = totalLbs.truncatingRemainder(dividingBy: 14)
+                    self.weightStone = "\(stone)"
+                    self.weightLbs = String(format: "%.1f", lbs)
+                    print("   ✅ Converted to \(stone) st \(String(format: "%.1f", lbs)) lbs")
+                    // Clear kg field after conversion
+                    self.weight = ""
+                } else {
+                    print("   ⚠️ No kg value to convert")
                 }
             }
         }
     }
 
     private func saveWeight() {
-        guard let weightValue = Double(weight) else { return }
+        guard let weightValue = weightInKg else { return }
 
-        let entry = WeightEntry(weight: weightValue, date: date, bmi: calculatedBMI, note: note.isEmpty ? nil : note)
+        isUploading = true
 
         Task {
             do {
+                var photoURL: String? = nil
+
+                // Upload photo if selected
+                if let photo = selectedPhoto {
+                    photoURL = try await firebaseManager.uploadWeightPhoto(photo)
+                }
+
+                let entry = WeightEntry(
+                    weight: weightValue,
+                    date: date,
+                    bmi: calculatedBMI,
+                    note: note.isEmpty ? nil : note,
+                    photoURL: photoURL,
+                    waistSize: waistSize.isEmpty ? nil : Double(waistSize),
+                    dressSize: dressSize.isEmpty ? nil : dressSize
+                )
+
                 // Save to Firebase
                 try await firebaseManager.saveWeightEntry(entry)
 
@@ -607,10 +755,14 @@ struct AddWeightView: View {
                     weightHistory.append(entry)
                     weightHistory.sort { $0.date > $1.date }
                     currentWeight = weightValue
+                    isUploading = false
                     dismiss()
                 }
             } catch {
                 print("❌ Error saving weight entry: \(error.localizedDescription)")
+                await MainActor.run {
+                    isUploading = false
+                }
             }
         }
     }
@@ -626,6 +778,8 @@ struct WeightHistorySection: View {
     @State private var filteredEntries: [WeightEntry] = []
     @State private var showingDeleteAlert = false
     @State private var entryToDelete: WeightEntry?
+    @State private var selectedEntry: WeightEntry?
+    @State private var showingEntryDetail = false
 
     private var displayedEntries: [WeightEntry] {
         if let selected = selectedDate {
@@ -704,6 +858,10 @@ struct WeightHistorySection: View {
                 LazyVStack(spacing: 12) {
                     ForEach(displayedEntries) { entry in
                         WeightHistoryDetailRow(entry: entry)
+                            .onTapGesture {
+                                selectedEntry = entry
+                                showingEntryDetail = true
+                            }
                             .contextMenu {
                                 Button(role: .destructive) {
                                     entryToDelete = entry
@@ -731,6 +889,12 @@ struct WeightHistorySection: View {
                 datesWithEntries: datesWithEntries,
                 weightHistory: weightHistory
             )
+        }
+        .sheet(isPresented: $showingEntryDetail) {
+            if let entry = selectedEntry {
+                WeightEntryDetailView(entry: entry)
+                    .environmentObject(firebaseManager)
+            }
         }
         .alert("Delete Entry", isPresented: $showingDeleteAlert) {
             Button("Cancel", role: .cancel) { }
@@ -863,6 +1027,191 @@ struct WeightHistoryDetailRow: View {
     private func formattedTime(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm"
+        return formatter.string(from: date)
+    }
+
+    private func bmiColor(_ bmi: Double) -> Color {
+        if bmi < 18.5 {
+            return .orange
+        } else if bmi < 25 {
+            return .green
+        } else if bmi < 30 {
+            return .orange
+        } else {
+            return .red
+        }
+    }
+}
+
+// MARK: - Weight Entry Detail View
+struct WeightEntryDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var firebaseManager: FirebaseManager
+    let entry: WeightEntry
+    @State private var photoImage: UIImage?
+    @State private var isLoadingPhoto = false
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    // Photo section
+                    if let photoURL = entry.photoURL {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Photo")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.primary)
+
+                            if let image = photoImage {
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .cornerRadius(12)
+                            } else if isLoadingPhoto {
+                                ProgressView()
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 200)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                    }
+
+                    // Weight & BMI section
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Measurements")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.primary)
+
+                        HStack(spacing: 32) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Weight")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.secondary)
+                                Text(String(format: "%.1f kg", entry.weight))
+                                    .font(.system(size: 24, weight: .bold))
+                                    .foregroundColor(Color(red: 0.2, green: 0.6, blue: 0.8))
+                            }
+
+                            if let bmi = entry.bmi {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("BMI")
+                                        .font(.system(size: 13))
+                                        .foregroundColor(.secondary)
+                                    Text(String(format: "%.1f", bmi))
+                                        .font(.system(size: 24, weight: .bold))
+                                        .foregroundColor(bmiColor(bmi))
+                                }
+                            }
+                        }
+
+                        if let waist = entry.waistSize {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Waist")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.secondary)
+                                Text(String(format: "%.1f cm", waist))
+                                    .font(.system(size: 18, weight: .semibold))
+                            }
+                        }
+
+                        if let dress = entry.dressSize {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Dress Size")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.secondary)
+                                Text(dress)
+                                    .font(.system(size: 18, weight: .semibold))
+                            }
+                        }
+                    }
+                    .padding(16)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+                    .padding(.horizontal, 16)
+
+                    // Date section
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Date & Time")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.primary)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(formattedFullDate(entry.date))
+                                .font(.system(size: 16))
+                            Text(formattedTime(entry.date))
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(16)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+                    .padding(.horizontal, 16)
+
+                    // Note section
+                    if let note = entry.note, !note.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Note")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.primary)
+
+                            Text(note)
+                                .font(.system(size: 16))
+                                .foregroundColor(.primary)
+                        }
+                        .padding(16)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                        .padding(.horizontal, 16)
+                    }
+                }
+                .padding(.vertical, 16)
+            }
+            .navigationTitle("Weight Entry")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .onAppear {
+            loadPhoto()
+        }
+    }
+
+    private func loadPhoto() {
+        guard let photoURL = entry.photoURL else { return }
+
+        isLoadingPhoto = true
+
+        Task {
+            do {
+                let image = try await firebaseManager.downloadWeightPhoto(from: photoURL)
+                await MainActor.run {
+                    photoImage = image
+                    isLoadingPhoto = false
+                }
+            } catch {
+                print("❌ Error loading photo: \(error.localizedDescription)")
+                await MainActor.run {
+                    isLoadingPhoto = false
+                }
+            }
+        }
+    }
+
+    private func formattedFullDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .long
+        return formatter.string(from: date)
+    }
+
+    private func formattedTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
         return formatter.string(from: date)
     }
 
@@ -1143,6 +1492,7 @@ struct HeightSetupView: View {
     @State private var heightFeet: String = ""
     @State private var heightInches: String = ""
     @State private var useMetric: Bool = true
+    @State private var formId = UUID() // Force form recreation on unit change
 
     var body: some View {
         NavigationView {
@@ -1168,6 +1518,10 @@ struct HeightSetupView: View {
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal, 40)
+                .onChange(of: useMetric) { newValue in
+                    convertHeight(toMetric: newValue)
+                    formId = UUID() // Force view update
+                }
 
                 if useMetric {
                     HStack(spacing: 12) {
@@ -1179,6 +1533,7 @@ struct HeightSetupView: View {
                             .padding()
                             .background(Color(.systemGray6))
                             .cornerRadius(12)
+                            .id("height-cm-\(formId)") // Force recreation
 
                         Text("cm")
                             .font(.system(size: 24))
@@ -1195,6 +1550,7 @@ struct HeightSetupView: View {
                                 .padding()
                                 .background(Color(.systemGray6))
                                 .cornerRadius(12)
+                                .id("height-feet-\(formId)") // Force recreation
 
                             Text("feet")
                                 .font(.system(size: 14))
@@ -1210,6 +1566,7 @@ struct HeightSetupView: View {
                                 .padding()
                                 .background(Color(.systemGray6))
                                 .cornerRadius(12)
+                                .id("height-inches-\(formId)") // Force recreation
 
                             Text("inches")
                                 .font(.system(size: 14))
@@ -1246,6 +1603,47 @@ struct HeightSetupView: View {
         }
     }
 
+    private func convertHeight(toMetric: Bool) {
+        print("🔄 Converting height. toMetric: \(toMetric)")
+        print("   Current heightCm: '\(heightCm)', heightFeet: '\(heightFeet)', heightInches: '\(heightInches)'")
+
+        DispatchQueue.main.async {
+            if toMetric {
+                // Converting from ft/inches to cm
+                let feetValue = Double(self.heightFeet) ?? 0
+                let inchesValue = Double(self.heightInches) ?? 0
+                print("   Feet: \(feetValue), Inches: \(inchesValue)")
+
+                // Only convert if at least one field has a value
+                if feetValue > 0 || inchesValue > 0 {
+                    let totalInches = feetValue * 12 + inchesValue
+                    let cm = totalInches * 2.54
+                    self.heightCm = String(format: "%.0f", cm)
+                    print("   ✅ Converted to \(self.heightCm) cm")
+                    // Clear ft/inches fields after conversion
+                    self.heightFeet = ""
+                    self.heightInches = ""
+                } else {
+                    print("   ⚠️ No ft/inches values to convert")
+                }
+            } else {
+                // Converting from cm to ft/inches
+                if let cm = Double(self.heightCm), cm > 0 {
+                    let totalInches = cm / 2.54
+                    let feet = Int(totalInches / 12)
+                    let inches = totalInches.truncatingRemainder(dividingBy: 12)
+                    self.heightFeet = "\(feet)"
+                    self.heightInches = String(format: "%.0f", inches)
+                    print("   ✅ Converted to \(feet) ft \(String(format: "%.0f", inches)) in")
+                    // Clear cm field after conversion
+                    self.heightCm = ""
+                } else {
+                    print("   ⚠️ No cm value to convert")
+                }
+            }
+        }
+    }
+
     private func saveHeight() {
         var heightInCm: Double = 0
 
@@ -1269,6 +1667,44 @@ struct HeightSetupView: View {
             } catch {
                 print("❌ Error saving height: \(error.localizedDescription)")
             }
+        }
+    }
+}
+
+// MARK: - Image Picker
+struct ImagePicker: UIViewControllerRepresentable {
+    @Binding var image: UIImage?
+    @Environment(\.dismiss) private var dismiss
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.delegate = context.coordinator
+        picker.sourceType = .photoLibrary
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: ImagePicker
+
+        init(_ parent: ImagePicker) {
+            self.parent = parent
+        }
+
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            if let image = info[.originalImage] as? UIImage {
+                parent.image = image
+            }
+            parent.dismiss()
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.dismiss()
         }
     }
 }
