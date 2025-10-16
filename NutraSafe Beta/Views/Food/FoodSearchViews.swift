@@ -155,16 +155,17 @@ struct FoodSearchResultRowEnhanced: View {
         }) {
             HStack(spacing: 12) {
                 // Product name and brand
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(food.name)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
                         .foregroundColor(.primary)
                         .multilineTextAlignment(.leading)
                         .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     if let brand = food.brand {
                         Text(brand)
-                            .font(.system(size: 12))
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
                             .foregroundColor(.secondary)
                     }
                 }
@@ -172,18 +173,21 @@ struct FoodSearchResultRowEnhanced: View {
                 Spacer()
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 13))
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(Color(.systemGray3))
             }
-            .padding(.vertical, 10)
-            .padding(.horizontal, 14)
+            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
         }
-        .background(Color(.systemGray6))
-        .cornerRadius(10)
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color(.systemGray5), lineWidth: 0.5)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemBackground))
         )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(Color(.systemGray5), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.04), radius: 2, x: 0, y: 1)
         .contentShape(Rectangle())
         .scaleEffect(isPressed ? 0.98 : 1.0)
         .animation(.easeInOut(duration: 0.1), value: isPressed)
