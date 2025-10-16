@@ -5854,7 +5854,7 @@ struct AddFoodMainView: View {
         NavigationView {
             VStack(spacing: 0) {
                 // Header
-                VStack(spacing: 16) {
+                VStack(spacing: 12) {
                     HStack {
                         Text("Adding Food To")
                             .font(.system(size: 28, weight: .bold))
@@ -5869,12 +5869,50 @@ struct AddFoodMainView: View {
                     DestinationSelector(selectedDestination: $destination)
                         .padding(.horizontal, 16)
 
-                    // Option selector
-                    AddOptionSelector(selectedOption: $selectedAddOption)
-                        .padding(.horizontal, 16)
+                    // Compact option selector above search
+                    HStack(spacing: 8) {
+                        // Manual button
+                        Button(action: { selectedAddOption = .manual }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "square.and.pencil")
+                                    .font(.system(size: 14, weight: .medium))
+                                Text("Manual")
+                                    .font(.system(size: 14, weight: .medium))
+                            }
+                            .foregroundColor(selectedAddOption == .manual ? .white : .primary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(selectedAddOption == .manual ? Color.blue : Color(.systemGray6))
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+
+                        // Barcode button
+                        Button(action: { selectedAddOption = .barcode }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "barcode.viewfinder")
+                                    .font(.system(size: 14, weight: .medium))
+                                Text("Barcode")
+                                    .font(.system(size: 14, weight: .medium))
+                            }
+                            .foregroundColor(selectedAddOption == .barcode ? .white : .primary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(selectedAddOption == .barcode ? Color.blue : Color(.systemGray6))
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
                 }
                 .background(Color(.systemBackground))
-                
+
                 // Content based on selected option
                 Group {
                     switch selectedAddOption {
