@@ -2935,73 +2935,33 @@ struct FoodDetailViewFromSearch: View {
 
 struct AllergenWarningCard: View {
     let allergenName: String
-    @State private var isExpanded = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Button(action: {
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    isExpanded.toggle()
-                }
-            }) {
-                HStack(alignment: .center, spacing: 12) {
-                    // Warning icon
-                    ZStack {
-                        Circle()
-                            .fill(Color.red.opacity(0.15))
-                            .frame(width: 44, height: 44)
+        HStack(alignment: .center, spacing: 12) {
+            // Warning icon
+            ZStack {
+                Circle()
+                    .fill(Color.red.opacity(0.15))
+                    .frame(width: 44, height: 44)
 
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.red)
-                    }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(allergenName)
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.primary)
-
-                        Text("Detected in ingredients")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-
-                    Spacer()
-
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.secondary)
-                }
-                .padding(12)
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(.red)
             }
-            .buttonStyle(PlainButtonStyle())
 
-            if isExpanded {
-                VStack(alignment: .leading, spacing: 12) {
-                    Divider()
-                        .padding(.horizontal, 12)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(allergenName)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.primary)
 
-                    VStack(alignment: .leading, spacing: 10) {
-                        AllergenInfoRow(
-                            icon: "info.circle.fill",
-                            title: "What to know",
-                            content: getAllergenInfo(allergenName),
-                            color: .blue
-                        )
-
-                        AllergenInfoRow(
-                            icon: "heart.text.square.fill",
-                            title: "Common sources",
-                            content: getCommonSources(allergenName),
-                            color: .orange
-                        )
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 12)
-                }
-                .transition(.opacity.combined(with: .move(edge: .top)))
+                Text("Detected in ingredients")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
             }
+
+            Spacer()
         }
+        .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(Color(.systemBackground))
@@ -3011,62 +2971,6 @@ struct AllergenWarningCard: View {
                 )
         )
         .shadow(color: Color.red.opacity(0.08), radius: 8, x: 0, y: 2)
-    }
-
-    private func getAllergenInfo(_ allergen: String) -> String {
-        let lower = allergen.lowercased()
-
-        if lower.contains("dairy") || lower.contains("milk") {
-            return "This product contains dairy ingredients, which may cause reactions in people with lactose intolerance or milk allergies."
-        } else if lower.contains("gluten") || lower.contains("wheat") {
-            return "Contains gluten, which should be avoided by people with celiac disease or gluten sensitivity."
-        } else if lower.contains("peanut") {
-            return "Contains peanuts, one of the most common and potentially severe food allergens."
-        } else if lower.contains("tree nut") || lower.contains("nut") {
-            return "Contains tree nuts, which can cause severe allergic reactions in sensitive individuals."
-        } else if lower.contains("soy") {
-            return "Contains soy, a common allergen that some people need to avoid."
-        } else if lower.contains("egg") {
-            return "Contains eggs, which can cause allergic reactions in some people."
-        } else if lower.contains("fish") {
-            return "Contains fish, a common allergen that must be avoided by those with fish allergies."
-        } else if lower.contains("shellfish") {
-            return "Contains shellfish, which can cause severe allergic reactions."
-        } else if lower.contains("sesame") {
-            return "Contains sesame, a recognized allergen that affects many people."
-        } else if lower.contains("mustard") {
-            return "Contains mustard, which is a known allergen, especially common in European countries."
-        } else {
-            return "This allergen has been detected in the ingredients list and may cause reactions in sensitive individuals."
-        }
-    }
-
-    private func getCommonSources(_ allergen: String) -> String {
-        let lower = allergen.lowercased()
-
-        if lower.contains("dairy") || lower.contains("milk") {
-            return "Milk, cheese, butter, cream, yogurt, whey, casein, lactose"
-        } else if lower.contains("gluten") || lower.contains("wheat") {
-            return "Wheat, barley, rye, bread, pasta, cereals, baked goods"
-        } else if lower.contains("peanut") {
-            return "Peanut butter, peanut oil, some snack foods, some sauces"
-        } else if lower.contains("tree nut") || lower.contains("nut") {
-            return "Almonds, cashews, walnuts, pecans, pistachios, nut oils"
-        } else if lower.contains("soy") {
-            return "Soy sauce, tofu, edamame, soy protein, soy lecithin"
-        } else if lower.contains("egg") {
-            return "Eggs, mayonnaise, some baked goods, egg albumin"
-        } else if lower.contains("fish") {
-            return "Salmon, tuna, cod, haddock, fish sauce, anchovy paste"
-        } else if lower.contains("shellfish") {
-            return "Shrimp, crab, lobster, prawns, crayfish"
-        } else if lower.contains("sesame") {
-            return "Sesame seeds, tahini, sesame oil, some breads"
-        } else if lower.contains("mustard") {
-            return "Mustard seeds, mustard powder, prepared mustard, some sauces"
-        } else {
-            return "Check ingredient list for specific sources"
-        }
     }
 }
 
@@ -3181,30 +3085,10 @@ struct NutrientCard: View {
     private func getNutrientIcon() -> String {
         let lower = nutrientName.lowercased()
 
-        if lower.contains("vitamin a") {
-            return "eye.fill"
-        } else if lower.contains("vitamin c") {
-            return "cross.case.fill"
-        } else if lower.contains("vitamin d") {
-            return "sun.max.fill"
-        } else if lower.contains("vitamin e") {
-            return "shield.fill"
-        } else if lower.contains("vitamin k") {
-            return "drop.fill"
-        } else if lower.contains("vitamin b") || lower.contains("thiamine") || lower.contains("riboflavin") || lower.contains("niacin") || lower.contains("folate") || lower.contains("biotin") || lower.contains("pantothenic") {
-            return "bolt.fill"
-        } else if lower.contains("calcium") {
-            return "figure.walk"
-        } else if lower.contains("iron") {
-            return "heart.circle.fill"
-        } else if lower.contains("potassium") {
-            return "waveform.path.ecg"
-        } else if lower.contains("magnesium") {
-            return "sparkles"
-        } else if lower.contains("zinc") {
-            return "bandage.fill"
+        if lower.contains("vitamin") {
+            return "pills.fill"
         } else {
-            return "leaf.fill"
+            return "cube.fill"
         }
     }
 

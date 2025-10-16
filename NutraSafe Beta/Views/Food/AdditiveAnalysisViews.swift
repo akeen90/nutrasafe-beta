@@ -384,18 +384,6 @@ struct AdditiveCardView: View {
 
                     Spacer()
 
-                    // Safety indicator
-                    VStack(spacing: 4) {
-                        Circle()
-                            .fill(getUsageColor())
-                            .frame(width: 10, height: 10)
-
-                        Text(getUsageGuidance(additive.riskLevel))
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundColor(getUsageColor())
-                            .multilineTextAlignment(.center)
-                    }
-
                     // Chevron indicator
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 13, weight: .semibold))
