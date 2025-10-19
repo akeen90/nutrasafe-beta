@@ -19,9 +19,10 @@ struct FridgeItem {
     let category: String
     let notes: String?
     let dateAdded: Date
-    
-    init(userId: String, name: String, quantity: Int, unit: String, 
-         expiryDate: Date? = nil, category: String = "Other", notes: String? = nil) {
+    let barcode: String?
+
+    init(userId: String, name: String, quantity: Int, unit: String,
+         expiryDate: Date? = nil, category: String = "Other", notes: String? = nil, barcode: String? = nil) {
         self.id = UUID()
         self.userId = userId
         self.name = name
@@ -31,10 +32,11 @@ struct FridgeItem {
         self.category = category
         self.notes = notes
         self.dateAdded = Date()
+        self.barcode = barcode
     }
-    
+
     init(id: UUID, userId: String, name: String, quantity: Int, unit: String,
-         expiryDate: Date?, category: String, notes: String?, dateAdded: Date) {
+         expiryDate: Date?, category: String, notes: String?, dateAdded: Date, barcode: String? = nil) {
         self.id = id
         self.userId = userId
         self.name = name
@@ -44,10 +46,11 @@ struct FridgeItem {
         self.category = category
         self.notes = notes
         self.dateAdded = dateAdded
+        self.barcode = barcode
     }
     
     func toDictionary() -> [String: Any] {
-        return [
+        var dict: [String: Any] = [
             "id": id.uuidString,
             "userId": userId,
             "name": name,
@@ -58,6 +61,10 @@ struct FridgeItem {
             "notes": notes ?? "",
             "dateAdded": Timestamp(date: dateAdded)
         ]
+        if let barcode = barcode {
+            dict["barcode"] = barcode
+        }
+        return dict
     }
     
     static func fromDictionary(_ data: [String: Any]) -> FridgeItem? {
@@ -74,7 +81,8 @@ struct FridgeItem {
         
         let notes = data["notes"] as? String
         let expiryDate = (data["expiryDate"] as? Timestamp)?.dateValue()
-        
+        let barcode = data["barcode"] as? String
+
         return FridgeItem(
             id: id,
             userId: userId,
@@ -84,7 +92,8 @@ struct FridgeItem {
             expiryDate: expiryDate,
             category: category,
             notes: notes,
-            dateAdded: dateAddedTimestamp.dateValue()
+            dateAdded: dateAddedTimestamp.dateValue(),
+            barcode: barcode
         )
     }
 }

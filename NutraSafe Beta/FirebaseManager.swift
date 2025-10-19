@@ -21,6 +21,11 @@ class FirebaseManager: ObservableObject {
     private var searchCache: [String: SearchCacheEntry] = [:]
     private let cacheExpirationSeconds: TimeInterval = 300 // 5 minutes
 
+    // MARK: - Allergen Cache
+    @Published var cachedUserAllergens: [Allergen] = []
+    private var allergensLastFetched: Date?
+    private let allergenCacheExpirationSeconds: TimeInterval = 300 // 5 minutes
+
     private init() {
         // Defer Firebase service initialization until first access
     }
@@ -380,6 +385,31 @@ class FirebaseManager: ObservableObject {
 
         print("🔍 Cache MISS - fetching '\(query)' from server...")
 
+        // Search in both main database and user-added foods in parallel
+        async let mainResults = searchMainDatabase(query: query)
+        async let userAddedResults = try searchUserAddedFoods(query: query)
+
+        // Wait for both searches to complete
+        let (mainFoods, userFoods) = try await (mainResults, userAddedResults)
+
+        // Merge results - user-added foods first, then main database
+        var mergedResults = userFoods
+        mergedResults.append(contentsOf: mainFoods)
+
+        print("🔍 Search results for '\(query)': \(userFoods.count) user-added + \(mainFoods.count) main database = \(mergedResults.count) total")
+
+        // Store in cache for next time
+        searchCache[cacheKey] = SearchCacheEntry(
+            results: mergedResults,
+            timestamp: Date()
+        )
+        print("💾 Cached \(mergedResults.count) results for '\(query)'")
+
+        return mergedResults
+    }
+
+    /// Search main food database via Cloud Functions
+    private func searchMainDatabase(query: String) async throws -> [FoodSearchResult] {
         // Search in Firebase Cloud Functions
         guard let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/searchFoods") else {
             throw URLError(.badURL)
@@ -399,12 +429,15 @@ class FirebaseManager: ObservableObject {
         let decoder = JSONDecoder()
         let response = try decoder.decode(FoodSearchResponse.self, from: data)
 
-        // Store in cache for next time
-        searchCache[cacheKey] = SearchCacheEntry(
-            results: response.foods,
-            timestamp: Date()
-        )
-        print("💾 Cached \(response.foods.count) results for '\(query)' (took \(Int(elapsed * 1000))ms)")
+        // Debug: Check ingredients in search results
+        print("🔍 Main database results for '\(query)': \(response.foods.count) (took \(Int(elapsed * 1000))ms)")
+        for (index, food) in response.foods.prefix(3).enumerated() {
+            print("  [\(index)] \(food.name)")
+            print("      ingredients: \(food.ingredients?.count ?? 0) items")
+            if let ingredients = food.ingredients, !ingredients.isEmpty {
+                print("      ingredients: \(ingredients.prefix(2))")
+            }
+        }
 
         return response.foods
     }
@@ -600,6 +633,69 @@ class FirebaseManager: ObservableObject {
 
     // MARK: - Weight Tracking
 
+    // Resize and compress image for faster uploads
+    private func optimizeImage(_ image: UIImage) -> Data? {
+        let maxDimension: CGFloat = 1200
+        var newSize = image.size
+
+        // Resize if too large
+        if image.size.width > maxDimension || image.size.height > maxDimension {
+            let ratio = min(maxDimension / image.size.width, maxDimension / image.size.height)
+            newSize = CGSize(width: image.size.width * ratio, height: image.size.height * ratio)
+        }
+
+        UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
+        image.draw(in: CGRect(origin: .zero, size: newSize))
+        let resizedImage = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+
+        // Compress to JPEG at 50% quality for smaller file size
+        return resizedImage?.jpegData(compressionQuality: 0.5)
+    }
+
+    // Upload multiple photos in parallel for better performance
+    func uploadWeightPhotos(_ images: [UIImage]) async throws -> [String] {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to upload photos"])
+        }
+
+        return try await withThrowingTaskGroup(of: String.self) { group in
+            for image in images {
+                group.addTask {
+                    // Optimize image
+                    guard let imageData = self.optimizeImage(image) else {
+                        throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to compress image"])
+                    }
+
+                    // Create unique filename
+                    let filename = "\(UUID().uuidString).jpg"
+                    let storageRef = Storage.storage().reference()
+                    let photoRef = storageRef.child("weightPhotos/\(userId)/\(filename)")
+
+                    // Upload image
+                    let metadata = StorageMetadata()
+                    metadata.contentType = "image/jpeg"
+
+                    _ = try await photoRef.putDataAsync(imageData, metadata: metadata)
+
+                    // Get download URL
+                    let downloadURL = try await photoRef.downloadURL()
+                    print("✅ Weight photo uploaded successfully: \(downloadURL.absoluteString)")
+                    return downloadURL.absoluteString
+                }
+            }
+
+            var urls: [String] = []
+            for try await url in group {
+                urls.append(url)
+            }
+            return urls
+        }
+    }
+
+    // Legacy single photo upload (using optimized version)
     func uploadWeightPhoto(_ image: UIImage) async throws -> String {
         ensureAuthStateLoaded()
 
@@ -607,8 +703,8 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to upload photos"])
         }
 
-        // Compress image to JPEG
-        guard let imageData = image.jpegData(compressionQuality: 0.7) else {
+        // Optimize image
+        guard let imageData = optimizeImage(image) else {
             throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to compress image"])
         }
 
@@ -664,6 +760,9 @@ class FirebaseManager: ObservableObject {
         if let photoURL = entry.photoURL {
             entryData["photoURL"] = photoURL
         }
+        if let photoURLs = entry.photoURLs {
+            entryData["photoURLs"] = photoURLs
+        }
         if let waistSize = entry.waistSize {
             entryData["waistSize"] = waistSize
         }
@@ -700,10 +799,11 @@ class FirebaseManager: ObservableObject {
             let bmi = data["bmi"] as? Double
             let note = data["note"] as? String
             let photoURL = data["photoURL"] as? String
+            let photoURLs = data["photoURLs"] as? [String]
             let waistSize = data["waistSize"] as? Double
             let dressSize = data["dressSize"] as? String
 
-            return WeightEntry(id: id, weight: weight, date: timestamp.dateValue(), bmi: bmi, note: note, photoURL: photoURL, waistSize: waistSize, dressSize: dressSize)
+            return WeightEntry(id: id, weight: weight, date: timestamp.dateValue(), bmi: bmi, note: note, photoURL: photoURL, photoURLs: photoURLs, waistSize: waistSize, dressSize: dressSize)
         }
 
         print("✅ Loaded \(entries.count) weight entries from Firebase")
@@ -769,7 +869,38 @@ class FirebaseManager: ObservableObject {
         let fatPercent = data["fatPercent"] as? Int
         let allergens = (data["allergens"] as? [String])?.compactMap { Allergen(rawValue: $0) }
 
+        // Cache allergens for fast access
+        if let allergens = allergens {
+            await MainActor.run {
+                self.cachedUserAllergens = allergens
+                self.allergensLastFetched = Date()
+            }
+        }
+
         return (height, goalWeight, caloricGoal, proteinPercent, carbsPercent, fatPercent, allergens)
+    }
+
+    // MARK: - Fast Allergen Access
+    /// Get user allergens from cache if available, otherwise fetch from Firebase
+    func getUserAllergensWithCache() async -> [Allergen] {
+        // Check if cache is still valid
+        if let lastFetched = allergensLastFetched,
+           Date().timeIntervalSince(lastFetched) < allergenCacheExpirationSeconds,
+           !cachedUserAllergens.isEmpty {
+            print("⚡ Using cached allergens: \(cachedUserAllergens.count) items")
+            return cachedUserAllergens
+        }
+
+        // Cache expired or empty - fetch fresh
+        do {
+            print("🔄 Fetching fresh allergens from Firebase")
+            let settings = try await getUserSettings()
+            return settings.allergens ?? []
+        } catch {
+            print("❌ Failed to load allergens: \(error.localizedDescription)")
+            // Return cached allergens even if expired, better than nothing
+            return cachedUserAllergens
+        }
     }
 
     func saveMacroPercentages(protein: Int, carbs: Int, fat: Int) async throws {
@@ -1023,8 +1154,8 @@ class FirebaseManager: ObservableObject {
         return foodId
     }
 
-    /// Search user-added foods by name
-    func searchUserAddedFoods(query: String) async throws -> [[String: Any]] {
+    /// Search user-added foods by name and convert to FoodSearchResult
+    func searchUserAddedFoods(query: String) async throws -> [FoodSearchResult] {
         let searchTerm = query.lowercased().trimmingCharacters(in: .whitespaces)
 
         // Search in userAdded collection
@@ -1034,7 +1165,51 @@ class FirebaseManager: ObservableObject {
             .limit(to: 20)
             .getDocuments()
 
-        return snapshot.documents.map { $0.data() }
+        // Convert to FoodSearchResult
+        return snapshot.documents.compactMap { doc -> FoodSearchResult? in
+            let data = doc.data()
+
+            guard let foodName = data["foodName"] as? String else { return nil }
+
+            let id = data["id"] as? String ?? doc.documentID
+            let brandName = data["brandName"] as? String
+            let calories = data["calories"] as? Double ?? 0
+            let protein = data["protein"] as? Double ?? 0
+            let carbohydrates = data["carbohydrates"] as? Double ?? 0
+            let fat = data["fat"] as? Double ?? 0
+            let fiber = data["fiber"] as? Double ?? 0
+            let sugars = data["sugars"] as? Double ?? 0
+            let sodium = data["sodium"] as? Double ?? 0
+            let servingSize = data["servingSize"] as? Double ?? 100
+            let servingUnit = data["servingUnit"] as? String ?? "g"
+            let ingredientsString = data["ingredients"] as? String
+
+            // Convert ingredients string to array
+            let ingredients: [String]? = ingredientsString?.components(separatedBy: ",").map {
+                $0.trimmingCharacters(in: .whitespaces)
+            }
+
+            return FoodSearchResult(
+                id: id,
+                name: foodName,
+                brand: brandName,
+                calories: calories,
+                protein: protein,
+                carbs: carbohydrates,
+                fat: fat,
+                fiber: fiber,
+                sugar: sugars,
+                sodium: sodium,
+                servingDescription: "\(servingSize)\(servingUnit)",
+                ingredients: ingredients,
+                confidence: nil,
+                isVerified: false, // User-added foods are unverified by default
+                additives: nil,
+                processingScore: nil,
+                processingGrade: nil,
+                processingLabel: nil
+            )
+        }
     }
 
     /// Get a specific user-added food by ID

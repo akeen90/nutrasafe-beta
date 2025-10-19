@@ -13,7 +13,6 @@ struct PersistentBottomMenu: View {
     let onEdit: () -> Void
     let onMove: () -> Void
     let onCopy: () -> Void
-    let onStar: () -> Void
     let onDelete: () -> Void
     let onCancel: () -> Void
 
@@ -30,7 +29,6 @@ struct PersistentBottomMenu: View {
 
                 SlimActionButton(icon: "arrow.up.arrow.down", title: "Move", color: .orange, action: onMove)
                 SlimActionButton(icon: "doc.on.doc", title: "Copy", color: .blue, action: onCopy)
-                SlimActionButton(icon: "star", title: "Star", color: .yellow, action: onStar)
                 SlimActionButton(icon: "trash", title: "Delete", color: .red, action: onDelete)
             }
             .padding(.horizontal, 20)

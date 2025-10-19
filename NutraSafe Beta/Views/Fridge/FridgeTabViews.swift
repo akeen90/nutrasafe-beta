@@ -25,21 +25,21 @@ struct FridgeTabView: View {
             VStack(spacing: 0) {
                 // Header - AAA Modern Design
                 HStack(spacing: 16) {
-                        Text("Use By")
-                            .font(.system(size: 38, weight: .bold, design: .rounded))
-                            .frame(height: 44, alignment: .center)
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [
-                                        Color(red: 0.6, green: 0.3, blue: 0.8),
-                                        Color(red: 0.4, green: 0.5, blue: 0.9)
-                                    ],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
+                    Text("Use By")
+                        .font(.system(size: 38, weight: .bold, design: .rounded))
+                        .frame(height: 44, alignment: .center)
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.95, green: 0.68, blue: 0.38), // Brighter golden orange
+                                    Color(red: 0.85, green: 0.55, blue: 0.35)  // Brighter bronze
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
                             )
+                        )
 
-                        Spacer()
+                    Spacer()
 
                         Button(action: { showingSettings = true }) {
                             ZStack {
@@ -133,7 +133,7 @@ struct FridgeTabView: View {
                     }
                 }
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Color(.systemBackground))
             .navigationBarHidden(true)
         }
         .fullScreenCover(isPresented: $showingAddSheet) {

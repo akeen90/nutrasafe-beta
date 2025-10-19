@@ -122,7 +122,7 @@ struct AddFoodAIView: View {
         }
         .padding(.top, 20)
         .sheet(isPresented: $showingImagePicker) {
-            ImagePicker(selectedImage: $selectedImage) { image in
+            ImagePicker(selectedImage: $selectedImage, sourceType: .camera) { image in
                 if let image = image {
                     analyzeImage(image)
                 }
@@ -315,23 +315,25 @@ struct NutritionInputRow: View {
 // MARK: - Image Picker for AI Scanner
 
 struct ImagePicker: UIViewControllerRepresentable {
-    @Binding var selectedImage: UIImage?
+    var selectedImage: Binding<UIImage?>?
+    var sourceType: UIImagePickerController.SourceType = .camera
     let onImageSelected: (UIImage?) -> Void
-    
+
     func makeUIViewController(context: Context) -> UIImagePickerController {
+        print("📸 ImagePicker makeUIViewController - sourceType: \(sourceType == .camera ? "CAMERA" : "PHOTO LIBRARY")")
         let picker = UIImagePickerController()
         picker.delegate = context.coordinator
-        picker.sourceType = .camera
+        picker.sourceType = sourceType
         picker.allowsEditing = false
-        
+
         // Disable rotation - lock to portrait only
         if let navigationController = picker as? UINavigationController {
             navigationController.navigationBar.isHidden = false
         }
-        
+
         // Override supported orientations for camera
         picker.modalPresentationStyle = .fullScreen
-        
+
         return picker
     }
     
@@ -355,15 +357,81 @@ struct ImagePicker: UIViewControllerRepresentable {
         
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
             if let image = info[.originalImage] as? UIImage {
-                parent.selectedImage = image
+                parent.selectedImage?.wrappedValue = image
                 parent.onImageSelected(image)
             }
             picker.dismiss(animated: true)
         }
-        
+
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
             parent.onImageSelected(nil)
             picker.dismiss(animated: true)
+        }
+    }
+}
+
+// MARK: - Multi Image Picker (for Photo Library)
+import PhotosUI
+
+struct MultiImagePicker: UIViewControllerRepresentable {
+    let maxSelection: Int
+    let onImagesSelected: ([UIImage]) -> Void
+
+    func makeUIViewController(context: Context) -> PHPickerViewController {
+        var config = PHPickerConfiguration()
+        // Always allow multiple selection to prevent auto-dismiss on single tap
+        // We'll limit the number added in the callback instead
+        config.selectionLimit = 0 // 0 means unlimited
+        config.filter = .images
+
+        let picker = PHPickerViewController(configuration: config)
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    class Coordinator: NSObject, PHPickerViewControllerDelegate {
+        let parent: MultiImagePicker
+
+        init(_ parent: MultiImagePicker) {
+            self.parent = parent
+        }
+
+        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+            print("📸 MultiImagePicker: User finished picking \(results.count) photos")
+            picker.dismiss(animated: true)
+
+            guard !results.isEmpty else {
+                print("⚠️ MultiImagePicker: User cancelled - no photos selected")
+                parent.onImagesSelected([])
+                return
+            }
+
+            var images: [UIImage] = []
+            let group = DispatchGroup()
+
+            for result in results {
+                group.enter()
+                result.itemProvider.loadObject(ofClass: UIImage.self) { object, error in
+                    defer { group.leave() }
+                    if let image = object as? UIImage {
+                        images.append(image)
+                        print("✅ MultiImagePicker: Successfully loaded image")
+                    } else {
+                        print("❌ MultiImagePicker: Failed to load image: \(error?.localizedDescription ?? "unknown error")")
+                    }
+                }
+            }
+
+            group.notify(queue: .main) {
+                print("📦 MultiImagePicker: Returning \(images.count) images to callback")
+                self.parent.onImagesSelected(images)
+            }
         }
     }
 }

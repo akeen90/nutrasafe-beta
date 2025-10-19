@@ -174,8 +174,8 @@ struct ExerciseTabView: View {
                             .foregroundStyle(
                                 LinearGradient(
                                     colors: [
-                                        Color(red: 0.9, green: 0.4, blue: 0.3),
-                                        Color(red: 0.7, green: 0.3, blue: 0.6)
+                                        Color(red: 0.95, green: 0.68, blue: 0.38), // Brighter golden orange
+                                        Color(red: 0.85, green: 0.55, blue: 0.35)  // Brighter bronze
                                     ],
                                     startPoint: .leading,
                                     endPoint: .trailing

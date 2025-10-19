@@ -175,13 +175,17 @@ export const searchFoods = functions
         sodium: sodiumValue ? (typeof sodiumValue === 'object' ? sodiumValue : { per100g: sodiumValue }) : null,
         servingDescription: data.servingSize || '100g serving',
         
-        // CRITICAL FIX: Map ingredients field for iOS app - convert array to string if needed
+        // CRITICAL FIX: Map ingredients field for iOS app - keep as array
         ingredients: (() => {
           const ingredientsData = data.extractedIngredients || data.ingredients || null;
           if (Array.isArray(ingredientsData)) {
-            return ingredientsData.join(', ');
+            return ingredientsData; // Return array directly
           }
-          return ingredientsData;
+          // If it's a string, split it into array
+          if (typeof ingredientsData === 'string' && ingredientsData.trim()) {
+            return ingredientsData.split(',').map(i => i.trim()).filter(i => i.length > 0);
+          }
+          return null;
         })(),
         
         // CRITICAL FIX: Include verification status for dashboard filtering

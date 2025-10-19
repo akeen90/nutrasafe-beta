@@ -117,7 +117,8 @@ struct DiaryMealCard: View {
                             isSelected: selectedFoodItems.contains(food.id.uuidString),
                             hasAnySelection: !selectedFoodItems.isEmpty,
                             onTap: {
-                                // Always toggle selection on tap
+                                // Toggle selection instantly - no animation on state change
+                                // The circle will still animate via its .transition modifier
                                 if selectedFoodItems.contains(food.id.uuidString) {
                                     selectedFoodItems.remove(food.id.uuidString)
                                 } else {
@@ -286,10 +287,15 @@ struct DiaryFoodRow: View {
                         .frame(width: 50, alignment: .trailing)
                 }
             }
+            .animation(nil, value: hasAnySelection)  // Disable all implicit animations on layout changes
         }
         .buttonStyle(PlainButtonStyle())
         .onLongPressGesture {
             // Long press to view food details
+            print("DEBUG: Opening FoodDetailViewFromSearch from diary")
+            print("DEBUG: DiaryFoodItem.ingredients = \(food.ingredients?.count ?? 0) items: \(food.ingredients ?? [])")
+            let searchResult = food.toFoodSearchResult()
+            print("DEBUG: FoodSearchResult.ingredients = \(searchResult.ingredients?.count ?? 0) items: \(searchResult.ingredients ?? [])")
             showingFoodDetail = true
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {

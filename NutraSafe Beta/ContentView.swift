@@ -1417,9 +1417,6 @@ struct ContentView: View {
                         onCopy: {
                             copyTrigger = true
                         },
-                        onStar: {
-                            // TODO: Implement star
-                        },
                         onDelete: deleteSelectedFoods,
                         onCancel: {
                             selectedFoodItems.removeAll() // Clear selection
@@ -1506,7 +1503,7 @@ enum TabItem: String, CaseIterable {
     var icon: String {
         switch self {
         case .diary: return "heart.circle"
-        case .weight: return "chart.line.uptrend.xyaxis"
+        case .weight: return "chart.line.downtrend.xyaxis"
         case .add: return "plus"
         case .food: return "fork.knife.circle"
         case .fridge: return "refrigerator"
@@ -1606,8 +1603,8 @@ struct WeightTrackingView: View {
                         .foregroundStyle(
                             LinearGradient(
                                 colors: [
-                                    Color(red: 0.6, green: 0.3, blue: 0.8),
-                                    Color(red: 0.4, green: 0.5, blue: 0.9)
+                                    Color(red: 0.95, green: 0.68, blue: 0.38), // Brighter golden orange
+                                    Color(red: 0.85, green: 0.55, blue: 0.35)  // Brighter bronze
                                 ],
                                 startPoint: .leading,
                                 endPoint: .trailing
@@ -1831,6 +1828,14 @@ struct WeightTrackingView: View {
                                     .onTapGesture {
                                         print("📍 Tapped entry: \(entry.date)")
                                         editingEntry = entry
+                                    }
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                        Button(role: .destructive) {
+                                            entryToDelete = entry
+                                            showingDeleteConfirmation = true
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
                                     }
                                     .contextMenu {
                                         Button {
@@ -2401,17 +2406,19 @@ struct WeightEntry: Identifiable, Codable {
     let date: Date
     let bmi: Double?
     let note: String?
-    let photoURL: String? // Firebase Storage path
+    let photoURL: String? // Firebase Storage path (legacy - for backward compatibility)
+    let photoURLs: [String]? // Multiple photo URLs
     let waistSize: Double? // Waist measurement in cm
     let dressSize: String? // Dress size (UK/US format)
 
-    init(id: UUID = UUID(), weight: Double, date: Date = Date(), bmi: Double? = nil, note: String? = nil, photoURL: String? = nil, waistSize: Double? = nil, dressSize: String? = nil) {
+    init(id: UUID = UUID(), weight: Double, date: Date = Date(), bmi: Double? = nil, note: String? = nil, photoURL: String? = nil, photoURLs: [String]? = nil, waistSize: Double? = nil, dressSize: String? = nil) {
         self.id = id
         self.weight = weight
         self.date = date
         self.bmi = bmi
         self.note = note
         self.photoURL = photoURL
+        self.photoURLs = photoURLs
         self.waistSize = waistSize
         self.dressSize = dressSize
     }
@@ -2681,6 +2688,65 @@ struct WeightLineChart: View {
     }
 }
 
+// MARK: - Picker Type Enum
+enum PhotoPickerType: Identifiable {
+    case camera
+    case photoLibrary
+
+    var id: String {
+        switch self {
+        case .camera: return "camera"
+        case .photoLibrary: return "photoLibrary"
+        }
+    }
+
+    var sourceType: UIImagePickerController.SourceType {
+        switch self {
+        case .camera: return .camera
+        case .photoLibrary: return .photoLibrary
+        }
+    }
+}
+
+// MARK: - Identifiable Image Wrapper
+struct IdentifiableImage: Identifiable {
+    let id = UUID()
+    let image: UIImage
+    let url: String? // URL if this is an existing photo from server
+}
+
+// MARK: - Weighing Scale Icon
+struct WeighingScaleIcon: View {
+    var size: CGFloat = 24
+    var color: Color = .blue
+
+    var body: some View {
+        ZStack {
+            // Platform base (rectangular with rounded corners)
+            RoundedRectangle(cornerRadius: size * 0.15)
+                .stroke(color, lineWidth: size * 0.08)
+                .frame(width: size * 0.95, height: size * 0.7)
+                .offset(y: size * 0.1)
+
+            // Analog gauge dial (semi-circle at top)
+            Circle()
+                .trim(from: 0.25, to: 0.75)
+                .stroke(color, lineWidth: size * 0.08)
+                .frame(width: size * 0.5, height: size * 0.5)
+                .rotationEffect(.degrees(180))
+                .offset(y: -size * 0.1)
+
+            // Needle
+            Rectangle()
+                .fill(color)
+                .frame(width: size * 0.04, height: size * 0.2)
+                .offset(y: -size * 0.1)
+                .rotationEffect(.degrees(30))
+        }
+        .frame(width: size, height: size)
+    }
+}
+
 // MARK: - Add Weight View
 struct AddWeightView: View {
     @Environment(\.dismiss) private var dismiss
@@ -2688,6 +2754,8 @@ struct AddWeightView: View {
     @Binding var currentWeight: Double
     @Binding var weightHistory: [WeightEntry]
     @Binding var userHeight: Double
+
+    var existingEntry: WeightEntry? = nil // For editing existing entries
 
     @AppStorage("weightUnit") private var selectedUnit: WeightUnit = .kg
     @AppStorage("heightUnit") private var selectedHeightUnit: HeightUnit = .cm
@@ -2700,8 +2768,13 @@ struct AddWeightView: View {
     @State private var date = Date()
 
     // Photo picker
-    @State private var selectedPhoto: UIImage? = nil
-    @State private var showingImagePicker = false
+    @State private var selectedPhotos: [IdentifiableImage] = []
+    @State private var isLoadingPhotos = false
+    @State private var activePickerType: PhotoPickerType? = nil
+    @State private var showingPhotoOptions = false
+    @State private var isUploading = false
+    @State private var selectedPhotoForViewing: IdentifiableImage? = nil
+    @State private var showingMultiImagePicker = false
 
     // Measurements
     @State private var waistSize: String = ""
@@ -2814,24 +2887,77 @@ struct AddWeightView: View {
                 }
 
                 // Photo Section
-                Section(header: Text("Progress Photo (Optional)")) {
-                    Button(action: {
-                        showingImagePicker = true
-                    }) {
-                        HStack {
-                            Image(systemName: "camera.fill")
-                                .foregroundColor(.blue)
-                            if let photo = selectedPhoto {
-                                Image(uiImage: photo)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 60, height: 60)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                                Text("Change Photo")
-                            } else {
-                                Text("Add Progress Photo")
+                Section(header: Text("Progress Photos (Optional - up to 3)")) {
+                    // Show selected photos in a grid
+                    if !selectedPhotos.isEmpty {
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                            ForEach(selectedPhotos) { identifiableImage in
+                                ZStack(alignment: .topTrailing) {
+                                    Image(uiImage: identifiableImage.image)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 100, height: 100)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                                        )
+                                        .onTapGesture {
+                                            selectedPhotoForViewing = identifiableImage
+                                        }
+
+                                    // Delete button
+                                    Button(action: {
+                                        print("🗑️ Deleting photo with ID: \(identifiableImage.id)")
+                                        print("   Current photo count: \(selectedPhotos.count)")
+                                        selectedPhotos.removeAll { $0.id == identifiableImage.id }
+                                        print("   After deletion count: \(selectedPhotos.count)")
+                                    }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.system(size: 24))
+                                            .foregroundColor(.white)
+                                            .background(Circle().fill(Color.red))
+                                    }
+                                    .buttonStyle(.plain)
+                                    .padding(4)
+                                }
                             }
                         }
+                        .padding(.vertical, 8)
+                    }
+
+                    // Show add photo buttons if less than 3 photos
+                    if selectedPhotos.count < 3 {
+                        Button(action: {
+                            print("📷 Take Photo button tapped")
+                            activePickerType = .camera
+                        }) {
+                            HStack {
+                                Image(systemName: "camera.fill")
+                                Text("Take Photo")
+                                if !selectedPhotos.isEmpty {
+                                    Spacer()
+                                    Text("(\(selectedPhotos.count)/3)")
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+
+                        Button(action: {
+                            print("📚 Choose from Library button tapped")
+                            showingMultiImagePicker = true
+                        }) {
+                            HStack {
+                                Image(systemName: "photo.fill")
+                                Text("Choose from Library")
+                            }
+                        }
+                    } else {
+                        Text("Maximum 3 photos added")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                            .italic()
+                            .padding(.vertical, 8)
                     }
                 }
 
@@ -2865,7 +2991,26 @@ struct AddWeightView: View {
                     Button("Save") {
                         saveWeight()
                     }
-                    .disabled(primaryWeight.isEmpty || weightInKg == nil)
+                    .disabled(primaryWeight.isEmpty || weightInKg == nil || isUploading)
+                }
+            }
+            .overlay {
+                if isUploading {
+                    ZStack {
+                        Color.black.opacity(0.4)
+                            .ignoresSafeArea()
+
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .scaleEffect(1.5)
+                            Text("Uploading photos...")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                        }
+                        .padding(32)
+                        .background(Color(.systemGray5))
+                        .cornerRadius(16)
+                    }
                 }
             }
             .onAppear {
@@ -2878,8 +3023,46 @@ struct AddWeightView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingImagePicker) {
-                ImagePicker(selectedImage: $selectedPhoto) { _ in }
+            .fullScreenCover(item: $activePickerType) { pickerType in
+                // Only use this for camera - library uses MultiImagePicker
+                if pickerType == .camera {
+                    ImagePicker(selectedImage: nil, sourceType: .camera) { image in
+                        if let image = image, selectedPhotos.count < 3 {
+                            print("✅ AddWeightView: Photo from camera, adding to array (current count: \(selectedPhotos.count))")
+                            selectedPhotos.append(IdentifiableImage(image: image, url: nil))
+                        }
+                    }
+                }
+            }
+            .sheet(isPresented: $showingMultiImagePicker) {
+                MultiImagePicker(maxSelection: 3 - selectedPhotos.count) { images in
+                    print("🎯 AddWeightView: Received \(images.count) images from MultiImagePicker")
+                    print("   Current photo count before adding: \(selectedPhotos.count)")
+
+                    // Add photos up to the limit of 3
+                    let availableSlots = 3 - selectedPhotos.count
+                    let photosToAdd = min(images.count, availableSlots)
+
+                    for i in 0..<photosToAdd {
+                        selectedPhotos.append(IdentifiableImage(image: images[i], url: nil))
+                        print("   ✅ Added photo \(i + 1)/\(photosToAdd), new count: \(selectedPhotos.count)")
+                    }
+
+                    if images.count > photosToAdd {
+                        print("   ⚠️ Ignored \(images.count - photosToAdd) photos (limit reached)")
+                    }
+                }
+            }
+            .confirmationDialog("Choose Photo Source", isPresented: $showingPhotoOptions) {
+                Button("Take Photo") {
+                    print("📷 Dialog: Take Photo selected")
+                    activePickerType = .camera
+                }
+                Button("Choose from Library") {
+                    print("📚 Dialog: Choose from Library selected")
+                    activePickerType = .photoLibrary
+                }
+                Button("Cancel", role: .cancel) { }
             }
         }
     }
@@ -2887,14 +3070,14 @@ struct AddWeightView: View {
     private func saveWeight() {
         guard let weightKg = weightInKg else { return }
 
+        isUploading = true
+
         // Save to Firebase
         Task {
             do {
-                // Upload photo if one was selected
-                var photoURL: String? = nil
-                if let photo = selectedPhoto {
-                    photoURL = try await firebaseManager.uploadWeightPhoto(photo)
-                }
+                // Upload all photos in parallel (extract UIImages from IdentifiableImage)
+                let images = selectedPhotos.map { $0.image }
+                let photoURLs = images.isEmpty ? [] : try await firebaseManager.uploadWeightPhotos(images)
 
                 // Parse measurements
                 let waist = waistSize.isEmpty ? nil : Double(waistSize)
@@ -2906,7 +3089,8 @@ struct AddWeightView: View {
                     date: date,
                     bmi: calculatedBMI,
                     note: note.isEmpty ? nil : note,
-                    photoURL: photoURL,
+                    photoURL: photoURLs.first, // For backward compatibility
+                    photoURLs: photoURLs.isEmpty ? nil : photoURLs,
                     waistSize: waist,
                     dressSize: dress
                 )
@@ -2929,10 +3113,14 @@ struct AddWeightView: View {
                         userHeight = heightCm
                     }
 
+                    isUploading = false
                     dismiss()
                 }
             } catch {
                 print("Error saving weight entry: \(error)")
+                await MainActor.run {
+                    isUploading = false
+                }
                 // TODO: Show error alert to user
             }
         }
@@ -2962,8 +3150,13 @@ struct EditWeightView: View {
     @State private var previousHeightUnit: HeightUnit = .cm  // Track previous height unit
 
     // Photo picker
-    @State private var selectedPhoto: UIImage? = nil
-    @State private var showingImagePicker = false
+    @State private var selectedPhotos: [IdentifiableImage] = []
+    @State private var isLoadingPhotos = false
+    @State private var activePickerType: PhotoPickerType? = nil
+    @State private var showingPhotoOptions = false
+    @State private var isUploading = false
+    @State private var selectedPhotoForViewing: IdentifiableImage? = nil
+    @State private var showingMultiImagePicker = false
 
     // Measurements
     @State private var waistSize: String = ""
@@ -3038,7 +3231,7 @@ struct EditWeightView: View {
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 4) {
                                 TextField("Stones", text: $primaryWeight)
-                                    .keyboardType(.decimalPad)
+                                     .keyboardType(.decimalPad)
                                     .font(.system(size: 20, weight: .semibold))
 
                                 Text("st")
@@ -3082,29 +3275,86 @@ struct EditWeightView: View {
                     DatePicker("Date", selection: $date, displayedComponents: [.date, .hourAndMinute])
                 }
 
-                Section(header: Text("Progress Photo (Optional)")) {
-                    Button(action: {
-                        showingImagePicker = true
-                    }) {
+                // Photo Section
+                Section(header: Text("Progress Photos (Optional - up to 3)")) {
+                    // Show loading indicator while photos are being downloaded
+                    if isLoadingPhotos {
                         HStack {
-                            Image(systemName: "camera.fill")
-                                .foregroundColor(.blue)
-                            if let photo = selectedPhoto {
-                                Image(uiImage: photo)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 60, height: 60)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                                Text("Change Photo")
-                            } else if let existingPhotoURL = entry.photoURL {
-                                // Show existing photo indicator
-                                Image(systemName: "photo.fill")
-                                    .foregroundColor(.gray)
-                                Text("Change Photo (has existing)")
-                            } else {
-                                Text("Add Progress Photo")
+                            Spacer()
+                            ProgressView("Loading photos...")
+                                .padding(.vertical, 20)
+                            Spacer()
+                        }
+                    }
+
+                    // Show selected photos in a grid
+                    if !selectedPhotos.isEmpty {
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                            ForEach(selectedPhotos) { identifiableImage in
+                                ZStack(alignment: .topTrailing) {
+                                    Image(uiImage: identifiableImage.image)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 100, height: 100)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                                        )
+                                        .onTapGesture {
+                                            selectedPhotoForViewing = identifiableImage
+                                        }
+
+                                    // Delete button
+                                    Button(action: {
+                                        print("🗑️ Deleting photo with ID: \(identifiableImage.id)")
+                                        print("   Current photo count: \(selectedPhotos.count)")
+                                        selectedPhotos.removeAll { $0.id == identifiableImage.id }
+                                        print("   After deletion count: \(selectedPhotos.count)")
+                                    }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.system(size: 24))
+                                            .foregroundColor(.white)
+                                            .background(Circle().fill(Color.red))
+                                    }
+                                    .buttonStyle(.plain)
+                                    .padding(4)
+                                }
                             }
                         }
+                        .padding(.vertical, 8)
+                    }
+
+                    // Show add photo buttons if less than 3 photos
+                    if selectedPhotos.count < 3 && !isLoadingPhotos {
+                        Button(action: {
+                            activePickerType = .camera
+                        }) {
+                            HStack {
+                                Image(systemName: "camera.fill")
+                                Text("Take Photo")
+                                if !selectedPhotos.isEmpty {
+                                    Spacer()
+                                    Text("(\(selectedPhotos.count)/3)")
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+
+                        Button(action: {
+                            showingMultiImagePicker = true
+                        }) {
+                            HStack {
+                                Image(systemName: "photo.fill")
+                                Text("Choose from Library")
+                            }
+                        }
+                    } else if selectedPhotos.count >= 3 {
+                        Text("Maximum 3 photos added")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                            .italic()
+                            .padding(.vertical, 8)
                     }
                 }
 
@@ -3137,7 +3387,26 @@ struct EditWeightView: View {
                     Button("Save") {
                         saveWeight()
                     }
-                    .disabled(weightInKg == nil)
+                    .disabled(weightInKg == nil || isUploading)
+                }
+            }
+            .overlay {
+                if isUploading {
+                    ZStack {
+                        Color.black.opacity(0.4)
+                            .ignoresSafeArea()
+
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .scaleEffect(1.5)
+                            Text("Uploading photos...")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                        }
+                        .padding(32)
+                        .background(Color(.systemGray5))
+                        .cornerRadius(16)
+                    }
                 }
             }
             .onChange(of: selectedUnit) { newUnit in
@@ -3179,9 +3448,77 @@ struct EditWeightView: View {
                 if let dress = entry.dressSize {
                     dressSize = dress
                 }
+
+                // Load existing photos
+                loadExistingPhotos()
             }
-            .sheet(isPresented: $showingImagePicker) {
-                ImagePicker(selectedImage: $selectedPhoto) { _ in }
+            .fullScreenCover(item: $activePickerType) { pickerType in
+                // Only use this for camera - library uses MultiImagePicker
+                if pickerType == .camera {
+                    ImagePicker(selectedImage: nil, sourceType: .camera) { image in
+                        if let image = image, selectedPhotos.count < 3 {
+                            print("✅ EditWeightView: Photo from camera, adding to array (current count: \(selectedPhotos.count))")
+                            selectedPhotos.append(IdentifiableImage(image: image, url: nil))
+                        }
+                    }
+                }
+            }
+            .confirmationDialog("Choose Photo Source", isPresented: $showingPhotoOptions) {
+                Button("Take Photo") {
+                    print("📷 Take Photo button tapped")
+                    activePickerType = .camera
+                }
+                Button("Choose from Library") {
+                    print("📚 Choose from Library button tapped")
+                    showingMultiImagePicker = true
+                }
+                Button("Cancel", role: .cancel) { }
+            }
+            .sheet(isPresented: $showingMultiImagePicker) {
+                MultiImagePicker(maxSelection: 3 - selectedPhotos.count) { images in
+                    print("🎯 Received \(images.count) images from MultiImagePicker")
+                    print("   Current photo count before adding: \(selectedPhotos.count)")
+
+                    // Add photos up to the limit of 3
+                    let availableSlots = 3 - selectedPhotos.count
+                    let photosToAdd = min(images.count, availableSlots)
+
+                    for i in 0..<photosToAdd {
+                        selectedPhotos.append(IdentifiableImage(image: images[i], url: nil))
+                        print("   ✅ Added photo \(i + 1)/\(photosToAdd), new count: \(selectedPhotos.count)")
+                    }
+
+                    if images.count > photosToAdd {
+                        print("   ⚠️ Ignored \(images.count - photosToAdd) photos (limit reached)")
+                    }
+                }
+            }
+            .fullScreenCover(item: $selectedPhotoForViewing) { photo in
+                ZStack {
+                    Color.black.ignoresSafeArea()
+
+                    VStack {
+                        HStack {
+                            Spacer()
+                            Button(action: {
+                                selectedPhotoForViewing = nil
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 30))
+                                    .foregroundColor(.white)
+                                    .padding()
+                            }
+                        }
+
+                        Spacer()
+
+                        Image(uiImage: photo.image)
+                            .resizable()
+                            .scaledToFit()
+
+                        Spacer()
+                    }
+                }
             }
         }
     }
@@ -3263,16 +3600,62 @@ struct EditWeightView: View {
         }
     }
 
+    private func loadExistingPhotos() {
+        // Check for photos in photoURLs array (new format) or photoURL (legacy)
+        var urls: [String] = []
+        if let photoURLs = entry.photoURLs {
+            urls = photoURLs
+        } else if let photoURL = entry.photoURL {
+            urls = [photoURL]
+        }
+
+        guard !urls.isEmpty else { return }
+
+        isLoadingPhotos = true
+        Task {
+            var loadedImages: [IdentifiableImage] = []
+            for url in urls {
+                do {
+                    let image = try await firebaseManager.downloadWeightPhoto(from: url)
+                    loadedImages.append(IdentifiableImage(image: image, url: url))
+                } catch {
+                    print("Error loading photo from \(url): \(error)")
+                }
+            }
+
+            await MainActor.run {
+                selectedPhotos = loadedImages
+                isLoadingPhotos = false
+            }
+        }
+    }
+
     private func saveWeight() {
         guard let weightKg = weightInKg else { return }  // Convert to kg
+
+        isUploading = true
 
         // Save to Firebase
         Task {
             do {
-                // Upload new photo if one was selected, otherwise keep existing
-                var photoURL: String? = entry.photoURL
-                if let photo = selectedPhoto {
-                    photoURL = try await firebaseManager.uploadWeightPhoto(photo)
+                // Separate existing photos (have URLs) from new photos (need upload)
+                var photoURLs: [String] = []
+                var newPhotosToUpload: [UIImage] = []
+
+                for photo in selectedPhotos {
+                    if let url = photo.url {
+                        // Existing photo - keep the URL
+                        photoURLs.append(url)
+                    } else {
+                        // New photo - needs upload
+                        newPhotosToUpload.append(photo.image)
+                    }
+                }
+
+                // Upload new photos if any
+                if !newPhotosToUpload.isEmpty {
+                    let newURLs = try await firebaseManager.uploadWeightPhotos(newPhotosToUpload)
+                    photoURLs.append(contentsOf: newURLs)
                 }
 
                 // Parse measurements
@@ -3286,7 +3669,8 @@ struct EditWeightView: View {
                     date: date,
                     bmi: calculatedBMI,
                     note: note.isEmpty ? nil : note,
-                    photoURL: photoURL,
+                    photoURL: photoURLs.first, // For backward compatibility
+                    photoURLs: photoURLs.isEmpty ? nil : photoURLs,
                     waistSize: waist,
                     dressSize: dress
                 )
@@ -3315,11 +3699,15 @@ struct EditWeightView: View {
                         userHeight = heightCm
                     }
 
+                    isUploading = false
                     onSave()
                     dismiss()
                 }
             } catch {
                 print("Error updating weight entry: \(error)")
+                await MainActor.run {
+                    isUploading = false
+                }
                 // TODO: Show error alert to user
             }
         }
@@ -5820,7 +6208,7 @@ struct AddFoodMainView: View {
 
     enum AddDestination: String, CaseIterable {
         case diary = "Diary"
-        case fridge = "Fridge"
+        case fridge = "Use By"
     }
 
     enum AddOption: String, CaseIterable {
@@ -6318,7 +6706,7 @@ struct IngredientCameraView: View {
             )
         }
         .sheet(isPresented: $showingImagePicker) {
-            ImagePicker(selectedImage: $capturedImage) { image in
+            ImagePicker(selectedImage: $capturedImage, sourceType: .camera) { image in
                 capturedImage = image
             }
         }

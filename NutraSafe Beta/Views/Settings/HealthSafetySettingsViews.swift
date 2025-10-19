@@ -144,9 +144,6 @@ struct AllergenRow: View {
     var body: some View {
         Button(action: onToggle) {
             HStack(spacing: 12) {
-                Text(allergen.icon)
-                    .font(.system(size: 24))
-
                 VStack(alignment: .leading, spacing: 2) {
                     Text(allergen.displayName)
                         .font(.system(size: 16))

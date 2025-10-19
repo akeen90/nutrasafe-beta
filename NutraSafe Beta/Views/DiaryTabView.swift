@@ -84,8 +84,8 @@ struct DiaryTabView: View {
                             .foregroundStyle(
                                 LinearGradient(
                                     colors: [
-                                        Color(red: 0.6, green: 0.3, blue: 0.8),
-                                        Color(red: 0.4, green: 0.5, blue: 0.9)
+                                        Color(red: 0.95, green: 0.68, blue: 0.38), // Brighter golden orange
+                                        Color(red: 0.85, green: 0.55, blue: 0.35)  // Brighter bronze
                                     ],
                                     startPoint: .leading,
                                     endPoint: .trailing
@@ -346,6 +346,9 @@ struct DiaryTabView: View {
             loadFoodData()
         }
         .onChange(of: selectedDate) { _ in
+            loadFoodData()
+        }
+        .onChange(of: diaryDataManager.dataReloadTrigger) { _ in
             loadFoodData()
         }
         .onChange(of: editTrigger) { triggered in
@@ -646,19 +649,36 @@ struct DiaryTabView: View {
         let itemCount = selectedFoodItems.count
         print("DiaryTabView: Starting delete of \(itemCount) items")
 
+        // Collect items to delete
+        var itemsToDelete: [DiaryFoodItem] = []
+        for selectedId in selectedFoodItems {
+            if let food = breakfastFoods.first(where: { $0.id.uuidString == selectedId }) {
+                itemsToDelete.append(food)
+            } else if let food = lunchFoods.first(where: { $0.id.uuidString == selectedId }) {
+                itemsToDelete.append(food)
+            } else if let food = dinnerFoods.first(where: { $0.id.uuidString == selectedId }) {
+                itemsToDelete.append(food)
+            } else if let food = snackFoods.first(where: { $0.id.uuidString == selectedId }) {
+                itemsToDelete.append(food)
+            }
+        }
+
         // Create new filtered arrays to force SwiftUI state update detection
         breakfastFoods = breakfastFoods.filter { !selectedFoodItems.contains($0.id.uuidString) }
         lunchFoods = lunchFoods.filter { !selectedFoodItems.contains($0.id.uuidString) }
         dinnerFoods = dinnerFoods.filter { !selectedFoodItems.contains($0.id.uuidString) }
         snackFoods = snackFoods.filter { !selectedFoodItems.contains($0.id.uuidString) }
 
-        // Save the updated data using DiaryDataManager
+        // Save the updated data to UserDefaults
         diaryDataManager.saveFoodData(for: selectedDate, breakfast: breakfastFoods, lunch: lunchFoods, dinner: dinnerFoods, snacks: snackFoods)
+
+        // Delete from Firebase
+        diaryDataManager.deleteFoodItems(itemsToDelete, for: selectedDate)
 
         // Clear selection
         selectedFoodItems.removeAll()
 
-        print("DiaryTabView: Successfully deleted \(itemCount) items")
+        print("DiaryTabView: Successfully deleted \(itemCount) items from UI and Firebase")
     }
 
     private func saveFoodData() {

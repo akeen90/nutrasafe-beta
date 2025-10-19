@@ -32,7 +32,6 @@ struct FoodDetailViewFromSearch: View {
     @State private var ingredientImage: UIImage?
     @State private var isProcessingIngredients = false
     @State private var showingSubmissionSuccess = false
-    @State private var enrichedFood: FoodSearchResult?
 
     init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, destination: AddFoodMainView.AddDestination) {
         self.food = food
@@ -41,9 +40,9 @@ struct FoodDetailViewFromSearch: View {
         self.destination = destination
     }
 
-    // Use enriched food if available, otherwise use original
+    // OPTIMIZED: Use food directly - search already returns complete data
     private var displayFood: FoodSearchResult {
-        enrichedFood ?? food
+        return food
     }
     
     // Enhanced photo system for database building
@@ -74,7 +73,22 @@ struct FoodDetailViewFromSearch: View {
     @EnvironmentObject var firebaseManager: FirebaseManager
     @State private var userAllergens: [Allergen] = []
     @State private var detectedUserAllergens: [Allergen] = []
-    
+
+    // PERFORMANCE: Cache additive analysis result to prevent re-computation on every render
+    @State private var cachedAdditives: [DetailedAdditive]? = nil
+
+    // PERFORMANCE: Cache ingredients list to prevent re-computation on every render
+    @State private var cachedIngredients: [String]? = nil
+
+    // PERFORMANCE: Cache ingredients status to prevent re-computation on every render
+    @State private var cachedIngredientsStatus: IngredientsStatus? = nil
+
+    // PERFORMANCE: Cache nutrition score to prevent 40+ calls to analyseAdditives on every render
+    @State private var cachedNutritionScore: NutritionProcessingScore? = nil
+
+    // PERFORMANCE: Flag to ensure initialization only happens once
+    @State private var hasInitialized = false
+
     // Watch tabs (Additive Analysis, Allergy Watch, Vitamins & Minerals)
     @State private var selectedWatchTab: WatchTab = .additives
     
@@ -264,11 +278,16 @@ struct FoodDetailViewFromSearch: View {
     }
     
     private var nutritionScore: NutritionProcessingScore {
+        // PERFORMANCE: Return cached score if available to prevent 40+ analyseAdditives calls
+        if let cached = cachedNutritionScore {
+            return cached
+        }
+
         let submittedFoods = UserDefaults.standard.array(forKey: "submittedFoodsForReview") as? [String] ?? []
         let foodKey = "\(food.name)|\(food.brand ?? "")"
-        
-        // First check if we have user-verified ingredients
-        if let userIngredients = getIngredientsList(), !userIngredients.isEmpty {
+
+        // First check if we have user-verified ingredients (PERFORMANCE: use cached ingredients)
+        if let userIngredients = cachedIngredients, !userIngredients.isEmpty {
             // Calculate score using user-verified ingredients
             let ingredientsString = userIngredients.joined(separator: ", ")
             return ProcessingScorer.shared.calculateProcessingScore(for: displayFood.name, ingredients: ingredientsString, sugarPer100g: displayFood.sugar)
@@ -487,54 +506,43 @@ struct FoodDetailViewFromSearch: View {
         let clientVerifiedFoods = UserDefaults.standard.array(forKey: "clientVerifiedFoods") as? [String] ?? []
         let userVerifiedFoods = UserDefaults.standard.array(forKey: "userVerifiedFoods") as? [String] ?? []
         let foodKey = "\(food.name)|\(food.brand ?? "")"
-        
-        // Debug logging
-        print("🔍 Checking ingredients for: \(food.name)")
-        print("🔍 Food ingredients: \(food.ingredients?.count ?? 0) items")
-        print("🔍 Raw ingredients: \(food.ingredients ?? [])")
-        
+
         // Check if food is user-verified (photo taken by user)
         if userVerifiedFoods.contains(foodKey) {
-            print("🔍 Food is user-verified with photo")
             return .userVerified
         }
-        
+
         // Check if food is pending verification (user submitted for review)
         if submittedFoods.contains(foodKey) {
-            print("🔍 Food is pending verification")
             return .pending
         }
-        
+
         // Check if food was client verified by another user
         if clientVerifiedFoods.contains(foodKey) {
-            print("🔍 Food is client verified")
             return .clientVerified
         }
-        
+
         // Check if food has ingredients/nutrition data but is unverified
-        if let ingredients = food.ingredients, !ingredients.isEmpty {
+        if let ingredients = displayFood.ingredients, !ingredients.isEmpty {
             let hasRealIngredients = ingredients.contains { ingredient in
                 !ingredient.contains("Processing ingredient image...") && !ingredient.isEmpty
             }
-            print("🔍 Has real ingredients but unverified: \(hasRealIngredients)")
             if hasRealIngredients {
                 return .unverified  // Changed from .verified to .unverified
             }
         }
-        
+
         // Food has nutrition data but no ingredients - still unverified
         if displayFood.calories > 0 || displayFood.protein > 0 || displayFood.carbs > 0 || displayFood.fat > 0 {
-            print("🔍 Has nutrition data but unverified")
             return .unverified
         }
-        
-        print("🔍 No ingredients or nutrition found - status: .none")
+
         return .none
     }
     
     private func getIngredientsList() -> [String]? {
-        // First, try to get ingredients from food search results (verified)
-        if let ingredients = food.ingredients, !ingredients.isEmpty {
+        // First, try to get ingredients from displayFood (uses enriched or original)
+        if let ingredients = displayFood.ingredients, !ingredients.isEmpty {
             let realIngredients = ingredients.filter { ingredient in
                 !ingredient.contains("Processing ingredient image...") && !ingredient.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             }
@@ -572,9 +580,10 @@ struct FoodDetailViewFromSearch: View {
         // If no ingredients found, return nil
         return nil
     }
-    
+
     private var hasIngredients: Bool {
-        let status = getIngredientsStatus()
+        // PERFORMANCE: Use cached ingredients status
+        let status = cachedIngredientsStatus ?? .none
         return status == .verified || status == .unverified || status == .clientVerified || status == .pending || status == .userVerified
     }
     
@@ -585,9 +594,9 @@ struct FoodDetailViewFromSearch: View {
            !aiDetectedAllergens.isEmpty {
             return aiDetectedAllergens.map { $0.capitalized }
         }
-        
-        // Fallback to manual detection from user ingredients
-        guard let ingredients = getIngredientsList() else { return [] }
+
+        // Fallback to manual detection from user ingredients (PERFORMANCE: use cached ingredients)
+        guard let ingredients = cachedIngredients else { return [] }
         
         let commonAllergens = [
             ("Gluten", ["wheat", "barley", "rye", "oats", "spelt", "kamut", "gluten", "flour", "bran", "semolina", "durum"]),
@@ -619,6 +628,18 @@ struct FoodDetailViewFromSearch: View {
     }
 
     // Load user's allergens from Firebase and detect which ones are in this food
+    // OPTIMIZED: Use cached allergens for instant loading
+    private func loadAndDetectUserAllergensOptimized() async {
+        // Get allergens from cache (instant if available)
+        let savedAllergens = await firebaseManager.getUserAllergensWithCache()
+
+        await MainActor.run {
+            userAllergens = savedAllergens
+            detectedUserAllergens = detectUserAllergensInFood(userAllergens: savedAllergens)
+        }
+    }
+
+    // DEPRECATED: Old slow method - kept for reference
     private func loadAndDetectUserAllergens() async {
         do {
             let settings = try await firebaseManager.getUserSettings()
@@ -635,10 +656,10 @@ struct FoodDetailViewFromSearch: View {
 
     // Check if food contains any of the user's allergens
     private func detectUserAllergensInFood(userAllergens: [Allergen]) -> [Allergen] {
-        // Get food name and ingredients
+        // Get food name and ingredients (PERFORMANCE: use cached ingredients)
         let foodName = displayFood.name.lowercased()
         let brand = displayFood.brand?.lowercased() ?? ""
-        let ingredients = getIngredientsList()?.map { $0.lowercased() } ?? []
+        let ingredients = cachedIngredients?.map { $0.lowercased() } ?? []
 
         let searchText = ([foodName, brand] + ingredients).joined(separator: " ")
 
@@ -686,20 +707,15 @@ struct FoodDetailViewFromSearch: View {
             HStack(spacing: 8) {
                 Spacer(minLength: 0)
                 ForEach(detectedUserAllergens, id: \.rawValue) { allergen in
-                    HStack(spacing: 6) {
-                        Text(allergen.icon)
-                            .font(.system(size: 16))
-
-                        Text(allergen.displayName)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.white)
-                            .lineLimit(1)
-                            .fixedSize(horizontal: true, vertical: false)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.white.opacity(0.2))
-                    .cornerRadius(16)
+                    Text(allergen.displayName)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.white.opacity(0.2))
+                        .cornerRadius(16)
                 }
                 Spacer(minLength: 0)
             }
@@ -800,9 +816,9 @@ struct FoodDetailViewFromSearch: View {
                 )
             }
         }
-        
-        // Fallback to local ingredient analysis if no Firebase data
-        guard let ingredients = getIngredientsList() else { return [] }
+
+        // Fallback to local ingredient analysis if no Firebase data (PERFORMANCE: use cached ingredients)
+        guard let ingredients = cachedIngredients else { return [] }
         let ingredientsText = ingredients.joined(separator: " ").lowercased()
         
         var detectedAdditives: [DetailedAdditive] = []
@@ -920,11 +936,16 @@ struct FoodDetailViewFromSearch: View {
         VStack(spacing: 12) {
             // Small verification status at top
             verificationStatusView
-            
+
+            // Allergen Warning - Show above product name if allergens detected
+            if !detectedUserAllergens.isEmpty {
+                allergenWarningBanner
+            }
+
             Text(food.name)
                 .font(.system(size: 24, weight: .bold))
                 .multilineTextAlignment(.center)
-            
+
             if let brand = food.brand {
                 Text(brand)
                     .font(.system(size: 16))
@@ -932,10 +953,11 @@ struct FoodDetailViewFromSearch: View {
             }
         }
     }
-    
+
     private var verificationStatusView: some View {
-        let ingredientsStatus = getIngredientsStatus()
-        
+        // PERFORMANCE: Use cached ingredients status
+        let ingredientsStatus = cachedIngredientsStatus ?? .none
+
         return HStack(spacing: 6) {
             switch ingredientsStatus {
             case .verified:
@@ -982,11 +1004,6 @@ struct FoodDetailViewFromSearch: View {
             ScrollView {
                 VStack(spacing: 24) {
                     foodHeaderView
-
-                    // Allergen Warning Banner - Show only if allergens detected
-                    if !detectedUserAllergens.isEmpty {
-                        allergenWarningBanner
-                    }
 
                     // Serving and Meal Controls Section
                     servingControlsSection
@@ -1042,9 +1059,9 @@ struct FoodDetailViewFromSearch: View {
                     
                     // Ingredients section immediately after nutrition 
                     ingredientsSection
-                    
-                    // Photo prompts and improvement section right after ingredients
-                    let ingredientsStatus = getIngredientsStatus()
+
+                    // Photo prompts and improvement section right after ingredients (PERFORMANCE: use cached status)
+                    let ingredientsStatus = cachedIngredientsStatus ?? .none
                     if ingredientsStatus == .unverified || ingredientsStatus == .none || nutritionScore.grade == .unknown {
                         ingredientVerificationSection
                     } else if ingredientsStatus == .pending {
@@ -1065,17 +1082,67 @@ struct FoodDetailViewFromSearch: View {
             }
         }
         .onAppear {
-            // Load user allergens and detect if present in this food
-            Task {
-                await loadAndDetectUserAllergens()
+            // PERFORMANCE: Only initialize once per view instance, even if .onAppear is called multiple times
+            guard !hasInitialized else { return }
+            hasInitialized = true
+
+            // PERFORMANCE: Cache ingredients list ONCE on appear
+            if cachedIngredients == nil {
+                cachedIngredients = getIngredientsList()
             }
 
-            // Check if nutrition data is missing (for any food - editing or fresh search)
-            if food.calories == 0 || (food.fiber == 0 && food.sugar == 0 && food.sodium == 0) {
-                // Try to fetch fresh data from Firebase
-                Task {
-                    await fetchEnrichedFoodData()
+            // PERFORMANCE: Cache ingredients status ONCE on appear
+            if cachedIngredientsStatus == nil {
+                cachedIngredientsStatus = getIngredientsStatus()
+            }
+
+            // PERFORMANCE: Compute additives ONCE on appear and cache
+            if cachedAdditives == nil {
+                cachedAdditives = getDetectedAdditives()
+            }
+
+            // PERFORMANCE: Compute nutrition score ONCE on appear and cache (prevents 40+ analyseAdditives calls)
+            if cachedNutritionScore == nil {
+                let submittedFoods = UserDefaults.standard.array(forKey: "submittedFoodsForReview") as? [String] ?? []
+                let foodKey = "\(food.name)|\(food.brand ?? "")"
+
+                // First check if we have user-verified ingredients
+                if let userIngredients = cachedIngredients, !userIngredients.isEmpty {
+                    let ingredientsString = userIngredients.joined(separator: ", ")
+                    cachedNutritionScore = ProcessingScorer.shared.calculateProcessingScore(for: displayFood.name, ingredients: ingredientsString, sugarPer100g: displayFood.sugar)
                 }
+                // Fallback to official ingredients if available
+                else if let ingredients = displayFood.ingredients, !ingredients.isEmpty {
+                    if submittedFoods.contains(foodKey) {
+                        var updatedSubmittedFoods = submittedFoods
+                        updatedSubmittedFoods.removeAll { $0 == foodKey }
+                        UserDefaults.standard.set(updatedSubmittedFoods, forKey: "submittedFoodsForReview")
+                    }
+                    let ingredientsString = ingredients.joined(separator: ", ")
+                    cachedNutritionScore = ProcessingScorer.shared.calculateProcessingScore(for: displayFood.name, ingredients: ingredientsString, sugarPer100g: displayFood.sugar)
+                }
+                // Only show "In Review" if the food was submitted AND has no ingredients
+                else if submittedFoods.contains(foodKey) {
+                    cachedNutritionScore = NutritionProcessingScore(
+                        grade: .unknown,
+                        score: 0,
+                        explanation: "Awaiting Verification - Ingredients submitted for review",
+                        factors: ["Submitted for verification"],
+                        processingLevel: .unprocessed,
+                        additiveCount: 0,
+                        eNumberCount: 0,
+                        naturalScore: 0
+                    )
+                }
+                // Default score for foods without ingredients
+                else {
+                    cachedNutritionScore = ProcessingScorer.shared.calculateProcessingScore(for: displayFood.name, sugarPer100g: displayFood.sugar)
+                }
+            }
+
+            // Load user allergens from cache (instant) and detect if present in this food
+            Task {
+                await loadAndDetectUserAllergensOptimized()
             }
 
             // Check for editing mode
@@ -1415,6 +1482,12 @@ struct FoodDetailViewFromSearch: View {
         let micronutrientProfile = MicronutrientManager.shared.getMicronutrientProfile(for: displayFood, quantity: (servingSize / 100) * quantityMultiplier)
 
         // Create diary entry
+        print("📝 Creating DiaryFoodItem:")
+        print("  - displayFood.ingredients: \(displayFood.ingredients?.count ?? 0) items")
+        print("  - displayFood.ingredients: \(displayFood.ingredients ?? [])")
+        print("  - displayFood.additives: \(displayFood.additives?.count ?? 0) items")
+        print("  - displayFood.barcode: \(displayFood.barcode ?? "nil")")
+
         let diaryEntry = DiaryFoodItem(
             name: displayFood.name,
             brand: displayFood.brand,
@@ -1435,6 +1508,10 @@ struct FoodDetailViewFromSearch: View {
             barcode: displayFood.barcode,
             micronutrientProfile: micronutrientProfile
         )
+
+        print("📝 Created DiaryFoodItem:")
+        print("  - diaryEntry.ingredients: \(diaryEntry.ingredients?.count ?? 0) items")
+        print("  - diaryEntry.ingredients: \(diaryEntry.ingredients ?? [])")
 
         // Add to diary or fridge based on destination
         if destination == .fridge {
@@ -1474,40 +1551,8 @@ struct FoodDetailViewFromSearch: View {
     }
 
     // Fetch complete nutrition data from Firebase when editing old items with missing data
-    private func fetchEnrichedFoodData() async {
-        print("FoodDetailView: Fetching enriched data for \(food.name)")
-        print("FoodDetailView: Current food.additives = \(String(describing: food.additives))")
-
-        // Try barcode first if available
-        if let barcode = food.barcode, !barcode.isEmpty {
-            do {
-                let results = try await FirebaseManager.shared.searchFoodsByBarcode(barcode: barcode)
-                if let freshFood = results.first {
-                    print("FoodDetailView: Found fresh data by barcode")
-                    print("FoodDetailView: Fresh additives = \(String(describing: freshFood.additives))")
-                    enrichedFood = freshFood
-                    return
-                }
-            } catch {
-                print("FoodDetailView: Barcode search failed: \(error)")
-            }
-        }
-
-        // Fallback to name search
-        do {
-            let results = try await FirebaseManager.shared.searchFoods(query: food.name)
-            if let freshFood = results.first {
-                print("FoodDetailView: Found fresh data by name search")
-                print("FoodDetailView: Fresh calories = \(freshFood.calories)")
-                print("FoodDetailView: Fresh additives = \(String(describing: freshFood.additives))")
-                enrichedFood = freshFood
-            } else {
-                print("FoodDetailView: No results found for '\(food.name)'")
-            }
-        } catch {
-            print("FoodDetailView: Name search failed: \(error)")
-        }
-    }
+    // REMOVED: fetchEnrichedFoodData() - unnecessary since search already returns complete data
+    // The food parameter already has all ingredients, additives, and nutrition data from Firebase search
     
     private var ingredientsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -1516,7 +1561,7 @@ struct FoodDetailViewFromSearch: View {
                     .font(.system(size: 20, weight: .bold))
                     .foregroundColor(.primary)
 
-                if getIngredientsStatus() == .pending {
+                if cachedIngredientsStatus == .pending {
                     Text("⏳ Awaiting Verification")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.orange)
@@ -1525,7 +1570,7 @@ struct FoodDetailViewFromSearch: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
 
-            if let ingredientsList = getIngredientsList() {
+            if let ingredientsList = cachedIngredients {
                 let cleanIngredients = ingredientsList
                     .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                     .filter { !$0.isEmpty }
@@ -1588,7 +1633,7 @@ struct FoodDetailViewFromSearch: View {
     
     @ViewBuilder
     private var additiveWatchSection: some View {
-        if let ingredientsList = getIngredientsList(), !ingredientsList.isEmpty {
+        if let ingredientsList = cachedIngredients, !ingredientsList.isEmpty {
             AdditiveWatchView(ingredients: ingredientsList)
         }
     }
@@ -2260,11 +2305,20 @@ struct FoodDetailViewFromSearch: View {
     // Recalculate nutrition score with new user-verified ingredients
     private func recalculateNutritionScore(with ingredients: [String]) async {
         print("🔄 Recalculating nutrition score with user-verified ingredients...")
-        
-        // The nutrition score will automatically recalculate since the nutritionScore 
+
+        // PERFORMANCE: Invalidate caches and reset initialization flag to allow re-initialization
+        await MainActor.run {
+            cachedIngredients = nil
+            cachedIngredientsStatus = nil
+            cachedAdditives = nil
+            cachedNutritionScore = nil
+            hasInitialized = false
+        }
+
+        // The nutrition score will automatically recalculate since the nutritionScore
         // computed property now prioritizes user-verified ingredients
         print("✅ Nutrition score recalculated successfully")
-        
+
         // Force UI refresh immediately so user sees the updated nutrition score
         await MainActor.run {
             refreshTrigger = UUID()
@@ -2580,7 +2634,8 @@ struct FoodDetailViewFromSearch: View {
     // MARK: - Additive Analysis Content
     private var additivesContent: some View {
         VStack(alignment: .leading, spacing: 12) {
-            let detectedAdditives = getDetectedAdditives()
+            // PERFORMANCE: Use cached additives computed once on appear
+            let detectedAdditives = cachedAdditives ?? []
             
             if !detectedAdditives.isEmpty {
                 VStack(spacing: 12) {

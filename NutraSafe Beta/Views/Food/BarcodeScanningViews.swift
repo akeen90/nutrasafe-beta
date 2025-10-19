@@ -137,13 +137,17 @@ struct AddFoodBarcodeView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showingContributionForm) {
             if let contribution = pendingContribution {
-                FoodContributionFormView(
-                    pendingContribution: contribution,
-                    onComplete: {
+                NavigationView {
+                    AddFoodManualView(
+                        selectedTab: $selectedTab,
+                        destination: $destination,
+                        prefilledBarcode: contribution.barcode
+                    )
+                    .navigationBarItems(leading: Button("Cancel") {
                         showingContributionForm = false
                         pendingContribution = nil
-                    }
-                )
+                    })
+                }
             }
         }
     }
@@ -377,143 +381,6 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
             // Provide haptic feedback for successful scan
             AudioServicesPlaySystemSound(SystemSoundID(kSystemSoundID_Vibrate))
             onBarcodeScanned?(stringValue)
-        }
-    }
-}
-
-// MARK: - Food Contribution Form
-
-struct FoodContributionFormView: View {
-    let pendingContribution: PendingFoodContribution
-    let onComplete: () -> Void
-
-    @State private var foodName = ""
-    @State private var brandName = ""
-    @State private var ingredients = ""
-    @State private var isSubmitting = false
-    @State private var showingSuccessMessage = false
-    @Environment(\.dismiss) var dismiss
-
-    var body: some View {
-        NavigationView {
-            ScrollView(.vertical, showsIndicators: true) {
-                VStack(spacing: 20) {
-                    // Header
-                    VStack(spacing: 8) {
-                        Image(systemName: "doc.text.fill")
-                            .font(.system(size: 40))
-                            .foregroundColor(.blue)
-
-                        Text("Add Product Details")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-
-                        Text("Help us grow our food database")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.top)
-
-                    // Barcode info
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Barcode")
-                            .font(.headline)
-                        Text(pendingContribution.barcode)
-                            .font(.system(size: 16, design: .monospaced))
-                            .padding()
-                            .background(Color.gray.opacity(0.1))
-                            .cornerRadius(8)
-                    }
-
-                    // Form fields
-                    VStack(alignment: .leading, spacing: 16) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Product Name *")
-                                .font(.headline)
-                            TextField("Enter product name", text: $foodName)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                        }
-
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Brand Name")
-                                .font(.headline)
-                            TextField("Enter brand name (optional)", text: $brandName)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                        }
-
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Ingredients")
-                                .font(.headline)
-                            TextField("Enter ingredients list (optional)", text: $ingredients)
-                                .lineLimit(6)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                        }
-                    }
-
-                    // Submit button
-                    Button(action: submitContribution) {
-                        HStack {
-                            if isSubmitting {
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                                    .foregroundColor(.white)
-                            }
-                            Text(isSubmitting ? "Submitting..." : "Submit Product")
-                        }
-                        .frame(maxWidth: .infinity)
-                        .foregroundColor(.white)
-                        .padding()
-                        .background(canSubmit ? Color.blue : Color.gray)
-                        .cornerRadius(10)
-                    }
-                    .disabled(!canSubmit || isSubmitting)
-
-                    // Success message
-                    if showingSuccessMessage {
-                        VStack(spacing: 8) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 30))
-                                .foregroundColor(.green)
-                            Text("Thank you for your contribution!")
-                                .font(.headline)
-                                .foregroundColor(.green)
-                            Text("Your product will be reviewed and added to our database.")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                        }
-                        .padding()
-                        .background(Color.green.opacity(0.1))
-                        .cornerRadius(12)
-                    }
-                }
-                .padding()
-            }
-            .navigationTitle("Add Product")
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationBarBackButtonHidden(false)
-        }
-    }
-
-    private var canSubmit: Bool {
-        !foodName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    private func submitContribution() {
-        guard canSubmit && !isSubmitting else { return }
-
-        isSubmitting = true
-
-        // Simulate API call - in real implementation, this would update the pending food entry
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            isSubmitting = false
-            showingSuccessMessage = true
-
-            // Auto-close after showing success message
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                onComplete()
-                dismiss()
-            }
         }
     }
 }

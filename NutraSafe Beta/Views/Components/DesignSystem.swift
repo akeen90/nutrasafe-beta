@@ -33,10 +33,15 @@ extension Font {
 
 // MARK: - Colour System
 extension Color {
-    // Brand Colours
+    // Brand Colours (matching app logo gradient - brightened for headers)
+    static let brandOrangeLight = Color(red: 0.95, green: 0.68, blue: 0.38) // Brighter golden orange
+    static let brandOrangeDark = Color(red: 0.85, green: 0.55, blue: 0.35)  // Brighter bronze
+    static let brandOrange = Color(red: 0.90, green: 0.62, blue: 0.37)      // Mid-tone blend
+
+    // Legacy color references (kept for backward compatibility)
     static let primaryBlue = Color(red: 0.2, green: 0.4, blue: 0.8)
     static let primaryGreen = Color(red: 0.3, green: 0.7, blue: 0.4)
-    static let accentOrange = Color(red: 1.0, green: 0.6, blue: 0.2)
+    static let accentOrange = brandOrange
     
     // Semantic Colours
     static let nutritionGreen = Color(red: 0.3, green: 0.7, blue: 0.4)
@@ -76,11 +81,17 @@ extension Color {
     
     // Gradients
     static let primaryGradient = LinearGradient(
-        gradient: Gradient(colors: [nutritionGreen, safetyBlue]),
+        gradient: Gradient(colors: [brandOrangeLight, brandOrangeDark]),
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
-    
+
+    static let brandGradient = LinearGradient(
+        gradient: Gradient(colors: [brandOrangeLight, brandOrangeDark]),
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+
     static let nutritionGradient = LinearGradient(
         gradient: Gradient(colors: [nutritionGreen.opacity(0.8), nutritionGreen]),
         startPoint: .top,

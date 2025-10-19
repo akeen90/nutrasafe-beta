@@ -730,6 +730,9 @@ struct FoodEntry: Identifiable, Codable {
     let sugar: Double?
     let sodium: Double?
     let calcium: Double?
+    let ingredients: [String]?
+    let additives: [NutritionAdditiveInfo]?
+    let barcode: String?
     let micronutrientProfile: MicronutrientProfile?
     let mealType: MealType
     let date: Date
@@ -738,7 +741,7 @@ struct FoodEntry: Identifiable, Codable {
     init(id: String = UUID().uuidString, userId: String, foodName: String, brandName: String? = nil,
          servingSize: Double, servingUnit: String, calories: Double, protein: Double,
          carbohydrates: Double, fat: Double, fiber: Double? = nil, sugar: Double? = nil,
-         sodium: Double? = nil, calcium: Double? = nil, micronutrientProfile: MicronutrientProfile? = nil, mealType: MealType, date: Date, dateLogged: Date = Date()) {
+         sodium: Double? = nil, calcium: Double? = nil, ingredients: [String]? = nil, additives: [NutritionAdditiveInfo]? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, mealType: MealType, date: Date, dateLogged: Date = Date()) {
         self.id = id
         self.userId = userId
         self.foodName = foodName
@@ -753,6 +756,9 @@ struct FoodEntry: Identifiable, Codable {
         self.sugar = sugar
         self.sodium = sodium
         self.calcium = calcium
+        self.ingredients = ingredients
+        self.additives = additives
+        self.barcode = barcode
         self.micronutrientProfile = micronutrientProfile
         self.mealType = mealType
         self.date = date
@@ -779,6 +785,23 @@ struct FoodEntry: Identifiable, Codable {
             "date": Timestamp(date: date),
             "dateLogged": Timestamp(date: dateLogged)
         ]
+
+        // Add ingredients if available
+        if let ingredients = ingredients {
+            dict["ingredients"] = ingredients
+        }
+
+        // Add additives if available
+        if let additives = additives,
+           let additivesData = try? JSONEncoder().encode(additives),
+           let additivesArray = try? JSONSerialization.jsonObject(with: additivesData, options: []) as? [[String: Any]] {
+            dict["additives"] = additivesArray
+        }
+
+        // Add barcode if available
+        if let barcode = barcode {
+            dict["barcode"] = barcode
+        }
 
         // Add micronutrient profile if available
         if let micronutrients = micronutrientProfile,
@@ -807,6 +830,13 @@ struct FoodEntry: Identifiable, Codable {
             return nil
         }
 
+        // Deserialize additives if available
+        var additives: [NutritionAdditiveInfo]? = nil
+        if let additivesArray = data["additives"] as? [[String: Any]],
+           let additivesData = try? JSONSerialization.data(withJSONObject: additivesArray, options: []) {
+            additives = try? JSONDecoder().decode([NutritionAdditiveInfo].self, from: additivesData)
+        }
+
         // Deserialize micronutrient profile if available
         var micronutrientProfile: MicronutrientProfile? = nil
         if let micronutrientsDict = data["micronutrientProfile"] as? [String: Any],
@@ -829,6 +859,9 @@ struct FoodEntry: Identifiable, Codable {
             sugar: data["sugar"] as? Double,
             sodium: data["sodium"] as? Double,
             calcium: data["calcium"] as? Double,
+            ingredients: data["ingredients"] as? [String],
+            additives: additives,
+            barcode: data["barcode"] as? String,
             micronutrientProfile: micronutrientProfile,
             mealType: mealType,
             date: dateTimestamp.dateValue(),
@@ -1011,6 +1044,12 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
 
     // Convert DiaryFoodItem back to FoodSearchResult for full feature access
     func toFoodSearchResult() -> FoodSearchResult {
+        print("🔄 toFoodSearchResult called for: \(self.name)")
+        print("🔄 DiaryFoodItem.ingredients: \(self.ingredients?.count ?? 0) items")
+        print("🔄 DiaryFoodItem.ingredients: \(self.ingredients ?? [])")
+        print("🔄 DiaryFoodItem.additives: \(self.additives?.count ?? 0) items")
+        print("🔄 DiaryFoodItem.barcode: \(self.barcode ?? "nil")")
+
         // Extract serving size from servingDescription (e.g., "150g serving" -> 150)
         let servingSize = extractServingSize(from: servingDescription)
 
@@ -1027,6 +1066,10 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
         let per100gSugar = multiplier > 0 ? sugar / multiplier : sugar
         let per100gSodium = multiplier > 0 ? sodium / multiplier : sodium
 
+        // PERFORMANCE: Set database version to current to prevent re-analysis
+        // DiaryFoodItem doesn't store database version, so we set it here to mark as "current"
+        let currentVersion = ProcessingScorer.shared.databaseVersion
+
         return FoodSearchResult(
             id: self.id.uuidString,
             name: self.name,
@@ -1038,11 +1081,12 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
             fiber: per100gFiber,
             sugar: per100gSugar,
             sodium: per100gSodium,
-            servingDescription: "\(String(format: "%.0f", servingSize))g",
+            servingDescription: "\(servingSize.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(servingSize)) : String(servingSize))g",
             ingredients: self.ingredients,
             confidence: 1.0, // High confidence for saved items
             isVerified: true,
             additives: self.additives,
+            additivesDatabaseVersion: currentVersion, // Mark as current version to prevent re-analysis
             processingScore: nil,
             processingGrade: self.processedScore,
             processingLabel: self.processedScore,
@@ -1095,6 +1139,9 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
             sugar: self.sugar,
             sodium: self.sodium,
             calcium: self.calcium,
+            ingredients: self.ingredients,
+            additives: self.additives,
+            barcode: self.barcode,
             micronutrientProfile: self.micronutrientProfile,
             mealType: mealType,
             date: date,
@@ -1116,14 +1163,14 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
             sugar: entry.sugar ?? 0,
             sodium: entry.sodium ?? 0,
             calcium: entry.calcium ?? 0,
-            servingDescription: "\(entry.servingSize)\(entry.servingUnit) serving",
+            servingDescription: "\(entry.servingSize.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(entry.servingSize)) : String(entry.servingSize))\(entry.servingUnit) serving",
             quantity: 1.0, // Quantity is already included in servingSize from Firebase
             time: nil,
             processedScore: nil,
             sugarLevel: nil,
-            ingredients: nil,
-            additives: nil,
-            barcode: nil,
+            ingredients: entry.ingredients,
+            additives: entry.additives,
+            barcode: entry.barcode,
             micronutrientProfile: entry.micronutrientProfile
         )
     }

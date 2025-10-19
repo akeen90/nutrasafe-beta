@@ -7,7 +7,12 @@ service firebase.storage {
       allow read: if true;
       allow write: if false; // Only functions can write
     }
-    
+
+    // Allow users to read/write their own weight photos
+    match /weightPhotos/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
     // Default rule - deny access
     match /{allPaths=**} {
       allow read, write: if false;

@@ -444,7 +444,9 @@ struct WaterEntry: Codable, Identifiable {
 
 class DiaryDataManager: ObservableObject {
     static let shared = DiaryDataManager()
-    
+
+    @Published var dataReloadTrigger: UUID = UUID()
+
     private init() {}
     
     // Date-based keys for UserDefaults
@@ -512,39 +514,84 @@ class DiaryDataManager: ObservableObject {
     // Add a single food item to a specific meal
     func addFoodItem(_ item: DiaryFoodItem, to meal: String, for date: Date) {
         print("DiaryDataManager: Adding food item '\(item.name)' to meal '\(meal)' for date \(date)")
-        let (breakfast, lunch, dinner, snacks) = getFoodData(for: date)
-        print("DiaryDataManager: Current counts - Breakfast: \(breakfast.count), Lunch: \(lunch.count), Dinner: \(dinner.count), Snacks: \(snacks.count)")
 
-        switch meal.lowercased() {
-        case "breakfast":
-            var updatedBreakfast = breakfast
-            updatedBreakfast.append(item)
-            print("DiaryDataManager: Adding to breakfast. New count: \(updatedBreakfast.count)")
-            saveFoodData(for: date, breakfast: updatedBreakfast, lunch: lunch, dinner: dinner, snacks: snacks)
-        case "lunch":
-            var updatedLunch = lunch
-            updatedLunch.append(item)
-            print("DiaryDataManager: Adding to lunch. New count: \(updatedLunch.count)")
-            saveFoodData(for: date, breakfast: breakfast, lunch: updatedLunch, dinner: dinner, snacks: snacks)
-        case "dinner":
-            var updatedDinner = dinner
-            updatedDinner.append(item)
-            print("DiaryDataManager: Adding to dinner. New count: \(updatedDinner.count)")
-            saveFoodData(for: date, breakfast: breakfast, lunch: lunch, dinner: updatedDinner, snacks: snacks)
-        case "snacks":
-            var updatedSnacks = snacks
-            updatedSnacks.append(item)
-            print("DiaryDataManager: Adding to snacks. New count: \(updatedSnacks.count)")
-            saveFoodData(for: date, breakfast: breakfast, lunch: lunch, dinner: dinner, snacks: updatedSnacks)
-        default:
-            print("DiaryDataManager: ERROR - Unknown meal type: \(meal)")
+        Task {
+            do {
+                // Load current data from Firebase (single source of truth)
+                let (breakfast, lunch, dinner, snacks) = try await getFoodDataAsync(for: date)
+                print("DiaryDataManager: Loaded current counts from Firebase - Breakfast: \(breakfast.count), Lunch: \(lunch.count), Dinner: \(dinner.count), Snacks: \(snacks.count)")
+
+                // Add new item to appropriate meal
+                switch meal.lowercased() {
+                case "breakfast":
+                    var updatedBreakfast = breakfast
+                    updatedBreakfast.append(item)
+                    print("DiaryDataManager: Adding to breakfast. New count: \(updatedBreakfast.count)")
+                    saveFoodData(for: date, breakfast: updatedBreakfast, lunch: lunch, dinner: dinner, snacks: snacks)
+                case "lunch":
+                    var updatedLunch = lunch
+                    updatedLunch.append(item)
+                    print("DiaryDataManager: Adding to lunch. New count: \(updatedLunch.count)")
+                    saveFoodData(for: date, breakfast: breakfast, lunch: updatedLunch, dinner: dinner, snacks: snacks)
+                case "dinner":
+                    var updatedDinner = dinner
+                    updatedDinner.append(item)
+                    print("DiaryDataManager: Adding to dinner. New count: \(updatedDinner.count)")
+                    saveFoodData(for: date, breakfast: breakfast, lunch: lunch, dinner: updatedDinner, snacks: snacks)
+                case "snacks":
+                    var updatedSnacks = snacks
+                    updatedSnacks.append(item)
+                    print("DiaryDataManager: Adding to snacks. New count: \(updatedSnacks.count)")
+                    saveFoodData(for: date, breakfast: breakfast, lunch: lunch, dinner: dinner, snacks: updatedSnacks)
+                default:
+                    print("DiaryDataManager: ERROR - Unknown meal type: \(meal)")
+                }
+
+                // Add to recent foods for quick access in search
+                await MainActor.run {
+                    addToRecentFoods(item)
+                }
+
+                // Sync to Firebase immediately
+                syncFoodItemToFirebase(item, meal: meal, date: date)
+
+                // Notify observers that data changed (triggers DiaryTabView to refresh)
+                await MainActor.run {
+                    self.objectWillChange.send()
+                    self.dataReloadTrigger = UUID() // Trigger DiaryTabView to reload from Firebase
+                }
+
+            } catch {
+                print("DiaryDataManager: Error loading current data from Firebase: \(error.localizedDescription)")
+                // Fallback: just sync to Firebase
+                syncFoodItemToFirebase(item, meal: meal, date: date)
+                await MainActor.run {
+                    addToRecentFoods(item)
+                }
+            }
         }
+    }
 
-        // Add to recent foods for quick access in search
-        addToRecentFoods(item)
+    // Delete food items from both local storage and Firebase
+    func deleteFoodItems(_ items: [DiaryFoodItem], for date: Date) {
+        Task {
+            print("DiaryDataManager: Deleting \(items.count) food items from Firebase")
 
-        // Sync to Firebase immediately
-        syncFoodItemToFirebase(item, meal: meal, date: date)
+            for item in items {
+                do {
+                    // Delete from Firebase using the item's ID
+                    try await FirebaseManager.shared.deleteFoodEntry(entryId: item.id.uuidString)
+                    print("DiaryDataManager: Deleted item '\(item.name)' from Firebase")
+                } catch {
+                    print("DiaryDataManager: Error deleting item '\(item.name)' from Firebase: \(error.localizedDescription)")
+                }
+            }
+
+            // Trigger reload after deletion
+            await MainActor.run {
+                self.dataReloadTrigger = UUID()
+            }
+        }
     }
 
     // MARK: - Firebase Sync

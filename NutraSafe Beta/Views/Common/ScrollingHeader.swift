@@ -12,9 +12,9 @@ struct ScrollingHeader<BottomContent: View, TrailingContent: View>: View {
         title: String,
         subtitle: String? = nil,
         gradientColors: [Color] = [
-            Color.blue.opacity(0.8),
-            Color.purple.opacity(0.7),
-            Color.indigo.opacity(0.6)
+            Color(red: 0.95, green: 0.68, blue: 0.38), // Brighter golden orange
+            Color(red: 0.90, green: 0.62, blue: 0.37), // Mid-tone
+            Color(red: 0.85, green: 0.55, blue: 0.35)  // Brighter bronze
         ],
         @ViewBuilder bottomContent: @escaping () -> BottomContent,
         @ViewBuilder trailingContent: @escaping () -> TrailingContent

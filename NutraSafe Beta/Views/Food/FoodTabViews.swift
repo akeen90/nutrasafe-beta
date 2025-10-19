@@ -34,8 +34,8 @@ struct FoodTabView: View {
                             .foregroundStyle(
                                 LinearGradient(
                                     colors: [
-                                        Color(red: 0.6, green: 0.3, blue: 0.8),
-                                        Color(red: 0.4, green: 0.5, blue: 0.9)
+                                        Color(red: 0.95, green: 0.68, blue: 0.38), // Brighter golden orange
+                                        Color(red: 0.85, green: 0.55, blue: 0.35)  // Brighter bronze
                                     ],
                                     startPoint: .leading,
                                     endPoint: .trailing
@@ -568,8 +568,13 @@ struct FoodPatternAnalysisCard: View {
             return (ingredient.capitalized, count, percentage, trend, isAllergen, baseAllergen)
         }
 
-        // Sort by frequency within each category
-        return mapped.sorted { $0.count > $1.count }
+        // Sort by frequency (descending), then alphabetically for stable ordering
+        return mapped.sorted {
+            if $0.count != $1.count {
+                return $0.count > $1.count
+            }
+            return $0.ingredient < $1.ingredient
+        }
     }
 
     private var allergenTriggers: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend, isAllergen: Bool, baseAllergen: String?)] {
@@ -601,9 +606,14 @@ struct FoodPatternAnalysisCard: View {
             }
         }
 
-        // Sort ingredients within each category by frequency
-        for category in grouped.keys {
-            grouped[category]?.sort { $0.count > $1.count }
+        // Sort ingredients within each category by frequency (stable sorting)
+        for category in grouped.keys.sorted() {
+            grouped[category]?.sort {
+                if $0.count != $1.count {
+                    return $0.count > $1.count
+                }
+                return $0.ingredient < $1.ingredient
+            }
         }
 
         // Calculate category percentage (highest percentage ingredient in that category)
@@ -613,8 +623,13 @@ struct FoodPatternAnalysisCard: View {
             return (category: category, percentage: maxPercentage, ingredients: ingredients)
         }
 
-        // Sort by category percentage (highest first)
-        return groupedArray.sorted { $0.percentage > $1.percentage }
+        // Sort by category percentage (descending), then alphabetically for stable ordering
+        return groupedArray.sorted {
+            if $0.percentage != $1.percentage {
+                return $0.percentage > $1.percentage
+            }
+            return $0.category < $1.category
+        }
     }
 
     private func calculateTrend(for ingredient: String) -> PatternRow.Trend {
@@ -648,9 +663,16 @@ struct FoodPatternAnalysisCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Patterns")
-                .font(.system(size: 22, weight: .bold))
-                .foregroundColor(.primary)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Patterns")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundColor(.primary)
+
+                Text("Common Ingredients from Your Reactions")
+                    .font(.system(size: 13))
+                    .italic()
+                    .foregroundColor(.secondary)
+            }
 
             if allTriggers.isEmpty {
                 VStack(spacing: 12) {
@@ -668,10 +690,10 @@ struct FoodPatternAnalysisCard: View {
                 .padding(.vertical, 30)
             } else {
                 VStack(alignment: .leading, spacing: 0) {
-                    // Known Allergens Section (Simplified)
+                    // Recognised Allergens Section (Simplified)
                     if !allergenTriggers.isEmpty {
                         VStack(alignment: .leading, spacing: 0) {
-                            Text("Known Allergens")
+                            Text("Recognised Allergens")
                                 .font(.system(size: 18, weight: .bold))
                                 .foregroundColor(.primary)
                                 .padding(.bottom, 20)
@@ -683,34 +705,40 @@ struct FoodPatternAnalysisCard: View {
                                         categoryPercentage: group.percentage,
                                         ingredients: group.ingredients
                                     )
+                                    .id(group.category)  // Stable identity to prevent re-rendering
                                 }
                             }
                         }
+                        .id("recognised-allergens-section")  // Stable identity for entire section
                         .padding(.bottom, 28)
                     }
 
                     // Other Ingredients Section (Expandable)
                     if !otherTriggers.isEmpty {
                         VStack(alignment: .leading, spacing: 0) {
-                            Button(action: {
-                                withAnimation(AppAnimation.spring) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Button(action: {
                                     showOtherIngredients.toggle()
-                                }
-                            }) {
-                                HStack(alignment: .center, spacing: 12) {
-                                    Text("Other Ingredients")
-                                        .font(.system(size: 18, weight: .bold))
-                                        .foregroundColor(.primary)
+                                }) {
+                                    HStack(alignment: .center, spacing: 12) {
+                                        Text("Other Ingredients")
+                                            .font(.system(size: 18, weight: .bold))
+                                            .foregroundColor(.primary)
 
-                                    Spacer()
+                                        Spacer()
 
-                                    Image(systemName: showOtherIngredients ? "chevron.up.circle.fill" : "chevron.down.circle.fill")
-                                        .font(.system(size: 20))
-                                        .foregroundColor(.secondary.opacity(0.5))
+                                        Image(systemName: showOtherIngredients ? "chevron.up.circle.fill" : "chevron.down.circle.fill")
+                                            .font(.system(size: 20))
+                                            .foregroundColor(.secondary.opacity(0.5))
+                                    }
+                                    .contentShape(Rectangle())
                                 }
-                                .contentShape(Rectangle())
+                                .buttonStyle(PlainButtonStyle())
+
+                                Text("Ingredients not identified as common allergens")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.secondary)
                             }
-                            .buttonStyle(PlainButtonStyle())
 
                             if showOtherIngredients {
                                 VStack(alignment: .leading, spacing: 8) {
@@ -735,12 +763,16 @@ struct FoodPatternAnalysisCard: View {
                                     }
                                 }
                                 .padding(.top, 16)
-                                .transition(.opacity.combined(with: .move(edge: .top)))
                             }
                         }
                     }
                 }
+                .animation(nil, value: showOtherIngredients)  // Disable all animations when expanding/collapsing
             }
+        }
+        .animation(nil, value: showOtherIngredients)  // Prevent all implicit animations on entire card
+        .transaction { transaction in
+            transaction.animation = nil  // Force disable all animations
         }
         .padding(AppSpacing.large)
         .background(

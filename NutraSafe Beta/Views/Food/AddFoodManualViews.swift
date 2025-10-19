@@ -3,7 +3,7 @@
 //  NutraSafe Beta
 //
 //  Comprehensive manual food entry system with full nutrition data support
-//  Supports both diary and fridge destinations with appropriate fields
+//  Supports both diary and use-by destinations with appropriate fields
 //
 
 import SwiftUI
@@ -15,6 +15,7 @@ import Foundation
 struct AddFoodManualView: View {
     @Binding var selectedTab: TabItem
     @Binding var destination: AddFoodMainView.AddDestination
+    var prefilledBarcode: String? = nil
     @State private var showingDetailEntry = false
 
     var body: some View {
@@ -34,8 +35,8 @@ struct AddFoodManualView: View {
 
             // Description
             Text(destination == .fridge
-                 ? "Add custom food item with use-by date tracking"
-                 : "Add custom food item to your diary with complete nutrition data")
+                 ? "Add item with use-by date tracking"
+                 : "Add item to your diary with complete nutrition data")
                 .font(.system(size: 16))
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
@@ -65,7 +66,13 @@ struct AddFoodManualView: View {
             Spacer()
         }
         .sheet(isPresented: $showingDetailEntry) {
-            ManualFoodDetailEntryView(selectedTab: $selectedTab, destination: destination)
+            ManualFoodDetailEntryView(selectedTab: $selectedTab, destination: destination, prefilledBarcode: prefilledBarcode)
+        }
+        .onAppear {
+            // If we have a prefilled barcode, automatically show the detail entry
+            if prefilledBarcode != nil {
+                showingDetailEntry = true
+            }
         }
     }
 }
@@ -76,6 +83,7 @@ struct AddFoodManualView: View {
 struct ManualFoodDetailEntryView: View {
     @Binding var selectedTab: TabItem
     let destination: AddFoodMainView.AddDestination
+    var prefilledBarcode: String? = nil
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var diaryDataManager: DiaryDataManager
 
@@ -101,7 +109,10 @@ struct ManualFoodDetailEntryView: View {
     // Ingredients
     @State private var ingredientsText = ""
 
-    // Fridge-specific fields
+    // Diary-specific fields
+    @State private var selectedMealTime = "Breakfast"
+
+    // Use By-specific fields
     @State private var expiryDate = Date()
     @State private var quantity = "1"
     @State private var location = "General"
@@ -113,15 +124,35 @@ struct ManualFoodDetailEntryView: View {
     @State private var errorMessage = ""
 
     let servingUnits = ["g", "ml", "oz", "cup", "tbsp", "tsp", "piece", "slice", "serving"]
-    let fridgeLocations = ["General", "Fridge", "Freezer", "Pantry", "Cupboard"]
+    let useByLocations = ["General", "Fridge", "Freezer", "Pantry", "Cupboard"]
+    let mealTimes = ["Breakfast", "Lunch", "Dinner", "Snacks"]
 
     var isFormValid: Bool {
         if destination == .fridge {
-            // For fridge: only need food name and quantity
-            return !foodName.isEmpty && !quantity.isEmpty
+            // For use by: need food name, brand, and quantity
+            return !foodName.isEmpty && !brand.isEmpty && !quantity.isEmpty
         } else {
-            // For diary: need food name and calories
-            return !foodName.isEmpty && !calories.isEmpty
+            // For diary: need food name, brand, and calories
+            return !foodName.isEmpty && !brand.isEmpty && !calories.isEmpty
+        }
+    }
+
+    // Helper to check if a required field is empty and should show error
+    private func shouldShowError(for field: String) -> Bool {
+        // Only show error if user has tried to save (isSaving was true at some point)
+        guard showingError || isSaving else { return false }
+
+        switch field {
+        case "foodName":
+            return foodName.isEmpty
+        case "brand":
+            return brand.isEmpty
+        case "calories":
+            return destination == .diary && calories.isEmpty
+        case "quantity":
+            return destination == .fridge && quantity.isEmpty
+        default:
+            return false
         }
     }
 
@@ -136,11 +167,19 @@ struct ManualFoodDetailEntryView: View {
                         FormField(label: "Food Name", isRequired: true) {
                             TextField("Enter food name...", text: $foodName)
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 5)
+                                        .stroke(shouldShowError(for: "foodName") ? Color.red : Color.clear, lineWidth: 2)
+                                )
                         }
 
-                        FormField(label: "Brand (Optional)") {
+                        FormField(label: "Brand Name", isRequired: true) {
                             TextField("Enter brand name...", text: $brand)
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 5)
+                                        .stroke(shouldShowError(for: "brand") ? Color.red : Color.clear, lineWidth: 2)
+                                )
                         }
                     }
 
@@ -190,7 +229,7 @@ struct ManualFoodDetailEntryView: View {
                             SectionHeader(title: "Core Nutrition (per 100g)")
 
                             VStack(spacing: 12) {
-                                ManualNutritionInputRow(label: "Energy", value: $calories, unit: "kcal", isRequired: true)
+                                ManualNutritionInputRow(label: "Energy", value: $calories, unit: "kcal", isRequired: true, showError: shouldShowError(for: "calories"))
                                 ManualNutritionInputRow(label: "Protein", value: $protein, unit: "g")
                                 ManualNutritionInputRow(label: "Carbs", value: $carbs, unit: "g")
                                 ManualNutritionInputRow(label: "Fat", value: $fat, unit: "g")
@@ -208,6 +247,20 @@ struct ManualFoodDetailEntryView: View {
                                 ManualNutritionInputRow(label: "Sugar", value: $sugar, unit: "g")
                                 ManualNutritionInputRow(label: "Sodium", value: $sodium, unit: "mg")
                             }
+                        }
+
+                        Divider()
+
+                        // Meal Time Selection for Diary
+                        VStack(alignment: .leading, spacing: 16) {
+                            SectionHeader(title: "Meal Time")
+
+                            Picker("Meal Time", selection: $selectedMealTime) {
+                                ForEach(mealTimes, id: \.self) { meal in
+                                    Text(meal).tag(meal)
+                                }
+                            }
+                            .pickerStyle(SegmentedPickerStyle())
                         }
 
                         Divider()
@@ -249,12 +302,12 @@ struct ManualFoodDetailEntryView: View {
                         }
                     }
 
-                    // Fridge-specific fields (simplified form)
+                    // Use By-specific fields (simplified form)
                     if destination == .fridge {
                         Divider()
 
                         VStack(alignment: .leading, spacing: 16) {
-                            SectionHeader(title: "Fridge Details")
+                            SectionHeader(title: "Use By Details")
 
                             FormField(label: "Quantity", isRequired: true) {
                                 TextField("1", text: $quantity)
@@ -278,7 +331,7 @@ struct ManualFoodDetailEntryView: View {
 
                             FormField(label: "Location") {
                                 Picker("Location", selection: $location) {
-                                    ForEach(fridgeLocations, id: \.self) { loc in
+                                    ForEach(useByLocations, id: \.self) { loc in
                                         Text(loc).tag(loc)
                                     }
                                 }
@@ -321,7 +374,7 @@ struct ManualFoodDetailEntryView: View {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.system(size: 20))
                             }
-                            Text(isSaving ? "Saving..." : (destination == .fridge ? "Add to Fridge" : "Add to Diary"))
+                            Text(isSaving ? "Saving..." : (destination == .fridge ? "Add to Use By" : "Add to Diary"))
                                 .font(.system(size: 18, weight: .semibold))
                         }
                         .foregroundColor(.white)
@@ -341,7 +394,7 @@ struct ManualFoodDetailEntryView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
             }
-            .navigationTitle(destination == .fridge ? "Add to Fridge" : "Add to Diary")
+            .navigationTitle(destination == .fridge ? "Add to Use By" : "Add to Diary")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -359,29 +412,50 @@ struct ManualFoodDetailEntryView: View {
     }
 
     private func saveFood() {
-        guard isFormValid else { return }
+        // First check if form is valid
+        if !isFormValid {
+            // Show error state for invalid fields
+            isSaving = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isSaving = false
+            }
+            return
+        }
 
         isSaving = true
 
         Task {
             do {
                 if destination == .fridge {
-                    await saveFoodToFridge()
+                    try await saveFoodToUseBy()
                 } else {
-                    await saveFoodToDiary()
+                    try await saveFoodToDiary()
                 }
 
+                // Only dismiss if save was successful
                 await MainActor.run {
                     isSaving = false
                     dismiss()
+                }
+            } catch {
+                // Don't dismiss on error - show error message instead
+                await MainActor.run {
+                    isSaving = false
+                    // Error will be shown by the saveFoodToDiary/saveFoodToFridge functions
                 }
             }
         }
     }
 
-    private func saveFoodToDiary() async {
-        // Create ingredients list from text
-        let ingredients = ingredientsText.isEmpty ? nil : ingredientsText.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+    private func saveFoodToDiary() async throws {
+        // AUTO-CAPITALIZE: Food name and brand (first letter of each word)
+        let capitalizedFoodName = foodName.capitalized
+        let capitalizedBrand = brand.isEmpty ? nil : brand.capitalized
+
+        // Create ingredients list from text with auto-capitalization
+        let ingredients = ingredientsText.isEmpty ? nil : ingredientsText.components(separatedBy: ",").map {
+            $0.trimmingCharacters(in: .whitespaces).capitalized
+        }
 
         // Parse nutrition values (all per 100g as entered)
         let caloriesValue = Double(calories) ?? 0
@@ -392,12 +466,11 @@ struct ManualFoodDetailEntryView: View {
         let sugarValue = Double(sugar) ?? 0
         let sodiumValue = Double(sodium) ?? 0
         let servingSizeValue = Double(servingSize) ?? 100
-        let brandValue = brand.isEmpty ? nil : brand
 
         do {
-            // Prepare food data for userAdded collection
+            // Prepare food data for userAdded collection with capitalized names
             var foodData: [String: Any] = [
-                "foodName": foodName,
+                "foodName": capitalizedFoodName,
                 "servingSize": servingSizeValue,
                 "servingUnit": servingUnit,
                 "calories": caloriesValue,
@@ -407,7 +480,7 @@ struct ManualFoodDetailEntryView: View {
             ]
 
             // Add optional fields
-            if let brandValue = brandValue {
+            if let brandValue = capitalizedBrand {
                 foodData["brandName"] = brandValue
             }
             if fiberValue > 0 {
@@ -422,16 +495,19 @@ struct ManualFoodDetailEntryView: View {
             if let ingredients = ingredients {
                 foodData["ingredients"] = ingredients.joined(separator: ", ")
             }
+            if let barcode = prefilledBarcode {
+                foodData["barcode"] = barcode
+            }
 
             // Save to userAdded collection (with profanity check)
             let foodId = try await FirebaseManager.shared.saveUserAddedFood(foodData)
             print("✅ Manual food saved to userAdded collection: \(foodId)")
 
-            // Now add to user's diary
+            // Now add to user's diary with capitalized values
             let diaryEntry = DiaryFoodItem(
                 id: UUID(),
-                name: foodName,
-                brand: brandValue,
+                name: capitalizedFoodName,
+                brand: capitalizedBrand,
                 calories: Int(caloriesValue),
                 protein: proteinValue,
                 carbs: carbsValue,
@@ -447,14 +523,15 @@ struct ManualFoodDetailEntryView: View {
                 sugarLevel: nil,
                 ingredients: ingredients,
                 additives: nil,
-                barcode: nil,
+                barcode: prefilledBarcode,
                 micronutrientProfile: nil
             )
 
-            // Add to diary via DiaryDataManager
+            // Add to diary via DiaryDataManager using selected meal time
             await MainActor.run {
-                diaryDataManager.addFoodItem(diaryEntry, to: "breakfast", for: Date())
-                print("✅ Food added to user's diary")
+                let mealType = selectedMealTime.lowercased() // Convert to lowercase for storage
+                diaryDataManager.addFoodItem(diaryEntry, to: mealType, for: Date())
+                print("✅ Food added to user's diary (\(selectedMealTime))")
             }
 
             // Switch to diary tab to show the added food
@@ -463,38 +540,53 @@ struct ManualFoodDetailEntryView: View {
             }
 
         } catch {
-            // Show error to user
+            // Show error to user and re-throw to prevent dismissal
             await MainActor.run {
                 errorMessage = error.localizedDescription
                 showingError = true
                 print("❌ Error saving manual food: \(error.localizedDescription)")
             }
+            throw error
         }
     }
 
-    private func saveFoodToFridge() async {
-        // Create fridge item from manual data using existing FridgeItem structure
+    private func saveFoodToUseBy() async throws {
+        // Create use-by item from manual data using existing FridgeItem structure
         guard let userId = FirebaseManager.shared.currentUser?.uid else {
-            print("❌ No user logged in")
-            return
+            let error = NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to add items"])
+            await MainActor.run {
+                errorMessage = error.localizedDescription
+                showingError = true
+            }
+            throw error
         }
+
+        // AUTO-CAPITALIZE: Food name and brand
+        let capitalizedFoodName = foodName.capitalized
+        let capitalizedBrand = brand.capitalized
 
         let fridgeItem = FridgeItem(
             userId: userId,
-            name: brand.isEmpty ? foodName : "\(foodName) - \(brand)",
+            name: "\(capitalizedFoodName) - \(capitalizedBrand)",
             quantity: Int(quantity) ?? 1,
             unit: servingUnit,
             expiryDate: expiryDate,
             category: location,
-            notes: ingredientsText.isEmpty ? nil : ingredientsText
+            notes: ingredientsText.isEmpty ? nil : ingredientsText,
+            barcode: prefilledBarcode
         )
 
         // Save to Firebase
         do {
             try await FirebaseManager.shared.saveFridgeItem(fridgeItem)
-            print("✅ Successfully saved food to fridge")
+            print("✅ Successfully saved item to use-by tracking")
         } catch {
-            print("❌ Error saving to fridge: \(error)")
+            await MainActor.run {
+                errorMessage = error.localizedDescription
+                showingError = true
+                print("❌ Error saving to use-by: \(error)")
+            }
+            throw error
         }
     }
 }
@@ -541,6 +633,7 @@ struct ManualNutritionInputRow: View {
     @Binding var value: String
     let unit: String
     var isRequired: Bool = false
+    var showError: Bool = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -559,6 +652,10 @@ struct ManualNutritionInputRow: View {
             TextField("0", text: $value)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .keyboardType(.decimalPad)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5)
+                        .stroke(showError ? Color.red : Color.clear, lineWidth: 2)
+                )
 
             Text(unit)
                 .font(.system(size: 14))

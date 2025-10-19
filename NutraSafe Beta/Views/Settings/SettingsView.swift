@@ -384,7 +384,6 @@ struct NutritionGoalsSection: View {
     @EnvironmentObject var firebaseManager: FirebaseManager
 
     @State private var caloricGoal: Int = 2000
-    @State private var fastingGoalHours: Int = 16
     @State private var proteinPercent: Int = 30
     @State private var carbsPercent: Int = 40
     @State private var fatPercent: Int = 30
@@ -467,42 +466,6 @@ struct NutritionGoalsSection: View {
                         .padding(.vertical, 12)
                     }
                     .buttonStyle(PlainButtonStyle())
-
-                    Divider()
-                        .padding(.leading, 52)
-
-                    // Fasting Goal
-                    VStack(spacing: 8) {
-                        HStack {
-                            Image(systemName: "clock.fill")
-                                .font(.system(size: 16))
-                                .foregroundColor(.purple)
-                                .frame(width: 24)
-
-                            Text("Fasting Goal")
-                                .font(.system(size: 16))
-                                .foregroundColor(.primary)
-
-                            Spacer()
-                        }
-
-                        HStack {
-                            Spacer()
-
-                            Stepper(value: $fastingGoalHours, in: 8...24, step: 1) {
-                                Text("\(fastingGoalHours) hours")
-                                    .font(.system(size: 20, weight: .semibold))
-                                    .foregroundColor(.purple)
-                            }
-                            .onChange(of: fastingGoalHours) { newValue in
-                                saveFastingGoal(newValue)
-                            }
-
-                            Spacer()
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
                 }
             }
         }
@@ -530,14 +493,12 @@ struct NutritionGoalsSection: View {
         do {
             // Load user settings
             let settings = try await firebaseManager.getUserSettings()
-            let fastingState = try await firebaseManager.getFastingState()
 
             await MainActor.run {
                 caloricGoal = settings.caloricGoal ?? 2000
                 proteinPercent = settings.proteinPercent ?? 30
                 carbsPercent = settings.carbsPercent ?? 40
                 fatPercent = settings.fatPercent ?? 30
-                fastingGoalHours = fastingState.goal
                 isLoading = false
             }
         } catch {
@@ -557,27 +518,6 @@ struct NutritionGoalsSection: View {
             } catch {
                 await MainActor.run {
                     errorMessage = "Failed to save caloric goal: \(error.localizedDescription)"
-                    showingError = true
-                }
-            }
-        }
-    }
-
-    private func saveFastingGoal(_ hours: Int) {
-        Task {
-            do {
-                let currentState = try await firebaseManager.getFastingState()
-                try await firebaseManager.saveFastingState(
-                    isFasting: currentState.isFasting,
-                    startTime: currentState.startTime,
-                    goal: hours,
-                    notificationsEnabled: currentState.notificationsEnabled,
-                    reminderInterval: currentState.reminderInterval
-                )
-                print("✅ Fasting goal updated to \(hours) hours")
-            } catch {
-                await MainActor.run {
-                    errorMessage = "Failed to save fasting goal: \(error.localizedDescription)"
                     showingError = true
                 }
             }
@@ -2251,9 +2191,6 @@ struct AllergenRow: View {
     var body: some View {
         Button(action: onToggle) {
             HStack(spacing: 12) {
-                Text(allergen.icon)
-                    .font(.system(size: 24))
-
                 VStack(alignment: .leading, spacing: 2) {
                     Text(allergen.displayName)
                         .font(.system(size: 16))

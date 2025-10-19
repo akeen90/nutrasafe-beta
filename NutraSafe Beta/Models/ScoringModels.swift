@@ -61,10 +61,28 @@ class ProcessingScorer {
     // Expose database version for re-analysis comparison
     private(set) var databaseVersion: String = "2025.1"
 
+    // PERFORMANCE: Memoization cache for processing scores
+    private var scoreCache: [String: NutritionProcessingScore] = [:]
+
+    // PERFORMANCE: Memoization cache for additive analysis
+    private var additivesCache: [String: [AdditiveInfo]] = [:]
+
+    private let cacheLock = NSLock()
+
     private init() {}
 
     // Public method to analyze additives in ingredients
     func analyzeAdditives(in ingredientsText: String) -> [AdditiveInfo] {
+        // PERFORMANCE: Check cache first
+        let cacheKey = ingredientsText.lowercased()
+        cacheLock.lock()
+        if let cached = additivesCache[cacheKey] {
+            cacheLock.unlock()
+            print("⚡ [ProcessingScorer] Using cached additives analysis (\(cached.count) additives)")
+            return cached
+        }
+        cacheLock.unlock()
+
         print("⚗️ [ProcessingScorer] analyzeAdditives() called")
         print("⚗️ [ProcessingScorer] Input text: '\(ingredientsText)'")
         print("⚗️ [ProcessingScorer] Text length: \(ingredientsText.count) characters")
@@ -85,17 +103,33 @@ class ProcessingScorer {
             print("⚠️ [ProcessingScorer] NO ADDITIVES FOUND IN ANALYSIS!")
         }
 
+        // PERFORMANCE: Cache the result
+        cacheLock.lock()
+        additivesCache[cacheKey] = analysis.comprehensiveAdditives
+        cacheLock.unlock()
+
         return analysis.comprehensiveAdditives
     }
 
     func calculateProcessingScore(for foodName: String, ingredients: String? = nil, sugarPer100g: Double? = nil) -> NutritionProcessingScore {
+        // PERFORMANCE: Check cache first
+        let cacheKey = "\(foodName)|\(ingredients ?? "")|\(sugarPer100g ?? 0)"
+        cacheLock.lock()
+        if let cached = scoreCache[cacheKey] {
+            cacheLock.unlock()
+            print("⚡ [ProcessingScorer] Using cached score for: \(foodName)")
+            return cached
+        }
+        cacheLock.unlock()
+
         let foodLower = foodName.lowercased()
 
         // CRITICAL: If no real ingredients provided, return "Not enough data" for anything that's not obviously unprocessed
         guard let ingredients = ingredients, !ingredients.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             // Only allow high scores for very obviously unprocessed single foods
+            let result: NutritionProcessingScore
             if isObviouslyUnprocessedSingleFood(foodLower) {
-                return NutritionProcessingScore(
+                result = NutritionProcessingScore(
                     grade: ProcessingGrade.a,
                     score: 85,
                     explanation: "Single unprocessed food",
@@ -105,19 +139,25 @@ class ProcessingScorer {
                     eNumberCount: 0,
                     naturalScore: 85
                 )
+            } else {
+                // Everything else gets "Not enough data"
+                result = NutritionProcessingScore(
+                    grade: ProcessingGrade.unknown,
+                    score: 0,
+                    explanation: "No ingredient data available for accurate scoring",
+                    factors: ["No ingredient list"],
+                    processingLevel: ProcessingLevel.unprocessed,
+                    additiveCount: 0,
+                    eNumberCount: 0,
+                    naturalScore: 0
+                )
             }
-            
-            // Everything else gets "Not enough data" 
-            return NutritionProcessingScore(
-                grade: ProcessingGrade.unknown,
-                score: 0,
-                explanation: "No ingredient data available for accurate scoring",
-                factors: ["No ingredient list"],
-                processingLevel: ProcessingLevel.unprocessed,
-                additiveCount: 0,
-                eNumberCount: 0,
-                naturalScore: 0
-            )
+
+            // PERFORMANCE: Cache and return
+            cacheLock.lock()
+            scoreCache[cacheKey] = result
+            cacheLock.unlock()
+            return result
         }
         
         // Use real ingredients for analysis
@@ -209,11 +249,11 @@ class ProcessingScorer {
                                          totalScore: totalScore)
         
         // Build factors list
-        let factors = buildFactors(processingLevel: processingLevel, 
-                                 additiveAnalysis: additiveAnalysis, 
+        let factors = buildFactors(processingLevel: processingLevel,
+                                 additiveAnalysis: additiveAnalysis,
                                  naturalScore: naturalScore)
-        
-        return NutritionProcessingScore(
+
+        let result = NutritionProcessingScore(
             grade: grade,
             score: totalScore,
             explanation: explanation,
@@ -223,6 +263,13 @@ class ProcessingScorer {
             eNumberCount: additiveAnalysis.eNumbers.count,
             naturalScore: naturalScore
         )
+
+        // PERFORMANCE: Cache the result for future calls
+        cacheLock.lock()
+        scoreCache[cacheKey] = result
+        cacheLock.unlock()
+
+        return result
     }
     
     private func determineProcessingLevel(_ food: String, isIngredientList: Bool = false) -> ProcessingLevel {
@@ -582,7 +629,20 @@ class ProcessingScorer {
         return min(score, 1.0)  // Cap at 100%
     }
 
+    // PERFORMANCE: Internal cache for AdditiveAnalysis results
+    private var analysisCache: [String: AdditiveAnalysis] = [:]
+
     private func analyseAdditives(in food: String) -> AdditiveAnalysis {
+        // PERFORMANCE: Check cache first
+        let cacheKey = food.lowercased()
+        cacheLock.lock()
+        if let cached = analysisCache[cacheKey] {
+            cacheLock.unlock()
+            print("⚡ [analyseAdditives] Using cached analysis (\(cached.comprehensiveAdditives.count) additives)")
+            return cached
+        }
+        cacheLock.unlock()
+
         print("🔬 [analyseAdditives] Starting analysis")
         print("🔬 [analyseAdditives] Input text: '\(food)'")
 
@@ -690,8 +750,8 @@ class ProcessingScorer {
         let worstVerdict = detectedAdditives.contains { $0.effectsVerdict == .caution } ? "caution" : "neutral"
         let hasChildWarnings = detectedAdditives.contains { $0.hasChildWarning }
         let hasAllergenWarnings = detectedAdditives.contains { $0.hasSulphitesAllergenLabel }
-        
-        return AdditiveAnalysis(
+
+        let result = AdditiveAnalysis(
             eNumbers: eNumbers,
             additives: additives,
             preservatives: preservatives,
@@ -702,6 +762,13 @@ class ProcessingScorer {
             hasChildWarnings: hasChildWarnings,
             hasAllergenWarnings: hasAllergenWarnings
         )
+
+        // PERFORMANCE: Cache the result
+        cacheLock.lock()
+        analysisCache[cacheKey] = result
+        cacheLock.unlock()
+
+        return result
     }
     
     private func getHealthScore(for additive: AdditiveInfo) -> Int {

@@ -104,6 +104,13 @@ struct FoodSearchResultRowEnhanced: View {
     }
     
     private var nutritionScore: ProcessingGrade {
+        // PERFORMANCE: Use pre-computed grade from FoodSearchResult if available
+        if let precomputedGrade = food.processingGrade,
+           let grade = ProcessingGrade(rawValue: precomputedGrade) {
+            return grade
+        }
+
+        // Fallback: calculate if not pre-computed
         let ingredientsString = food.ingredients?.joined(separator: ", ")
         return ProcessingScorer.shared.calculateProcessingScore(for: food.name, ingredients: ingredientsString).grade
     }
