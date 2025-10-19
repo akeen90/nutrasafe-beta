@@ -21,6 +21,7 @@ struct NutraSafeBetaApp: App {
     @StateObject private var healthKitManager = HealthKitManager.shared
     @StateObject private var workoutManager = WorkoutManager.shared
     @StateObject private var restTimerManager = ExerciseRestTimerManager()
+    @StateObject private var fastingManager = FastingManager.shared
 
     var body: some Scene {
         WindowGroup {
@@ -29,6 +30,7 @@ struct NutraSafeBetaApp: App {
                 .environmentObject(healthKitManager)
                 .environmentObject(workoutManager)
                 .environmentObject(restTimerManager)
+                .environmentObject(fastingManager)
         }
     }
 }

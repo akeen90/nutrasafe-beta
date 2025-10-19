@@ -24,6 +24,7 @@ struct FoodDetailViewFromSearch: View {
     let destination: AddFoodMainView.AddDestination
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var diaryDataManager: DiaryDataManager
+    @EnvironmentObject var fastingManager: FastingManager
     @State private var gramsAmount: String = "100"
     @State private var servings: String = "1"
     @State private var quantity: Double = 1.0
@@ -1531,6 +1532,9 @@ struct FoodDetailViewFromSearch: View {
             print("FoodDetailView: About to add food '\(diaryEntry.name)' to meal '\(selectedMeal)' on date '\(targetDate)'")
             print("FoodDetailView: DiaryEntry details - Calories: \(diaryEntry.calories), Protein: \(diaryEntry.protein), Serving: \(diaryEntry.servingDescription), Quantity: \(diaryEntry.quantity)")
             diaryDataManager.addFoodItem(diaryEntry, to: selectedMeal, for: targetDate)
+
+            // Track meal for fasting manager
+            fastingManager.recordMeal()
 
             print("FoodDetailView: Successfully added \(diaryEntry.name) to \(selectedMeal) on \(targetDate)")
 

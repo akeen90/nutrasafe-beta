@@ -20,6 +20,7 @@
 		3AB0945DA7E34CDA8CF326D8 /* DiaryComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2F7F8ABA91448198A8CB77 /* DiaryComponents.swift */; };
 		5455055A957A44D1801768B3 /* NutritionScoreViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B45D6F2FD4A7496BA9C12D66 /* NutritionScoreViews.swift */; };
 		5499F48301DC4732BB15091B /* FoodManagementViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF86AB54327E46EA98DD76AB /* FoodManagementViews.swift */; };
+		58137E2B64890ED653E8F7A3 /* FastingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 867265B1226DAC67D5A60F8D /* FastingManager.swift */; };
 		5909E6FFD2AA46A8BBE0B1B95CCF4F94 /* AdditiveAnalysisViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAE7C57B63B8447E8E45151CDF47A83C /* AdditiveAnalysisViews.swift */; };
 		5ACAC92CF0C24FA7A04AEB4F /* CustomTabBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 493422FA56E54C918E7155AD /* CustomTabBar.swift */; };
 		5DD311A374D74AC2BADCADC2 /* DiaryTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43138BC44E1C41359750CBA3 /* DiaryTabView.swift */; };
@@ -61,6 +62,7 @@
 		C25D926B5B5C401FAA66D06BFDC87598 /* WorkoutNavigationOverlays.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F7561B2EBC74941A13A75D612F2083E /* WorkoutNavigationOverlays.swift */; };
 		C5E688C40C9917A682C67426 /* WorkoutTemplatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81B075B7D4370913A69A23F0 /* WorkoutTemplatesView.swift */; };
 		C83CC72A7D464E1685D1143F /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95FB33855679471485B474B4 /* SettingsView.swift */; };
+		E0D7A2553A41000A8C20AA18 /* FastingLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2B222B37C6C811A1DA830D7 /* FastingLiveActivity.swift */; };
 		EA81BC11E57FB5223BF659FD /* WeightTrainingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D228677FCE7C1E8D0664B4A5 /* WeightTrainingView.swift */; };
 		F274CF78968B4290ADA3C260F96936CE /* FridgeTabViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4841D8FB19F4A7091A7DD0A429B645E /* FridgeTabViews.swift */; };
 		F2A1EA64DE5874696AC72D24 /* PrivacyPolicyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55FA70B49C3C721A45AA1C88 /* PrivacyPolicyView.swift */; };
@@ -87,6 +89,7 @@
 		6FB032D1453E7AD33304B2DA /* ExerciseSelectionViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseSelectionViews.swift; sourceTree = "<group>"; };
 		808B579B94C3DF670FA530BD /* NewWorkoutCreationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewWorkoutCreationView.swift; sourceTree = "<group>"; };
 		81B075B7D4370913A69A23F0 /* WorkoutTemplatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutTemplatesView.swift; sourceTree = "<group>"; };
+		867265B1226DAC67D5A60F8D /* FastingManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FastingManager.swift; sourceTree = "<group>"; };
 		92713389E2C3E565FA044EEA /* WorkoutMainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutMainView.swift; sourceTree = "<group>"; };
 		95FB33855679471485B474B4 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SettingsView.swift; path = Settings/SettingsView.swift; sourceTree = "<group>"; };
 		96AFEAFFFC70426C97B3CF2E /* additives_full_described_with_sources_2025.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = additives_full_described_with_sources_2025.csv; sourceTree = "<group>"; };
@@ -120,6 +123,7 @@
 		C0D23EEA8C59479AB6188B94 /* ActionButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Components/ActionButtons.swift"; sourceTree = "<group>"; };
 		C9BF68D365EE4EFCAC81C56F /* DiaryExerciseComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Diary/DiaryExerciseComponents.swift"; sourceTree = "<group>"; };
 		D228677FCE7C1E8D0664B4A5 /* WeightTrainingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightTrainingView.swift; sourceTree = "<group>"; };
+		D2B222B37C6C811A1DA830D7 /* FastingLiveActivity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FastingLiveActivity.swift; sourceTree = "<group>"; };
 		D4841D8FB19F4A7091A7DD0A429B645E /* FridgeTabViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FridgeTabViews.swift; sourceTree = "<group>"; };
 		DF454595E60D9E7D1B2ACBE3 /* additives_master_database.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = additives_master_database.json; sourceTree = "<group>"; };
 		EE1E506F81E64504BA776F466B03D0BC /* DiaryDailySummaryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryDailySummaryCard.swift; sourceTree = "<group>"; };
@@ -246,6 +250,8 @@
 				96AFEAFFFC70426C97B3CF2E /* additives_full_described_with_sources_2025.csv */,
 				DF454595E60D9E7D1B2ACBE3 /* additives_master_database.json */,
 				5A3F908F9CBBA65110BADC47 /* DesignSystem.swift */,
+				867265B1226DAC67D5A60F8D /* FastingManager.swift */,
+				D2B222B37C6C811A1DA830D7 /* FastingLiveActivity.swift */,
 			);
 			path = "NutraSafe Beta";
 			sourceTree = "<group>";
@@ -426,6 +432,8 @@
 				F2A1EA64DE5874696AC72D24 /* PrivacyPolicyView.swift in Sources */,
 				99761F32D25B9DA7ED306333 /* AddFoodManualViews.swift in Sources */,
 				95EAAC6CBEBF464E40185060 /* DesignSystem.swift in Sources */,
+				58137E2B64890ED653E8F7A3 /* FastingManager.swift in Sources */,
+				E0D7A2553A41000A8C20AA18 /* FastingLiveActivity.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
