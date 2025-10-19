@@ -135,12 +135,16 @@ struct AddFoodBarcodeView: View {
         }
         .navigationTitle("Scan Barcode")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showingContributionForm) {
+        .sheet(isPresented: $showingContributionForm, onDismiss: {
+            // Clean up state when sheet is dismissed
+            pendingContribution = nil
+            errorMessage = nil
+        }) {
             if let contribution = pendingContribution {
                 NavigationView {
-                    AddFoodManualView(
+                    ManualFoodDetailEntryView(
                         selectedTab: $selectedTab,
-                        destination: $destination,
+                        destination: destination,
                         prefilledBarcode: contribution.barcode
                     )
                     .navigationBarItems(leading: Button("Cancel") {

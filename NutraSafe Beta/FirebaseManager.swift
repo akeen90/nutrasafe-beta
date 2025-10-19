@@ -1145,6 +1145,9 @@ class FirebaseManager: ObservableObject {
         foodData["source"] = "manual_entry"
         foodData["isUserAdded"] = true
 
+        // Add lowercase version of foodName for case-insensitive search
+        foodData["foodNameLower"] = foodName.lowercased()
+
         // Save to global userAdded collection (accessible by all users)
         try await db.collection("userAdded")
             .document(foodId)
@@ -1158,10 +1161,10 @@ class FirebaseManager: ObservableObject {
     func searchUserAddedFoods(query: String) async throws -> [FoodSearchResult] {
         let searchTerm = query.lowercased().trimmingCharacters(in: .whitespaces)
 
-        // Search in userAdded collection
+        // Search in userAdded collection using lowercase field for case-insensitive search
         let snapshot = try await db.collection("userAdded")
-            .whereField("foodName", isGreaterThanOrEqualTo: searchTerm)
-            .whereField("foodName", isLessThan: searchTerm + "\u{f8ff}")
+            .whereField("foodNameLower", isGreaterThanOrEqualTo: searchTerm)
+            .whereField("foodNameLower", isLessThan: searchTerm + "\u{f8ff}")
             .limit(to: 20)
             .getDocuments()
 
