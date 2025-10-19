@@ -1643,12 +1643,25 @@ struct WeightTrackingView: View {
                 .padding(.bottom, 12)
                 .background(Color(.systemBackground))
 
-                ScrollView {
-                    VStack(spacing: 24) {
+                // Loading overlay
+                if isLoadingData {
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                            .progressViewStyle(CircularProgressViewStyle(tint: .blue))
 
-                    // Stats Grid - NOW AT TOP
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("Summary")
+                        Text("Loading your progress...")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        VStack(spacing: 24) {
+
+                        // Stats Grid - NOW AT TOP
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Summary")
                             .font(.system(size: 22, weight: .bold))
                             .foregroundColor(.primary)
                             .padding(.horizontal, 20)
@@ -1939,6 +1952,7 @@ struct WeightTrackingView: View {
                     }
                     .padding(.bottom, 100)
                 }
+                } // End of loading else block
             }
             .background(Color(.systemBackground))
         }
@@ -1989,11 +2003,11 @@ struct WeightTrackingView: View {
         isLoadingData = true
         Task {
             do {
-                // Load weight history from Firebase
-                let history = try await firebaseManager.getWeightHistory()
+                // OPTIMIZATION: Load weight history and settings in parallel
+                async let historyTask = firebaseManager.getWeightHistory()
+                async let settingsTask = firebaseManager.getUserSettings()
 
-                // Load settings from Firebase
-                let settings = try await firebaseManager.getUserSettings()
+                let (history, settings) = try await (historyTask, settingsTask)
 
                 await MainActor.run {
                     weightHistory = history
