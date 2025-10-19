@@ -11,7 +11,6 @@
 		05E9EA10A3EE0D7C9FF656E3 /* ExerciseHistoryViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 243F37809618412603D63497 /* ExerciseHistoryViews.swift */; };
 		23B28F0F809D4105ADF5E5261CCE0E54 /* DiaryHydrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21E673F6B8D947F9B6F2005EFFAE8B5B /* DiaryHydrationView.swift */; };
 		24D3ACC266DD4F91AE1F1045B7BE8F34 /* BarcodeScanningViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35D2ABE73E734F6F8D147178AE588182 /* BarcodeScanningViews.swift */; };
-		268D1D75597D466999B66291 /* DiaryFoodView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F3154C223B4431D8E04C5DC /* DiaryFoodView.swift */; };
 		26E954E4A2634655AB0F1224 /* FoodDetailViewFromSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF612B9BEC774EC78502B67C /* FoodDetailViewFromSearch.swift */; };
 		29D367726D67105B346DE618 /* WorkoutMainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92713389E2C3E565FA044EEA /* WorkoutMainView.swift */; };
 		2E53183EE64A45B69C083DE9A9F83A00 /* MicronutrientViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A80F06223FA34D089685F25FC74A7AD5 /* MicronutrientViews.swift */; };
@@ -28,6 +27,7 @@
 		7F6480045A1949C8961452B1 /* ExerciseTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA30481671D941A4B06DB063 /* ExerciseTabView.swift */; };
 		8699C16F52A0459784A27CD7D0AF30C9 /* FoodTabViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1E4A63C54154D289C990AE1BEA07BB8 /* FoodTabViews.swift */; };
 		90F34D6AE6BE45A98262E4B1 /* TermsAndConditionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34316E0BF18B3895987C4AAF /* TermsAndConditionsView.swift */; };
+		95EAAC6CBEBF464E40185060 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A3F908F9CBBA65110BADC47 /* DesignSystem.swift */; };
 		96AFEAFFFC70426C97B3CF2D /* additives_full_described_with_sources_2025.csv in Resources */ = {isa = PBXBuildFile; fileRef = 96AFEAFFFC70426C97B3CF2E /* additives_full_described_with_sources_2025.csv */; };
 		97956798E37686D9DE1CDCE4 /* additives_master_database.json in Resources */ = {isa = PBXBuildFile; fileRef = DF454595E60D9E7D1B2ACBE3 /* additives_master_database.json */; };
 		99761F32D25B9DA7ED306333 /* AddFoodManualViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B799554ABB0D79AAB6F4E64B /* AddFoodManualViews.swift */; };
@@ -40,7 +40,6 @@
 		A1234567890123456789012307 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890123456789012013 /* HealthKitManager.swift */; };
 		A1234567890123456789012308 /* LiveTextScannerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890123456789012014 /* LiveTextScannerService.swift */; };
 		A1234567890123456789012309 /* LiveIngredientScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890123456789012015 /* LiveIngredientScannerView.swift */; };
-		A1234567890123456789012310 /* TestLiveScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890123456789012016 /* TestLiveScannerView.swift */; };
 		A4F3F73658E143099BDCA612 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22C6BF8B3C55423CB194379A /* AppConfig.swift */; };
 		AA9F7B74F8259A4156C834D0 /* ExerciseSelectionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FB032D1453E7AD33304B2DA /* ExerciseSelectionViews.swift */; };
 		AB4B75A72E72DEF60058DCD3 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = AB4B75A62E72DEF60058DCD3 /* FirebaseAuth */; };
@@ -66,7 +65,6 @@
 		F274CF78968B4290ADA3C260F96936CE /* FridgeTabViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4841D8FB19F4A7091A7DD0A429B645E /* FridgeTabViews.swift */; };
 		F2A1EA64DE5874696AC72D24 /* PrivacyPolicyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55FA70B49C3C721A45AA1C88 /* PrivacyPolicyView.swift */; };
 		F71736FEB2E843E18F674753 /* FastingTimerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 034F60AA8BCB4662A86709D4 /* FastingTimerView.swift */; };
-		F812E4945241563987C81A8D /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1799CD369E1CCDEB1FE1053A /* DesignSystem.swift */; };
 		F852EC8DB69C7DD65CB989F6 /* NewWorkoutCreationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 808B579B94C3DF670FA530BD /* NewWorkoutCreationView.swift */; };
 		FDACD6EE052840C79A707950 /* AddTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0B6A2D7294D44D9A25481CE /* AddTabView.swift */; };
 /* End PBXBuildFile section */
@@ -74,7 +72,6 @@
 /* Begin PBXFileReference section */
 		034F60AA8BCB4662A86709D4 /* FastingTimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastingTimerView.swift; sourceTree = "<group>"; };
 		0F7561B2EBC74941A13A75D612F2083E /* WorkoutNavigationOverlays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutNavigationOverlays.swift; sourceTree = "<group>"; };
-		1799CD369E1CCDEB1FE1053A /* DesignSystem.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		21E673F6B8D947F9B6F2005EFFAE8B5B /* DiaryHydrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryHydrationView.swift; sourceTree = "<group>"; };
 		22C6BF8B3C55423CB194379A /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Configuration/AppConfig.swift"; sourceTree = "<group>"; };
 		243F37809618412603D63497 /* ExerciseHistoryViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseHistoryViews.swift; sourceTree = "<group>"; };
@@ -86,13 +83,13 @@
 		45915D62F0F14714AC688437 /* MacroViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Components/MacroViews.swift"; sourceTree = "<group>"; };
 		493422FA56E54C918E7155AD /* CustomTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Components/CustomTabBar.swift"; sourceTree = "<group>"; };
 		55FA70B49C3C721A45AA1C88 /* PrivacyPolicyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyPolicyView.swift; sourceTree = "<group>"; };
+		5A3F908F9CBBA65110BADC47 /* DesignSystem.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		6FB032D1453E7AD33304B2DA /* ExerciseSelectionViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseSelectionViews.swift; sourceTree = "<group>"; };
 		808B579B94C3DF670FA530BD /* NewWorkoutCreationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewWorkoutCreationView.swift; sourceTree = "<group>"; };
 		81B075B7D4370913A69A23F0 /* WorkoutTemplatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutTemplatesView.swift; sourceTree = "<group>"; };
 		92713389E2C3E565FA044EEA /* WorkoutMainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutMainView.swift; sourceTree = "<group>"; };
 		95FB33855679471485B474B4 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SettingsView.swift; path = Settings/SettingsView.swift; sourceTree = "<group>"; };
 		96AFEAFFFC70426C97B3CF2E /* additives_full_described_with_sources_2025.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = additives_full_described_with_sources_2025.csv; sourceTree = "<group>"; };
-		9F3154C223B4431D8E04C5DC /* DiaryFoodView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryFoodView.swift; sourceTree = "<group>"; };
 		A1234567890123456789012000 /* NutraSafe Beta.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "NutraSafe Beta.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1234567890123456789012001 /* NutraSafeBetaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutraSafeBetaApp.swift; sourceTree = "<group>"; };
 		A1234567890123456789012002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -102,7 +99,6 @@
 		A1234567890123456789012013 /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
 		A1234567890123456789012014 /* LiveTextScannerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTextScannerService.swift; sourceTree = "<group>"; };
 		A1234567890123456789012015 /* LiveIngredientScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveIngredientScannerView.swift; sourceTree = "<group>"; };
-		A1234567890123456789012016 /* TestLiveScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestLiveScannerView.swift; sourceTree = "<group>"; };
 		A80F06223FA34D089685F25FC74A7AD5 /* MicronutrientViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicronutrientViews.swift; sourceTree = "<group>"; };
 		AA30481671D941A4B06DB063 /* ExerciseTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseTabView.swift; sourceTree = "<group>"; };
 		AB77ABAB2E686D0E00857409 /* NutraSafe BetaDebug.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "NutraSafe BetaDebug.entitlements"; sourceTree = "<group>"; };
@@ -240,18 +236,16 @@
 				A1234567890123456789012001 /* NutraSafeBetaApp.swift */,
 				AUTH1234567890123456789002 /* AuthenticationView.swift */,
 				A1234567890123456789012002 /* ContentView.swift */,
-				9F3154C223B4431D8E04C5DC /* DiaryFoodView.swift */,
 				1E2302F2CAB144499FF8B394 /* Views */,
 				A1234567890123456789012011 /* FirebaseManager.swift */,
 				A1234567890123456789012013 /* HealthKitManager.swift */,
 				A1234567890123456789012014 /* LiveTextScannerService.swift */,
 				A1234567890123456789012015 /* LiveIngredientScannerView.swift */,
-				A1234567890123456789012016 /* TestLiveScannerView.swift */,
 				A1234567890123456789012003 /* Assets.xcassets */,
 				A1234567890123456789012012 /* GoogleService-Info.plist */,
 				96AFEAFFFC70426C97B3CF2E /* additives_full_described_with_sources_2025.csv */,
 				DF454595E60D9E7D1B2ACBE3 /* additives_master_database.json */,
-				1799CD369E1CCDEB1FE1053A /* DesignSystem.swift */,
+				5A3F908F9CBBA65110BADC47 /* DesignSystem.swift */,
 			);
 			path = "NutraSafe Beta";
 			sourceTree = "<group>";
@@ -383,13 +377,11 @@
 				C83CC72A7D464E1685D1143F /* SettingsView.swift in Sources */,
 				AUTH1234567890123456789001 /* AuthenticationView.swift in Sources */,
 				A1234567890123456789012302 /* ContentView.swift in Sources */,
-				268D1D75597D466999B66291 /* DiaryFoodView.swift in Sources */,
 				A1234567890123456789012301 /* NutraSafeBetaApp.swift in Sources */,
 				A1234567890123456789012305 /* FirebaseManager.swift in Sources */,
 				A1234567890123456789012307 /* HealthKitManager.swift in Sources */,
 				A1234567890123456789012308 /* LiveTextScannerService.swift in Sources */,
 				A1234567890123456789012309 /* LiveIngredientScannerView.swift in Sources */,
-				A1234567890123456789012310 /* TestLiveScannerView.swift in Sources */,
 				26E954E4A2634655AB0F1224 /* FoodDetailViewFromSearch.swift in Sources */,
 				33EB9D561C3E50EAAC7808E5 /* ExerciseDetailViews.swift in Sources */,
 				05E9EA10A3EE0D7C9FF656E3 /* ExerciseHistoryViews.swift in Sources */,
@@ -433,7 +425,7 @@
 				90F34D6AE6BE45A98262E4B1 /* TermsAndConditionsView.swift in Sources */,
 				F2A1EA64DE5874696AC72D24 /* PrivacyPolicyView.swift in Sources */,
 				99761F32D25B9DA7ED306333 /* AddFoodManualViews.swift in Sources */,
-				F812E4945241563987C81A8D /* DesignSystem.swift in Sources */,
+				95EAAC6CBEBF464E40185060 /* DesignSystem.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
