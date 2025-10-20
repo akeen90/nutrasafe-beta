@@ -426,13 +426,22 @@ struct FastingTimerView: View {
     @available(iOS 16.1, *)
     private func startLiveActivity() async {
         print("🔵 startLiveActivity called")
+        print("🔵 Current device: \(UIDevice.current.model)")
+        print("🔵 iOS version: \(UIDevice.current.systemVersion)")
 
         let authInfo = ActivityAuthorizationInfo()
         print("🔵 Live Activities enabled: \(authInfo.areActivitiesEnabled)")
 
+        #if targetEnvironment(simulator)
+        print("⚠️  Running in SIMULATOR - Live Activities won't appear")
+        print("ℹ️  Deploy to real iPhone 14 Pro/15 Pro/16 Pro to see Dynamic Island")
+        #else
+        print("✅ Running on REAL DEVICE")
+        #endif
+
         guard authInfo.areActivitiesEnabled else {
             print("❌ Live Activities not enabled by system")
-            print("ℹ️  Note: Live Activities don't work in simulator - test on real device with Dynamic Island")
+            print("ℹ️  Check: Settings > [Your App Name] > Allow Live Activities")
             return
         }
 
@@ -444,6 +453,11 @@ struct FastingTimerView: View {
         let hours = Int(fastingDuration / 3600)
         let minutes = Int((fastingDuration.truncatingRemainder(dividingBy: 3600)) / 60)
 
+        print("🔵 Creating Live Activity with:")
+        print("   - Goal: \(fastingGoal)h")
+        print("   - Current: \(hours)h \(minutes)m")
+        print("   - Start time: \(startTime)")
+
         let attributes = FastingActivityAttributes(fastingGoalHours: fastingGoal)
         let contentState = FastingActivityAttributes.ContentState(
             fastingStartTime: startTime,
@@ -452,20 +466,33 @@ struct FastingTimerView: View {
         )
 
         do {
-            currentActivity = try Activity.request(
+            let activity = try Activity.request(
                 attributes: attributes,
                 contentState: contentState,
                 pushType: nil
             )
-            print("✅ Fasting Live Activity started - will appear in Dynamic Island")
+            currentActivity = activity
+            print("✅ Live Activity created successfully!")
+            print("   - Activity ID: \(activity.id)")
+            print("   - Activity state: \(activity.activityState)")
+            print("   - This should now appear in Dynamic Island")
+
+            // List all active activities to verify
+            let activeActivities = Activity<FastingActivityAttributes>.activities
+            print("📋 Total active fasting activities: \(activeActivities.count)")
         } catch {
             print("❌ Failed to start Live Activity: \(error)")
+            print("   - Error type: \(type(of: error))")
+            print("   - Error details: \(error.localizedDescription)")
         }
     }
 
     @available(iOS 16.1, *)
     private func updateLiveActivity() async {
-        guard let activity = currentActivity as? Activity<FastingActivityAttributes> else { return }
+        guard let activity = currentActivity as? Activity<FastingActivityAttributes> else {
+            print("⚠️  No active Live Activity to update")
+            return
+        }
         guard let startTime = fastingStartTime else { return }
 
         let hours = Int(fastingDuration / 3600)
@@ -478,14 +505,18 @@ struct FastingTimerView: View {
         )
 
         await activity.update(using: contentState)
+        print("🔄 Live Activity updated: \(hours)h \(minutes)m")
     }
 
     @available(iOS 16.1, *)
     private func endLiveActivity() async {
-        guard let activity = currentActivity as? Activity<FastingActivityAttributes> else { return }
+        guard let activity = currentActivity as? Activity<FastingActivityAttributes> else {
+            print("⚠️  No active Live Activity to end")
+            return
+        }
         await activity.end(dismissalPolicy: .immediate)
         currentActivity = nil
-        print("✅ Fasting Live Activity ended")
+        print("✅ Fasting Live Activity ended and removed from Dynamic Island")
     }
 
     // MARK: - Fasting Notifications
