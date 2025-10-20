@@ -3028,15 +3028,16 @@ struct CleanFridgeRow: View {
 
     private var statusColor: Color {
         switch daysLeft {
-        case ...0: return Color(red: 1.0, green: 0.27, blue: 0.23)
-        case 1...3: return Color(red: 1.0, green: 0.62, blue: 0.0)
-        default: return Color(red: 0.2, green: 0.78, blue: 0.35)
+        case ...(-1): return Color(red: 1.0, green: 0.27, blue: 0.23) // Red for expired
+        case 0...3: return Color(red: 1.0, green: 0.62, blue: 0.0) // Orange for expiring soon
+        default: return Color(red: 0.2, green: 0.78, blue: 0.35) // Green for fresh
         }
     }
 
     private var statusText: String {
         switch daysLeft {
-        case ...0: return "Expired"
+        case ...(-1): return "Expired"
+        case 0: return "Expires today"
         case 1: return "1 day left"
         default: return "\(daysLeft) days"
         }

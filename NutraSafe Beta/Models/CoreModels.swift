@@ -45,15 +45,18 @@ struct FridgeInventoryItem: Codable, Identifiable {
 
     var daysUntilExpiry: Int {
         let calendar = Calendar.current
-        let components = calendar.dateComponents([.day], from: Date(), to: expiryDate)
+        // Use start of day for both dates to get proper calendar day difference
+        let today = calendar.startOfDay(for: Date())
+        let expiry = calendar.startOfDay(for: expiryDate)
+        let components = calendar.dateComponents([.day], from: today, to: expiry)
         return components.day ?? 0
     }
 
     var expiryStatus: ExpiryStatus {
         switch daysUntilExpiry {
-        case ...0: return .expired
-        case 1: return .expiringToday
-        case 2...3: return .expiringSoon
+        case ...(-1): return .expired // Past the expiry date
+        case 0: return .expiringToday // Expiring today
+        case 1...3: return .expiringSoon // Expiring within 3 days
         case 4...7: return .expiringThisWeek
         default: return .fresh
         }
