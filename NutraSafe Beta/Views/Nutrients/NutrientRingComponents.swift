@@ -149,8 +149,9 @@ struct NutrientRingCard: View {
     }
 
     private var ringProgress: Double {
-        guard let freq = frequency, freq.totalLoggedDays > 0 else { return 0 }
-        return Double(freq.last30DaysAppearances) / Double(freq.totalLoggedDays)
+        guard let freq = frequency else { return 0 }
+        // Progress out of 30 days - if logged 1 day, show 1/30th full
+        return min(Double(freq.last30DaysAppearances) / 30.0, 1.0)
     }
 
     private var ringColor: Color {
@@ -294,8 +295,9 @@ struct NutrientGridItem: View {
     }
 
     private var ringProgress: Double {
-        guard let freq = frequency, freq.totalLoggedDays > 0 else { return 0 }
-        return Double(freq.last30DaysAppearances) / Double(freq.totalLoggedDays)
+        guard let freq = frequency else { return 0 }
+        // Progress out of 30 days - if logged 1 day, show 1/30th full
+        return min(Double(freq.last30DaysAppearances) / 30.0, 1.0)
     }
 
     private var ringColor: Color {
@@ -407,8 +409,8 @@ struct LargeNutrientRing: View {
     }
 
     private var ringProgress: Double {
-        guard frequency.totalLoggedDays > 0 else { return 0 }
-        return Double(frequency.last30DaysAppearances) / Double(frequency.totalLoggedDays)
+        // Progress out of 30 days - if logged 1 day, show 1/30th full
+        return min(Double(frequency.last30DaysAppearances) / 30.0, 1.0)
     }
 }
 

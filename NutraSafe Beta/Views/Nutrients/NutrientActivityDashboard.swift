@@ -36,12 +36,7 @@ struct NutrientActivityDashboard: View {
             // Header
             headerSection
 
-            // Active Nutrients
-            if !activeNutrients.isEmpty {
-                activeSectionView
-            }
-
-            // All Nutrients Grid
+            // All Nutrients Grid (with rings showing 30-day progress)
             allNutrientsGridView
 
             // Dormant Nutrients
@@ -129,12 +124,6 @@ struct NutrientActivityDashboard: View {
             )
 
             FilterChip(
-                title: "Strong nutrients",
-                isSelected: performanceFilter == .strong,
-                action: { performanceFilter = .strong }
-            )
-
-            FilterChip(
                 title: "Needs attention",
                 isSelected: performanceFilter == .needsAttention,
                 action: { performanceFilter = .needsAttention }
@@ -143,25 +132,7 @@ struct NutrientActivityDashboard: View {
     }
 
     private var categoryFilterView: some View {
-        HStack(spacing: 12) {
-            FilterChip(
-                title: "All",
-                isSelected: filterCategory == nil,
-                action: { filterCategory = nil }
-            )
-
-            FilterChip(
-                title: "Vitamins",
-                isSelected: filterCategory == .vitamin,
-                action: { filterCategory = .vitamin }
-            )
-
-            FilterChip(
-                title: "Minerals",
-                isSelected: filterCategory == .mineral,
-                action: { filterCategory = .mineral }
-            )
-        }
+        EmptyView()
     }
 
     // MARK: - Active Nutrients Section
