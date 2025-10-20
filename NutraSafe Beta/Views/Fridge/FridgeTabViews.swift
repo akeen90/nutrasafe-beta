@@ -532,12 +532,17 @@ struct FridgeExpiryView: View {
                                 .padding(.vertical, 60)
                                 .background(Color.white)
                             } else {
-                                LazyVStack(spacing: 8) {
+                                LazyVStack(spacing: 0) {
                                     ForEach(sortedItems, id: \.id) { item in
                                         CleanFridgeRow(item: item)
+
+                                        if item.id != sortedItems.last?.id {
+                                            Divider()
+                                                .padding(.leading, 76)
+                                        }
                                     }
                                 }
-                                .padding(8)
+                                .padding(.vertical, 8)
                                 .background(Color.white)
                             }
                         }
@@ -2768,6 +2773,8 @@ struct FridgeItemDetailView: View {
         print("FridgeItemDetailView: Item ID: \(item.id)")
         print("FridgeItemDetailView: Edited quantity: \(editedQuantity)")
         print("FridgeItemDetailView: Edited expiry: \(editedExpiryDate)")
+        print("FridgeItemDetailView: isOpened: \(isOpened)")
+        print("FridgeItemDetailView: openedDate: \(String(describing: isOpened ? openedDate : nil))")
 
         // Create updated item with edits
         let updatedItem = FridgeInventoryItem(
@@ -2784,7 +2791,7 @@ struct FridgeItemDetailView: View {
             notes: notes.isEmpty ? nil : notes
         )
 
-        print("FridgeItemDetailView: Created updated item")
+        print("FridgeItemDetailView: Created updated item with openedDate: \(String(describing: updatedItem.openedDate))")
 
         // Save to Firebase
         do {
@@ -3132,15 +3139,7 @@ struct CleanFridgeRow: View {
                                 .font(.system(size: 12))
                                 .foregroundColor(.secondary)
                                 .lineLimit(1)
-
-                            Text("•")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
                         }
-
-                        Text(item.quantity)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.secondary)
                     }
 
                     // Status badge with icon
@@ -3172,7 +3171,8 @@ struct CleanFridgeRow: View {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.secondary)
             }
-            .padding(12)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 14)
             .background(Color(.systemBackground))
             .offset(x: offset)
             .gesture(
