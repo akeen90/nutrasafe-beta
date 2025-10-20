@@ -19,6 +19,7 @@ struct DiaryMealCard: View {
     let currentDate: Date
     let onEditFood: () -> Void
     let onSaveNeeded: () -> Void
+    let onDelete: (DiaryFoodItem) -> Void
     
     private var totalProtein: Double {
         foods.reduce(0) { $0 + $1.protein }
@@ -131,6 +132,8 @@ struct DiaryMealCard: View {
                                     withAnimation(.easeOut(duration: 0.3)) {
                                         foods.remove(at: index)
                                     }
+                                    // Delete from Firebase
+                                    onDelete(food)
                                     // Save after deletion
                                     onSaveNeeded()
                                 }

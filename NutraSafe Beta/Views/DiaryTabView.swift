@@ -367,7 +367,8 @@ struct DiaryTabView: View {
                                 selectedFoodItems: $selectedFoodItems,
                                 currentDate: selectedDate,
                                 onEditFood: onEditFood,
-                                onSaveNeeded: saveFoodData
+                                onSaveNeeded: saveFoodData,
+                                onDelete: deleteSingleFood
                             )
 
                             DiaryMealCard(
@@ -380,7 +381,8 @@ struct DiaryTabView: View {
                                 selectedFoodItems: $selectedFoodItems,
                                 currentDate: selectedDate,
                                 onEditFood: onEditFood,
-                                onSaveNeeded: saveFoodData
+                                onSaveNeeded: saveFoodData,
+                                onDelete: deleteSingleFood
                             )
 
                             DiaryMealCard(
@@ -393,7 +395,8 @@ struct DiaryTabView: View {
                                 selectedFoodItems: $selectedFoodItems,
                                 currentDate: selectedDate,
                                 onEditFood: onEditFood,
-                                onSaveNeeded: saveFoodData
+                                onSaveNeeded: saveFoodData,
+                                onDelete: deleteSingleFood
                             )
 
                             DiaryMealCard(
@@ -406,7 +409,8 @@ struct DiaryTabView: View {
                                 selectedFoodItems: $selectedFoodItems,
                                 currentDate: selectedDate,
                                 onEditFood: onEditFood,
-                                onSaveNeeded: saveFoodData
+                                onSaveNeeded: saveFoodData,
+                                onDelete: deleteSingleFood
                             )
                         }
                         .padding(.horizontal, 16)
@@ -703,6 +707,12 @@ struct DiaryTabView: View {
         selectedFoodItems.removeAll()
 
         print("DiaryTabView: Copy completed - copied \(copiedItems.count) items")
+    }
+
+    private func deleteSingleFood(_ food: DiaryFoodItem) {
+        print("DiaryTabView: Deleting single food item: \(food.name)")
+        // Delete from Firebase
+        diaryDataManager.deleteFoodItems([food], for: selectedDate)
     }
 
     private func deleteSelectedFoods() {

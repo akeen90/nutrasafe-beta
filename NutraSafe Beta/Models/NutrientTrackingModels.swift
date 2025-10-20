@@ -260,10 +260,7 @@ struct NutrientDatabase {
         TrackedNutrient(id: "phosphorus", name: "Phosphorus", displayName: "Phosphorus", category: .mineral, unit: "mg", glowColor: Color.blue.opacity(0.6), icon: "atom"),
         TrackedNutrient(id: "copper", name: "Copper", displayName: "Copper", category: .mineral, unit: "mg", glowColor: Color.orange.opacity(0.8), icon: "circle.hexagongrid.fill"),
         TrackedNutrient(id: "manganese", name: "Manganese", displayName: "Manganese", category: .mineral, unit: "mg", glowColor: Color.purple.opacity(0.5), icon: "hexagon.fill"),
-        TrackedNutrient(id: "iodine", name: "Iodine", displayName: "Iodine", category: .mineral, unit: "mcg", glowColor: Color.indigo.opacity(0.7), icon: "drop.keypad.rectangle"),
-
-        // Other nutrients
-        TrackedNutrient(id: "omega_3", name: "Omega-3", displayName: "Omega-3 Fatty Acids", category: .other, unit: "g", glowColor: Color.blue, icon: "fish.fill")
+        TrackedNutrient(id: "iodine", name: "Iodine", displayName: "Iodine", category: .mineral, unit: "mcg", glowColor: Color.indigo.opacity(0.7), icon: "drop.keypad.rectangle")
     ]
 
     static func nutrient(for id: String) -> TrackedNutrient? {
@@ -297,8 +294,7 @@ struct NutrientDetector {
         "phosphorus": ["dairy", "meat", "fish", "poultry", "beans", "lentils", "nuts", "whole grains"],
         "copper": ["shellfish", "nuts", "seeds", "organ meats", "beans", "dark chocolate"],
         "manganese": ["nuts", "beans", "whole grains", "tea", "leafy vegetables", "pineapple"],
-        "iodine": ["seaweed", "cod", "dairy", "iodized salt", "shrimp", "eggs"],
-        "omega_3": ["salmon", "sardines", "mackerel", "walnuts", "flax", "flaxseed", "chia", "hemp", "tuna"]
+        "iodine": ["seaweed", "cod", "dairy", "iodized salt", "shrimp", "eggs"]
     ]
 
     /// Detect which nutrients are present in a food item based on its micronutrient profile
