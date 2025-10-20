@@ -143,8 +143,8 @@ struct AddFoundFoodToFridgeSheet: View {
     @State private var expiryDate: Date = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
     @State private var isSaving = false
     @State private var showPhotoActionSheet = false
-    @State private var showImagePicker = false
-    @State private var photoSourceType: UIImagePickerController.SourceType = .photoLibrary
+    @State private var showCameraPicker = false
+    @State private var showPhotoPicker = false
     @State private var capturedImage: UIImage?
     @State private var uploadedImageURL: String?
     @State private var isUploadingPhoto = false
@@ -153,29 +153,60 @@ struct AddFoundFoodToFridgeSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Item")) {
-                    Text(food.name)
-                    if let brand = food.brand { Text(brand).foregroundColor(.secondary) }
-                    if let serving = food.servingDescription { Text(serving).foregroundColor(.secondary) }
+                // Improved Item Card
+                Section {
+                    VStack(alignment: .center, spacing: 8) {
+                        // Item image or placeholder
+                        if let image = capturedImage {
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 100, height: 100)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                        } else {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color(.systemGray6))
+                                    .frame(width: 100, height: 100)
+                                Image(systemName: "photo")
+                                    .font(.system(size: 32))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+
+                        VStack(spacing: 4) {
+                            Text(food.name)
+                                .font(.system(size: 18, weight: .semibold))
+                                .multilineTextAlignment(.center)
+
+                            if let brand = food.brand {
+                                Text(brand)
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                            }
+
+                            if let serving = food.servingDescription {
+                                Text(serving)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
                 }
 
                 Section(header: Text("Photo")) {
                     Button(action: { showPhotoActionSheet = true }) {
                         HStack {
-                            if isUploadingPhoto {
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                                    .padding(.trailing, 8)
-                            }
+                            Image(systemName: "camera.fill")
+                                .foregroundColor(.blue)
                             Text(capturedImage != nil || uploadedImageURL != nil ? "Change Photo" : "Add Photo")
                                 .foregroundColor(.blue)
                             Spacer()
-                            if let image = capturedImage {
-                                Image(uiImage: image)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 60, height: 60)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                            if isUploadingPhoto {
+                                ProgressView()
+                                    .scaleEffect(0.8)
                             }
                         }
                     }
@@ -190,7 +221,7 @@ struct AddFoundFoodToFridgeSheet: View {
                     DatePicker("Expiry Date", selection: $expiryDate, displayedComponents: .date)
                 }
             }
-            .navigationTitle("Add to Fridge")
+            .navigationTitle("Add to Use By")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -202,17 +233,27 @@ struct AddFoundFoodToFridgeSheet: View {
             }
             .confirmationDialog("Add Photo", isPresented: $showPhotoActionSheet) {
                 Button("Take Photo") {
-                    photoSourceType = .camera
-                    showImagePicker = true
+                    showCameraPicker = true
                 }
                 Button("Choose from Library") {
-                    photoSourceType = .photoLibrary
-                    showImagePicker = true
+                    showPhotoPicker = true
                 }
                 Button("Cancel", role: .cancel) {}
             }
-            .sheet(isPresented: $showImagePicker) {
-                ImagePicker(selectedImage: nil, sourceType: photoSourceType) { image in
+            .sheet(isPresented: $showCameraPicker) {
+                ImagePicker(selectedImage: nil, sourceType: .camera) { image in
+                    showCameraPicker = false
+                    if let image = image {
+                        capturedImage = image
+                        Task {
+                            await uploadPhoto(image)
+                        }
+                    }
+                }
+            }
+            .sheet(isPresented: $showPhotoPicker) {
+                PhotoLibraryPicker { image in
+                    showPhotoPicker = false
                     if let image = image {
                         capturedImage = image
                         Task {

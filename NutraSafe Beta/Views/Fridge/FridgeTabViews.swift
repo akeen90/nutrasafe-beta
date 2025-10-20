@@ -232,6 +232,12 @@ struct AddFoundFoodToFridgeSheet: View {
     @State private var openedDate: Date = Date()
     @State private var expiryAmount: Int = 7
     @State private var expiryUnit: ExpiryUnit = .days
+    @State private var showPhotoActionSheet = false
+    @State private var showCameraPicker = false
+    @State private var showPhotoPicker = false
+    @State private var capturedImage: UIImage?
+    @State private var uploadedImageURL: String?
+    @State private var isUploadingPhoto = false
 
     enum OpenedMode { case today, chooseDate }
     enum ExpiryUnit: String, CaseIterable { case days = "Days", weeks = "Weeks" }
@@ -241,13 +247,70 @@ struct AddFoundFoodToFridgeSheet: View {
             ScrollView {
                 VStack(spacing: 16) {
                     SectionCard(title: "ITEM") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(food.name)
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundColor(.primary)
-                            if let brand = food.brand { Text(brand).font(.system(size: 14)).foregroundColor(.secondary) }
-                            if let serving = food.servingDescription { Text(serving).font(.system(size: 12)).foregroundColor(.secondary) }
+                        VStack(alignment: .center, spacing: 12) {
+                            // Item image
+                            if let image = capturedImage {
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 100, height: 100)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                            } else {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(.systemGray6))
+                                        .frame(width: 100, height: 100)
+                                    Image(systemName: "photo")
+                                        .font(.system(size: 32))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+
+                            // Item details
+                            VStack(spacing: 4) {
+                                Text(food.name)
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundColor(.primary)
+                                    .multilineTextAlignment(.center)
+                                if let brand = food.brand {
+                                    Text(brand)
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.secondary)
+                                }
+                                if let serving = food.servingDescription {
+                                    Text(serving)
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+
+                            // Add Photo button
+                            Button(action: { showPhotoActionSheet = true }) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "camera.fill")
+                                        .font(.system(size: 14))
+                                    Text(capturedImage != nil ? "Change Photo" : "Add Photo")
+                                        .font(.system(size: 14, weight: .medium))
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(isUploadingPhoto ? Color.gray : Color.blue)
+                                .cornerRadius(10)
+                            }
+                            .disabled(isUploadingPhoto)
+
+                            if isUploadingPhoto {
+                                HStack(spacing: 6) {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                    Text("Uploading photo...")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
                         }
+                        .frame(maxWidth: .infinity)
                     }
                     SectionCard(title: "OPENED") {
                         SegmentedContainer {
@@ -296,13 +359,45 @@ struct AddFoundFoodToFridgeSheet: View {
                     Button(action: { Task { await save() } }) {
                         if isSaving { ProgressView() } else { Text("Add").fontWeight(.semibold) }
                     }
+                    .disabled(isUploadingPhoto)
                 }
             }
-            .alert("Couldn’t save item", isPresented: $showErrorAlert, actions: {
+            .alert("Couldn't save item", isPresented: $showErrorAlert, actions: {
                 Button("OK", role: .cancel) {}
             }, message: {
                 Text(errorMessage ?? "Unknown error")
             })
+            .confirmationDialog("Add Photo", isPresented: $showPhotoActionSheet) {
+                Button("Take Photo") {
+                    showCameraPicker = true
+                }
+                Button("Choose from Library") {
+                    showPhotoPicker = true
+                }
+                Button("Cancel", role: .cancel) {}
+            }
+            .sheet(isPresented: $showCameraPicker) {
+                ImagePicker(selectedImage: nil, sourceType: .camera) { image in
+                    showCameraPicker = false
+                    if let image = image {
+                        capturedImage = image
+                        Task {
+                            await uploadPhoto(image)
+                        }
+                    }
+                }
+            }
+            .sheet(isPresented: $showPhotoPicker) {
+                PhotoLibraryPicker { image in
+                    showPhotoPicker = false
+                    if let image = image {
+                        capturedImage = image
+                        Task {
+                            await uploadPhoto(image)
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -315,16 +410,38 @@ struct AddFoundFoodToFridgeSheet: View {
         expiryDate = Calendar.current.date(byAdding: comps, to: Date()) ?? Date()
     }
 
+    private func uploadPhoto(_ image: UIImage) async {
+        await MainActor.run { isUploadingPhoto = true }
+        print("📸 Starting photo upload...")
+        do {
+            let url = try await FirebaseManager.shared.uploadFridgeItemPhoto(image)
+            print("📸 Photo uploaded successfully: \(url)")
+            await MainActor.run {
+                uploadedImageURL = url
+                isUploadingPhoto = false
+            }
+        } catch {
+            print("❌ Failed to upload photo: \(error)")
+            await MainActor.run {
+                isUploadingPhoto = false
+            }
+        }
+    }
+
     private func save() async {
         guard !isSaving else { return }
         await MainActor.run { self.isSaving = true }
+
+        print("📸 Saving fridge item with imageURL: \(uploadedImageURL ?? "nil")")
+
         let item = FridgeInventoryItem(
             name: food.name,
             brand: food.brand,
             quantity: "1",
             expiryDate: expiryDate,
             addedDate: Date(),
-            openedDate: openedMode == .today ? Date() : openedDate
+            openedDate: openedMode == .today ? Date() : openedDate,
+            imageURL: uploadedImageURL
         )
         do {
             try await FirebaseManager.shared.addFridgeItem(item)
@@ -2477,9 +2594,9 @@ struct FridgeItemDetailView: View {
 
     // Photo capture states
     @State private var capturedImage: UIImage?
-    @State private var showImagePicker: Bool = false
+    @State private var showCameraPicker: Bool = false
+    @State private var showPhotoPicker: Bool = false
     @State private var showPhotoActionSheet: Bool = false
-    @State private var photoSourceType: UIImagePickerController.SourceType = .camera
     @State private var isUploadingPhoto: Bool = false
     @State private var uploadedImageURL: String?
 
@@ -2862,6 +2979,13 @@ struct FridgeItemDetailView: View {
                 openedDate = opened
             }
 
+            // Load existing photo from URL if available
+            if let imageURL = item.imageURL, capturedImage == nil {
+                Task {
+                    await loadExistingPhoto(from: imageURL)
+                }
+            }
+
             let daysLeft = item.daysUntilExpiry
             expiryAmount = max(daysLeft, 1)
             expiryUnit = daysLeft > 14 ? .weeks : .days
@@ -2886,17 +3010,27 @@ struct FridgeItemDetailView: View {
         }
         .confirmationDialog("Add Photo", isPresented: $showPhotoActionSheet) {
             Button("Take Photo") {
-                photoSourceType = .camera
-                showImagePicker = true
+                showCameraPicker = true
             }
             Button("Choose from Library") {
-                photoSourceType = .photoLibrary
-                showImagePicker = true
+                showPhotoPicker = true
             }
             Button("Cancel", role: .cancel) {}
         }
-        .sheet(isPresented: $showImagePicker) {
-            ImagePicker(selectedImage: nil, sourceType: photoSourceType) { image in
+        .sheet(isPresented: $showCameraPicker) {
+            ImagePicker(selectedImage: nil, sourceType: .camera) { image in
+                showCameraPicker = false
+                if let image = image {
+                    capturedImage = image
+                    Task {
+                        await uploadPhoto(image)
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showPhotoPicker) {
+            PhotoLibraryPicker { image in
+                showPhotoPicker = false
                 if let image = image {
                     capturedImage = image
                     Task {
@@ -2908,14 +3042,34 @@ struct FridgeItemDetailView: View {
     }
 
     private func loadImageFromURL() -> UIImage? {
-        // Return nil for now - will load asynchronously if needed
+        // If we have uploadedImageURL but no capturedImage, try to load from URL
+        // This is a synchronous placeholder - actual loading happens in onAppear
         return nil
+    }
+
+    private func loadExistingPhoto(from urlString: String) async {
+        guard let url = URL(string: urlString) else { return }
+        print("📸 Loading existing photo from: \(urlString)")
+
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            if let image = UIImage(data: data) {
+                await MainActor.run {
+                    capturedImage = image
+                    print("📸 Existing photo loaded successfully")
+                }
+            }
+        } catch {
+            print("❌ Failed to load existing photo: \(error)")
+        }
     }
 
     private func uploadPhoto(_ image: UIImage) async {
         isUploadingPhoto = true
+        print("📸 Starting photo upload...")
         do {
             let url = try await FirebaseManager.shared.uploadFridgeItemPhoto(image)
+            print("📸 Photo uploaded successfully: \(url)")
             await MainActor.run {
                 uploadedImageURL = url
                 isUploadingPhoto = false
@@ -3545,5 +3699,74 @@ struct QuickActionCard: View {
                 .onChanged { _ in isPressed = true }
                 .onEnded { _ in isPressed = false }
         )
+    }
+}
+
+// MARK: - Photo Library Picker using PHPicker
+import PhotosUI
+
+struct PhotoLibraryPicker: UIViewControllerRepresentable {
+    let onImageSelected: (UIImage?) -> Void
+
+    func makeUIViewController(context: Context) -> PHPickerViewController {
+        var config = PHPickerConfiguration()
+        // Use 0 (unlimited) to show "Add" button instead of auto-selecting on tap
+        config.selectionLimit = 0
+        config.filter = .images
+        config.selection = .default
+        config.preferredAssetRepresentationMode = .current
+
+        let picker = PHPickerViewController(configuration: config)
+        picker.delegate = context.coordinator
+        print("📸 PHPicker created with config: selectionLimit=0 (shows Add button)")
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    class Coordinator: NSObject, PHPickerViewControllerDelegate {
+        let parent: PhotoLibraryPicker
+
+        init(_ parent: PhotoLibraryPicker) {
+            self.parent = parent
+        }
+
+        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+            print("📸 PHPicker didFinishPicking called with \(results.count) results")
+
+            // User cancelled if no results
+            if results.isEmpty {
+                print("📸 User cancelled, calling onImageSelected(nil)")
+                parent.onImageSelected(nil)
+                return
+            }
+
+            // Only take the first photo even though we allow multiple selection
+            guard let provider = results.first?.itemProvider else {
+                print("📸 No item provider, calling onImageSelected(nil)")
+                parent.onImageSelected(nil)
+                return
+            }
+
+            if provider.canLoadObject(ofClass: UIImage.self) {
+                print("📸 Loading UIImage from provider...")
+                provider.loadObject(ofClass: UIImage.self) { image, error in
+                    if let error = error {
+                        print("❌ Error loading image: \(error)")
+                    }
+                    DispatchQueue.main.async {
+                        print("📸 Image loaded, calling onImageSelected")
+                        self.parent.onImageSelected(image as? UIImage)
+                    }
+                }
+            } else {
+                print("❌ Provider cannot load UIImage")
+                parent.onImageSelected(nil)
+            }
+        }
     }
 }

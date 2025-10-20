@@ -1506,7 +1506,7 @@ enum TabItem: String, CaseIterable {
         case .weight: return "figure.walk.motion"
         case .add: return "plus"
         case .food: return "fork.knife.circle"
-        case .fridge: return "refrigerator"
+        case .fridge: return "calendar.badge.clock"
         }
     }
 }
