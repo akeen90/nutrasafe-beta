@@ -308,11 +308,23 @@ struct DiaryTabView: View {
                 }
             }
         }
-        .onChange(of: moveTrigger) { _ in
-            showingMoveSheet = true
+        .onChange(of: moveTrigger) { newValue in
+            if newValue {
+                showingMoveSheet = true
+                // Reset trigger after a short delay to allow for next move
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    moveTrigger = false
+                }
+            }
         }
-        .onChange(of: copyTrigger) { _ in
-            showingCopySheet = true
+        .onChange(of: copyTrigger) { newValue in
+            if newValue {
+                showingCopySheet = true
+                // Reset trigger after a short delay to allow for next copy
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    copyTrigger = false
+                }
+            }
         }
         .onChange(of: deleteTrigger) { newValue in
             if newValue {
@@ -682,37 +694,29 @@ struct DiaryTabView: View {
             )
         }
 
-        // Get target date data and add copied items
-        let (targetBreakfast, targetLunch, targetDinner, targetSnacks) = diaryDataManager.getFoodData(for: copyToDate)
+        // Add each copied item using addFoodItem to ensure Firebase sync
+        Task {
+            for item in copiedItems {
+                do {
+                    try await diaryDataManager.addFoodItem(item, to: copyToMeal, for: copyToDate)
+                    print("DiaryTabView: Successfully copied item: \(item.name)")
+                } catch {
+                    print("DiaryTabView: Error copying item \(item.name): \(error.localizedDescription)")
+                }
+            }
 
-        // Add items to target meal
-        switch copyToMeal.lowercased() {
-        case "breakfast":
-            let updatedBreakfast = targetBreakfast + copiedItems
-            diaryDataManager.saveFoodData(for: copyToDate, breakfast: updatedBreakfast, lunch: targetLunch, dinner: targetDinner, snacks: targetSnacks)
-        case "lunch":
-            let updatedLunch = targetLunch + copiedItems
-            diaryDataManager.saveFoodData(for: copyToDate, breakfast: targetBreakfast, lunch: updatedLunch, dinner: targetDinner, snacks: targetSnacks)
-        case "dinner":
-            let updatedDinner = targetDinner + copiedItems
-            diaryDataManager.saveFoodData(for: copyToDate, breakfast: targetBreakfast, lunch: targetLunch, dinner: updatedDinner, snacks: targetSnacks)
-        case "snacks":
-            let updatedSnacks = targetSnacks + copiedItems
-            diaryDataManager.saveFoodData(for: copyToDate, breakfast: targetBreakfast, lunch: targetLunch, dinner: targetDinner, snacks: updatedSnacks)
-        default:
-            print("DiaryTabView: Unknown target meal: \(copyToMeal)")
-        }
-
-        // If copying to current date, reload data to reflect changes
-        if Calendar.current.isDate(copyToDate, inSameDayAs: selectedDate) {
-            loadFoodData()
+            // Reload data on main thread if copying to current date
+            await MainActor.run {
+                if Calendar.current.isDate(copyToDate, inSameDayAs: selectedDate) {
+                    loadFoodData()
+                }
+                print("DiaryTabView: Copy completed - copied \(copiedItems.count) items")
+            }
         }
 
         // Close sheet and clear selection
         showingCopySheet = false
         selectedFoodItems.removeAll()
-
-        print("DiaryTabView: Copy completed - copied \(copiedItems.count) items")
     }
 
     private func deleteSingleFood(_ food: DiaryFoodItem) {
