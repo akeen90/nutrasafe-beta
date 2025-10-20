@@ -741,6 +741,36 @@ class FirebaseManager: ObservableObject {
         return image
     }
 
+    // MARK: - Fridge Item Photo Upload
+    func uploadFridgeItemPhoto(_ image: UIImage) async throws -> String {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to upload photos"])
+        }
+
+        // Optimize image
+        guard let imageData = optimizeImage(image) else {
+            throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to compress image"])
+        }
+
+        // Create unique filename
+        let filename = "\(UUID().uuidString).jpg"
+        let storageRef = Storage.storage().reference()
+        let photoRef = storageRef.child("fridgeItemPhotos/\(userId)/\(filename)")
+
+        // Upload image
+        let metadata = StorageMetadata()
+        metadata.contentType = "image/jpeg"
+
+        _ = try await photoRef.putDataAsync(imageData, metadata: metadata)
+
+        // Get download URL
+        let downloadURL = try await photoRef.downloadURL()
+        print("✅ Fridge item photo uploaded successfully: \(downloadURL.absoluteString)")
+        return downloadURL.absoluteString
+    }
+
     func saveWeightEntry(_ entry: WeightEntry) async throws {
         ensureAuthStateLoaded()
 

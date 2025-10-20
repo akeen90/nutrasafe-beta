@@ -2408,6 +2408,14 @@ struct FridgeItemDetailView: View {
     @State private var expiryAmount: Int = 7
     @State private var expiryUnit: ExpiryUnit = .days
 
+    // Photo capture states
+    @State private var capturedImage: UIImage?
+    @State private var showImagePicker: Bool = false
+    @State private var showPhotoActionSheet: Bool = false
+    @State private var photoSourceType: UIImagePickerController.SourceType = .camera
+    @State private var isUploadingPhoto: Bool = false
+    @State private var uploadedImageURL: String?
+
     private var itemName: String { item.name }
     private var brand: String? { item.brand }
     private var daysLeft: Int { item.daysUntilExpiry }
@@ -2655,6 +2663,62 @@ struct FridgeItemDetailView: View {
                     .opacity(animateIn ? 1 : 0)
                     .animation(.spring(response: 0.5).delay(0.2), value: animateIn)
 
+                    // Photo Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("PHOTO", systemImage: "camera.fill")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.secondary)
+
+                        if let displayImage = capturedImage ?? loadImageFromURL() {
+                            ZStack(alignment: .topTrailing) {
+                                Image(uiImage: displayImage)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(height: 200)
+                                    .clipped()
+                                    .cornerRadius(12)
+
+                                Button(action: { capturedImage = nil; uploadedImageURL = nil }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.system(size: 24))
+                                        .foregroundColor(.white)
+                                        .background(Circle().fill(Color.black.opacity(0.6)))
+                                }
+                                .padding(8)
+                            }
+                        }
+
+                        Button(action: { showPhotoActionSheet = true }) {
+                            HStack {
+                                if isUploadingPhoto {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                } else {
+                                    Image(systemName: capturedImage != nil || uploadedImageURL != nil ? "camera.fill" : "camera")
+                                    Text(capturedImage != nil || uploadedImageURL != nil ? "Change Photo" : "Add Photo")
+                                }
+                            }
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.blue)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.blue.opacity(0.1))
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .disabled(isUploadingPhoto)
+                    }
+                    .padding(20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(.secondarySystemBackground))
+                    )
+                    .scaleEffect(animateIn ? 1 : 0.95)
+                    .opacity(animateIn ? 1 : 0)
+                    .animation(.spring(response: 0.5).delay(0.225), value: animateIn)
+
                     // Action Buttons
                     VStack(spacing: 12) {
                         Button(action: { Task { await saveChanges() } }) {
@@ -2725,6 +2789,7 @@ struct FridgeItemDetailView: View {
             editedQuantity = item.quantity
             editedExpiryDate = item.expiryDate
             notes = item.notes ?? ""
+            uploadedImageURL = item.imageURL
             if let opened = item.openedDate {
                 isOpened = true
                 openedDate = opened
@@ -2751,6 +2816,48 @@ struct FridgeItemDetailView: View {
         }
         .onChange(of: expiryUnit) { _ in
             updateExpiryDate()
+        }
+        .confirmationDialog("Add Photo", isPresented: $showPhotoActionSheet) {
+            Button("Take Photo") {
+                photoSourceType = .camera
+                showImagePicker = true
+            }
+            Button("Choose from Library") {
+                photoSourceType = .photoLibrary
+                showImagePicker = true
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+        .sheet(isPresented: $showImagePicker) {
+            ImagePicker(selectedImage: nil, sourceType: photoSourceType) { image in
+                if let image = image {
+                    capturedImage = image
+                    Task {
+                        await uploadPhoto(image)
+                    }
+                }
+            }
+        }
+    }
+
+    private func loadImageFromURL() -> UIImage? {
+        // Return nil for now - will load asynchronously if needed
+        return nil
+    }
+
+    private func uploadPhoto(_ image: UIImage) async {
+        isUploadingPhoto = true
+        do {
+            let url = try await FirebaseManager.shared.uploadFridgeItemPhoto(image)
+            await MainActor.run {
+                uploadedImageURL = url
+                isUploadingPhoto = false
+            }
+        } catch {
+            print("❌ Failed to upload photo: \(error)")
+            await MainActor.run {
+                isUploadingPhoto = false
+            }
         }
     }
 
@@ -2787,7 +2894,7 @@ struct FridgeItemDetailView: View {
             openedDate: isOpened ? openedDate : nil,
             barcode: item.barcode,
             category: item.category,
-            imageURL: item.imageURL,
+            imageURL: uploadedImageURL ?? item.imageURL,
             notes: notes.isEmpty ? nil : notes
         )
 
