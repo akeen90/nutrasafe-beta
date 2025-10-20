@@ -9,6 +9,7 @@ import ActivityKit
 import SwiftUI
 import WidgetKit
 
+// MARK: - Live Activity Widget
 @available(iOS 16.1, *)
 struct FastingLiveActivity: Widget {
     var body: some WidgetConfiguration {

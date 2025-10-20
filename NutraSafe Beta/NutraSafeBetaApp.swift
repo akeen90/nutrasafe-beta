@@ -1,6 +1,8 @@
 import SwiftUI
 import Firebase
 import UserNotifications
+import WidgetKit
+import ActivityKit
 
 // Explicit app delegate for proper Firebase initialization and to satisfy swizzler expectations
 class AppDelegate: NSObject, UIApplicationDelegate {
@@ -33,6 +35,14 @@ struct NutraSafeBetaApp: App {
                 .environmentObject(restTimerManager)
                 .environmentObject(fastingManager)
         }
+    }
+}
+
+// MARK: - Widget Bundle for Live Activities
+@available(iOS 16.1, *)
+struct FastingWidgets: WidgetBundle {
+    var body: some Widget {
+        FastingLiveActivity()
     }
 }
 

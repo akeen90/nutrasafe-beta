@@ -53,5 +53,7 @@
 	<string>NutraSafe updates your health data with nutrition information for comprehensive health tracking.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
+	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
+	<true/>
 </dict>
 </plist>
