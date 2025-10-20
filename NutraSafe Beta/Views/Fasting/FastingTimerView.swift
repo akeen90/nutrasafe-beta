@@ -417,12 +417,21 @@ struct FastingTimerView: View {
     // MARK: - Live Activities (Dynamic Island)
     @available(iOS 16.1, *)
     private func startLiveActivity() async {
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+        print("🔵 startLiveActivity called")
+
+        let authInfo = ActivityAuthorizationInfo()
+        print("🔵 Live Activities enabled: \(authInfo.areActivitiesEnabled)")
+
+        guard authInfo.areActivitiesEnabled else {
             print("❌ Live Activities not enabled by system")
+            print("ℹ️  Note: Live Activities don't work in simulator - test on real device with Dynamic Island")
             return
         }
 
-        guard let startTime = fastingStartTime else { return }
+        guard let startTime = fastingStartTime else {
+            print("❌ No fasting start time")
+            return
+        }
 
         let hours = Int(fastingDuration / 3600)
         let minutes = Int((fastingDuration.truncatingRemainder(dividingBy: 3600)) / 60)
