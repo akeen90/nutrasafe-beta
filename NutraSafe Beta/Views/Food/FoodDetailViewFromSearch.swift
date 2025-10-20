@@ -1471,7 +1471,8 @@ struct FoodDetailViewFromSearch: View {
     // The food parameter already has all ingredients, additives, and nutrition data from Firebase search
     
     private var ingredientsSection: some View {
-        VStack(alignment: .center, spacing: 16) {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header with border separator
             HStack {
                 if cachedIngredientsStatus == .pending {
                     Text("⏳ Awaiting Verification")
@@ -1492,9 +1493,17 @@ struct FoodDetailViewFromSearch: View {
                     Spacer()
                 }
             }
-            .frame(maxWidth: .infinity)
-            .padding(.bottom, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+            .background(Color.white)
+            .overlay(
+                Rectangle()
+                    .frame(height: 2)
+                    .foregroundColor(.black),
+                alignment: .bottom
+            )
 
+            // Ingredients content
             if let ingredientsList = cachedIngredients {
                 let cleanIngredients = ingredientsList
                     .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -1505,13 +1514,10 @@ struct FoodDetailViewFromSearch: View {
                     .font(.system(size: 15))
                     .foregroundColor(.primary)
                     .lineLimit(nil)
-                    .multilineTextAlignment(.center)
+                    .multilineTextAlignment(.leading)
                     .padding(16)
-                    .frame(maxWidth: .infinity)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color(.systemGray6))
-                    )
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.white)
             } else {
                 VStack(alignment: .center, spacing: 8) {
                     Image(systemName: "exclamationmark.triangle")
@@ -1524,12 +1530,14 @@ struct FoodDetailViewFromSearch: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(20)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color(.systemGray6))
-                )
+                .background(Color.white)
             }
         }
+        .background(Color.white)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.black, lineWidth: 2)
+        )
         .padding(.horizontal, 16)
         .background(Color(.systemGray6))
         .cornerRadius(12)
