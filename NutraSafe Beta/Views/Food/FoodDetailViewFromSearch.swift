@@ -1790,12 +1790,12 @@ struct FoodDetailViewFromSearch: View {
                     Image(systemName: "info.circle.fill")
                         .font(.title2)
                         .foregroundColor(.orange)
-                    Text("Incomplete Food Data")
+                    Text("Incomplete Food Data?")
                         .font(.system(size: 20, weight: .bold))
                         .foregroundColor(.primary)
                 }
 
-                Text("This food has incomplete information. Help us improve our database by notifying our team.")
+                Text("If this food has incomplete information, help us improve our database by notifying our team.")
                     .font(.system(size: 14))
                     .foregroundColor(.secondary)
                     .lineLimit(nil)
