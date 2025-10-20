@@ -142,6 +142,12 @@ struct AddFoundFoodToFridgeSheet: View {
     @State private var location: String = "Fridge"
     @State private var expiryDate: Date = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
     @State private var isSaving = false
+    @State private var showPhotoActionSheet = false
+    @State private var showImagePicker = false
+    @State private var photoSourceType: UIImagePickerController.SourceType = .photoLibrary
+    @State private var capturedImage: UIImage?
+    @State private var uploadedImageURL: String?
+    @State private var isUploadingPhoto = false
     private let locations = ["Fridge", "Freezer", "Pantry", "Cupboard", "Counter"]
 
     var body: some View {
@@ -152,6 +158,30 @@ struct AddFoundFoodToFridgeSheet: View {
                     if let brand = food.brand { Text(brand).foregroundColor(.secondary) }
                     if let serving = food.servingDescription { Text(serving).foregroundColor(.secondary) }
                 }
+
+                Section(header: Text("Photo")) {
+                    Button(action: { showPhotoActionSheet = true }) {
+                        HStack {
+                            if isUploadingPhoto {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                    .padding(.trailing, 8)
+                            }
+                            Text(capturedImage != nil || uploadedImageURL != nil ? "Change Photo" : "Add Photo")
+                                .foregroundColor(.blue)
+                            Spacer()
+                            if let image = capturedImage {
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 60, height: 60)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                            }
+                        }
+                    }
+                    .disabled(isUploadingPhoto)
+                }
+
                 Section(header: Text("Details")) {
                     TextField("Quantity", text: $quantity).keyboardType(.default)
                     Picker("Location", selection: $location) {
@@ -170,6 +200,43 @@ struct AddFoundFoodToFridgeSheet: View {
                     .disabled(isSaving)
                 }
             }
+            .confirmationDialog("Add Photo", isPresented: $showPhotoActionSheet) {
+                Button("Take Photo") {
+                    photoSourceType = .camera
+                    showImagePicker = true
+                }
+                Button("Choose from Library") {
+                    photoSourceType = .photoLibrary
+                    showImagePicker = true
+                }
+                Button("Cancel", role: .cancel) {}
+            }
+            .sheet(isPresented: $showImagePicker) {
+                ImagePicker(selectedImage: nil, sourceType: photoSourceType) { image in
+                    if let image = image {
+                        capturedImage = image
+                        Task {
+                            await uploadPhoto(image)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func uploadPhoto(_ image: UIImage) async {
+        isUploadingPhoto = true
+        do {
+            let url = try await FirebaseManager.shared.uploadFridgeItemPhoto(image)
+            await MainActor.run {
+                uploadedImageURL = url
+                isUploadingPhoto = false
+            }
+        } catch {
+            print("❌ Failed to upload photo: \(error)")
+            await MainActor.run {
+                isUploadingPhoto = false
+            }
         }
     }
 
@@ -184,7 +251,8 @@ struct AddFoundFoodToFridgeSheet: View {
             expiryDate: expiryDate,
             addedDate: Date(),
             barcode: nil,
-            category: nil
+            category: nil,
+            imageURL: uploadedImageURL
         )
         do {
             try await FirebaseManager.shared.addFridgeItem(item)
