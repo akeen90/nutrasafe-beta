@@ -1473,7 +1473,7 @@ struct ContentView: View {
     
     private func editSelectedFood() {
         guard selectedTab == .diary && !selectedFoodItems.isEmpty else { return }
-        editTrigger = true
+        editTrigger.toggle()
     }
     
     private func deleteSelectedFoods() {
@@ -1503,7 +1503,7 @@ enum TabItem: String, CaseIterable {
     var icon: String {
         switch self {
         case .diary: return "heart.circle"
-        case .weight: return "chart.line.downtrend.xyaxis"
+        case .weight: return "figure.walk.motion"
         case .add: return "plus"
         case .food: return "fork.knife.circle"
         case .fridge: return "refrigerator"

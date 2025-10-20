@@ -17,9 +17,9 @@ struct DiaryTabView: View {
     @State private var showingCopySheet = false
     @State private var copyToDate = Date()
     @State private var copyToMeal = "Breakfast"
-    @State private var showingEditSheet = false
     @State private var editingFood: DiaryFoodItem?
     @State private var editingMealType = ""
+    @State private var diarySubTab: DiarySubTab = .overview
     @Binding var selectedFoodItems: Set<String>
     @Binding var showingSettings: Bool
     @Binding var selectedTab: TabItem
@@ -29,6 +29,11 @@ struct DiaryTabView: View {
     @Binding var deleteTrigger: Bool
     let onEditFood: () -> Void
     let onDeleteFoods: () -> Void
+
+    enum DiarySubTab: String, CaseIterable {
+        case overview = "Overview"
+        case nutrients = "Nutrients"
+    }
 
     // MARK: - Computed Properties
     private var totalCalories: Int {
@@ -246,9 +251,96 @@ struct DiaryTabView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
-                
+
+                // Sub-tab picker
+                Picker("", selection: $diarySubTab) {
+                    ForEach(DiarySubTab.allCases, id: \.self) { tab in
+                        Text(tab.rawValue).tag(tab)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+
                 ScrollView {
                     LazyVStack(spacing: 16) {
+                        if diarySubTab == .overview {
+                            overviewTabContent
+                        } else {
+                            nutrientsTabContent
+                        }
+                    }
+                }
+                .id(diarySubTab) // Force new scroll view when tab changes
+                .background(Color(.systemGroupedBackground))
+                .navigationBarHidden(true)
+            }
+        }
+        .navigationViewStyle(.stack)
+        .onChange(of: selectedDate) { _ in
+            loadFoodData()
+        }
+        .onAppear {
+            loadFoodData()
+        }
+        .onChange(of: refreshTrigger) { _ in
+            loadFoodData()
+        }
+        .onChange(of: editTrigger) { _ in
+            print("📝 Edit trigger fired. Selected items: \(selectedFoodItems)")
+
+            // Clear editingFood first to ensure state change
+            editingFood = nil
+
+            // Small delay to ensure state is cleared before setting new value
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                if let foodId = selectedFoodItems.first {
+                    print("📝 Looking for food with ID: \(foodId)")
+                    if let itemToEdit = findFood(byId: foodId) {
+                        print("📝 Found food to edit: \(itemToEdit.name)")
+                        print("📝 Setting editingFood to trigger sheet...")
+                        editingFood = itemToEdit
+                    } else {
+                        print("❌ Could not find food with ID: \(foodId)")
+                    }
+                } else {
+                    print("❌ No food ID in selectedFoodItems")
+                }
+            }
+        }
+        .onChange(of: moveTrigger) { _ in
+            showingMoveSheet = true
+        }
+        .onChange(of: copyTrigger) { _ in
+            showingCopySheet = true
+        }
+        .onChange(of: deleteTrigger) { _ in
+            onDeleteFoods()
+        }
+        .sheet(isPresented: $showingMoveSheet) {
+            moveFoodSheet
+        }
+        .sheet(isPresented: $showingCopySheet) {
+            copyFoodSheet
+        }
+        .sheet(item: $editingFood, onDismiss: {
+            print("📝 Edit sheet dismissed, resetting editingFood")
+            editingFood = nil
+        }) { food in
+            let _ = print("📝 Presenting edit sheet for: \(food.name)")
+            FoodDetailViewFromSearch(
+                food: food.toFoodSearchResult(),
+                sourceType: .diary,
+                selectedTab: $selectedTab,
+                destination: .diary
+            )
+        }
+    }
+
+    // MARK: - Tab Content Views
+
+    @ViewBuilder
+    private var overviewTabContent: some View {
                         // Daily Summary Card
                         DiaryDailySummaryCard(
                             totalCalories: totalCalories,
@@ -319,107 +411,76 @@ struct DiaryTabView: View {
                         }
                         .padding(.horizontal, 16)
 
-                        // Micronutrient Analysis
-                        ImprovedMicronutrientView(
-                            breakfast: breakfastFoods,
-                            lunch: lunchFoods,
-                            dinner: dinnerFoods,
-                            snacks: snackFoods
-                        )
-                        .padding(.horizontal, 16)
-
                         // Bottom padding for tab bar
                         Spacer()
                             .frame(height: 100)
-                    }
-                }
-            }
-        }
-        .navigationViewStyle(StackNavigationViewStyle())
-        .onAppear {
-            // Check if there's a preselected date from adding food
-            if let preselectedTimestamp = UserDefaults.standard.object(forKey: "preselectedDate") as? Double {
-                selectedDate = Date(timeIntervalSince1970: preselectedTimestamp)
-                // Clear it now that we've read and applied it
-                UserDefaults.standard.removeObject(forKey: "preselectedDate")
-            }
-            loadFoodData()
-        }
-        .onChange(of: selectedDate) { _ in
-            loadFoodData()
-        }
-        .onChange(of: diaryDataManager.dataReloadTrigger) { _ in
-            loadFoodData()
-        }
-        .onChange(of: editTrigger) { triggered in
-            if triggered {
-                editSelectedFood()
-                DispatchQueue.main.async {
-                    editTrigger = false // Reset trigger
-                }
-            }
-        }
-        .onChange(of: moveTrigger) { triggered in
-            if triggered {
-                showMoveOptions()
-                DispatchQueue.main.async {
-                    moveTrigger = false // Reset trigger
-                }
-            }
-        }
-        .onChange(of: copyTrigger) { triggered in
-            if triggered {
-                showCopyOptions()
-                DispatchQueue.main.async {
-                    copyTrigger = false // Reset trigger
-                }
-            }
-        }
-        .onChange(of: deleteTrigger) { triggered in
-            if triggered {
-                deleteSelectedFoods()
-                DispatchQueue.main.async {
-                    deleteTrigger = false // Reset trigger
-                }
-            }
-        }
-        .sheet(isPresented: $showingMoveSheet) {
-            MoveFoodBottomSheet(
-                selectedCount: selectedFoodItems.count,
-                currentDate: selectedDate,
-                moveToDate: $moveToDate,
-                moveToMeal: $moveToMeal,
-                onMove: performMove,
-                onCancel: {
-                    showingMoveSheet = false
-                }
+    }
+
+    @ViewBuilder
+    private var nutrientsTabContent: some View {
+        if #available(iOS 16.0, *) {
+            NutrientActivityDashboard()
+                .padding(.horizontal, 16)
+        } else {
+            ImprovedMicronutrientView(
+                breakfast: breakfastFoods,
+                lunch: lunchFoods,
+                dinner: dinnerFoods,
+                snacks: snackFoods
             )
+            .padding(.horizontal, 16)
         }
-        .sheet(isPresented: $showingCopySheet) {
-            CopyFoodBottomSheet(
-                selectedCount: selectedFoodItems.count,
-                currentDate: selectedDate,
-                copyToDate: $copyToDate,
-                copyToMeal: $copyToMeal,
-                onCopy: performCopy,
-                onCancel: {
-                    showingCopySheet = false
-                }
-            )
-        }
-        .sheet(isPresented: $showingEditSheet) {
-            if let food = editingFood {
-                FoodDetailViewFromSearch(
-                    food: food.toFoodSearchResult(),
-                    sourceType: .diary,
-                    selectedTab: $selectedTab,
-                    destination: .diary
-                )
+
+        // Bottom padding for tab bar
+        Spacer()
+            .frame(height: 100)
+    }
+
+    // MARK: - Sheet Views
+
+    @ViewBuilder
+    private var moveFoodSheet: some View {
+        MoveFoodBottomSheet(
+            selectedCount: selectedFoodItems.count,
+            currentDate: selectedDate,
+            moveToDate: $moveToDate,
+            moveToMeal: $moveToMeal,
+            onMove: performMove,
+            onCancel: {
+                showingMoveSheet = false
             }
-        }
+        )
+    }
+
+    @ViewBuilder
+    private var copyFoodSheet: some View {
+        CopyFoodBottomSheet(
+            selectedCount: selectedFoodItems.count,
+            currentDate: selectedDate,
+            copyToDate: $copyToDate,
+            copyToMeal: $copyToMeal,
+            onCopy: performCopy,
+            onCancel: {
+                showingCopySheet = false
+            }
+        )
     }
 
     // MARK: - Helper Methods
+
+    private func findFood(byId id: String) -> DiaryFoodItem? {
+        if let food = breakfastFoods.first(where: { $0.id.uuidString == id }) {
+            return food
+        } else if let food = lunchFoods.first(where: { $0.id.uuidString == id }) {
+            return food
+        } else if let food = dinnerFoods.first(where: { $0.id.uuidString == id }) {
+            return food
+        } else if let food = snackFoods.first(where: { $0.id.uuidString == id }) {
+            return food
+        }
+        return nil
+    }
+
     private func loadFoodData() {
         print("DiaryTabView: Loading food data for date: \(selectedDate)")
         Task {
@@ -483,11 +544,10 @@ struct DiaryTabView: View {
         UserDefaults.standard.set(food.quantity, forKey: "editingQuantity")
         UserDefaults.standard.set(food.servingDescription, forKey: "editingServingDescription")
 
-        // Set state variables and show edit sheet
+        // Set state variables - setting editingFood will trigger the sheet
         editingFood = food
         editingMealType = mealType
         selectedFoodItems.removeAll()
-        showingEditSheet = true
     }
 
     private func showMoveOptions() {

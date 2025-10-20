@@ -8,6 +8,7 @@
 
 import SwiftUI
 import FirebaseAuth
+import UserNotifications
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
@@ -1313,10 +1314,14 @@ struct HealthSafetySection: View {
 struct AppPreferencesSection: View {
     @AppStorage("appearanceMode") private var appearanceMode: AppearanceMode = .system
     @AppStorage("unitSystem") private var unitSystem: UnitSystem = .metric
+    @AppStorage("notificationsEnabled") private var notificationsEnabled = false
+    @AppStorage("useByNotificationsEnabled") private var useByNotificationsEnabled = true
+    @AppStorage("fastingNotificationsEnabled") private var fastingNotificationsEnabled = true
 
     @State private var showingThemeSelector = false
     @State private var showingUnitsSelector = false
     @State private var showingDataPrivacy = false
+    @State private var showingNotificationSettings = false
 
     var body: some View {
         SettingsSection(title: "App Preferences") {
@@ -1381,6 +1386,32 @@ struct AppPreferencesSection: View {
                 Divider()
                     .padding(.leading, 52)
 
+                // Notifications
+                Button(action: { showingNotificationSettings = true }) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "bell.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.red)
+                            .frame(width: 24)
+
+                        Text("Notifications")
+                            .font(.system(size: 16))
+                            .foregroundColor(.primary)
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                }
+                .buttonStyle(PlainButtonStyle())
+
+                Divider()
+                    .padding(.leading, 52)
+
                 // Data & Privacy
                 SettingsRow(
                     icon: "lock.shield.fill",
@@ -1397,6 +1428,13 @@ struct AppPreferencesSection: View {
         }
         .sheet(isPresented: $showingUnitsSelector) {
             UnitsSelectorView(selectedUnit: $unitSystem)
+        }
+        .sheet(isPresented: $showingNotificationSettings) {
+            NotificationSettingsView(
+                notificationsEnabled: $notificationsEnabled,
+                useByNotificationsEnabled: $useByNotificationsEnabled,
+                fastingNotificationsEnabled: $fastingNotificationsEnabled
+            )
         }
         .sheet(isPresented: $showingDataPrivacy) {
             DataPrivacyView()
@@ -2506,6 +2544,199 @@ struct MicronutrientDisplayView: View {
                     }
                 }
             }
+        }
+    }
+}
+
+// MARK: - Notification Settings View
+
+struct NotificationSettingsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var notificationsEnabled: Bool
+    @Binding var useByNotificationsEnabled: Bool
+    @Binding var fastingNotificationsEnabled: Bool
+
+    @State private var permissionStatus: UNAuthorizationStatus = .notDetermined
+    @State private var showingPermissionAlert = false
+    @State private var isCheckingPermissions = true
+
+    var body: some View {
+        NavigationView {
+            List {
+                // Header Section
+                Section {
+                    Text("Control when and how NutraSafe sends you notifications")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
+
+                // Permission Status Section
+                Section {
+                    HStack {
+                        Image(systemName: permissionStatusIcon)
+                            .foregroundColor(permissionStatusColor)
+                            .font(.system(size: 20))
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("System Permissions")
+                                .font(.system(size: 16, weight: .semibold))
+
+                            Text(permissionStatusText)
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                        }
+
+                        Spacer()
+
+                        if permissionStatus == .denied {
+                            Button("Open Settings") {
+                                openSystemSettings()
+                            }
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.blue)
+                        }
+                    }
+                    .padding(.vertical, 8)
+                } footer: {
+                    if permissionStatus == .denied {
+                        Text("Notifications are disabled in system settings. Open Settings to enable them for NutraSafe.")
+                            .font(.system(size: 12))
+                    }
+                }
+
+                // Notification Types Section
+                Section(header: Text("Notification Types")) {
+                    // Use-By Reminders
+                    Toggle(isOn: $useByNotificationsEnabled) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "calendar.badge.clock")
+                                    .foregroundColor(.orange)
+                                Text("Use-By Reminders")
+                                    .font(.system(size: 16))
+                            }
+
+                            Text("Get notified when food is about to expire")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .disabled(permissionStatus != .authorized && permissionStatus != .provisional)
+                    .onChange(of: useByNotificationsEnabled) { newValue in
+                        if newValue && permissionStatus == .notDetermined {
+                            requestNotificationPermission()
+                        }
+                    }
+
+                    // Fasting Notifications
+                    Toggle(isOn: $fastingNotificationsEnabled) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "clock.badge.checkmark")
+                                    .foregroundColor(.blue)
+                                Text("Fasting Tracker")
+                                    .font(.system(size: 16))
+                            }
+
+                            Text("Persistent notifications for fasting progress")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .disabled(permissionStatus != .authorized && permissionStatus != .provisional)
+                    .onChange(of: fastingNotificationsEnabled) { newValue in
+                        if newValue && permissionStatus == .notDetermined {
+                            requestNotificationPermission()
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Notifications")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                        impactFeedback.impactOccurred()
+                        dismiss()
+                    }
+                }
+            }
+            .task {
+                // Check permissions immediately when view appears
+                await checkNotificationPermission()
+            }
+        }
+    }
+
+    // MARK: - Computed Properties
+
+    private var permissionStatusIcon: String {
+        switch permissionStatus {
+        case .authorized, .provisional:
+            return "checkmark.circle.fill"
+        case .denied:
+            return "xmark.circle.fill"
+        case .notDetermined:
+            return "questionmark.circle.fill"
+        @unknown default:
+            return "questionmark.circle.fill"
+        }
+    }
+
+    private var permissionStatusColor: Color {
+        switch permissionStatus {
+        case .authorized, .provisional:
+            return .green
+        case .denied:
+            return .red
+        case .notDetermined:
+            return .orange
+        @unknown default:
+            return .gray
+        }
+    }
+
+    private var permissionStatusText: String {
+        switch permissionStatus {
+        case .authorized:
+            return "Notifications are enabled"
+        case .provisional:
+            return "Quiet notifications enabled"
+        case .denied:
+            return "Notifications are disabled"
+        case .notDetermined:
+            return "Not yet configured"
+        @unknown default:
+            return "Unknown status"
+        }
+    }
+
+    // MARK: - Helper Methods
+
+    private func checkNotificationPermission() async {
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        permissionStatus = settings.authorizationStatus
+        isCheckingPermissions = false
+    }
+
+    private func requestNotificationPermission() {
+        Task {
+            let granted = await UseByNotificationManager.shared.requestNotificationPermissions()
+            if granted {
+                permissionStatus = .authorized
+            } else {
+                permissionStatus = .denied
+                useByNotificationsEnabled = false
+                fastingNotificationsEnabled = false
+            }
+            await checkNotificationPermission()
+        }
+    }
+
+    private func openSystemSettings() {
+        if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(settingsUrl)
         }
     }
 }

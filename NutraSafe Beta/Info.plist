@@ -51,5 +51,7 @@
 	<string>NutraSafe accesses your health data to track exercise calories and provide better nutrition insights.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>NutraSafe updates your health data with nutrition information for comprehensive health tracking.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 </dict>
 </plist>

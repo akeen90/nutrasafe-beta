@@ -552,8 +552,11 @@ class DiaryDataManager: ObservableObject {
                     addToRecentFoods(item)
                 }
 
-                // Sync to Firebase immediately
-                syncFoodItemToFirebase(item, meal: meal, date: date)
+                // Sync to Firebase and wait for it to complete
+                await syncFoodItemToFirebase(item, meal: meal, date: date)
+
+                // Small delay to ensure Firebase cache is updated
+                try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
 
                 // Notify observers that data changed (triggers DiaryTabView to refresh)
                 await MainActor.run {
@@ -564,9 +567,11 @@ class DiaryDataManager: ObservableObject {
             } catch {
                 print("DiaryDataManager: Error loading current data from Firebase: \(error.localizedDescription)")
                 // Fallback: just sync to Firebase
-                syncFoodItemToFirebase(item, meal: meal, date: date)
+                await syncFoodItemToFirebase(item, meal: meal, date: date)
                 await MainActor.run {
                     addToRecentFoods(item)
+                    self.objectWillChange.send()
+                    self.dataReloadTrigger = UUID()
                 }
             }
         }
@@ -596,37 +601,35 @@ class DiaryDataManager: ObservableObject {
 
     // MARK: - Firebase Sync
 
-    private func syncFoodItemToFirebase(_ item: DiaryFoodItem, meal: String, date: Date) {
-        Task {
-            do {
-                // Get the current user ID from FirebaseManager
-                guard let userId = FirebaseManager.shared.currentUser?.uid else {
-                    print("DiaryDataManager: Cannot sync to Firebase - no user logged in")
-                    return
-                }
-
-                // Convert meal string to MealType enum
-                let mealType: MealType
-                switch meal.lowercased() {
-                case "breakfast": mealType = .breakfast
-                case "lunch": mealType = .lunch
-                case "dinner": mealType = .dinner
-                case "snacks": mealType = .snacks
-                default:
-                    print("DiaryDataManager: Cannot sync to Firebase - invalid meal type: \(meal)")
-                    return
-                }
-
-                // Convert DiaryFoodItem to FoodEntry
-                let foodEntry = item.toFoodEntry(userId: userId, mealType: mealType, date: date)
-
-                // Save to Firebase
-                try await FirebaseManager.shared.saveFoodEntry(foodEntry)
-
-                print("DiaryDataManager: Successfully synced '\(item.name)' to Firebase")
-            } catch {
-                print("DiaryDataManager: Failed to sync to Firebase: \(error.localizedDescription)")
+    private func syncFoodItemToFirebase(_ item: DiaryFoodItem, meal: String, date: Date) async {
+        do {
+            // Get the current user ID from FirebaseManager
+            guard let userId = FirebaseManager.shared.currentUser?.uid else {
+                print("DiaryDataManager: Cannot sync to Firebase - no user logged in")
+                return
             }
+
+            // Convert meal string to MealType enum
+            let mealType: MealType
+            switch meal.lowercased() {
+            case "breakfast": mealType = .breakfast
+            case "lunch": mealType = .lunch
+            case "dinner": mealType = .dinner
+            case "snacks": mealType = .snacks
+            default:
+                print("DiaryDataManager: Cannot sync to Firebase - invalid meal type: \(meal)")
+                return
+            }
+
+            // Convert DiaryFoodItem to FoodEntry
+            let foodEntry = item.toFoodEntry(userId: userId, mealType: mealType, date: date)
+
+            // Save to Firebase
+            try await FirebaseManager.shared.saveFoodEntry(foodEntry)
+
+            print("DiaryDataManager: Successfully synced '\(item.name)' to Firebase")
+        } catch {
+            print("DiaryDataManager: Failed to sync to Firebase: \(error.localizedDescription)")
         }
     }
     

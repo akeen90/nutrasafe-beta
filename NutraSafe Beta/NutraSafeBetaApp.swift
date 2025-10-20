@@ -1,5 +1,6 @@
 import SwiftUI
 import Firebase
+import UserNotifications
 
 // Explicit app delegate for proper Firebase initialization and to satisfy swizzler expectations
 class AppDelegate: NSObject, UIApplicationDelegate {
@@ -49,8 +50,32 @@ struct MainAppView: View {
             .preferredColorScheme(appearanceMode.colorScheme)
             .id(appearanceModeString) // Force view refresh when theme changes
             .onAppear {
-                Task { await healthKitManager.requestAuthorization() }
+                Task {
+                    await healthKitManager.requestAuthorization()
+                    await requestNotificationPermission()
+                }
             }
+    }
+
+    /// Request notification permissions on app launch
+    private func requestNotificationPermission() async {
+        let center = UNUserNotificationCenter.current()
+
+        // Check current status first
+        let settings = await center.notificationSettings()
+
+        // Only request if not yet determined (don't bother user if already denied/granted)
+        guard settings.authorizationStatus == .notDetermined else {
+            print("📱 Notification permission already determined: \(settings.authorizationStatus.rawValue)")
+            return
+        }
+
+        do {
+            let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
+            print("📱 Notification permission requested - granted: \(granted)")
+        } catch {
+            print("❌ Error requesting notification permission: \(error)")
+        }
     }
 }
 

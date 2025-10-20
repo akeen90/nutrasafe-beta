@@ -54,6 +54,15 @@ class FastingManager: ObservableObject {
     private let fastingStateKey = "fastingState"
     private let fastingThresholdHours: Double = 12.0 // Consider fasting after 12 hours
 
+    // Check if user has enabled fasting notifications in settings
+    // Default to true if not set (matches AppStorage default)
+    private var fastingNotificationsEnabled: Bool {
+        if userDefaults.object(forKey: "fastingNotificationsEnabled") == nil {
+            return true // Default value
+        }
+        return userDefaults.bool(forKey: "fastingNotificationsEnabled")
+    }
+
     private var updateTimer: Timer?
     private var currentActivity: Any? // Holds Activity<FastingActivityAttributes> on iOS 16.1+
 
@@ -138,12 +147,21 @@ class FastingManager: ObservableObject {
             fastingState.fastingStartTime = fastingState.lastMealTime
             saveFastingState()
 
+            // Only start notifications and Live Activity if user has enabled them in settings
+            guard fastingNotificationsEnabled else {
+                print("⏸️ Fasting notifications disabled in settings")
+                return
+            }
+
             // Start persistent notification and Live Activity
             await startFastingNotification()
             if #available(iOS 16.1, *) {
                 await startLiveActivity()
             }
         } else if fastingState.isActive {
+            // Only update if user has enabled fasting notifications
+            guard fastingNotificationsEnabled else { return }
+
             // Update existing notification and Live Activity
             await updateFastingNotification()
             if #available(iOS 16.1, *) {
@@ -154,6 +172,11 @@ class FastingManager: ObservableObject {
 
     // MARK: - Notifications
     private func startFastingNotification() async {
+        guard fastingNotificationsEnabled else {
+            print("⏸️ Fasting notifications disabled in settings - not starting notification")
+            return
+        }
+
         guard notificationPermissionGranted else {
             _ = await requestNotificationPermission()
             return
@@ -171,6 +194,7 @@ class FastingManager: ObservableObject {
         let request = UNNotificationRequest(identifier: "fasting-active", content: content, trigger: trigger)
 
         try? await UNUserNotificationCenter.current().add(request)
+        print("✅ Fasting notification started")
     }
 
     private func updateFastingNotification() async {
@@ -197,8 +221,13 @@ class FastingManager: ObservableObject {
     // MARK: - Live Activities (Dynamic Island)
     @available(iOS 16.1, *)
     private func startLiveActivity() async {
+        guard fastingNotificationsEnabled else {
+            print("⏸️ Fasting notifications disabled in settings - not starting Live Activity")
+            return
+        }
+
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
-            print("Live Activities not enabled")
+            print("❌ Live Activities not enabled by system")
             return
         }
 
@@ -220,8 +249,9 @@ class FastingManager: ObservableObject {
                 contentState: contentState,
                 pushType: nil
             )
+            print("✅ Fasting Live Activity started - will appear in Dynamic Island")
         } catch {
-            print("Failed to start Live Activity: \(error)")
+            print("❌ Failed to start Live Activity: \(error)")
         }
     }
 

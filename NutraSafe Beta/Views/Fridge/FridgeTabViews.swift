@@ -27,7 +27,6 @@ struct FridgeTabView: View {
                 HStack(spacing: 16) {
                     Text("Use By")
                         .font(.system(size: 38, weight: .bold, design: .rounded))
-                        .frame(height: 44, alignment: .center)
                         .foregroundStyle(
                             LinearGradient(
                                 colors: [

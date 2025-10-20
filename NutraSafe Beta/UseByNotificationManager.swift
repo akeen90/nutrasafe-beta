@@ -14,6 +14,15 @@ class UseByNotificationManager {
 
     private init() {}
 
+    // Check if user has enabled use-by notifications in settings
+    // Default to true if not set (matches AppStorage default)
+    private var useByNotificationsEnabled: Bool {
+        if UserDefaults.standard.object(forKey: "useByNotificationsEnabled") == nil {
+            return true // Default value
+        }
+        return UserDefaults.standard.bool(forKey: "useByNotificationsEnabled")
+    }
+
     // MARK: - Permission Request
 
     /// Request notification permissions if not already granted
@@ -45,12 +54,18 @@ class UseByNotificationManager {
 
     /// Schedule notifications for a use-by item (tomorrow and on expiry day)
     func scheduleNotifications(for item: FridgeInventoryItem) async {
+        // Check if user has enabled use-by notifications in settings
+        guard useByNotificationsEnabled else {
+            print("⏸️ Use-by notifications disabled in settings - not scheduling for \(item.name)")
+            return
+        }
+
         let useByDate = item.expiryDate
         let itemName = item.name
 
         // Ensure we have permission
         guard await requestNotificationPermissions() else {
-            print("Notification permission not granted")
+            print("❌ Notification permission not granted")
             return
         }
 
@@ -107,9 +122,9 @@ class UseByNotificationManager {
 
         do {
             try await UNUserNotificationCenter.current().add(request)
-            print("✅ Scheduled notification '\(identifier)' for \(date)")
+            print("✅ Use-by notification scheduled: '\(identifier)' for \(date)")
         } catch {
-            print("❌ Error scheduling notification: \(error)")
+            print("❌ Error scheduling use-by notification: \(error)")
         }
     }
 
