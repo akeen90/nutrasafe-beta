@@ -104,17 +104,28 @@ class FirebaseManager: ObservableObject {
             "verifiedFoods"
         ]
 
+        var totalDeleted = 0
         for collection in collections {
             let snapshot = try await db.collection("users").document(userId)
                 .collection(collection).getDocuments()
 
-            print("   Deleting \(snapshot.documents.count) documents from \(collection)...")
+            let count = snapshot.documents.count
+            print("   Deleting \(count) documents from \(collection)...")
+
             for document in snapshot.documents {
                 try await document.reference.delete()
             }
+
+            totalDeleted += count
+            print("   ✅ Successfully deleted \(count) documents from \(collection)")
         }
 
-        print("✅ All user data deleted successfully")
+        print("✅ All user data deleted successfully - Total: \(totalDeleted) documents deleted")
+
+        // Notify observers that all data has been cleared
+        await MainActor.run {
+            self.objectWillChange.send()
+        }
     }
 
     // MARK: - Email/Password Authentication

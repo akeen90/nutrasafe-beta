@@ -328,7 +328,7 @@ struct DiaryTabView: View {
         }
         .onChange(of: deleteTrigger) { newValue in
             if newValue {
-                onDeleteFoods()
+                deleteSelectedFoods()
                 // Reset trigger after a short delay to allow for next delete
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     deleteTrigger = false
