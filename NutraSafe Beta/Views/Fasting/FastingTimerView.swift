@@ -8,6 +8,7 @@
 
 import SwiftUI
 import ActivityKit
+import UserNotifications
 
 // MARK: - Fasting Timer Main View
 
@@ -309,11 +310,12 @@ struct FastingTimerView: View {
                 isLoading = false
             }
 
-            // Restart Live Activity if user was fasting
+            // Restart Live Activity and notifications if user was fasting
             if state.isFasting {
                 if #available(iOS 16.1, *) {
                     await startLiveActivity()
                 }
+                await scheduleFastingNotifications()
             }
         } catch {
             print("❌ Error loading fasting state: \(error.localizedDescription)")
@@ -344,6 +346,9 @@ struct FastingTimerView: View {
             if #available(iOS 16.1, *) {
                 await startLiveActivity()
             }
+
+            // Schedule fasting notifications
+            await scheduleFastingNotifications()
         }
 
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
@@ -371,6 +376,9 @@ struct FastingTimerView: View {
             if #available(iOS 16.1, *) {
                 await endLiveActivity()
             }
+
+            // Cancel all fasting notifications
+            cancelFastingNotifications()
         }
 
         let impactFeedback = UIImpactFeedbackGenerator(style: .heavy)
@@ -478,6 +486,161 @@ struct FastingTimerView: View {
         await activity.end(dismissalPolicy: .immediate)
         currentActivity = nil
         print("✅ Fasting Live Activity ended")
+    }
+
+    // MARK: - Fasting Notifications
+    private func scheduleFastingNotifications() async {
+        guard notificationsEnabled else {
+            print("⏸️ Fasting notifications disabled - not scheduling")
+            return
+        }
+
+        guard let startTime = fastingStartTime else { return }
+
+        // Request permission
+        let center = UNUserNotificationCenter.current()
+        let settings = await center.notificationSettings()
+
+        if settings.authorizationStatus == .notDetermined {
+            do {
+                let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
+                if !granted {
+                    print("❌ Notification permission denied")
+                    return
+                }
+            } catch {
+                print("❌ Error requesting notification permission: \(error)")
+                return
+            }
+        } else if settings.authorizationStatus != .authorized {
+            print("❌ Notifications not authorized")
+            return
+        }
+
+        // Clear any existing fasting notifications
+        cancelFastingNotifications()
+
+        // Schedule stage notifications
+        let stages = [
+            (hours: 4, title: "Early Fat Burning 🔥", body: "Your body is starting to burn stored fat for energy"),
+            (hours: 8, title: "Fat Burning Mode 💪", body: "You're in active fat burning! Keep going!"),
+            (hours: 12, title: "Ketosis Beginning 🌟", body: "Great progress! Your body is entering ketosis"),
+            (hours: 16, title: "Deep Ketosis Achieved 🎯", body: "Amazing! You've reached deep ketosis and autophagy")
+        ]
+
+        for stage in stages {
+            let triggerDate = startTime.addingTimeInterval(TimeInterval(stage.hours * 3600))
+
+            // Only schedule if in the future
+            if triggerDate > Date() {
+                let content = UNMutableNotificationContent()
+                content.title = stage.title
+                content.body = stage.body
+                content.sound = .default
+                content.badge = 1
+
+                let timeInterval = triggerDate.timeIntervalSinceNow
+                let trigger = UNTimeIntervalNotificationTrigger(timeInterval: timeInterval, repeats: false)
+                let request = UNNotificationRequest(
+                    identifier: "fasting-stage-\(stage.hours)h",
+                    content: content,
+                    trigger: trigger
+                )
+
+                do {
+                    try await center.add(request)
+                    print("✅ Scheduled \(stage.hours)h fasting notification")
+                } catch {
+                    print("❌ Error scheduling \(stage.hours)h notification: \(error)")
+                }
+            }
+        }
+
+        // Schedule periodic reminders based on user interval
+        await schedulePeriodicReminders(startTime: startTime)
+    }
+
+    private func schedulePeriodicReminders(startTime: Date) async {
+        guard notificationsEnabled else { return }
+
+        let center = UNUserNotificationCenter.current()
+        let goalHours = fastingGoal
+        var currentHour = reminderInterval
+
+        // Schedule reminders at user-defined intervals until goal
+        while currentHour < goalHours {
+            let triggerDate = startTime.addingTimeInterval(TimeInterval(currentHour * 3600))
+
+            // Only schedule if in the future and not a stage notification
+            if triggerDate > Date() && ![4, 8, 12, 16].contains(currentHour) {
+                let content = UNMutableNotificationContent()
+                content.title = "Fasting Progress ⏰"
+                content.body = "\(currentHour)h of your \(goalHours)h fast complete!"
+                content.sound = .default
+
+                let timeInterval = triggerDate.timeIntervalSinceNow
+                let trigger = UNTimeIntervalNotificationTrigger(timeInterval: timeInterval, repeats: false)
+                let request = UNNotificationRequest(
+                    identifier: "fasting-reminder-\(currentHour)h",
+                    content: content,
+                    trigger: trigger
+                )
+
+                do {
+                    try await center.add(request)
+                    print("✅ Scheduled \(currentHour)h reminder notification")
+                } catch {
+                    print("❌ Error scheduling reminder: \(error)")
+                }
+            }
+
+            currentHour += reminderInterval
+        }
+
+        // Goal reached notification
+        let goalDate = startTime.addingTimeInterval(TimeInterval(goalHours * 3600))
+        if goalDate > Date() {
+            let content = UNMutableNotificationContent()
+            content.title = "Fasting Goal Achieved! 🎉"
+            content.body = "Congratulations! You've completed your \(goalHours)-hour fast!"
+            content.sound = .default
+
+            let timeInterval = goalDate.timeIntervalSinceNow
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: timeInterval, repeats: false)
+            let request = UNNotificationRequest(
+                identifier: "fasting-goal-complete",
+                content: content,
+                trigger: trigger
+            )
+
+            do {
+                try await center.add(request)
+                print("✅ Scheduled goal completion notification")
+            } catch {
+                print("❌ Error scheduling goal notification: \(error)")
+            }
+        }
+    }
+
+    private func cancelFastingNotifications() {
+        let center = UNUserNotificationCenter.current()
+
+        // Build list of all possible notification identifiers
+        var identifiers = [
+            "fasting-stage-4h",
+            "fasting-stage-8h",
+            "fasting-stage-12h",
+            "fasting-stage-16h",
+            "fasting-goal-complete"
+        ]
+
+        // Add reminder identifiers (up to 24 hours with 2-hour intervals)
+        for hour in stride(from: 2, through: 24, by: 2) {
+            identifiers.append("fasting-reminder-\(hour)h")
+        }
+
+        center.removePendingNotificationRequests(withIdentifiers: identifiers)
+        print("🗑️ Cancelled all fasting notifications")
     }
 }
 

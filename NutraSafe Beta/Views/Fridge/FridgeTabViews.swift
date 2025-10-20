@@ -2791,6 +2791,12 @@ struct FridgeItemDetailView: View {
             print("FridgeItemDetailView: Calling updateFridgeItem")
             try await FirebaseManager.shared.updateFridgeItem(updatedItem)
             print("FridgeItemDetailView: Update successful!")
+
+            // Reschedule notifications with updated expiry date
+            UseByNotificationManager.shared.cancelNotifications(for: item.id)
+            await UseByNotificationManager.shared.scheduleNotifications(for: updatedItem)
+            print("FridgeItemDetailView: Notifications rescheduled")
+
             NotificationCenter.default.post(name: .fridgeInventoryUpdated, object: nil)
 
             await MainActor.run {
