@@ -2518,7 +2518,8 @@ struct FoodDetailViewFromSearch: View {
     // Helper function to get available vitamins and minerals
     private func getAvailableNutrients(_ micronutrients: MicronutrientProfile) -> [String] {
         var availableNutrients: [String] = []
-        
+        var estimatedNutrients: [String] = []
+
         // Vitamins
         let vitaminA = micronutrients.vitamins["vitaminA"] ?? 0
         let vitaminC = micronutrients.vitamins["vitaminC"] ?? 0
@@ -2547,7 +2548,7 @@ struct FoodDetailViewFromSearch: View {
         if biotin > 1 { availableNutrients.append("Biotin (B7)") }
         if folate > 10 { availableNutrients.append("Folate") }
         if vitaminB12 > 0.1 { availableNutrients.append("Vitamin B12") }
-        
+
         // Minerals
         let calcium = micronutrients.minerals["calcium"] ?? 0
         let chromium = micronutrients.minerals["chromium"] ?? 0
@@ -2574,10 +2575,70 @@ struct FoodDetailViewFromSearch: View {
         if potassium > 50 { availableNutrients.append("Potassium") }
         if selenium > 5 { availableNutrients.append("Selenium") }
         if zinc > 1 { availableNutrients.append("Zinc") }
-        
-        return availableNutrients
+
+        // If we have ingredients, use NutrientDetector to estimate additional nutrients
+        if let ingredients = food.ingredients, !ingredients.isEmpty {
+            // Create a temporary DiaryFoodItem for nutrient detection
+            let tempFood = DiaryFoodItem(
+                name: food.name,
+                brand: food.brand,
+                calories: 0,
+                protein: 0,
+                carbs: 0,
+                fat: 0,
+                servingDescription: "",
+                quantity: 1,
+                ingredients: ingredients,
+                barcode: food.barcode,
+                micronutrientProfile: nil // Don't pass profile so it uses keyword matching
+            )
+
+            // Get nutrient IDs from detector
+            let detectedNutrientIds = NutrientDetector.detectNutrients(in: tempFood)
+
+            // Map nutrient IDs to display names and mark as estimated
+            for nutrientId in detectedNutrientIds {
+                let displayName = mapNutrientIdToDisplayName(nutrientId)
+                // Only add if not already in availableNutrients (from API data)
+                if !availableNutrients.contains(displayName) {
+                    estimatedNutrients.append("\(displayName) (est.)")
+                }
+            }
+        }
+
+        // Combine API nutrients first, then estimated
+        return availableNutrients + estimatedNutrients.sorted()
     }
-    
+
+    // Map nutrient IDs to display names used in the UI
+    private func mapNutrientIdToDisplayName(_ id: String) -> String {
+        switch id {
+        case "vitamin_a": return "Vitamin A"
+        case "vitamin_c": return "Vitamin C"
+        case "vitamin_d": return "Vitamin D"
+        case "vitamin_e": return "Vitamin E"
+        case "vitamin_k": return "Vitamin K"
+        case "vitamin_b1": return "Thiamine (B1)"
+        case "vitamin_b2": return "Riboflavin (B2)"
+        case "vitamin_b3": return "Niacin (B3)"
+        case "vitamin_b6": return "Vitamin B6"
+        case "vitamin_b12": return "Vitamin B12"
+        case "folate": return "Folate"
+        case "biotin": return "Biotin (B7)"
+        case "calcium": return "Calcium"
+        case "iron": return "Iron"
+        case "magnesium": return "Magnesium"
+        case "phosphorus": return "Phosphorus"
+        case "potassium": return "Potassium"
+        case "zinc": return "Zinc"
+        case "selenium": return "Selenium"
+        case "copper": return "Copper"
+        case "manganese": return "Manganese"
+        case "iodine": return "Iodine"
+        default: return id
+        }
+    }
+
     // MARK: - Edit Functions
     private func updateExistingFoodItem() {
         let diaryManager = DiaryDataManager.shared
