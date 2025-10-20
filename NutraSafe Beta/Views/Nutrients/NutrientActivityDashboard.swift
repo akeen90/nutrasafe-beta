@@ -71,21 +71,20 @@ struct NutrientActivityDashboard: View {
 
     private var headerSection: some View {
         VStack(spacing: 16) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Nutrient Activity")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
+            // Centered header
+            VStack(spacing: 8) {
+                Text("Nutrient Activity")
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
 
-                    Text("Last 30 days overview — consistency of nutrients in your logged meals")
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary)
-                        .lineLimit(2)
-                }
+                Text("Last 30 days overview — consistency of nutrients in your logged meals")
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .padding(.horizontal, 20)
 
-                Spacer()
-
-                // Timeline button
+                // Timeline button centered below description
                 NavigationLink(destination: NutrientTimelineView()) {
                     HStack(spacing: 6) {
                         Image(systemName: "calendar")
@@ -94,18 +93,16 @@ struct NutrientActivityDashboard: View {
                             .font(.system(size: 14, weight: .semibold))
                     }
                     .foregroundColor(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
                     .background(Color.purple)
                     .cornerRadius(12)
                 }
+                .padding(.top, 4)
             }
 
             // Performance filter buttons
             performanceFilterView
-
-            // Category filter
-            categoryFilterView
         }
         .padding(20)
         .background(
