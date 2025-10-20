@@ -92,7 +92,7 @@ struct AddFoodBarcodeView: View {
                     ModernBarcodeScanner(onBarcodeScanned: { barcode in
                         handleBarcodeScanned(barcode)
                     }, isSearching: $isSearching)
-                    
+
                     // Overlay UI
                     VStack {
                         HStack {
@@ -100,35 +100,43 @@ struct AddFoodBarcodeView: View {
                         }
                         .frame(height: 100)
                         .background(Color.black.opacity(0.7))
-                        
+
                         Spacer()
-                        
-                        // Scanning indicator
-                        VStack(spacing: 16) {
-                            if isSearching {
-                                ProgressView()
-                                    .scaleEffect(1.2)
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                Text("Looking up product...")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(.white)
-                            } else {
+
+                        // Bottom instruction text (only when not searching)
+                        if !isSearching {
+                            VStack(spacing: 16) {
                                 Text("Position barcode within the frame")
                                     .font(.system(size: 16, weight: .medium))
                                     .foregroundColor(.white)
+
+                                if let errorMessage = errorMessage {
+                                    Text(errorMessage)
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.red)
+                                        .multilineTextAlignment(.center)
+                                        .padding(.horizontal, 32)
+                                }
                             }
-                            
-                            if let errorMessage = errorMessage {
-                                Text(errorMessage)
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.red)
-                                    .multilineTextAlignment(.center)
-                                    .padding(.horizontal, 32)
-                            }
+                            .frame(height: 120)
+                            .frame(maxWidth: .infinity)
+                            .background(Color.black.opacity(0.7))
                         }
-                        .frame(height: 120)
-                        .frame(maxWidth: .infinity)
-                        .background(Color.black.opacity(0.7))
+                    }
+
+                    // Center searching indicator (appears when searching)
+                    if isSearching {
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .scaleEffect(1.5)
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            Text("Looking up product...")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.white)
+                        }
+                        .padding(32)
+                        .background(Color.black.opacity(0.75))
+                        .cornerRadius(16)
                     }
                 }
             }

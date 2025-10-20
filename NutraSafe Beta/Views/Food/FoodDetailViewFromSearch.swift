@@ -1475,14 +1475,9 @@ struct FoodDetailViewFromSearch: View {
     // The food parameter already has all ingredients, additives, and nutrition data from Firebase search
     
     private var ingredientsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .center, spacing: 16) {
             HStack {
-                Text("Ingredients")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(.primary)
-
                 if cachedIngredientsStatus == .pending {
-                    Spacer()
                     Text("⏳ Awaiting Verification")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.orange)
@@ -1490,8 +1485,18 @@ struct FoodDetailViewFromSearch: View {
                         .padding(.vertical, 4)
                         .background(Color.orange.opacity(0.1))
                         .cornerRadius(6)
+                    Spacer()
+                }
+
+                Text("Ingredients")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.primary)
+
+                if cachedIngredientsStatus == .pending {
+                    Spacer()
                 }
             }
+            .frame(maxWidth: .infinity)
             .padding(.bottom, 4)
 
             if let ingredientsList = cachedIngredients {

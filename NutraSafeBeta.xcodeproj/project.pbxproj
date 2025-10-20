@@ -64,6 +64,7 @@
 		C83CC72A7D464E1685D1143F /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95FB33855679471485B474B4 /* SettingsView.swift */; };
 		E0D7A2553A41000A8C20AA18 /* FastingLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2B222B37C6C811A1DA830D7 /* FastingLiveActivity.swift */; };
 		EA81BC11E57FB5223BF659FD /* WeightTrainingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D228677FCE7C1E8D0664B4A5 /* WeightTrainingView.swift */; };
+		EC0CE2C1561B24FEFEEB9408 /* UseByNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 025E4F9F2ED6507377598194 /* UseByNotificationManager.swift */; };
 		F274CF78968B4290ADA3C260F96936CE /* FridgeTabViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4841D8FB19F4A7091A7DD0A429B645E /* FridgeTabViews.swift */; };
 		F2A1EA64DE5874696AC72D24 /* PrivacyPolicyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55FA70B49C3C721A45AA1C88 /* PrivacyPolicyView.swift */; };
 		F71736FEB2E843E18F674753 /* FastingTimerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 034F60AA8BCB4662A86709D4 /* FastingTimerView.swift */; };
@@ -72,6 +73,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		025E4F9F2ED6507377598194 /* UseByNotificationManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UseByNotificationManager.swift; sourceTree = "<group>"; };
 		034F60AA8BCB4662A86709D4 /* FastingTimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastingTimerView.swift; sourceTree = "<group>"; };
 		0F7561B2EBC74941A13A75D612F2083E /* WorkoutNavigationOverlays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutNavigationOverlays.swift; sourceTree = "<group>"; };
 		21E673F6B8D947F9B6F2005EFFAE8B5B /* DiaryHydrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryHydrationView.swift; sourceTree = "<group>"; };
@@ -252,6 +254,7 @@
 				5A3F908F9CBBA65110BADC47 /* DesignSystem.swift */,
 				867265B1226DAC67D5A60F8D /* FastingManager.swift */,
 				D2B222B37C6C811A1DA830D7 /* FastingLiveActivity.swift */,
+				025E4F9F2ED6507377598194 /* UseByNotificationManager.swift */,
 			);
 			path = "NutraSafe Beta";
 			sourceTree = "<group>";
@@ -434,6 +437,7 @@
 				95EAAC6CBEBF464E40185060 /* DesignSystem.swift in Sources */,
 				58137E2B64890ED653E8F7A3 /* FastingManager.swift in Sources */,
 				E0D7A2553A41000A8C20AA18 /* FastingLiveActivity.swift in Sources */,
+				EC0CE2C1561B24FEFEEB9408 /* UseByNotificationManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

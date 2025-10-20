@@ -1634,6 +1634,10 @@ struct ModernExpiryRow: View {
 
         Task {
             try? await FirebaseManager.shared.deleteFridgeItem(itemId: item.id)
+
+            // Cancel use-by notifications for this item
+            UseByNotificationManager.shared.cancelNotifications(for: item.id)
+
             NotificationCenter.default.post(name: .fridgeInventoryUpdated, object: nil)
         }
     }
@@ -2218,6 +2222,10 @@ struct ManualFridgeItemSheet: View {
         Task {
             do {
                 try await FirebaseManager.shared.addFridgeItem(fridgeItem)
+
+                // Schedule use-by notifications for this item
+                await UseByNotificationManager.shared.scheduleNotifications(for: fridgeItem)
+
                 NotificationCenter.default.post(name: .fridgeInventoryUpdated, object: nil)
                 await MainActor.run { dismiss() }
             } catch {
@@ -3215,6 +3223,10 @@ struct CleanFridgeRow: View {
     private func deleteItem() {
         Task {
             try? await FirebaseManager.shared.deleteFridgeItem(itemId: item.id)
+
+            // Cancel use-by notifications for this item
+            UseByNotificationManager.shared.cancelNotifications(for: item.id)
+
             NotificationCenter.default.post(name: .fridgeInventoryUpdated, object: nil)
         }
     }
