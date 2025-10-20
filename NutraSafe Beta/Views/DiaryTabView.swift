@@ -314,8 +314,14 @@ struct DiaryTabView: View {
         .onChange(of: copyTrigger) { _ in
             showingCopySheet = true
         }
-        .onChange(of: deleteTrigger) { _ in
-            onDeleteFoods()
+        .onChange(of: deleteTrigger) { newValue in
+            if newValue {
+                onDeleteFoods()
+                // Reset trigger after a short delay to allow for next delete
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    deleteTrigger = false
+                }
+            }
         }
         .sheet(isPresented: $showingMoveSheet) {
             moveFoodSheet
