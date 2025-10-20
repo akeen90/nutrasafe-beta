@@ -1904,9 +1904,9 @@ struct FridgeBarcodeScanSheet: View {
     var body: some View {
         NavigationView {
             ZStack {
-                ModernBarcodeScanner { barcode in
+                ModernBarcodeScanner(onBarcodeScanned: { barcode in
                     Task { await lookup(barcode: barcode) }
-                }
+                }, isSearching: $isSearching)
 
                 VStack(spacing: 12) {
                     if isSearching {

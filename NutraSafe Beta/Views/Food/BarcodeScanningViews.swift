@@ -89,9 +89,9 @@ struct AddFoodBarcodeView: View {
             } else {
                 // Camera scanning view
                 ZStack {
-                    ModernBarcodeScanner { barcode in
+                    ModernBarcodeScanner(onBarcodeScanned: { barcode in
                         handleBarcodeScanned(barcode)
-                    }
+                    }, isSearching: $isSearching)
                     
                     // Overlay UI
                     VStack {
@@ -246,15 +246,21 @@ struct AddFoodBarcodeView: View {
 // MARK: - Modern Barcode Scanner Bridge
 struct ModernBarcodeScanner: UIViewControllerRepresentable {
     let onBarcodeScanned: (String) -> Void
-    
+    @Binding var isSearching: Bool
+
     func makeUIViewController(context: Context) -> BarcodeScannerViewController {
         let scanner = BarcodeScannerViewController()
         scanner.onBarcodeScanned = onBarcodeScanned
         return scanner
     }
-    
+
     func updateUIViewController(_ uiViewController: BarcodeScannerViewController, context: Context) {
-        // No updates needed
+        // Stop/start camera based on search state
+        if isSearching {
+            uiViewController.pauseScanning()
+        } else {
+            uiViewController.resumeScanning()
+        }
     }
 }
 
@@ -265,6 +271,8 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
     private var previewLayer: AVCaptureVideoPreviewLayer?
     private var lastScannedBarcode: String?
     private var lastScanTime: Date?
+    private var isScanningPaused = false
+    private var videoCaptureDevice: AVCaptureDevice?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -289,15 +297,34 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
     
     // MARK: - Camera Setup
     private func setupCamera() {
-        guard let videoCaptureDevice = AVCaptureDevice.default(for: .video) else {
+        // Use the best rear camera with autofocus capabilities
+        let discoverySession = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.builtInWideAngleCamera, .builtInDualCamera, .builtInTripleCamera],
+            mediaType: .video,
+            position: .back
+        )
+
+        guard let videoCaptureDevice = discoverySession.devices.first else {
             showCameraError("Camera not available")
             return
         }
-        
+
+        self.videoCaptureDevice = videoCaptureDevice
+
         let captureSession = AVCaptureSession()
         captureSession.sessionPreset = .high
-        
+
         do {
+            // Configure autofocus for optimal barcode scanning
+            try videoCaptureDevice.lockForConfiguration()
+            if videoCaptureDevice.isFocusModeSupported(.continuousAutoFocus) {
+                videoCaptureDevice.focusMode = .continuousAutoFocus
+            }
+            if videoCaptureDevice.isAutoFocusRangeRestrictionSupported {
+                videoCaptureDevice.autoFocusRangeRestriction = .near
+            }
+            videoCaptureDevice.unlockForConfiguration()
+
             let videoInput = try AVCaptureDeviceInput(device: videoCaptureDevice)
             
             if captureSession.canAddInput(videoInput) {
@@ -343,9 +370,20 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
             self.captureSession?.startRunning()
         }
     }
-    
+
     private func stopCamera() {
         captureSession?.stopRunning()
+    }
+
+    func pauseScanning() {
+        isScanningPaused = true
+    }
+
+    func resumeScanning() {
+        isScanningPaused = false
+        // Reset debounce to allow new scans
+        lastScannedBarcode = nil
+        lastScanTime = nil
     }
     
     private func showCameraError(_ message: String) {
@@ -366,21 +404,24 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
     
     // MARK: - Barcode Detection Delegate
     func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
+        // Don't process barcodes if scanning is paused
+        guard !isScanningPaused else { return }
+
         if let metadataObject = metadataObjects.first {
             guard let readableObject = metadataObject as? AVMetadataMachineReadableCodeObject else { return }
             guard let stringValue = readableObject.stringValue else { return }
-            
+
             // Debounce repeated scans - prevent duplicate scans within 2 seconds
             let now = Date()
-            if let lastBarcode = lastScannedBarcode, 
+            if let lastBarcode = lastScannedBarcode,
                let lastTime = lastScanTime,
                lastBarcode == stringValue && now.timeIntervalSince(lastTime) < 2.0 {
                 return
             }
-            
+
             lastScannedBarcode = stringValue
             lastScanTime = now
-            
+
             print("Barcode scanned: \(stringValue)")
             // Provide haptic feedback for successful scan
             AudioServicesPlaySystemSound(SystemSoundID(kSystemSoundID_Vibrate))
