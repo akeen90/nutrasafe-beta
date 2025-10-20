@@ -2576,8 +2576,9 @@ struct FoodDetailViewFromSearch: View {
         if selenium > 5 { availableNutrients.append("Selenium") }
         if zinc > 1 { availableNutrients.append("Zinc") }
 
-        // If we have ingredients, use NutrientDetector to estimate additional nutrients
-        if let ingredients = food.ingredients, !ingredients.isEmpty {
+        // Only use ingredient-based detection if we don't have micronutrient data
+        // If we have nutrient data from API, we don't need ingredient estimates
+        if availableNutrients.isEmpty, let ingredients = food.ingredients, !ingredients.isEmpty {
             // Create a temporary DiaryFoodItem for nutrient detection
             let tempFood = DiaryFoodItem(
                 name: food.name,
@@ -2919,17 +2920,6 @@ struct NutrientCard: View {
                 }
             }) {
                 HStack(alignment: .center, spacing: 12) {
-                    // Nutrient icon
-                    ZStack {
-                        Circle()
-                            .fill(getNutrientColor().opacity(0.15))
-                            .frame(width: 44, height: 44)
-
-                        Image(systemName: getNutrientIcon())
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(getNutrientColor())
-                    }
-
                     VStack(alignment: .leading, spacing: 4) {
                         Text(nutrientName)
                             .font(.system(size: 16, weight: .semibold))
