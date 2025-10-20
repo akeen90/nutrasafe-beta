@@ -2719,6 +2719,7 @@ struct FridgeItemDetailView: View {
             // Initialize state from item
             editedQuantity = item.quantity
             editedExpiryDate = item.expiryDate
+            notes = item.notes ?? ""
             if let opened = item.openedDate {
                 isOpened = true
                 openedDate = opened
@@ -2778,7 +2779,9 @@ struct FridgeItemDetailView: View {
             addedDate: item.addedDate,
             openedDate: isOpened ? openedDate : nil,
             barcode: item.barcode,
-            category: item.category
+            category: item.category,
+            imageURL: item.imageURL,
+            notes: notes.isEmpty ? nil : notes
         )
 
         print("FridgeItemDetailView: Created updated item")
