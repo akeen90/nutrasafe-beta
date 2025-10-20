@@ -29,3 +29,4 @@ export { detectLiveText } from './detect-live-text';
 export { processIngredientText } from './process-ingredient-text';
 export { replaceAllFoods } from './replace-foods-database';
 export { standardizeIngredients } from './standardize-ingredients';
+export { notifyIncompleteFood } from './notify-incomplete-food';

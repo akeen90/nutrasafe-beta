@@ -1244,6 +1244,47 @@ class FirebaseManager: ObservableObject {
 
         return false
     }
+
+    // MARK: - Incomplete Food Notification
+
+    /// Notify team about incomplete food information via email
+    func notifyIncompleteFood(foodName: String, brandName: String) async throws {
+        guard let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/notifyIncompleteFood") else {
+            throw NSError(domain: "Invalid URL", code: -1)
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let requestBody: [String: Any] = [
+            "data": [
+                "foodName": foodName,
+                "brandName": brandName,
+                "userId": currentUser?.uid ?? "anonymous",
+                "userEmail": currentUser?.email ?? "anonymous"
+            ]
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw NSError(domain: "Server Error", code: -1)
+        }
+
+        // Parse response to ensure success
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let result = json["result"] as? [String: Any],
+           let success = result["success"] as? Bool,
+           success {
+            print("✅ Team notified about incomplete food: \(foodName)")
+        } else {
+            throw NSError(domain: "Notification failed", code: -1)
+        }
+    }
 }
 
 extension Notification.Name {

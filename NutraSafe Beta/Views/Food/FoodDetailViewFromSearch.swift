@@ -29,10 +29,10 @@ struct FoodDetailViewFromSearch: View {
     @State private var servings: String = "1"
     @State private var quantity: Double = 1.0
     @State private var selectedMeal = "Breakfast"
-    @State private var showingDatabasePhotoPrompt = false
-    @State private var ingredientImage: UIImage?
-    @State private var isProcessingIngredients = false
-    @State private var showingSubmissionSuccess = false
+    @State private var isNotifyingTeam = false
+    @State private var showingNotificationSuccess = false
+    @State private var showingNotificationError = false
+    @State private var notificationErrorMessage = ""
 
     init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, destination: AddFoodMainView.AddDestination) {
         self.food = food
@@ -1190,99 +1190,15 @@ struct FoodDetailViewFromSearch: View {
                 }
             }
         }
-        .sheet(isPresented: $showingDatabasePhotoPrompt) {
-        DatabasePhotoPromptView(
-                foodName: food.name,
-                brandName: food.brand,
-                sourceType: sourceType,
-                onPhotosCompleted: { ingredients, nutrition, barcode in
-                    // IMMEDIATE: Mark as user-verified and update UI
-                    let foodKey = "\(food.name)|\(food.brand ?? "")"
-                    var userVerifiedFoods = UserDefaults.standard.array(forKey: "userVerifiedFoods") as? [String] ?? []
-                    if !userVerifiedFoods.contains(foodKey) {
-                        userVerifiedFoods.append(foodKey)
-                        UserDefaults.standard.set(userVerifiedFoods, forKey: "userVerifiedFoods")
-                    }
-                    
-                    // IMMEDIATE: Process ingredients locally and update app state
-                    if let ingredientsImg = ingredients {
-                        ingredientImage = ingredientsImg
-                        processIngredientImage(ingredientsImg)
-                        
-                        // Trigger immediate re-analysis with Vision framework
-                        Task { @MainActor in
-                            await extractAndAnalyzeIngredients(from: ingredientsImg, for: food)
-                        }
-                    }
-                    
-                    // BACKGROUND: Submit to Firebase for verification
-                    Task {
-                        do {
-                            let pendingId = try await IngredientSubmissionService.shared.submitIngredientSubmission(
-                                foodName: food.name,
-                                brandName: food.brand,
-                                ingredientsImage: ingredients,
-                                nutritionImage: nutrition,
-                                barcodeImage: barcode
-                            )
-                            print("Submitted ingredients immediately with pending ID: \(pendingId)")
-                        } catch {
-                            print("Error submitting ingredients: \(error)")
-                        }
-                    }
-                    
-                    // Legacy processing for backward compatibility
-                    submitCompleteFoodProfile(
-                        ingredientsImage: ingredients,
-                        nutritionImage: nutrition,
-                        barcodeImage: barcode
-                    )
-                },
-                onSkip: {
-                    // Just continue without photos - user chose to skip
-                    showingDatabasePhotoPrompt = false
-                }
-            )
-        }
-        .alert("Photos Submitted!", isPresented: $showingSubmissionSuccess) {
+        .alert("Team Notified", isPresented: $showingNotificationSuccess) {
             Button("OK") { }
         } message: {
-            Text("Thank you! Your photos have been submitted for verification. Once approved, this food will have more accurate nutrition data and scoring.")
+            Text("Thank you! Our team has been notified about the incomplete information for this food. We'll work on adding the missing details.")
         }
-        .sheet(isPresented: $showingPhotoPrompts) {
-            DatabasePhotoPromptView(
-                foodName: food.name,
-                brandName: food.brand,
-                sourceType: sourceType,
-                onPhotosCompleted: { ingredients, nutrition, barcode in
-                    // Submit ingredients immediately for instant display and allergen warnings
-                    Task {
-                        do {
-                            let pendingId = try await IngredientSubmissionService.shared.submitIngredientSubmission(
-                                foodName: food.name,
-                                brandName: food.brand,
-                                ingredientsImage: ingredients,
-                                nutritionImage: nutrition,
-                                barcodeImage: barcode
-                            )
-                            print("Submitted ingredients immediately with pending ID: \(pendingId)")
-                        } catch {
-                            print("Error submitting ingredients: \(error)")
-                        }
-                    }
-                    
-                    // Legacy processing for backward compatibility
-                    submitCompleteFoodProfile(
-                        ingredientsImage: ingredients,
-                        nutritionImage: nutrition, 
-                        barcodeImage: barcode
-                    )
-                },
-                onSkip: {
-                    // Just dismiss and close the detail view
-                    dismiss()
-                }
-            )
+        .alert("Notification Failed", isPresented: $showingNotificationError) {
+            Button("OK") { }
+        } message: {
+            Text(notificationErrorMessage)
         }
         .sheet(isPresented: $showingNutritionCamera) {
             IngredientCameraView(
@@ -1560,19 +1476,23 @@ struct FoodDetailViewFromSearch: View {
     
     private var ingredientsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            VStack(spacing: 4) {
+            HStack {
                 Text("Ingredients")
                     .font(.system(size: 20, weight: .bold))
                     .foregroundColor(.primary)
 
                 if cachedIngredientsStatus == .pending {
+                    Spacer()
                     Text("⏳ Awaiting Verification")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.orange)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.orange.opacity(0.1))
+                        .cornerRadius(6)
                 }
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
+            .padding(.bottom, 4)
 
             if let ingredientsList = cachedIngredients {
                 let cleanIngredients = ingredientsList
@@ -1581,53 +1501,32 @@ struct FoodDetailViewFromSearch: View {
                     .joined(separator: ", ")
 
                 Text(cleanIngredients.isEmpty ? "No ingredients found" : cleanIngredients)
-                    .font(.system(size: 14))
+                    .font(.system(size: 15))
                     .foregroundColor(.primary)
                     .lineLimit(nil)
-                    .multilineTextAlignment(.leading)
-                    .padding(20)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .multilineTextAlignment(.center)
+                    .padding(16)
+                    .frame(maxWidth: .infinity)
                     .background(
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color(.systemBackground))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .stroke(Color(.systemGray4), lineWidth: 1.5)
-                            )
-                            .shadow(color: Color.black.opacity(0.03), radius: 2, x: 0, y: 1)
+                            .fill(Color(.systemGray6))
                     )
             } else {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Image(systemName: "exclamationmark.triangle")
-                            .foregroundColor(.orange)
-                            .font(.system(size: 16))
-                        
-                        Text("Ingredients information not available")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    Text("Help us complete this food's profile by submitting ingredient photos from the product packaging.")
-                        .font(.system(size: 12))
+                VStack(alignment: .center, spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .foregroundColor(.orange)
+                        .font(.system(size: 18))
+
+                    Text("Ingredients information not available")
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.secondary)
-                        .lineLimit(nil)
-                    
-                    Button(action: {
-                        showingDatabasePhotoPrompt = true
-                    }) {
-                        HStack {
-                            Image(systemName: "camera")
-                            Text("Add Ingredient Photos")
-                                .font(.system(size: 14, weight: .medium))
-                        }
-                        .foregroundColor(.blue)
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 12)
-                        .background(.blue.opacity(0.05))
-                        .cornerRadius(8)
-                    }
                 }
+                .frame(maxWidth: .infinity)
+                .padding(20)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color(.systemGray6))
+                )
             }
         }
         .padding(.horizontal, 16)
@@ -1887,106 +1786,50 @@ struct FoodDetailViewFromSearch: View {
         VStack(alignment: .center, spacing: 16) {
             VStack(alignment: .center, spacing: 12) {
                 HStack {
-                    Image(systemName: "star.circle.fill")
+                    Image(systemName: "info.circle.fill")
                         .font(.title2)
-                        .foregroundColor(.blue)
-                    Text("Get The Most From Your Food")
-                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(.orange)
+                    Text("Incomplete Food Data")
+                        .font(.system(size: 20, weight: .bold))
                         .foregroundColor(.primary)
                 }
 
-                Text("To get the most of this food's benefits, verify it yourself! This only takes 30 seconds and unlocks the complete nutritional profile.")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.primary)
+                Text("This food has incomplete information. Help us improve our database by notifying our team.")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
                     .lineLimit(nil)
                     .multilineTextAlignment(.center)
 
-                Text("Add photos to unlock verified:")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .lineLimit(nil)
-
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(.green)
-                        Text("Complete micronutrient analysis & daily value tracking")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-                    HStack(spacing: 8) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(.green)
-                        Text("Instant allergen detection & personalized safety alerts")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-                    HStack(spacing: 8) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(.green)
-                        Text("Evidence-based nutrition scoring & AI health insights")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-                    HStack(spacing: 8) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(.green)
-                        Text("Professional verification & trusted accuracy guarantee")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .padding(.leading, 8)
-            }
-            
-            if isProcessingIngredients {
-                HStack {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                    Text("Processing ingredients...")
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
-                }
-                .padding(.vertical, 8)
-            } else {
                 Button(action: {
-                    showingDatabasePhotoPrompt = true
+                    notifyTeamAboutIncompleteFood()
                 }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "camera.fill")
-                            .font(.system(size: 16, weight: .semibold))
-                        Text("Add Details Now")
-                            .font(.system(size: 16, weight: .bold))
+                    HStack {
+                        if isNotifyingTeam {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        } else {
+                            Image(systemName: "exclamationmark.triangle")
+                            Text("Notify Team")
+                                .font(.system(size: 14, weight: .medium))
+                        }
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(
-                        LinearGradient(
-                            gradient: Gradient(colors: [.blue, .blue.opacity(0.9)]),
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
                     .foregroundColor(.white)
-                    .cornerRadius(12)
-                    .shadow(color: .blue.opacity(0.3), radius: 4, x: 0, y: 2)
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 16)
+                    .background(isNotifyingTeam ? Color.gray : Color.orange)
+                    .cornerRadius(8)
                 }
+                .disabled(isNotifyingTeam)
             }
+            .padding(16)
+            .background(Color.orange.opacity(0.05))
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+            )
         }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(.systemBackground))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(Color.blue.opacity(0.3), lineWidth: 2)
-                )
-                .shadow(color: Color.blue.opacity(0.1), radius: 8, x: 0, y: 2)
-        )
     }
     
     private var ingredientInReviewSection: some View {
@@ -2025,93 +1868,34 @@ struct FoodDetailViewFromSearch: View {
         .cornerRadius(12)
     }
     
-    private func processIngredientImage(_ image: UIImage) {
-        isProcessingIngredients = true
-        
+    // Notify team about incomplete food information
+    private func notifyTeamAboutIncompleteFood() {
+        isNotifyingTeam = true
+
         Task {
             do {
-                // Convert image to base64
-                guard let imageData = image.jpegData(compressionQuality: 0.8) else {
-                    await MainActor.run {
-                        isProcessingIngredients = false
-                    }
-                    return
-                }
-                let base64String = imageData.base64EncodedString()
-                
-                // Submit to Firebase function for processing
-                let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/processIngredientImage")!
-                var request = URLRequest(url: url)
-                request.httpMethod = "POST"
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                
-                let requestBody = [
-                    "foodName": food.name,
-                    "brandName": food.brand ?? "",
-                    "imageData": base64String,
-                    "nutritionData": [
-                        "calories": displayFood.calories,
-                        "protein": displayFood.protein,
-                        "carbs": displayFood.carbs,
-                        "fat": displayFood.fat,
-                        "fiber": displayFood.fiber,
-                        "sugar": displayFood.sugar,
-                        "sodium": displayFood.sodium
-                    ]
-                ]
-                
-                request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-                
-                let (data, response) = try await URLSession.shared.data(for: request)
-                
-                if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
-                    // Parse the response to get extracted ingredients
-                    var extractedIngredients: [String] = []
-                    if let responseJson = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
-                        if let ingredientsText = responseJson["extractedIngredients"] as? String,
-                           !ingredientsText.isEmpty {
-                            // Split ingredients by common separators and clean them up
-                            extractedIngredients = ingredientsText.split(separator: ",")
-                                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                                .filter { !$0.isEmpty }
-                        }
-                    }
-                    
-                    await MainActor.run {
-                        // Add food to submitted foods list
-                        let foodKey = "\(food.name)|\(food.brand ?? "")"
-                        var submittedFoods = UserDefaults.standard.array(forKey: "submittedFoodsForReview") as? [String] ?? []
-                        if !submittedFoods.contains(foodKey) {
-                            submittedFoods.append(foodKey)
-                            UserDefaults.standard.set(submittedFoods, forKey: "submittedFoodsForReview")
-                        }
-                        
-                        // Store extracted ingredients locally for immediate display
-                        if !extractedIngredients.isEmpty {
-                            do {
-                                let ingredientsData = try JSONEncoder().encode(extractedIngredients)
-                                UserDefaults.standard.set(ingredientsData, forKey: "submittedIngredients_\(foodKey)")
-                            } catch {
-                                print("Error storing ingredients: \(error)")
-                            }
-                        }
-                        
-                        isProcessingIngredients = false
-                        showingSubmissionSuccess = true
-                    }
-                } else {
-                    throw URLError(.badServerResponse)
-                }
-                
-            } catch {
-                print("Error processing ingredient image: \(error)")
+                // Use FirebaseManager to call the Cloud Function
+                try await firebaseManager.notifyIncompleteFood(
+                    foodName: food.name,
+                    brandName: food.brand ?? ""
+                )
+
                 await MainActor.run {
-                    isProcessingIngredients = false
+                    isNotifyingTeam = false
+                    showingNotificationSuccess = true
+                }
+
+            } catch {
+                print("Error notifying team: \(error)")
+                await MainActor.run {
+                    isNotifyingTeam = false
+                    notificationErrorMessage = "Unable to send notification. Please try again later."
+                    showingNotificationError = true
                 }
             }
         }
     }
-    
+
     private func submitCompleteFoodProfile(ingredientsImage: UIImage?, nutritionImage: UIImage?, barcodeImage: UIImage?) {
         isSubmittingCompleteProfile = true
         
