@@ -9,6 +9,18 @@ import ActivityKit
 import SwiftUI
 import WidgetKit
 
+// MARK: - Live Activity Attributes
+@available(iOS 16.1, *)
+struct FastingActivityAttributes: ActivityAttributes {
+    public struct ContentState: Codable, Hashable {
+        var fastingStartTime: Date
+        var currentHours: Int
+        var currentMinutes: Int
+    }
+
+    var fastingGoalHours: Int
+}
+
 // MARK: - Live Activity Widget
 @available(iOS 16.1, *)
 struct FastingLiveActivity: Widget {
