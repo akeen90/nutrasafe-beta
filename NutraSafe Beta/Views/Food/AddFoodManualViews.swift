@@ -86,7 +86,6 @@ struct ManualFoodDetailEntryView: View {
     var prefilledBarcode: String? = nil
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var diaryDataManager: DiaryDataManager
-    @EnvironmentObject var fastingManager: FastingManager
 
     // Basic Info
     @State private var foodName = ""
@@ -533,9 +532,6 @@ struct ManualFoodDetailEntryView: View {
                 let mealType = selectedMealTime.lowercased() // Convert to lowercase for storage
                 diaryDataManager.addFoodItem(diaryEntry, to: mealType, for: Date())
                 print("✅ Food added to user's diary (\(selectedMealTime))")
-
-                // Track meal for fasting manager
-                fastingManager.recordMeal()
             }
 
             // Switch to diary tab to show the added food

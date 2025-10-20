@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import ActivityKit
 
 // MARK: - Fasting Timer Main View
 
@@ -21,6 +22,9 @@ struct FastingTimerView: View {
     @State private var currentTime = Date()
     @State private var showingSettings = false
     @State private var isLoading = true
+
+    // Live Activity
+    @State private var currentActivity: Any? // Holds Activity<FastingActivityAttributes> on iOS 16.1+
     
     private var fastingDuration: TimeInterval {
         guard isFasting, let startTime = fastingStartTime else { return 0 }
@@ -270,6 +274,15 @@ struct FastingTimerView: View {
         }
         .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
             currentTime = Date()
+
+            // Update Live Activity every minute
+            if isFasting && Int(fastingDuration) % 60 == 0 {
+                Task {
+                    if #available(iOS 16.1, *) {
+                        await updateLiveActivity()
+                    }
+                }
+            }
         }
         .sheet(isPresented: $showingSettings) {
             FastingSettingsView(
@@ -295,6 +308,13 @@ struct FastingTimerView: View {
                 reminderInterval = state.reminderInterval
                 isLoading = false
             }
+
+            // Restart Live Activity if user was fasting
+            if state.isFasting {
+                if #available(iOS 16.1, *) {
+                    await startLiveActivity()
+                }
+            }
         } catch {
             print("❌ Error loading fasting state: \(error.localizedDescription)")
             await MainActor.run {
@@ -319,6 +339,11 @@ struct FastingTimerView: View {
             } catch {
                 print("❌ Error saving fasting start: \(error.localizedDescription)")
             }
+
+            // Start Live Activity for Dynamic Island
+            if #available(iOS 16.1, *) {
+                await startLiveActivity()
+            }
         }
 
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
@@ -340,6 +365,11 @@ struct FastingTimerView: View {
                 )
             } catch {
                 print("❌ Error saving fasting stop: \(error.localizedDescription)")
+            }
+
+            // End Live Activity
+            if #available(iOS 16.1, *) {
+                await endLiveActivity()
             }
         }
 
@@ -382,6 +412,63 @@ struct FastingTimerView: View {
                 print("❌ Error saving fasting settings: \(error.localizedDescription)")
             }
         }
+    }
+
+    // MARK: - Live Activities (Dynamic Island)
+    @available(iOS 16.1, *)
+    private func startLiveActivity() async {
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+            print("❌ Live Activities not enabled by system")
+            return
+        }
+
+        guard let startTime = fastingStartTime else { return }
+
+        let hours = Int(fastingDuration / 3600)
+        let minutes = Int((fastingDuration.truncatingRemainder(dividingBy: 3600)) / 60)
+
+        let attributes = FastingActivityAttributes(fastingGoalHours: fastingGoal)
+        let contentState = FastingActivityAttributes.ContentState(
+            fastingStartTime: startTime,
+            currentHours: hours,
+            currentMinutes: minutes
+        )
+
+        do {
+            currentActivity = try Activity.request(
+                attributes: attributes,
+                contentState: contentState,
+                pushType: nil
+            )
+            print("✅ Fasting Live Activity started - will appear in Dynamic Island")
+        } catch {
+            print("❌ Failed to start Live Activity: \(error)")
+        }
+    }
+
+    @available(iOS 16.1, *)
+    private func updateLiveActivity() async {
+        guard let activity = currentActivity as? Activity<FastingActivityAttributes> else { return }
+        guard let startTime = fastingStartTime else { return }
+
+        let hours = Int(fastingDuration / 3600)
+        let minutes = Int((fastingDuration.truncatingRemainder(dividingBy: 3600)) / 60)
+
+        let contentState = FastingActivityAttributes.ContentState(
+            fastingStartTime: startTime,
+            currentHours: hours,
+            currentMinutes: minutes
+        )
+
+        await activity.update(using: contentState)
+    }
+
+    @available(iOS 16.1, *)
+    private func endLiveActivity() async {
+        guard let activity = currentActivity as? Activity<FastingActivityAttributes> else { return }
+        await activity.end(dismissalPolicy: .immediate)
+        currentActivity = nil
+        print("✅ Fasting Live Activity ended")
     }
 }
 
