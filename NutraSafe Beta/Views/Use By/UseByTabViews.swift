@@ -2580,17 +2580,6 @@ struct UseByItemDetailView: View {
                             }
 
                             HStack(spacing: 12) {
-                                if isAddMode {
-                                    TextField("Quantity", text: $editedQuantity)
-                                        .font(.system(size: 13))
-                                        .foregroundColor(.blue)
-                                        .frame(width: 80)
-                                } else {
-                                    Label(quantity, systemImage: "scalemass")
-                                        .font(.system(size: 13))
-                                        .foregroundColor(.blue)
-                                }
-
                                 Label("\(daysLeft) days", systemImage: "calendar")
                                     .font(.system(size: 13))
                                     .foregroundColor(freshnessColor)
