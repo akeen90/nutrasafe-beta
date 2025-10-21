@@ -35,46 +35,86 @@ struct DiaryTabView: View {
         case nutrients = "Nutrients"
     }
 
-    // MARK: - Computed Properties
+    // MARK: - Cached Nutrition Totals (Performance Optimization)
+    @State private var cachedNutrition: NutritionTotals = NutritionTotals()
+
+    private struct NutritionTotals {
+        var totalCalories: Int = 0
+        var totalProtein: Double = 0
+        var totalCarbs: Double = 0
+        var totalFat: Double = 0
+        var breakfastCalories: Int = 0
+        var lunchCalories: Int = 0
+        var dinnerCalories: Int = 0
+        var snackCalories: Int = 0
+    }
+
+    // MARK: - Computed Properties (Using Cached Values)
     private var totalCalories: Int {
-        breakfastCalories + lunchCalories + dinnerCalories + snackCalories
+        cachedNutrition.totalCalories
     }
 
     private var totalProtein: Double {
-        breakfastFoods.reduce(0) { $0 + $1.protein } +
-        lunchFoods.reduce(0) { $0 + $1.protein } +
-        dinnerFoods.reduce(0) { $0 + $1.protein } +
-        snackFoods.reduce(0) { $0 + $1.protein }
+        cachedNutrition.totalProtein
     }
 
     private var totalCarbs: Double {
-        breakfastFoods.reduce(0) { $0 + $1.carbs } +
-        lunchFoods.reduce(0) { $0 + $1.carbs } +
-        dinnerFoods.reduce(0) { $0 + $1.carbs } +
-        snackFoods.reduce(0) { $0 + $1.carbs }
+        cachedNutrition.totalCarbs
     }
 
     private var totalFat: Double {
-        breakfastFoods.reduce(0) { $0 + $1.fat } +
-        lunchFoods.reduce(0) { $0 + $1.fat } +
-        dinnerFoods.reduce(0) { $0 + $1.fat } +
-        snackFoods.reduce(0) { $0 + $1.fat }
+        cachedNutrition.totalFat
     }
 
     private var breakfastCalories: Int {
-        breakfastFoods.reduce(0) { $0 + $1.calories }
+        cachedNutrition.breakfastCalories
     }
 
     private var lunchCalories: Int {
-        lunchFoods.reduce(0) { $0 + $1.calories }
+        cachedNutrition.lunchCalories
     }
 
     private var dinnerCalories: Int {
-        dinnerFoods.reduce(0) { $0 + $1.calories }
+        cachedNutrition.dinnerCalories
     }
 
     private var snackCalories: Int {
-        snackFoods.reduce(0) { $0 + $1.calories }
+        cachedNutrition.snackCalories
+    }
+
+    // MARK: - Nutrition Calculation (Called Only When Data Changes)
+    private func recalculateNutrition() {
+        let breakfast = calculateMealNutrition(breakfastFoods)
+        let lunch = calculateMealNutrition(lunchFoods)
+        let dinner = calculateMealNutrition(dinnerFoods)
+        let snacks = calculateMealNutrition(snackFoods)
+
+        cachedNutrition = NutritionTotals(
+            totalCalories: breakfast.calories + lunch.calories + dinner.calories + snacks.calories,
+            totalProtein: breakfast.protein + lunch.protein + dinner.protein + snacks.protein,
+            totalCarbs: breakfast.carbs + lunch.carbs + dinner.carbs + snacks.carbs,
+            totalFat: breakfast.fat + lunch.fat + dinner.fat + snacks.fat,
+            breakfastCalories: breakfast.calories,
+            lunchCalories: lunch.calories,
+            dinnerCalories: dinner.calories,
+            snackCalories: snacks.calories
+        )
+    }
+
+    private func calculateMealNutrition(_ foods: [DiaryFoodItem]) -> (calories: Int, protein: Double, carbs: Double, fat: Double) {
+        var calories = 0
+        var protein = 0.0
+        var carbs = 0.0
+        var fat = 0.0
+
+        for food in foods {
+            calories += food.calories
+            protein += food.protein
+            carbs += food.carbs
+            fat += food.fat
+        }
+
+        return (calories, protein, carbs, fat)
     }
     
     var body: some View {
@@ -286,54 +326,44 @@ struct DiaryTabView: View {
         .onChange(of: refreshTrigger) { _ in
             loadFoodData()
         }
-        .onChange(of: editTrigger) { _ in
+        .onChange(of: editTrigger) { newValue in
+            guard newValue else { return }
             print("📝 Edit trigger fired. Selected items: \(selectedFoodItems)")
 
-            // Clear editingFood first to ensure state change
-            editingFood = nil
-
-            // Small delay to ensure state is cleared before setting new value
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                if let foodId = selectedFoodItems.first {
-                    print("📝 Looking for food with ID: \(foodId)")
-                    if let itemToEdit = findFood(byId: foodId) {
-                        print("📝 Found food to edit: \(itemToEdit.name)")
-                        print("📝 Setting editingFood to trigger sheet...")
-                        editingFood = itemToEdit
-                    } else {
-                        print("❌ Could not find food with ID: \(foodId)")
-                    }
+            if let foodId = selectedFoodItems.first {
+                print("📝 Looking for food with ID: \(foodId)")
+                if let itemToEdit = findFood(byId: foodId) {
+                    print("📝 Found food to edit: \(itemToEdit.name)")
+                    print("📝 Setting editingFood to trigger sheet...")
+                    // Performance: Direct assignment instead of asyncAfter delay
+                    editingFood = itemToEdit
                 } else {
-                    print("❌ No food ID in selectedFoodItems")
+                    print("❌ Could not find food with ID: \(foodId)")
                 }
+            } else {
+                print("❌ No food ID in selectedFoodItems")
             }
+
+            // Reset trigger immediately
+            editTrigger = false
         }
         .onChange(of: moveTrigger) { newValue in
-            if newValue {
-                showingMoveSheet = true
-                // Reset trigger after a short delay to allow for next move
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    moveTrigger = false
-                }
-            }
+            guard newValue else { return }
+            showingMoveSheet = true
+            // Performance: Reset trigger immediately instead of asyncAfter delay
+            moveTrigger = false
         }
         .onChange(of: copyTrigger) { newValue in
-            if newValue {
-                showingCopySheet = true
-                // Reset trigger after a short delay to allow for next copy
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    copyTrigger = false
-                }
-            }
+            guard newValue else { return }
+            showingCopySheet = true
+            // Performance: Reset trigger immediately instead of asyncAfter delay
+            copyTrigger = false
         }
         .onChange(of: deleteTrigger) { newValue in
-            if newValue {
-                deleteSelectedFoods()
-                // Reset trigger after a short delay to allow for next delete
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    deleteTrigger = false
-                }
-            }
+            guard newValue else { return }
+            deleteSelectedFoods()
+            // Performance: Reset trigger immediately instead of asyncAfter delay
+            deleteTrigger = false
         }
         .sheet(isPresented: $showingMoveSheet) {
             moveFoodSheet
@@ -513,6 +543,7 @@ struct DiaryTabView: View {
                     lunchFoods = lunch
                     dinnerFoods = dinner
                     snackFoods = snacks
+                    recalculateNutrition() // Performance: Recalculate once when data loads
                     print("DiaryTabView: Loaded \(breakfast.count) breakfast, \(lunch.count) lunch, \(dinner.count) dinner, \(snacks.count) snack items from Firebase")
                 }
             } catch {
@@ -522,6 +553,7 @@ struct DiaryTabView: View {
                     lunchFoods = []
                     dinnerFoods = []
                     snackFoods = []
+                    recalculateNutrition() // Performance: Recalculate even on error
                 }
             }
         }
@@ -605,6 +637,9 @@ struct DiaryTabView: View {
         lunchFoods = lunchFoods.filter { !selectedFoodItems.contains($0.id.uuidString) }
         dinnerFoods = dinnerFoods.filter { !selectedFoodItems.contains($0.id.uuidString) }
         snackFoods = snackFoods.filter { !selectedFoodItems.contains($0.id.uuidString) }
+
+        // Performance: Recalculate totals after moving items
+        recalculateNutrition()
 
         // Save current date changes
         diaryDataManager.saveFoodData(for: selectedDate, breakfast: breakfastFoods, lunch: lunchFoods, dinner: dinnerFoods, snacks: snackFoods)
@@ -748,6 +783,9 @@ struct DiaryTabView: View {
         lunchFoods = lunchFoods.filter { !selectedFoodItems.contains($0.id.uuidString) }
         dinnerFoods = dinnerFoods.filter { !selectedFoodItems.contains($0.id.uuidString) }
         snackFoods = snackFoods.filter { !selectedFoodItems.contains($0.id.uuidString) }
+
+        // Performance: Recalculate totals after deleting items
+        recalculateNutrition()
 
         // Save the updated data to UserDefaults
         diaryDataManager.saveFoodData(for: selectedDate, breakfast: breakfastFoods, lunch: lunchFoods, dinner: dinnerFoods, snacks: snackFoods)

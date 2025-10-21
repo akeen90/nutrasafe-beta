@@ -53,7 +53,7 @@ class UseByNotificationManager {
     // MARK: - Schedule Notifications
 
     /// Schedule notifications for a use-by item (tomorrow and on expiry day)
-    func scheduleNotifications(for item: FridgeInventoryItem) async {
+    func scheduleNotifications(for item: UseByInventoryItem) async {
         // Check if user has enabled use-by notifications in settings
         guard useByNotificationsEnabled else {
             print("⏸️ Use-by notifications disabled in settings - not scheduling for \(item.name)")
@@ -150,7 +150,7 @@ class UseByNotificationManager {
     // MARK: - Refresh Notifications
 
     /// Refresh all notifications for all use-by items
-    func refreshAllNotifications(for items: [FridgeInventoryItem]) async {
+    func refreshAllNotifications(for items: [UseByInventoryItem]) async {
         // Cancel all existing notifications
         cancelAllNotifications()
 

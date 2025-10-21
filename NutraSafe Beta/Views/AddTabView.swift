@@ -20,7 +20,7 @@ struct AddTabView: View {
         // Check if there's a preselected destination from Use By or other tabs
         if let preselected = UserDefaults.standard.string(forKey: "preselectedDestination") {
             if preselected == "Use By" {
-                return .fridge
+                return .useBy
             }
         }
         // Otherwise use the passed sourceDestination

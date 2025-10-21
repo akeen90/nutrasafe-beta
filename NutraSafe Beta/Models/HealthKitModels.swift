@@ -9,7 +9,7 @@ import Foundation
 import SwiftUI
 import FirebaseFirestore
 
-struct FridgeItem {
+struct UseByItem {
     let id: UUID
     let userId: String
     let name: String
@@ -48,7 +48,7 @@ struct FridgeItem {
         self.dateAdded = dateAdded
         self.barcode = barcode
     }
-    
+
     func toDictionary() -> [String: Any] {
         var dict: [String: Any] = [
             "id": id.uuidString,
@@ -66,8 +66,8 @@ struct FridgeItem {
         }
         return dict
     }
-    
-    static func fromDictionary(_ data: [String: Any]) -> FridgeItem? {
+
+    static func fromDictionary(_ data: [String: Any]) -> UseByItem? {
         guard let idString = data["id"] as? String,
               let id = UUID(uuidString: idString),
               let userId = data["userId"] as? String,
@@ -78,12 +78,12 @@ struct FridgeItem {
               let dateAddedTimestamp = data["dateAdded"] as? Timestamp else {
             return nil
         }
-        
+
         let notes = data["notes"] as? String
         let expiryDate = (data["expiryDate"] as? Timestamp)?.dateValue()
         let barcode = data["barcode"] as? String
 
-        return FridgeItem(
+        return UseByItem(
             id: id,
             userId: userId,
             name: name,

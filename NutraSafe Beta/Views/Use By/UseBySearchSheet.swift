@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct FridgeSearchSheet: View {
+struct UseBySearchSheet: View {
     @Environment(\.dismiss) var dismiss
     @State private var query: String = ""
     @State private var isSearching = false
@@ -91,8 +91,8 @@ Text(food.name)
         }
         .sheet(isPresented: $showAddForm) {
             if let selectedFood = selectedFood {
-                // Go straight to the Fridge expiry form (not the diary-style food page)
-                AddFoundFoodToFridgeSheet(food: selectedFood)
+                // Go straight to the UseBy expiry form (not the diary-style food page)
+                AddFoundFoodToUseBySheet(food: selectedFood)
             }
         }
     }
@@ -113,7 +113,7 @@ Text(food.name)
                 // cancelled due to new keystroke
                 return
             }
-            print("Fridge search error: \(error)")
+            print("UseBy search error: \(error)")
             await MainActor.run { self.isSearching = false }
         }
     }
@@ -135,11 +135,11 @@ private struct MacroPill: View {
     }
 }
 
-struct AddFoundFoodToFridgeSheet: View {
+struct AddFoundFoodToUseBySheet: View {
     @Environment(\.dismiss) var dismiss
     let food: FoodSearchResult
     @State private var quantity: String = "1"
-    @State private var location: String = "Fridge"
+    @State private var location: String = "UseBy"
     @State private var expiryDate: Date = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
     @State private var isSaving = false
     @State private var showPhotoActionSheet = false
@@ -148,7 +148,7 @@ struct AddFoundFoodToFridgeSheet: View {
     @State private var capturedImage: UIImage?
     @State private var uploadedImageURL: String?
     @State private var isUploadingPhoto = false
-    private let locations = ["Fridge", "Freezer", "Pantry", "Cupboard", "Counter"]
+    private let locations = ["UseBy", "Freezer", "Pantry", "Cupboard", "Counter"]
 
     var body: some View {
         NavigationView {
@@ -268,7 +268,7 @@ struct AddFoundFoodToFridgeSheet: View {
     private func uploadPhoto(_ image: UIImage) async {
         isUploadingPhoto = true
         do {
-            let url = try await FirebaseManager.shared.uploadFridgeItemPhoto(image)
+            let url = try await FirebaseManager.shared.uploadUseByItemPhoto(image)
             await MainActor.run {
                 uploadedImageURL = url
                 isUploadingPhoto = false
@@ -284,7 +284,7 @@ struct AddFoundFoodToFridgeSheet: View {
     private func save() async {
         guard !isSaving else { return }
         isSaving = true
-        let item = FridgeInventoryItem(
+        let item = UseByInventoryItem(
             name: food.name,
             brand: food.brand,
             quantity: quantity.isEmpty ? "1" : quantity,
@@ -296,15 +296,15 @@ struct AddFoundFoodToFridgeSheet: View {
             imageURL: uploadedImageURL
         )
         do {
-            try await FirebaseManager.shared.addFridgeItem(item)
+            try await FirebaseManager.shared.addUseByItem(item)
             await MainActor.run { dismiss() }
         } catch {
             let ns = error as NSError
-            print("Failed to save fridge item: \(ns)\nAttempting dev anonymous sign-in if enabled…")
+            print("Failed to save useBy item: \(ns)\nAttempting dev anonymous sign-in if enabled…")
             if ns.domain == "NutraSafeAuth", AppConfig.Features.allowAnonymousAuth {
                 do {
                     try await FirebaseManager.shared.signInAnonymously()
-                    try await FirebaseManager.shared.addFridgeItem(item)
+                    try await FirebaseManager.shared.addUseByItem(item)
                     await MainActor.run { dismiss() }
                     return
                 } catch {
@@ -312,13 +312,13 @@ struct AddFoundFoodToFridgeSheet: View {
                 }
             }
             let finalError = error as NSError
-            print("Final error saving fridge item: \(finalError)")
+            print("Final error saving useBy item: \(finalError)")
             await MainActor.run {
                 // Silently fail for permission errors - just close the sheet
                 if finalError.domain == "FIRFirestoreErrorDomain" && finalError.code == 7 {
                     // Missing permissions - post notifications and dismiss without error
-                    NotificationCenter.default.post(name: .fridgeInventoryUpdated, object: nil)
-                    NotificationCenter.default.post(name: .navigateToFridge, object: nil)
+                    NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
+                    NotificationCenter.default.post(name: .navigateToUseBy, object: nil)
                     dismiss()
                 } else {
                     isSaving = false

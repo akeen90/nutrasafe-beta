@@ -1381,8 +1381,8 @@ struct ContentView: View {
                 .environmentObject(diaryDataManager)
         case .food:
             FoodTabView(showingSettings: $showingSettings)
-        case .fridge:
-            FridgeTabView(showingSettings: $showingSettings, selectedTab: $selectedTab)
+        case .useBy:
+            UseByTabView(showingSettings: $showingSettings, selectedTab: $selectedTab)
         }
     }
 
@@ -1432,8 +1432,8 @@ struct ContentView: View {
         .sheet(isPresented: $showingSettings) {
             SettingsView()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .navigateToFridge)) { _ in
-            selectedTab = .fridge
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToUseBy)) { _ in
+            selectedTab = .useBy
         }
         .onAppear {
             // Preload all tab data for instant display
@@ -1451,12 +1451,12 @@ struct ContentView: View {
                     print("⚠️ Failed to preload weight history: \(error)")
                 }
 
-                // 3. Preload fridge items for Fridge tab
+                // 3. Preload Use By items for Fridge tab
                 do {
-                    let _: [FridgeInventoryItem] = try await FirebaseManager.shared.getFridgeItems()
-                    print("🍳 Preloaded fridge items")
+                    let _: [UseByInventoryItem] = try await FirebaseManager.shared.getUseByItems()
+                    print("🍳 Preloaded Use By items")
                 } catch {
-                    print("⚠️ Failed to preload fridge items: \(error)")
+                    print("⚠️ Failed to preload Use By items: \(error)")
                 }
 
                 // 4. Preload reactions for Reactions tab
@@ -1488,7 +1488,7 @@ enum TabItem: String, CaseIterable {
     case weight = "progress"
     case add = "add"
     case food = "food"
-    case fridge = "fridge"
+    case useBy = "fridge"
 
     var title: String {
         switch self {
@@ -1496,7 +1496,7 @@ enum TabItem: String, CaseIterable {
         case .weight: return "Progress"
         case .add: return ""
         case .food: return "Food"
-        case .fridge: return "Use By"
+        case .useBy: return "Use By"
         }
     }
 
@@ -1506,7 +1506,7 @@ enum TabItem: String, CaseIterable {
         case .weight: return "figure.walk.motion"
         case .add: return "plus"
         case .food: return "fork.knife.circle"
-        case .fridge: return "calendar.badge.clock"
+        case .useBy: return "calendar.badge.clock"
         }
     }
 }
@@ -3956,7 +3956,7 @@ struct HeightSetupView: View {
 //                        .padding(.horizontal, 16)
 //                    
 //                    // Fridge Expiry Alerts
-//                    HomeFridgeAlertsCard()
+//                    HomeUseByAlertsCard()
 //                        .padding(.horizontal, 16)
 //                    
 //                    // Food Insights
@@ -4168,7 +4168,7 @@ struct HeightSetupView: View {
 //    }
 //}
 
-//struct HomeFridgeAlertsCard: View {
+//struct HomeUseByAlertsCard: View {
 //    var body: some View {
 //        VStack(alignment: .leading, spacing: 12) {
 //            HStack {
@@ -4179,26 +4179,26 @@ struct HeightSetupView: View {
 //                Spacer()
 //                
 //                Button("Manage") {
-//                    print("Manage fridge tapped")
+//                    print("Manage Use By tapped")
 //                }
 //                .font(.system(size: 14, weight: .medium))
 //                .foregroundColor(.blue)
 //            }
 //            
 //            VStack(spacing: 8) {
-//                HomeFridgeAlertRow(
+//                HomeUseByAlertRow(
 //                    item: "Greek Yoghurt",
 //                    daysLeft: 2,
 //                    urgency: .high
 //                )
 //                
-//                HomeFridgeAlertRow(
+//                HomeUseByAlertRow(
 //                    item: "Chicken Breast",
 //                    daysLeft: 1,
 //                    urgency: .critical
 //                )
 //                
-//                HomeFridgeAlertRow(
+//                HomeUseByAlertRow(
 //                    item: "Spinach",
 //                    daysLeft: 4,
 //                    urgency: .medium
@@ -4211,7 +4211,7 @@ struct HeightSetupView: View {
 //    }
 //}
 
-//struct HomeFridgeAlertRow: View {
+//struct HomeUseByAlertRow: View {
 //    let item: String
 //    let daysLeft: Int
 //    let urgency: AlertUrgency
@@ -5082,7 +5082,7 @@ struct ExerciseWorkoutCard: View {
                 .background(Color(.systemGray6))
                 .cornerRadius(8)
             }
-            .buttonStyle(ScaleButtonStyle())
+            .buttonStyle(PlainButtonStyle())
             .padding(.top, 4)
         }
         .padding(16)
@@ -5409,12 +5409,7 @@ struct ExerciseEntryView: View {
                     .disabled(selectedExercise.isEmpty || duration.isEmpty)
                 }
             }
-            .sheet(isPresented: $showingExercisePicker) {
-                ExerciseSelectionView(selectedExercises: .constant([selectedExercise]))
-            }
-            .sheet(isPresented: $showingWeightTraining) {
-                WeightTrainingView()
-            }
+            // Exercise selection sheets removed - feature deprecated
         }
     }
     
@@ -6196,18 +6191,18 @@ struct ModernMacroItem: View {
 // - sampleReactions: Sample data for food reactions
 // Total extracted: 558 lines of comprehensive food tracking functionality
 // 
-// MARK: - FridgeTabView System moved to Views/Fridge/FridgeTabViews.swift
+// MARK: - UseByTabView System moved to Views/Use By/UseByTabViews.swift
 // The following components were extracted as part of Phase 15 ContentView.swift modularization effort:
-// - FridgeTabView: Main fridge interface with sub-tab navigation
-// - FridgeSubTabSelector: Sub-tab selector for fridge sections
-// - FridgeExpiryView: Food expiry management dashboard
-// - FridgeExpiryAlertsCard: Expiry alerts summary
-// - FridgeCriticalExpiryCard: Critical expiring items
-// - FridgeWeeklyExpiryCard: Weekly expiry schedule
-// - FridgeExpiryItemRow: Individual expiry item display
-// - FridgeExpiryDayRow: Daily expiry schedule row
-// - FridgeQuickAddCard: Quick add item interface
-// Total extracted: 385+ lines of comprehensive fridge management functionality
+// - UseByTabView: Main fridge interface with sub-tab navigation
+// - UseBySubTabSelector: Sub-tab selector for fridge sections
+// - UseByExpiryView: Food expiry management dashboard
+// - UseByExpiryAlertsCard: Expiry alerts summary
+// - UseByCriticalExpiryCard: Critical expiring items
+// - UseByWeeklyExpiryCard: Weekly expiry schedule
+// - UseByExpiryItemRow: Individual expiry item display
+// - UseByExpiryDayRow: Daily expiry schedule row
+// - UseByQuickAddCard: Quick add item interface
+// Total extracted: 385+ lines of comprehensive Use By management functionality
 // 
 // 
 // MARK: - Add Food Main View
@@ -6222,7 +6217,7 @@ struct AddFoodMainView: View {
 
     enum AddDestination: String, CaseIterable {
         case diary = "Diary"
-        case fridge = "Use By"
+        case useBy = "Use By"
     }
 
     enum AddOption: String, CaseIterable {
@@ -6271,7 +6266,7 @@ struct AddFoodMainView: View {
                     DestinationSelector(selectedDestination: $destination)
                         .padding(.horizontal, 16)
 
-                    // Option selector - evenly distributed like Diary/Fridge above
+                    // Option selector - evenly distributed like Diary/Use By above
                     HStack(spacing: 0) {
                         // Search button
                         Button(action: { selectedAddOption = .search }) {
@@ -6462,8 +6457,8 @@ struct AddOptionSelector: View {
 // This comprehensive manual food entry system was moved as part of manual add enhancement:
 // - AddFoodManualView: Main manual add view with navigation to detail entry
 // - ManualFoodDetailEntryView: Full food entry form with all FoodSearchResult fields
-// - Support for both diary and fridge destinations with appropriate fields
-// - FridgeItem models for expiry tracking and location management
+// - Support for both diary and useBy destinations with appropriate fields
+// - UseByItem models for expiry tracking and location management
 // Total extracted: 450+ lines of comprehensive manual entry functionality
 
 // MARK: - Barcode Scanning System has been extracted to Views/Food/BarcodeScanningViews.swift

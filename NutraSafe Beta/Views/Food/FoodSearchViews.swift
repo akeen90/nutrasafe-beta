@@ -92,7 +92,7 @@ struct FoodSearchResultRowEnhanced: View {
     @Binding var selectedTab: TabItem
     @Binding var destination: AddFoodMainView.AddDestination
     @State private var showingFoodDetail = false
-    @State private var showingFridgeSheet = false
+    @State private var showingUseBySheet = false
     @State private var isPressed = false
     @EnvironmentObject var diaryDataManager: DiaryDataManager
 
@@ -154,8 +154,8 @@ struct FoodSearchResultRowEnhanced: View {
     
     var body: some View {
         Button(action: {
-            if destination == .fridge {
-                showingFridgeSheet = true
+            if destination == .useBy {
+                showingUseBySheet = true
             } else {
                 showingFoodDetail = true
             }
@@ -201,8 +201,8 @@ struct FoodSearchResultRowEnhanced: View {
         .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
             isPressed = pressing
         }, perform: {
-            if destination == .fridge {
-                showingFridgeSheet = true
+            if destination == .useBy {
+                showingUseBySheet = true
             } else {
                 showingFoodDetail = true
             }
@@ -210,8 +210,8 @@ struct FoodSearchResultRowEnhanced: View {
         .simultaneousGesture(
             TapGesture()
                 .onEnded { _ in
-                    if destination == .fridge {
-                        showingFridgeSheet = true
+                    if destination == .useBy {
+                        showingUseBySheet = true
                     } else {
                         showingFoodDetail = true
                     }
@@ -222,8 +222,8 @@ struct FoodSearchResultRowEnhanced: View {
             FoodDetailViewFromSearch(food: food, sourceType: sourceType, selectedTab: $selectedTab, destination: destination)
                 .environmentObject(diaryDataManager)
         }
-        .sheet(isPresented: $showingFridgeSheet) {
-            AddFoundFoodToFridgeSheet(food: food) { tab in
+        .sheet(isPresented: $showingUseBySheet) {
+            AddFoundFoodToUseBySheet(food: food) { tab in
                 selectedTab = tab
             }
         }
@@ -260,7 +260,7 @@ struct NutrientTag: View {
 
 /// Enumeration for different food search sources
 enum FoodSourceType {
-    case search, barcode, ai, manual, diary, fridge
+    case search, barcode, ai, manual, diary, useBy
 }
 
 // MARK: - Main Food Search View

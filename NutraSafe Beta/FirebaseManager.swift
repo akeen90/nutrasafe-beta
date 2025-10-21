@@ -92,8 +92,8 @@ class FirebaseManager: ObservableObject {
         let collections = [
             "foodEntries",
             "reactions",
-            "fridgeInventory",
-            "fridgeItems",
+            "useByInventory",
+            "useByItems",
             "exerciseEntries",
             "pendingVerifications",
             "weightHistory",
@@ -270,58 +270,58 @@ class FirebaseManager: ObservableObject {
         print("✅ Reaction saved successfully")
     }
 
-    // MARK: - Fridge Inventory
+    // MARK: - Use By Inventory
 
-    func addFridgeItem(_ item: FridgeInventoryItem) async throws {
+    func addUseByItem(_ item: UseByInventoryItem) async throws {
         ensureAuthStateLoaded()
 
         guard let userId = currentUser?.uid else {
-            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to add fridge items"])
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to add use by items"])
         }
 
-        try await addFridgeItemHelper(item, userId: userId)
+        try await addUseByItemHelper(item, userId: userId)
     }
 
     // Local storage helpers
-    private func saveFridgeItemLocally(_ item: FridgeInventoryItem) {
-        var localItems = getLocalFridgeItems()
+    private func saveUseByItemLocally(_ item: UseByInventoryItem) {
+        var localItems = getLocalUseByItems()
         localItems.append(item)
         if let encoded = try? JSONEncoder().encode(localItems) {
-            UserDefaults.standard.set(encoded, forKey: "localFridgeItems")
+            UserDefaults.standard.set(encoded, forKey: "localUseByItems")
         }
     }
 
-    private func getLocalFridgeItems() -> [FridgeInventoryItem] {
-        guard let data = UserDefaults.standard.data(forKey: "localFridgeItems"),
-              let items = try? JSONDecoder().decode([FridgeInventoryItem].self, from: data) else {
+    private func getLocalUseByItems() -> [UseByInventoryItem] {
+        guard let data = UserDefaults.standard.data(forKey: "localUseByItems"),
+              let items = try? JSONDecoder().decode([UseByInventoryItem].self, from: data) else {
             return []
         }
         return items
     }
 
-    private func addFridgeItemHelper(_ item: FridgeInventoryItem, userId: String) async throws {
+    private func addUseByItemHelper(_ item: UseByInventoryItem, userId: String) async throws {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         let data = try encoder.encode(item)
         let dict = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] ?? [:]
 
         try await db.collection("users").document(userId)
-            .collection("fridgeInventory").document(item.id).setData(dict)
+            .collection("useByInventory").document(item.id).setData(dict)
     }
 
-    func getFridgeItems() async throws -> [FridgeInventoryItem] {
+    func getUseByItems() async throws -> [UseByInventoryItem] {
         ensureAuthStateLoaded()
 
         guard let userId = currentUser?.uid else {
-            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view fridge items"])
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view use by items"])
         }
 
-        return try await getFridgeItemsHelper(userId: userId)
+        return try await getUseByItemsHelper(userId: userId)
     }
 
-    private func getFridgeItemsHelper(userId: String) async throws -> [FridgeInventoryItem] {
+    private func getUseByItemsHelper(userId: String) async throws -> [UseByInventoryItem] {
         let snapshot = try await db.collection("users").document(userId)
-            .collection("fridgeInventory")
+            .collection("useByInventory")
             .order(by: "expiryDate", descending: false)
             .getDocuments()
 
@@ -330,15 +330,15 @@ class FirebaseManager: ObservableObject {
 
         return snapshot.documents.compactMap { doc in
             guard let data = try? JSONSerialization.data(withJSONObject: doc.data(), options: []) else { return nil }
-            return try? decoder.decode(FridgeInventoryItem.self, from: data)
+            return try? decoder.decode(UseByInventoryItem.self, from: data)
         }
     }
 
-    func updateFridgeItem(_ item: FridgeInventoryItem) async throws {
+    func updateUseByItem(_ item: UseByInventoryItem) async throws {
         ensureAuthStateLoaded()
 
         guard let userId = currentUser?.uid else {
-            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to update fridge items"])
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to update use by items"])
         }
 
         let encoder = JSONEncoder()
@@ -347,31 +347,31 @@ class FirebaseManager: ObservableObject {
         let dict = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] ?? [:]
 
         try await db.collection("users").document(userId)
-            .collection("fridgeInventory").document(item.id).setData(dict, merge: true)
-        print("✅ updateFridgeItem: Successfully updated item in Firebase \(item.id)")
+            .collection("useByInventory").document(item.id).setData(dict, merge: true)
+        print("✅ updateUseByItem: Successfully updated item in Firebase \(item.id)")
     }
 
-    func deleteFridgeItem(itemId: String) async throws {
+    func deleteUseByItem(itemId: String) async throws {
         ensureAuthStateLoaded()
 
         guard let userId = currentUser?.uid else {
-            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to delete fridge items"])
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to delete use by items"])
         }
 
         try await db.collection("users").document(userId)
-            .collection("fridgeInventory").document(itemId).delete()
-        print("✅ deleteFridgeItem: Successfully deleted item from Firebase \(itemId)")
+            .collection("useByInventory").document(itemId).delete()
+        print("✅ deleteUseByItem: Successfully deleted item from Firebase \(itemId)")
     }
 
-    func clearFridgeInventory() async throws {
+    func clearUseByInventory() async throws {
         ensureAuthStateLoaded()
 
         guard let userId = currentUser?.uid else {
-            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to clear fridge inventory"])
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to clear use by inventory"])
         }
 
         let snapshot = try await db.collection("users").document(userId)
-            .collection("fridgeInventory").getDocuments()
+            .collection("useByInventory").getDocuments()
         for doc in snapshot.documents {
             try await doc.reference.delete()
         }
@@ -543,24 +543,24 @@ class FirebaseManager: ObservableObject {
     }
     
     
-    // MARK: - Fridge Items
-    
-    func saveFridgeItem(_ item: FridgeItem) async throws {
+    // MARK: - Use By Items
+
+    func saveUseByItem(_ item: UseByItem) async throws {
         guard let userId = currentUser?.uid else { return }
         let itemData = item.toDictionary()
         try await db.collection("users").document(userId)
-            .collection("fridgeItems").document(item.id.uuidString).setData(itemData)
+            .collection("useByItems").document(item.id.uuidString).setData(itemData)
     }
-    
-    func getFridgeItems() async throws -> [FridgeItem] {
+
+    func getUseByItems() async throws -> [UseByItem] {
         guard let userId = currentUser?.uid else { return [] }
         let snapshot = try await db.collection("users").document(userId)
-            .collection("fridgeItems")
+            .collection("useByItems")
             .order(by: "expiryDate")
             .getDocuments()
-        
+
         return snapshot.documents.compactMap { doc in
-            FridgeItem.fromDictionary(doc.data())
+            UseByItem.fromDictionary(doc.data())
         }
     }
 
@@ -752,8 +752,8 @@ class FirebaseManager: ObservableObject {
         return image
     }
 
-    // MARK: - Fridge Item Photo Upload
-    func uploadFridgeItemPhoto(_ image: UIImage) async throws -> String {
+    // MARK: - Use By Item Photo Upload
+    func uploadUseByItemPhoto(_ image: UIImage) async throws -> String {
         ensureAuthStateLoaded()
 
         guard let userId = currentUser?.uid else {
@@ -768,7 +768,7 @@ class FirebaseManager: ObservableObject {
         // Create unique filename
         let filename = "\(UUID().uuidString).jpg"
         let storageRef = Storage.storage().reference()
-        let photoRef = storageRef.child("fridgeItemPhotos/\(userId)/\(filename)")
+        let photoRef = storageRef.child("useByItemPhotos/\(userId)/\(filename)")
 
         // Upload image
         let metadata = StorageMetadata()
@@ -778,7 +778,7 @@ class FirebaseManager: ObservableObject {
 
         // Get download URL
         let downloadURL = try await photoRef.downloadURL()
-        print("✅ Fridge item photo uploaded successfully: \(downloadURL.absoluteString)")
+        print("✅ Use By item photo uploaded successfully: \(downloadURL.absoluteString)")
         return downloadURL.absoluteString
     }
 
@@ -1329,8 +1329,8 @@ class FirebaseManager: ObservableObject {
 }
 
 extension Notification.Name {
-    static let fridgeInventoryUpdated = Notification.Name("fridgeInventoryUpdated")
-    static let navigateToFridge = Notification.Name("navigateToFridge")
+    static let useByInventoryUpdated = Notification.Name("useByInventoryUpdated")
+    static let navigateToUseBy = Notification.Name("navigateToUseBy")
 }
 
 // MARK: - Response Models for Food Search

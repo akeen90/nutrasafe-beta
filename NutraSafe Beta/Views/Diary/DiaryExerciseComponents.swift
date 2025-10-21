@@ -214,13 +214,7 @@ struct DiaryExerciseCard: View {
         .padding(16)
         .background(Color(.systemGray6))
         .cornerRadius(12)
-        .sheet(isPresented: $showingExerciseSelector) {
-            ExerciseDropdownSelector(
-                exerciseType: exerciseType,
-                color: color,
-                isPresented: $showingExerciseSelector
-            )
-        }
+        // Exercise selector removed - feature deprecated
     }
 }
 
@@ -265,8 +259,6 @@ struct DiaryExerciseRow: View {
             .padding(.vertical, 8)
         }
         .buttonStyle(PlainButtonStyle())
-        .sheet(isPresented: $showingWeightTraining) {
-            WeightTrainingView()
-        }
+        // Weight training view removed - feature deprecated
     }
 }

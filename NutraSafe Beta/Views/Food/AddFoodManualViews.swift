@@ -34,7 +34,7 @@ struct AddFoodManualView: View {
                 .foregroundColor(.primary)
 
             // Description
-            Text(destination == .fridge
+            Text(destination == .useBy
                  ? "Add item with use-by date tracking"
                  : "Add item to your diary with complete nutrition data")
                 .font(.system(size: 16))
@@ -124,12 +124,12 @@ struct ManualFoodDetailEntryView: View {
     @State private var errorMessage = ""
 
     let servingUnits = ["g", "ml", "oz", "cup", "tbsp", "tsp", "piece", "slice", "serving"]
-    let useByLocations = ["General", "Fridge", "Freezer", "Pantry", "Cupboard"]
+    let useByLocations = ["General", "UseBy", "Freezer", "Pantry", "Cupboard"]
     let mealTimes = ["Breakfast", "Lunch", "Dinner", "Snacks"]
 
     var isFormValid: Bool {
-        if destination == .fridge {
-            // For use by: need food name, brand, and quantity
+        if destination == .useBy {
+            // For useBy: need food name, brand, and quantity
             return !foodName.isEmpty && !brand.isEmpty && !quantity.isEmpty
         } else {
             // For diary: need food name, brand, and calories
@@ -150,7 +150,7 @@ struct ManualFoodDetailEntryView: View {
         case "calories":
             return destination == .diary && calories.isEmpty
         case "quantity":
-            return destination == .fridge && quantity.isEmpty
+            return destination == .useBy && quantity.isEmpty
         default:
             return false
         }
@@ -183,7 +183,7 @@ struct ManualFoodDetailEntryView: View {
                         }
                     }
 
-                    // Show full nutrition form for diary, simplified form for fridge
+                    // Show full nutrition form for diary, simplified form for useBy
                     if destination == .diary {
                         Divider()
 
@@ -303,7 +303,7 @@ struct ManualFoodDetailEntryView: View {
                     }
 
                     // Use By-specific fields (simplified form)
-                    if destination == .fridge {
+                    if destination == .useBy {
                         Divider()
 
                         VStack(alignment: .leading, spacing: 16) {
@@ -374,7 +374,7 @@ struct ManualFoodDetailEntryView: View {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.system(size: 20))
                             }
-                            Text(isSaving ? "Saving..." : (destination == .fridge ? "Add to Use By" : "Add to Diary"))
+                            Text(isSaving ? "Saving..." : (destination == .useBy ? "Add to Use By" : "Add to Diary"))
                                 .font(.system(size: 18, weight: .semibold))
                         }
                         .foregroundColor(.white)
@@ -394,7 +394,7 @@ struct ManualFoodDetailEntryView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
             }
-            .navigationTitle(destination == .fridge ? "Add to Use By" : "Add to Diary")
+            .navigationTitle(destination == .useBy ? "Add to Use By" : "Add to Diary")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -426,7 +426,7 @@ struct ManualFoodDetailEntryView: View {
 
         Task {
             do {
-                if destination == .fridge {
+                if destination == .useBy {
                     try await saveFoodToUseBy()
                 } else {
                     try await saveFoodToDiary()
@@ -441,7 +441,7 @@ struct ManualFoodDetailEntryView: View {
                 // Don't dismiss on error - show error message instead
                 await MainActor.run {
                     isSaving = false
-                    // Error will be shown by the saveFoodToDiary/saveFoodToFridge functions
+                    // Error will be shown by the saveFoodToDiary/saveFoodToUseBy functions
                 }
             }
         }
@@ -551,7 +551,7 @@ struct ManualFoodDetailEntryView: View {
     }
 
     private func saveFoodToUseBy() async throws {
-        // Create use-by item from manual data using existing FridgeItem structure
+        // Create use-by item from manual data using existing UseByItem structure
         guard let userId = FirebaseManager.shared.currentUser?.uid else {
             let error = NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to add items"])
             await MainActor.run {
@@ -565,7 +565,7 @@ struct ManualFoodDetailEntryView: View {
         let capitalizedFoodName = foodName.capitalized
         let capitalizedBrand = brand.capitalized
 
-        let fridgeItem = FridgeItem(
+        let useByItem = UseByItem(
             userId: userId,
             name: "\(capitalizedFoodName) - \(capitalizedBrand)",
             quantity: Int(quantity) ?? 1,
@@ -578,7 +578,7 @@ struct ManualFoodDetailEntryView: View {
 
         // Save to Firebase
         do {
-            try await FirebaseManager.shared.saveFridgeItem(fridgeItem)
+            try await FirebaseManager.shared.saveUseByItem(useByItem)
             print("✅ Successfully saved item to use-by tracking")
         } catch {
             await MainActor.run {

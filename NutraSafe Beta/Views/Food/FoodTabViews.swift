@@ -1782,7 +1782,6 @@ struct FoodReactionSearchView: View {
     @State private var searchText = ""
     @State private var searchResults: [FoodSearchResult] = []
     @State private var isSearching = false
-    @State private var showingLiveScanner = false
     @State private var searchTask: Task<Void, Never>?
     @FocusState private var isSearchFieldFocused: Bool
 
@@ -1820,21 +1819,6 @@ struct FoodReactionSearchView: View {
 
                 // Action Buttons
                 HStack(spacing: 12) {
-                    Button(action: {
-                        showingLiveScanner = true
-                    }) {
-                        HStack {
-                            Image(systemName: "camera.viewfinder")
-                            Text("Scan Ingredients")
-                        }
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.blue)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.blue.opacity(0.1))
-                        .cornerRadius(20)
-                    }
-
                     Button(action: {
                         addManualFood()
                     }) {
@@ -1928,12 +1912,7 @@ struct FoodReactionSearchView: View {
                 dismiss()
             }
         )
-        .sheet(isPresented: $showingLiveScanner) {
-            LiveIngredientScannerView { scannedText, _ in
-                // Handle scanned ingredients
-                handleScannedIngredients(scannedText)
-            }
-        }
+        // Live scanner removed - feature deprecated
         .onAppear {
             // Automatically focus the search field when the view appears
             isSearchFieldFocused = true
@@ -2012,49 +1991,6 @@ struct FoodReactionSearchView: View {
         dismiss()
     }
 
-    private func handleScannedIngredients(_ scannedText: String) {
-        // Create a custom food entry with scanned ingredients
-        let foodName = searchText.isEmpty ? "Scanned Food" : searchText
-
-        // Parse scanned text into ingredients
-        let ingredients = parseIngredientsFromText(scannedText)
-
-        let scannedFood = FoodSearchResult(
-            id: UUID().uuidString,
-            name: foodName,
-            brand: nil,
-            calories: 0,
-            protein: 0,
-            carbs: 0,
-            fat: 0,
-            fiber: 0,
-            sugar: 0,
-            sodium: 0,
-            servingDescription: "Scanned ingredients",
-            ingredients: ingredients,
-            confidence: 1.0,
-            isVerified: false
-        )
-
-        selectedFood = scannedFood
-        dismiss()
-    }
-
-    private func parseIngredientsFromText(_ text: String) -> [String] {
-        // Basic ingredient parsing - split by common delimiters and clean up
-        let separators = CharacterSet(charactersIn: ",;:")
-        let ingredients = text.components(separatedBy: separators)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-            .map { ingredient in
-                // Remove common prefixes like "Ingredients:", "Contains:", etc.
-                let cleaned = ingredient.replacingOccurrences(of: "^(Ingredients?|Contains?):?\\s*", with: "", options: .regularExpression)
-                return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
-            }
-            .filter { !$0.isEmpty }
-
-        return ingredients
-    }
 }
 
 // MARK: - Food Search Result Row for Reactions
