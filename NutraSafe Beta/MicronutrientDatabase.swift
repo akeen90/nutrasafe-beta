@@ -393,6 +393,8 @@ class MicronutrientDatabase {
             "choline": "Choline",
             "omega_3": "Omega3_EPA_DHA",
             "omega3": "Omega3_EPA_DHA",
+            "omega3_ala": "Omega3_ALA",
+            "omega3_epa_dha": "Omega3_EPA_DHA",
             "lutein": "Lutein_Zeaxanthin",
             "zeaxanthin": "Lutein_Zeaxanthin",
             "lycopene": "Lycopene"
