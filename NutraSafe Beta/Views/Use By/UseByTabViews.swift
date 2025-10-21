@@ -483,6 +483,7 @@ struct AddFoundFoodToUseBySheet: View {
             expiryDate: expiryDate,
             addedDate: Date(),
             openedDate: openedMode == .today ? Date() : openedDate,
+            useWithinDaysOfOpening: (openedMode == .today || openedDate < Date()) ? 3 : nil,
             imageURL: uploadedImageURL
         )
         do {
@@ -535,7 +536,7 @@ struct UseByExpiryView: View {
     }
 
     private var expiringSoonCount: Int {
-        useByItems.filter { $0.daysUntilExpiry <= 3 }.count
+        useByItems.filter { $0.openedDate != nil && $0.daysUntilExpiry <= 3 }.count
     }
 
     var body: some View {
@@ -784,7 +785,7 @@ struct UseByExpiryAlertsCard: View {
     }
 
     private var weekCount: Int {
-        items.filter { (1...7).contains($0.daysUntilExpiry) }.count
+        items.filter { $0.openedDate != nil && (1...7).contains($0.daysUntilExpiry) }.count
     }
 
     private var freshCount: Int {
@@ -1645,6 +1646,11 @@ struct ModernExpiryRow: View {
     private var brandText: String { item.brand ?? "" }
 
     private var urgencyColor: Color {
+        // Check if unopened
+        if item.openedDate == nil {
+            return .blue
+        }
+
         switch daysLeft {
         case 0: return .red
         case 1...2: return .orange
@@ -1654,15 +1660,36 @@ struct ModernExpiryRow: View {
     }
 
     private var urgencyText: String {
+        print("🔍 ModernExpiryRow urgencyText - item: \(item.name), openedDate: \(String(describing: item.openedDate)), daysLeft: \(daysLeft)")
+
+        // Check if unopened
+        if item.openedDate == nil {
+            print("✅ Returning 'Unopened' for \(item.name)")
+            return "Unopened"
+        }
+
+        print("⚠️ Item \(item.name) has openedDate: \(item.openedDate!)")
         switch daysLeft {
         case 0: return "Expires today"
         case 1: return "Tomorrow"
         case 2...7: return "\(daysLeft) days"
-        default: return "\(daysLeft) days"
+        case 8...30: return "\(daysLeft) days"
+        default:
+            // For longer periods, show weeks if > 14 days
+            if daysLeft > 14 {
+                let weeks = daysLeft / 7
+                return "\(weeks) weeks"
+            }
+            return "\(daysLeft) days"
         }
     }
 
     private var urgencyIcon: String {
+        // Check if unopened
+        if item.openedDate == nil {
+            return "seal.fill"
+        }
+
         switch daysLeft {
         case 0: return "exclamationmark.circle.fill"
         case 1...2: return "clock.fill"
@@ -1776,6 +1803,7 @@ struct ModernExpiryRow: View {
             expiryDate: newExpiry,
             addedDate: item.addedDate,
             openedDate: item.openedDate,
+            useWithinDaysOfOpening: item.useWithinDaysOfOpening,
             barcode: item.barcode,
             category: item.category
         )
@@ -2467,6 +2495,7 @@ struct UseByItemDetailView: View {
     @State private var editedExpiryDate: Date = Date()
     @State private var isOpened: Bool = false
     @State private var openedDate: Date = Date()
+    @State private var useWithinDaysOfOpening: Int = 3 // Default: use within 3 days of opening
     @State private var notes: String = ""
     @State private var isSaving: Bool = false
     @State private var showDatePicker: Bool = false
@@ -2514,6 +2543,10 @@ struct UseByItemDetailView: View {
     }
 
     var freshnessScore: Double {
+        // Unopened items are 100% fresh
+        if !isAddMode && item?.openedDate == nil {
+            return 1.0
+        }
         let totalShelfLife = max(daysLeft + 7, 1) // Assume it started with at least 7 days
         let remaining = max(daysLeft, 0)
         return Double(remaining) / Double(totalShelfLife)
@@ -2580,9 +2613,15 @@ struct UseByItemDetailView: View {
                             }
 
                             HStack(spacing: 12) {
-                                Label("\(daysLeft) days", systemImage: "calendar")
-                                    .font(.system(size: 13))
-                                    .foregroundColor(freshnessColor)
+                                if !isAddMode && item?.openedDate == nil {
+                                    Label("Unopened", systemImage: "seal.fill")
+                                        .font(.system(size: 13))
+                                        .foregroundColor(.blue)
+                                } else {
+                                    Label("\(daysLeft) days", systemImage: "calendar")
+                                        .font(.system(size: 13))
+                                        .foregroundColor(freshnessColor)
+                                }
                             }
                             .padding(.top, 4)
                         }
@@ -2885,6 +2924,7 @@ struct UseByItemDetailView: View {
                     isOpened = true
                     openedDate = opened
                 }
+                useWithinDaysOfOpening = item.useWithinDaysOfOpening ?? 3
 
                 // Load existing photo from URL if available
                 if let imageURL = item.imageURL, capturedImage == nil {
@@ -2894,10 +2934,22 @@ struct UseByItemDetailView: View {
                 }
 
                 let daysLeft = item.daysUntilExpiry
-                expiryAmount = max(daysLeft, 1)
-                expiryUnit = daysLeft > 14 ? .weeks : .days
-                if expiryUnit == .weeks {
-                    expiryAmount = expiryAmount / 7
+                // Don't use 999 for unopened items - use actual expiry date instead
+                if item.openedDate == nil {
+                    // For unopened items, calculate from expiry date
+                    let actualDaysLeft = Calendar.current.dateComponents([.day], from: Date(), to: item.expiryDate).day ?? 7
+                    expiryAmount = max(actualDaysLeft, 1)
+                    expiryUnit = actualDaysLeft > 14 ? .weeks : .days
+                    if expiryUnit == .weeks {
+                        expiryAmount = expiryAmount / 7
+                    }
+                } else {
+                    // For opened items, use the countdown
+                    expiryAmount = max(daysLeft, 1)
+                    expiryUnit = daysLeft > 14 ? .weeks : .days
+                    if expiryUnit == .weeks {
+                        expiryAmount = expiryAmount / 7
+                    }
                 }
             } else {
                 // Add mode: Set defaults
@@ -3030,6 +3082,7 @@ struct UseByItemDetailView: View {
                 expiryDate: editedExpiryDate,
                 addedDate: Date(),
                 openedDate: isOpened ? openedDate : nil,
+                useWithinDaysOfOpening: isOpened ? useWithinDaysOfOpening : nil,
                 barcode: nil,
                 category: nil,
                 imageURL: uploadedImageURL,
@@ -3082,6 +3135,7 @@ struct UseByItemDetailView: View {
                 expiryDate: editedExpiryDate,
                 addedDate: item.addedDate,
                 openedDate: isOpened ? openedDate : nil,
+                useWithinDaysOfOpening: isOpened ? useWithinDaysOfOpening : nil,
                 barcode: item.barcode,
                 category: item.category,
                 imageURL: uploadedImageURL ?? item.imageURL,
@@ -3341,6 +3395,11 @@ struct CleanUseByRow: View {
     private var daysLeft: Int { item.daysUntilExpiry }
 
     private var statusColor: Color {
+        // Check if unopened
+        if item.openedDate == nil {
+            return .blue
+        }
+
         switch daysLeft {
         case ...(-1): return Color(red: 1.0, green: 0.27, blue: 0.23) // Red for expired
         case 0...3: return Color(red: 1.0, green: 0.62, blue: 0.0) // Orange for expiring soon
@@ -3349,6 +3408,11 @@ struct CleanUseByRow: View {
     }
 
     private var statusText: String {
+        // Check if unopened
+        if item.openedDate == nil {
+            return "Unopened"
+        }
+
         switch daysLeft {
         case ...(-1): return "Expired"
         case 0: return "Expires today"
@@ -3358,6 +3422,11 @@ struct CleanUseByRow: View {
     }
 
     private var statusIcon: String {
+        // Check if unopened
+        if item.openedDate == nil {
+            return "seal.fill"
+        }
+
         switch daysLeft {
         case ...0: return "exclamationmark.triangle.fill"
         case 1...3: return "clock.badge.exclamationmark"
