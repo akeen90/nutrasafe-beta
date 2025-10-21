@@ -1355,11 +1355,12 @@ struct ContentView: View {
     @StateObject private var workoutManager = WorkoutManager.shared
     @StateObject private var healthKitManager = HealthKitManager.shared
     
-    // MARK: - Computed Views
+    // MARK: - Lazy Tab Views (Performance Optimization)
+    // Using ZStack with opacity instead of switch to keep views alive and avoid recreation
     @ViewBuilder
-    private var currentTabView: some View {
-        switch selectedTab {
-        case .diary:
+    private var lazyTabViews: some View {
+        ZStack {
+            // Diary Tab
             DiaryTabView(
                 selectedFoodItems: $selectedFoodItems,
                 showingSettings: $showingSettings,
@@ -1373,16 +1374,30 @@ struct ContentView: View {
             )
             .environmentObject(diaryDataManager)
             .environmentObject(healthKitManager)
-        case .weight:
+            .opacity(selectedTab == .diary ? 1 : 0)
+            .zIndex(selectedTab == .diary ? 1 : 0)
+
+            // Weight Tab
             WeightTrackingView(showingSettings: $showingSettings)
                 .environmentObject(healthKitManager)
-        case .add:
+                .opacity(selectedTab == .weight ? 1 : 0)
+                .zIndex(selectedTab == .weight ? 1 : 0)
+
+            // Add Tab
             AddTabView(selectedTab: $selectedTab)
                 .environmentObject(diaryDataManager)
-        case .food:
+                .opacity(selectedTab == .add ? 1 : 0)
+                .zIndex(selectedTab == .add ? 1 : 0)
+
+            // Food Tab
             FoodTabView(showingSettings: $showingSettings)
-        case .useBy:
+                .opacity(selectedTab == .food ? 1 : 0)
+                .zIndex(selectedTab == .food ? 1 : 0)
+
+            // Use By Tab
             UseByTabView(showingSettings: $showingSettings, selectedTab: $selectedTab)
+                .opacity(selectedTab == .useBy ? 1 : 0)
+                .zIndex(selectedTab == .useBy ? 1 : 0)
         }
     }
 
@@ -1391,7 +1406,7 @@ struct ContentView: View {
             ZStack {
                 // Main Content with padding for tab bar and potential workout progress bar
                 VStack {
-                    currentTabView
+                    lazyTabViews
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             
