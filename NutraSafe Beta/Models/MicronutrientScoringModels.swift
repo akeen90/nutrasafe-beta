@@ -177,15 +177,11 @@ struct NutrientBalanceScore {
     let strongCount: Int      // ≥71%
     let adequateCount: Int    // 31-70%
     let lowCount: Int         // 0-30%
+    let averageCoverage: Int  // Average percentage across all nutrients
 
     var balancePercentage: Int {
-        guard totalNutrientsTracked > 0 else { return 0 }
-
-        // Weight: strong=100%, adequate=50%, low=0%
-        let weightedSum = (strongCount * 100) + (adequateCount * 50)
-        let maxPossible = totalNutrientsTracked * 100
-
-        return (weightedSum * 100) / maxPossible
+        // Use average coverage as the primary metric (more intuitive)
+        return averageCoverage
     }
 
     var balanceStatus: MicronutrientStatus {

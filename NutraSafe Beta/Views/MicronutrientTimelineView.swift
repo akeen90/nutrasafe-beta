@@ -58,7 +58,7 @@ struct MicronutrientTimelineView: View {
             HStack {
                 Image(systemName: "chart.line.uptrend.xyaxis")
                     .foregroundColor(.purple)
-                Text("Overall Balance History")
+                Text("Average Nutrient Coverage")
                     .font(.system(size: 18, weight: .bold))
                     .foregroundColor(.primary)
             }

@@ -223,20 +223,26 @@ class MicronutrientTrackingManager: ObservableObject {
         // Get all nutrients tracked today
         var nutrientCounts: [MicronutrientStatus: Int] = [.low: 0, .adequate: 0, .strong: 0]
         var trackedNutrients = Set<String>()
+        var totalPercentage = 0
 
         for (nutrient, scores) in dailyScores {
             if let score = scores.first(where: { formatDate($0.date) == dateKey }) {
                 trackedNutrients.insert(nutrient)
                 nutrientCounts[score.status, default: 0] += 1
+                totalPercentage += score.percentage
             }
         }
+
+        // Calculate average coverage across all tracked nutrients
+        let averageCoverage = trackedNutrients.count > 0 ? totalPercentage / trackedNutrients.count : 0
 
         let balance = NutrientBalanceScore(
             date: date,
             totalNutrientsTracked: trackedNutrients.count,
             strongCount: nutrientCounts[.strong] ?? 0,
             adequateCount: nutrientCounts[.adequate] ?? 0,
-            lowCount: nutrientCounts[.low] ?? 0
+            lowCount: nutrientCounts[.low] ?? 0,
+            averageCoverage: averageCoverage
         )
 
         // Update or append to history
@@ -413,6 +419,7 @@ class MicronutrientTrackingManager: ObservableObject {
                     "strongCount": balance.strongCount,
                     "adequateCount": balance.adequateCount,
                     "lowCount": balance.lowCount,
+                    "averageCoverage": balance.averageCoverage,
                     "balancePercentage": balance.balancePercentage
                 ])
             } catch {
@@ -482,12 +489,23 @@ class MicronutrientTrackingManager: ObservableObject {
                     continue
                 }
 
+                // Get average coverage if available, otherwise calculate from counts
+                let averageCoverage: Int
+                if let storedAverage = data["averageCoverage"] as? Int {
+                    averageCoverage = storedAverage
+                } else {
+                    // Fallback calculation for legacy data
+                    let weighted = (strong * 100) + (adequate * 50)
+                    averageCoverage = totalTracked > 0 ? (weighted * 100) / (totalTracked * 100) : 0
+                }
+
                 let balance = NutrientBalanceScore(
                     date: timestamp.dateValue(),
                     totalNutrientsTracked: totalTracked,
                     strongCount: strong,
                     adequateCount: adequate,
-                    lowCount: low
+                    lowCount: low,
+                    averageCoverage: averageCoverage
                 )
 
                 loadedBalance.append(balance)
