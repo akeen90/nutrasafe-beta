@@ -2146,7 +2146,7 @@ struct AddUseByItemSheet: View {
                     case .search:
                         UseByInlineSearchView()
                     case .manual:
-                        ManualUseByItemSheet()
+                        UseByItemDetailView(item: nil)
                     case .barcode:
                         UseByBarcodeScanSheet()
                     }
@@ -2307,163 +2307,6 @@ struct AddOptionButton: View {
     }
 }
 
-struct ManualUseByItemSheet: View {
-    @Environment(\.dismiss) var dismiss
-    @State private var itemName = ""
-    @State private var brand = ""
-    @State private var useByDate = Date().addingTimeInterval(7 * 24 * 60 * 60)
-    @State private var isSaving = false
-    @State private var showErrorAlertManual = false
-    @State private var errorMessageManual: String? = nil
-    @State private var showPhotoActionSheet = false
-    @State private var showImagePicker = false
-    @State private var photoSourceType: UIImagePickerController.SourceType = .photoLibrary
-    @State private var capturedImage: UIImage?
-    @State private var uploadedImageURL: String?
-    @State private var isUploadingPhoto = false
-
-    var body: some View {
-        NavigationView {
-            Form {
-                Section {
-                    TextField("Item name", text: $itemName)
-                    TextField("Brand (optional)", text: $brand)
-                }
-
-                Section(header: Text("Photo")) {
-                    Button(action: { showPhotoActionSheet = true }) {
-                        HStack {
-                            if isUploadingPhoto {
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                                    .padding(.trailing, 8)
-                            }
-                            Text(capturedImage != nil || uploadedImageURL != nil ? "Change Photo" : "Add Photo")
-                                .foregroundColor(.blue)
-                            Spacer()
-                            if let image = capturedImage {
-                                Image(uiImage: image)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 60, height: 60)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                            }
-                        }
-                    }
-                    .disabled(isUploadingPhoto)
-                }
-
-                Section {
-                    DatePicker("Use By Date", selection: $useByDate, displayedComponents: .date)
-                        .datePickerStyle(.automatic)
-                }
-            }
-            .navigationTitle("Add Item")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { saveUseByItem() }) {
-                        if isSaving {
-                            ProgressView().scaleEffect(0.8)
-                        } else {
-                            Text("Add").font(.system(size: 16, weight: .semibold))
-                        }
-                    }
-                    .disabled(itemName.isEmpty || isSaving)
-                }
-            }
-            .alert("Couldn't save item", isPresented: $showErrorAlertManual, actions: {
-                Button("OK", role: .cancel) {}
-            }, message: {
-                Text(errorMessageManual ?? "Unknown error")
-            })
-            .confirmationDialog("Add Photo", isPresented: $showPhotoActionSheet) {
-                Button("Take Photo") {
-                    photoSourceType = .camera
-                    showImagePicker = true
-                }
-                Button("Choose from Library") {
-                    photoSourceType = .photoLibrary
-                    showImagePicker = true
-                }
-                Button("Cancel", role: .cancel) {}
-            }
-            .sheet(isPresented: $showImagePicker) {
-                ImagePicker(selectedImage: nil, sourceType: photoSourceType) { image in
-                    if let image = image {
-                        capturedImage = image
-                        Task {
-                            await uploadPhoto(image)
-                        }
-                    }
-                }
-            }
-        }
-        .navigationViewStyle(StackNavigationViewStyle())
-    }
-
-    private func uploadPhoto(_ image: UIImage) async {
-        isUploadingPhoto = true
-        do {
-            let url = try await FirebaseManager.shared.uploadUseByItemPhoto(image)
-            await MainActor.run {
-                uploadedImageURL = url
-                isUploadingPhoto = false
-            }
-        } catch {
-            print("❌ Failed to upload photo: \(error)")
-            await MainActor.run {
-                isUploadingPhoto = false
-            }
-        }
-    }
-
-    private func saveUseByItem() {
-        isSaving = true
-
-        let useByItem = UseByInventoryItem(
-            name: itemName,
-            brand: brand.isEmpty ? nil : brand,
-            quantity: "1",
-            expiryDate: useByDate,
-            addedDate: Date(),
-            openedDate: Date(),
-            imageURL: uploadedImageURL
-        )
-
-        Task {
-            do {
-                try await FirebaseManager.shared.addUseByItem(useByItem)
-
-                // Schedule use-by notifications for this item
-                await UseByNotificationManager.shared.scheduleNotifications(for: useByItem)
-
-                NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
-                await MainActor.run { dismiss() }
-            } catch {
-                let ns = error as NSError
-                print("Error saving useBy item: \(ns)")
-                await MainActor.run {
-                    isSaving = false
-                    // Silently fail for permission errors - just close the sheet
-                    if ns.domain == "FIRFirestoreErrorDomain" && ns.code == 7 {
-                        // Missing permissions - post notifications and dismiss without error
-                        NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
-                        NotificationCenter.default.post(name: .navigateToUseBy, object: nil)
-                        dismiss()
-                    } else {
-                        errorMessageManual = "\(ns.domain) (\(ns.code)): \(ns.localizedDescription)"
-                        showErrorAlertManual = true
-                    }
-                }
-            }
-        }
-    }
-}
-
 // MARK: - Preview Support
 
 #if DEBUG
@@ -2602,8 +2445,10 @@ struct FreshnessIndicatorView: View {
 struct UseByItemDetailView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
-    let item: UseByInventoryItem
+    let item: UseByInventoryItem? // Optional for add mode
 
+    @State private var editedName: String = ""
+    @State private var editedBrand: String = ""
     @State private var editedQuantity: String = ""
     @State private var editedExpiryDate: Date = Date()
     @State private var isOpened: Bool = false
@@ -2615,7 +2460,7 @@ struct UseByItemDetailView: View {
     @State private var pulseAnimation: Bool = false
 
     // New expiry selector states
-    @State private var expiryMode: ExpiryMode = .calendar
+    @State private var expiryMode: ExpiryMode = .selector
     @State private var expiryAmount: Int = 7
     @State private var expiryUnit: ExpiryUnit = .days
 
@@ -2627,9 +2472,21 @@ struct UseByItemDetailView: View {
     @State private var isUploadingPhoto: Bool = false
     @State private var uploadedImageURL: String?
 
-    private var itemName: String { item.name }
-    private var brand: String? { item.brand }
-    private var daysLeft: Int { item.daysUntilExpiry }
+    // Computed properties that work for both add and edit modes
+    private var isAddMode: Bool { item == nil }
+    private var itemName: String { isAddMode ? editedName : item!.name }
+    private var brand: String? {
+        if isAddMode {
+            return editedBrand.isEmpty ? nil : editedBrand
+        }
+        return item!.brand
+    }
+    private var daysLeft: Int {
+        if isAddMode {
+            return Calendar.current.dateComponents([.day], from: Date(), to: editedExpiryDate).day ?? 0
+        }
+        return item!.daysUntilExpiry
+    }
     private var quantity: String { editedQuantity }
 
     enum ExpiryMode {
@@ -2688,20 +2545,37 @@ struct UseByItemDetailView: View {
 
                         // Product Info
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(itemName)
-                                .font(.system(size: 24, weight: .bold))
-                                .foregroundColor(.primary)
+                            if isAddMode {
+                                TextField("Item name", text: $editedName)
+                                    .font(.system(size: 24, weight: .bold))
+                                    .foregroundColor(.primary)
 
-                            if let brand = brand, !brand.isEmpty {
-                                Text(brand)
+                                TextField("Brand (optional)", text: $editedBrand)
                                     .font(.system(size: 14))
                                     .foregroundColor(.secondary)
+                            } else {
+                                Text(itemName)
+                                    .font(.system(size: 24, weight: .bold))
+                                    .foregroundColor(.primary)
+
+                                if let brand = brand, !brand.isEmpty {
+                                    Text(brand)
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.secondary)
+                                }
                             }
 
                             HStack(spacing: 12) {
-                                Label(quantity, systemImage: "scalemass")
-                                    .font(.system(size: 13))
-                                    .foregroundColor(.blue)
+                                if isAddMode {
+                                    TextField("Quantity", text: $editedQuantity)
+                                        .font(.system(size: 13))
+                                        .foregroundColor(.blue)
+                                        .frame(width: 80)
+                                } else {
+                                    Label(quantity, systemImage: "scalemass")
+                                        .font(.system(size: 13))
+                                        .foregroundColor(.blue)
+                                }
 
                                 Label("\(daysLeft) days", systemImage: "calendar")
                                     .font(.system(size: 13))
@@ -2940,7 +2814,7 @@ struct UseByItemDetailView: View {
                                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                                 } else {
                                     Image(systemName: "checkmark.circle.fill")
-                                    Text("Save Changes")
+                                    Text(isAddMode ? "Add Item" : "Save Changes")
                                 }
                             }
                             .font(.system(size: 16, weight: .semibold))
@@ -2951,7 +2825,7 @@ struct UseByItemDetailView: View {
                             .cornerRadius(14)
                         }
                         .buttonStyle(PlainButtonStyle())
-                        .disabled(isSaving)
+                        .disabled(isSaving || (isAddMode && editedName.isEmpty))
 
                         Button(action: { dismiss() }) {
                             Text("Cancel")
@@ -2972,7 +2846,7 @@ struct UseByItemDetailView: View {
                 }
                 .padding()
             }
-            .navigationTitle("Manage Item")
+            .navigationTitle(isAddMode ? "Add Item" : "Manage Item")
             .navigationBarTitleDisplayMode(.inline)
         }
         .navigationViewStyle(StackNavigationViewStyle())
@@ -2996,29 +2870,41 @@ struct UseByItemDetailView: View {
             }
         }
         .onAppear {
-            // Initialize state from item
-            editedQuantity = item.quantity
-            editedExpiryDate = item.expiryDate
-            notes = item.notes ?? ""
-            uploadedImageURL = item.imageURL
-            if let opened = item.openedDate {
-                isOpened = true
-                openedDate = opened
-            }
-
-            // Load existing photo from URL if available
-            if let imageURL = item.imageURL, capturedImage == nil {
-                Task {
-                    await loadExistingPhoto(from: imageURL)
+            if let item = item {
+                // Edit mode: Initialize state from item
+                editedName = item.name
+                editedBrand = item.brand ?? ""
+                editedQuantity = item.quantity
+                editedExpiryDate = item.expiryDate
+                notes = item.notes ?? ""
+                uploadedImageURL = item.imageURL
+                if let opened = item.openedDate {
+                    isOpened = true
+                    openedDate = opened
                 }
+
+                // Load existing photo from URL if available
+                if let imageURL = item.imageURL, capturedImage == nil {
+                    Task {
+                        await loadExistingPhoto(from: imageURL)
+                    }
+                }
+
+                let daysLeft = item.daysUntilExpiry
+                expiryAmount = max(daysLeft, 1)
+                expiryUnit = daysLeft > 14 ? .weeks : .days
+                if expiryUnit == .weeks {
+                    expiryAmount = expiryAmount / 7
+                }
+            } else {
+                // Add mode: Set defaults
+                editedQuantity = "1"
+                editedExpiryDate = Date().addingTimeInterval(7 * 24 * 60 * 60) // 7 days from now
+                expiryMode = .selector
+                expiryAmount = 7
+                expiryUnit = .days
             }
 
-            let daysLeft = item.daysUntilExpiry
-            expiryAmount = max(daysLeft, 1)
-            expiryUnit = daysLeft > 14 ? .weeks : .days
-            if expiryUnit == .weeks {
-                expiryAmount = expiryAmount / 7
-            }
             withAnimation(.spring(response: 0.6)) {
                 animateIn = true
             }
@@ -3126,64 +3012,116 @@ struct UseByItemDetailView: View {
         impactFeedback.prepare()
         impactFeedback.impactOccurred()
 
-        print("UseByItemDetailView: Starting save")
-        print("UseByItemDetailView: Item ID: \(item.id)")
-        print("UseByItemDetailView: Edited quantity: \(editedQuantity)")
-        print("UseByItemDetailView: Edited expiry: \(editedExpiryDate)")
-        print("UseByItemDetailView: isOpened: \(isOpened)")
-        print("UseByItemDetailView: openedDate: \(String(describing: isOpened ? openedDate : nil))")
+        if isAddMode {
+            // Add mode: Create new item
+            print("UseByItemDetailView: Creating new item")
+            print("UseByItemDetailView: Name: \(editedName)")
+            print("UseByItemDetailView: Brand: \(editedBrand)")
+            print("UseByItemDetailView: Quantity: \(editedQuantity)")
+            print("UseByItemDetailView: Expiry: \(editedExpiryDate)")
 
-        // Create updated item with edits
-        let updatedItem = UseByInventoryItem(
-            id: item.id,
-            name: item.name,
-            brand: item.brand,
-            quantity: editedQuantity,
-            expiryDate: editedExpiryDate,
-            addedDate: item.addedDate,
-            openedDate: isOpened ? openedDate : nil,
-            barcode: item.barcode,
-            category: item.category,
-            imageURL: uploadedImageURL ?? item.imageURL,
-            notes: notes.isEmpty ? nil : notes
-        )
+            let newItem = UseByInventoryItem(
+                name: editedName,
+                brand: editedBrand.isEmpty ? nil : editedBrand,
+                quantity: editedQuantity.isEmpty ? "1" : editedQuantity,
+                expiryDate: editedExpiryDate,
+                addedDate: Date(),
+                openedDate: isOpened ? openedDate : nil,
+                barcode: nil,
+                category: nil,
+                imageURL: uploadedImageURL,
+                notes: notes.isEmpty ? nil : notes
+            )
 
-        print("UseByItemDetailView: Created updated item with openedDate: \(String(describing: updatedItem.openedDate))")
+            do {
+                try await FirebaseManager.shared.addUseByItem(newItem)
+                print("UseByItemDetailView: Item added successfully!")
 
-        // Save to Firebase
-        do {
-            print("UseByItemDetailView: Calling updateUseByItem")
-            try await FirebaseManager.shared.updateUseByItem(updatedItem)
-            print("UseByItemDetailView: Update successful!")
+                // Schedule notifications for new item
+                await UseByNotificationManager.shared.scheduleNotifications(for: newItem)
+                print("UseByItemDetailView: Notifications scheduled")
 
-            // Reschedule notifications with updated expiry date
-            UseByNotificationManager.shared.cancelNotifications(for: item.id)
-            await UseByNotificationManager.shared.scheduleNotifications(for: updatedItem)
-            print("UseByItemDetailView: Notifications rescheduled")
+                NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
 
-            NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
+                await MainActor.run {
+                    isSaving = false
 
-            await MainActor.run {
-                isSaving = false
+                    // Success haptic
+                    let successFeedback = UINotificationFeedbackGenerator()
+                    successFeedback.notificationOccurred(.success)
 
-                // Success haptic
-                let successFeedback = UINotificationFeedbackGenerator()
-                successFeedback.notificationOccurred(.success)
-
-                dismiss()
+                    dismiss()
+                }
+            } catch {
+                print("❌ UseByItemDetailView: Failed to add useBy item")
+                print("❌ Error: \(error)")
+                await MainActor.run {
+                    isSaving = false
+                }
             }
-        } catch {
-            print("❌ UseByItemDetailView: Failed to update useBy item")
-            print("❌ Error type: \(type(of: error))")
-            print("❌ Error description: \(error)")
-            print("❌ Error localized: \(error.localizedDescription)")
-            if let nsError = error as NSError? {
-                print("❌ Error domain: \(nsError.domain)")
-                print("❌ Error code: \(nsError.code)")
-                print("❌ Error userInfo: \(nsError.userInfo)")
-            }
-            await MainActor.run {
-                isSaving = false
+        } else {
+            // Edit mode: Update existing item
+            guard let item = item else { return }
+
+            print("UseByItemDetailView: Starting save")
+            print("UseByItemDetailView: Item ID: \(item.id)")
+            print("UseByItemDetailView: Edited quantity: \(editedQuantity)")
+            print("UseByItemDetailView: Edited expiry: \(editedExpiryDate)")
+            print("UseByItemDetailView: isOpened: \(isOpened)")
+            print("UseByItemDetailView: openedDate: \(String(describing: isOpened ? openedDate : nil))")
+
+            // Create updated item with edits
+            let updatedItem = UseByInventoryItem(
+                id: item.id,
+                name: item.name,
+                brand: item.brand,
+                quantity: editedQuantity,
+                expiryDate: editedExpiryDate,
+                addedDate: item.addedDate,
+                openedDate: isOpened ? openedDate : nil,
+                barcode: item.barcode,
+                category: item.category,
+                imageURL: uploadedImageURL ?? item.imageURL,
+                notes: notes.isEmpty ? nil : notes
+            )
+
+            print("UseByItemDetailView: Created updated item with openedDate: \(String(describing: updatedItem.openedDate))")
+
+            // Save to Firebase
+            do {
+                print("UseByItemDetailView: Calling updateUseByItem")
+                try await FirebaseManager.shared.updateUseByItem(updatedItem)
+                print("UseByItemDetailView: Update successful!")
+
+                // Reschedule notifications with updated expiry date
+                UseByNotificationManager.shared.cancelNotifications(for: item.id)
+                await UseByNotificationManager.shared.scheduleNotifications(for: updatedItem)
+                print("UseByItemDetailView: Notifications rescheduled")
+
+                NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
+
+                await MainActor.run {
+                    isSaving = false
+
+                    // Success haptic
+                    let successFeedback = UINotificationFeedbackGenerator()
+                    successFeedback.notificationOccurred(.success)
+
+                    dismiss()
+                }
+            } catch {
+                print("❌ UseByItemDetailView: Failed to update useBy item")
+                print("❌ Error type: \(type(of: error))")
+                print("❌ Error description: \(error)")
+                print("❌ Error localized: \(error.localizedDescription)")
+                if let nsError = error as NSError? {
+                    print("❌ Error domain: \(nsError.domain)")
+                    print("❌ Error code: \(nsError.code)")
+                    print("❌ Error userInfo: \(nsError.userInfo)")
+                }
+                await MainActor.run {
+                    isSaving = false
+                }
             }
         }
     }
