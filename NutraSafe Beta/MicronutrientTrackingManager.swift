@@ -1,0 +1,377 @@
+//
+//  MicronutrientTrackingManager.swift
+//  NutraSafe Beta
+//
+//  Created by Claude on 2025-10-21.
+//  Manager for tracking micronutrient intake and generating insights
+//
+
+import Foundation
+import FirebaseAuth
+import FirebaseFirestore
+import SwiftUI
+
+@MainActor
+class MicronutrientTrackingManager: ObservableObject {
+    static let shared = MicronutrientTrackingManager()
+
+    @Published private(set) var dailyScores: [String: [DailyNutrientScore]] = [:] // nutrient → scores
+    @Published private(set) var balanceHistory: [NutrientBalanceScore] = []
+    @Published private(set) var isLoading = false
+
+    private let database = MicronutrientDatabase.shared
+    private let db = Firestore.firestore()
+
+    private init() {
+        // Load cached data
+        loadCachedData()
+    }
+
+    // MARK: - Food Analysis
+
+    /// Analyze a food item and return micronutrient contributions
+    func analyzeFoodItem(name: String, ingredients: [String] = []) -> FoodMicronutrientAnalysis {
+        let nutrients = database.analyzeFoodItem(name: name, ingredients: ingredients)
+        return FoodMicronutrientAnalysis(foodName: name, nutrients: nutrients)
+    }
+
+    /// Process a logged food and update daily scores
+    func processFoodLog(name: String, ingredients: [String] = [], date: Date = Date()) async {
+        let analysis = analyzeFoodItem(name: name, ingredients: ingredients)
+
+        // Update scores for each nutrient found
+        for (nutrient, strength) in analysis.nutrients {
+            await updateDailyScore(
+                nutrient: nutrient,
+                date: date,
+                points: strength.points,
+                source: name
+            )
+        }
+
+        // Recalculate balance for the day
+        await updateBalanceScore(for: date)
+
+        // Save to Firebase
+        await saveDailyScores()
+    }
+
+    // MARK: - Daily Score Management
+
+    private func updateDailyScore(nutrient: String, date: Date, points: Int, source: String) async {
+        let dateKey = formatDate(date)
+        let scoreId = "\(nutrient)_\(dateKey)"
+
+        // Get existing score or create new one
+        var existingScores = dailyScores[nutrient] ?? []
+        if let index = existingScores.firstIndex(where: { $0.id == scoreId }) {
+            // Update existing
+            var score = existingScores[index]
+            let updatedPoints = score.totalPoints + points
+            var updatedSources = score.sources
+            if !updatedSources.contains(source) {
+                updatedSources.append(source)
+            }
+
+            let updated = DailyNutrientScore(
+                id: scoreId,
+                nutrient: nutrient,
+                date: date,
+                totalPoints: updatedPoints,
+                sources: updatedSources
+            )
+            existingScores[index] = updated
+        } else {
+            // Create new
+            let newScore = DailyNutrientScore(
+                id: scoreId,
+                nutrient: nutrient,
+                date: date,
+                totalPoints: points,
+                sources: [source]
+            )
+            existingScores.append(newScore)
+        }
+
+        dailyScores[nutrient] = existingScores
+    }
+
+    // MARK: - Balance Score Calculation
+
+    private func updateBalanceScore(for date: Date) async {
+        let dateKey = formatDate(date)
+
+        // Get all nutrients tracked today
+        var nutrientCounts: [NutrientStatus: Int] = [.low: 0, .adequate: 0, .strong: 0]
+        var trackedNutrients = Set<String>()
+
+        for (nutrient, scores) in dailyScores {
+            if let score = scores.first(where: { formatDate($0.date) == dateKey }) {
+                trackedNutrients.insert(nutrient)
+                nutrientCounts[score.status, default: 0] += 1
+            }
+        }
+
+        let balance = NutrientBalanceScore(
+            date: date,
+            totalNutrientsTracked: trackedNutrients.count,
+            strongCount: nutrientCounts[.strong] ?? 0,
+            adequateCount: nutrientCounts[.adequate] ?? 0,
+            lowCount: nutrientCounts[.low] ?? 0
+        )
+
+        // Update or append to history
+        if let index = balanceHistory.firstIndex(where: { formatDate($0.date) == dateKey }) {
+            balanceHistory[index] = balance
+        } else {
+            balanceHistory.append(balance)
+            balanceHistory.sort { $0.date > $1.date }
+        }
+    }
+
+    // MARK: - Summary Generation
+
+    /// Get summary for a specific nutrient
+    func getNutrientSummary(for nutrient: String) -> NutrientSummary? {
+        guard let scores = dailyScores[nutrient], !scores.isEmpty else {
+            return nil
+        }
+
+        let today = Date()
+        let todayKey = formatDate(today)
+
+        // Today's data
+        let todayScore = scores.first(where: { formatDate($0.date) == todayKey })
+        let todayPercentage = todayScore?.percentage ?? 0
+        let todayStatus = NutrientStatus.from(percentage: todayPercentage)
+
+        // 7-day average
+        let last7Days = getLast7Days()
+        let last7DaysScores = scores.filter { score in
+            last7Days.contains(where: { formatDate($0) == formatDate(score.date) })
+        }
+        let sevenDayAverage = last7DaysScores.isEmpty ? 0.0 : Double(last7DaysScores.reduce(0) { $0 + $1.percentage }) / Double(last7DaysScores.count)
+        let sevenDayStatus = NutrientStatus.from(percentage: Int(sevenDayAverage))
+
+        // Trend (compare last 3 days vs previous 4 days)
+        let trend = calculateTrend(for: last7DaysScores)
+
+        // Recent sources
+        let recentSources = Array(Set(last7DaysScores.flatMap { $0.sources })).sorted()
+
+        // Get nutrient info
+        let info = database.getNutrientInfo(nutrient)
+
+        return NutrientSummary(
+            id: nutrient,
+            nutrient: nutrient,
+            name: info?.name ?? nutrient,
+            todayPercentage: todayPercentage,
+            todayStatus: todayStatus,
+            sevenDayAverage: sevenDayAverage,
+            sevenDayStatus: sevenDayStatus,
+            trend: trend.trend,
+            trendPercentageChange: trend.change,
+            recentSources: recentSources,
+            info: info
+        )
+    }
+
+    /// Get summaries for all tracked nutrients
+    func getAllNutrientSummaries() -> [NutrientSummary] {
+        let allNutrients = database.getAllNutrients()
+        return allNutrients.compactMap { info in
+            getNutrientSummary(for: info.nutrient)
+        }.sorted { $0.name < $1.name }
+    }
+
+    /// Get today's balance score
+    func getTodayBalance() -> NutrientBalanceScore? {
+        let todayKey = formatDate(Date())
+        return balanceHistory.first(where: { formatDate($0.date) == todayKey })
+    }
+
+    /// Generate insights for today
+    func generateTodayInsights() -> [String] {
+        let summaries = getAllNutrientSummaries()
+        return NutrientInsightGenerator.generateInsights(for: summaries)
+    }
+
+    // MARK: - Trend Calculation
+
+    private func calculateTrend(for scores: [DailyNutrientScore]) -> (trend: NutrientTrend, change: Double) {
+        guard scores.count >= 4 else {
+            return (.stable, 0.0)
+        }
+
+        let sortedScores = scores.sorted { $0.date < $1.date }
+
+        // Last 3 days vs previous 4 days
+        let recentScores = Array(sortedScores.suffix(3))
+        let previousScores = Array(sortedScores.dropLast(3).suffix(4))
+
+        guard !recentScores.isEmpty && !previousScores.isEmpty else {
+            return (.stable, 0.0)
+        }
+
+        let recentAvg = Double(recentScores.reduce(0) { $0 + $1.percentage }) / Double(recentScores.count)
+        let previousAvg = Double(previousScores.reduce(0) { $0 + $1.percentage }) / Double(previousScores.count)
+
+        let percentageChange = ((recentAvg - previousAvg) / previousAvg) * 100.0
+
+        return (NutrientTrend.from(change: percentageChange), percentageChange)
+    }
+
+    // MARK: - Helpers
+
+    private func getLast7Days() -> [Date] {
+        let calendar = Calendar.current
+        let today = Date()
+        return (0..<7).compactMap { daysAgo in
+            calendar.date(byAdding: .day, value: -daysAgo, to: today)
+        }
+    }
+
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
+    }
+
+    // MARK: - Persistence
+
+    private func saveDailyScores() async {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+
+        // Save to Firestore
+        for (nutrient, scores) in dailyScores {
+            for score in scores {
+                let docRef = db.collection("users")
+                    .document(userId)
+                    .collection("micronutrient_scores")
+                    .document(score.id)
+
+                do {
+                    try await docRef.setData([
+                        "nutrient": score.nutrient,
+                        "date": Timestamp(date: score.date),
+                        "totalPoints": score.totalPoints,
+                        "sources": score.sources,
+                        "percentage": score.percentage
+                    ])
+                } catch {
+                    print("❌ Error saving nutrient score: \(error)")
+                }
+            }
+        }
+
+        // Save balance history
+        for balance in balanceHistory {
+            let dateKey = formatDate(balance.date)
+            let docRef = db.collection("users")
+                .document(userId)
+                .collection("nutrient_balance")
+                .document(dateKey)
+
+            do {
+                try await docRef.setData([
+                    "date": Timestamp(date: balance.date),
+                    "totalNutrientsTracked": balance.totalNutrientsTracked,
+                    "strongCount": balance.strongCount,
+                    "adequateCount": balance.adequateCount,
+                    "lowCount": balance.lowCount,
+                    "balancePercentage": balance.balancePercentage
+                ])
+            } catch {
+                print("❌ Error saving balance score: \(error)")
+            }
+        }
+    }
+
+    private func loadCachedData() {
+        // Load from Firestore on init
+        Task {
+            await loadFromFirestore()
+        }
+    }
+
+    private func loadFromFirestore() async {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+
+        isLoading = true
+        defer { isLoading = false }
+
+        // Load last 30 days of scores
+        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+
+        do {
+            // Load nutrient scores
+            let scoresSnapshot = try await db.collection("users")
+                .document(userId)
+                .collection("micronutrient_scores")
+                .whereField("date", isGreaterThan: Timestamp(date: thirtyDaysAgo))
+                .getDocuments()
+
+            var loadedScores: [String: [DailyNutrientScore]] = [:]
+
+            for doc in scoresSnapshot.documents {
+                let data = doc.data()
+                guard let nutrient = data["nutrient"] as? String,
+                      let timestamp = data["date"] as? Timestamp,
+                      let totalPoints = data["totalPoints"] as? Int,
+                      let sources = data["sources"] as? [String] else {
+                    continue
+                }
+
+                let score = DailyNutrientScore(
+                    id: doc.documentID,
+                    nutrient: nutrient,
+                    date: timestamp.dateValue(),
+                    totalPoints: totalPoints,
+                    sources: sources
+                )
+
+                loadedScores[nutrient, default: []].append(score)
+            }
+
+            dailyScores = loadedScores
+
+            // Load balance history
+            let balanceSnapshot = try await db.collection("users")
+                .document(userId)
+                .collection("nutrient_balance")
+                .whereField("date", isGreaterThan: Timestamp(date: thirtyDaysAgo))
+                .getDocuments()
+
+            var loadedBalance: [NutrientBalanceScore] = []
+
+            for doc in balanceSnapshot.documents {
+                let data = doc.data()
+                guard let timestamp = data["date"] as? Timestamp,
+                      let totalTracked = data["totalNutrientsTracked"] as? Int,
+                      let strong = data["strongCount"] as? Int,
+                      let adequate = data["adequateCount"] as? Int,
+                      let low = data["lowCount"] as? Int else {
+                    continue
+                }
+
+                let balance = NutrientBalanceScore(
+                    date: timestamp.dateValue(),
+                    totalNutrientsTracked: totalTracked,
+                    strongCount: strong,
+                    adequateCount: adequate,
+                    lowCount: low
+                )
+
+                loadedBalance.append(balance)
+            }
+
+            balanceHistory = loadedBalance.sorted { $0.date > $1.date }
+
+            print("✅ Loaded \(dailyScores.count) nutrients with scores and \(balanceHistory.count) balance records")
+
+        } catch {
+            print("❌ Error loading micronutrient data: \(error)")
+        }
+    }
+}

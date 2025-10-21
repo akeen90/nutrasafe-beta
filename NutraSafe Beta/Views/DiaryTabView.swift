@@ -474,13 +474,9 @@ struct DiaryTabView: View {
             NutrientActivityDashboard()
                 .padding(.horizontal, 16)
         } else {
-            ImprovedMicronutrientView(
-                breakfast: breakfastFoods,
-                lunch: lunchFoods,
-                dinner: dinnerFoods,
-                snacks: snackFoods
-            )
-            .padding(.horizontal, 16)
+            Text("Nutrient tracking requires iOS 16.0 or later")
+                .foregroundColor(.secondary)
+                .padding()
         }
 
         // Bottom padding for tab bar
