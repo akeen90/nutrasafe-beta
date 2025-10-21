@@ -159,156 +159,86 @@ struct NutrientRingCard: View {
     }
 }
 
-// MARK: - Nutrient Grid Item (Compact)
+// MARK: - Nutrient Grid Item (Compact Row)
 
 struct NutrientGridItem: View {
     let nutrient: TrackedNutrient
     let frequency: NutrientFrequency?
 
     @State private var animateRing = false
-    @State private var animateGlow = false
     @StateObject private var trackingManager = NutrientTrackingManager.shared
 
     var body: some View {
-        VStack(spacing: 12) {
+        HStack(spacing: 12) {
+            // Circular icon with ring on left
             ZStack {
-                // Soft glow for active nutrients
-                if let freq = frequency, freq.consistencyPercentage >= 70 {
-                    Circle()
-                        .fill(
-                            RadialGradient(
-                                gradient: Gradient(colors: [
-                                    ringColor.opacity(animateGlow ? 0.3 : 0.2),
-                                    Color.clear
-                                ]),
-                                center: .center,
-                                startRadius: 20,
-                                endRadius: 45
-                            )
-                        )
-                        .frame(width: 90, height: 90)
-                        .blur(radius: 15)
-                }
-
                 // Background circle
                 Circle()
-                    .stroke(Color(.systemGray5), lineWidth: 6)
-                    .frame(width: 70, height: 70)
+                    .stroke(Color(.systemGray5), lineWidth: 4)
+                    .frame(width: 40, height: 40)
 
                 // Progress ring
                 Circle()
                     .trim(from: 0, to: animateRing ? ringProgress : 0)
-                    .stroke(
-                        AngularGradient(
-                            gradient: Gradient(colors: [
-                                ringColor.opacity(0.6),
-                                ringColor,
-                                ringColor.opacity(0.8)
-                            ]),
-                            center: .center,
-                            startAngle: .degrees(-90),
-                            endAngle: .degrees(270)
-                        ),
-                        style: StrokeStyle(lineWidth: 6, lineCap: .round)
-                    )
-                    .frame(width: 70, height: 70)
+                    .stroke(ringColor, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                    .frame(width: 40, height: 40)
                     .rotationEffect(.degrees(-90))
-                    .shadow(color: ringColor.opacity(0.4), radius: 6, x: 0, y: 0)
 
                 // Icon
                 Image(systemName: nutrient.icon)
-                    .font(.system(size: 24, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(ringColor)
             }
 
-            // Label
-            VStack(spacing: 4) {
-                Text(shortName(for: nutrient))
-                    .font(.system(size: 13, weight: .bold))
+            // Nutrient name and info
+            VStack(alignment: .leading, spacing: 3) {
+                Text(nutrient.displayName)
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(.primary)
                     .lineLimit(1)
 
-                // Human-readable description
                 if let freq = frequency {
                     Text(freq.frequencyDescription)
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.system(size: 12))
                         .foregroundColor(.secondary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(1)
                 } else {
                     Text("No recent data")
-                        .font(.system(size: 11))
+                        .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
             }
 
-            // Data summary
+            Spacer()
+
+            // Percentage or chevron
             if let freq = frequency {
-                Text(freq.dataSummary)
-                    .font(.system(size: 10, weight: .regular))
-                    .foregroundColor(.secondary.opacity(0.8))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                Text("\(Int(freq.consistencyPercentage))%")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(ringColor)
             }
 
-            // 30-day activity bar
-            if let freq = frequency {
-                Nutrient30DayActivityBar(
-                    nutrientId: nutrient.id,
-                    dayActivities: trackingManager.dayActivities,
-                    color: ringColor
-                )
-                .padding(.horizontal, 4)
-            }
+            Image(systemName: "chevron.right")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.secondary)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .padding(.horizontal, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    ringColor.opacity(0.2),
-                                    Color.clear
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
-                )
-        )
-        .shadow(color: ringColor.opacity(0.15), radius: 8, x: 0, y: 4)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Color(.systemBackground))
         .onAppear {
-            withAnimation(.spring(response: 1.0, dampingFraction: 0.7).delay(0.1)) {
+            withAnimation(.spring(response: 0.8, dampingFraction: 0.7).delay(0.05)) {
                 animateRing = true
-            }
-            withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true)) {
-                animateGlow = true
             }
         }
     }
 
     private var ringProgress: Double {
         guard let freq = frequency else { return 0 }
-        // Progress out of 30 days - if logged 1 day, show 1/30th full
         return min(Double(freq.last30DaysAppearances) / 30.0, 1.0)
     }
 
     private var ringColor: Color {
         frequency?.ringColor ?? .gray
-    }
-
-    private func shortName(for nutrient: TrackedNutrient) -> String {
-        // Shorten long names for grid
-        nutrient.displayName
-            .replacingOccurrences(of: "Vitamin ", with: "Vit ")
-            .replacingOccurrences(of: "Fatty Acids", with: "")
     }
 }
 

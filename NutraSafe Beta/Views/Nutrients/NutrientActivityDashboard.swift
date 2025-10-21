@@ -184,19 +184,16 @@ struct NutrientActivityDashboard: View {
         )
     }
 
-    // MARK: - All Nutrients Grid
+    // MARK: - All Nutrients List
 
     private var allNutrientsGridView: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("All Nutrients")
                 .font(.system(size: 20, weight: .bold))
                 .foregroundColor(.primary)
                 .padding(.horizontal, 4)
 
-            LazyVGrid(columns: [
-                GridItem(.flexible(), spacing: 16),
-                GridItem(.flexible(), spacing: 16)
-            ], spacing: 16) {
+            VStack(spacing: 1) {
                 ForEach(filteredNutrients) { nutrient in
                     NutrientGridItem(
                         nutrient: nutrient,
@@ -207,8 +204,21 @@ struct NutrientActivityDashboard: View {
                         showingDetailView = true
                         triggerHaptic()
                     }
+
+                    if nutrient.id != filteredNutrients.last?.id {
+                        Divider()
+                            .padding(.leading, 68)
+                    }
                 }
             }
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.systemBackground))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color(.systemGray4), lineWidth: 0.5)
+            )
         }
     }
 
@@ -302,7 +312,8 @@ struct NutrientActivityDashboard: View {
             nutrients = nutrients.filter { $0.displayName.localizedCaseInsensitiveContains(searchText) }
         }
 
-        return nutrients
+        // Sort alphabetically by display name
+        return nutrients.sorted { $0.displayName < $1.displayName }
     }
 
     // MARK: - Helpers
