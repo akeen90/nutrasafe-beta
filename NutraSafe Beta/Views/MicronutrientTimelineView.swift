@@ -13,6 +13,7 @@ struct MicronutrientTimelineView: View {
     @StateObject private var trackingManager = MicronutrientTrackingManager.shared
     @Environment(\.dismiss) var dismiss
     @State private var selectedNutrient: String?
+    @State private var nutrientSummaries: [MicronutrientSummary] = []
 
     private var last30Days: [Date] {
         let calendar = Calendar.current
@@ -43,6 +44,9 @@ struct MicronutrientTimelineView: View {
                         dismiss()
                     }
                 }
+            }
+            .task {
+                nutrientSummaries = await trackingManager.getAllNutrientSummaries()
             }
         }
     }
@@ -140,9 +144,7 @@ struct MicronutrientTimelineView: View {
     // MARK: - Nutrient Timelines
 
     private var nutrientTimelinesSection: some View {
-        let summaries = trackingManager.getAllNutrientSummaries()
-
-        return VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Image(systemName: "list.bullet")
                     .foregroundColor(.blue)
@@ -151,7 +153,7 @@ struct MicronutrientTimelineView: View {
                     .foregroundColor(.primary)
             }
 
-            if summaries.isEmpty {
+            if nutrientSummaries.isEmpty {
                 Text("Start logging meals to see nutrient timelines")
                     .font(.system(size: 14))
                     .foregroundColor(.secondary)
@@ -163,7 +165,7 @@ struct MicronutrientTimelineView: View {
                     )
             } else {
                 VStack(spacing: 12) {
-                    ForEach(summaries) { summary in
+                    ForEach(nutrientSummaries) { summary in
                         nutrientTimelineRow(summary: summary)
                     }
                 }

@@ -4,13 +4,13 @@
 //
 //  Created by Claude on 2025-10-21.
 //  Local SQLite database for food nutrition data
+//  OPTIMIZED: Converted to actor for async queries off main thread
 //
 
 import Foundation
 import SQLite3
 
-@MainActor
-class SQLiteFoodDatabase {
+actor SQLiteFoodDatabase {
     static let shared = SQLiteFoodDatabase()
 
     private var db: OpaquePointer?
@@ -285,8 +285,8 @@ class SQLiteFoodDatabase {
 
     // MARK: - Search Operations
 
-    /// Search foods by name, brand, or barcode
-    func searchFoods(query: String, limit: Int = 20) -> [FoodSearchResult] {
+    /// Search foods by name, brand, or barcode (async - runs off main thread)
+    func searchFoods(query: String, limit: Int = 20) async -> [FoodSearchResult] {
         let sql = """
         SELECT
             id, name, brand, barcode,
@@ -340,8 +340,8 @@ class SQLiteFoodDatabase {
         return results
     }
 
-    /// Search by barcode (exact match)
-    func searchByBarcode(_ barcode: String) -> FoodSearchResult? {
+    /// Search by barcode (exact match) - async
+    func searchByBarcode(_ barcode: String) async -> FoodSearchResult? {
         let sql = """
         SELECT
             id, name, brand, barcode,
@@ -375,8 +375,8 @@ class SQLiteFoodDatabase {
         return result
     }
 
-    /// Get food by ID
-    func getFoodById(_ id: String) -> FoodSearchResult? {
+    /// Get food by ID - async
+    func getFoodById(_ id: String) async -> FoodSearchResult? {
         let sql = """
         SELECT
             id, name, brand, barcode,

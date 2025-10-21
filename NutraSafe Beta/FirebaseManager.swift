@@ -13,13 +13,26 @@ class FirebaseManager: ObservableObject {
     private lazy var db = Firestore.firestore()
     private lazy var auth = Auth.auth()
 
-    // MARK: - Search Cache
-    private struct SearchCacheEntry {
+    // MARK: - Search Cache (Optimized with NSCache)
+    private class SearchCacheEntry {
         let results: [FoodSearchResult]
         let timestamp: Date
+
+        init(results: [FoodSearchResult], timestamp: Date) {
+            self.results = results
+            self.timestamp = timestamp
+        }
     }
-    private var searchCache: [String: SearchCacheEntry] = [:]
+    private let searchCache = NSCache<NSString, SearchCacheEntry>()
     private let cacheExpirationSeconds: TimeInterval = 300 // 5 minutes
+
+    // MARK: - Food Entries Cache (Performance Optimization)
+    private struct FoodEntriesCacheEntry {
+        let entries: [FoodEntry]
+        let timestamp: Date
+    }
+    private var foodEntriesCache: [String: FoodEntriesCacheEntry] = [:]
+    private let foodEntriesCacheExpirationSeconds: TimeInterval = 600 // 10 minutes
 
     // MARK: - Allergen Cache
     @Published var cachedUserAllergens: [Allergen] = []
@@ -167,13 +180,48 @@ class FirebaseManager: ObservableObject {
         let entryData = entry.toDictionary()
         try await db.collection("users").document(userId)
             .collection("foodEntries").document(entry.id).setData(entryData)
+
+        // Invalidate cache for this date
+        invalidateFoodEntriesCache(for: entry.date, userId: userId)
+    }
+
+    /// Invalidate food entries cache for a specific date
+    private func invalidateFoodEntriesCache(for date: Date, userId: String) {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        let dateKey = "\(userId)_\(dateFormatter.string(from: startOfDay))"
+
+        foodEntriesCache.removeValue(forKey: dateKey)
+        print("🗑️ Invalidated food entries cache for \(dateFormatter.string(from: startOfDay))")
     }
     
     func getFoodEntries(for date: Date) async throws -> [FoodEntry] {
         guard let userId = currentUser?.uid else { return [] }
 
+        // Create cache key from user ID and date
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        let dateKey = "\(userId)_\(dateFormatter.string(from: startOfDay))"
+
+        // Check cache first - instant results!
+        if let cached = foodEntriesCache[dateKey] {
+            let age = Date().timeIntervalSince(cached.timestamp)
+            if age < foodEntriesCacheExpirationSeconds {
+                print("⚡️ Food Entries Cache HIT - instant load for \(dateFormatter.string(from: startOfDay)) (cached \(Int(age))s ago)")
+                return cached.entries
+            } else {
+                // Cache expired, remove it
+                foodEntriesCache.removeValue(forKey: dateKey)
+                print("🔄 Food Entries Cache EXPIRED - refreshing for \(dateFormatter.string(from: startOfDay))")
+            }
+        }
+
+        print("🔍 Food Entries Cache MISS - fetching from Firestore for \(dateFormatter.string(from: startOfDay))")
+
         let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
 
         let snapshot = try await db.collection("users").document(userId)
@@ -182,9 +230,18 @@ class FirebaseManager: ObservableObject {
             .whereField("date", isLessThan: FirebaseFirestore.Timestamp(date: endOfDay))
             .getDocuments()
 
-        return snapshot.documents.compactMap { doc in
+        let entries = snapshot.documents.compactMap { doc in
             FoodEntry.fromDictionary(doc.data())
         }
+
+        // Store in cache for next time
+        foodEntriesCache[dateKey] = FoodEntriesCacheEntry(
+            entries: entries,
+            timestamp: Date()
+        )
+        print("💾 Cached \(entries.count) food entries for \(dateFormatter.string(from: startOfDay))")
+
+        return entries
     }
 
     // Get food entries for the past N days for nutritional analysis
@@ -251,6 +308,10 @@ class FirebaseManager: ObservableObject {
         guard let userId = currentUser?.uid else { return }
         try await db.collection("users").document(userId)
             .collection("foodEntries").document(entryId).delete()
+
+        // Clear entire cache since we don't know which date this entry belongs to
+        foodEntriesCache.removeAll()
+        print("🗑️ Cleared all food entries cache after deletion")
     }
     
     // MARK: - Food Reactions
@@ -398,17 +459,17 @@ class FirebaseManager: ObservableObject {
     // MARK: - Food Search Functions
 
     func searchFoods(query: String) async throws -> [FoodSearchResult] {
-        let cacheKey = query.lowercased().trimmingCharacters(in: .whitespaces)
+        let cacheKey = query.lowercased().trimmingCharacters(in: .whitespaces) as NSString
 
         // Check cache first - instant results!
-        if let cached = searchCache[cacheKey] {
+        if let cached = searchCache.object(forKey: cacheKey) {
             let age = Date().timeIntervalSince(cached.timestamp)
             if age < cacheExpirationSeconds {
                 print("⚡️ Cache HIT - instant results for '\(query)' (cached \(Int(age))s ago)")
                 return cached.results
             } else {
                 // Cache expired, remove it
-                searchCache.removeValue(forKey: cacheKey)
+                searchCache.removeObject(forKey: cacheKey)
             }
         }
 
@@ -427,23 +488,23 @@ class FirebaseManager: ObservableObject {
 
         print("🔍 Search results for '\(query)': \(userFoods.count) user-added + \(mainFoods.count) main database = \(mergedResults.count) total")
 
-        // Store in cache for next time
-        searchCache[cacheKey] = SearchCacheEntry(
-            results: mergedResults,
-            timestamp: Date()
+        // Store in cache for next time (NSCache auto-manages memory)
+        searchCache.setObject(
+            SearchCacheEntry(results: mergedResults, timestamp: Date()),
+            forKey: cacheKey
         )
         print("💾 Cached \(mergedResults.count) results for '\(query)'")
 
         return mergedResults
     }
 
-    /// Search main food database via Cloud Functions
+    /// Search main food database via SQLite (optimized async)
     private func searchMainDatabase(query: String) async throws -> [FoodSearchResult] {
-        // SQLite-only search (no Firebase fallback for main database)
+        // SQLite search runs off main thread via actor
         let localResults = await SQLiteFoodDatabase.shared.searchFoods(query: query, limit: 20)
 
         if !localResults.isEmpty {
-            print("✅ Found \(localResults.count) results in local SQLite database (instant!)")
+            print("✅ Found \(localResults.count) results in local SQLite database (async!)")
         } else {
             print("⚠️ No results found in local database for '\(query)'")
         }
@@ -453,7 +514,7 @@ class FirebaseManager: ObservableObject {
 
     /// Clear the search cache (useful for testing or memory management)
     func clearSearchCache() {
-        searchCache.removeAll()
+        searchCache.removeAllObjects()
         print("🗑️ Search cache cleared")
     }
 
@@ -473,9 +534,9 @@ class FirebaseManager: ObservableObject {
     }
 
     func searchFoodsByBarcode(barcode: String) async throws -> [FoodSearchResult] {
-        // SQLite-only barcode search (no Firebase fallback for main database)
+        // SQLite barcode search runs off main thread via actor
         if let localResult = await SQLiteFoodDatabase.shared.searchByBarcode(barcode) {
-            print("✅ Found barcode '\(barcode)' in local SQLite database (instant!)")
+            print("✅ Found barcode '\(barcode)' in local SQLite database (async!)")
             return [localResult]
         }
 

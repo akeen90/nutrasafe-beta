@@ -18,13 +18,14 @@ class MicronutrientTrackingManager: ObservableObject {
     @Published private(set) var dailyScores: [String: [DailyNutrientScore]] = [:] // nutrient → scores
     @Published private(set) var balanceHistory: [NutrientBalanceScore] = []
     @Published private(set) var isLoading = false
+    private var hasLoadedData = false // Track if we've loaded data to avoid duplicate loads
 
     private let database = MicronutrientDatabase.shared
     private let db = Firestore.firestore()
 
     private init() {
-        // Load cached data
-        loadCachedData()
+        // Don't load on init - use lazy loading instead
+        print("🚀 MicronutrientTrackingManager initialized (lazy loading enabled)")
     }
 
     // MARK: - Food Analysis
@@ -294,12 +295,27 @@ class MicronutrientTrackingManager: ObservableObject {
         )
     }
 
-    /// Get summaries for all tracked nutrients
-    func getAllNutrientSummaries() -> [MicronutrientSummary] {
+    /// Get summaries for all tracked nutrients (lazy loads data if needed)
+    func getAllNutrientSummaries() async -> [MicronutrientSummary] {
+        // Lazy load data on first access
+        await ensureDataLoaded()
+
         let allNutrients = database.getAllNutrients()
         return allNutrients.compactMap { info in
             getNutrientSummary(for: info.nutrient)
         }.sorted { $0.name < $1.name }
+    }
+
+    /// Ensure data is loaded before accessing (lazy loading)
+    private func ensureDataLoaded() async {
+        guard !hasLoadedData else {
+            print("⚡️ Micronutrient data already loaded - using cache")
+            return
+        }
+
+        print("🔄 Lazy loading micronutrient data on first access...")
+        await loadFromFirestore()
+        hasLoadedData = true
     }
 
     /// Get today's balance score
@@ -308,9 +324,9 @@ class MicronutrientTrackingManager: ObservableObject {
         return balanceHistory.first(where: { formatDate($0.date) == todayKey })
     }
 
-    /// Generate insights for today
-    func generateTodayInsights() -> [String] {
-        let summaries = getAllNutrientSummaries()
+    /// Generate insights for today (async - lazy loads data if needed)
+    func generateTodayInsights() async -> [String] {
+        let summaries = await getAllNutrientSummaries()
         return NutrientInsightGenerator.generateInsights(for: summaries)
     }
 
@@ -405,28 +421,22 @@ class MicronutrientTrackingManager: ObservableObject {
         }
     }
 
-    private func loadCachedData() {
-        // Load from Firestore on init
-        Task {
-            await loadFromFirestore()
-        }
-    }
-
     private func loadFromFirestore() async {
         guard let userId = Auth.auth().currentUser?.uid else { return }
 
         isLoading = true
         defer { isLoading = false }
 
-        // Load last 30 days of scores
-        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+        // OPTIMIZED: Load only last 7 days instead of 30 for faster initial load
+        let sevenDaysAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+        print("📊 Loading micronutrient data for last 7 days (optimized)")
 
         do {
             // Load nutrient scores
             let scoresSnapshot = try await db.collection("users")
                 .document(userId)
                 .collection("micronutrient_scores")
-                .whereField("date", isGreaterThan: Timestamp(date: thirtyDaysAgo))
+                .whereField("date", isGreaterThan: Timestamp(date: sevenDaysAgo))
                 .getDocuments()
 
             var loadedScores: [String: [DailyNutrientScore]] = [:]
@@ -457,7 +467,7 @@ class MicronutrientTrackingManager: ObservableObject {
             let balanceSnapshot = try await db.collection("users")
                 .document(userId)
                 .collection("nutrient_balance")
-                .whereField("date", isGreaterThan: Timestamp(date: thirtyDaysAgo))
+                .whereField("date", isGreaterThan: Timestamp(date: sevenDaysAgo))
                 .getDocuments()
 
             var loadedBalance: [NutrientBalanceScore] = []

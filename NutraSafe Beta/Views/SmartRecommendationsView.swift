@@ -238,7 +238,7 @@ struct SmartRecommendationsView: View {
         isRefreshing = true
         defer { isRefreshing = false }
 
-        let summaries = trackingManager.getAllNutrientSummaries()
+        let summaries = await trackingManager.getAllNutrientSummaries()
         await recommendationEngine.generateRecommendations(for: summaries)
     }
 }

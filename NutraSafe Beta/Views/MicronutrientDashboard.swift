@@ -17,6 +17,8 @@ struct MicronutrientDashboard: View {
     @State private var selectedNutrient: MicronutrientSummary?
     @State private var showingTimeline = false
     @State private var showingRecommendations = false
+    @State private var insights: [String] = []
+    @State private var nutrientSummaries: [MicronutrientSummary] = []
 
     enum DashboardFilter: String, CaseIterable {
         case all = "All"
@@ -62,8 +64,11 @@ struct MicronutrientDashboard: View {
             await processTodaysFoods()
 
             // Generate recommendations when view appears
-            let summaries = trackingManager.getAllNutrientSummaries()
-            await recommendationEngine.generateRecommendations(for: summaries)
+            nutrientSummaries = await trackingManager.getAllNutrientSummaries()
+            await recommendationEngine.generateRecommendations(for: nutrientSummaries)
+
+            // Load insights
+            insights = await trackingManager.generateTodayInsights()
         }
     }
 
@@ -224,9 +229,7 @@ struct MicronutrientDashboard: View {
     // MARK: - Insights Section
 
     private var insightsSection: some View {
-        let insights = trackingManager.generateTodayInsights()
-
-        return VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
             if !insights.isEmpty {
                 HStack {
                     Image(systemName: "lightbulb.fill")
@@ -290,8 +293,7 @@ struct MicronutrientDashboard: View {
     // MARK: - Nutrient List
 
     private var nutrientListSection: some View {
-        let allSummaries = trackingManager.getAllNutrientSummaries()
-        let filteredSummaries = filterSummaries(allSummaries)
+        let filteredSummaries = filterSummaries(nutrientSummaries)
 
         return VStack(spacing: 12) {
             HStack {
