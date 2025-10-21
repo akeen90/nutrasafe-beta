@@ -343,41 +343,48 @@ struct MicronutrientDashboard: View {
     // MARK: - Data Processing
 
     private func processTodaysFoods() async {
-        print("📊 MicronutrientDashboard: Processing ALL diary foods across history")
+        print("📊 MicronutrientDashboard: Processing last 30 days (OPTIMIZED - single query)")
 
-        // Process foods for the last 30 days to build comprehensive tracking
-        let calendar = Calendar.current
-        let today = Date()
+        do {
+            // OPTIMIZED: Fetch all 30 days in ONE Firebase query instead of 30 sequential queries
+            let allEntries = try await FirebaseManager.shared.getFoodEntriesForPeriod(days: 30)
+            print("📥 Loaded \(allEntries.count) total food entries for last 30 days")
 
-        for daysAgo in 0..<30 {
-            guard let date = calendar.date(byAdding: .day, value: -daysAgo, to: today) else { continue }
+            // Group entries by date and process
+            let calendar = Calendar.current
+            let groupedByDate = Dictionary(grouping: allEntries) { entry in
+                calendar.startOfDay(for: entry.date)
+            }
 
-            do {
-                // Get all foods logged for this date
-                let (breakfast, lunch, dinner, snacks) = try await diaryDataManager.getFoodDataAsync(for: date)
-                let allFoods = breakfast + lunch + dinner + snacks
+            print("📊 Found foods on \(groupedByDate.count) different days")
 
-                if !allFoods.isEmpty {
-                    print("  📋 Found \(allFoods.count) foods on \(formatDate(date))")
+            // Process each day's foods
+            for (date, entries) in groupedByDate {
+                if !entries.isEmpty {
+                    print("  📋 Processing \(entries.count) foods on \(formatDate(date))")
 
-                    // Process each food's micronutrients for that specific date
+                    // Get full food details for this date (cached via our new food entries cache!)
+                    let (breakfast, lunch, dinner, snacks) = try await diaryDataManager.getFoodDataAsync(for: date)
+                    let allFoods = breakfast + lunch + dinner + snacks
+
+                    // Process each food's micronutrients
                     for food in allFoods {
                         if let profile = food.micronutrientProfile {
                             await trackingManager.processNutrientProfile(
                                 profile,
                                 foodName: food.name,
                                 servingSize: food.quantity,
-                                date: date  // Use the actual date the food was logged
+                                date: date
                             )
                         }
                     }
                 }
-            } catch {
-                print("❌ Error loading foods for \(formatDate(date)): \(error)")
             }
-        }
 
-        print("✅ MicronutrientDashboard: Finished processing all diary foods")
+            print("✅ MicronutrientDashboard: Finished processing all diary foods")
+        } catch {
+            print("❌ Error loading food entries for period: \(error)")
+        }
     }
 
     private func formatDate(_ date: Date) -> String {

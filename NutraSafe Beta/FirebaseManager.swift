@@ -244,9 +244,27 @@ class FirebaseManager: ObservableObject {
         return entries
     }
 
-    // Get food entries for the past N days for nutritional analysis
+    // MARK: - Period Cache (for Micronutrient Dashboard)
+    private var periodCache: [Int: (entries: [FoodEntry], timestamp: Date)] = [:]
+    private let periodCacheExpirationSeconds: TimeInterval = 300 // 5 minutes
+
+    // Get food entries for the past N days for nutritional analysis (OPTIMIZED with caching)
     func getFoodEntriesForPeriod(days: Int) async throws -> [FoodEntry] {
         guard let userId = currentUser?.uid else { return [] }
+
+        // Check cache first
+        if let cached = periodCache[days] {
+            let age = Date().timeIntervalSince(cached.timestamp)
+            if age < periodCacheExpirationSeconds {
+                print("⚡️ Period Cache HIT - instant load for \(days) days (cached \(Int(age))s ago)")
+                return cached.entries
+            } else {
+                periodCache.removeValue(forKey: days)
+                print("🔄 Period Cache EXPIRED - refreshing \(days) days")
+            }
+        }
+
+        print("🔍 Period Cache MISS - fetching \(days) days from Firestore (ONE query)")
 
         let calendar = Calendar.current
         let endDate = Date()
@@ -259,9 +277,15 @@ class FirebaseManager: ObservableObject {
             .order(by: "date", descending: true)
             .getDocuments()
 
-        return snapshot.documents.compactMap { doc in
+        let entries = snapshot.documents.compactMap { doc in
             FoodEntry.fromDictionary(doc.data())
         }
+
+        // Cache the result
+        periodCache[days] = (entries, Date())
+        print("💾 Cached \(entries.count) food entries for \(days)-day period")
+
+        return entries
     }
 
     // Get food entries within a specific date range for calendar view
