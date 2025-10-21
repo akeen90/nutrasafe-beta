@@ -24,6 +24,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     let sugar: Double
     let sodium: Double
     let servingDescription: String?
+    let servingSizeG: Double? // Numeric serving size in grams
     let ingredients: [String]?
     let confidence: Double? // For AI recognition results
     let isVerified: Bool // Indicates if food comes from internal verified database
@@ -34,7 +35,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     let processingLabel: String?
     let barcode: String?
 
-    init(id: String, name: String, brand: String? = nil, calories: Double, protein: Double, carbs: Double, fat: Double, fiber: Double, sugar: Double, sodium: Double, servingDescription: String? = nil, ingredients: [String]? = nil, confidence: Double? = nil, isVerified: Bool = false, additives: [NutritionAdditiveInfo]? = nil, additivesDatabaseVersion: String? = nil, processingScore: Int? = nil, processingGrade: String? = nil, processingLabel: String? = nil, barcode: String? = nil) {
+    init(id: String, name: String, brand: String? = nil, calories: Double, protein: Double, carbs: Double, fat: Double, fiber: Double, sugar: Double, sodium: Double, servingDescription: String? = nil, servingSizeG: Double? = nil, ingredients: [String]? = nil, confidence: Double? = nil, isVerified: Bool = false, additives: [NutritionAdditiveInfo]? = nil, additivesDatabaseVersion: String? = nil, processingScore: Int? = nil, processingGrade: String? = nil, processingLabel: String? = nil, barcode: String? = nil) {
         self.id = id
         self.name = name
         self.brand = brand
@@ -46,6 +47,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         self.sugar = sugar
         self.sodium = sodium
         self.servingDescription = servingDescription
+        self.servingSizeG = servingSizeG
         self.ingredients = ingredients
         self.confidence = confidence
         self.isVerified = isVerified
@@ -70,6 +72,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         case sugar
         case sodium
         case servingDescription
+        case servingSizeG
         case ingredients
         case confidence
         case verifiedBy
@@ -161,6 +164,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
             self.sodium = 0
         }
         self.servingDescription = try? c.decode(String.self, forKey: .servingDescription)
+        self.servingSizeG = try? c.decode(Double.self, forKey: .servingSizeG)
         // ingredients could be string or array - normalize to [String]
         if let arr = try? c.decode([String].self, forKey: .ingredients) {
             self.ingredients = arr
@@ -1082,6 +1086,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
             sugar: per100gSugar,
             sodium: per100gSodium,
             servingDescription: "\(servingSize.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(servingSize)) : String(servingSize))g",
+            servingSizeG: servingSize,
             ingredients: self.ingredients,
             confidence: 1.0, // High confidence for saved items
             isVerified: true,
@@ -1222,6 +1227,54 @@ struct RecommendedIntakes: Codable {
     let age: Int
     let gender: Gender
     let dailyValues: [String: Double]
+
+    func getDailyValue(for nutrient: String) -> Double {
+        // First check if it exists in the provided daily values
+        if let value = dailyValues[nutrient], value > 0 {
+            return value
+        }
+
+        // Fall back to standard recommended daily values for adults
+        // Based on USDA/FDA daily values
+        let standardDailyValues: [String: Double] = [
+            // Vitamins
+            "vitaminA": 900.0,        // mcg RAE
+            "vitaminC": 90.0,         // mg
+            "vitaminD": 20.0,         // mcg
+            "vitaminE": 15.0,         // mg
+            "vitaminK": 120.0,        // mcg
+            "thiamine": 1.2,          // mg (B1)
+            "riboflavin": 1.3,        // mg (B2)
+            "niacin": 16.0,           // mg (B3)
+            "pantothenicAcid": 5.0,   // mg (B5)
+            "vitaminB6": 1.7,         // mg
+            "biotin": 30.0,           // mcg (B7)
+            "folate": 400.0,          // mcg (B9)
+            "vitaminB12": 2.4,        // mcg
+            "choline": 550.0,         // mg
+
+            // Minerals
+            "calcium": 1000.0,        // mg
+            "iron": 18.0,             // mg
+            "magnesium": 420.0,       // mg
+            "phosphorus": 700.0,      // mg
+            "potassium": 4700.0,      // mg
+            "sodium": 2300.0,         // mg
+            "zinc": 11.0,             // mg
+            "copper": 0.9,            // mg
+            "manganese": 2.3,         // mg
+            "selenium": 55.0,         // mcg
+            "chromium": 35.0,         // mcg
+            "molybdenum": 45.0,       // mcg
+            "iodine": 150.0,          // mcg
+
+            // Legacy naming for compatibility
+            "vitamin_c": 90.0,
+            "protein": 50.0           // g
+        ]
+
+        return standardDailyValues[nutrient] ?? 0
+    }
 }
 
 enum Gender: String, CaseIterable, Codable {

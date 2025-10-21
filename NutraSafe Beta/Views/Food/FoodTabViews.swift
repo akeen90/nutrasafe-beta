@@ -31,16 +31,7 @@ struct FoodTabView: View {
                         Text("Food")
                             .font(.system(size: 38, weight: .bold, design: .rounded))
                             .frame(height: 44, alignment: .center)
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [
-                                        Color(red: 0.95, green: 0.68, blue: 0.38), // Brighter golden orange
-                                        Color(red: 0.85, green: 0.55, blue: 0.35)  // Brighter bronze
-                                    ],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
+                            .foregroundColor(.black)
 
                         Spacer()
 
@@ -308,20 +299,33 @@ struct StatMiniCard: View {
     let color: Color
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
             Text(value)
-                .font(.system(size: 24, weight: .bold))
-                .foregroundColor(color)
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [color, color.opacity(0.7)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
             Text(label)
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.secondary)
+                .textCase(.uppercase)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
+        .padding(.vertical, 16)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(color.opacity(0.1))
+            ZStack {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(color.opacity(0.08))
+
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(color.opacity(0.15), lineWidth: 1)
+            }
         )
+        .shadow(color: color.opacity(0.1), radius: 4, x: 0, y: 2)
     }
 }
 
@@ -386,32 +390,42 @@ struct FoodReactionRow: View {
         Button(action: {
             showingDetail = true
         }) {
-            HStack {
-                Circle()
-                    .fill(severityColor(for: reaction.severity))
-                    .frame(width: 8, height: 8)
+            HStack(spacing: 14) {
+                // Premium severity indicator
+                ZStack {
+                    Circle()
+                        .fill(severityColor(for: reaction.severity).opacity(0.15))
+                        .frame(width: 10, height: 10)
 
-                VStack(alignment: .leading, spacing: 2) {
+                    Circle()
+                        .fill(severityColor(for: reaction.severity))
+                        .frame(width: 6, height: 6)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
                     Text(reaction.foodName)
-                        .font(.system(size: 15, weight: .medium))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.primary)
 
                     Text(reaction.symptoms.joined(separator: ", "))
-                        .font(.system(size: 12))
+                        .font(.system(size: 13))
                         .foregroundColor(.secondary)
+                        .lineLimit(1)
                 }
 
                 Spacer()
 
-                Text(formatDate(reaction.timestamp.dateValue()))
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(formatDate(reaction.timestamp.dateValue()))
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.secondary)
 
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary.opacity(0.5))
+                }
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, 6)
         }
         .buttonStyle(PlainButtonStyle())
         .sheet(isPresented: $showingDetail) {
@@ -791,55 +805,80 @@ struct SimplifiedAllergenGroup: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Category header with percentage badge
+            // Category header with premium percentage badge
             HStack(alignment: .center, spacing: 12) {
                 Text(allergenCategory)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 17, weight: .bold))
                     .foregroundColor(.primary)
 
                 Spacer()
 
-                // Percentage badge
+                // Premium gradient percentage badge
                 Text("\(categoryPercentage)%")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(.red)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.red.opacity(0.12))
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color.red, Color.red.opacity(0.8)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
                     )
-            }
-            .padding(.bottom, 12)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(Color.red.opacity(0.12))
 
-            // Ingredient list - clean design with dashes and subtle percentages
-            VStack(alignment: .leading, spacing: 8) {
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(Color.red.opacity(0.2), lineWidth: 1)
+                        }
+                    )
+                    .shadow(color: Color.red.opacity(0.15), radius: 3, x: 0, y: 2)
+            }
+            .padding(.bottom, 14)
+
+            // Ingredient list - premium design with better spacing
+            VStack(alignment: .leading, spacing: 10) {
                 ForEach(ingredients, id: \.ingredient) { ingredient in
-                    HStack(spacing: 10) {
-                        Text("—")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.secondary)
+                    HStack(spacing: 12) {
+                        Circle()
+                            .fill(Color.secondary.opacity(0.3))
+                            .frame(width: 4, height: 4)
 
                         Text(ingredient.ingredient)
-                            .font(.system(size: 15))
+                            .font(.system(size: 15, weight: .medium))
                             .foregroundColor(.primary)
 
                         Spacer()
 
-                        // Subtle percentage indicator
+                        // Percentage indicator with subtle background
                         Text("\(ingredient.percentage)%")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(.secondary.opacity(0.6))
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(
+                                Capsule()
+                                    .fill(Color.secondary.opacity(0.1))
+                            )
                     }
-                    .padding(.leading, 4)
+                    .padding(.leading, 2)
                 }
             }
         }
-        .padding(.vertical, 16)
+        .padding(.vertical, 18)
+        .padding(.horizontal, 2)
         .padding(.bottom, 8)
         .overlay(
             Rectangle()
-                .fill(Color(.systemGray5))
+                .fill(
+                    LinearGradient(
+                        colors: [Color(.systemGray5).opacity(0.5), Color(.systemGray5)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
                 .frame(height: 1),
             alignment: .bottom
         )
@@ -906,122 +945,214 @@ struct ReactionDetailView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Food Info
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Food")
-                            .font(.system(size: 14, weight: .semibold))
+                VStack(spacing: 16) {
+                    // Food Info Card
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("FOOD", systemImage: "fork.knife")
+                            .font(.system(size: 11, weight: .bold))
                             .foregroundColor(.secondary)
+                            .textCase(.uppercase)
 
                         Text(reaction.foodName)
-                            .font(.system(size: 20, weight: .bold))
+                            .font(.system(size: 24, weight: .bold, design: .rounded))
                             .foregroundColor(.primary)
 
                         if let brand = reaction.foodBrand {
                             Text(brand)
-                                .font(.system(size: 16))
+                                .font(.system(size: 16, weight: .medium))
                                 .foregroundColor(.secondary)
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(AppColors.cardBackgroundElevated)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(Color(.systemGray5), lineWidth: 1)
+                    )
+                    .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
 
-                    Divider()
-
-                    // Time & Severity
-                    HStack(spacing: 20) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("When")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.secondary)
+                    // Time & Severity Card
+                    HStack(spacing: 12) {
+                        // When Card
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "clock.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.blue.opacity(0.7))
+                                Text("WHEN")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(.secondary)
+                                    .textCase(.uppercase)
+                            }
 
                             Text(formatFullDate(reaction.timestamp.dateValue()))
-                                .font(.system(size: 14))
+                                .font(.system(size: 14, weight: .semibold))
                                 .foregroundColor(.primary)
+                                .lineLimit(2)
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.blue.opacity(0.06))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color.blue.opacity(0.1), lineWidth: 1)
+                        )
 
-                        Spacer()
+                        // Severity Card
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(severityColor(for: reaction.severity).opacity(0.7))
+                                Text("SEVERITY")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(.secondary)
+                                    .textCase(.uppercase)
+                            }
 
-                        VStack(alignment: .trailing, spacing: 4) {
-                            Text("Severity")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.secondary)
-
-                            HStack(spacing: 4) {
-                                Circle()
-                                    .fill(severityColor(for: reaction.severity))
-                                    .frame(width: 8, height: 8)
+                            HStack(spacing: 6) {
+                                ZStack {
+                                    Circle()
+                                        .fill(severityColor(for: reaction.severity).opacity(0.2))
+                                        .frame(width: 12, height: 12)
+                                    Circle()
+                                        .fill(severityColor(for: reaction.severity))
+                                        .frame(width: 8, height: 8)
+                                }
 
                                 Text(severityText(for: reaction.severity))
-                                    .font(.system(size: 14, weight: .medium))
+                                    .font(.system(size: 14, weight: .bold))
                                     .foregroundColor(severityColor(for: reaction.severity))
                             }
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(severityColor(for: reaction.severity).opacity(0.06))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(severityColor(for: reaction.severity).opacity(0.1), lineWidth: 1)
+                        )
                     }
 
-                    Divider()
-
-                    // Symptoms
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Symptoms")
-                            .font(.system(size: 14, weight: .semibold))
+                    // Symptoms Card
+                    VStack(alignment: .leading, spacing: 14) {
+                        Label("SYMPTOMS", systemImage: "heart.text.square.fill")
+                            .font(.system(size: 11, weight: .bold))
                             .foregroundColor(.secondary)
+                            .textCase(.uppercase)
 
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
+                        // Simple wrapping layout for symptoms
+                        VStack(alignment: .leading, spacing: 8) {
                             ForEach(reaction.symptoms, id: \.self) { symptom in
                                 Text(symptom)
-                                    .font(.system(size: 13))
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(Color.blue.opacity(0.1))
+                                    .font(.system(size: 14, weight: .medium))
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 8)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color.blue.opacity(0.1))
+                                    )
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(Color.blue.opacity(0.2), lineWidth: 1)
+                                    )
                                     .foregroundColor(.blue)
-                                    .cornerRadius(20)
+                                    .fixedSize()
                             }
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(AppColors.cardBackgroundElevated)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(Color(.systemGray5), lineWidth: 1)
+                    )
+                    .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
 
-                    Divider()
-
-                    // Suspected Ingredients
+                    // Suspected Ingredients Card
                     if !reaction.suspectedIngredients.isEmpty {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Suspected Ingredients")
-                                .font(.system(size: 14, weight: .semibold))
+                        VStack(alignment: .leading, spacing: 14) {
+                            Label("SUSPECTED INGREDIENTS", systemImage: "allergens")
+                                .font(.system(size: 11, weight: .bold))
                                 .foregroundColor(.secondary)
+                                .textCase(.uppercase)
 
-                            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
+                            // Simple wrapping layout for ingredients
+                            VStack(alignment: .leading, spacing: 8) {
                                 ForEach(reaction.suspectedIngredients, id: \.self) { ingredient in
                                     Text(ingredient)
-                                        .font(.system(size: 12))
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(Color.red.opacity(0.1))
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 7)
+                                        .background(
+                                            Capsule()
+                                                .fill(Color.red.opacity(0.1))
+                                        )
+                                        .overlay(
+                                            Capsule()
+                                                .stroke(Color.red.opacity(0.2), lineWidth: 1)
+                                        )
                                         .foregroundColor(.red)
-                                        .cornerRadius(20)
+                                        .fixedSize()
                                 }
                             }
                         }
-
-                        Divider()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(20)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(AppColors.cardBackgroundElevated)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(Color(.systemGray5), lineWidth: 1)
+                        )
+                        .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
                     }
 
-                    // Notes
+                    // Notes Card
                     if let notes = reaction.notes, !notes.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Notes")
-                                .font(.system(size: 14, weight: .semibold))
+                        VStack(alignment: .leading, spacing: 12) {
+                            Label("NOTES", systemImage: "note.text")
+                                .font(.system(size: 11, weight: .bold))
                                 .foregroundColor(.secondary)
+                                .textCase(.uppercase)
 
                             Text(notes)
-                                .font(.system(size: 14))
+                                .font(.system(size: 15))
                                 .foregroundColor(.primary)
-                                .padding(12)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(Color(.systemGray6))
-                                .cornerRadius(8)
+                                .lineSpacing(4)
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(20)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(Color(.systemGray6).opacity(0.5))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(Color(.systemGray5), lineWidth: 1)
+                        )
+                        .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
                     }
                 }
                 .padding(20)
             }
+            .background(Color(.systemGroupedBackground))
             .navigationTitle("Reaction Details")
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarItems(

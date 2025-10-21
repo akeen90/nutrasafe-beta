@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3B8228DB0918054597694FC4 /* MicronutrientDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 151F33BF94E6DC1B4BA66ED0 /* MicronutrientDashboard.swift */; };
+		RECOM456E67696E65426C64 /* NutrientRecommendationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = RECOM456E67696E6546696C65 /* NutrientRecommendationEngine.swift */; };
+		RECOM566965774275696C64 /* SmartRecommendationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = RECOM5669657746696C65 /* SmartRecommendationsView.swift */; };
+		D0A8A48A748A347D14A7EB37 /* MicronutrientTimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBE697EABA1800E1CF7758D /* MicronutrientTimelineView.swift */; };
 		93A33269CDCAB100C4C60379 /* MicronutrientScoringModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4C4FD21E58EE1B4FF761877 /* MicronutrientScoringModels.swift */; };
 		C1D4E6259B6DDC850735FACC /* MicronutrientTrackingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57546E11975DA5FBEF0A2680 /* MicronutrientTrackingManager.swift */; };
 		41A03AB7C02C3A4AA790DE89 /* micronutrients_ingredients_v6.db in Resources */ = {isa = PBXBuildFile; fileRef = E0A83747E86992873B8D9E2B /* micronutrients_ingredients_v6.db */; };
@@ -67,9 +71,15 @@
 		F71736FEB2E843E18F674753 /* FastingTimerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 034F60AA8BCB4662A86709D4 /* FastingTimerView.swift */; };
 		FC60C4299246265536D0CF46 /* NutrientTrackingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92A9EF78D75CD70F28F3810E /* NutrientTrackingManager.swift */; };
 		FDACD6EE052840C79A707950 /* AddTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0B6A2D7294D44D9A25481CE /* AddTabView.swift */; };
+		BDD6569256384DFA94AA3B4C /* SQLiteFoodDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B76858ACCE4497889EDFCC0 /* SQLiteFoodDatabase.swift */; };
+		493BF5FE7CF24BB686A616EE /* nutrasafe_foods.db in Resources */ = {isa = PBXBuildFile; fileRef = A4B4BB31C0ED4E9FAF2B4EE0 /* nutrasafe_foods.db */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		151F33BF94E6DC1B4BA66ED0 /* MicronutrientDashboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicronutrientDashboard.swift; sourceTree = "<group>"; };
+		RECOM456E67696E6546696C65 /* NutrientRecommendationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutrientRecommendationEngine.swift; sourceTree = "<group>"; };
+		RECOM5669657746696C65 /* SmartRecommendationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartRecommendationsView.swift; sourceTree = "<group>"; };
+		4EBE697EABA1800E1CF7758D /* MicronutrientTimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicronutrientTimelineView.swift; sourceTree = "<group>"; };
 		B4C4FD21E58EE1B4FF761877 /* MicronutrientScoringModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicronutrientScoringModels.swift; sourceTree = "<group>"; };
 		57546E11975DA5FBEF0A2680 /* MicronutrientTrackingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicronutrientTrackingManager.swift; sourceTree = "<group>"; };
 		E0A83747E86992873B8D9E2B /* micronutrients_ingredients_v6.db */ = {isa = PBXFileReference; lastKnownFileType = file; path = micronutrients_ingredients_v6.db; sourceTree = "<group>"; };
@@ -128,6 +138,8 @@
 		FA2F7F8ABA91448198A8CB77 /* NutraSafe Beta/Views/Diary/DiaryComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Diary/DiaryComponents.swift"; sourceTree = "<group>"; };
 		FEAB7CC556B14207BD435571 /* AddFoodAIView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFoodAIView.swift; sourceTree = "<group>"; };
 		FF612B9BEC774EC78502B67C /* FoodDetailViewFromSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodDetailViewFromSearch.swift; sourceTree = "<group>"; };
+		4B76858ACCE4497889EDFCC0 /* SQLiteFoodDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLiteFoodDatabase.swift; sourceTree = "<group>"; };
+		A4B4BB31C0ED4E9FAF2B4EE0 /* nutrasafe_foods.db */ = {isa = PBXFileReference; lastKnownFileType = file; path = nutrasafe_foods.db; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -180,7 +192,10 @@
 				C0B6A2D7294D44D9A25481CE /* AddTabView.swift */,
 				FC073BEEE31CC2F8B8962436 /* Settings */,
 				9B4D3834C4C36F53F1D0348B /* Nutrients */,
-			);
+				151F33BF94E6DC1B4BA66ED0 /* MicronutrientDashboard.swift */,
+				4EBE697EABA1800E1CF7758D /* MicronutrientTimelineView.swift */,
+				83CDA0713AB24F84A83E70F0 /* SmartRecommendationsView.swift */,
+				RECOM5669657746696C65 /* SmartRecommendationsView.swift */,);
 			path = Views;
 			sourceTree = "<group>";
 		};
@@ -212,6 +227,7 @@
 			isa = PBXGroup;
 			children = (
 				40A9E8C4089D4E1EF9BCBAD1 /* NutrientTrackingModels.swift */,
+				B4C4FD21E58EE1B4FF761877 /* MicronutrientScoringModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -261,11 +277,16 @@
 				A1234567890123456789012012 /* GoogleService-Info.plist */,
 				96AFEAFFFC70426C97B3CF2E /* additives_full_described_with_sources_2025.csv */,
 				DF454595E60D9E7D1B2ACBE3 /* additives_master_database.json */,
+				E0A83747E86992873B8D9E2B /* micronutrients_ingredients_v6.db */,
 				5A3F908F9CBBA65110BADC47 /* DesignSystem.swift */,
 				D2B222B37C6C811A1DA830D7 /* FastingLiveActivity.swift */,
 				025E4F9F2ED6507377598194 /* UseByNotificationManager.swift */,
 				63A53684D54AC54FDAF5A1F3 /* Models */,
+				DATABASE123456789012345678 /* Database */,
 				92A9EF78D75CD70F28F3810E /* NutrientTrackingManager.swift */,
+				RECOM456E67696E6546696C65 /* NutrientRecommendationEngine.swift */,
+				57546E11975DA5FBEF0A2680 /* MicronutrientTrackingManager.swift */,
+				3A54BFFF132CC2A8F263644F /* MicronutrientDatabase.swift */,
 			);
 			path = "NutraSafe Beta";
 			sourceTree = "<group>";
@@ -299,6 +320,15 @@
 				55FA70B49C3C721A45AA1C88 /* PrivacyPolicyView.swift */,
 			);
 			path = Settings;
+			sourceTree = "<group>";
+		};
+		DATABASE123456789012345678 /* Database */ = {
+			isa = PBXGroup;
+			children = (
+				4B76858ACCE4497889EDFCC0 /* SQLiteFoodDatabase.swift */,
+				A4B4BB31C0ED4E9FAF2B4EE0 /* nutrasafe_foods.db */,
+			);
+			path = Database;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -367,7 +397,9 @@
 				A1234567890123456789012306 /* GoogleService-Info.plist in Resources */,
 				96AFEAFFFC70426C97B3CF2D /* additives_full_described_with_sources_2025.csv in Resources */,
 				97956798E37686D9DE1CDCE4 /* additives_master_database.json in Resources */,
-			);
+				41A03AB7C02C3A4AA790DE89 /* micronutrients_ingredients_v6.db in Resources */,
+			
+				493BF5FE7CF24BB686A616EE /* nutrasafe_foods.db in Resources */,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
@@ -395,7 +427,13 @@
 				8699C16F52A0459784A27CD7D0AF30C9 /* FoodTabViews.swift in Sources */,
 				346E6CF82ED74EC78387979DCBB178CD /* ProfessionalSummaryViews.swift in Sources */,
 				F274CF78968B4290ADA3C260F96936CE /* UseByTabViews.swift in Sources */,
-				2E53183EE64A45B69C083DE9A9F83A00 /* MicronutrientViews.swift in Sources */,
+				3B8228DB0918054597694FC4 /* MicronutrientDashboard.swift in Sources */,
+				RECOM456E67696E65426C64 /* NutrientRecommendationEngine.swift in Sources */,
+				RECOM566965774275696C64 /* SmartRecommendationsView.swift in Sources */,
+				D0A8A48A748A347D14A7EB37 /* MicronutrientTimelineView.swift in Sources */,
+				93A33269CDCAB100C4C60379 /* MicronutrientScoringModels.swift in Sources */,
+				C1D4E6259B6DDC850735FACC /* MicronutrientTrackingManager.swift in Sources */,
+				BD5505ECF57D77BFB7EA2A97 /* MicronutrientDatabase.swift in Sources */,
 				B1234567890123456789CM02 /* CoreModels.swift in Sources */,
 				B1234567890123456789EM02 /* ExerciseModels.swift in Sources */,
 				B1234567890123456789FS02 /* FoodSafetyModels.swift in Sources */,
@@ -427,7 +465,7 @@
 				1F6C6948715A01A84B4F9EEB /* NutrientHeatmap.swift in Sources */,
 				053A05A52E60FD20C626C633 /* NutrientTrendChart.swift in Sources */,
 				2C4324C1715FB9619FA60053 /* NutrientTimelineView.swift in Sources */,
-			);
+				BDD6569256384DFA94AA3B4C /* SQLiteFoodDatabase.swift in Sources */,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */

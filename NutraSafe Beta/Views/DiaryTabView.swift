@@ -126,16 +126,7 @@ struct DiaryTabView: View {
                         Text("Diary")
                             .font(.system(size: 38, weight: .bold, design: .rounded))
                             .frame(height: 44, alignment: .center)
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [
-                                        Color(red: 0.95, green: 0.68, blue: 0.38), // Brighter golden orange
-                                        Color(red: 0.85, green: 0.55, blue: 0.35)  // Brighter bronze
-                                    ],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
+                            .foregroundColor(.black)
 
                         Spacer()
 
@@ -471,8 +462,7 @@ struct DiaryTabView: View {
     @ViewBuilder
     private var nutrientsTabContent: some View {
         if #available(iOS 16.0, *) {
-            NutrientActivityDashboard()
-                .padding(.horizontal, 16)
+            MicronutrientDashboard()
         } else {
             Text("Nutrient tracking requires iOS 16.0 or later")
                 .foregroundColor(.secondary)

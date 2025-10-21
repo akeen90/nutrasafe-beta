@@ -344,7 +344,25 @@ class FirebaseManager: ObservableObject {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         let data = try encoder.encode(item)
-        let dict = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] ?? [:]
+        var dict = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] ?? [:]
+
+        // Handle nil values explicitly - Firebase merge doesn't delete fields when they're nil
+        // If openedDate is nil, explicitly delete it from Firebase
+        if item.openedDate == nil {
+            dict["openedDate"] = FieldValue.delete()
+        }
+        if item.useWithinDaysOfOpening == nil {
+            dict["useWithinDaysOfOpening"] = FieldValue.delete()
+        }
+        if item.notes == nil {
+            dict["notes"] = FieldValue.delete()
+        }
+        if item.brand == nil {
+            dict["brand"] = FieldValue.delete()
+        }
+        if item.imageURL == nil {
+            dict["imageURL"] = FieldValue.delete()
+        }
 
         try await db.collection("users").document(userId)
             .collection("useByInventory").document(item.id).setData(dict, merge: true)
@@ -421,36 +439,16 @@ class FirebaseManager: ObservableObject {
 
     /// Search main food database via Cloud Functions
     private func searchMainDatabase(query: String) async throws -> [FoodSearchResult] {
-        // Search in Firebase Cloud Functions
-        guard let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/searchFoods") else {
-            throw URLError(.badURL)
+        // SQLite-only search (no Firebase fallback for main database)
+        let localResults = await SQLiteFoodDatabase.shared.searchFoods(query: query, limit: 20)
+
+        if !localResults.isEmpty {
+            print("✅ Found \(localResults.count) results in local SQLite database (instant!)")
+        } else {
+            print("⚠️ No results found in local database for '\(query)'")
         }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        let requestBody = ["query": query]
-        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-
-        let startTime = Date()
-        let (data, _) = try await URLSession.shared.data(for: request)
-        let elapsed = Date().timeIntervalSince(startTime)
-
-        let decoder = JSONDecoder()
-        let response = try decoder.decode(FoodSearchResponse.self, from: data)
-
-        // Debug: Check ingredients in search results
-        print("🔍 Main database results for '\(query)': \(response.foods.count) (took \(Int(elapsed * 1000))ms)")
-        for (index, food) in response.foods.prefix(3).enumerated() {
-            print("  [\(index)] \(food.name)")
-            print("      ingredients: \(food.ingredients?.count ?? 0) items")
-            if let ingredients = food.ingredients, !ingredients.isEmpty {
-                print("      ingredients: \(ingredients.prefix(2))")
-            }
-        }
-
-        return response.foods
+        return localResults
     }
 
     /// Clear the search cache (useful for testing or memory management)
@@ -475,26 +473,13 @@ class FirebaseManager: ObservableObject {
     }
 
     func searchFoodsByBarcode(barcode: String) async throws -> [FoodSearchResult] {
-        // Search in Firebase Cloud Functions by barcode (internal DB first)
-        guard let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/searchFoodByBarcode") else {
-            throw URLError(.badURL)
+        // SQLite-only barcode search (no Firebase fallback for main database)
+        if let localResult = await SQLiteFoodDatabase.shared.searchByBarcode(barcode) {
+            print("✅ Found barcode '\(barcode)' in local SQLite database (instant!)")
+            return [localResult]
         }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        let requestBody = ["barcode": barcode]
-        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-
-        let (data, _) = try await URLSession.shared.data(for: request)
-
-        let decoder = JSONDecoder()
-        let barcodeResponse = try decoder.decode(BarcodeSearchResponse.self, from: data)
-
-        if let result = barcodeResponse.toFoodSearchResult() {
-            return [result]
-        }
+        print("⚠️ Barcode '\(barcode)' not found in local database")
         return []
     }
 

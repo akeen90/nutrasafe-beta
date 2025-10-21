@@ -23,8 +23,8 @@ struct DailyNutrientScore: Codable, Identifiable {
         calculatePercentage(from: totalPoints)
     }
 
-    var status: NutrientStatus {
-        NutrientStatus.from(percentage: percentage)
+    var status: MicronutrientStatus {
+        MicronutrientStatus.from(percentage: percentage)
     }
 
     /// Convert total points to percentage (0-100%)
@@ -49,12 +49,12 @@ struct DailyNutrientScore: Codable, Identifiable {
 
 // MARK: - Nutrient Status
 
-enum NutrientStatus {
+enum MicronutrientStatus {
     case low      // 0-30%
     case adequate // 31-70%
     case strong   // 71-100%
 
-    static func from(percentage: Int) -> NutrientStatus {
+    static func from(percentage: Int) -> MicronutrientStatus {
         switch percentage {
         case 0...30:
             return .low
@@ -135,18 +135,18 @@ enum NutrientTrend {
 // MARK: - Nutrient Summary
 
 /// Complete summary of a nutrient's tracking over time
-struct NutrientSummary: Identifiable {
+struct MicronutrientSummary: Identifiable {
     let id: String // nutrient identifier
     let nutrient: String
     let name: String
 
     // Current day
     let todayPercentage: Int
-    let todayStatus: NutrientStatus
+    let todayStatus: MicronutrientStatus
 
     // 7-day rolling average
     let sevenDayAverage: Double
-    let sevenDayStatus: NutrientStatus
+    let sevenDayStatus: MicronutrientStatus
 
     // Trend
     let trend: NutrientTrend
@@ -188,8 +188,8 @@ struct NutrientBalanceScore {
         return (weightedSum * 100) / maxPossible
     }
 
-    var balanceStatus: NutrientStatus {
-        NutrientStatus.from(percentage: balancePercentage)
+    var balanceStatus: MicronutrientStatus {
+        MicronutrientStatus.from(percentage: balancePercentage)
     }
 
     var summary: String {
@@ -231,7 +231,7 @@ struct FoodMicronutrientAnalysis {
 struct NutrientInsightGenerator {
 
     /// Generate insights for a collection of nutrient summaries
-    static func generateInsights(for summaries: [NutrientSummary]) -> [String] {
+    static func generateInsights(for summaries: [MicronutrientSummary]) -> [String] {
         var insights: [String] = []
 
         // Top 3 strengths (≥70%)
@@ -255,8 +255,13 @@ struct NutrientInsightGenerator {
 
         if !lows.isEmpty {
             for summary in lows {
-                let suggestions = summary.info?.commonSources?.components(separatedBy: ",").prefix(2).joined(separator: " or ") ?? "nutrient-rich foods"
-                insights.append("🔴 \(summary.name) low (\(summary.todayPercentage)%) — Add \(suggestions)")
+                // Parse array format from database
+                let suggestions = parseArrayString(summary.info?.commonSources)
+                    .prefix(2)
+                    .joined(separator: " or ")
+
+                let finalSuggestion = suggestions.isEmpty ? "nutrient-rich foods" : suggestions
+                insights.append("🔴 \(summary.name) low (\(summary.todayPercentage)%) — Add \(finalSuggestion)")
             }
         }
 
@@ -275,9 +280,32 @@ struct NutrientInsightGenerator {
     }
 
     /// Generate a single-line summary for a nutrient
-    static func generateSummary(for summary: NutrientSummary) -> String {
+    static func generateSummary(for summary: MicronutrientSummary) -> String {
         let statusText = "\(summary.statusEmoji) \(summary.todayPercentage)%"
         let trendText = summary.trend != .stable ? " \(summary.trend.symbol)" : ""
         return "\(statusText)\(trendText)"
+    }
+
+    /// Parse JSON array string format like ["Item1", "Item2"] into clean string array
+    private static func parseArrayString(_ content: String?) -> [String] {
+        guard let content = content else { return [] }
+
+        // Try to decode as JSON array first
+        if let data = content.data(using: .utf8),
+           let array = try? JSONDecoder().decode([String].self, from: data) {
+            return array.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        }
+
+        // Fallback: manually parse array format
+        let trimmed = content.trimmingCharacters(in: CharacterSet(charactersIn: "[]\""))
+        if trimmed.contains(",") {
+            return trimmed
+                .components(separatedBy: ",")
+                .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: " \"")) }
+                .filter { !$0.isEmpty }
+        }
+
+        // Return as single item if not parseable and not empty
+        return trimmed.isEmpty ? [] : [trimmed]
     }
 }

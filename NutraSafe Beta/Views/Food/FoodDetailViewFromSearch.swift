@@ -65,10 +65,6 @@ struct FoodDetailViewFromSearch: View {
     @State private var servingUnit: String = "g" // Split serving size - unit only
     @State private var showingUseByAddSheet: Bool = false
 
-    // Micronutrient data
-    @StateObject private var micronutrientManager = MicronutrientManager.shared
-    @State private var currentMicronutrients: MicronutrientProfile?
-
     // Allergen warning
     @EnvironmentObject var firebaseManager: FirebaseManager
     @State private var userAllergens: [Allergen] = []
@@ -109,7 +105,7 @@ struct FoodDetailViewFromSearch: View {
         case additives = "Additive Analysis"
         case allergies = "Allergy Watch"
         case vitamins = "Vitamins & Minerals"
-        
+
         var icon: String {
             switch self {
             case .additives: return "flask.fill"
@@ -117,7 +113,7 @@ struct FoodDetailViewFromSearch: View {
             case .vitamins: return "leaf.fill"
             }
         }
-        
+
         var color: Color {
             switch self {
             case .additives: return .purple
@@ -1009,36 +1005,39 @@ struct FoodDetailViewFromSearch: View {
                     servingControlsSection
                         .onAppear {
                             if servingAmount == "1" && servingUnit == "g" {
-                                // Extract number and unit from serving description
-                                let description = food.servingDescription ?? "100g"
+                                // Use servingSizeG if available (from SQLite database)
+                                if let sizeG = food.servingSizeG, sizeG > 0 {
+                                    servingAmount = String(format: "%.0f", sizeG)
+                                    servingUnit = "g"
+                                } else {
+                                    // Extract number and unit from serving description
+                                    let description = food.servingDescription ?? "100g"
 
-                                // Try to extract grams from patterns like "1 portion (345 g)" or "345g"
-                                let patterns = [
-                                    #"\((\d+(?:\.\d+)?)\s*g\)"#,  // Match "(345 g)" in parentheses
-                                    #"^(\d+(?:\.\d+)?)\s*g$"#      // Match "345g" at start
-                                ]
+                                    // Try to extract grams from patterns like "1 portion (345 g)" or "345g"
+                                    let patterns = [
+                                        #"\((\d+(?:\.\d+)?)\s*g\)"#,  // Match "(345 g)" in parentheses
+                                        #"^(\d+(?:\.\d+)?)\s*g$"#      // Match "345g" at start
+                                    ]
 
-                                var found = false
-                                for pattern in patterns {
-                                    if let regex = try? NSRegularExpression(pattern: pattern, options: []),
-                                       let match = regex.firstMatch(in: description, options: [], range: NSRange(location: 0, length: description.count)),
-                                       let range = Range(match.range(at: 1), in: description) {
-                                        servingAmount = String(description[range])  // Just the number
-                                        servingUnit = "g"  // Just the unit
-                                        found = true
-                                        break
+                                    var found = false
+                                    for pattern in patterns {
+                                        if let regex = try? NSRegularExpression(pattern: pattern, options: []),
+                                           let match = regex.firstMatch(in: description, options: [], range: NSRange(location: 0, length: description.count)),
+                                           let range = Range(match.range(at: 1), in: description) {
+                                            servingAmount = String(description[range])  // Just the number
+                                            servingUnit = "g"  // Just the unit
+                                            found = true
+                                            break
+                                        }
+                                    }
+
+                                    // Fallback to 100g if no grams found
+                                    if !found {
+                                        servingAmount = "100"
+                                        servingUnit = "g"
                                     }
                                 }
-
-                                // Fallback to 100g if no grams found
-                                if !found {
-                                    servingAmount = "100"
-                                    servingUnit = "g"
-                                }
                             }
-
-                            // Load micronutrients when view appears
-                            loadMicronutrients()
 
                             // Check for preselected meal type from diary
                             if let preselectedMeal = UserDefaults.standard.string(forKey: "preselectedMealType") {
@@ -1616,150 +1615,10 @@ struct FoodDetailViewFromSearch: View {
         .cornerRadius(12)
     }
     
-    @ViewBuilder
-    private var micronutrientsSection: some View {
-        // Only show micronutrients if we have real data
-        if hasMicronutrientData {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    Text("Micronutrients")
-                        .font(.system(size: 18, weight: .semibold))
-                    
-                    Spacer()
-                    
-                    // Confidence badge
-                    // Confidence badge removed - not available in DataModels version
-                }
-                
-                LazyVGrid(columns: [
-                    GridItem(.flexible()),
-                    GridItem(.flexible())
-                ], spacing: 12) {
-                    // Only show micronutrients if they exist in the food data
-                    // This would be populated from real nutrition data
-                    if let vitaminC = getMicronutrientValue("vitaminC") {
-                        micronutrientRow("Vitamin C", value: vitaminC.value, dailyValue: vitaminC.dailyValue)
-                    }
-                    if let iron = getMicronutrientValue("iron") {
-                        micronutrientRow("Iron", value: iron.value, dailyValue: iron.dailyValue)
-                    }
-                    if let calcium = getMicronutrientValue("calcium") {
-                        micronutrientRow("Calcium", value: calcium.value, dailyValue: calcium.dailyValue)
-                    }
-                    if let potassium = getMicronutrientValue("potassium") {
-                        micronutrientRow("Potassium", value: potassium.value, dailyValue: potassium.dailyValue)
-                    }
-                    if let vitaminA = getMicronutrientValue("vitaminA") {
-                        micronutrientRow("Vitamin A", value: vitaminA.value, dailyValue: vitaminA.dailyValue)
-                    }
-                    if let folate = getMicronutrientValue("folate") {
-                        micronutrientRow("Folate", value: folate.value, dailyValue: folate.dailyValue)
-                    }
-                }
-            }
-            .padding(.horizontal, 16)
-            .background(Color(.systemGray6))
-            .cornerRadius(12)
-        }
-    }
+    // REMOVED: Old micronutrientsSection - replaced with vitaminsContent using NutrientDetector
     
-    private var hasMicronutrientData: Bool {
-        return currentMicronutrients != nil
-    }
-    
-    private func getMicronutrientValue(_ nutrient: String) -> (value: String, dailyValue: String)? {
-        guard let micros = currentMicronutrients else { return nil }
-        
-        let multiplier = selectedAmount / 100 // Convert to serving size
-        
-        switch nutrient {
-        case "vitaminC":
-            let value = micros.vitamins["vitaminC"] ?? 0.0
-            let adjustedValue = value * multiplier
-            return (formatMicronutrient(adjustedValue, "mg"), calculateDailyValue(adjustedValue, rda: 90, unit: "mg"))
-        case "iron":
-            let value = micros.minerals["iron"] ?? 0.0
-            let adjustedValue = value * multiplier
-            return (formatMicronutrient(adjustedValue, "mg"), calculateDailyValue(adjustedValue, rda: 18, unit: "mg"))
-        case "calcium":
-            let value = micros.minerals["calcium"] ?? 0.0
-            let adjustedValue = value * multiplier
-            return (formatMicronutrient(adjustedValue, "mg"), calculateDailyValue(adjustedValue, rda: 1000, unit: "mg"))
-        case "potassium":
-            let value = micros.minerals["potassium"] ?? 0.0
-            let adjustedValue = value * multiplier
-            return (formatMicronutrient(adjustedValue, "mg"), calculateDailyValue(adjustedValue, rda: 3500, unit: "mg"))
-        case "vitaminA":
-            let value = micros.vitamins["vitaminA"] ?? 0.0
-            let adjustedValue = value * multiplier
-            return (formatMicronutrient(adjustedValue, "µg"), calculateDailyValue(adjustedValue, rda: 900, unit: "µg"))
-        case "folate":
-            let value = micros.vitamins["folate"] ?? 0.0
-            let adjustedValue = value * multiplier
-            return (formatMicronutrient(adjustedValue, "µg"), calculateDailyValue(adjustedValue, rda: 400, unit: "µg"))
-        default:
-            return nil
-        }
-    }
-    
-    private func formatMicronutrient(_ value: Double, _ unit: String) -> String {
-        if value < 0.1 {
-            return String(format: "%.2f%@", value, unit)
-        } else if value < 1 {
-            return String(format: "%.1f%@", value, unit)
-        } else if value < 10 {
-            return String(format: "%.1f%@", value, unit)
-        } else {
-            return String(format: "%.0f%@", value, unit)
-        }
-    }
-    
-    private func calculateDailyValue(_ value: Double, rda: Double, unit: String) -> String {
-        let percentage = (value / rda) * 100
-        return String(format: "%.0f%% DV", percentage)
-    }
-    
-    private func loadMicronutrients() {
-        let basicVitamins: [String: Double] = [
-            "vitaminA": displayFood.protein * 2.5 * quantityMultiplier,
-            "vitaminC": displayFood.carbs * 0.8 * quantityMultiplier,
-            "folate": displayFood.carbs * 0.6 * quantityMultiplier
-        ]
-
-        let basicMinerals: [String: Double] = [
-            "calcium": displayFood.protein * 8.0 * quantityMultiplier,
-            "iron": displayFood.protein * 1.2 * quantityMultiplier,
-            "potassium": displayFood.carbs * 15.0 * quantityMultiplier
-        ]
-
-        currentMicronutrients = MicronutrientProfile(
-            vitamins: basicVitamins,
-            minerals: basicMinerals,
-            recommendedIntakes: RecommendedIntakes(
-                age: 30,
-                gender: .other,
-                dailyValues: [:]
-            ),
-            confidenceScore: .low
-        )
-    }
-    
-    private func micronutrientRow(_ name: String, value: String, dailyValue: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(name)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.primary)
-            Text(value)
-                .font(.system(size: 12))
-                .foregroundColor(.secondary)
-            Text(dailyValue + " DV")
-                .font(.system(size: 11))
-                .foregroundColor(.blue)
-        }
-        .padding(8)
-        .background(Color(.systemBackground))
-        .cornerRadius(8)
-    }
+    // REMOVED: Old fake micronutrient functions that relied on currentMicronutrients variable
+    // Now we use NutrientDetector to detect from ingredients instead of fake math
     
     private func detectAllergens(in ingredients: [String]?) -> [Allergen] {
         guard let ingredients = ingredients else { return [] }
@@ -2484,168 +2343,79 @@ struct FoodDetailViewFromSearch: View {
         .padding(16)
     }
     
-    // MARK: - Vitamins & Minerals Content
+    // MARK: - Vitamins & Minerals Content (NEW SYSTEM)
     private var vitaminsContent: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if let micronutrients = currentMicronutrients {
-                let availableNutrients = getAvailableNutrients(micronutrients)
+        let detectedNutrients = getDetectedNutrients()
+        let micronutrientDB = MicronutrientDatabase.shared
 
-                if !availableNutrients.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        ForEach(availableNutrients.sorted(), id: \.self) { nutrientName in
-                            NutrientCard(nutrientName: nutrientName, micronutrients: micronutrients)
+        print("🎨 vitaminsContent rendering: \(detectedNutrients.count) nutrients")
+
+        return VStack(alignment: .leading, spacing: 12) {
+            if !detectedNutrients.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(Array(detectedNutrients.enumerated()), id: \.element) { index, nutrientId in
+                        if let nutrientInfo = micronutrientDB.getNutrientInfo(nutrientId) {
+                            NutrientInfoCard(nutrientInfo: nutrientInfo)
+                                .onAppear {
+                                    print("  🃏 Card #\(index + 1) appeared: \(nutrientInfo.name)")
+                                }
+                        } else {
+                            Text("⚠️ Could not load info for: \(nutrientId)")
+                                .foregroundColor(.red)
                         }
                     }
-                } else {
-                    VStack(spacing: 12) {
-                        Image(systemName: "drop.fill")
-                            .font(.system(size: 40))
-                            .foregroundColor(.blue.opacity(0.5))
-
-                        Text("Low Micronutrient Content")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.primary)
-
-                        Text("This food doesn't contain significant amounts of vitamins or minerals")
-                            .font(.system(size: 13))
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 32)
                 }
             } else {
-                ProgressView()
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 24)
+                VStack(spacing: 12) {
+                    Image(systemName: "drop.fill")
+                        .font(.system(size: 40))
+                        .foregroundColor(.blue.opacity(0.5))
+
+                    Text("No Micronutrient Data")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+
+                    Text("Micronutrient information not available for this food")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 32)
             }
         }
         .padding(16)
     }
     
-    // Helper function to get available vitamins and minerals
-    private func getAvailableNutrients(_ micronutrients: MicronutrientProfile) -> [String] {
-        var availableNutrients: [String] = []
-        var estimatedNutrients: [String] = []
+    // NEW: Detect nutrients from ingredients using NutrientDetector and MicronutrientDatabase
+    private func getDetectedNutrients() -> [String] {
+        print("🔬 getDetectedNutrients() called for food: \(food.name)")
+        print("  📝 Ingredients: \(food.ingredients ?? [])")
 
-        // Vitamins
-        let vitaminA = micronutrients.vitamins["vitaminA"] ?? 0
-        let vitaminC = micronutrients.vitamins["vitaminC"] ?? 0
-        let vitaminD = micronutrients.vitamins["vitaminD"] ?? 0
-        let vitaminE = micronutrients.vitamins["vitaminE"] ?? 0
-        let vitaminK = micronutrients.vitamins["vitaminK"] ?? 0
-        let thiamine = micronutrients.vitamins["thiamine"] ?? 0
-        let riboflavin = micronutrients.vitamins["riboflavin"] ?? 0
-        let niacin = micronutrients.vitamins["niacin"] ?? 0
-        let pantothenicAcid = micronutrients.vitamins["pantothenicAcid"] ?? 0
-        let vitaminB6 = micronutrients.vitamins["vitaminB6"] ?? 0
-        let biotin = micronutrients.vitamins["biotin"] ?? 0
-        let folate = micronutrients.vitamins["folate"] ?? 0
-        let vitaminB12 = micronutrients.vitamins["vitaminB12"] ?? 0
-
-        if vitaminA > 10 { availableNutrients.append("Vitamin A") }
-        if vitaminC > 1 { availableNutrients.append("Vitamin C") }
-        if vitaminD > 0.5 { availableNutrients.append("Vitamin D") }
-        if vitaminE > 1 { availableNutrients.append("Vitamin E") }
-        if vitaminK > 5 { availableNutrients.append("Vitamin K") }
-        if thiamine > 0.1 { availableNutrients.append("Thiamine (B1)") }
-        if riboflavin > 0.1 { availableNutrients.append("Riboflavin (B2)") }
-        if niacin > 1 { availableNutrients.append("Niacin (B3)") }
-        if pantothenicAcid > 0.5 { availableNutrients.append("Pantothenic Acid (B5)") }
-        if vitaminB6 > 0.1 { availableNutrients.append("Vitamin B6") }
-        if biotin > 1 { availableNutrients.append("Biotin (B7)") }
-        if folate > 10 { availableNutrients.append("Folate") }
-        if vitaminB12 > 0.1 { availableNutrients.append("Vitamin B12") }
-
-        // Minerals
-        let calcium = micronutrients.minerals["calcium"] ?? 0
-        let chromium = micronutrients.minerals["chromium"] ?? 0
-        let copper = micronutrients.minerals["copper"] ?? 0
-        let iodine = micronutrients.minerals["iodine"] ?? 0
-        let iron = micronutrients.minerals["iron"] ?? 0
-        let magnesium = micronutrients.minerals["magnesium"] ?? 0
-        let manganese = micronutrients.minerals["manganese"] ?? 0
-        let molybdenum = micronutrients.minerals["molybdenum"] ?? 0
-        let phosphorus = micronutrients.minerals["phosphorus"] ?? 0
-        let potassium = micronutrients.minerals["potassium"] ?? 0
-        let selenium = micronutrients.minerals["selenium"] ?? 0
-        let zinc = micronutrients.minerals["zinc"] ?? 0
-
-        if calcium > 10 { availableNutrients.append("Calcium") }
-        if chromium > 5 { availableNutrients.append("Chromium") }
-        if copper > 0.1 { availableNutrients.append("Copper") }
-        if iodine > 10 { availableNutrients.append("Iodine") }
-        if iron > 0.5 { availableNutrients.append("Iron") }
-        if magnesium > 10 { availableNutrients.append("Magnesium") }
-        if manganese > 0.2 { availableNutrients.append("Manganese") }
-        if molybdenum > 5 { availableNutrients.append("Molybdenum") }
-        if phosphorus > 50 { availableNutrients.append("Phosphorus") }
-        if potassium > 50 { availableNutrients.append("Potassium") }
-        if selenium > 5 { availableNutrients.append("Selenium") }
-        if zinc > 1 { availableNutrients.append("Zinc") }
-
-        // Only use ingredient-based detection if we don't have micronutrient data
-        // If we have nutrient data from API, we don't need ingredient estimates
-        if availableNutrients.isEmpty, let ingredients = food.ingredients, !ingredients.isEmpty {
-            // Create a temporary DiaryFoodItem for nutrient detection
-            let tempFood = DiaryFoodItem(
-                name: food.name,
-                brand: food.brand,
-                calories: 0,
-                protein: 0,
-                carbs: 0,
-                fat: 0,
-                servingDescription: "",
-                quantity: 1,
-                ingredients: ingredients,
-                barcode: food.barcode,
-                micronutrientProfile: nil // Don't pass profile so it uses keyword matching
-            )
-
-            // Get nutrient IDs from detector
-            let detectedNutrientIds = NutrientDetector.detectNutrients(in: tempFood)
-
-            // Map nutrient IDs to display names and mark as estimated
-            for nutrientId in detectedNutrientIds {
-                let displayName = mapNutrientIdToDisplayName(nutrientId)
-                // Only add if not already in availableNutrients (from API data)
-                if !availableNutrients.contains(displayName) {
-                    estimatedNutrients.append("\(displayName) (est.)")
-                }
-            }
+        guard let ingredients = food.ingredients, !ingredients.isEmpty else {
+            print("  ❌ No ingredients found")
+            return []
         }
 
-        // Combine API nutrients first, then estimated
-        return availableNutrients + estimatedNutrients.sorted()
-    }
+        // Create a temporary DiaryFoodItem for nutrient detection
+        let tempFood = DiaryFoodItem(
+            name: food.name,
+            brand: food.brand,
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            servingDescription: "",
+            quantity: 1,
+            ingredients: ingredients,
+            barcode: food.barcode,
+            micronutrientProfile: nil
+        )
 
-    // Map nutrient IDs to display names used in the UI
-    private func mapNutrientIdToDisplayName(_ id: String) -> String {
-        switch id {
-        case "vitamin_a": return "Vitamin A"
-        case "vitamin_c": return "Vitamin C"
-        case "vitamin_d": return "Vitamin D"
-        case "vitamin_e": return "Vitamin E"
-        case "vitamin_k": return "Vitamin K"
-        case "vitamin_b1": return "Thiamine (B1)"
-        case "vitamin_b2": return "Riboflavin (B2)"
-        case "vitamin_b3": return "Niacin (B3)"
-        case "vitamin_b6": return "Vitamin B6"
-        case "vitamin_b12": return "Vitamin B12"
-        case "folate": return "Folate"
-        case "biotin": return "Biotin (B7)"
-        case "calcium": return "Calcium"
-        case "iron": return "Iron"
-        case "magnesium": return "Magnesium"
-        case "phosphorus": return "Phosphorus"
-        case "potassium": return "Potassium"
-        case "zinc": return "Zinc"
-        case "selenium": return "Selenium"
-        case "copper": return "Copper"
-        case "manganese": return "Manganese"
-        case "iodine": return "Iodine"
-        default: return id
-        }
+        // Use NutrientDetector to detect nutrients from ingredients
+        let detected = NutrientDetector.detectNutrients(in: tempFood)
+        print("  ✅ Detected \(detected.count) nutrients: \(detected)")
+        return detected
     }
 
     // MARK: - Edit Functions
@@ -3290,6 +3060,168 @@ struct MacroRow: View {
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(color)
         }
+    }
+}
+
+// MARK: - Nutrient Info Card (NEW SYSTEM)
+struct NutrientInfoCard: View {
+    let nutrientInfo: NutrientInfo
+    @State private var isExpanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Main header - always visible
+            Button(action: {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    isExpanded.toggle()
+                }
+            }) {
+                HStack(spacing: 12) {
+                    // Nutrient name and category
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(nutrientInfo.name)
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundColor(.primary)
+
+                        // Show formatted category
+                        if let category = nutrientInfo.category, !category.isEmpty {
+                            HStack(spacing: 4) {
+                                Image(systemName: "leaf.fill")
+                                    .font(.system(size: 10))
+                                Text(formatCategory(category))
+                                    .font(.system(size: 13))
+                            }
+                            .foregroundColor(.secondary)
+                        }
+                    }
+
+                    Spacer()
+
+                    // Expand/collapse chevron
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.green)
+                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                        .animation(.spring(response: 0.3), value: isExpanded)
+                }
+                .padding(16)
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            // Expanded content
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 16) {
+                    Divider()
+                        .padding(.horizontal, 16)
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        // Benefits section
+                        if let benefits = nutrientInfo.benefits, !benefits.isEmpty {
+                            benefitRow(icon: "sparkles", title: "Good for", content: formatBenefits(benefits))
+                        }
+
+                        // Daily intake
+                        if let dailyIntake = nutrientInfo.recommendedDailyIntake, !dailyIntake.isEmpty {
+                            benefitRow(icon: "calendar.badge.clock", title: "Recommended daily", content: dailyIntake)
+                        }
+
+                        // Common sources
+                        if let sources = nutrientInfo.commonSources, !sources.isEmpty {
+                            benefitRow(icon: "leaf.fill", title: "Also found in", content: formatSources(sources))
+                        }
+
+                        // Deficiency signs
+                        if let deficiency = nutrientInfo.deficiencySigns, !deficiency.isEmpty {
+                            let formattedDeficiency = formatBenefits(deficiency)
+                            let isRareDeficiency = formattedDeficiency.lowercased().contains("rare") || formattedDeficiency.lowercased().contains("uncommon")
+
+                            if isRareDeficiency {
+                                benefitRow(icon: "info.circle.fill", title: "Deficiency", content: formattedDeficiency.capitalized, iconColor: .blue)
+                            } else {
+                                benefitRow(icon: "exclamationmark.triangle.fill", title: "Low levels may cause", content: formattedDeficiency, iconColor: .orange)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16)
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.green.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .strokeBorder(Color.green.opacity(0.3), lineWidth: 1.5)
+                )
+        )
+    }
+
+    // Helper view for each benefit row
+    private func benefitRow(icon: String, title: String, content: String, iconColor: Color = .green) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 12))
+                    .foregroundColor(iconColor)
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.primary)
+            }
+
+            Text(content)
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // Helper function to format category text
+    private func formatCategory(_ category: String) -> String {
+        let cleaned = category
+            .replacingOccurrences(of: "[", with: "")
+            .replacingOccurrences(of: "]", with: "")
+            .replacingOccurrences(of: "\"", with: "")
+
+        let items = cleaned.components(separatedBy: ",")
+        if let first = items.first?.trimmingCharacters(in: .whitespaces) {
+            return first.capitalized
+        }
+
+        return cleaned
+    }
+
+    // Helper function to format benefits (remove brackets and quotes)
+    private func formatBenefits(_ benefits: String) -> String {
+        var formatted = benefits
+            .replacingOccurrences(of: "[", with: "")
+            .replacingOccurrences(of: "]", with: "")
+            .replacingOccurrences(of: "\"", with: "")
+
+        // Replace commas with bullets for better readability
+        let items = formatted.components(separatedBy: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+
+        if items.count > 1 {
+            return items.joined(separator: " • ")
+        }
+
+        return formatted
+    }
+
+    // Helper function to format sources (remove brackets and quotes)
+    private func formatSources(_ sources: String) -> String {
+        var formatted = sources
+            .replacingOccurrences(of: "[", with: "")
+            .replacingOccurrences(of: "]", with: "")
+            .replacingOccurrences(of: "\"", with: "")
+
+        // Clean up any extra spaces
+        formatted = formatted.trimmingCharacters(in: .whitespaces)
+
+        return formatted
     }
 }
 

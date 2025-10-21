@@ -1600,16 +1600,7 @@ struct WeightTrackingView: View {
                     Text("Progress")
                         .font(.system(size: 38, weight: .bold, design: .rounded))
                         .frame(height: 44, alignment: .center)
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.95, green: 0.68, blue: 0.38), // Brighter golden orange
-                                    Color(red: 0.85, green: 0.55, blue: 0.35)  // Brighter bronze
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
+                        .foregroundColor(.black)
 
                     Spacer()
 
@@ -1831,7 +1822,7 @@ struct WeightTrackingView: View {
                             .padding(.horizontal, 20)
 
                             // Weight entries list
-                            VStack(spacing: 8) {
+                            List {
                                 ForEach(Array(weightHistory.prefix(5).enumerated()), id: \.element.id) { index, entry in
                                     WeightEntryRow(
                                         entry: entry,
@@ -1864,6 +1855,9 @@ struct WeightTrackingView: View {
                                             Label("Delete", systemImage: "trash")
                                         }
                                     }
+                                    .listRowInsets(EdgeInsets())
+                                    .listRowSeparator(.hidden)
+                                    .listRowBackground(Color.clear)
                                 }
 
                                 if weightHistory.count > 5 {
@@ -1876,8 +1870,13 @@ struct WeightTrackingView: View {
                                             .frame(maxWidth: .infinity)
                                             .padding(.vertical, 12)
                                     }
+                                    .listRowInsets(EdgeInsets())
+                                    .listRowSeparator(.hidden)
+                                    .listRowBackground(Color.clear)
                                 }
                             }
+                            .listStyle(.plain)
+                            .frame(height: CGFloat(min(weightHistory.count, 5) * 85 + (weightHistory.count > 5 ? 50 : 0)))
                             .padding(.horizontal, 20)
                         }
                         .padding(.top, 12)
@@ -5558,7 +5557,7 @@ struct MicronutrientFrequencyView: View {
         breakfast + lunch + dinner + snacks
     }
     
-    private var micronutrientAnalysis: [MicronutrientStatus] {
+    private var micronutrientAnalysis: [LegacyMicronutrientStatus] {
         analyzeMicronutrientFrequency()
     }
     
@@ -5570,7 +5569,7 @@ struct MicronutrientFrequencyView: View {
         }
     }
     
-    private func analyzeMicronutrientFrequency() -> [MicronutrientStatus] {
+    private func analyzeMicronutrientFrequency() -> [LegacyMicronutrientStatus] {
         let nutrientFoodSources: [String: [String]] = [
             "Vitamin C": ["orange", "lemon", "lime", "strawberry", "strawberries", "kiwi", "bell pepper", "broccoli", "tomato", "potato"],
             "Vitamin D": ["salmon", "tuna", "mackerel", "sardines", "egg", "fortified milk", "fortified cereal"],
@@ -5581,7 +5580,7 @@ struct MicronutrientFrequencyView: View {
             "Omega-3": ["salmon", "sardines", "mackerel", "walnuts", "flax", "chia", "hemp"]
         ]
         
-        var results: [MicronutrientStatus] = []
+        var results: [LegacyMicronutrientStatus] = []
         
         for (nutrient, sources) in nutrientFoodSources {
             let hasSource = allFoods.contains { food in
@@ -5590,8 +5589,8 @@ struct MicronutrientFrequencyView: View {
                 }
             }
             
-            let status: NutrientStatus = hasSource ? .good : .needsAttention
-            results.append(MicronutrientStatus(name: nutrient, status: status))
+            let status: LegacyNutrientStatus = hasSource ? .good : .needsAttention
+            results.append(LegacyMicronutrientStatus(name: nutrient, status: status))
         }
         
         // Sort by status (needs attention first)
@@ -5603,12 +5602,12 @@ struct MicronutrientFrequencyView: View {
     }
 }
 
-struct MicronutrientStatus {
+struct LegacyMicronutrientStatus {
     let name: String
-    let status: NutrientStatus
+    let status: LegacyNutrientStatus
 }
 
-enum NutrientStatus {
+enum LegacyNutrientStatus {
     case good              // Getting regularly (70%+)
     case inconsistent      // Getting sometimes (40-69%)
     case needsTracking     // Rarely getting (<40%)
@@ -5643,7 +5642,7 @@ enum NutrientStatus {
 }
 
 struct MicronutrientIndicator: View {
-    let nutrient: MicronutrientStatus
+    let nutrient: LegacyMicronutrientStatus
     
     var body: some View {
         VStack(spacing: 2) {

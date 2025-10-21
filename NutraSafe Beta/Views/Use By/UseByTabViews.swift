@@ -55,16 +55,7 @@ struct UseByTabView: View {
                 HStack(spacing: 16) {
                     Text("Use By")
                         .font(.system(size: 38, weight: .bold, design: .rounded))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.95, green: 0.68, blue: 0.38), // Brighter golden orange
-                                    Color(red: 0.85, green: 0.55, blue: 0.35)  // Brighter bronze
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
+                        .foregroundColor(.black)
 
                     Spacer()
 

@@ -719,11 +719,11 @@ struct CombinedMealView: View {
                     }
                     
                     HStack {
-                        NutrientSummary(label: "Protein", value: totalProtein, unit: "g", color: .blue)
+                        NutrientSummaryMacros(label: "Protein", value: totalProtein, unit: "g", color: .blue)
                         Spacer()
-                        NutrientSummary(label: "Carbs", value: totalCarbs, unit: "g", color: .orange)
+                        NutrientSummaryMacros(label: "Carbs", value: totalCarbs, unit: "g", color: .orange)
                         Spacer()
-                        NutrientSummary(label: "Fat", value: totalFat, unit: "g", color: Color.blue)
+                        NutrientSummaryMacros(label: "Fat", value: totalFat, unit: "g", color: Color.blue)
                     }
                 }
                 .padding()
@@ -947,7 +947,7 @@ struct CombinedMealFoodRow: View {
 
 // MARK: - Supporting Nutrient Display Components
 
-struct NutrientSummary: View {
+struct NutrientSummaryMacros: View {
     let label: String
     let value: Double
     let unit: String

@@ -90,11 +90,65 @@ class MicronutrientDatabase {
         if sqlite3_open(dbPath, &db) == SQLITE_OK {
             print("✅ MicronutrientDatabase: Successfully opened database at \(dbPath)")
             isInitialized = true
+
+            // DIAGNOSTIC: Test database readability
+            testDatabaseConnection()
         } else {
             print("❌ MicronutrientDatabase: Failed to open database")
             if let error = sqlite3_errmsg(db) {
                 print("   Error: \(String(cString: error))")
             }
+        }
+    }
+
+    private func testDatabaseConnection() {
+        guard let db = db else { return }
+
+        // Test 1: Count total nutrients
+        let countQuery = "SELECT COUNT(*) FROM nutrient_info;"
+        var countStmt: OpaquePointer?
+
+        defer { sqlite3_finalize(countStmt) }
+
+        if sqlite3_prepare_v2(db, countQuery, -1, &countStmt, nil) == SQLITE_OK {
+            if sqlite3_step(countStmt) == SQLITE_ROW {
+                let count = sqlite3_column_int(countStmt, 0)
+                print("📊 Database contains \(count) nutrients")
+            }
+        }
+
+        // Test 2: List all nutrient IDs
+        let listQuery = "SELECT nutrient FROM nutrient_info ORDER BY nutrient LIMIT 10;"
+        var listStmt: OpaquePointer?
+
+        defer { sqlite3_finalize(listStmt) }
+
+        if sqlite3_prepare_v2(db, listQuery, -1, &listStmt, nil) == SQLITE_OK {
+            print("📋 First 10 nutrients in database:")
+            var index = 1
+            while sqlite3_step(listStmt) == SQLITE_ROW {
+                let nutrient = String(cString: sqlite3_column_text(listStmt, 0))
+                print("   \(index). \(nutrient)")
+                index += 1
+            }
+        }
+
+        // Test 3: Try to query a specific nutrient
+        let testQuery = "SELECT nutrient, name FROM nutrient_info WHERE nutrient = 'Niacin_B3' LIMIT 1;"
+        var testStmt: OpaquePointer?
+
+        defer { sqlite3_finalize(testStmt) }
+
+        if sqlite3_prepare_v2(db, testQuery, -1, &testStmt, nil) == SQLITE_OK {
+            if sqlite3_step(testStmt) == SQLITE_ROW {
+                let nutrient = String(cString: sqlite3_column_text(testStmt, 0))
+                let name = String(cString: sqlite3_column_text(testStmt, 1))
+                print("✅ Test query successful: Found '\(nutrient)' with name '\(name)'")
+            } else {
+                print("❌ Test query failed: Could not find 'Niacin_B3'")
+            }
+        } else {
+            print("❌ Test query prepare failed")
         }
     }
 
@@ -134,7 +188,8 @@ class MicronutrientDatabase {
             return nil
         }
 
-        sqlite3_bind_text(statement, 1, altName, -1, nil)
+        let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        sqlite3_bind_text(statement, 1, (altName as NSString).utf8String, -1, SQLITE_TRANSIENT)
 
         if sqlite3_step(statement) == SQLITE_ROW {
             if let cString = sqlite3_column_text(statement, 0) {
@@ -165,7 +220,8 @@ class MicronutrientDatabase {
             return nil
         }
 
-        sqlite3_bind_text(ingredientStmt, 1, canonicalName, -1, nil)
+        let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        sqlite3_bind_text(ingredientStmt, 1, (canonicalName as NSString).utf8String, -1, SQLITE_TRANSIENT)
 
         guard sqlite3_step(ingredientStmt) == SQLITE_ROW else {
             return nil
@@ -234,7 +290,8 @@ class MicronutrientDatabase {
             return []
         }
 
-        sqlite3_bind_text(statement, 1, lowercased, -1, nil)
+        let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        sqlite3_bind_text(statement, 1, (lowercased as NSString).utf8String, -1, SQLITE_TRANSIENT)
 
         while sqlite3_step(statement) == SQLITE_ROW {
             let nutrient = String(cString: sqlite3_column_text(statement, 0))
@@ -250,6 +307,66 @@ class MicronutrientDatabase {
     func getNutrientInfo(_ nutrient: String) -> NutrientInfo? {
         guard isInitialized, let db = db else { return nil }
 
+        // Map detector IDs to database IDs
+        let nutrientMapping: [String: String] = [
+            // Vitamins with specific names
+            "vitamin_a": "Vitamin_A",
+            "vitamin_b1": "Thiamin_B1",
+            "vitamin_b2": "Riboflavin_B2",
+            "vitamin_b3": "Niacin_B3",
+            "vitamin_b5": "Pantothenic_B5",
+            "vitamin_b6": "Vitamin_B6",
+            "vitamin_b7": "Biotin_B7",
+            "vitamin_b9": "Folate_B9",
+            "vitamin_b12": "Vitamin_B12",
+            "vitamin_c": "Vitamin_C",
+            "vitamin_d": "Vitamin_D",
+            "vitamin_e": "Vitamin_E",
+            "vitamin_k": "Vitamin_K",
+
+            // Alternative names
+            "biotin": "Biotin_B7",
+            "folate": "Folate_B9",
+            "beta_carotene": "Beta_Carotene",
+
+            // Minerals (capitalize first letter)
+            "calcium": "Calcium",
+            "iron": "Iron",
+            "magnesium": "Magnesium",
+            "potassium": "Potassium",
+            "zinc": "Zinc",
+            "selenium": "Selenium",
+            "phosphorus": "Phosphorus",
+            "copper": "Copper",
+            "manganese": "Manganese",
+            "iodine": "Iodine",
+            "chromium": "Chromium",
+            "molybdenum": "Molybdenum",
+            "sodium": "Sodium",
+            "fluoride": "Fluoride",
+
+            // Other nutrients
+            "choline": "Choline",
+            "omega_3": "Omega3_EPA_DHA",
+            "omega3": "Omega3_EPA_DHA",
+            "lutein": "Lutein_Zeaxanthin",
+            "zeaxanthin": "Lutein_Zeaxanthin",
+            "lycopene": "Lycopene"
+        ]
+
+        // Try mapping first, then fall back to PascalCase conversion
+        let normalizedNutrient: String
+        if let mapped = nutrientMapping[nutrient.lowercased()] {
+            normalizedNutrient = mapped
+            print("🔍 Mapped '\(nutrient)' -> '\(normalizedNutrient)'")
+        } else {
+            // For minerals and other nutrients: "iron" -> "Iron", "calcium" -> "Calcium"
+            normalizedNutrient = nutrient.split(separator: "_")
+                .map { $0.prefix(1).uppercased() + $0.dropFirst().lowercased() }
+                .joined(separator: "_")
+            print("🔍 Converted '\(nutrient)' -> '\(normalizedNutrient)' (no mapping)")
+        }
+
         let query = """
         SELECT nutrient, name, category, benefits, deficiency_signs, common_sources, recommended_daily_intake
         FROM nutrient_info
@@ -262,15 +379,44 @@ class MicronutrientDatabase {
             sqlite3_finalize(statement)
         }
 
-        guard sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK else {
+        let prepareResult = sqlite3_prepare_v2(db, query, -1, &statement, nil)
+        guard prepareResult == SQLITE_OK else {
+            print("❌ Failed to prepare statement: result = \(prepareResult)")
+            if let error = sqlite3_errmsg(db) {
+                print("   Prepare Error: \(String(cString: error))")
+            }
             return nil
         }
 
-        sqlite3_bind_text(statement, 1, nutrient, -1, nil)
+        print("🔎 Executing query for: '\(normalizedNutrient)'")
 
-        guard sqlite3_step(statement) == SQLITE_ROW else {
+        // CRITICAL: Use SQLITE_TRANSIENT to copy the string
+        let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        sqlite3_bind_text(statement, 1, (normalizedNutrient as NSString).utf8String, -1, SQLITE_TRANSIENT)
+
+        let stepResult = sqlite3_step(statement)
+        guard stepResult == SQLITE_ROW else {
+            print("❌ Query failed for '\(normalizedNutrient)': step result = \(stepResult), expected \(SQLITE_ROW)")
+            if let error = sqlite3_errmsg(db) {
+                print("   SQL Error: \(String(cString: error))")
+            }
+
+            // Try a direct query without binding to see if the data exists
+            let directQuery = "SELECT COUNT(*) FROM nutrient_info WHERE nutrient = '\(normalizedNutrient)';"
+            var directStmt: OpaquePointer?
+            defer { sqlite3_finalize(directStmt) }
+
+            if sqlite3_prepare_v2(db, directQuery, -1, &directStmt, nil) == SQLITE_OK {
+                if sqlite3_step(directStmt) == SQLITE_ROW {
+                    let count = sqlite3_column_int(directStmt, 0)
+                    print("   🔍 Direct query found \(count) matching records")
+                }
+            }
+
             return nil
         }
+
+        print("✅ Found data for '\(normalizedNutrient)'!")
 
         return NutrientInfo(
             nutrient: String(cString: sqlite3_column_text(statement, 0)),

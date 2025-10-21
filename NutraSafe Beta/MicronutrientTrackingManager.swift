@@ -56,6 +56,124 @@ class MicronutrientTrackingManager: ObservableObject {
         await saveDailyScores()
     }
 
+    /// Convert camelCase nutrient keys to database format (underscore separated)
+    private func normalizeNutrientKey(_ key: String) -> String {
+        // Map common camelCase formats to database keys
+        let mappings: [String: String] = [
+            "vitaminA": "Vitamin_A",
+            "vitaminC": "Vitamin_C",
+            "vitaminD": "Vitamin_D",
+            "vitaminE": "Vitamin_E",
+            "vitaminK": "Vitamin_K",
+            "thiamine": "Thiamin_B1",
+            "riboflavin": "Riboflavin_B2",
+            "niacin": "Niacin_B3",
+            "pantothenicAcid": "Pantothenic_B5",
+            "vitaminB6": "Vitamin_B6",
+            "biotin": "Biotin_B7",
+            "folate": "Folate_B9",
+            "vitaminB12": "Vitamin_B12",
+            "choline": "Choline",
+            "calcium": "Calcium",
+            "iron": "Iron",
+            "magnesium": "Magnesium",
+            "phosphorus": "Phosphorus",
+            "potassium": "Potassium",
+            "sodium": "Sodium",
+            "zinc": "Zinc",
+            "copper": "Copper",
+            "manganese": "Manganese",
+            "selenium": "Selenium",
+            "chromium": "Chromium",
+            "molybdenum": "Molybdenum",
+            "iodine": "Iodine"
+        ]
+
+        return mappings[key] ?? key
+    }
+
+    /// Process actual micronutrient data from a food's nutrient profile
+    func processNutrientProfile(_ profile: MicronutrientProfile, foodName: String, servingSize: Double = 1.0, date: Date = Date()) async {
+        print("🔬 Processing nutrient profile for: \(foodName) (serving: \(servingSize)x)")
+        print("  📊 Profile has \(profile.vitamins.count) vitamins, \(profile.minerals.count) minerals")
+
+        var processedCount = 0
+
+        // Process vitamins
+        for (nutrientKey, amount) in profile.vitamins {
+            guard amount > 0 else {
+                continue
+            }
+
+            // Get the recommended daily value for this nutrient
+            let dailyValue = profile.recommendedIntakes.getDailyValue(for: nutrientKey)
+            if dailyValue == 0 {
+                continue
+            }
+
+            // Calculate percentage of daily value (accounting for serving size)
+            let percentage = Int((amount * servingSize / dailyValue) * 100)
+
+            // Convert percentage to points (capped at 100 to avoid over-counting)
+            let points = min(percentage, 100)
+
+            if points > 0 {
+                // Normalize the key to match database format
+                let normalizedKey = normalizeNutrientKey(nutrientKey)
+
+                await updateDailyScore(
+                    nutrient: normalizedKey,
+                    date: date,
+                    points: points,
+                    source: foodName
+                )
+                processedCount += 1
+                print("  ✅ \(nutrientKey) -> \(normalizedKey): \(points)% DV")
+            }
+        }
+
+        // Process minerals
+        for (nutrientKey, amount) in profile.minerals {
+            guard amount > 0 else {
+                continue
+            }
+
+            // Get the recommended daily value for this nutrient
+            let dailyValue = profile.recommendedIntakes.getDailyValue(for: nutrientKey)
+            if dailyValue == 0 {
+                continue
+            }
+
+            // Calculate percentage of daily value (accounting for serving size)
+            let percentage = Int((amount * servingSize / dailyValue) * 100)
+
+            // Convert percentage to points (capped at 100 to avoid over-counting)
+            let points = min(percentage, 100)
+
+            if points > 0 {
+                // Normalize the key to match database format
+                let normalizedKey = normalizeNutrientKey(nutrientKey)
+
+                await updateDailyScore(
+                    nutrient: normalizedKey,
+                    date: date,
+                    points: points,
+                    source: foodName
+                )
+                processedCount += 1
+                print("  ✅ \(nutrientKey) -> \(normalizedKey): \(points)% DV")
+            }
+        }
+
+        // Recalculate balance for the day
+        await updateBalanceScore(for: date)
+
+        // Save to Firebase
+        await saveDailyScores()
+
+        print("✅ Successfully processed \(processedCount) nutrients for: \(foodName)")
+    }
+
     // MARK: - Daily Score Management
 
     private func updateDailyScore(nutrient: String, date: Date, points: Int, source: String) async {
@@ -102,7 +220,7 @@ class MicronutrientTrackingManager: ObservableObject {
         let dateKey = formatDate(date)
 
         // Get all nutrients tracked today
-        var nutrientCounts: [NutrientStatus: Int] = [.low: 0, .adequate: 0, .strong: 0]
+        var nutrientCounts: [MicronutrientStatus: Int] = [.low: 0, .adequate: 0, .strong: 0]
         var trackedNutrients = Set<String>()
 
         for (nutrient, scores) in dailyScores {
@@ -132,18 +250,17 @@ class MicronutrientTrackingManager: ObservableObject {
     // MARK: - Summary Generation
 
     /// Get summary for a specific nutrient
-    func getNutrientSummary(for nutrient: String) -> NutrientSummary? {
-        guard let scores = dailyScores[nutrient], !scores.isEmpty else {
-            return nil
-        }
-
+    func getNutrientSummary(for nutrient: String) -> MicronutrientSummary? {
         let today = Date()
         let todayKey = formatDate(today)
+
+        // Get scores if they exist
+        let scores = dailyScores[nutrient] ?? []
 
         // Today's data
         let todayScore = scores.first(where: { formatDate($0.date) == todayKey })
         let todayPercentage = todayScore?.percentage ?? 0
-        let todayStatus = NutrientStatus.from(percentage: todayPercentage)
+        let todayStatus = MicronutrientStatus.from(percentage: todayPercentage)
 
         // 7-day average
         let last7Days = getLast7Days()
@@ -151,7 +268,7 @@ class MicronutrientTrackingManager: ObservableObject {
             last7Days.contains(where: { formatDate($0) == formatDate(score.date) })
         }
         let sevenDayAverage = last7DaysScores.isEmpty ? 0.0 : Double(last7DaysScores.reduce(0) { $0 + $1.percentage }) / Double(last7DaysScores.count)
-        let sevenDayStatus = NutrientStatus.from(percentage: Int(sevenDayAverage))
+        let sevenDayStatus = MicronutrientStatus.from(percentage: Int(sevenDayAverage))
 
         // Trend (compare last 3 days vs previous 4 days)
         let trend = calculateTrend(for: last7DaysScores)
@@ -162,7 +279,7 @@ class MicronutrientTrackingManager: ObservableObject {
         // Get nutrient info
         let info = database.getNutrientInfo(nutrient)
 
-        return NutrientSummary(
+        return MicronutrientSummary(
             id: nutrient,
             nutrient: nutrient,
             name: info?.name ?? nutrient,
@@ -178,7 +295,7 @@ class MicronutrientTrackingManager: ObservableObject {
     }
 
     /// Get summaries for all tracked nutrients
-    func getAllNutrientSummaries() -> [NutrientSummary] {
+    func getAllNutrientSummaries() -> [MicronutrientSummary] {
         let allNutrients = database.getAllNutrients()
         return allNutrients.compactMap { info in
             getNutrientSummary(for: info.nutrient)
