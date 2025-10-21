@@ -56,12 +56,16 @@ struct MicronutrientTimelineView: View {
     private var balanceHistoryChart: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Image(systemName: "chart.line.uptrend.xyaxis")
-                    .foregroundColor(.purple)
-                Text("Average Nutrient Coverage")
+                Image(systemName: "leaf.fill")
+                    .foregroundColor(.green)
+                Text("Nutrient Diversity Score")
                     .font(.system(size: 18, weight: .bold))
                     .foregroundColor(.primary)
             }
+
+            Text("Number of different nutrients tracked each day")
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
 
             // Chart
             GeometryReader { geometry in
@@ -70,12 +74,15 @@ struct MicronutrientTimelineView: View {
                     .suffix(30)
 
                 if !balanceHistory.isEmpty {
+                    let maxNutrients = balanceHistory.map { $0.totalNutrientsTracked }.max() ?? 1
+
                     ZStack(alignment: .bottomLeading) {
                         // Grid lines
                         VStack(spacing: 0) {
                             ForEach(0..<5) { i in
                                 HStack {
-                                    Text("\(100 - (i * 25))%")
+                                    let value = maxNutrients - (i * maxNutrients / 4)
+                                    Text("\(value)")
                                         .font(.system(size: 10))
                                         .foregroundColor(.secondary)
                                         .frame(width: 40, alignment: .trailing)
@@ -97,7 +104,7 @@ struct MicronutrientTimelineView: View {
 
                             for (index, balance) in balanceHistory.enumerated() {
                                 let x = 50 + CGFloat(index) * xStep
-                                let y = maxHeight - (CGFloat(balance.balancePercentage) / 100.0 * maxHeight)
+                                let y = maxHeight - (CGFloat(balance.totalNutrientsTracked) / CGFloat(maxNutrients) * maxHeight)
 
                                 if index == 0 {
                                     path.move(to: CGPoint(x: x, y: y))
@@ -106,8 +113,8 @@ struct MicronutrientTimelineView: View {
                                 }
                             }
                         }
-                        .stroke(Color.purple, lineWidth: 2)
-                        .shadow(color: Color.purple.opacity(0.3), radius: 4, x: 0, y: 2)
+                        .stroke(Color.green, lineWidth: 2)
+                        .shadow(color: Color.green.opacity(0.3), radius: 4, x: 0, y: 2)
 
                         // Data points
                         ForEach(Array(balanceHistory.enumerated()), id: \.offset) { index, balance in
@@ -115,17 +122,17 @@ struct MicronutrientTimelineView: View {
                             let maxWidth = geometry.size.width - 50
                             let xStep = maxWidth / CGFloat(max(1, balanceHistory.count - 1))
                             let x = 50 + CGFloat(index) * xStep
-                            let y = maxHeight - (CGFloat(balance.balancePercentage) / 100.0 * maxHeight)
+                            let y = maxHeight - (CGFloat(balance.totalNutrientsTracked) / CGFloat(maxNutrients) * maxHeight)
 
                             Circle()
-                                .fill(balance.balanceStatus.color)
+                                .fill(Color.green)
                                 .frame(width: 8, height: 8)
                                 .position(x: x, y: y)
                         }
                     }
                     .frame(height: 200)
                 } else {
-                    Text("No balance data yet")
+                    Text("Start logging meals to see your nutrient diversity")
                         .font(.system(size: 14))
                         .foregroundColor(.secondary)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
