@@ -515,6 +515,20 @@ class MicronutrientTrackingManager: ObservableObject {
 
             print("✅ Loaded \(dailyScores.count) nutrients with scores and \(balanceHistory.count) balance records")
 
+            // Recalculate all balance scores with new formula (fixes old weighted data)
+            print("🔄 Recalculating balance scores with new average coverage formula...")
+            let uniqueDates = Set(dailyScores.values.flatMap { $0.map { formatDate($0.date) } })
+            for dateKey in uniqueDates {
+                // Parse date from dateKey
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyy-MM-dd"
+                if let date = formatter.date(from: dateKey) {
+                    await updateBalanceScore(for: date)
+                }
+            }
+            await saveDailyScores()
+            print("✅ Recalculated \(uniqueDates.count) balance scores")
+
         } catch {
             print("❌ Error loading micronutrient data: \(error)")
         }
