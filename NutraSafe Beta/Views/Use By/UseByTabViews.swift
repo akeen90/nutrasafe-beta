@@ -275,70 +275,84 @@ struct AddFoundFoodToUseBySheet: View {
             ScrollView {
                 VStack(spacing: 16) {
                     SectionCard(title: "ITEM") {
-                        VStack(alignment: .center, spacing: 12) {
-                            // Item image
-                            if let image = capturedImage {
-                                Image(uiImage: image)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 100, height: 100)
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                            } else {
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color(.systemGray6))
-                                        .frame(width: 100, height: 100)
-                                    Image(systemName: "photo")
-                                        .font(.system(size: 32))
-                                        .foregroundColor(.secondary)
-                                }
-                            }
+                        VStack(spacing: 16) {
+                            // Horizontal layout with photo and details
+                            HStack(spacing: 16) {
+                                // Photo section - compact square
+                                Button(action: { showPhotoActionSheet = true }) {
+                                    ZStack {
+                                        if let image = capturedImage {
+                                            Image(uiImage: image)
+                                                .resizable()
+                                                .scaledToFill()
+                                                .frame(width: 80, height: 80)
+                                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                                .overlay(
+                                                    RoundedRectangle(cornerRadius: 12)
+                                                        .stroke(Color.blue.opacity(0.3), lineWidth: 2)
+                                                )
+                                        } else {
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .fill(Color.blue.opacity(0.1))
+                                                .frame(width: 80, height: 80)
+                                                .overlay(
+                                                    VStack(spacing: 4) {
+                                                        Image(systemName: "camera.fill")
+                                                            .font(.system(size: 20))
+                                                            .foregroundColor(.blue)
+                                                        Text("Photo")
+                                                            .font(.system(size: 10, weight: .medium))
+                                                            .foregroundColor(.blue)
+                                                    }
+                                                )
+                                                .overlay(
+                                                    RoundedRectangle(cornerRadius: 12)
+                                                        .stroke(Color.blue.opacity(0.3), style: StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
+                                                )
+                                        }
 
-                            // Item details
-                            VStack(spacing: 4) {
-                                Text(food.name)
-                                    .font(.system(size: 18, weight: .semibold))
-                                    .foregroundColor(.primary)
-                                    .multilineTextAlignment(.center)
-                                if let brand = food.brand {
-                                    Text(brand)
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.secondary)
+                                        if isUploadingPhoto {
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .fill(Color.black.opacity(0.5))
+                                                .frame(width: 80, height: 80)
+                                            ProgressView()
+                                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        }
+                                    }
                                 }
-                                if let serving = food.servingDescription {
-                                    Text(serving)
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.secondary)
-                                }
-                            }
+                                .buttonStyle(PlainButtonStyle())
+                                .disabled(isUploadingPhoto)
 
-                            // Add Photo button
-                            Button(action: { showPhotoActionSheet = true }) {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "camera.fill")
-                                        .font(.system(size: 14))
-                                    Text(capturedImage != nil ? "Change Photo" : "Add Photo")
-                                        .font(.system(size: 14, weight: .medium))
-                                }
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 10)
-                                .background(isUploadingPhoto ? Color.gray : Color.blue)
-                                .cornerRadius(10)
-                            }
-                            .disabled(isUploadingPhoto)
+                                // Item details
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(food.name)
+                                        .font(.system(size: 18, weight: .semibold))
+                                        .foregroundColor(.primary)
+                                        .lineLimit(2)
+                                        .multilineTextAlignment(.leading)
 
-                            if isUploadingPhoto {
-                                HStack(spacing: 6) {
-                                    ProgressView()
-                                        .scaleEffect(0.8)
-                                    Text("Uploading photo...")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                                    if let brand = food.brand {
+                                        Text(brand)
+                                            .font(.system(size: 14))
+                                            .foregroundColor(.secondary)
+                                    }
+
+                                    if let serving = food.servingDescription {
+                                        Text(serving)
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.secondary)
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 6)
+                                                    .fill(Color(.tertiarySystemBackground))
+                                            )
+                                    }
                                 }
+
+                                Spacer()
                             }
                         }
-                        .frame(maxWidth: .infinity)
                     }
                     SectionCard(title: "OPENED") {
                         SegmentedContainer {
