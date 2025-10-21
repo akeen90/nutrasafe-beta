@@ -63,6 +63,18 @@ struct MicronutrientToken {
     let nutrient: String
 }
 
+// MARK: - Cache Wrappers (NSCache requires classes)
+
+private class NutrientInfoWrapper {
+    let info: NutrientInfo
+    init(_ info: NutrientInfo) { self.info = info }
+}
+
+private class IngredientWrapper {
+    let ingredient: MicronutrientIngredient
+    init(_ ingredient: MicronutrientIngredient) { self.ingredient = ingredient }
+}
+
 // MARK: - SQLite Database Manager
 
 class MicronutrientDatabase {
@@ -71,8 +83,23 @@ class MicronutrientDatabase {
     private var db: OpaquePointer?
     private var isInitialized = false
 
+    // MARK: - Performance Caches
+
+    /// Cache for nutrient info lookups (most frequently called)
+    private let nutrientInfoCache = NSCache<NSString, NutrientInfoWrapper>()
+
+    /// Cache for ingredient lookups
+    private let ingredientCache = NSCache<NSString, IngredientWrapper>()
+
     private init() {
         openDatabase()
+        configureCache()
+    }
+
+    private func configureCache() {
+        // Limit memory usage
+        nutrientInfoCache.countLimit = 100  // Most nutrients fit here
+        ingredientCache.countLimit = 500    // Common ingredients
     }
 
     deinit {
@@ -207,6 +234,12 @@ class MicronutrientDatabase {
         guard isInitialized, let db = db else { return nil }
 
         let canonicalName = canonicalize(name)
+        let cacheKey = canonicalName as NSString
+
+        // Check cache first
+        if let cached = ingredientCache.object(forKey: cacheKey) {
+            return cached.ingredient
+        }
 
         // First get the ingredient details
         let ingredientQuery = "SELECT id, name, category FROM ingredients WHERE name = ? LIMIT 1;"
@@ -234,12 +267,17 @@ class MicronutrientDatabase {
         // Now get all nutrients for this ingredient
         let nutrients = lookupNutrientsForIngredient(id: id)
 
-        return MicronutrientIngredient(
+        let ingredient = MicronutrientIngredient(
             id: id,
             name: ingredientName,
             category: category,
             nutrients: nutrients
         )
+
+        // Cache the result
+        ingredientCache.setObject(IngredientWrapper(ingredient), forKey: cacheKey)
+
+        return ingredient
     }
 
     private func lookupNutrientsForIngredient(id: Int) -> [NutrientStrength] {
@@ -306,6 +344,12 @@ class MicronutrientDatabase {
     /// Get comprehensive information about a nutrient
     func getNutrientInfo(_ nutrient: String) -> NutrientInfo? {
         guard isInitialized, let db = db else { return nil }
+
+        // Check cache first
+        let cacheKey = nutrient.lowercased() as NSString
+        if let cached = nutrientInfoCache.object(forKey: cacheKey) {
+            return cached.info
+        }
 
         // Map detector IDs to database IDs
         let nutrientMapping: [String: String] = [
@@ -418,7 +462,7 @@ class MicronutrientDatabase {
 
         print("✅ Found data for '\(normalizedNutrient)'!")
 
-        return NutrientInfo(
+        let info = NutrientInfo(
             nutrient: String(cString: sqlite3_column_text(statement, 0)),
             name: String(cString: sqlite3_column_text(statement, 1)),
             category: sqlite3_column_text(statement, 2).map { String(cString: $0) },
@@ -427,6 +471,11 @@ class MicronutrientDatabase {
             commonSources: sqlite3_column_text(statement, 5).map { String(cString: $0) },
             recommendedDailyIntake: sqlite3_column_text(statement, 6).map { String(cString: $0) }
         )
+
+        // Cache the result
+        nutrientInfoCache.setObject(NutrientInfoWrapper(info), forKey: cacheKey)
+
+        return info
     }
 
     /// Get all available nutrients for display
