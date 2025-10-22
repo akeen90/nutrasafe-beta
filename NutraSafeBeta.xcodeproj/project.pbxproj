@@ -80,6 +80,8 @@
 		FDACD6EE052840C79A707950 /* AddTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0B6A2D7294D44D9A25481CE /* AddTabView.swift */; };
 		RECOM456E67696E65426C64 /* NutrientRecommendationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = RECOM456E67696E6546696C65 /* NutrientRecommendationEngine.swift */; };
 		RECOM566965774275696C64 /* SmartRecommendationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = RECOM5669657746696C65 /* SmartRecommendationsView.swift */; };
+		PAYWALL0001BUILD /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PAYWALL0001FILE /* PaywallView.swift */; };
+		SUBS0001BUILD /* SubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = SUBS0001FILE /* SubscriptionManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -154,6 +156,8 @@
 		FF612B9BEC774EC78502B67C /* FoodDetailViewFromSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodDetailViewFromSearch.swift; sourceTree = "<group>"; };
 		RECOM456E67696E6546696C65 /* NutrientRecommendationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutrientRecommendationEngine.swift; sourceTree = "<group>"; };
 		RECOM5669657746696C65 /* SmartRecommendationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartRecommendationsView.swift; sourceTree = "<group>"; };
+		PAYWALL0001FILE /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
+		SUBS0001FILE /* SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Managers/SubscriptionManager.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -291,6 +295,7 @@
 				1E2302F2CAB144499FF8B394 /* Views */,
 				A1234567890123456789012011 /* FirebaseManager.swift */,
 				A1234567890123456789012013 /* HealthKitManager.swift */,
+				SUBS0001FILE /* SubscriptionManager.swift */,
 				A1234567890123456789012003 /* Assets.xcassets */,
 				A1234567890123456789012012 /* GoogleService-Info.plist */,
 				96AFEAFFFC70426C97B3CF2E /* additives_full_described_with_sources_2025.csv */,
@@ -362,6 +367,7 @@
 		FC073BEEE31CC2F8B8962436 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				PAYWALL0001FILE /* PaywallView.swift */,
 				34316E0BF18B3895987C4AAF /* TermsAndConditionsView.swift */,
 				55FA70B49C3C721A45AA1C88 /* PrivacyPolicyView.swift */,
 			);
@@ -450,11 +456,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				C83CC72A7D464E1685D1143F /* SettingsView.swift in Sources */,
+				PAYWALL0001BUILD /* PaywallView.swift in Sources */,
 				AUTH1234567890123456789001 /* AuthenticationView.swift in Sources */,
 				A1234567890123456789012302 /* ContentView.swift in Sources */,
 				A1234567890123456789012301 /* NutraSafeBetaApp.swift in Sources */,
 				A1234567890123456789012305 /* FirebaseManager.swift in Sources */,
 				A1234567890123456789012307 /* HealthKitManager.swift in Sources */,
+				SUBS0001BUILD /* SubscriptionManager.swift in Sources */,
 				ABB0AEF32EA8CCA3009F044D /* OnboardingManager.swift in Sources */,
 				26E954E4A2634655AB0F1224 /* FoodDetailViewFromSearch.swift in Sources */,
 				99C873C9DCA241B8B3F6C5CA /* FoodSearchViews.swift in Sources */,

@@ -527,10 +527,11 @@ class DiaryDataManager: ObservableObject {
         saveFoodItems(key: keyForDate(date, type: "dinner"), items: dinner)
         saveFoodItems(key: keyForDate(date, type: "snacks"), items: snacks)
 
-        // Notify observers that data has changed
+        // Notify observers that data has changed and trigger UI reloads
         DispatchQueue.main.async {
             self.objectWillChange.send()
-            print("DiaryDataManager: Notified observers of data change")
+            self.dataReloadTrigger = UUID()
+            print("DiaryDataManager: Notified observers and triggered dataReloadTrigger")
         }
     }
     

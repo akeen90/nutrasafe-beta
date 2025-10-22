@@ -50,23 +50,27 @@ struct DailyNutrientScore: Codable, Identifiable {
 // MARK: - Nutrient Status
 
 enum MicronutrientStatus {
-    case low      // 0-30%
-    case adequate // 31-70%
-    case strong   // 71-100%
+    case none      // 0–9%
+    case low       // 10–39% (Trace)
+    case adequate  // 40–79% (Moderate)
+    case strong    // 80–100%
 
     static func from(percentage: Int) -> MicronutrientStatus {
         switch percentage {
-        case 0...30:
-            return .low
-        case 31...70:
-            return .adequate
-        default:
+        case 80...100:
             return .strong
+        case 40...79:
+            return .adequate
+        case 10...39:
+            return .low
+        default:
+            return .none
         }
     }
 
     var label: String {
         switch self {
+        case .none: return "None"
         case .low: return "Trace"
         case .adequate: return "Moderate"
         case .strong: return "Strong"
@@ -75,7 +79,8 @@ enum MicronutrientStatus {
 
     var color: Color {
         switch self {
-        case .low: return .red
+        case .none: return .gray
+        case .low: return .orange
         case .adequate: return .yellow
         case .strong: return .green
         }
@@ -83,9 +88,10 @@ enum MicronutrientStatus {
 
     var emoji: String {
         switch self {
-        case .low: return "🟠"  // Orange for Trace
-        case .adequate: return "🟡"  // Yellow for Moderate
-        case .strong: return "🟢"  // Green for Strong
+        case .none: return "⚪️"
+        case .low: return "🟠"
+        case .adequate: return "🟡"
+        case .strong: return "🟢"
         }
     }
 }
@@ -189,7 +195,7 @@ struct NutrientBalanceScore {
     }
 
     var summary: String {
-        "\(strongCount) strong • \(adequateCount) adequate • \(lowCount) low"
+        "🟢 \(strongCount) Strong 🟡 \(adequateCount) Moderate 🟠 \(lowCount) Trace"
     }
 }
 
@@ -277,7 +283,7 @@ struct NutrientInsightGenerator {
 
     /// Generate a single-line summary for a nutrient
     static func generateSummary(for summary: MicronutrientSummary) -> String {
-        let statusText = "\(summary.statusEmoji) \(summary.todayPercentage)%"
+        let statusText = "\(summary.statusEmoji) \(summary.todayStatus.label)"
         let trendText = summary.trend != .stable ? " \(summary.trend.symbol)" : ""
         return "\(statusText)\(trendText)"
     }

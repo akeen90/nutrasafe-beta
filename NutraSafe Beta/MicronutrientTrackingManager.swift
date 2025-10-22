@@ -369,8 +369,10 @@ class MicronutrientTrackingManager: ObservableObject {
                 $0.nutrient != "Sodium" &&
                 $0.nutrient != "Omega3_ALA" &&
                 $0.nutrient != "Omega3_EPA_DHA" &&
-                $0.nutrient != "Beta_Carotene"
-            } // REMOVED: Fluoride, Sodium, Omega-3, and Beta-Carotene are no longer tracked
+                $0.nutrient != "Beta_Carotene" &&
+                $0.nutrient != "Lutein_Zeaxanthin" &&
+                $0.nutrient != "Lycopene"
+            } // REMOVED: Fluoride, Sodium, Omega-3, Beta-Carotene, Lutein/Zeaxanthin, and Lycopene are no longer tracked
             .compactMap { info in
                 getNutrientSummary(for: info.nutrient)
             }

@@ -1401,6 +1401,7 @@ class FirebaseManager: ObservableObject {
 extension Notification.Name {
     static let useByInventoryUpdated = Notification.Name("useByInventoryUpdated")
     static let navigateToUseBy = Notification.Name("navigateToUseBy")
+    static let restartOnboarding = Notification.Name("restartOnboarding")
 }
 
 // MARK: - Response Models for Food Search

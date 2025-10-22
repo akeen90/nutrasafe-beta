@@ -13,6 +13,7 @@ import UserNotifications
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var firebaseManager: FirebaseManager
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
 
     @State private var showingSignOutAlert = false
     @State private var showingDeleteAccountAlert = false
@@ -21,6 +22,7 @@ struct SettingsView: View {
     @State private var errorMessage = ""
     @State private var showingSuccess = false
     @State private var successMessage = ""
+    @State private var showingPaywall = false
 
     var body: some View {
         NavigationView {
@@ -47,6 +49,40 @@ struct SettingsView: View {
                     // PHASE 5: App Preferences Section
                     AppPreferencesSection()
 
+                    // Premium Subscription Section
+                    SettingsSection(title: "Premium Subscription") {
+                        SettingsRow(
+                            icon: "star.circle",
+                            title: "Unlock NutraSafe Pro",
+                            iconColor: .purple,
+                            action: { showingPaywall = true }
+                        )
+
+                        Divider()
+                            .padding(.leading, 52)
+
+                        SettingsRow(
+                            icon: "arrow.triangle.2.circlepath",
+                            title: "Restore Purchases",
+                            iconColor: .blue,
+                            action: {
+                                Task { try? await subscriptionManager.restore() }
+                            }
+                        )
+
+                        Divider()
+                            .padding(.leading, 52)
+
+                        SettingsRow(
+                            icon: "creditcard",
+                            title: "Manage Subscription",
+                            iconColor: .blue,
+                            action: {
+                                Task { await subscriptionManager.manageSubscriptions() }
+                            }
+                        )
+                    }
+
                     // About Section
                     AboutSection()
 
@@ -66,6 +102,10 @@ struct SettingsView: View {
                     }
                 }
             }
+        }
+        .fullScreenCover(isPresented: $showingPaywall) {
+            PaywallView()
+                .environmentObject(subscriptionManager)
         }
         // Sign Out Confirmation
         .alert("Sign Out", isPresented: $showingSignOutAlert) {
@@ -215,8 +255,7 @@ struct AccountSection: View {
 
 struct AboutSection: View {
     @State private var showingHealthDisclaimer = false
-    @State private var showingTermsAndConditions = false
-    @State private var showingPrivacyPolicy = false
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         SettingsSection(title: "About") {
@@ -248,7 +287,9 @@ struct AboutSection: View {
                 title: "Terms & Conditions",
                 iconColor: .blue,
                 action: {
-                    showingTermsAndConditions = true
+                    if let url = URL(string: "https://www.nutrasafe.co.uk/terms-of-service.html") {
+                        UIApplication.shared.open(url)
+                    }
                 }
             )
 
@@ -260,7 +301,9 @@ struct AboutSection: View {
                 title: "Privacy Policy",
                 iconColor: .blue,
                 action: {
-                    showingPrivacyPolicy = true
+                    if let url = URL(string: "https://www.nutrasafe.co.uk/privacy-policy.html") {
+                        UIApplication.shared.open(url)
+                    }
                 }
             )
 
@@ -285,19 +328,15 @@ struct AboutSection: View {
                 iconColor: .green,
                 action: {
                     OnboardingManager.shared.resetOnboarding()
-                    // Force app to restart to show onboarding
-                    exit(0)
+                    NotificationCenter.default.post(name: .restartOnboarding, object: nil)
+                    let generator = UINotificationFeedbackGenerator()
+                    generator.notificationOccurred(.success)
+                    dismiss()
                 }
             )
         }
         .sheet(isPresented: $showingHealthDisclaimer) {
             HealthDisclaimerView()
-        }
-        .sheet(isPresented: $showingTermsAndConditions) {
-            TermsAndConditionsView()
-        }
-        .sheet(isPresented: $showingPrivacyPolicy) {
-            PrivacyPolicyView()
         }
     }
 

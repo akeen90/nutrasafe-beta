@@ -227,8 +227,8 @@ struct FoodDetailScreen: View {
                     DetailFeature(
                         icon: "chart.pie.fill",
                         colour: .purple,
-                        title: "40+ Micronutrients",
-                        description: "Vitamins, minerals, daily value percentages"
+                        title: "Essential Micronutrients",
+                        description: "Track vitamins, minerals, and daily value percentages"
                     )
                 }
                 .padding(.horizontal, 20)
@@ -252,7 +252,7 @@ struct TrackingNutrientsScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                Text("Track 40+ Micronutrients")
+                Text("Track Essential Micronutrients")
                     .font(.system(size: 32, weight: .bold))
                     .padding(.horizontal, 24)
                     .padding(.top, 40)
@@ -500,7 +500,7 @@ struct CompletionScreen: View {
 
                     CheckmarkItem(text: "Add food using 4 methods")
                     CheckmarkItem(text: "View detailed nutrition & allergen info")
-                    CheckmarkItem(text: "Track 40+ micronutrients automatically")
+                    CheckmarkItem(text: "Track essential vitamins and minerals automatically")
                     CheckmarkItem(text: "Log food reactions and spot patterns")
                     CheckmarkItem(text: "Time intermittent fasts")
                     CheckmarkItem(text: "Track food expiry dates")

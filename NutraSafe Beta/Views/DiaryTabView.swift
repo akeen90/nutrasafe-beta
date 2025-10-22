@@ -1,9 +1,11 @@
 import SwiftUI
 import Foundation
+import UIKit
 
 struct DiaryTabView: View {
     @EnvironmentObject var diaryDataManager: DiaryDataManager
     @EnvironmentObject var healthKitManager: HealthKitManager
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
     @State private var selectedDate: Date = Date()
     @State private var showingDatePicker: Bool = false
     @State private var refreshTrigger: Bool = false
@@ -29,6 +31,7 @@ struct DiaryTabView: View {
     @Binding var deleteTrigger: Bool
     let onEditFood: () -> Void
     let onDeleteFoods: () -> Void
+    var onBlockedNutrientsAttempt: (() -> Void)? = nil
 
     enum DiarySubTab: String, CaseIterable {
         case overview = "Overview"
@@ -314,7 +317,20 @@ struct DiaryTabView: View {
         .onAppear {
             loadFoodData()
         }
+        .onChange(of: diarySubTab) { newTab in
+            if newTab == .nutrients && !(subscriptionManager.isSubscribed || subscriptionManager.isInTrial) {
+                // Revert selection and notify parent to show paywall
+                diarySubTab = .overview
+                // Light warning haptic
+                let generator = UINotificationFeedbackGenerator()
+                generator.notificationOccurred(.warning)
+                onBlockedNutrientsAttempt?()
+            }
+        }
         .onChange(of: refreshTrigger) { _ in
+            loadFoodData()
+        }
+        .onChange(of: diaryDataManager.dataReloadTrigger) { _ in
             loadFoodData()
         }
         .onChange(of: editTrigger) { newValue in

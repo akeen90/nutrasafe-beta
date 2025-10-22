@@ -23,11 +23,11 @@ struct MicronutrientDashboard: View {
     @State private var isLoading = false // Performance: Prevent duplicate loads
 
     enum DashboardFilter: String, CaseIterable {
-        case all = "All"
-        case strong = "Strong Sources"
-        case moderate = "Moderate Sources"
-        case traceMissing = "Trace / Missing"
-    }
+    case all = "All"
+    case strong = "Strong"
+    case moderate = "Moderate"
+    case traceMissing = "Trace/Missing"
+}
 
     var body: some View {
         ScrollView {
@@ -150,25 +150,36 @@ struct MicronutrientDashboard: View {
     private func balanceOverviewBar(balance: NutrientBalanceScore) -> some View {
         VStack(spacing: 16) {
             // Main balance indicator
-            HStack {
-                VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 16) {
+                // Circular progress dial without numeric percentage
+                ZStack {
+                    Circle()
+                        .stroke(Color(.systemGray5), lineWidth: 10)
+                        .frame(width: 80, height: 80)
+
+                    Circle()
+                        .trim(from: 0, to: CGFloat(balance.balancePercentage) / 100.0)
+                        .stroke(balance.balanceStatus.color, style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                        .frame(width: 80, height: 80)
+                        .rotationEffect(.degrees(-90))
+
+                    Text(balance.balanceStatus.emoji)
+                        .font(.system(size: 28))
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
                     Text("Today's Balance")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.secondary)
 
-                    HStack(spacing: 12) {
-                        Text("\(balance.balancePercentage)%")
-                            .font(.system(size: 48, weight: .bold, design: .rounded))
-                            .foregroundColor(balance.balanceStatus.color)
+                    Text(balance.balanceStatus.label)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(balance.balanceStatus.color)
 
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(balance.balanceStatus.emoji)
-                                .font(.system(size: 24))
-                            Text(balance.balanceStatus.label)
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(balance.balanceStatus.color)
-                        }
-                    }
+                    // Labels line e.g. 🟢 27 Strong 🟡 1 Moderate 🟠 0 Trace
+                    Text("🟢 \(balance.strongCount) Strong 🟡 \(balance.adequateCount) Moderate 🟠 \(balance.lowCount) Trace")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.secondary)
                 }
 
                 Spacer()
@@ -217,7 +228,7 @@ struct MicronutrientDashboard: View {
 
                     if balance.lowCount > 0 {
                         Rectangle()
-                            .fill(Color.red)
+                            .fill(Color.orange)
                             .frame(width: lowWidth)
                     }
                 }
@@ -293,26 +304,29 @@ struct MicronutrientDashboard: View {
     // MARK: - Filter Tabs
 
     private var filterTabsSection: some View {
-        HStack(spacing: 12) {
-            ForEach(DashboardFilter.allCases, id: \.self) { filter in
-                Button(action: {
-                    withAnimation(.spring(response: 0.3)) {
-                        selectedFilter = filter
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(DashboardFilter.allCases, id: \.self) { filter in
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3)) {
+                            selectedFilter = filter
+                        }
+                    }) {
+                        Text(filter.rawValue)
+                            .font(.system(size: 13, weight: .semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.9)
+                            .foregroundColor(selectedFilter == filter ? .white : .primary)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(
+                                Capsule()
+                                    .fill(selectedFilter == filter ? Color.blue : Color(.systemGray5))
+                            )
                     }
-                }) {
-                    Text(filter.rawValue)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(selectedFilter == filter ? .white : .primary)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(
-                            Capsule()
-                                .fill(selectedFilter == filter ? Color.blue : Color(.systemGray5))
-                        )
                 }
             }
-
-            Spacer()
+            .padding(.vertical, 4)
         }
     }
 
@@ -453,9 +467,7 @@ struct MicronutrientRow: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(summary.todayStatus.color)
 
-                    Text("(\(summary.todayPercentage)%)")
-                        .font(.system(size: 12, weight: .regular))
-                        .foregroundColor(.secondary)
+
 
                     if summary.trend != .stable {
                         Text(summary.trend.symbol)
@@ -567,9 +579,7 @@ struct NutrientInfoSheet: View {
                         .foregroundColor(.secondary)
 
                     HStack(spacing: 12) {
-                        Text("\(summary.todayPercentage)%")
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundColor(summary.todayStatus.color)
+
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(summary.statusEmoji)
@@ -588,8 +598,8 @@ struct NutrientInfoSheet: View {
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.secondary)
 
-                    Text("\(Int(summary.sevenDayAverage))%")
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                    Text(summary.sevenDayStatus.label)
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundColor(summary.sevenDayStatus.color)
 
                     if summary.trend != .stable {

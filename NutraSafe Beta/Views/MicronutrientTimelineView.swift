@@ -188,7 +188,7 @@ struct MicronutrientTimelineView: View {
 
                 VStack(alignment: .trailing, spacing: 2) {
                     HStack(spacing: 4) {
-                        Text("\(summary.todayPercentage)%")
+                        Text(summary.todayStatus.label)
                             .font(.system(size: 14, weight: .bold))
                             .foregroundColor(summary.todayStatus.color)
 
@@ -199,7 +199,7 @@ struct MicronutrientTimelineView: View {
                         }
                     }
 
-                    Text("7-day: \(Int(summary.sevenDayAverage))%")
+                    Text("7-day: \(summary.sevenDayStatus.label)")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }

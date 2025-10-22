@@ -10,6 +10,8 @@ import SwiftUI
 struct CustomTabBar: View {
     @Binding var selectedTab: TabItem
     @ObservedObject var workoutManager: WorkoutManager
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
+    var onBlockedTabAttempt: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 0) {
@@ -17,12 +19,18 @@ struct CustomTabBar: View {
                 if tab == .add {
                     // Special Add button with circular design
                     Button(action: {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            selectedTab = tab
+                        let allowed = true // Add tab is free for everyone
+                        if allowed {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedTab = tab
+                            }
+                            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                            impactFeedback.impactOccurred()
+                        } else {
+                            onBlockedTabAttempt?()
+                            let notif = UINotificationFeedbackGenerator()
+                            notif.notificationOccurred(.warning)
                         }
-
-                        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                        impactFeedback.impactOccurred()
                     }) {
                         ZStack {
                             Circle()
@@ -47,12 +55,18 @@ struct CustomTabBar: View {
                 } else {
                     // Regular tab buttons
                     Button(action: {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            selectedTab = tab
+                        let allowed = subscriptionManager.isSubscribed || subscriptionManager.isInTrial || tab == .diary
+                        if allowed {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedTab = tab
+                            }
+                            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                            impactFeedback.impactOccurred()
+                        } else {
+                            onBlockedTabAttempt?()
+                            let notif = UINotificationFeedbackGenerator()
+                            notif.notificationOccurred(.warning)
                         }
-
-                        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                        impactFeedback.impactOccurred()
                     }) {
                         VStack(spacing: 4) {
                             Image(systemName: tab.icon)

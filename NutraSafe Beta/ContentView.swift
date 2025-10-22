@@ -4,6 +4,7 @@ import HealthKit
 import Vision
 import UserNotifications
 import ActivityKit
+import UIKit
 
 // Import the extracted view components
 // Note: These would typically be handled by proper module imports
@@ -1355,6 +1356,8 @@ struct ContentView: View {
     @StateObject private var workoutManager = WorkoutManager.shared
     @StateObject private var healthKitManager = HealthKitManager.shared
     @State private var showOnboarding = !OnboardingManager.shared.hasCompletedOnboarding
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
+    @State private var showingPaywall = false
 
     // MARK: - Lazy Tab Views (Performance Optimization)
     // Using ZStack with opacity instead of switch to keep views alive and avoid recreation
@@ -1371,7 +1374,8 @@ struct ContentView: View {
                 copyTrigger: $copyTrigger,
                 deleteTrigger: $deleteTrigger,
                 onEditFood: editSelectedFood,
-                onDeleteFoods: deleteSelectedFoods
+                onDeleteFoods: deleteSelectedFoods,
+                onBlockedNutrientsAttempt: { showingPaywall = true }
             )
             .environmentObject(diaryDataManager)
             .environmentObject(healthKitManager)
@@ -1415,7 +1419,7 @@ struct ContentView: View {
             if !workoutManager.isInWorkoutView {
                 VStack {
                     Spacer()
-                    CustomTabBar(selectedTab: $selectedTab, workoutManager: workoutManager)
+                    CustomTabBar(selectedTab: $selectedTab, workoutManager: workoutManager, onBlockedTabAttempt: { showingPaywall = true })
                         .offset(y: 34) // Lower the tab bar to bottom edge
                 }
             }
@@ -1448,14 +1452,34 @@ struct ContentView: View {
         .sheet(isPresented: $showingSettings) {
             SettingsView()
         }
+        .fullScreenCover(isPresented: $showingPaywall) {
+            PaywallView()
+                .environmentObject(subscriptionManager)
+        }
         .fullScreenCover(isPresented: $showOnboarding) {
             OnboardingView(onComplete: {
                 OnboardingManager.shared.completeOnboarding()
                 showOnboarding = false
+                showingPaywall = true
             })
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToUseBy)) { _ in
             selectedTab = .useBy
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .restartOnboarding)) { _ in
+            showOnboarding = true
+        }
+        .onChange(of: selectedTab) { newTab in
+            // Enforce subscription gating for programmatic tab changes
+            if !(subscriptionManager.isSubscribed || subscriptionManager.isInTrial) {
+                if !(newTab == .diary || newTab == .add) {
+                    // Revert and show paywall
+                    selectedTab = .diary
+                    let generator = UINotificationFeedbackGenerator()
+                    generator.notificationOccurred(.warning)
+                    showingPaywall = true
+                }
+            }
         }
         .onAppear {
             // Preload all tab data for instant display
