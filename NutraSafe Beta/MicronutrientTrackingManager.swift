@@ -20,6 +20,11 @@ class MicronutrientTrackingManager: ObservableObject {
     @Published private(set) var isLoading = false
     private var hasLoadedData = false // Track if we've loaded data to avoid duplicate loads
 
+    // MEMORY CACHE: Session-based cache to avoid redundant Firebase queries
+    private var firebaseCache: (scores: [String: [DailyNutrientScore]], balance: [NutrientBalanceScore])? = nil
+    private var cacheTimestamp: Date? = nil
+    private let cacheExpirationSeconds: TimeInterval = 300 // 5 minutes
+
     private let database = MicronutrientDatabase.shared
     private let db = Firestore.firestore()
 
@@ -61,6 +66,7 @@ class MicronutrientTrackingManager: ObservableObject {
     private func normalizeNutrientKey(_ key: String) -> String {
         // Map common camelCase formats to database keys
         let mappings: [String: String] = [
+            // Vitamins
             "vitaminA": "Vitamin_A",
             "vitaminC": "Vitamin_C",
             "vitaminD": "Vitamin_D",
@@ -75,6 +81,8 @@ class MicronutrientTrackingManager: ObservableObject {
             "folate": "Folate_B9",
             "vitaminB12": "Vitamin_B12",
             "choline": "Choline",
+
+            // Minerals
             "calcium": "Calcium",
             "iron": "Iron",
             "magnesium": "Magnesium",
@@ -87,7 +95,12 @@ class MicronutrientTrackingManager: ObservableObject {
             "selenium": "Selenium",
             "chromium": "Chromium",
             "molybdenum": "Molybdenum",
-            "iodine": "Iodine"
+            "iodine": "Iodine",
+
+            // Other nutrients (carotenoids, etc.)
+            "betaCarotene": "Beta_Carotene",
+            "lutein": "Lutein_Zeaxanthin",
+            "lycopene": "Lycopene"
         ]
 
         return mappings[key] ?? key
@@ -165,6 +178,49 @@ class MicronutrientTrackingManager: ObservableObject {
                 print("  ✅ \(nutrientKey) -> \(normalizedKey): \(points)% DV")
             }
         }
+
+        // REMOVED: Omega-3 tracking disabled per user request
+        // OMEGA-3 FIX: Also check for omega-3 via keyword matching
+        // Omega-3 is not in micronutrient profiles, so we use keyword detection
+        /*
+        let searchText = foodName.lowercased()
+
+        // Check for marine sources (high EPA/DHA, low ALA)
+        let marineSources = ["salmon", "sardines", "mackerel", "tuna", "herring", "anchovies"]
+        let plantSources = ["walnuts", "flax", "flaxseed", "chia", "hemp"]
+
+        if marineSources.contains(where: { searchText.contains($0) }) {
+            print("  🐟 Detected marine omega-3 source: \(foodName)")
+
+            // Marine sources: High EPA/DHA, minimal ALA
+            await updateDailyScore(
+                nutrient: "Omega3_EPA_DHA",
+                date: date,
+                points: Int(40 * servingSize), // Scale with serving size
+                source: foodName
+            )
+            await updateDailyScore(
+                nutrient: "Omega3_ALA",
+                date: date,
+                points: Int(5 * servingSize),
+                source: foodName
+            )
+            processedCount += 2
+            print("  ✅ Added Omega-3: EPA/DHA: \(Int(40 * servingSize))%, ALA: \(Int(5 * servingSize))%")
+        } else if plantSources.contains(where: { searchText.contains($0) }) {
+            print("  🌱 Detected plant omega-3 source: \(foodName)")
+
+            // Plant sources: High ALA, no EPA/DHA
+            await updateDailyScore(
+                nutrient: "Omega3_ALA",
+                date: date,
+                points: Int(50 * servingSize),
+                source: foodName
+            )
+            processedCount += 1
+            print("  ✅ Added Omega-3 (ALA): \(Int(50 * servingSize))%")
+        }
+        */
 
         // Recalculate balance for the day
         await updateBalanceScore(for: date)
@@ -307,9 +363,18 @@ class MicronutrientTrackingManager: ObservableObject {
         await ensureDataLoaded()
 
         let allNutrients = database.getAllNutrients()
-        return allNutrients.compactMap { info in
-            getNutrientSummary(for: info.nutrient)
-        }.sorted { $0.name < $1.name }
+        return allNutrients
+            .filter {
+                $0.nutrient != "Fluoride" &&
+                $0.nutrient != "Sodium" &&
+                $0.nutrient != "Omega3_ALA" &&
+                $0.nutrient != "Omega3_EPA_DHA" &&
+                $0.nutrient != "Beta_Carotene"
+            } // REMOVED: Fluoride, Sodium, Omega-3, and Beta-Carotene are no longer tracked
+            .compactMap { info in
+                getNutrientSummary(for: info.nutrient)
+            }
+            .sorted { $0.name < $1.name }
     }
 
     /// Ensure data is loaded before accessing (lazy loading)
@@ -382,6 +447,11 @@ class MicronutrientTrackingManager: ObservableObject {
     private func saveDailyScores() async {
         guard let userId = Auth.auth().currentUser?.uid else { return }
 
+        // MEMORY CACHE: Invalidate cache when saving new data
+        firebaseCache = nil
+        cacheTimestamp = nil
+        print("🗑️ Cache invalidated due to new data save")
+
         // Save to Firestore
         for (nutrient, scores) in dailyScores {
             for score in scores {
@@ -431,12 +501,22 @@ class MicronutrientTrackingManager: ObservableObject {
     private func loadFromFirestore() async {
         guard let userId = Auth.auth().currentUser?.uid else { return }
 
+        // MEMORY CACHE: Check if we have fresh cached data
+        if let cache = firebaseCache,
+           let timestamp = cacheTimestamp,
+           Date().timeIntervalSince(timestamp) < cacheExpirationSeconds {
+            print("⚡️ Using cached Firebase data (age: \(Int(Date().timeIntervalSince(timestamp)))s)")
+            dailyScores = cache.scores
+            balanceHistory = cache.balance
+            return
+        }
+
         isLoading = true
         defer { isLoading = false }
 
         // OPTIMIZED: Load only last 7 days instead of 30 for faster initial load
         let sevenDaysAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
-        print("📊 Loading micronutrient data for last 7 days (optimized)")
+        print("📊 Loading micronutrient data from Firebase for last 7 days (optimized)")
 
         do {
             // Load nutrient scores
@@ -528,6 +608,11 @@ class MicronutrientTrackingManager: ObservableObject {
             }
             await saveDailyScores()
             print("✅ Recalculated \(uniqueDates.count) balance scores")
+
+            // MEMORY CACHE: Cache the loaded data
+            firebaseCache = (scores: dailyScores, balance: balanceHistory)
+            cacheTimestamp = Date()
+            print("💾 Cached Firebase data for future access")
 
         } catch {
             print("❌ Error loading micronutrient data: \(error)")
