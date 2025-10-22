@@ -275,6 +275,20 @@ struct AboutSection: View {
                     showingHealthDisclaimer = true
                 }
             )
+
+            Divider()
+                .padding(.leading, 52)
+
+            SettingsRow(
+                icon: "arrow.clockwise.circle",
+                title: "Restart Onboarding",
+                iconColor: .green,
+                action: {
+                    OnboardingManager.shared.resetOnboarding()
+                    // Force app to restart to show onboarding
+                    exit(0)
+                }
+            )
         }
         .sheet(isPresented: $showingHealthDisclaimer) {
             HealthDisclaimerView()

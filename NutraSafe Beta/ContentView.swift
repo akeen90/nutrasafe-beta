@@ -1354,7 +1354,8 @@ struct ContentView: View {
     @State private var deleteTrigger = false
     @StateObject private var workoutManager = WorkoutManager.shared
     @StateObject private var healthKitManager = HealthKitManager.shared
-    
+    @State private var showOnboarding = !OnboardingManager.shared.hasCompletedOnboarding
+
     // MARK: - Lazy Tab Views (Performance Optimization)
     // Using ZStack with opacity instead of switch to keep views alive and avoid recreation
     @ViewBuilder
@@ -1446,6 +1447,12 @@ struct ContentView: View {
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .sheet(isPresented: $showingSettings) {
             SettingsView()
+        }
+        .fullScreenCover(isPresented: $showOnboarding) {
+            OnboardingView(onComplete: {
+                OnboardingManager.shared.completeOnboarding()
+                showOnboarding = false
+            })
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToUseBy)) { _ in
             selectedTab = .useBy
