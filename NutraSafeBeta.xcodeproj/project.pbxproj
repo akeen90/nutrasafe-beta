@@ -647,6 +647,7 @@
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = NO;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = NutraSafe;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "This app needs camera access to scan product barcodes for nutrition information.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "NutraSafe needs access to your exercise calories to provide accurate nutrition tracking and recommendations.";
@@ -679,6 +680,7 @@
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = NO;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = NutraSafe;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "This app needs camera access to scan product barcodes for nutrition information.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "NutraSafe needs access to your exercise calories to provide accurate nutrition tracking and recommendations.";

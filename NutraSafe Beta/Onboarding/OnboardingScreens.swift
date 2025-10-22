@@ -137,7 +137,7 @@ struct AddingFoodScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                Text("4 Ways to Find Food")
+                Text("3 Ways to Find Food")
                     .font(.system(size: 32, weight: .bold))
                     .padding(.horizontal, 24)
                     .padding(.top, 40)
@@ -156,18 +156,12 @@ struct AddingFoodScreen: View {
                     )
 
                     FeatureCard(
-                        icon: "camera.fill",
-                        title: "AI Scanner",
-                        description: "Take photo of meal, AI detects foods automatically"
-                    )
-
-                    FeatureCard(
                         icon: "pencil",
                         title: "Manual Entry",
                         description: "Create custom foods from scratch"
                     )
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, 20)
 
                 InfoBox(text: "Every food shows nutrition score, allergens, and full ingredient analysis")
                     .padding(.horizontal, 24)
@@ -237,7 +231,7 @@ struct FoodDetailScreen: View {
                         description: "Vitamins, minerals, daily value percentages"
                     )
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, 20)
 
                 HStack(spacing: 12) {
                     SkipButton(currentPage: $currentPage)
@@ -298,7 +292,7 @@ struct TrackingNutrientsScreen: View {
                         ]
                     )
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, 20)
 
                 InfoBox(text: "Nutrients track automatically - just log your meals!")
                     .padding(.horizontal, 24)
@@ -571,8 +565,11 @@ struct FeatureCard: View {
                     .font(.system(size: 14))
                     .foregroundColor(.secondary)
             }
+
+            Spacer()
         }
         .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.systemGray6))
         .cornerRadius(12)
     }
@@ -598,8 +595,11 @@ struct DetailFeature: View {
                     .font(.system(size: 14))
                     .foregroundColor(.secondary)
             }
+
+            Spacer()
         }
         .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.systemGray6))
         .cornerRadius(10)
     }
@@ -626,10 +626,12 @@ struct NutrientFeature: View {
                     Text(detail)
                         .font(.system(size: 14))
                         .foregroundColor(.secondary)
+                    Spacer()
                 }
             }
         }
         .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.systemGray6))
         .cornerRadius(12)
     }
