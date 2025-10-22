@@ -1488,6 +1488,10 @@ struct ContentView: View {
                 } catch {
                     print("⚠️ Failed to preload reactions: \(error)")
                 }
+
+                // 5. Preload micronutrient data for Nutrients tab
+                _ = await MicronutrientTrackingManager.shared.getAllNutrientSummaries()
+                print("💊 Preloaded micronutrient data")
             }
         }
         }

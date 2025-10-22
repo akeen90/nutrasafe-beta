@@ -67,8 +67,8 @@ enum MicronutrientStatus {
 
     var label: String {
         switch self {
-        case .low: return "Low"
-        case .adequate: return "Adequate"
+        case .low: return "Trace"
+        case .adequate: return "Moderate"
         case .strong: return "Strong"
         }
     }
@@ -83,9 +83,9 @@ enum MicronutrientStatus {
 
     var emoji: String {
         switch self {
-        case .low: return "🔴"
-        case .adequate: return "🟡"
-        case .strong: return "🟢"
+        case .low: return "🟠"  // Orange for Trace
+        case .adequate: return "🟡"  // Yellow for Moderate
+        case .strong: return "🟢"  // Green for Strong
         }
     }
 }
@@ -239,25 +239,25 @@ struct NutrientInsightGenerator {
         if !strengths.isEmpty {
             for summary in strengths {
                 let sources = summary.recentSources.prefix(2).joined(separator: ", ")
-                insights.append("🟢 \(summary.name) strong (\(summary.todayPercentage)%) from \(sources)")
+                insights.append("🟢 \(summary.name) strong from \(sources)")
             }
         }
 
-        // Bottom 3 lows (≤30%)
-        let lows = summaries
-            .filter { $0.todayPercentage <= 30 }
+        // Bottom 3 trace nutrients (≤30%, but exclude 0% as they have no data)
+        let trace = summaries
+            .filter { $0.todayPercentage > 0 && $0.todayPercentage <= 30 }
             .sorted { $0.todayPercentage < $1.todayPercentage }
             .prefix(3)
 
-        if !lows.isEmpty {
-            for summary in lows {
+        if !trace.isEmpty {
+            for summary in trace {
                 // Parse array format from database
                 let suggestions = parseArrayString(summary.info?.commonSources)
                     .prefix(2)
                     .joined(separator: " or ")
 
                 let finalSuggestion = suggestions.isEmpty ? "nutrient-rich foods" : suggestions
-                insights.append("🔴 \(summary.name) low (\(summary.todayPercentage)%) — Add \(finalSuggestion)")
+                insights.append("🟠 \(summary.name) trace — Add \(finalSuggestion)")
             }
         }
 

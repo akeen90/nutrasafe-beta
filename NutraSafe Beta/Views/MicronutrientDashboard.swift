@@ -24,8 +24,9 @@ struct MicronutrientDashboard: View {
 
     enum DashboardFilter: String, CaseIterable {
         case all = "All"
-        case needsAttention = "Needs Attention"
-        case strong = "Strong"
+        case strong = "Strong Sources"
+        case moderate = "Moderate Sources"
+        case traceMissing = "Trace / Missing"
     }
 
     var body: some View {
@@ -183,14 +184,14 @@ struct MicronutrientDashboard: View {
 
                 balanceBreakdownItem(
                     count: balance.adequateCount,
-                    label: "Adequate",
+                    label: "Moderate",
                     color: .yellow
                 )
 
                 balanceBreakdownItem(
                     count: balance.lowCount,
-                    label: "Low",
-                    color: .red
+                    label: "Trace",
+                    color: .orange
                 )
             }
 
@@ -358,10 +359,12 @@ struct MicronutrientDashboard: View {
         switch selectedFilter {
         case .all:
             return summaries
-        case .needsAttention:
-            return summaries.filter { $0.todayStatus == .low }
         case .strong:
             return summaries.filter { $0.todayStatus == .strong }
+        case .moderate:
+            return summaries.filter { $0.todayStatus == .adequate }
+        case .traceMissing:
+            return summaries.filter { $0.todayStatus == .low }
         }
     }
 
@@ -445,19 +448,28 @@ struct MicronutrientRow: View {
                     .foregroundColor(.primary)
 
                 HStack(spacing: 8) {
-                    Text("\(summary.todayPercentage)%")
-                        .font(.system(size: 13, weight: .medium))
+                    // Intensity label (Strong/Moderate/Trace)
+                    Text(summary.todayStatus.label)
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(summary.todayStatus.color)
+
+                    Text("(\(summary.todayPercentage)%)")
+                        .font(.system(size: 12, weight: .regular))
+                        .foregroundColor(.secondary)
 
                     if summary.trend != .stable {
                         Text(summary.trend.symbol)
                             .font(.system(size: 13))
                             .foregroundColor(summary.trend.color)
                     }
+                }
 
-                    Text("• 7-day avg: \(Int(summary.sevenDayAverage))%")
-                        .font(.system(size: 12))
+                // Show recent food sources
+                if !summary.recentSources.isEmpty {
+                    Text("from \(summary.recentSources.prefix(2).joined(separator: ", "))")
+                        .font(.system(size: 11))
                         .foregroundColor(.secondary)
+                        .lineLimit(1)
                 }
             }
 
