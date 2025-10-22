@@ -27,9 +27,6 @@ struct MicronutrientTimelineView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 24) {
-                    // Balance history chart
-                    balanceHistoryChart
-
                     // Individual nutrient timelines
                     nutrientTimelinesSection
                 }

@@ -19,6 +19,8 @@ struct MicronutrientDashboard: View {
     @State private var showingRecommendations = false
     @State private var insights: [String] = []
     @State private var nutrientSummaries: [MicronutrientSummary] = []
+    @State private var hasLoadedData = false // Performance: Track if we've already loaded data
+    @State private var isLoading = false // Performance: Prevent duplicate loads
 
     enum DashboardFilter: String, CaseIterable {
         case all = "All"
@@ -60,15 +62,38 @@ struct MicronutrientDashboard: View {
             SmartRecommendationsView()
         }
         .task {
-            // Process today's diary foods to update nutrient tracking
-            await processTodaysFoods()
+            // Performance: Only load data once, not every time view appears
+            guard !hasLoadedData && !isLoading else {
+                print("⚡️ Skipping reload - data already loaded")
+                return
+            }
 
-            // Generate recommendations when view appears
+            isLoading = true
+            print("📊 MicronutrientDashboard: Fast initial load starting...")
+
+            // PERFORMANCE OPTIMIZATION: Load Firebase data first, then show UI IMMEDIATELY
+            // This allows the user to see the UI without waiting for today's food processing
             nutrientSummaries = await trackingManager.getAllNutrientSummaries()
-            await recommendationEngine.generateRecommendations(for: nutrientSummaries)
-
-            // Load insights
             insights = await trackingManager.generateTodayInsights()
+
+            hasLoadedData = true
+            isLoading = false
+            print("✅ MicronutrientDashboard: UI ready with Firebase data")
+
+            // Background: Process today's foods asynchronously (doesn't block UI)
+            Task.detached(priority: .utility) {
+                await self.processTodaysFoods()
+
+                // Refresh summaries and insights after processing
+                await MainActor.run {
+                    Task {
+                        self.nutrientSummaries = await trackingManager.getAllNutrientSummaries()
+                        self.insights = await trackingManager.generateTodayInsights()
+                        await recommendationEngine.generateRecommendations(for: self.nutrientSummaries)
+                        print("🔄 Background refresh complete")
+                    }
+                }
+            }
         }
     }
 
@@ -343,47 +368,43 @@ struct MicronutrientDashboard: View {
     // MARK: - Data Processing
 
     private func processTodaysFoods() async {
-        print("📊 MicronutrientDashboard: Processing last 30 days (OPTIMIZED - single query)")
+        print("📊 MicronutrientDashboard: Processing TODAY ONLY (performance fix)")
+
+        // PERFORMANCE FIX: Only process TODAY'S foods, not 30 days
+        // The tracking manager will automatically calculate 7-day and 30-day averages from Firebase data
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
 
         do {
-            // OPTIMIZED: Fetch all 30 days in ONE Firebase query instead of 30 sequential queries
-            let allEntries = try await FirebaseManager.shared.getFoodEntriesForPeriod(days: 30)
-            print("📥 Loaded \(allEntries.count) total food entries for last 30 days")
+            // Only fetch and process today's foods
+            let (breakfast, lunch, dinner, snacks) = try await diaryDataManager.getFoodDataAsync(for: today)
+            let allFoods = breakfast + lunch + dinner + snacks
 
-            // Group entries by date and process
-            let calendar = Calendar.current
-            let groupedByDate = Dictionary(grouping: allEntries) { entry in
-                calendar.startOfDay(for: entry.date)
-            }
+            print("📥 Processing \(allFoods.count) foods from today")
 
-            print("📊 Found foods on \(groupedByDate.count) different days")
-
-            // Process each day's foods
-            for (date, entries) in groupedByDate {
-                if !entries.isEmpty {
-                    print("  📋 Processing \(entries.count) foods on \(formatDate(date))")
-
-                    // Get full food details for this date (cached via our new food entries cache!)
-                    let (breakfast, lunch, dinner, snacks) = try await diaryDataManager.getFoodDataAsync(for: date)
-                    let allFoods = breakfast + lunch + dinner + snacks
-
-                    // Process each food's micronutrients
-                    for food in allFoods {
-                        if let profile = food.micronutrientProfile {
-                            await trackingManager.processNutrientProfile(
-                                profile,
-                                foodName: food.name,
-                                servingSize: food.quantity,
-                                date: date
-                            )
-                        }
-                    }
+            // Process each food's micronutrients
+            for food in allFoods {
+                // Process vitamins and minerals from micronutrient profile if available
+                if let profile = food.micronutrientProfile {
+                    await trackingManager.processNutrientProfile(
+                        profile,
+                        foodName: food.name,
+                        servingSize: food.quantity,
+                        date: today
+                    )
+                } else {
+                    // No micronutrient profile - use keyword-based detection instead
+                    await trackingManager.processFoodLog(
+                        name: food.name,
+                        ingredients: food.ingredients ?? [],
+                        date: today
+                    )
                 }
             }
 
-            print("✅ MicronutrientDashboard: Finished processing all diary foods")
+            print("✅ MicronutrientDashboard: Finished processing today's foods")
         } catch {
-            print("❌ Error loading food entries for period: \(error)")
+            print("❌ Error loading today's food entries: \(error)")
         }
     }
 

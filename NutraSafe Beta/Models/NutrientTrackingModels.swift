@@ -339,26 +339,29 @@ struct NutrientDetector {
                 }
             }
 
-            print("  📊 Total nutrients detected: \(detectedNutrients.count)")
+            print("  📊 Total nutrients from profile: \(detectedNutrients.count)")
         } else {
             print("🔍 Detecting nutrients in '\(food.name)' using keyword matching (no micronutrient profile)")
-
-            // Fallback to keyword-based detection if no micronutrient profile
-            let searchText = "\(food.name.lowercased()) \(food.brand?.lowercased() ?? "") \(food.ingredients?.joined(separator: " ").lowercased() ?? "")"
-
-            for (nutrientId, keywords) in nutrientFoodSources {
-                for keyword in keywords {
-                    if searchText.contains(keyword.lowercased()) {
-                        detectedNutrients.insert(nutrientId)
-                        print("  ✅ Found keyword '\(keyword)' -> \(nutrientId)")
-                        break
-                    }
-                }
-            }
-
-            print("  📊 Total nutrients detected: \(detectedNutrients.count)")
         }
 
+        // ALWAYS do keyword-based detection for nutrients not in micronutrient profiles
+        // (like omega-3, lutein, lycopene, etc.) regardless of whether food has a profile
+        print("  🔎 Supplementing with keyword matching for special nutrients...")
+        let searchText = "\(food.name.lowercased()) \(food.brand?.lowercased() ?? "") \(food.ingredients?.joined(separator: " ").lowercased() ?? "")"
+
+        for (nutrientId, keywords) in nutrientFoodSources {
+            for keyword in keywords {
+                if searchText.contains(keyword.lowercased()) {
+                    let wasNew = detectedNutrients.insert(nutrientId).inserted
+                    if wasNew {
+                        print("  ✅ Found keyword '\(keyword)' -> \(nutrientId)")
+                    }
+                    break
+                }
+            }
+        }
+
+        print("  📊 Total nutrients detected: \(detectedNutrients.count)")
         return Array(detectedNutrients)
     }
 

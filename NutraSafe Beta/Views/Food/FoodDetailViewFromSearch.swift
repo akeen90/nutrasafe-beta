@@ -2392,30 +2392,34 @@ struct FoodDetailViewFromSearch: View {
         print("🔬 getDetectedNutrients() called for food: \(food.name)")
         print("  📝 Ingredients: \(food.ingredients ?? [])")
 
-        guard let ingredients = food.ingredients, !ingredients.isEmpty else {
-            print("  ❌ No ingredients found")
-            return []
+        var detectedNutrients: [String] = []
+
+        // Detect from ingredients if available
+        if let ingredients = food.ingredients, !ingredients.isEmpty {
+            // Create a temporary DiaryFoodItem for nutrient detection
+            let tempFood = DiaryFoodItem(
+                name: food.name,
+                brand: food.brand,
+                calories: 0,
+                protein: 0,
+                carbs: 0,
+                fat: 0,
+                servingDescription: "",
+                quantity: 1,
+                ingredients: ingredients,
+                barcode: food.barcode,
+                micronutrientProfile: nil
+            )
+
+            // Use NutrientDetector to detect nutrients from ingredients
+            detectedNutrients = NutrientDetector.detectNutrients(in: tempFood)
+            print("  ✅ Detected \(detectedNutrients.count) nutrients from ingredients: \(detectedNutrients)")
+        } else {
+            print("  ⚠️ No ingredients found")
         }
 
-        // Create a temporary DiaryFoodItem for nutrient detection
-        let tempFood = DiaryFoodItem(
-            name: food.name,
-            brand: food.brand,
-            calories: 0,
-            protein: 0,
-            carbs: 0,
-            fat: 0,
-            servingDescription: "",
-            quantity: 1,
-            ingredients: ingredients,
-            barcode: food.barcode,
-            micronutrientProfile: nil
-        )
-
-        // Use NutrientDetector to detect nutrients from ingredients
-        let detected = NutrientDetector.detectNutrients(in: tempFood)
-        print("  ✅ Detected \(detected.count) nutrients: \(detected)")
-        return detected
+        print("  ✅ Total nutrients to display: \(detectedNutrients.count)")
+        return detectedNutrients
     }
 
     // MARK: - Edit Functions

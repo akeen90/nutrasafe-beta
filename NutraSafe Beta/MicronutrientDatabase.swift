@@ -387,7 +387,7 @@ class MicronutrientDatabase {
             "chromium": "Chromium",
             "molybdenum": "Molybdenum",
             "sodium": "Sodium",
-            "fluoride": "Fluoride",
+            // "fluoride": "Fluoride", // REMOVED: Not tracked
 
             // Other nutrients
             "choline": "Choline",
