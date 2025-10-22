@@ -521,30 +521,96 @@ class MicronutrientDatabase {
     /// Analyze a food item and return all detected micronutrients with their strengths
     /// Combines ingredient matching and token matching
     func analyzeFoodItem(name: String, ingredients: [String] = []) -> [String: NutrientStrength.Strength] {
-        var nutrientScores: [String: NutrientStrength.Strength] = [:]
+        // Use intelligent weighting system for realistic nutrient contributions
+        return analyzeFoodItemWithWeighting(name: name, ingredients: ingredients)
+    }
+
+    /// INTELLIGENT WEIGHTING SYSTEM: Calculate realistic nutrient contributions
+    /// Based on ingredient position, count, and dish complexity
+    private func analyzeFoodItemWithWeighting(name: String, ingredients: [String]) -> [String: NutrientStrength.Strength] {
+        var nutrientContributions: [String: Double] = [:]
 
         // 1. Check for tokens in food name (these are always "strong")
         let tokenMatches = matchTokens(in: name)
         for nutrient in tokenMatches {
-            nutrientScores[nutrient] = .strong
+            nutrientContributions[nutrient] = 1.0 // Maximum contribution
         }
 
-        // 2. Process each ingredient
-        for ingredient in ingredients {
+        // 2. Calculate dish complexity penalty
+        let ingredientCount = ingredients.count
+        let complexityPenalty: Double = ingredientCount > 8 ? 0.25 : 0.30 // 25-30% reduction for complex dishes
+
+        // 3. Process each ingredient with weighted contribution
+        for (index, ingredient) in ingredients.enumerated() {
             if let ingredientData = lookupIngredient(ingredient) {
+                // Calculate ingredient weight based on position
+                let baseWeight = calculateIngredientWeight(position: index, totalCount: ingredientCount)
+
+                // Apply complexity penalty for dishes with many ingredients
+                let adjustedWeight = ingredientCount > 8 ? baseWeight * (1.0 - complexityPenalty) : baseWeight
+
+                // Add weighted contributions from this ingredient
                 for nutrientStrength in ingredientData.nutrients {
-                    // Keep the strongest occurrence
-                    if let existing = nutrientScores[nutrientStrength.nutrient] {
-                        if nutrientStrength.strength.points > existing.points {
-                            nutrientScores[nutrientStrength.nutrient] = nutrientStrength.strength
-                        }
-                    } else {
-                        nutrientScores[nutrientStrength.nutrient] = nutrientStrength.strength
-                    }
+                    let nutrientValue = Double(nutrientStrength.strength.points) / 3.0 // Normalize to 0.33-1.0
+                    let weightedContribution = adjustedWeight * nutrientValue
+
+                    // Accumulate contributions
+                    nutrientContributions[nutrientStrength.nutrient, default: 0.0] += weightedContribution
                 }
             }
         }
 
-        return nutrientScores
+        // 4. Convert weighted contributions to strength levels
+        return convertWeightedContributionsToStrengths(nutrientContributions)
+    }
+
+    /// Calculate ingredient weight based on its position in the ingredient list
+    /// First 3-5 ingredients get boosted weights (assumed to be main components)
+    private func calculateIngredientWeight(position: Int, totalCount: Int) -> Double {
+        if totalCount <= 3 {
+            // Simple meals: equal distribution
+            return 1.0 / Double(totalCount)
+        }
+
+        // Complex meals: boost core ingredients (first 3-5)
+        if position < 3 {
+            // First 3 ingredients: major contributors (30-40% each for simple, 20-25% for complex)
+            return totalCount <= 5 ? 0.35 : 0.22
+        } else if position < 5 {
+            // Next 2 ingredients: medium contributors (10-15%)
+            return totalCount <= 10 ? 0.12 : 0.08
+        } else {
+            // Remaining ingredients: minor contributors (2-5% each)
+            let remainingCount = max(totalCount - 5, 1)
+            return 0.10 / Double(remainingCount) // Split 10% among all minor ingredients
+        }
+    }
+
+    /// Convert weighted nutrient contributions to strength classifications
+    /// Uses realistic thresholds: Strong ≥0.25, Moderate 0.10-0.24, Trace <0.10
+    private func convertWeightedContributionsToStrengths(_ contributions: [String: Double]) -> [String: NutrientStrength.Strength] {
+        var result: [String: NutrientStrength.Strength] = [:]
+
+        for (nutrient, contribution) in contributions {
+            let strength: NutrientStrength.Strength
+
+            if contribution >= 0.25 {
+                // Strong: Major source (≥25% contribution)
+                strength = .strong
+            } else if contribution >= 0.10 {
+                // Moderate: Medium source or frequent appearance (10-24%)
+                strength = .moderate
+            } else if contribution >= 0.01 {
+                // Trace: Minor contribution (1-9%)
+                strength = .trace
+            } else {
+                // Too small to register - skip
+                continue
+            }
+
+            result[nutrient] = strength
+        }
+
+        return result
     }
 }
