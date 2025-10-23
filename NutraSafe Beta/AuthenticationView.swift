@@ -9,11 +9,11 @@ import SwiftUI
 import FirebaseAuth
 
 struct AuthenticationView: View {
-    @StateObject private var authManager = AuthenticationManager.shared
+    @StateObject private var firebaseManager = FirebaseManager.shared
     @State private var showingSignUp = false
 
     var body: some View {
-        if authManager.isAuthenticated {
+        if firebaseManager.isAuthenticated {
             // User is signed in, show main app
             ContentView()
         } else {
@@ -30,7 +30,7 @@ struct AuthenticationView: View {
 // MARK: - Sign In View
 struct SignInView: View {
     @Binding var showingSignUp: Bool
-    @StateObject private var authManager = AuthenticationManager.shared
+    @StateObject private var firebaseManager = FirebaseManager.shared
 
     @State private var email = ""
     @State private var password = ""
@@ -173,7 +173,7 @@ struct SignInView: View {
 
         Task {
             do {
-                try await authManager.signIn(email: email, password: password)
+                try await firebaseManager.signIn(email: email, password: password)
             } catch {
                 await MainActor.run {
                     errorMessage = error.localizedDescription
@@ -188,7 +188,7 @@ struct SignInView: View {
 // MARK: - Sign Up View
 struct SignUpView: View {
     @Binding var showingSignUp: Bool
-    @StateObject private var authManager = AuthenticationManager.shared
+    @StateObject private var firebaseManager = FirebaseManager.shared
 
     @State private var email = ""
     @State private var password = ""
@@ -352,7 +352,7 @@ struct SignUpView: View {
 
         Task {
             do {
-                try await authManager.signUp(email: email, password: password)
+                try await firebaseManager.signUp(email: email, password: password)
                 await MainActor.run {
                     showingSignUp = false
                 }
@@ -367,70 +367,9 @@ struct SignUpView: View {
     }
 }
 
-// MARK: - Authentication Manager
-class AuthenticationManager: ObservableObject {
-    static let shared = AuthenticationManager()
-
-    @Published var isAuthenticated = false
-    @Published var currentUser: User?
-
-    private init() {
-        // Check if user is already signed in
-        if let user = Auth.auth().currentUser {
-            self.isAuthenticated = true
-            self.currentUser = user
-            // Load reactions for existing user
-            ReactionManager.shared.reloadIfAuthenticated()
-        }
-
-        // Listen for auth state changes
-        Auth.auth().addStateDidChangeListener { [weak self] _, user in
-            DispatchQueue.main.async {
-                self?.isAuthenticated = user != nil
-                self?.currentUser = user
-
-                // Load reactions when user authenticates
-                if user != nil {
-                    ReactionManager.shared.reloadIfAuthenticated()
-                }
-            }
-        }
-    }
-
-    func signIn(email: String, password: String) async throws {
-        let result = try await Auth.auth().signIn(withEmail: email, password: password)
-        await MainActor.run {
-            self.currentUser = result.user
-            self.isAuthenticated = true
-        }
-    }
-
-    func signUp(email: String, password: String) async throws {
-        let result = try await Auth.auth().createUser(withEmail: email, password: password)
-        await MainActor.run {
-            self.currentUser = result.user
-            self.isAuthenticated = true
-        }
-    }
-
-    func signOut() throws {
-        try Auth.auth().signOut()
-        self.currentUser = nil
-        self.isAuthenticated = false
-    }
-
-    func resetPassword(email: String) async throws {
-        // Use default Firebase password reset without custom action code settings
-        // This uses Firebase's built-in handler which should work out of the box
-        try await Auth.auth().sendPasswordReset(withEmail: email)
-    }
-}
-
 // MARK: - Password Reset View
 struct PasswordResetView: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var authManager = AuthenticationManager.shared
-
     @State private var email = ""
     @State private var isLoading = false
     @State private var showingSuccess = false
@@ -557,24 +496,14 @@ struct PasswordResetView: View {
 
         Task {
             do {
-                try await authManager.resetPassword(email: email)
+                try await Auth.auth().sendPasswordReset(withEmail: email)
                 await MainActor.run {
                     isLoading = false
                     showingSuccess = true
                 }
-            } catch let error as NSError {
+            } catch {
                 await MainActor.run {
-                    // Handle specific Firebase Auth error codes
-                    switch error.code {
-                    case 17011: // User not found
-                        errorMessage = "No account found with this email address. Please check the email or create a new account."
-                    case 17008: // Invalid email
-                        errorMessage = "Invalid email address format. Please check and try again."
-                    case 17010: // Too many requests
-                        errorMessage = "Too many reset attempts. Please try again later."
-                    default:
-                        errorMessage = "Unable to send reset email. Please check your email address and try again."
-                    }
+                    errorMessage = error.localizedDescription
                     showingError = true
                     isLoading = false
                 }

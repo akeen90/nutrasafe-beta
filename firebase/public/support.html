@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support - NutraSafe</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 60px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .logo {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .tagline {
+            color: #666;
+            font-size: 1.1em;
+            margin-top: 15px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .nav-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .nav-link:hover {
+            background: #f0f4ff;
+        }
+
+        h2 {
+            font-size: 1.8em;
+            color: #333;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        h3 {
+            font-size: 1.3em;
+            color: #555;
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+
+        p {
+            line-height: 1.8;
+            margin-bottom: 15px;
+            color: #555;
+        }
+
+        ul {
+            margin-left: 25px;
+            margin-bottom: 20px;
+        }
+
+        li {
+            line-height: 1.8;
+            margin-bottom: 10px;
+            color: #555;
+        }
+
+        .contact-box {
+            background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%);
+            border-left: 4px solid #667eea;
+            padding: 30px;
+            border-radius: 12px;
+            margin: 30px 0;
+        }
+
+        .contact-box h3 {
+            color: #667eea;
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+
+        .contact-method {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+
+        .contact-method:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+        }
+
+        .contact-icon {
+            font-size: 2em;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .contact-details h4 {
+            color: #333;
+            margin-bottom: 5px;
+            font-size: 1.1em;
+        }
+
+        .contact-details p {
+            margin: 0;
+            color: #666;
+        }
+
+        .contact-details a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .contact-details a:hover {
+            text-decoration: underline;
+        }
+
+        .faq-section {
+            margin-top: 40px;
+        }
+
+        .faq-item {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .faq-item h4 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .faq-item p {
+            margin: 0;
+            color: #555;
+        }
+
+        .info-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 25px;
+            margin: 30px 0;
+            border-radius: 8px;
+        }
+
+        .info-box h3 {
+            color: #856404;
+            margin-top: 0;
+        }
+
+        .divider {
+            height: 2px;
+            background: linear-gradient(to right, transparent, #e0e0e0, transparent);
+            margin: 40px 0;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 60px;
+            padding-top: 30px;
+            border-top: 2px solid #f0f0f0;
+            color: #666;
+        }
+
+        .back-home {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            padding: 15px 35px;
+            border-radius: 12px;
+            font-weight: 600;
+            margin-top: 20px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .back-home:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px 25px;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            h2 {
+                font-size: 1.5em;
+            }
+
+            .contact-method {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">💬</div>
+            <h1>NutraSafe Support</h1>
+            <p class="tagline">We're here to help you get the most out of NutraSafe</p>
+            <div class="nav-links">
+                <a href="/" class="nav-link">Home</a>
+                <a href="/privacy-policy.html" class="nav-link">Privacy Policy</a>
+                <a href="/terms-of-service.html" class="nav-link">Terms of Service</a>
+            </div>
+        </div>
+
+        <div class="contact-box">
+            <h3>Get in Touch</h3>
+
+            <div class="contact-method">
+                <div class="contact-icon">📧</div>
+                <div class="contact-details">
+                    <h4>Email Support</h4>
+                    <p>For general enquiries, technical issues, or feedback</p>
+                    <a href="mailto:contact@nutrasafe.co.uk">contact@nutrasafe.co.uk</a>
+                </div>
+            </div>
+
+            <div class="contact-method">
+                <div class="contact-icon">⏱️</div>
+                <div class="contact-details">
+                    <h4>Response Time</h4>
+                    <p>We typically respond within 24-48 hours</p>
+                    <p style="font-size: 0.9em; margin-top: 5px;">Monday - Friday, UK business hours</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <h2>Frequently Asked Questions</h2>
+
+        <div class="faq-section">
+            <div class="faq-item">
+                <h4>🔍 How do I search for food items?</h4>
+                <p>Use the search bar on the home screen to find foods. You can search by name, scan a barcode, or use the AI scanner to capture nutrition labels from photos.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>🥜 How do I set up allergen alerts?</h4>
+                <p>Go to Settings → Health & Safety, then tap "Manage Allergens". Select the allergens you want to track, and NutraSafe will automatically warn you when scanning foods that contain them.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>📊 How are nutrition scores calculated?</h4>
+                <p>NutraSafe uses a comprehensive algorithm that considers protein, fibre, vitamins, minerals, and limits on saturated fat, sugar, and sodium. Foods are graded from A+ (excellent) to F (poor).</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>📱 Can I use NutraSafe offline?</h4>
+                <p>Basic functionality requires an internet connection to search our food database. Previously scanned items are cached and can be viewed offline.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>🍎 How do I track my daily nutrition?</h4>
+                <p>Foods you scan are automatically added to your Diary. View your daily intake by tapping the Diary tab, where you can see calories, macronutrients, and micronutrient coverage.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>📸 The barcode scanner isn't working. What should I do?</h4>
+                <p>Ensure you've granted camera permissions in your device settings. Try cleaning your camera lens and ensuring good lighting. If issues persist, you can manually search for items or use the AI scanner.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>🔄 How do I sync my data across devices?</h4>
+                <p>All your data is automatically synced to your account when you're signed in. Simply log in with the same account on another device to access your information.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>🗑️ How do I delete my account?</h4>
+                <p>Go to Settings → Account → Delete Account. This will permanently remove all your data from our servers within 30 days.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>💳 How do subscriptions work?</h4>
+                <p>Subscriptions are handled through the Apple App Store. You can manage or cancel your subscription in your Apple ID settings at any time.</p>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <h2>Common Issues</h2>
+
+        <div class="faq-section">
+            <div class="faq-item">
+                <h4>🔐 I forgot my password</h4>
+                <p>On the login screen, tap "Forgot Password?" and follow the instructions. A password reset link will be sent to your email address.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>⚠️ Food data seems incorrect</h4>
+                <p>If you notice incorrect nutritional information, please email us at <a href="mailto:contact@nutrasafe.co.uk">contact@nutrasafe.co.uk</a> with details of the product and the issue.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>🐛 I found a bug</h4>
+                <p>We appreciate bug reports! Please email us with a description of the issue, steps to reproduce it, and your device model/iOS version.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>💡 I have a feature suggestion</h4>
+                <p>We love hearing from our users! Send your ideas to <a href="mailto:contact@nutrasafe.co.uk">contact@nutrasafe.co.uk</a> and we'll consider them for future updates.</p>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="info-box">
+            <h3>⚕️ Health Disclaimer</h3>
+            <p>NutraSafe is designed to help you track nutrition and allergens, but it is not a substitute for professional medical advice. Always consult with a qualified healthcare provider for medical guidance, especially if you have allergies or specific dietary requirements.</p>
+        </div>
+
+        <div class="divider"></div>
+
+        <h2>Still Need Help?</h2>
+        <p>If you can't find the answer to your question in our FAQs, please don't hesitate to contact us directly:</p>
+
+        <div class="contact-box">
+            <div class="contact-details" style="text-align: center;">
+                <h4 style="color: #667eea; font-size: 1.2em; margin-bottom: 15px;">Contact Us</h4>
+                <p style="font-size: 1.1em; margin-bottom: 10px;"><strong>Email:</strong> <a href="mailto:contact@nutrasafe.co.uk">contact@nutrasafe.co.uk</a></p>
+                <p><strong>Operated by:</strong> Aaron Keen, United Kingdom</p>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>&copy; 2025 NutraSafe. All rights reserved.</p>
+            <p>Operated by Aaron Keen, United Kingdom</p>
+            <a href="/" class="back-home">Return to Home</a>
+        </div>
+    </div>
+</body>
+</html>

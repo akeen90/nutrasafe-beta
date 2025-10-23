@@ -14,6 +14,8 @@ struct OnboardingView: View {
 
     var body: some View {
         ZStack {
+            AnimatedGradientBackground()
+
             TabView(selection: $currentPage) {
                 // Screen 1: Welcome
                 WelcomeScreen(currentPage: $currentPage)
@@ -51,8 +53,44 @@ struct OnboardingView: View {
                 CompletionScreen(onComplete: onComplete)
                     .tag(8)
             }
-            .tabViewStyle(.page(indexDisplayMode: .always))
-            .indexViewStyle(.page(backgroundDisplayMode: .always))
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .indexViewStyle(.page(backgroundDisplayMode: .never))
+        }
+        .overlay(alignment: .bottom) {
+            ProgressCapsuleBar(current: currentPage, total: 9)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 20)
+        }
+    }
+
+    struct AnimatedGradientBackground: View {
+        @State private var animate = false
+        var body: some View {
+            LinearGradient(colors: [Color.indigo, Color.blue, Color.purple, Color.cyan],
+                           startPoint: animate ? .topLeading : .bottomTrailing,
+                           endPoint: animate ? .bottomTrailing : .topLeading)
+                .ignoresSafeArea()
+                .animation(.linear(duration: 8).repeatForever(autoreverses: true), value: animate)
+                .onAppear { animate.toggle() }
+        }
+    }
+
+    struct ProgressCapsuleBar: View {
+        let current: Int
+        let total: Int
+        var body: some View {
+            GeometryReader { geo in
+                let progress = CGFloat(current + 1) / CGFloat(total)
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.white.opacity(0.25))
+                        .frame(height: 8)
+                    Capsule()
+                        .fill(LinearGradient(colors: [Color.white, Color.white.opacity(0.7)], startPoint: .leading, endPoint: .trailing))
+                        .frame(width: geo.size.width * progress, height: 8)
+                }
+            }
+            .frame(height: 8)
         }
     }
 }

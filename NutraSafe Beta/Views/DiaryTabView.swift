@@ -318,7 +318,7 @@ struct DiaryTabView: View {
             loadFoodData()
         }
         .onChange(of: diarySubTab) { newTab in
-            if newTab == .nutrients && !(subscriptionManager.isSubscribed || subscriptionManager.isInTrial) {
+            if newTab == .nutrients && !(subscriptionManager.isSubscribed || subscriptionManager.isInTrial || subscriptionManager.isPremiumOverride) {
                 // Revert selection and notify parent to show paywall
                 diarySubTab = .overview
                 // Light warning haptic
@@ -355,16 +355,16 @@ struct DiaryTabView: View {
             editTrigger = false
         }
         .onChange(of: moveTrigger) { newValue in
-            guard newValue else { return }
-            showingMoveSheet = true
-            // Performance: Reset trigger immediately instead of asyncAfter delay
-            moveTrigger = false
+            if newValue {
+                showMoveOptions()
+                moveTrigger = false
+            }
         }
         .onChange(of: copyTrigger) { newValue in
-            guard newValue else { return }
-            showingCopySheet = true
-            // Performance: Reset trigger immediately instead of asyncAfter delay
-            copyTrigger = false
+            if newValue {
+                showCopyOptions()
+                copyTrigger = false
+            }
         }
         .onChange(of: deleteTrigger) { newValue in
             guard newValue else { return }
@@ -608,9 +608,24 @@ struct DiaryTabView: View {
 
     private func showMoveOptions() {
         print("DiaryTabView: Showing move options for \(selectedFoodItems.count) items")
-        // Initialize move date to current diary date
+        // Initialize date to currently selected date
         moveToDate = selectedDate
-        moveToMeal = "Breakfast" // Default meal
+        // Default meal to the meal of the first selected item, if available
+        if let firstSelectedId = selectedFoodItems.first {
+            if breakfastFoods.contains(where: { $0.id.uuidString == firstSelectedId }) {
+                moveToMeal = "Breakfast"
+            } else if lunchFoods.contains(where: { $0.id.uuidString == firstSelectedId }) {
+                moveToMeal = "Lunch"
+            } else if dinnerFoods.contains(where: { $0.id.uuidString == firstSelectedId }) {
+                moveToMeal = "Dinner"
+            } else if snackFoods.contains(where: { $0.id.uuidString == firstSelectedId }) {
+                moveToMeal = "Snacks"
+            } else {
+                moveToMeal = "Breakfast"
+            }
+        } else {
+            moveToMeal = "Breakfast"
+        }
         showingMoveSheet = true
     }
 
@@ -622,7 +637,6 @@ struct DiaryTabView: View {
 
         // Collect the selected food items from all meals
         for selectedId in selectedFoodItems {
-            // Find and collect the items to move
             if let food = breakfastFoods.first(where: { $0.id.uuidString == selectedId }) {
                 itemsToMove.append(food)
             } else if let food = lunchFoods.first(where: { $0.id.uuidString == selectedId }) {
@@ -634,56 +648,50 @@ struct DiaryTabView: View {
             }
         }
 
-        // Remove selected items from current meals
-        breakfastFoods = breakfastFoods.filter { !selectedFoodItems.contains($0.id.uuidString) }
-        lunchFoods = lunchFoods.filter { !selectedFoodItems.contains($0.id.uuidString) }
-        dinnerFoods = dinnerFoods.filter { !selectedFoodItems.contains($0.id.uuidString) }
-        snackFoods = snackFoods.filter { !selectedFoodItems.contains($0.id.uuidString) }
+        // Persist the move in Firebase (single source of truth)
+        Task {
+            for item in itemsToMove {
+                do {
+                    // Clear any cached state by deleting, then re-save at the new destination
+                    try await FirebaseManager.shared.deleteFoodEntry(entryId: item.id.uuidString)
+                    try await diaryDataManager.addFoodItem(item, to: moveToMeal, for: moveToDate)
+                    print("DiaryTabView: Moved item: \(item.name)")
+                } catch {
+                    print("DiaryTabView: Move error for \(item.name): \(error.localizedDescription)")
+                }
+            }
 
-        // Performance: Recalculate totals after moving items
-        recalculateNutrition()
-
-        // Save current date changes
-        diaryDataManager.saveFoodData(for: selectedDate, breakfast: breakfastFoods, lunch: lunchFoods, dinner: dinnerFoods, snacks: snackFoods)
-
-        // Get target date data and add moved items
-        let (targetBreakfast, targetLunch, targetDinner, targetSnacks) = diaryDataManager.getFoodData(for: moveToDate)
-
-        // Add items to target meal
-        switch moveToMeal.lowercased() {
-        case "breakfast":
-            let updatedBreakfast = targetBreakfast + itemsToMove
-            diaryDataManager.saveFoodData(for: moveToDate, breakfast: updatedBreakfast, lunch: targetLunch, dinner: targetDinner, snacks: targetSnacks)
-        case "lunch":
-            let updatedLunch = targetLunch + itemsToMove
-            diaryDataManager.saveFoodData(for: moveToDate, breakfast: targetBreakfast, lunch: updatedLunch, dinner: targetDinner, snacks: targetSnacks)
-        case "dinner":
-            let updatedDinner = targetDinner + itemsToMove
-            diaryDataManager.saveFoodData(for: moveToDate, breakfast: targetBreakfast, lunch: targetLunch, dinner: updatedDinner, snacks: targetSnacks)
-        case "snacks":
-            let updatedSnacks = targetSnacks + itemsToMove
-            diaryDataManager.saveFoodData(for: moveToDate, breakfast: targetBreakfast, lunch: targetLunch, dinner: targetDinner, snacks: updatedSnacks)
-        default:
-            print("DiaryTabView: Unknown target meal: \(moveToMeal)")
+            await MainActor.run {
+                // Reload current date to reflect changes immediately
+                loadFoodData()
+                // Close sheet and clear selection
+                showingMoveSheet = false
+                selectedFoodItems.removeAll()
+                print("DiaryTabView: Move completed - moved \(itemsToMove.count) items")
+            }
         }
-
-        // If moving to current date, reload data to reflect changes
-        if Calendar.current.isDate(moveToDate, inSameDayAs: selectedDate) {
-            loadFoodData()
-        }
-
-        // Close sheet and clear selection
-        showingMoveSheet = false
-        selectedFoodItems.removeAll()
-
-        print("DiaryTabView: Move completed - moved \(itemsToMove.count) items")
     }
 
     private func showCopyOptions() {
         print("DiaryTabView: Showing copy options for \(selectedFoodItems.count) items")
-        // Initialize copy date to current diary date
+        // Initialize date to currently selected date
         copyToDate = selectedDate
-        copyToMeal = "Breakfast" // Default meal
+        // Default meal to the meal of the first selected item, if available
+        if let firstSelectedId = selectedFoodItems.first {
+            if breakfastFoods.contains(where: { $0.id.uuidString == firstSelectedId }) {
+                copyToMeal = "Breakfast"
+            } else if lunchFoods.contains(where: { $0.id.uuidString == firstSelectedId }) {
+                copyToMeal = "Lunch"
+            } else if dinnerFoods.contains(where: { $0.id.uuidString == firstSelectedId }) {
+                copyToMeal = "Dinner"
+            } else if snackFoods.contains(where: { $0.id.uuidString == firstSelectedId }) {
+                copyToMeal = "Snacks"
+            } else {
+                copyToMeal = "Breakfast"
+            }
+        } else {
+            copyToMeal = "Breakfast"
+        }
         showingCopySheet = true
     }
 

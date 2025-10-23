@@ -12,6 +12,7 @@ class FirebaseManager: ObservableObject {
     
     private lazy var db = Firestore.firestore()
     private lazy var auth = Auth.auth()
+    private var authListenerHandle: AuthStateDidChangeListenerHandle?
 
     // MARK: - Search Cache (Optimized with NSCache)
     private class SearchCacheEntry {
@@ -48,11 +49,15 @@ class FirebaseManager: ObservableObject {
         _ = db
         _ = auth
         
-        _ = auth.addStateDidChangeListener { [weak self] _, user in
-            // Ensure @Published properties change on the main actor
-            Task { @MainActor in
-                self?.currentUser = user
-                self?.isAuthenticated = user != nil
+        // Guard against duplicate listener registration
+        if authListenerHandle == nil {
+            authListenerHandle = auth.addStateDidChangeListener { [weak self] _, user in
+                // Ensure @Published properties change on the main actor
+                Task { @MainActor in
+                    self?.currentUser = user
+                    self?.isAuthenticated = user != nil
+                    NotificationCenter.default.post(name: .authStateChanged, object: nil)
+                }
             }
         }
     }
@@ -1402,10 +1407,30 @@ extension Notification.Name {
     static let useByInventoryUpdated = Notification.Name("useByInventoryUpdated")
     static let navigateToUseBy = Notification.Name("navigateToUseBy")
     static let restartOnboarding = Notification.Name("restartOnboarding")
+    static let authStateChanged = Notification.Name("authStateChanged")
 }
 
 // MARK: - Response Models for Food Search
 
 struct FoodSearchResponse: Decodable {
     let foods: [FoodSearchResult]
+}
+
+extension FirebaseManager {
+    func getPremiumOverride() async throws -> Bool {
+        ensureAuthStateLoaded()
+        // Domain-based override for staff/users with nutrasafe.co.uk emails
+        if let email = currentUser?.email?.lowercased(),
+           let domain = email.split(separator: "@").last,
+           domain == "nutrasafe.co.uk" {
+            return true
+        }
+        guard let userId = currentUser?.uid else { return false }
+        let doc = try await Firestore.firestore()
+            .collection("users").document(userId)
+            .collection("settings").document("preferences")
+            .getDocument()
+        let value = doc.data()? ["premiumOverride"] as? Bool ?? false
+        return value
+    }
 }

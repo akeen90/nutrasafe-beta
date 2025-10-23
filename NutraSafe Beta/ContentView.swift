@@ -1471,7 +1471,7 @@ struct ContentView: View {
         }
         .onChange(of: selectedTab) { newTab in
             // Enforce subscription gating for programmatic tab changes
-            if !(subscriptionManager.isSubscribed || subscriptionManager.isInTrial) {
+            if !(subscriptionManager.isSubscribed || subscriptionManager.isInTrial || subscriptionManager.isPremiumOverride) {
                 if !(newTab == .diary || newTab == .add) {
                     // Revert and show paywall
                     selectedTab = .diary

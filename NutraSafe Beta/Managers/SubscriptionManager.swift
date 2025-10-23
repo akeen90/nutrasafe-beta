@@ -10,12 +10,19 @@ final class SubscriptionManager: ObservableObject {
     @Published var product: Product?
     @Published var status: [Product.SubscriptionInfo.Status] = []
     @Published var isPurchasing: Bool = false
+    @Published var isPremiumOverride = false
+    private var authObserver: NSObjectProtocol?
 
     // TODO: Adjust to your final product ID in App Store Connect
     let productID = "com.nutrasafe.pro.monthly"
 
     init() {
         Task { try? await load() }
+        authObserver = NotificationCenter.default.addObserver(forName: .authStateChanged, object: nil, queue: .main) { [weak self] _ in
+            Task { await self?.refreshPremiumOverride() }
+        }
+        // Ensure override is evaluated at startup, independent of StoreKit product load timing
+        Task { await refreshPremiumOverride() }
     }
 
     func load() async throws {
@@ -24,6 +31,8 @@ final class SubscriptionManager: ObservableObject {
         if let first = products.first {
             product = first
             try await refreshStatus()
+            // Also refresh domain-based premium override immediately when product loads successfully
+            await refreshPremiumOverride()
             return
         }
 
@@ -34,61 +43,35 @@ final class SubscriptionManager: ObservableObject {
             product = retryProducts.first
             if product != nil {
                 try await refreshStatus()
+                await refreshPremiumOverride()
+            } else {
+                // Even if products are unavailable, still evaluate premium override (e.g., domain-based access)
+                await refreshPremiumOverride()
             }
         } catch {
             // Keep product nil; UI will show fallback and allow manual Restore
             print("StoreKit: Failed to sync or load products: \(error)")
+            // Still evaluate premium override in error scenarios
+            await refreshPremiumOverride()
         }
     }
 
     func purchase() async throws {
+        guard let product = product else { return }
         isPurchasing = true
         defer { isPurchasing = false }
-
-        // Ensure product is available before attempting purchase
-        if product == nil {
-            do {
-                try await load()
-            } catch {
-                // ignore, we’ll try sync next
-            }
-            if product == nil {
-                do {
-                    try await AppStore.sync()
-                    try await load()
-                } catch {
-                    // Fall through and throw a clear error if still nil
-                }
-            }
-            guard let product = product else {
-                throw NSError(domain: "StoreKit", code: -1, userInfo: [NSLocalizedDescriptionKey: "Subscription product unavailable. Please try again later."])
-            }
-
-            let result = try await product.purchase()
-            switch result {
-            case .success(let verification):
-                let transaction = try checkVerified(verification)
-                await transaction.finish()
-                try await refreshStatus()
-            case .userCancelled, .pending:
-                break
-            @unknown default:
-                break
-            }
-            return
-        }
-
-        // Product already available
-        guard let product = product else { return }
         let result = try await product.purchase()
         switch result {
         case .success(let verification):
-            let transaction = try checkVerified(verification)
-            await transaction.finish()
-            try await refreshStatus()
+            do {
+                _ = try checkVerified(verification)
+                try await refreshStatus()
+            } catch {
+                print("Purchase verification failed: \(error)")
+            }
         case .userCancelled, .pending:
             break
-        @unknown default:
+        default:
             break
         }
     }
@@ -118,6 +101,7 @@ final class SubscriptionManager: ObservableObject {
     func restore() async throws {
         try await AppStore.sync()
         try await refreshStatus()
+        await refreshPremiumOverride()
     }
 
     func manageSubscriptions() async {
@@ -125,6 +109,12 @@ final class SubscriptionManager: ObservableObject {
             // Handle environments where this API may throw
             // If non-throwing in current SDK, the optional try compiles away.
             _ = try? await AppStore.showManageSubscriptions(in: scene)
+        }
+    }
+
+    deinit {
+        if let authObserver {
+            NotificationCenter.default.removeObserver(authObserver)
         }
     }
 }
@@ -136,5 +126,15 @@ func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
         throw error
     case .verified(let safe):
         return safe
+    }
+}
+
+extension SubscriptionManager {
+    func refreshPremiumOverride() async {
+        do {
+            isPremiumOverride = try await FirebaseManager.shared.getPremiumOverride()
+        } catch {
+            isPremiumOverride = false
+        }
     }
 }

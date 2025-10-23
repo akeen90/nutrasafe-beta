@@ -1342,6 +1342,8 @@ class ReactionManager: ObservableObject {
     @Published var errorMessage: String?
     @Published var showingError = false
     private let firebaseManager = FirebaseManager.shared
+    private var lastLoadedUserId: String?
+    private var authObserver: NSObjectProtocol?
 
     var monthlyCount: Int {
         let currentDate = Date()
@@ -1370,12 +1372,33 @@ class ReactionManager: ObservableObject {
     }
 
     private init() {
-        // Don't load reactions immediately on init - wait for auth to be ready
-        // Reactions will be loaded when user is authenticated via reloadIfAuthenticated()
+        // Observe centralized auth state changes to keep reactions in sync
+        if authObserver == nil {
+            authObserver = NotificationCenter.default.addObserver(forName: .authStateChanged, object: nil, queue: .main) { [weak self] _ in
+                guard let self else { return }
+                if self.firebaseManager.isAuthenticated,
+                   let uid = self.firebaseManager.currentUser?.uid {
+                    if self.lastLoadedUserId != uid || self.reactions.isEmpty {
+                        self.reloadIfAuthenticated()
+                    }
+                } else {
+                    self.clearData()
+                }
+            }
+        }
     }
 
     // Public method to reload reactions - should be called after successful authentication
     func reloadIfAuthenticated() {
+        guard let uid = firebaseManager.currentUser?.uid else {
+            clearData()
+            return
+        }
+        // Avoid duplicate loads for the same user if data exists or a load is underway
+        if lastLoadedUserId == uid && (isLoading || !reactions.isEmpty) {
+            return
+        }
+        lastLoadedUserId = uid
         loadReactions()
     }
 
@@ -1462,6 +1485,7 @@ class ReactionManager: ObservableObject {
         isLoading = false
         errorMessage = nil
         showingError = false
+        lastLoadedUserId = nil
         print("🧹 Cleared ReactionManager data")
     }
 }
@@ -1915,6 +1939,7 @@ struct FoodReactionSearchView: View {
     @State private var isSearching = false
     @State private var searchTask: Task<Void, Never>?
     @FocusState private var isSearchFieldFocused: Bool
+    @State private var showingManualEntry = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1951,7 +1976,7 @@ struct FoodReactionSearchView: View {
                 // Action Buttons
                 HStack(spacing: 12) {
                     Button(action: {
-                        addManualFood()
+                        showingManualEntry = true
                     }) {
                         HStack {
                             Image(systemName: "plus.circle")
@@ -2026,7 +2051,9 @@ struct FoodReactionSearchView: View {
                                 food: food,
                                 onSelect: {
                                     selectedFood = food
-                                    dismiss()
+                                    DispatchQueue.main.async {
+                                        dismiss()
+                                    }
                                 }
                             )
                             .padding(.horizontal, 16)
@@ -2043,6 +2070,16 @@ struct FoodReactionSearchView: View {
                 dismiss()
             }
         )
+        .sheet(isPresented: $showingManualEntry) {
+            NavigationView {
+                ManualReactionFoodEntryView(prefilledName: searchText) { manualFood in
+                    selectedFood = manualFood
+                    DispatchQueue.main.async {
+                        dismiss()
+                    }
+                }
+            }
+        }
         // Live scanner removed - feature deprecated
         .onAppear {
             // Automatically focus the search field when the view appears
@@ -2080,19 +2117,10 @@ struct FoodReactionSearchView: View {
         isSearching = true
 
         Task {
-            do {
-                let results = try await fatSecretService.searchFoods(query: query)
-
-                await MainActor.run {
-                    self.searchResults = results
-                    self.isSearching = false
-                }
-            } catch {
-                await MainActor.run {
-                    self.searchResults = []
-                    self.isSearching = false
-                }
-                print("Search error: \(error)")
+            let results = await SQLiteFoodDatabase.shared.searchFoods(query: query, limit: 25)
+            await MainActor.run {
+                self.searchResults = results
+                self.isSearching = false
             }
         }
     }
@@ -2198,3 +2226,74 @@ let sampleReactions: [FoodReaction] = [
         notes: "With breakfast"
     )
 ]
+
+// Local definition to ensure build sees the manual entry view
+struct ManualReactionFoodEntryView: View {
+    let prefilledName: String
+    let onSave: (FoodSearchResult) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var foodName: String
+    @State private var ingredientsText: String = ""
+
+    init(prefilledName: String, onSave: @escaping (FoodSearchResult) -> Void) {
+        self.prefilledName = prefilledName
+        self.onSave = onSave
+        _foodName = State(initialValue: prefilledName.isEmpty ? "" : prefilledName)
+    }
+
+    var body: some View {
+        Form {
+            Section(header: Text("Food")) {
+                TextField("Enter food name", text: $foodName)
+            }
+
+            Section(
+                header: Text("Ingredients (optional)"),
+                footer: Text("Separate ingredients with commas, e.g. milk, sugar, cocoa")
+            ) {
+                TextField("milk, sugar, cocoa", text: $ingredientsText)
+            }
+        }
+        .navigationTitle("Add Manually")
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarItems(
+            leading: Button("Cancel") { dismiss() },
+            trailing: Button("Save") {
+                let trimmedName = foodName.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmedName.isEmpty else { return }
+
+                let ingredientsArray: [String]? = {
+                    let raw = ingredientsText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if raw.isEmpty { return nil }
+                    let parts = raw
+                        .split(separator: ",")
+                        .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+                        .filter { !$0.isEmpty }
+                    return parts.isEmpty ? nil : parts
+                }()
+
+                let manualFood = FoodSearchResult(
+                    id: UUID().uuidString,
+                    name: trimmedName,
+                    brand: nil,
+                    calories: 0,
+                    protein: 0,
+                    carbs: 0,
+                    fat: 0,
+                    fiber: 0,
+                    sugar: 0,
+                    sodium: 0,
+                    servingDescription: "Manual entry",
+                    ingredients: ingredientsArray,
+                    confidence: 1.0,
+                    isVerified: false
+                )
+
+                onSave(manualFood)
+                dismiss()
+            }
+            .disabled(foodName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        )
+    }
+}

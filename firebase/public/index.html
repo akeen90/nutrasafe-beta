@@ -1,30 +1,38 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-GB">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NutraSafe - Nutrition & Allergy Management</title>
     <style>
-        body {
+        * {
             margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+            padding: 40px 20px;
+            color: #333;
         }
 
         .container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
             border-radius: 20px;
-            padding: 50px;
+            padding: 60px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+
+        .header {
             text-align: center;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            max-width: 600px;
-            width: 100%;
+            margin-bottom: 50px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid #f0f0f0;
         }
 
         .logo {
@@ -34,7 +42,7 @@
 
         .title {
             font-size: 2.5em;
-            color: #333;
+            color: #667eea;
             margin-bottom: 10px;
             font-weight: 600;
         }
@@ -42,77 +50,129 @@
         .tagline {
             font-size: 1.2em;
             color: #666;
-            margin-bottom: 40px;
+            margin-top: 15px;
+            line-height: 1.6;
         }
 
-        .buttons {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            flex-wrap: wrap;
+        h2 {
+            font-size: 1.8em;
+            color: #333;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
         }
 
-        .dashboard-btn {
+        p {
+            line-height: 1.8;
+            margin-bottom: 15px;
+            color: #555;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+
+        .feature-card {
+            background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%);
+            padding: 25px;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.2);
+        }
+
+        .feature-icon {
+            font-size: 2.5em;
+            margin-bottom: 15px;
+        }
+
+        .feature-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .feature-card p {
+            margin: 0;
+            font-size: 0.95em;
+            color: #555;
+        }
+
+        .cta-box {
             background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 40px 0;
+        }
+
+        .cta-box h3 {
+            font-size: 1.8em;
+            margin-bottom: 15px;
+        }
+
+        .cta-box p {
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 25px;
+            font-size: 1.1em;
+        }
+
+        .app-store-badge {
+            display: inline-block;
+            background: white;
+            color: #333;
+            padding: 15px 30px;
+            border-radius: 10px;
             text-decoration: none;
-            padding: 20px 40px;
-            border-radius: 12px;
             font-weight: 600;
-            font-size: 16px;
             transition: all 0.3s;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            font-size: 1.1em;
         }
 
-        .dashboard-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        .app-store-badge:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         }
 
-        .dashboard-btn.admin {
-            background: linear-gradient(135deg, #ff6b35, #f7931e);
-            box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3);
-        }
-
-        .dashboard-btn.admin:hover {
-            box-shadow: 0 8px 25px rgba(255, 107, 53, 0.4);
-        }
-
-        .status {
-            margin-top: 50px;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.5);
+        .info-section {
+            background: #f8f9fa;
+            padding: 30px;
             border-radius: 12px;
-            font-size: 14px;
-            color: #666;
+            margin: 30px 0;
         }
 
-        .status-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin: 8px 0;
+        .info-section h3 {
+            color: #333;
+            margin-bottom: 15px;
         }
 
-        .status-online {
-            color: #4caf50;
-            font-weight: 600;
+        .footer {
+            text-align: center;
+            margin-top: 60px;
+            padding-top: 30px;
+            border-top: 2px solid #f0f0f0;
         }
 
         .footer-links {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid rgba(0,0,0,0.1);
             display: flex;
             gap: 20px;
             justify-content: center;
             flex-wrap: wrap;
+            margin-bottom: 20px;
         }
 
         .footer-link {
             color: #667eea;
             text-decoration: none;
-            font-size: 14px;
             font-weight: 500;
             transition: all 0.3s;
         }
@@ -121,44 +181,104 @@
             color: #764ba2;
             text-decoration: underline;
         }
+
+        .footer p {
+            color: #666;
+            margin: 5px 0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px 25px;
+            }
+
+            .title {
+                font-size: 2em;
+            }
+
+            h2 {
+                font-size: 1.5em;
+            }
+
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="logo">🥗</div>
-        <h1 class="title">NutraSafe</h1>
-        <p class="tagline">Track your nutrition, manage allergies, and maintain a healthy lifestyle</p>
-        
-        <div class="buttons">
-            <a href="/dashboard" class="dashboard-btn">
-                User Dashboard
-                <br><small>Access your personal nutrition tracking and food diary</small>
-            </a>
-            <a href="/admin-panel.html" class="dashboard-btn admin">
-                Admin Dashboard
-                <br><small>Company management, user analytics, AI cleanse, and system monitoring</small>
-            </a>
+        <div class="header">
+            <div class="logo">🥗</div>
+            <h1 class="title">NutraSafe</h1>
+            <p class="tagline">Your personal nutrition and allergy management companion</p>
         </div>
 
-        <div class="status">
-            <div class="status-item">
-                <span>System Status:</span>
-                <span class="status-online">Online</span>
+        <h2>About NutraSafe</h2>
+        <p>NutraSafe is a comprehensive mobile application designed to help you track your nutrition, manage food allergies, and maintain a healthy lifestyle. Whether you're monitoring your daily nutrient intake or keeping track of allergens, NutraSafe makes it simple and intuitive.</p>
+
+        <h2>Key Features</h2>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon">📱</div>
+                <h3>Smart Food Scanning</h3>
+                <p>Scan barcodes or use AI-powered image recognition to instantly capture nutritional information from food labels.</p>
             </div>
-            <div class="status-item">
-                <span>FatSecret API:</span>
-                <span class="status-online">Connected</span>
+
+            <div class="feature-card">
+                <div class="feature-icon">🥜</div>
+                <h3>Allergen Alerts</h3>
+                <p>Set up personalised allergen tracking and receive immediate warnings when scanning foods that contain your allergens.</p>
             </div>
-            <div class="status-item">
-                <span>Static IP:</span>
-                <span>34.44.189.206</span>
+
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Nutrition Scoring</h3>
+                <p>Get instant A+ to F grades on foods based on comprehensive nutritional analysis including protein, fibre, vitamins, and minerals.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">📝</div>
+                <h3>Food Diary</h3>
+                <p>Track your daily food intake with automatic logging. View detailed breakdowns of calories, macronutrients, and micronutrients.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🔍</div>
+                <h3>Extensive Database</h3>
+                <p>Search through thousands of food items with detailed nutritional information and ingredient lists.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <h3>Health Insights</h3>
+                <p>Monitor your micronutrient intake and identify potential nutritional deficiencies with intelligent pattern analysis.</p>
             </div>
         </div>
 
-        <div class="footer-links">
-            <a href="/privacy-policy.html" class="footer-link">Privacy Policy</a>
-            <a href="/terms-of-service.html" class="footer-link">Terms of Service</a>
-            <span class="footer-link" style="color: #999; cursor: default;">&copy; 2025 NutraSafe</span>
+        <div class="cta-box">
+            <h3>Download NutraSafe Today</h3>
+            <p>Available on the App Store for iPhone and iPad</p>
+            <a href="#" class="app-store-badge">🍎 Coming Soon to App Store</a>
+        </div>
+
+        <div class="info-section">
+            <h3>Why Choose NutraSafe?</h3>
+            <p><strong>🇬🇧 Made for the UK Market:</strong> Designed with British users in mind, with UK-specific food data and compliance with UK regulations.</p>
+            <p><strong>🔒 Privacy First:</strong> Your data is encrypted and stored securely. We never sell or use your data for marketing purposes.</p>
+            <p><strong>💡 Easy to Use:</strong> Intuitive interface that makes nutrition tracking effortless, whether you're a health enthusiast or just starting your wellness journey.</p>
+            <p><strong>⚕️ Not Medical Advice:</strong> NutraSafe is designed as an informational tool. Always consult qualified healthcare professionals for medical guidance.</p>
+        </div>
+
+        <div class="footer">
+            <div class="footer-links">
+                <a href="/support.html" class="footer-link">Support</a>
+                <a href="/privacy-policy.html" class="footer-link">Privacy Policy</a>
+                <a href="/terms-of-service.html" class="footer-link">Terms of Service</a>
+            </div>
+            <p>&copy; 2025 NutraSafe. All rights reserved.</p>
+            <p>Operated by Aaron Keen, United Kingdom</p>
+            <p style="margin-top: 15px;"><a href="mailto:contact@nutrasafe.co.uk" style="color: #667eea; text-decoration: none;">contact@nutrasafe.co.uk</a></p>
         </div>
     </div>
 </body>

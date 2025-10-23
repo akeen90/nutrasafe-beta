@@ -34,15 +34,7 @@ struct WelcomeScreen: View {
 
             Spacer()
 
-            Button(action: { currentPage += 1 }) {
-                Text("Continue")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
-                    .background(Color.blue)
-                    .cornerRadius(16)
-            }
+            ContinueButton(currentPage: $currentPage)
             .padding(.horizontal, 24)
             .padding(.bottom, 40)
         }
@@ -570,8 +562,9 @@ struct FeatureCard: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .background(.thinMaterial)
+        .cornerRadius(24)
+        .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 6)
     }
 }
 
@@ -600,8 +593,9 @@ struct DetailFeature: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.systemGray6))
-        .cornerRadius(10)
+        .background(.thinMaterial)
+        .cornerRadius(20)
+        .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 4)
     }
 }
 
@@ -632,8 +626,9 @@ struct NutrientFeature: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .background(.thinMaterial)
+        .cornerRadius(24)
+        .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 6)
     }
 }
 
@@ -789,8 +784,12 @@ struct SkipButton: View {
                 .foregroundColor(.blue)
                 .frame(maxWidth: .infinity)
                 .frame(height: 56)
-                .background(Color(.systemGray6))
-                .cornerRadius(16)
+                .background(.ultraThinMaterial)
+                .cornerRadius(28)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28)
+                        .stroke(Color.blue.opacity(0.15), lineWidth: 1)
+                )
         }
     }
 }
@@ -801,12 +800,15 @@ struct ContinueButton: View {
     var body: some View {
         Button(action: { currentPage += 1 }) {
             Text("Continue")
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: 18, weight: .semibold))
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .frame(height: 56)
-                .background(Color.blue)
-                .cornerRadius(16)
+                .background(
+                    LinearGradient(colors: [Color.blue, Color.purple], startPoint: .topLeading, endPoint: .bottomTrailing)
+                )
+                .cornerRadius(28)
+                .shadow(color: Color.purple.opacity(0.25), radius: 14, x: 0, y: 8)
         }
     }
 }

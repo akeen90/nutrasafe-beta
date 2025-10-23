@@ -55,7 +55,7 @@ struct CustomTabBar: View {
                 } else {
                     // Regular tab buttons
                     Button(action: {
-                        let allowed = subscriptionManager.isSubscribed || subscriptionManager.isInTrial || tab == .diary
+                        let allowed = subscriptionManager.isSubscribed || subscriptionManager.isInTrial || subscriptionManager.isPremiumOverride || tab == .diary
                         if allowed {
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 selectedTab = tab
