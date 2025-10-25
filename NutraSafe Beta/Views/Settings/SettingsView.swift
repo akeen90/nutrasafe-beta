@@ -549,6 +549,7 @@ struct NutritionGoalsSection: View {
             do {
                 try await firebaseManager.saveUserSettings(height: nil, goalWeight: nil, caloricGoal: goal)
                 print("✅ Caloric goal updated to \(goal)")
+
                 // Notify diary view to update immediately
                 await MainActor.run {
                     NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
@@ -558,6 +559,8 @@ struct NutritionGoalsSection: View {
                     errorMessage = "Failed to save caloric goal: \(error.localizedDescription)"
                     showingError = true
                 }
+                // Reload on error to revert to saved value
+                await loadNutritionGoals()
             }
         }
     }
@@ -868,6 +871,9 @@ struct ProgressGoalsSection: View {
             do {
                 try await manager.saveUserSettings(height: height, goalWeight: nil, caloricGoal: nil)
                 print("✅ Height saved: \(height ?? 0) cm")
+
+                // Reload data to update the UI immediately
+                await loadProgressData()
             } catch {
                 await MainActor.run {
                     errorMessage = "Failed to save height: \(error.localizedDescription)"
@@ -883,6 +889,9 @@ struct ProgressGoalsSection: View {
             do {
                 try await manager.saveUserSettings(height: nil, goalWeight: goalWeight, caloricGoal: nil)
                 print("✅ Goal weight saved: \(goalWeight ?? 0) kg")
+
+                // Reload data to update the UI immediately
+                await loadProgressData()
             } catch {
                 await MainActor.run {
                     errorMessage = "Failed to save goal weight: \(error.localizedDescription)"
@@ -1100,6 +1109,7 @@ struct GoalWeightEditorView: View {
     let onSave: () -> Void
 
     @State private var tempWeight: String
+    @State private var isSaving = false
 
     init(currentWeight: Double?, goalWeight: Binding<Double?>, onSave: @escaping () -> Void) {
         self.currentWeight = currentWeight
@@ -1183,10 +1193,15 @@ struct GoalWeightEditorView: View {
                     Button("Cancel") {
                         dismiss()
                     }
+                    .disabled(isSaving)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        saveWeight()
+                    if isSaving {
+                        ProgressView()
+                    } else {
+                        Button("Save") {
+                            saveWeight()
+                        }
                     }
                 }
             }
@@ -1195,9 +1210,13 @@ struct GoalWeightEditorView: View {
 
     private func saveWeight() {
         if let value = Double(tempWeight), value > 0, value < 500 {
+            isSaving = true
             goalWeight = value
             onSave()
-            dismiss()
+            // Dismiss after save completes (give time for async save and reload)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                dismiss()
+            }
         }
     }
 }
@@ -2837,8 +2856,25 @@ struct NotificationSettingsView: View {
                     }
                     .disabled(permissionStatus != .authorized && permissionStatus != .provisional)
                     .onChange(of: useByNotificationsEnabled) { newValue in
-                        if newValue && permissionStatus == .notDetermined {
-                            requestNotificationPermission()
+                        if newValue {
+                            // Request permission if needed
+                            if permissionStatus == .notDetermined {
+                                requestNotificationPermission()
+                            }
+                            // Reschedule all notifications for existing items
+                            Task {
+                                do {
+                                    let items: [UseByInventoryItem] = try await FirebaseManager.shared.getUseByItems()
+                                    await UseByNotificationManager.shared.refreshAllNotifications(for: items)
+                                    print("✅ Rescheduled notifications for \(items.count) use-by items")
+                                } catch {
+                                    print("❌ Error refreshing use-by notifications: \(error)")
+                                }
+                            }
+                        } else {
+                            // Cancel all notifications when disabled
+                            UseByNotificationManager.shared.cancelAllNotifications()
+                            print("🔕 Cancelled all use-by notifications")
                         }
                     }
 
