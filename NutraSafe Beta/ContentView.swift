@@ -2072,6 +2072,31 @@ struct WeightTrackingView: View {
                 }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .goalWeightUpdated)) { notification in
+            if let gw = notification.userInfo?["goalWeight"] as? Double {
+                goalWeight = gw
+            } else {
+                Task {
+                    do {
+                        let settings = try await firebaseManager.getUserSettings()
+                        await MainActor.run { goalWeight = settings.goalWeight ?? 0 }
+                    } catch {
+                        // Ignore errors; UI will refresh on next load
+                    }
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .weightHistoryUpdated)) { notification in
+            // Optimistically reflect the saved entry if provided; otherwise reload
+            if let entry = notification.userInfo?["entry"] as? WeightEntry {
+                if weightHistory.first?.id != entry.id {
+                    weightHistory.insert(entry, at: 0)
+                }
+                currentWeight = entry.weight
+            } else {
+                loadWeightHistory()
+            }
+        }
     }
 
     private func loadWeightHistory() {

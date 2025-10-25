@@ -948,6 +948,10 @@ class FirebaseManager: ObservableObject {
         try await db.collection("users").document(userId)
             .collection("weightHistory").document(entry.id.uuidString).setData(entryData)
         print("✅ Weight entry saved successfully")
+        // Notify listeners that weight history changed
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .weightHistoryUpdated, object: nil, userInfo: ["entry": entry])
+        }
     }
 
     func getWeightHistory() async throws -> [WeightEntry] {
@@ -1532,6 +1536,7 @@ extension Notification.Name {
     static let nutritionGoalsUpdated = Notification.Name("nutritionGoalsUpdated")
     // New notifications for live settings updates
     static let goalWeightUpdated = Notification.Name("goalWeightUpdated")
+    static let weightHistoryUpdated = Notification.Name("weightHistoryUpdated")
     static let userSettingsUpdated = Notification.Name("userSettingsUpdated")
     static let userDataCleared = Notification.Name("userDataCleared")
 }

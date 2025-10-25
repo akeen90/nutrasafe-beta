@@ -231,6 +231,9 @@ struct DiaryDailySummaryCard: View {
                 }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .nutritionGoalsUpdated)) { _ in
+            Task { await loadNutritionGoals() }
+        }
     }
 
     // MARK: - Data Loading

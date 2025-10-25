@@ -803,9 +803,10 @@ struct ProgressGoalsSection: View {
             }
         }
         .onAppear {
-            Task {
-                await loadProgressData()
-            }
+            Task { await loadProgressData() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .weightHistoryUpdated)) { _ in
+            Task { await loadProgressData() }
         }
         .sheet(isPresented: $showingWeightHistory) {
             WeightTrackingView(showingSettings: $showingWeightHistory)
@@ -903,17 +904,23 @@ struct ProgressGoalsSection: View {
 
     private func saveCurrentWeight() {
         guard let weight = currentWeight else { return }
+        // Optimistic UI update: insert new entry locally for instant feedback
+        let newEntry = WeightEntry(weight: weight, date: Date())
+        // Immediate UI update on main thread
+        weightEntries.insert(newEntry, at: 0)
+        currentWeight = weight
+
         let manager = firebaseManager
         Task {
             do {
-                // Create a new weight entry in history
-                let entry = WeightEntry(weight: weight, date: Date())
-                try await manager.saveWeightEntry(entry)
+                try await manager.saveWeightEntry(newEntry)
                 print("✅ Current weight saved: \(weight) kg")
-                // Reload data to update the display
+                // Refresh from server to reconcile
                 await loadProgressData()
             } catch {
+                // Roll back optimistic insert on error
                 await MainActor.run {
+                    weightEntries.removeAll { $0.id == newEntry.id }
                     errorMessage = "Failed to save current weight: \(error.localizedDescription)"
                     showingError = true
                 }
@@ -1088,14 +1095,13 @@ struct CurrentWeightEditorView: View {
     }
 
     private func saveWeight() {
-        if let value = Double(tempWeight), value > 0, value < 500 {
+        let sanitized = tempWeight.replacingOccurrences(of: ",", with: ".")
+        if let value = Double(sanitized), value > 0, value < 500 {
             isSaving = true
             currentWeight = value
             onSave()
-            // Dismiss is handled after save completes by parent
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                dismiss()
-            }
+            // Dismiss immediately; parent will refresh and reconcile asynchronously
+            dismiss()
         }
     }
 }
@@ -1209,14 +1215,13 @@ struct GoalWeightEditorView: View {
     }
 
     private func saveWeight() {
-        if let value = Double(tempWeight), value > 0, value < 500 {
+        let sanitized = tempWeight.replacingOccurrences(of: ",", with: ".")
+        if let value = Double(sanitized), value > 0, value < 500 {
             isSaving = true
             goalWeight = value
             onSave()
-            // Dismiss after save completes (give time for async save and reload)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                dismiss()
-            }
+            // Dismiss immediately; parent will refresh and reconcile asynchronously
+            dismiss()
         }
     }
 }
