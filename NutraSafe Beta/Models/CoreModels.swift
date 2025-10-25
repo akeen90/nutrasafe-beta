@@ -23,8 +23,6 @@ struct UseByInventoryItem: Codable, Identifiable {
     let quantity: String
     let expiryDate: Date
     let addedDate: Date
-    let openedDate: Date?
-    let useWithinDaysOfOpening: Int? // How many days after opening should this be consumed
     let barcode: String?
     let category: String?
     let imageURL: String?
@@ -32,15 +30,13 @@ struct UseByInventoryItem: Codable, Identifiable {
 
     init(id: String = UUID().uuidString, name: String, brand: String? = nil,
          quantity: String, expiryDate: Date, addedDate: Date,
-         openedDate: Date? = nil, useWithinDaysOfOpening: Int? = nil, barcode: String? = nil, category: String? = nil, imageURL: String? = nil, notes: String? = nil) {
+         barcode: String? = nil, category: String? = nil, imageURL: String? = nil, notes: String? = nil) {
         self.id = id
         self.name = name
         self.brand = brand
         self.quantity = quantity
         self.expiryDate = expiryDate
         self.addedDate = addedDate
-        self.openedDate = openedDate
-        self.useWithinDaysOfOpening = useWithinDaysOfOpening
         self.barcode = barcode
         self.category = category
         self.imageURL = imageURL
@@ -50,26 +46,12 @@ struct UseByInventoryItem: Codable, Identifiable {
     var daysUntilExpiry: Int {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
-
-        // Only count down if item has been opened
-        if let openedDate = openedDate, let daysAfterOpening = useWithinDaysOfOpening {
-            let openedDay = calendar.startOfDay(for: openedDate)
-            let calculatedExpiry = calendar.date(byAdding: .day, value: daysAfterOpening, to: openedDay) ?? expiryDate
-            let expiry = calendar.startOfDay(for: calculatedExpiry)
-            let components = calendar.dateComponents([.day], from: today, to: expiry)
-            return components.day ?? 0
-        }
-
-        // Unopened items don't have a countdown - return a large number to indicate "not expiring"
-        return 999
+        let expiry = calendar.startOfDay(for: expiryDate)
+        let components = calendar.dateComponents([.day], from: today, to: expiry)
+        return components.day ?? 0
     }
 
     var expiryStatus: ExpiryStatus {
-        // Unopened items are always "unopened" status
-        if openedDate == nil {
-            return .unopened
-        }
-
         switch daysUntilExpiry {
         case ...(-1): return .expired // Past the expiry date
         case 0: return .expiringToday // Expiring today
@@ -81,7 +63,6 @@ struct UseByInventoryItem: Codable, Identifiable {
 }
 
 enum ExpiryStatus {
-    case unopened
     case expired
     case expiringToday
     case expiringSoon
@@ -90,7 +71,6 @@ enum ExpiryStatus {
 
     var color: Color {
         switch self {
-        case .unopened: return .blue
         case .expired: return .red
         case .expiringToday: return .red
         case .expiringSoon: return .orange
@@ -101,7 +81,6 @@ enum ExpiryStatus {
 
     var title: String {
         switch self {
-        case .unopened: return "Unopened"
         case .expired: return "Expired"
         case .expiringToday: return "Expires Today"
         case .expiringSoon: return "Expires Soon"

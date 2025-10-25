@@ -404,16 +404,15 @@ struct SafeFood: Identifiable, Codable {
 
     static func fromDictionary(_ data: [String: Any]) -> SafeFood? {
         guard let idString = data["id"] as? String,
-              let id = UUID(uuidString: idString),
+              let _ = UUID(uuidString: idString),
               let userId = data["userId"] as? String,
               let name = data["name"] as? String,
-              let dateAddedTimestamp = data["dateAdded"] as? FirebaseFirestore.Timestamp else {
+              let _ = data["dateAdded"] as? FirebaseFirestore.Timestamp else {
             return nil
         }
 
         let notes = data["notes"] as? String
 
-        var safeFood = SafeFood(userId: userId, name: name, notes: notes)
         // We need to manually set the id and dateAdded since init() generates new ones
         return SafeFood(userId: userId, name: name, notes: notes)
     }

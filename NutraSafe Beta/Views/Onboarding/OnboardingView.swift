@@ -49,15 +49,19 @@ struct OnboardingView: View {
                 UseByTrackerScreen(currentPage: $currentPage)
                     .tag(7)
 
-                // Screen 9: All Set!
-                CompletionScreen(onComplete: onComplete)
+                // Screen 9: Optional Features (Notifications & Apple Health)
+                OptionalFeaturesScreen(currentPage: $currentPage)
                     .tag(8)
+
+                // Screen 10: All Set!
+                CompletionScreen(onComplete: onComplete)
+                    .tag(9)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .indexViewStyle(.page(backgroundDisplayMode: .never))
         }
         .overlay(alignment: .bottom) {
-            ProgressCapsuleBar(current: currentPage, total: 9)
+            ProgressCapsuleBar(current: currentPage, total: 10)
                 .padding(.horizontal, 24)
                 .padding(.bottom, 20)
         }

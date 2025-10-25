@@ -149,7 +149,12 @@ class HealthKitManager: ObservableObject {
                 quantitySamplePredicate: predicate,
                 options: .cumulativeSum
             ) { _, statistics, error in
-                if let error = error {
+                if let error = error as NSError? {
+                    // Gracefully handle no-data error from HealthKit
+                    if error.domain == "com.apple.healthkit" && error.code == 11 {
+                        continuation.resume(returning: 0)
+                        return
+                    }
                     continuation.resume(throwing: error)
                     return
                 }
@@ -273,7 +278,11 @@ class HealthKitManager: ObservableObject {
                 quantitySamplePredicate: predicate,
                 options: .cumulativeSum
             ) { _, statistics, error in
-                if let error = error {
+                if let error = error as NSError? {
+                    if error.domain == "com.apple.healthkit" && error.code == 11 {
+                        continuation.resume(returning: 0)
+                        return
+                    }
                     continuation.resume(throwing: error)
                     return
                 }
@@ -317,7 +326,12 @@ class HealthKitManager: ObservableObject {
                 limit: HKObjectQueryNoLimit,
                 sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)]
             ) { _, samples, error in
-                if let error = error {
+                if let error = error as NSError? {
+                    if error.domain == "com.apple.healthkit" && error.code == 11 {
+                        // No workouts recorded for the day
+                        continuation.resume(returning: [])
+                        return
+                    }
                     continuation.resume(throwing: error)
                     return
                 }
@@ -342,7 +356,12 @@ class HealthKitManager: ObservableObject {
                 limit: 1,
                 sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)]
             ) { _, samples, error in
-                if let error = error {
+                if let error = error as NSError? {
+                    if error.domain == "com.apple.healthkit" && error.code == 11 {
+                        // No weight samples; fall back to default
+                        continuation.resume(returning: 70.0)
+                        return
+                    }
                     continuation.resume(throwing: error)
                     return
                 }

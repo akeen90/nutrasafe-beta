@@ -6,10 +6,11 @@ struct PaywallView: View {
     @Environment(\.dismiss) private var dismiss
 
     private var hasFreeTrial: Bool {
-        if let offer = subscriptionManager.product?.subscription?.introductoryOffer {
-            return offer.paymentMode == .freeTrial
+        // Check if product has a free trial available
+        guard let offer = subscriptionManager.product?.subscription?.introductoryOffer else {
+            return false
         }
-        return false
+        return offer.paymentMode == .freeTrial
     }
 
     private var priceText: String {
@@ -23,10 +24,29 @@ struct PaywallView: View {
         hasFreeTrial ? "Start Free Trial" : "Subscribe"
     }
 
+    private var headerSubtitle: String {
+        // Keep dynamic - show trial message if eligible, otherwise show tagline
+        hasFreeTrial ? "Smarter tracking. Stronger nutrition habits." : "Smarter tracking. Stronger nutrition habits."
+    }
+
+    private var showTrialText: Bool {
+        hasFreeTrial
+    }
+
+    private var trialText: String {
+        "1 week free, then \(priceText)"
+    }
+
+    private var benefitTitle: String {
+        "Why Upgrade"
+    }
+
     private var disclosureText: String {
-        var base = "Auto\u{2011}renews at \(priceText)"
-        if hasFreeTrial { base += " after 1\u{2011}week free trial" }
-        return base + ". Cancel anytime in Settings."
+        if hasFreeTrial {
+            return "1 week free, then \(priceText)"
+        } else {
+            return "Auto\u{2011}renews at \(priceText). Cancel anytime in Settings."
+        }
     }
 
     var body: some View {
@@ -47,33 +67,43 @@ struct PaywallView: View {
                             Text(priceText)
                                 .font(.system(size: 20, weight: .semibold))
                                 .foregroundColor(.primary)
-                            if hasFreeTrial {
-                                Text("Start your 1\u{2011}week free trial")
-                                    .foregroundColor(.green)
-                            }
+                            Text(headerSubtitle)
+                                .font(.system(size: 16))
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
                         }
 
                         // Benefits card
                         VStack(alignment: .leading, spacing: 16) {
-                            Text("Why upgrade")
+                            Text(benefitTitle)
                                 .font(.headline)
                             VStack(alignment: .leading, spacing: 12) {
-                                Label("Nutrition insights for everyday decisions", systemImage: "chart.bar.doc.horizontal")
-                                Label("Log reactions to spot patterns fast", systemImage: "waveform.path.ecg")
-                                Label("Smart reminders for opened items and expiry", systemImage: "calendar.badge.clock")
-                                Label("Waste less, save more — clearer fridge memory", systemImage: "leaf")
+                                Label("Unlock deeper nutrition insights that guide better choices", systemImage: "chart.bar.doc.horizontal")
+                                Label("Spot missing nutrients and build a balanced routine", systemImage: "waveform.path.ecg")
+                                Label("Smart reminders for opened food expiry — know what's still safe to eat", systemImage: "calendar.badge.clock")
+                                Label("Track reactions and discover what really works for you", systemImage: "heart.text.square")
                             }
                             .padding(16)
                             .background(.ultraThinMaterial)
                             .cornerRadius(16)
 
-                            HStack(spacing: 12) {
-                                Label("Cancel anytime", systemImage: "xmark.circle")
-                                Label("Private & secure", systemImage: "lock.shield")
-                                Label("Easy restore", systemImage: "arrow.triangle.2.circlepath")
+                            // Your Subscription section
+                            VStack(spacing: 12) {
+                                Text("Your Subscription")
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                                HStack(spacing: 6) {
+                                    Text("Cancel anytime")
+                                    Text("•")
+                                    Text("Private & secure")
+                                    Text("•")
+                                    Text("Restore easily")
+                                }
+                                .foregroundColor(.secondary)
+                                .font(.footnote)
                             }
-                            .foregroundColor(.secondary)
-                            .font(.footnote)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding()

@@ -8,5 +8,9 @@
 	<true/>
 	<key>aps-environment</key>
 	<string>development</string>
+	<key>com.apple.developer.in-app-payments</key>
+	<array>
+		<string>merchant.com.nutrasafe.beta</string>
+	</array>
 </dict>
 </plist>

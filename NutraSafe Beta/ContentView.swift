@@ -1036,8 +1036,18 @@ struct ExerciseSelectorView: View {
     @State private var customExerciseName = ""
     @State private var showingCustomInput = false
     
+    @ViewBuilder
+    private func navigationContainer<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        if #available(iOS 16.0, *) {
+            NavigationStack { content() }
+        } else {
+            NavigationView { content() }
+                .navigationViewStyle(StackNavigationViewStyle())
+        }
+    }
+    
     var body: some View {
-        NavigationView {
+        navigationContainer {
             VStack(spacing: 0) {
                 // Header
                 VStack(spacing: 16) {
@@ -1382,17 +1392,17 @@ struct ContentView: View {
             .opacity(selectedTab == .diary ? 1 : 0)
             .zIndex(selectedTab == .diary ? 1 : 0)
 
-            // Weight Tab
-            WeightTrackingView(showingSettings: $showingSettings)
-                .environmentObject(healthKitManager)
-                .opacity(selectedTab == .weight ? 1 : 0)
-                .zIndex(selectedTab == .weight ? 1 : 0)
-
             // Add Tab
             AddTabView(selectedTab: $selectedTab)
                 .environmentObject(diaryDataManager)
                 .opacity(selectedTab == .add ? 1 : 0)
                 .zIndex(selectedTab == .add ? 1 : 0)
+
+            // Weight Tab
+            WeightTrackingView(showingSettings: $showingSettings)
+                .environmentObject(healthKitManager)
+                .opacity(selectedTab == .weight ? 1 : 0)
+                .zIndex(selectedTab == .weight ? 1 : 0)
 
             // Food Tab
             FoodTabView(showingSettings: $showingSettings)
@@ -1406,9 +1416,23 @@ struct ContentView: View {
         }
     }
 
+    @ViewBuilder
+    private func navigationContainer<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        if #available(iOS 16.0, *) {
+            NavigationStack { content() }
+        } else {
+            NavigationView { content() }
+                .navigationViewStyle(StackNavigationViewStyle())
+        }
+    }
+
     var body: some View {
-        NavigationView {
+        navigationContainer {
             ZStack {
+                // Midnight blue background for entire app
+                Color.adaptiveBackground
+                    .ignoresSafeArea()
+
                 // Main Content with padding for tab bar and potential workout progress bar
                 VStack {
                     lazyTabViews
@@ -1469,6 +1493,7 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .restartOnboarding)) { _ in
             showOnboarding = true
         }
+        
         .onChange(of: selectedTab) { newTab in
             // Enforce subscription gating for programmatic tab changes
             if !(subscriptionManager.isSubscribed || subscriptionManager.isInTrial || subscriptionManager.isPremiumOverride) {
@@ -1518,6 +1543,7 @@ struct ContentView: View {
                 print("💊 Preloaded micronutrient data")
             }
         }
+
         }
     }
     
@@ -1650,7 +1676,7 @@ struct WeightTrackingView: View {
                     Text("Progress")
                         .font(.system(size: 38, weight: .bold, design: .rounded))
                         .frame(height: 44, alignment: .center)
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
 
                     Spacer()
 
@@ -1682,7 +1708,7 @@ struct WeightTrackingView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
                 .padding(.bottom, 12)
-                .background(Color(.systemBackground))
+                .background(Color.adaptiveBackground)
 
                 // Loading overlay
                 if isLoadingData {
@@ -2003,7 +2029,7 @@ struct WeightTrackingView: View {
                 }
                 } // End of loading else block
             }
-            .background(Color(.systemBackground))
+            .background(Color.adaptiveBackground)
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .sheet(isPresented: $showingAddWeight) {
@@ -2196,6 +2222,7 @@ struct WeightEntryRow: View {
                 .fill(Color(.systemBackground))
                 .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
         )
+        .padding(.bottom, 8)
     }
 }
 
@@ -6263,6 +6290,8 @@ struct AddFoodMainView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selectedAddOption: AddOption = .search
     @State private var destination: AddDestination
+    var onDismiss: (() -> Void)?
+    var onComplete: ((TabItem) -> Void)?
 
     enum AddDestination: String, CaseIterable {
         case diary = "Diary"
@@ -6291,29 +6320,23 @@ struct AddFoodMainView: View {
         }
     }
 
-    init(selectedTab: Binding<TabItem>, sourceDestination: AddDestination? = nil) {
+    init(selectedTab: Binding<TabItem>, sourceDestination: AddDestination? = nil, onDismiss: (() -> Void)? = nil, onComplete: ((TabItem) -> Void)? = nil) {
         self._selectedTab = selectedTab
         self._destination = State(initialValue: sourceDestination ?? .diary)
+        self.onDismiss = onDismiss
+        self.onComplete = onComplete
     }
 
     var body: some View {
         NavigationView {
-            VStack(spacing: 0) {
-                // Header
-                VStack(spacing: 12) {
-                    HStack {
-                        Text("Adding Food To")
-                            .font(.system(size: 28, weight: .bold))
-                            .foregroundColor(.primary)
-
-                        Spacer()
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 16)
-
-                    // Destination selector - Native Segmented Control
-                    DestinationSelector(selectedDestination: $destination)
-                        .padding(.horizontal, 16)
+            ZStack {
+                VStack(spacing: 0) {
+                    // Header
+                    VStack(spacing: 12) {
+                        // Destination selector - Native Segmented Control
+                        DestinationSelector(selectedDestination: $destination)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 8)
 
                     // Option selector - evenly distributed like Diary/Use By above
                     HStack(spacing: 0) {
@@ -6379,7 +6402,7 @@ struct AddFoodMainView: View {
                 Group {
                     switch selectedAddOption {
                     case .search:
-                        AddFoodSearchView(selectedTab: $selectedTab, destination: $destination)
+                        AddFoodSearchView(selectedTab: $selectedTab, destination: $destination, onComplete: onComplete)
                     case .manual:
                         AddFoodManualView(selectedTab: $selectedTab, destination: $destination)
                     case .barcode:
@@ -6387,16 +6410,24 @@ struct AddFoodMainView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-            .navigationBarHidden(true)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
+                }
+                .navigationTitle("Adding Food To")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button(action: {
+                            // Switch to Diary tab to "close" the Add tab
+                            selectedTab = .diary
+                        }) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.primary)
+                        }
                     }
                 }
             }
         }
+        .navigationViewStyle(StackNavigationViewStyle())
     }
 }
 

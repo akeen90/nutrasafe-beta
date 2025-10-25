@@ -19,18 +19,20 @@ struct CustomTabBar: View {
                 if tab == .add {
                     // Special Add button with circular design
                     Button(action: {
-                        let allowed = true // Add tab is free for everyone
-                        if allowed {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                selectedTab = tab
-                            }
-                            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                            impactFeedback.impactOccurred()
+                        // Add tab is free for everyone
+                        // When tapping the main plus, default destination based on current tab
+                        // If currently on Use By, preselect destination to Use By
+                        if selectedTab == .useBy {
+                            UserDefaults.standard.set("Use By", forKey: "preselectedDestination")
                         } else {
-                            onBlockedTabAttempt?()
-                            let notif = UINotificationFeedbackGenerator()
-                            notif.notificationOccurred(.warning)
+                            // Clear any previous preselection to ensure Diary is default elsewhere
+                            UserDefaults.standard.removeObject(forKey: "preselectedDestination")
                         }
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedTab = tab
+                        }
+                        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                        impactFeedback.impactOccurred()
                     }) {
                         ZStack {
                             Circle()

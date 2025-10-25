@@ -15,6 +15,7 @@ actor SQLiteFoodDatabase {
 
     private var db: OpaquePointer?
     private let dbPath: String
+    private var isInitialized = false
 
     private init() {
         // Store database in app's documents directory
@@ -23,18 +24,25 @@ actor SQLiteFoodDatabase {
         dbPath = documentDirectory.appendingPathComponent("nutrasafe_foods.db").path
 
         print("📂 SQLite database path: \(dbPath)")
+    }
 
-        // Copy database from bundle to documents if needed
+    /// Perform database initialization
+    private func performInitialization() {
+        guard !isInitialized else { return }
+
         copyDatabaseFromBundleIfNeeded()
-
-        // Open/create database
         openDatabase()
-
-        // Create tables if needed
         createTables()
-
-        // Check if we need to import initial data
         checkAndImportInitialData()
+        isInitialized = true
+        print("✅ Database initialization complete")
+    }
+
+    /// Ensure database is initialized before use
+    private func ensureInitialized() async {
+        if !isInitialized {
+            performInitialization()
+        }
     }
 
     private func copyDatabaseFromBundleIfNeeded() {
@@ -70,37 +78,44 @@ actor SQLiteFoodDatabase {
 
         print("📦 Bundle database path: \(bundlePath)")
 
-        // Check if we should update the database
+        // Always force refresh by comparing file sizes OR modification dates
+        // This ensures new data is picked up even if dates are similar
         var shouldCopy = false
 
         if fileManager.fileExists(atPath: dbPath) {
-            // Compare modification dates - if bundle DB is newer, replace it
             do {
                 let bundleAttributes = try fileManager.attributesOfItem(atPath: bundlePath)
                 let docsAttributes = try fileManager.attributesOfItem(atPath: dbPath)
 
+                let bundleSize = bundleAttributes[.size] as? Int64 ?? 0
+                let docsSize = docsAttributes[.size] as? Int64 ?? 0
+
+                // Check both size and modification date
                 if let bundleDate = bundleAttributes[.modificationDate] as? Date,
                    let docsDate = docsAttributes[.modificationDate] as? Date {
 
-                    if bundleDate > docsDate {
-                        print("📦 Bundle database is newer - updating...")
-                        print("   Bundle date: \(bundleDate)")
-                        print("   Docs date: \(docsDate)")
+                    // If size is different OR bundle is newer, update
+                    if bundleSize != docsSize || bundleDate > docsDate {
+                        print("📦 Bundle database has changed - updating...")
+                        print("   Bundle size: \(bundleSize) bytes, date: \(bundleDate)")
+                        print("   Docs size: \(docsSize) bytes, date: \(docsDate)")
                         shouldCopy = true
 
                         // Remove old database
                         try fileManager.removeItem(atPath: dbPath)
                     } else {
                         print("✅ Database already exists and is up to date")
+                        print("   Size: \(docsSize) bytes, date: \(docsDate)")
                     }
                 }
             } catch {
-                print("⚠️ Could not compare database dates: \(error.localizedDescription)")
+                print("⚠️ Could not compare database attributes: \(error.localizedDescription)")
                 print("   Keeping existing database")
             }
         } else {
             // Database doesn't exist, copy it
             shouldCopy = true
+            print("📦 No database in Documents - copying from bundle")
         }
 
         // Copy from bundle to Documents if needed
@@ -110,6 +125,11 @@ actor SQLiteFoodDatabase {
                 print("✅ Copied database from bundle to Documents directory")
                 print("   Bundle: \(bundlePath)")
                 print("   Target: \(dbPath)")
+
+                // Verify the copy
+                let attrs = try fileManager.attributesOfItem(atPath: dbPath)
+                let size = attrs[.size] as? Int64 ?? 0
+                print("   Verified size: \(size) bytes")
             } catch {
                 print("❌ Failed to copy database: \(error.localizedDescription)")
             }
@@ -285,8 +305,10 @@ actor SQLiteFoodDatabase {
 
     // MARK: - Search Operations
 
-    /// Search foods by name, brand, or barcode (async - runs off main thread)
+    /// Search foods by name, brand, or barcode with intelligent fuzzy ranking
     func searchFoods(query: String, limit: Int = 20) async -> [FoodSearchResult] {
+        await ensureInitialized()
+
         let sql = """
         SELECT
             id, name, brand, barcode,
@@ -301,14 +323,45 @@ actor SQLiteFoodDatabase {
             is_verified,
             ingredients
         FROM foods
-        WHERE name LIKE ? OR brand LIKE ? OR barcode = ?
+        WHERE name LIKE ? COLLATE NOCASE OR brand LIKE ? COLLATE NOCASE OR barcode = ?
         ORDER BY
             CASE
+                -- Priority 0: Generic brand items that start with the query (highest priority for fruits/veg)
+                -- This ensures "Banana (small)" from Generic brand appears before "Banana Loaf" from Soreen
+                WHEN LOWER(brand) = 'generic' AND name LIKE ? COLLATE NOCASE THEN 0
+
+                -- Priority 1: Exact barcode match
                 WHEN barcode = ? THEN 1
-                WHEN name LIKE ? THEN 2
-                WHEN brand LIKE ? THEN 3
-                ELSE 4
+
+                -- Priority 2: Exact name match (case insensitive)
+                WHEN LOWER(name) = LOWER(?) THEN 2
+
+                -- Priority 3: Name starts with query followed by comma/space/parenthesis (e.g., "Banana, raw" or "Banana (small)")
+                -- These are likely generic/unprocessed items
+                WHEN name LIKE ? COLLATE NOCASE OR name LIKE ? COLLATE NOCASE OR name LIKE ? COLLATE NOCASE THEN 3
+
+                -- Priority 4: Name starts with query (whole word) but no comma/space immediately after
+                WHEN name LIKE ? COLLATE NOCASE THEN 4
+
+                -- Priority 5: Name contains query as whole word with spaces
+                WHEN name LIKE ? COLLATE NOCASE OR name LIKE ? COLLATE NOCASE THEN 5
+
+                -- Priority 6: Brand starts with query
+                WHEN brand LIKE ? COLLATE NOCASE THEN 6
+
+                -- Priority 7: Name contains query anywhere
+                WHEN name LIKE ? COLLATE NOCASE THEN 7
+
+                -- Priority 8: Brand contains query
+                WHEN brand LIKE ? COLLATE NOCASE THEN 8
+
+                ELSE 9
             END,
+            -- Secondary sort: Generic brand items first within same priority
+            CASE WHEN LOWER(brand) = 'generic' THEN 0 ELSE 1 END,
+            -- Tertiary sort: shorter names first (more likely to be exact item)
+            LENGTH(name) ASC,
+            -- Quaternary sort: alphabetical
             name ASC
         LIMIT ?;
         """
@@ -316,32 +369,63 @@ actor SQLiteFoodDatabase {
         var statement: OpaquePointer?
         var results: [FoodSearchResult] = []
 
+        let queryLower = query.lowercased()
         let searchPattern = "%\(query)%"
-        let exactName = "\(query)%"
-        let exactBrand = "\(query)%"
+        let startsWithQuery = "\(query)%"
+        let startsWithComma = "\(query),%"  // Matches "Banana,something" and "Banana, something" (space handled by LIKE)
+        let startsWithDash = "\(query) -%"
+        let startsWithParen = "\(query) (%"  // Matches "Banana (Small)" pattern
+        let wholeWordSpace = "% \(query) %"
+        let wholeWordStart = "\(query) %"
+
+        print("🔎 SQLite fuzzy search for: '\(query)'")
 
         if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
-            sqlite3_bind_text(statement, 1, (searchPattern as NSString).utf8String, -1, nil)
-            sqlite3_bind_text(statement, 2, (searchPattern as NSString).utf8String, -1, nil)
-            sqlite3_bind_text(statement, 3, (query as NSString).utf8String, -1, nil)
-            sqlite3_bind_text(statement, 4, (query as NSString).utf8String, -1, nil)
-            sqlite3_bind_text(statement, 5, (exactName as NSString).utf8String, -1, nil)
-            sqlite3_bind_text(statement, 6, (exactBrand as NSString).utf8String, -1, nil)
-            sqlite3_bind_int(statement, 7, Int32(limit))
+            // WHERE clause bindings
+            sqlite3_bind_text(statement, 1, (searchPattern as NSString).utf8String, -1, nil)  // name LIKE
+            sqlite3_bind_text(statement, 2, (searchPattern as NSString).utf8String, -1, nil)  // brand LIKE
+            sqlite3_bind_text(statement, 3, (query as NSString).utf8String, -1, nil)         // barcode =
 
+            // ORDER BY clause bindings
+            sqlite3_bind_text(statement, 4, (startsWithQuery as NSString).utf8String, -1, nil) // Priority 0: Generic brand + starts with
+            sqlite3_bind_text(statement, 5, (query as NSString).utf8String, -1, nil)         // Priority 1: barcode exact
+            sqlite3_bind_text(statement, 6, (queryLower as NSString).utf8String, -1, nil)    // Priority 2: name exact
+            sqlite3_bind_text(statement, 7, (startsWithComma as NSString).utf8String, -1, nil) // Priority 3: name, comma
+            sqlite3_bind_text(statement, 8, (startsWithDash as NSString).utf8String, -1, nil)  // Priority 3: name - dash
+            sqlite3_bind_text(statement, 9, (startsWithParen as NSString).utf8String, -1, nil) // Priority 3: name (parenthesis
+            sqlite3_bind_text(statement, 10, (startsWithQuery as NSString).utf8String, -1, nil) // Priority 4: name starts
+            sqlite3_bind_text(statement, 11, (wholeWordSpace as NSString).utf8String, -1, nil)  // Priority 5: whole word
+            sqlite3_bind_text(statement, 12, (wholeWordStart as NSString).utf8String, -1, nil) // Priority 5: whole word start
+            sqlite3_bind_text(statement, 13, (startsWithQuery as NSString).utf8String, -1, nil) // Priority 6: brand starts
+            sqlite3_bind_text(statement, 14, (searchPattern as NSString).utf8String, -1, nil)   // Priority 7: name contains
+            sqlite3_bind_text(statement, 15, (searchPattern as NSString).utf8String, -1, nil)   // Priority 8: brand contains
+            sqlite3_bind_int(statement, 16, Int32(limit * 2))  // Get extra results for better ranking
+
+            var rowCount = 0
             while sqlite3_step(statement) == SQLITE_ROW {
+                rowCount += 1
                 if let food = parseFoodRow(statement: statement) {
                     results.append(food)
+                } else {
+                    print("⚠️ Failed to parse food row \(rowCount)")
                 }
             }
+            print("🔎 SQLite found \(rowCount) rows, parsed \(results.count) foods")
+        } else {
+            let errorMessage = String(cString: sqlite3_errmsg(db))
+            print("❌ SQLite prepare failed: \(errorMessage)")
         }
 
         sqlite3_finalize(statement)
-        return results
+
+        // Return only the requested limit
+        return Array(results.prefix(limit))
     }
 
     /// Search by barcode (exact match) - async
     func searchByBarcode(_ barcode: String) async -> FoodSearchResult? {
+        await ensureInitialized()
+
         let sql = """
         SELECT
             id, name, brand, barcode,
@@ -377,6 +461,8 @@ actor SQLiteFoodDatabase {
 
     /// Get food by ID - async
     func getFoodById(_ id: String) async -> FoodSearchResult? {
+        await ensureInitialized()
+
         let sql = """
         SELECT
             id, name, brand, barcode,
@@ -483,6 +569,15 @@ actor SQLiteFoodDatabase {
             }
         }
 
+        // Create micronutrient profile from vitamins and minerals
+        let recommendedIntakes = RecommendedIntakes(age: 25, gender: .other, dailyValues: [:])
+        let micronutrientProfile = MicronutrientProfile(
+            vitamins: vitamins,
+            minerals: minerals,
+            recommendedIntakes: recommendedIntakes,
+            confidenceScore: .high  // High confidence for internal database foods
+        )
+
         return FoodSearchResult(
             id: id,
             name: name,
@@ -504,7 +599,8 @@ actor SQLiteFoodDatabase {
             processingScore: processingScore != 0 ? Int(processingScore) : nil,
             processingGrade: processingGrade,
             processingLabel: processingLabel,
-            barcode: barcode
+            barcode: barcode,
+            micronutrientProfile: micronutrientProfile
         )
     }
 

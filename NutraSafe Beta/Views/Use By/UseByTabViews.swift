@@ -9,6 +9,52 @@
 import SwiftUI
 import UIKit
 
+// MARK: - Custom Midnight Blue Theme
+
+extension Color {
+    /// Midnight blue background - trading platform style
+    static var midnightBackground: Color {
+        Color(red: 0.08, green: 0.12, blue: 0.20) // #141F33
+    }
+
+    /// Slightly lighter midnight blue for cards
+    static var midnightCard: Color {
+        Color(red: 0.12, green: 0.16, blue: 0.24) // #1E293D
+    }
+
+    /// Even lighter for secondary cards
+    static var midnightCardSecondary: Color {
+        Color(red: 0.15, green: 0.20, blue: 0.28) // #263447
+    }
+
+    /// Adaptive background that switches between white and midnight blue
+    static var adaptiveBackground: Color {
+        Color(uiColor: .init { traitCollection in
+            traitCollection.userInterfaceStyle == .dark
+                ? UIColor(red: 0.08, green: 0.12, blue: 0.20, alpha: 1.0)
+                : UIColor.systemBackground
+        })
+    }
+
+    /// Adaptive card background
+    static var adaptiveCard: Color {
+        Color(uiColor: .init { traitCollection in
+            traitCollection.userInterfaceStyle == .dark
+                ? UIColor(red: 0.12, green: 0.16, blue: 0.24, alpha: 1.0)
+                : UIColor.secondarySystemGroupedBackground
+        })
+    }
+
+    /// Adaptive secondary card background
+    static var adaptiveCardSecondary: Color {
+        Color(uiColor: .init { traitCollection in
+            traitCollection.userInterfaceStyle == .dark
+                ? UIColor(red: 0.15, green: 0.20, blue: 0.28, alpha: 1.0)
+                : UIColor.tertiarySystemGroupedBackground
+        })
+    }
+}
+
 // MARK: - Image Cache (Performance Optimization)
 
 /// Simple image cache using NSCache for automatic memory management
@@ -55,7 +101,8 @@ struct UseByTabView: View {
                 HStack(spacing: 16) {
                     Text("Use By")
                         .font(.system(size: 38, weight: .bold, design: .rounded))
-                        .foregroundColor(.black)
+                        .frame(height: 44, alignment: .center)
+                        .foregroundColor(.primary)
 
                     Spacer()
 
@@ -132,9 +179,9 @@ struct UseByTabView: View {
                 .padding(.top, 8)
 
                 // Subtitle description
-                Text("Track opened items and monitor expiry dates")
+                Text("Track items and monitor expiry dates")
                     .font(.system(size: 14))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.white.opacity(0.7))
                     .padding(.horizontal, 16)
                     .padding(.top, 4)
                     .padding(.bottom, 8)
@@ -149,11 +196,13 @@ struct UseByTabView: View {
                         )
                         .frame(maxWidth: .infinity)
                     }
+                    .padding(.bottom, 80) // Space for tab bar
                 }
             }
-            .background(Color(.systemBackground))
+            .background(Color.adaptiveBackground)
             .navigationBarHidden(true)
         }
+        .navigationViewStyle(StackNavigationViewStyle())
         .fullScreenCover(isPresented: $showingAddSheet) {
             AddUseByItemSheet()
         }
@@ -247,10 +296,9 @@ struct AddFoundFoodToUseBySheet: View {
     @State private var isSaving = false
     @State private var showErrorAlert = false
     @State private var errorMessage: String? = nil
-    @State private var openedMode: OpenedMode = .today
-    @State private var openedDate: Date = Date()
-    @State private var expiryAmount: Int = 7
-    @State private var expiryUnit: ExpiryUnit = .days
+
+@State private var expiryAmount: Int = 7
+@State private var expiryUnit: ExpiryUnit = .days
     @State private var showPhotoActionSheet = false
     @State private var showCameraPicker = false
     @State private var showPhotoPicker = false
@@ -258,7 +306,7 @@ struct AddFoundFoodToUseBySheet: View {
     @State private var uploadedImageURL: String?
     @State private var isUploadingPhoto = false
 
-    enum OpenedMode { case today, chooseDate }
+
     enum ExpiryUnit: String, CaseIterable { case days = "Days", weeks = "Weeks" }
 
     var body: some View {
@@ -343,19 +391,6 @@ struct AddFoundFoodToUseBySheet: View {
 
                                 Spacer()
                             }
-                        }
-                    }
-                    SectionCard(title: "OPENED") {
-                        SegmentedContainer {
-                            Picker("", selection: $openedMode) {
-                                Text("Opened Today").tag(OpenedMode.today)
-                                Text("Choose Date").tag(OpenedMode.chooseDate)
-                            }
-                            .pickerStyle(.segmented)
-                        }
-                        if openedMode == .chooseDate {
-                            DatePicker("Opened Date", selection: $openedDate, displayedComponents: .date)
-                                .datePickerStyle(.compact)
                         }
                     }
                     SectionCard(title: "EXPIRY") {
@@ -473,8 +508,6 @@ struct AddFoundFoodToUseBySheet: View {
             quantity: "1",
             expiryDate: expiryDate,
             addedDate: Date(),
-            openedDate: openedMode == .today ? Date() : openedDate,
-            useWithinDaysOfOpening: (openedMode == .today || openedDate < Date()) ? 3 : nil,
             imageURL: uploadedImageURL
         )
         do {
@@ -527,7 +560,7 @@ struct UseByExpiryView: View {
     }
 
     private var expiringSoonCount: Int {
-        useByItems.filter { $0.openedDate != nil && $0.daysUntilExpiry <= 3 }.count
+        useByItems.filter { $0.daysUntilExpiry <= 3 }.count
     }
 
     var body: some View {
@@ -624,7 +657,7 @@ struct UseByExpiryView: View {
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 12)
-                            .background(Color.white)
+                            .background(Color.adaptiveCard)
                             .cornerRadius(12)
                             .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
                         }
@@ -681,7 +714,7 @@ struct UseByExpiryView: View {
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 60)
-                                .background(Color.white)
+                                .background(Color.adaptiveCard)
                             } else {
                                 LazyVStack(spacing: 0) {
                                     ForEach(sortedItems, id: \.id) { item in
@@ -694,7 +727,7 @@ struct UseByExpiryView: View {
                                     }
                                 }
                                 .padding(.vertical, 8)
-                                .background(Color.white)
+                                .background(Color.adaptiveCard)
                             }
                         }
                         .background(Color.white)
@@ -776,7 +809,7 @@ struct UseByExpiryAlertsCard: View {
     }
 
     private var weekCount: Int {
-        items.filter { $0.openedDate != nil && (1...7).contains($0.daysUntilExpiry) }.count
+        items.filter { $0.expiryStatus == .expiringSoon || $0.expiryStatus == .expiringThisWeek }.count
     }
 
     private var freshCount: Int {
@@ -810,7 +843,12 @@ struct UseByExpiryAlertsCard: View {
                             .cornerRadius(8)
                     }
 
-                    Button(action: { showingAddSheet = true }) {
+                    Button(action: {
+                        UserDefaults.standard.set("Use By", forKey: "preselectedDestination")
+                        selectedTab = .add
+                        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                        impactFeedback.impactOccurred()
+                    }) {
                         Image(systemName: "plus")
                             .font(.system(size: 18))
                             .foregroundColor(.purple)
@@ -1237,7 +1275,6 @@ struct UseByCriticalExpiryCard: View {
                         quantity: ["2 cups", "1.5 lbs", "5 oz bag"][index],
                         expiryDate: Calendar.current.date(byAdding: .day, value: index, to: Date()) ?? Date(),
                         addedDate: Date(),
-                        openedDate: nil,
                         barcode: nil,
                         category: nil
                     )
@@ -1637,36 +1674,16 @@ struct ModernExpiryRow: View {
     private var brandText: String { item.brand ?? "" }
 
     private var urgencyColor: Color {
-        // Check if unopened
-        if item.openedDate == nil {
-            return .blue
-        }
-
-        switch daysLeft {
-        case 0: return .red
-        case 1...2: return .orange
-        case 3...7: return .orange
-        default: return .green
-        }
+        item.expiryStatus.color
     }
 
     private var urgencyText: String {
-        print("🔍 ModernExpiryRow urgencyText - item: \(item.name), openedDate: \(String(describing: item.openedDate)), daysLeft: \(daysLeft)")
-
-        // Check if unopened
-        if item.openedDate == nil {
-            print("✅ Returning 'Unopened' for \(item.name)")
-            return "Unopened"
-        }
-
-        print("⚠️ Item \(item.name) has openedDate: \(item.openedDate!)")
         switch daysLeft {
         case 0: return "Expires today"
         case 1: return "Tomorrow"
         case 2...7: return "\(daysLeft) days"
         case 8...30: return "\(daysLeft) days"
         default:
-            // For longer periods, show weeks if > 14 days
             if daysLeft > 14 {
                 let weeks = daysLeft / 7
                 return "\(weeks) weeks"
@@ -1676,15 +1693,15 @@ struct ModernExpiryRow: View {
     }
 
     private var urgencyIcon: String {
-        // Check if unopened
-        if item.openedDate == nil {
-            return "seal.fill"
-        }
-
-        switch daysLeft {
-        case 0: return "exclamationmark.circle.fill"
-        case 1...2: return "clock.fill"
-        default: return "checkmark.circle.fill"
+        switch item.expiryStatus {
+        case .expired, .expiringToday:
+            return "exclamationmark.circle.fill"
+        case .expiringSoon:
+            return "clock.fill"
+        case .expiringThisWeek:
+            return "calendar"
+        case .fresh:
+            return "checkmark.circle.fill"
         }
     }
 
@@ -1793,10 +1810,10 @@ struct ModernExpiryRow: View {
             quantity: item.quantity,
             expiryDate: newExpiry,
             addedDate: item.addedDate,
-            openedDate: item.openedDate,
-            useWithinDaysOfOpening: item.useWithinDaysOfOpening,
             barcode: item.barcode,
-            category: item.category
+            category: item.category,
+            imageURL: item.imageURL,
+            notes: item.notes
         )
         Task {
             try? await FirebaseManager.shared.updateUseByItem(updated)
@@ -2212,7 +2229,7 @@ struct UseByInlineSearchView: View {
             HStack {
                 Image(systemName: "magnifyingglass").foregroundColor(.secondary)
                 TextField("Search products", text: $query)
-                    .textInputAutocapitalization(.words)
+                    .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
                     .onChange(of: query) { newValue in
                         // Debounce search as you type
@@ -2368,7 +2385,7 @@ struct UseBySearchSheet: View {
                 HStack {
                     Image(systemName: "magnifyingglass").foregroundColor(.secondary)
                     TextField("Search products", text: $query)
-                        .textInputAutocapitalization(.words)
+                        .textInputAutocapitalization(.never)
                         .disableAutocorrection(true)
                         .onSubmit { Task { await runSearch() } }
                     if !query.isEmpty {
@@ -2484,9 +2501,8 @@ struct UseByItemDetailView: View {
     @State private var editedBrand: String = ""
     @State private var editedQuantity: String = ""
     @State private var editedExpiryDate: Date = Date()
-    @State private var isOpened: Bool = false
-    @State private var openedDate: Date = Date()
-    @State private var useWithinDaysOfOpening: Int = 3 // Default: use within 3 days of opening
+
+
     @State private var notes: String = ""
     @State private var isSaving: Bool = false
     @State private var showDatePicker: Bool = false
@@ -2516,10 +2532,11 @@ struct UseByItemDetailView: View {
         return item!.brand
     }
     private var daysLeft: Int {
-        if isAddMode {
-            return Calendar.current.dateComponents([.day], from: Date(), to: editedExpiryDate).day ?? 0
-        }
-        return item!.daysUntilExpiry
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let expiry = calendar.startOfDay(for: editedExpiryDate)
+        let components = calendar.dateComponents([.day], from: today, to: expiry)
+        return components.day ?? 0
     }
     private var quantity: String { editedQuantity }
 
@@ -2534,11 +2551,7 @@ struct UseByItemDetailView: View {
     }
 
     var freshnessScore: Double {
-        // Unopened items are 100% fresh
-        if !isAddMode && item?.openedDate == nil {
-            return 1.0
-        }
-        let totalShelfLife = max(daysLeft + 7, 1) // Assume it started with at least 7 days
+        let totalShelfLife = max(daysLeft + 7, 1)
         let remaining = max(daysLeft, 0)
         return Double(remaining) / Double(totalShelfLife)
     }
@@ -2604,15 +2617,9 @@ struct UseByItemDetailView: View {
                             }
 
                             HStack(spacing: 12) {
-                                if !isAddMode && item?.openedDate == nil {
-                                    Label("Unopened", systemImage: "seal.fill")
-                                        .font(.system(size: 13))
-                                        .foregroundColor(.blue)
-                                } else {
-                                    Label("\(daysLeft) days", systemImage: "calendar")
-                                        .font(.system(size: 13))
-                                        .foregroundColor(freshnessColor)
-                                }
+                                Label("\(daysLeft) days", systemImage: "calendar")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(freshnessColor)
                             }
                             .padding(.top, 4)
                         }
@@ -2728,35 +2735,6 @@ struct UseByItemDetailView: View {
                     .opacity(animateIn ? 1 : 0)
                     .animation(.spring(response: 0.5).delay(0.1), value: animateIn)
 
-                    // Opened Status Card
-                    VStack(spacing: 12) {
-                        Toggle(isOn: $isOpened) {
-                            HStack {
-                                Label("Product Opened", systemImage: isOpened ? "seal.fill" : "seal")
-                                    .font(.system(size: 15, weight: .medium))
-                                Spacer()
-                            }
-                        }
-                        .toggleStyle(SwitchToggleStyle(tint: .green))
-
-                        if isOpened {
-                            DatePicker(
-                                "Opened on",
-                                selection: $openedDate,
-                                displayedComponents: .date
-                            )
-                            .font(.system(size: 14))
-                            .transition(.scale.combined(with: .opacity))
-                        }
-                    }
-                    .padding(20)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(Color(.secondarySystemBackground))
-                    )
-                    .scaleEffect(animateIn ? 1 : 0.95)
-                    .opacity(animateIn ? 1 : 0)
-                    .animation(.spring(response: 0.5).delay(0.15), value: animateIn)
 
                     // Notes Field
                     VStack(alignment: .leading, spacing: 8) {
@@ -2911,11 +2889,6 @@ struct UseByItemDetailView: View {
                 editedExpiryDate = item.expiryDate
                 notes = item.notes ?? ""
                 uploadedImageURL = item.imageURL
-                if let opened = item.openedDate {
-                    isOpened = true
-                    openedDate = opened
-                }
-                useWithinDaysOfOpening = item.useWithinDaysOfOpening ?? 3
 
                 // Load existing photo from URL if available
                 if let imageURL = item.imageURL, capturedImage == nil {
@@ -2924,31 +2897,24 @@ struct UseByItemDetailView: View {
                     }
                 }
 
-                let daysLeft = item.daysUntilExpiry
-                // Don't use 999 for unopened items - use actual expiry date instead
-                if item.openedDate == nil {
-                    // For unopened items, calculate from expiry date
-                    let actualDaysLeft = Calendar.current.dateComponents([.day], from: Date(), to: item.expiryDate).day ?? 7
-                    expiryAmount = max(actualDaysLeft, 1)
-                    expiryUnit = actualDaysLeft > 14 ? .weeks : .days
-                    if expiryUnit == .weeks {
-                        expiryAmount = expiryAmount / 7
-                    }
-                } else {
-                    // For opened items, use the countdown
-                    expiryAmount = max(daysLeft, 1)
-                    expiryUnit = daysLeft > 14 ? .weeks : .days
-                    if expiryUnit == .weeks {
-                        expiryAmount = expiryAmount / 7
-                    }
+                // Initialize expiry selector from actual expiry date
+                let calendar = Calendar.current
+                let today = calendar.startOfDay(for: Date())
+                let expiry = calendar.startOfDay(for: item.expiryDate)
+                let actualDaysLeft = calendar.dateComponents([.day], from: today, to: expiry).day ?? 7
+                expiryAmount = max(actualDaysLeft, 1)
+                expiryUnit = actualDaysLeft > 14 ? .weeks : .days
+                if expiryUnit == .weeks {
+                    expiryAmount = expiryAmount / 7
                 }
             } else {
                 // Add mode: Set defaults
                 editedQuantity = "1"
-                editedExpiryDate = Date().addingTimeInterval(7 * 24 * 60 * 60) // 7 days from now
                 expiryMode = .selector
                 expiryAmount = 7
                 expiryUnit = .days
+                // Set expiry date based on selector values
+                updateExpiryDate()
             }
 
             withAnimation(.spring(response: 0.6)) {
@@ -3072,8 +3038,6 @@ struct UseByItemDetailView: View {
                 quantity: editedQuantity.isEmpty ? "1" : editedQuantity,
                 expiryDate: editedExpiryDate,
                 addedDate: Date(),
-                openedDate: isOpened ? openedDate : nil,
-                useWithinDaysOfOpening: isOpened ? useWithinDaysOfOpening : nil,
                 barcode: nil,
                 category: nil,
                 imageURL: uploadedImageURL,
@@ -3114,8 +3078,7 @@ struct UseByItemDetailView: View {
             print("UseByItemDetailView: Item ID: \(item.id)")
             print("UseByItemDetailView: Edited quantity: \(editedQuantity)")
             print("UseByItemDetailView: Edited expiry: \(editedExpiryDate)")
-            print("UseByItemDetailView: isOpened: \(isOpened)")
-            print("UseByItemDetailView: openedDate: \(String(describing: isOpened ? openedDate : nil))")
+
 
             // Create updated item with edits
             let updatedItem = UseByInventoryItem(
@@ -3125,15 +3088,13 @@ struct UseByItemDetailView: View {
                 quantity: editedQuantity,
                 expiryDate: editedExpiryDate,
                 addedDate: item.addedDate,
-                openedDate: isOpened ? openedDate : nil,
-                useWithinDaysOfOpening: isOpened ? useWithinDaysOfOpening : nil,
                 barcode: item.barcode,
                 category: item.category,
                 imageURL: uploadedImageURL ?? item.imageURL,
                 notes: notes.isEmpty ? nil : notes
             )
 
-            print("UseByItemDetailView: Created updated item with openedDate: \(String(describing: updatedItem.openedDate))")
+
 
             // Save to Firebase
             do {
@@ -3382,46 +3343,34 @@ struct CleanUseByRow: View {
     @State private var showingDetail = false
     @State private var isPressed = false
     @State private var offset: CGFloat = 0
+    @State private var isHorizontalDragging = false
 
     private var daysLeft: Int { item.daysUntilExpiry }
 
     private var statusColor: Color {
-        // Check if unopened
-        if item.openedDate == nil {
-            return .blue
-        }
-
-        switch daysLeft {
-        case ...(-1): return Color(red: 1.0, green: 0.27, blue: 0.23) // Red for expired
-        case 0...3: return Color(red: 1.0, green: 0.62, blue: 0.0) // Orange for expiring soon
-        default: return Color(red: 0.2, green: 0.78, blue: 0.35) // Green for fresh
-        }
+        item.expiryStatus.color
     }
 
     private var statusText: String {
-        // Check if unopened
-        if item.openedDate == nil {
-            return "Unopened"
-        }
-
-        switch daysLeft {
-        case ...(-1): return "Expired"
-        case 0: return "Expires today"
-        case 1: return "1 day left"
-        default: return "\(daysLeft) days"
+        switch item.expiryStatus {
+        case .expired: return "Expired"
+        case .expiringToday: return "Expires today"
+        case .expiringSoon: return "Expires soon"
+        case .expiringThisWeek: return "This week"
+        case .fresh: return "\(daysLeft) days"
         }
     }
 
     private var statusIcon: String {
-        // Check if unopened
-        if item.openedDate == nil {
-            return "seal.fill"
-        }
-
-        switch daysLeft {
-        case ...0: return "exclamationmark.triangle.fill"
-        case 1...3: return "clock.badge.exclamationmark"
-        default: return "checkmark.seal.fill"
+        switch item.expiryStatus {
+        case .expired, .expiringToday:
+            return "exclamationmark.triangle.fill"
+        case .expiringSoon:
+            return "clock.badge.exclamationmark"
+        case .expiringThisWeek:
+            return "calendar"
+        case .fresh:
+            return "checkmark.seal.fill"
         }
     }
 
@@ -3438,22 +3387,25 @@ struct CleanUseByRow: View {
     var body: some View {
         ZStack {
             // Delete button background (revealed on swipe)
-            HStack {
-                Spacer()
-                Button(action: {
-                    deleteItem()
-                }) {
-                    VStack {
-                        Image(systemName: "trash.fill")
-                            .font(.system(size: 22))
-                        Text("Delete")
-                            .font(.system(size: 12, weight: .medium))
+            if offset < -1 {
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        deleteItem()
+                    }) {
+                        VStack {
+                            Image(systemName: "trash.fill")
+                                .font(.system(size: 22))
+                            Text("Delete")
+                                .font(.system(size: 12, weight: .medium))
+                        }
+                        .foregroundColor(.white)
+                        .frame(width: 80)
                     }
-                    .foregroundColor(.white)
-                    .frame(width: 80)
+                    .frame(maxHeight: .infinity)
+                    .background(Color.red)
                 }
-                .frame(maxHeight: .infinity)
-                .background(Color.red)
+                .transition(.opacity)
             }
 
             // Main content - Modern card design with product image
@@ -3533,34 +3485,54 @@ struct CleanUseByRow: View {
             .padding(.vertical, 14)
             .background(Color(.systemBackground))
             .offset(x: offset)
-            .gesture(
-                DragGesture()
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 12)
                     .onChanged { gesture in
-                        // Only allow left swipe (negative offset)
-                        if gesture.translation.width < 0 {
-                            offset = gesture.translation.width
+                        let dx = gesture.translation.width
+                        let dy = gesture.translation.height
+                        // Determine if this is a horizontal drag and only capture those
+                        if !isHorizontalDragging {
+                            if abs(dx) > 10 && abs(dx) > abs(dy) {
+                                isHorizontalDragging = true
+                            } else {
+                                // Not horizontal; let ScrollView handle vertical drag
+                                return
+                            }
+                        }
+
+                        if isHorizontalDragging {
+                            // Only allow left swipe (negative offset)
+                            if dx < 0 {
+                                offset = dx
+                            }
                         }
                     }
                     .onEnded { gesture in
-                        if gesture.translation.width < -100 {
-                            // Full swipe - delete
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                offset = -UIScreen.main.bounds.width
-                            }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                deleteItem()
-                            }
-                        } else if gesture.translation.width < -40 {
-                            // Show delete button
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                offset = -80
-                            }
-                        } else {
-                            // Reset
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                offset = 0
+                        if isHorizontalDragging {
+                            let dx = gesture.translation.width
+                            if dx < -100 {
+                                // Full swipe - delete
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    offset = -UIScreen.main.bounds.width
+                                }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                    deleteItem()
+                                }
+                            } else if dx < -40 {
+                                // Show delete button
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    offset = -80
+                                }
+                            } else {
+                                // Reset
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    offset = 0
+                                }
                             }
                         }
+
+                        // Reset for next gesture
+                        isHorizontalDragging = false
                     }
             )
         }
@@ -3661,7 +3633,7 @@ struct UseByStatCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
+                .fill(Color.adaptiveCard)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 16)

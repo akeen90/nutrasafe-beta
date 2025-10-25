@@ -8,15 +8,16 @@
 
 import SwiftUI
 import FirebaseAuth
+import FirebaseStorage
 import UserNotifications
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var firebaseManager: FirebaseManager
     @EnvironmentObject var subscriptionManager: SubscriptionManager
+    @AppStorage("appearanceMode") private var appearanceMode: AppearanceMode = .system
 
     @State private var showingSignOutAlert = false
-    @State private var showingDeleteAccountAlert = false
     @State private var showingPasswordResetAlert = false
     @State private var showingError = false
     @State private var errorMessage = ""
@@ -33,8 +34,7 @@ struct SettingsView: View {
                     AccountSection(
                         userEmail: firebaseManager.currentUser?.email ?? "No email",
                         onChangePassword: handleChangePassword,
-                        onSignOut: { showingSignOutAlert = true },
-                        onDeleteAccount: { showingDeleteAccountAlert = true }
+                        onSignOut: { showingSignOutAlert = true }
                     )
 
                     // PHASE 2: Nutrition Goals Section
@@ -103,6 +103,7 @@ struct SettingsView: View {
                 }
             }
         }
+        .preferredColorScheme(appearanceMode.colorScheme)
         .fullScreenCover(isPresented: $showingPaywall) {
             PaywallView()
                 .environmentObject(subscriptionManager)
@@ -116,15 +117,7 @@ struct SettingsView: View {
         } message: {
             Text("Are you sure you want to sign out?")
         }
-        // Delete Account Confirmation
-        .alert("Delete Account", isPresented: $showingDeleteAccountAlert) {
-            Button("Cancel", role: .cancel) { }
-            Button("Delete", role: .destructive) {
-                handleDeleteAccount()
-            }
-        } message: {
-            Text("This will permanently delete your account and all data. This action cannot be undone.")
-        }
+
         // Password Reset Success
         .alert("Password Reset Email Sent", isPresented: $showingPasswordResetAlert) {
             Button("OK", role: .cancel) { }
@@ -174,14 +167,7 @@ struct SettingsView: View {
         }
     }
 
-    private func handleDeleteAccount() {
-        // TODO: Implement account deletion
-        // This requires re-authentication and should delete:
-        // - All user data from Firestore
-        // - Firebase Auth account
-        errorMessage = "Account deletion is not yet implemented. Please contact support."
-        showingError = true
-    }
+
 }
 
 // MARK: - Account Section (PHASE 1)
@@ -190,7 +176,6 @@ struct AccountSection: View {
     let userEmail: String
     let onChangePassword: () -> Void
     let onSignOut: () -> Void
-    let onDeleteAccount: () -> Void
 
     var body: some View {
         SettingsSection(title: "Account") {
@@ -237,16 +222,7 @@ struct AccountSection: View {
                 action: onSignOut
             )
 
-            Divider()
-                .padding(.leading, 52)
 
-            // Delete Account
-            SettingsRow(
-                icon: "trash",
-                title: "Delete Account",
-                iconColor: .red,
-                action: onDeleteAccount
-            )
         }
     }
 }
@@ -287,7 +263,7 @@ struct AboutSection: View {
                 title: "Terms & Conditions",
                 iconColor: .blue,
                 action: {
-                    if let url = URL(string: "https://www.nutrasafe.co.uk/terms-of-service.html") {
+                    if let url = URL(string: "https://nutrasafe-705c7.web.app/terms") {
                         UIApplication.shared.open(url)
                     }
                 }
@@ -301,7 +277,7 @@ struct AboutSection: View {
                 title: "Privacy Policy",
                 iconColor: .blue,
                 action: {
-                    if let url = URL(string: "https://www.nutrasafe.co.uk/privacy-policy.html") {
+                    if let url = URL(string: "https://nutrasafe-705c7.web.app/privacy") {
                         UIApplication.shared.open(url)
                     }
                 }
@@ -328,10 +304,14 @@ struct AboutSection: View {
                 iconColor: .green,
                 action: {
                     OnboardingManager.shared.resetOnboarding()
-                    NotificationCenter.default.post(name: .restartOnboarding, object: nil)
-                    let generator = UINotificationFeedbackGenerator()
-                    generator.notificationOccurred(.success)
+                    // Dismiss Settings first so root can present onboarding immediately
                     dismiss()
+                    // Trigger onboarding after sheet dismiss animation completes
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                        NotificationCenter.default.post(name: .restartOnboarding, object: nil)
+                        let generator = UINotificationFeedbackGenerator()
+                        generator.notificationOccurred(.success)
+                    }
                 }
             )
         }
@@ -569,6 +549,10 @@ struct NutritionGoalsSection: View {
             do {
                 try await firebaseManager.saveUserSettings(height: nil, goalWeight: nil, caloricGoal: goal)
                 print("✅ Caloric goal updated to \(goal)")
+                // Notify diary view to update immediately
+                await MainActor.run {
+                    NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
+                }
             } catch {
                 await MainActor.run {
                     errorMessage = "Failed to save caloric goal: \(error.localizedDescription)"
@@ -1231,8 +1215,6 @@ struct HealthSafetySection: View {
     // Sheet presentation states
     @State private var showingAllergenManagement = false
     @State private var showingReactionsHistory = false
-    @State private var showingSafetyAlerts = false
-    @State private var showingMicronutrientDisplay = false
 
     var body: some View {
         SettingsSection(title: "Health & Safety") {
@@ -1287,31 +1269,7 @@ struct HealthSafetySection: View {
                     }
                     .buttonStyle(PlainButtonStyle())
 
-                    Divider()
-                        .padding(.leading, 52)
-
-                    // Safety Alerts
-                    SettingsRow(
-                        icon: "bell.badge.fill",
-                        title: "Safety Alerts",
-                        iconColor: .blue,
-                        action: {
-                            showingSafetyAlerts = true
-                        }
-                    )
-
-                    Divider()
-                        .padding(.leading, 52)
-
-                    // Micronutrient Display
-                    SettingsRow(
-                        icon: "pills.fill",
-                        title: "Micronutrient Display",
-                        iconColor: .green,
-                        action: {
-                            showingMicronutrientDisplay = true
-                        }
-                    )
+                    // Removed non-functional Safety Alerts and Micronutrient Display rows
                 }
             }
         }
@@ -1333,14 +1291,7 @@ struct HealthSafetySection: View {
             FoodReactionsHistoryView()
                 .environmentObject(firebaseManager)
         }
-        .sheet(isPresented: $showingSafetyAlerts) {
-            SafetyAlertsConfigView()
-                .environmentObject(firebaseManager)
-        }
-        .sheet(isPresented: $showingMicronutrientDisplay) {
-            MicronutrientDisplayView()
-                .environmentObject(firebaseManager)
-        }
+        // Removed sheets for Safety Alerts and Micronutrient Display
     }
 
     private func loadHealthSafetyData() async {
@@ -1370,6 +1321,9 @@ struct AppPreferencesSection: View {
     @AppStorage("notificationsEnabled") private var notificationsEnabled = false
     @AppStorage("useByNotificationsEnabled") private var useByNotificationsEnabled = true
     @AppStorage("fastingNotificationsEnabled") private var fastingNotificationsEnabled = true
+    @AppStorage("healthKitRingsEnabled") private var healthKitRingsEnabled = false
+
+    @EnvironmentObject var healthKitManager: HealthKitManager
 
     @State private var showingThemeSelector = false
     @State private var showingUnitsSelector = false
@@ -1405,6 +1359,38 @@ struct AppPreferencesSection: View {
                     .padding(.vertical, 12)
                 }
                 .buttonStyle(PlainButtonStyle())
+
+                Divider()
+                    .padding(.leading, 52)
+
+                // Apple Health Menu
+                NavigationLink(destination: AppleHealthSettingsView()) {
+                    HStack(spacing: 12) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(Color.white)
+                                .frame(width: 28, height: 28)
+                                .shadow(color: .black.opacity(0.05), radius: 1, x: 0, y: 0.5)
+
+                            Image(systemName: "heart.fill")
+                                .font(.system(size: 15))
+                                .foregroundColor(Color(red: 1.0, green: 0.23, blue: 0.19))
+                        }
+                        .frame(width: 28)
+
+                        Text("Apple Health")
+                            .font(.system(size: 16))
+                            .foregroundColor(.primary)
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                }
 
                 Divider()
                     .padding(.leading, 52)
@@ -1589,6 +1575,7 @@ struct ThemeSelectorView: View {
                 }
             }
         }
+        .preferredColorScheme(selectedTheme.colorScheme)
     }
 }
 
@@ -1679,6 +1666,9 @@ struct DataPrivacyView: View {
     @State private var errorMessage = ""
     @State private var showingSuccess = false
     @State private var successMessage = ""
+    @State private var showingDeleteAccountConfirmation = false
+    @State private var showingReauthPrompt = false
+    @State private var reauthPassword = ""
 
     var body: some View {
         NavigationView {
@@ -1730,6 +1720,35 @@ struct DataPrivacyView: View {
                                     .foregroundColor(.red)
 
                                 Text("Permanently remove all your data")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+
+                Section(header: Text("Account")) {
+                    Button(action: { showingDeleteAccountConfirmation = true }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "person.crop.circle.badge.xmark")
+                                .font(.system(size: 16))
+                                .foregroundColor(.red)
+                                .frame(width: 24)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Delete Account")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.red)
+
+                                Text("Permanently delete your account and all data")
                                     .font(.system(size: 13))
                                     .foregroundColor(.secondary)
                             }
@@ -1817,6 +1836,14 @@ struct DataPrivacyView: View {
         } message: {
             Text("This will permanently delete all your diary entries, weight history, settings, and allergen data. This action cannot be undone.")
         }
+        .alert("Delete Account", isPresented: $showingDeleteAccountConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                showingReauthPrompt = true
+            }
+        } message: {
+            Text("This will permanently delete your account and all associated data. This action cannot be undone.")
+        }
         .alert("Error", isPresented: $showingError) {
             Button("OK", role: .cancel) { }
         } message: {
@@ -1826,6 +1853,55 @@ struct DataPrivacyView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text(successMessage)
+        }
+        .sheet(isPresented: $showingReauthPrompt) {
+            NavigationView {
+                VStack(spacing: 16) {
+                    Text("Re-authenticate to Delete Account")
+                        .font(.system(size: 18, weight: .semibold))
+                        .padding(.top, 12)
+
+                    Text("For security, please enter your current password.")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+
+                    SecureField("Current Password", text: $reauthPassword)
+                        .textContentType(.password)
+                        .padding()
+                        .background(Color(.secondarySystemBackground))
+                        .cornerRadius(8)
+                        .padding(.horizontal)
+
+                    HStack {
+                        Button("Cancel") {
+                            reauthPassword = ""
+                            showingReauthPrompt = false
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color(.systemGray5))
+                        .cornerRadius(8)
+
+                        Button("Confirm") {
+                            let pwd = reauthPassword
+                            reauthPassword = ""
+                            showingReauthPrompt = false
+                            reauthenticateAndDelete(with: pwd)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.red)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                    }
+                    .padding(.horizontal)
+
+                    Spacer()
+                }
+                .padding()
+                .navigationTitle("Confirm Deletion")
+                .navigationBarTitleDisplayMode(.inline)
+            }
         }
     }
 
@@ -1856,6 +1932,91 @@ struct DataPrivacyView: View {
                     errorMessage = "Failed to delete data: \(error.localizedDescription)"
                     showingError = true
                     isDeleting = false
+                }
+            }
+        }
+    }
+
+    private func reauthenticateAndDelete(with password: String) {
+        guard let user = Auth.auth().currentUser, let email = user.email else {
+            errorMessage = "Unable to reauthenticate: missing user or email."
+            showingError = true
+            return
+        }
+        isDeleting = true
+        let credential = EmailAuthProvider.credential(withEmail: email, password: password)
+        user.reauthenticate(with: credential) { _, error in
+            if let error = error {
+                errorMessage = "Reauthentication failed: \(error.localizedDescription)"
+                showingError = true
+                isDeleting = false
+                return
+            }
+            Task {
+                do {
+                    // Delete Firestore data first
+                    try await firebaseManager.deleteAllUserData()
+                    // Delete Storage assets best-effort
+                    await deleteUserStorageAssets(for: user.uid)
+                    // Finally delete the Auth user
+                    user.delete { err in
+                        if let err = err {
+                            errorMessage = "Account deletion failed: \(err.localizedDescription)"
+                            showingError = true
+                            isDeleting = false
+                        } else {
+                            successMessage = "Your account has been deleted."
+                            showingSuccess = true
+                            isDeleting = false
+                            // Optionally dismiss after a delay
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                                dismiss()
+                            }
+                        }
+                    }
+                } catch {
+                    errorMessage = "Failed to delete data: \(error.localizedDescription)"
+                    showingError = true
+                    isDeleting = false
+                }
+            }
+        }
+    }
+
+    private func deleteUserStorageAssets(for uid: String) async {
+        let storage = Storage.storage()
+        let rootRef = storage.reference().child("users/\(uid)")
+        await withCheckedContinuation { continuation in
+            rootRef.listAll { result, error in
+                if let _ = error {
+                    continuation.resume()
+                    return
+                }
+                guard let result = result else {
+                    continuation.resume()
+                    return
+                }
+                let group = DispatchGroup()
+                for itemRef in result.items {
+                    group.enter()
+                    itemRef.delete { _ in group.leave() }
+                }
+                for prefixRef in result.prefixes {
+                    group.enter()
+                    prefixRef.listAll { inner, _ in
+                        guard let inner = inner else {
+                            group.leave()
+                            return
+                        }
+                        for item in inner.items {
+                            group.enter()
+                            item.delete { _ in group.leave() }
+                        }
+                        group.leave()
+                    }
+                }
+                group.notify(queue: .main) {
+                    continuation.resume()
                 }
             }
         }
@@ -2732,6 +2893,8 @@ struct NotificationSettingsView: View {
             return "xmark.circle.fill"
         case .notDetermined:
             return "questionmark.circle.fill"
+        case .ephemeral:
+            return "checkmark.circle.fill"
         @unknown default:
             return "questionmark.circle.fill"
         }
@@ -2745,6 +2908,8 @@ struct NotificationSettingsView: View {
             return .red
         case .notDetermined:
             return .orange
+        case .ephemeral:
+            return .green
         @unknown default:
             return .gray
         }
@@ -2760,6 +2925,8 @@ struct NotificationSettingsView: View {
             return "Notifications are disabled"
         case .notDetermined:
             return "Not yet configured"
+        case .ephemeral:
+            return "Temporary notifications enabled"
         @unknown default:
             return "Unknown status"
         }
@@ -2790,6 +2957,278 @@ struct NotificationSettingsView: View {
     private func openSystemSettings() {
         if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
             UIApplication.shared.open(settingsUrl)
+        }
+    }
+}
+import SwiftUI
+import HealthKit
+
+struct AppleHealthSettingsView: View {
+    @EnvironmentObject var healthKitManager: HealthKitManager
+    @AppStorage("healthKitRingsEnabled") private var healthKitRingsEnabled = false
+    @State private var isConnected = false
+    @State private var showManageInstructions = false
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                // Apple Health Logo & Header
+                VStack(spacing: 16) {
+                    // Apple Health Logo - heart on white (like in Health app UI)
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 18)
+                            .fill(Color.white)
+                            .frame(width: 80, height: 80)
+                            .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
+
+                        Image(systemName: "heart.fill")
+                            .font(.system(size: 42))
+                            .foregroundColor(Color(red: 1.0, green: 0.23, blue: 0.19))
+                    }
+
+                    Text("Apple Health")
+                        .font(.system(size: 28, weight: .bold))
+
+                    Text("By linking NutraSafe to Apple Health, you can allow NutraSafe to read and update your calories and body measurements.")
+                        .font(.system(size: 16))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                }
+                .padding(.top, 32)
+
+                // Connect / Manage Button
+                if !isConnected {
+                    // First time connection - trigger native HealthKit dialog
+                    Button(action: {
+                        Task {
+                            await requestHealthKitPermission()
+                        }
+                    }) {
+                        HStack {
+                            Image(systemName: "cross.case.fill")
+                                .symbolRenderingMode(.multicolor)
+                            Text("Connect to Apple Health")
+                                .font(.system(size: 18, weight: .semibold))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                    }
+                    .padding(.horizontal)
+                } else {
+                    // Already connected - show instructions
+                    Button(action: {
+                        showManageInstructions = true
+                    }) {
+                        HStack {
+                            Image(systemName: "gearshape.fill")
+                            Text("Manage Permissions")
+                                .font(.system(size: 18, weight: .semibold))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                    }
+                    .padding(.horizontal)
+                }
+
+                // What We Read Section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("What We Read")
+                        .font(.system(size: 20, weight: .semibold))
+                        .padding(.horizontal)
+
+                    VStack(spacing: 0) {
+                        HealthDataRow(
+                            icon: "flame.fill",
+                            title: "Active Energy",
+                            description: "Calories burned from physical activity"
+                        )
+
+                        Divider()
+                            .padding(.leading, 52)
+
+                        HealthDataRow(
+                            icon: "scalemass.fill",
+                            title: "Body Weight",
+                            description: "Your current weight measurements"
+                        )
+                    }
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .cornerRadius(12)
+                    .padding(.horizontal)
+                }
+                .padding(.top, 8)
+
+                // What We Write Section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("What We Update")
+                        .font(.system(size: 20, weight: .semibold))
+                        .padding(.horizontal)
+
+                    VStack(spacing: 0) {
+                        HealthDataRow(
+                            icon: "fork.knife",
+                            title: "Calories Consumed",
+                            description: "Nutrition data from meals you log"
+                        )
+
+                        Divider()
+                            .padding(.leading, 52)
+
+                        HealthDataRow(
+                            icon: "scalemass.fill",
+                            title: "Body Weight",
+                            description: "Weight measurements you track"
+                        )
+                    }
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .cornerRadius(12)
+                    .padding(.horizontal)
+                }
+                .padding(.top, 8)
+
+                // Privacy Info
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Your Privacy")
+                        .font(.system(size: 20, weight: .semibold))
+                        .padding(.horizontal)
+
+                    Text("NutraSafe reads your exercise and body data to provide better nutrition insights, and updates your calorie and weight data when you log meals or measurements. We never share your health information with third parties.")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal)
+                }
+                .padding(.top, 8)
+
+                Spacer()
+            }
+        }
+        .navigationTitle("Apple Health")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            checkConnectionStatus()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            // Refresh connection status when returning to app
+            checkConnectionStatus()
+        }
+        .alert("Manage Apple Health Permissions", isPresented: $showManageInstructions) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("To manage NutraSafe's Apple Health permissions:\n\n1. Open the Settings app\n2. Scroll down and tap 'Health'\n3. Tap 'Data Access & Devices'\n4. Tap 'NutraSafe'\n5. Toggle permissions on or off")
+        }
+    }
+
+    private func requestHealthKitPermission() async {
+        print("🔵 requestHealthKitPermission() called")
+
+        // Trigger the native HealthKit authorization dialog
+        await healthKitManager.requestAuthorization()
+        print("🔵 Authorization complete")
+
+        // Enable rings after authorization
+        await MainActor.run {
+            healthKitRingsEnabled = true
+            print("🔵 Rings enabled: \(healthKitRingsEnabled)")
+        }
+
+        // Update exercise calories
+        await healthKitManager.updateExerciseCalories()
+        print("🔵 Exercise calories updated")
+
+        // Refresh connection status
+        await MainActor.run {
+            checkConnectionStatus()
+            print("🔵 Final connection status: \(isConnected)")
+        }
+    }
+
+    private func checkConnectionStatus() {
+        // Check if HealthKit is available
+        guard HKHealthStore.isHealthDataAvailable() else {
+            isConnected = false
+            print("🏥 HealthKit not available")
+            return
+        }
+
+        let healthStore = HKHealthStore()
+        let exerciseType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
+
+        let authStatus = healthStore.authorizationStatus(for: exerciseType)
+
+        // Consider connected if:
+        // 1. HealthKit says we're authorized, OR
+        // 2. User has enabled rings (they went through authorization process)
+        let newConnectionStatus = (authStatus == .sharingAuthorized) || healthKitRingsEnabled
+
+        print("🏥 HealthKit Status - Auth: \(authStatus.rawValue), RingsEnabled: \(healthKitRingsEnabled)")
+        print("🏥 Calculating: authStatus == .sharingAuthorized? \(authStatus == .sharingAuthorized)")
+        print("🏥 Setting isConnected to: \(newConnectionStatus)")
+
+        isConnected = newConnectionStatus
+    }
+
+    private func openHealthKitSettings() {
+        print("🔵 openHealthKitSettings() called")
+
+        // Open Settings > Health > Data Access & Devices > NutraSafe
+        let bundleId = Bundle.main.bundleIdentifier ?? ""
+        let healthUrlString = "x-apple-health://Sources/\(bundleId)"
+        print("🔵 Attempting to open: \(healthUrlString)")
+
+        if let url = URL(string: healthUrlString) {
+            UIApplication.shared.open(url) { success in
+                print("🔵 Health settings opened: \(success)")
+            }
+        } else if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
+            print("🔵 Fallback to app settings")
+            UIApplication.shared.open(settingsUrl)
+        }
+    }
+}
+
+// MARK: - Health Data Row
+
+struct HealthDataRow: View {
+    let icon: String
+    let title: String
+    let description: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundColor(.red)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 16))
+                    .foregroundColor(.primary)
+
+                Text(description)
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+}
+
+struct AppleHealthSettingsView_Previews: PreviewProvider {
+    static var previews: some View {
+        NavigationView {
+            AppleHealthSettingsView()
+                .environmentObject(HealthKitManager.shared)
         }
     }
 }

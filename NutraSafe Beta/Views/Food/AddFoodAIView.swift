@@ -327,9 +327,7 @@ struct ImagePicker: UIViewControllerRepresentable {
         picker.allowsEditing = false
 
         // Disable rotation - lock to portrait only
-        if let navigationController = picker as? UINavigationController {
-            navigationController.navigationBar.isHidden = false
-        }
+        picker.navigationBar.isHidden = false
 
         // Override supported orientations for camera
         picker.modalPresentationStyle = .fullScreen
@@ -819,9 +817,9 @@ struct CombinedMealView: View {
                         protein: food.protein * multiplier,
                         carbohydrates: food.carbs * multiplier,
                         fat: food.fat * multiplier,
-                        fiber: (food.fiber ?? 0) * multiplier,
-                        sugar: (food.sugar ?? 0) * multiplier,
-                        sodium: (food.sodium ?? 0) * multiplier,
+                        fiber: food.fiber * multiplier,
+                        sugar: food.sugar * multiplier,
+                        sodium: food.sodium * multiplier,
                         mealType: selectedMealType,
                         date: currentDate
                     )

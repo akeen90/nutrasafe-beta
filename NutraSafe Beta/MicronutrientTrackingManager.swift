@@ -241,7 +241,7 @@ class MicronutrientTrackingManager: ObservableObject {
         var existingScores = dailyScores[nutrient] ?? []
         if let index = existingScores.firstIndex(where: { $0.id == scoreId }) {
             // Update existing
-            var score = existingScores[index]
+            let score = existingScores[index]
             let updatedPoints = score.totalPoints + points
             var updatedSources = score.sources
             if !updatedSources.contains(source) {
@@ -455,7 +455,7 @@ class MicronutrientTrackingManager: ObservableObject {
         print("🗑️ Cache invalidated due to new data save")
 
         // Save to Firestore
-        for (nutrient, scores) in dailyScores {
+        for (_, scores) in dailyScores {
             for score in scores {
                 let docRef = db.collection("users")
                     .document(userId)

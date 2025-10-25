@@ -14,45 +14,31 @@ struct OnboardingView: View {
 
     var body: some View {
         ZStack {
-            TabView(selection: $currentPage) {
-                // Screen 1: Welcome
-                WelcomeScreen(currentPage: $currentPage)
-                    .tag(0)
-
-                // Screen 2: Health Disclaimer (Required)
-                DisclaimerScreen(currentPage: $currentPage)
-                    .tag(1)
-
-                // Screen 3: Adding Food
-                AddingFoodScreen(currentPage: $currentPage)
-                    .tag(2)
-
-                // Screen 4: Food Detail Page
-                FoodDetailScreen(currentPage: $currentPage)
-                    .tag(3)
-
-                // Screen 5: Tracking Nutrients
-                TrackingNutrientsScreen(currentPage: $currentPage)
-                    .tag(4)
-
-                // Screen 6: Food Reactions
-                FoodReactionsScreen(currentPage: $currentPage)
-                    .tag(5)
-
-                // Screen 7: Fasting Timer
-                FastingTimerScreen(currentPage: $currentPage)
-                    .tag(6)
-
-                // Screen 8: Use By Tracker
-                UseByTrackerScreen(currentPage: $currentPage)
-                    .tag(7)
-
-                // Screen 9: All Set!
-                CompletionScreen(onComplete: onComplete)
-                    .tag(8)
+            Group {
+                switch currentPage {
+                case 0:
+                    WelcomeScreen(currentPage: $currentPage)
+                case 1:
+                    DisclaimerScreen(currentPage: $currentPage)
+                case 2:
+                    AddingFoodScreen(currentPage: $currentPage)
+                case 3:
+                    FoodDetailScreen(currentPage: $currentPage)
+                case 4:
+                    TrackingNutrientsScreen(currentPage: $currentPage)
+                case 5:
+                    FoodReactionsScreen(currentPage: $currentPage)
+                case 6:
+                    FastingTimerScreen(currentPage: $currentPage)
+                case 7:
+                    UseByTrackerScreen(currentPage: $currentPage)
+                case 8:
+                    SettingsFeatureScreen(currentPage: $currentPage)
+                default:
+                    CompletionScreen(onComplete: onComplete)
+                }
             }
-            .tabViewStyle(.page(indexDisplayMode: .always))
-            .indexViewStyle(.page(backgroundDisplayMode: .always))
         }
+
     }
 }

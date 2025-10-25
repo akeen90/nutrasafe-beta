@@ -34,8 +34,9 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     let processingGrade: String?
     let processingLabel: String?
     let barcode: String?
+    let micronutrientProfile: MicronutrientProfile?
 
-    init(id: String, name: String, brand: String? = nil, calories: Double, protein: Double, carbs: Double, fat: Double, fiber: Double, sugar: Double, sodium: Double, servingDescription: String? = nil, servingSizeG: Double? = nil, ingredients: [String]? = nil, confidence: Double? = nil, isVerified: Bool = false, additives: [NutritionAdditiveInfo]? = nil, additivesDatabaseVersion: String? = nil, processingScore: Int? = nil, processingGrade: String? = nil, processingLabel: String? = nil, barcode: String? = nil) {
+    init(id: String, name: String, brand: String? = nil, calories: Double, protein: Double, carbs: Double, fat: Double, fiber: Double, sugar: Double, sodium: Double, servingDescription: String? = nil, servingSizeG: Double? = nil, ingredients: [String]? = nil, confidence: Double? = nil, isVerified: Bool = false, additives: [NutritionAdditiveInfo]? = nil, additivesDatabaseVersion: String? = nil, processingScore: Int? = nil, processingGrade: String? = nil, processingLabel: String? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil) {
         self.id = id
         self.name = name
         self.brand = brand
@@ -57,6 +58,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         self.processingGrade = processingGrade
         self.processingLabel = processingLabel
         self.barcode = barcode
+        self.micronutrientProfile = micronutrientProfile
     }
     
     // Custom decoder to handle flexible payloads from Cloud Functions
@@ -84,6 +86,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         case processingGrade
         case processingLabel
         case barcode
+        case micronutrientProfile
     }
     
     // Helper structs for nested nutrition format from Firebase
@@ -184,6 +187,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         self.processingGrade = try? c.decode(String.self, forKey: .processingGrade)
         self.processingLabel = try? c.decode(String.self, forKey: .processingLabel)
         self.barcode = try? c.decode(String.self, forKey: .barcode)
+        self.micronutrientProfile = try? c.decode(MicronutrientProfile.self, forKey: .micronutrientProfile)
     }
     
     var servingSize: String {
@@ -336,7 +340,7 @@ struct NutritionProfile {
     let dietaryFlags: [DietaryFlag]
     let servingInfo: ServingInfo
     let processingLevel: ProcessingLevel // Uses CoreModels.ProcessingLevel
-    let timestamp: Timestamp
+    let timestamp: FirebaseFirestore.Timestamp
 }
 
 struct Macronutrients {
@@ -645,13 +649,13 @@ struct FoodReaction: Identifiable, Codable {
     let foodName: String
     let foodId: String? // Reference to the food database ID
     let foodBrand: String? // Store brand for better identification
-    let timestamp: Timestamp
-    let severity: ReactionSeverity // Uses CoreModels.ReactionSeverity
+    let timestamp: FirebaseFirestore.Timestamp
+    let severity: ReactionSeverity
     let symptoms: [String]
     let suspectedIngredients: [String]
     let notes: String?
 
-    init(foodName: String, foodId: String? = nil, foodBrand: String? = nil, timestamp: Timestamp, severity: ReactionSeverity, symptoms: [String], suspectedIngredients: [String], notes: String? = nil) {
+    init(foodName: String, foodId: String? = nil, foodBrand: String? = nil, timestamp: FirebaseFirestore.Timestamp, severity: ReactionSeverity, symptoms: [String], suspectedIngredients: [String], notes: String? = nil) {
         self.foodName = foodName
         self.foodId = foodId
         self.foodBrand = foodBrand
@@ -691,7 +695,7 @@ struct FoodReaction: Identifiable, Codable {
               let id = UUID(uuidString: idString),
               let foodName = data["foodName"] as? String,
               let foodIngredients = data["foodIngredients"] as? [String],
-              let reactionTimeTimestamp = data["reactionTime"] as? Timestamp,
+              let reactionTimeTimestamp = data["reactionTime"] as? FirebaseFirestore.Timestamp,
               let symptoms = data["symptoms"] as? [String],
               let severityRaw = data["severity"] as? String,
               let severity = ReactionSeverity(rawValue: severityRaw) else {
@@ -786,8 +790,8 @@ struct FoodEntry: Identifiable, Codable {
             "sodium": sodium ?? 0.0,
             "calcium": calcium ?? 0.0,
             "mealType": mealType.rawValue,
-            "date": Timestamp(date: date),
-            "dateLogged": Timestamp(date: dateLogged)
+            "date": FirebaseFirestore.Timestamp(date: date),
+            "dateLogged": FirebaseFirestore.Timestamp(date: dateLogged)
         ]
 
         // Add ingredients if available
@@ -798,7 +802,8 @@ struct FoodEntry: Identifiable, Codable {
         // Add additives if available
         if let additives = additives,
            let additivesData = try? JSONEncoder().encode(additives),
-           let additivesArray = try? JSONSerialization.jsonObject(with: additivesData, options: []) as? [[String: Any]] {
+           let additivesArray = try? JSONSerialization.jsonObject(with: additivesData, options: []) as? [[String: Any]],
+           JSONSerialization.isValidJSONObject(additivesArray) {
             dict["additives"] = additivesArray
         }
 
@@ -810,7 +815,8 @@ struct FoodEntry: Identifiable, Codable {
         // Add micronutrient profile if available
         if let micronutrients = micronutrientProfile,
            let micronutrientsData = try? JSONEncoder().encode(micronutrients),
-           let micronutrientsDict = try? JSONSerialization.jsonObject(with: micronutrientsData, options: []) as? [String: Any] {
+           let micronutrientsDict = try? JSONSerialization.jsonObject(with: micronutrientsData, options: []) as? [String: Any],
+           JSONSerialization.isValidJSONObject(micronutrientsDict) {
             dict["micronutrientProfile"] = micronutrientsDict
         }
 
@@ -829,14 +835,15 @@ struct FoodEntry: Identifiable, Codable {
               let fat = data["fat"] as? Double,
               let mealTypeRaw = data["mealType"] as? String,
               let mealType = MealType(rawValue: mealTypeRaw),
-              let dateTimestamp = data["date"] as? Timestamp,
-              let dateLoggedTimestamp = data["dateLogged"] as? Timestamp else {
+              let dateTimestamp = data["date"] as? FirebaseFirestore.Timestamp,
+              let dateLoggedTimestamp = data["dateLogged"] as? FirebaseFirestore.Timestamp else {
             return nil
         }
 
         // Deserialize additives if available
         var additives: [NutritionAdditiveInfo]? = nil
         if let additivesArray = data["additives"] as? [[String: Any]],
+           JSONSerialization.isValidJSONObject(additivesArray),
            let additivesData = try? JSONSerialization.data(withJSONObject: additivesArray, options: []) {
             additives = try? JSONDecoder().decode([NutritionAdditiveInfo].self, from: additivesData)
         }
@@ -844,6 +851,7 @@ struct FoodEntry: Identifiable, Codable {
         // Deserialize micronutrient profile if available
         var micronutrientProfile: MicronutrientProfile? = nil
         if let micronutrientsDict = data["micronutrientProfile"] as? [String: Any],
+           JSONSerialization.isValidJSONObject(micronutrientsDict),
            let micronutrientsData = try? JSONSerialization.data(withJSONObject: micronutrientsDict, options: []) {
             micronutrientProfile = try? JSONDecoder().decode(MicronutrientProfile.self, from: micronutrientsData)
         }
@@ -1095,7 +1103,8 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
             processingScore: nil,
             processingGrade: self.processedScore,
             processingLabel: self.processedScore,
-            barcode: self.barcode
+            barcode: self.barcode,
+            micronutrientProfile: self.micronutrientProfile
         )
     }
 
@@ -1183,7 +1192,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
 
 // MARK: - Micronutrient Profile Models
 
-struct MicronutrientProfile: Codable {
+struct MicronutrientProfile: Codable, Equatable {
     let vitamins: [String: Double]
     let minerals: [String: Double]
     let recommendedIntakes: RecommendedIntakes
@@ -1223,7 +1232,7 @@ struct MineralProfile: Codable {
     let iodine: Double // mcg
 }
 
-struct RecommendedIntakes: Codable {
+struct RecommendedIntakes: Codable, Equatable {
     let age: Int
     let gender: Gender
     let dailyValues: [String: Double]
@@ -1318,32 +1327,41 @@ class MicronutrientManager: ObservableObject {
     @Published var currentProfile: MicronutrientProfile?
 
     func getMicronutrientProfile(for food: FoodSearchResult, quantity: Double = 1.0) -> MicronutrientProfile {
-        // Create a basic micronutrient profile - this would be enhanced with real data
+        // Detect food type for more accurate estimates
+        let foodName = food.name.lowercased()
+        let foodType = detectFoodType(foodName)
+
+        // Apply food-type-specific multipliers
+        let multipliers = getFoodTypeMultipliers(foodType)
+
+        // Debug logging removed to prevent excessive output
+
+        // Create improved micronutrient profile with food-type awareness
         let basicVitamins: [String: Double] = [
-            "vitaminA": food.protein * 2.5 * quantity,
-            "vitaminC": food.carbs * 0.8 * quantity,
-            "vitaminD": food.fat * 0.4 * quantity,
-            "vitaminE": food.fat * 0.6 * quantity,
-            "vitaminK": food.fiber * 1.2 * quantity,
-            "thiamine": food.protein * 0.3 * quantity,
-            "riboflavin": food.protein * 0.35 * quantity,
-            "niacin": food.protein * 0.8 * quantity,
+            "vitaminA": food.protein * 2.5 * quantity * multipliers.vitaminA,
+            "vitaminC": food.carbs * 0.8 * quantity * multipliers.vitaminC,
+            "vitaminD": food.fat * 0.4 * quantity * multipliers.vitaminD,
+            "vitaminE": food.fat * 0.6 * quantity * multipliers.vitaminE,
+            "vitaminK": food.fiber * 1.2 * quantity * multipliers.vitaminK,
+            "thiamine": food.protein * 0.3 * quantity * multipliers.thiamine,
+            "riboflavin": food.protein * 0.35 * quantity * multipliers.riboflavin,
+            "niacin": food.protein * 0.8 * quantity * multipliers.niacin,
             "pantothenicAcid": food.protein * 0.25 * quantity,
-            "vitaminB6": food.protein * 0.4 * quantity,
+            "vitaminB6": food.protein * 0.4 * quantity * multipliers.vitaminB6,
             "biotin": food.protein * 0.05 * quantity,
-            "folate": food.carbs * 0.6 * quantity,
-            "vitaminB12": food.protein * 0.15 * quantity,
+            "folate": food.carbs * 0.6 * quantity * multipliers.folate,
+            "vitaminB12": food.protein * 0.15 * quantity * multipliers.vitaminB12,
             "choline": food.protein * 2.1 * quantity
         ]
 
         let basicMinerals: [String: Double] = [
-            "calcium": food.protein * 8.0 * quantity,
-            "iron": food.protein * 1.2 * quantity,
-            "magnesium": food.carbs * 2.4 * quantity,
+            "calcium": food.protein * 8.0 * quantity * multipliers.calcium,
+            "iron": food.protein * 1.2 * quantity * multipliers.iron,
+            "magnesium": food.carbs * 2.4 * quantity * multipliers.magnesium,
             "phosphorus": food.protein * 6.5 * quantity,
-            "potassium": food.carbs * 15.0 * quantity,
+            "potassium": food.carbs * 15.0 * quantity * multipliers.potassium,
             "sodium": food.sodium * quantity,
-            "zinc": food.protein * 0.8 * quantity,
+            "zinc": food.protein * 0.8 * quantity * multipliers.zinc,
             "copper": food.protein * 0.08 * quantity,
             "manganese": food.carbs * 0.12 * quantity,
             "selenium": food.protein * 0.5 * quantity,
@@ -1375,6 +1393,164 @@ class MicronutrientManager: ObservableObject {
         DispatchQueue.main.async {
             self.currentProfile = profile
         }
+    }
+
+    // MARK: - Food Type Detection
+
+    private enum FoodType {
+        case citrusFruit      // Oranges, lemons, grapefruit
+        case berries          // Strawberries, blueberries
+        case leafyGreens      // Spinach, kale
+        case dairy            // Milk, cheese, yogurt
+        case meat             // Beef, chicken, pork
+        case fish             // Salmon, tuna
+        case nuts             // Almonds, walnuts
+        case legumes          // Beans, lentils
+        case grains           // Rice, bread, pasta
+        case other
+    }
+
+    private func detectFoodType(_ foodName: String) -> FoodType {
+        let name = foodName.lowercased()
+
+        // Citrus fruits - very high in Vitamin C
+        if name.contains("orange") || name.contains("lemon") || name.contains("lime") ||
+           name.contains("grapefruit") || name.contains("tangerine") || name.contains("mandarin") {
+            return .citrusFruit
+        }
+
+        // Berries - high in Vitamin C, antioxidants
+        if name.contains("strawberry") || name.contains("strawberries") || name.contains("blueberry") ||
+           name.contains("raspberry") || name.contains("blackberry") {
+            return .berries
+        }
+
+        // Leafy greens - high in Vitamin K, folate, iron
+        if name.contains("spinach") || name.contains("kale") || name.contains("lettuce") ||
+           name.contains("arugula") || name.contains("chard") {
+            return .leafyGreens
+        }
+
+        // Dairy - high in calcium, Vitamin D, B12
+        if name.contains("milk") || name.contains("cheese") || name.contains("yogurt") ||
+           name.contains("cream") || name.contains("butter") {
+            return .dairy
+        }
+
+        // Fish - high in Vitamin D, B12, omega-3
+        if name.contains("salmon") || name.contains("tuna") || name.contains("fish") ||
+           name.contains("cod") || name.contains("mackerel") || name.contains("sardine") {
+            return .fish
+        }
+
+        // Meat - high in B vitamins, iron, zinc
+        if name.contains("chicken") || name.contains("beef") || name.contains("pork") ||
+           name.contains("turkey") || name.contains("lamb") || name.contains("steak") {
+            return .meat
+        }
+
+        // Nuts - high in Vitamin E, magnesium
+        if name.contains("almond") || name.contains("walnut") || name.contains("peanut") ||
+           name.contains("cashew") || name.contains("pistachio") {
+            return .nuts
+        }
+
+        // Legumes - high in folate, iron, magnesium
+        if name.contains("bean") || name.contains("lentil") || name.contains("chickpea") ||
+           name.contains("pea") {
+            return .legumes
+        }
+
+        // Grains - high in B vitamins, magnesium
+        if name.contains("bread") || name.contains("rice") || name.contains("pasta") ||
+           name.contains("cereal") || name.contains("oat") || name.contains("wheat") {
+            return .grains
+        }
+
+        return .other
+    }
+
+    private struct NutrientMultipliers {
+        var vitaminA: Double = 1.0
+        var vitaminC: Double = 1.0
+        var vitaminD: Double = 1.0
+        var vitaminE: Double = 1.0
+        var vitaminK: Double = 1.0
+        var thiamine: Double = 1.0
+        var riboflavin: Double = 1.0
+        var niacin: Double = 1.0
+        var vitaminB6: Double = 1.0
+        var folate: Double = 1.0
+        var vitaminB12: Double = 1.0
+        var calcium: Double = 1.0
+        var iron: Double = 1.0
+        var magnesium: Double = 1.0
+        var potassium: Double = 1.0
+        var zinc: Double = 1.0
+    }
+
+    private func getFoodTypeMultipliers(_ foodType: FoodType) -> NutrientMultipliers {
+        var multipliers = NutrientMultipliers()
+
+        switch foodType {
+        case .citrusFruit:
+            // Citrus is EXTREMELY high in Vitamin C
+            // Orange juice has ~50mg Vitamin C per 100ml
+            multipliers.vitaminC = 6.0  // Boost from 0.8x to 4.8x
+            multipliers.potassium = 2.0
+            multipliers.folate = 1.5
+
+        case .berries:
+            multipliers.vitaminC = 5.0  // Very high in Vitamin C
+            multipliers.vitaminK = 2.0
+            multipliers.folate = 1.5
+
+        case .leafyGreens:
+            multipliers.vitaminK = 5.0  // Extremely high
+            multipliers.vitaminA = 3.0
+            multipliers.folate = 3.0
+            multipliers.iron = 2.0
+            multipliers.calcium = 2.0
+
+        case .dairy:
+            multipliers.calcium = 4.0   // Very high
+            multipliers.vitaminD = 3.0
+            multipliers.vitaminB12 = 4.0
+            multipliers.riboflavin = 2.0
+
+        case .fish:
+            multipliers.vitaminD = 5.0  // Extremely high
+            multipliers.vitaminB12 = 4.0
+            multipliers.niacin = 2.0
+
+        case .meat:
+            multipliers.vitaminB12 = 3.0
+            multipliers.niacin = 2.5
+            multipliers.iron = 2.0
+            multipliers.zinc = 2.5
+            multipliers.thiamine = 2.0
+
+        case .nuts:
+            multipliers.vitaminE = 4.0  // Very high
+            multipliers.magnesium = 3.0
+
+        case .legumes:
+            multipliers.folate = 3.0
+            multipliers.iron = 2.0
+            multipliers.magnesium = 2.0
+
+        case .grains:
+            multipliers.thiamine = 2.0
+            multipliers.niacin = 2.0
+            multipliers.folate = 1.5
+            multipliers.magnesium = 1.5
+
+        case .other:
+            // Use baseline multipliers
+            break
+        }
+
+        return multipliers
     }
 }
 
@@ -1452,7 +1628,8 @@ extension NutritionProfile {
 
 extension MicronutrientProfile {
     func getDailyValuePercentage(for nutrient: String, amount: Double) -> Double? {
-        guard let recommendedAmount = recommendedIntakes.dailyValues[nutrient] else { return nil }
+        let recommendedAmount = recommendedIntakes.getDailyValue(for: nutrient)
+        guard recommendedAmount > 0 else { return nil }
         return (amount / recommendedAmount) * 100
     }
     

@@ -129,7 +129,7 @@ struct AddingFoodScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                Text("3 Ways to Find Food")
+                Text("3 Ways to Add Food")
                     .font(.system(size: 32, weight: .bold))
                     .padding(.horizontal, 24)
                     .padding(.top, 40)
@@ -138,13 +138,13 @@ struct AddingFoodScreen: View {
                     FeatureCard(
                         icon: "barcode.viewfinder",
                         title: "Barcode Scanner",
-                        description: "Point at product barcode for instant results"
+                        description: "Scan product barcodes for instant lookup"
                     )
 
                     FeatureCard(
                         icon: "magnifyingglass",
-                        title: "Search",
-                        description: "Type food name, tap result, adjust serving"
+                        title: "Search Database",
+                        description: "Search 29,000+ foods and generic items"
                     )
 
                     FeatureCard(
@@ -192,35 +192,28 @@ struct FoodDetailScreen: View {
                         icon: "chart.bar.fill",
                         colour: .green,
                         title: "Nutrition Score (A+ to F)",
-                        description: "Colour-coded health rating at a glance"
+                        description: "Instant health rating based on nutrients"
                     )
 
                     DetailFeature(
                         icon: "exclamationmark.triangle.fill",
                         colour: .red,
                         title: "Allergen Warnings",
-                        description: "RED BANNER if any of your 14 allergens detected"
+                        description: "Big red banner if your 14 allergens are detected"
                     )
 
                     DetailFeature(
                         icon: "flask.fill",
                         colour: .orange,
-                        title: "Additive Analysis",
-                        description: "400+ food additives with safety ratings"
-                    )
-
-                    DetailFeature(
-                        icon: "list.bullet",
-                        colour: .blue,
-                        title: "Ingredient List",
-                        description: "Every ingredient analysed with risk levels"
+                        title: "Ingredient Analysis",
+                        description: "Every ingredient rated with safety levels"
                     )
 
                     DetailFeature(
                         icon: "chart.pie.fill",
                         colour: .purple,
-                        title: "Essential Micronutrients",
-                        description: "Track vitamins, minerals, and daily value percentages"
+                        title: "Micronutrient Breakdown",
+                        description: "20+ vitamins & minerals with daily % values"
                     )
                 }
                 .padding(.horizontal, 20)
@@ -244,24 +237,24 @@ struct TrackingNutrientsScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                Text("Track Essential Micronutrients")
+                Text("Track Your Micronutrients")
                     .font(.system(size: 32, weight: .bold))
                     .padding(.horizontal, 24)
                     .padding(.top, 40)
 
-                Text("Diary Tab → Nutrients Sub-tab")
+                Text("Diary Tab → Nutrients")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.blue)
                     .padding(.horizontal, 24)
 
                 VStack(spacing: 16) {
                     NutrientFeature(
-                        title: "Nutrient Activity Rings",
-                        description: "See how often you eat each nutrient over 30 days",
+                        title: "Nutrient Coverage",
+                        description: "Visual status of each vitamin & mineral",
                         details: [
-                            "Green: Strong (70-100% of days)",
+                            "Green: Good coverage (70-100%)",
                             "Orange: Moderate (40-69%)",
-                            "Red: Needs attention (0-39%)"
+                            "Red: Low coverage (0-39%)"
                         ]
                     )
 
@@ -270,23 +263,14 @@ struct TrackingNutrientsScreen: View {
                         description: "Tap any nutrient to see:",
                         details: [
                             "Which foods provided it",
-                            "Daily value percentages",
-                            "Trend arrows (improving/declining)"
-                        ]
-                    )
-
-                    NutrientFeature(
-                        title: "Smart Recommendations",
-                        description: "AI suggests foods to fill your gaps",
-                        details: [
-                            "Low on Vitamin C? Get orange suggestions",
-                            "Missing iron? See spinach & lentils"
+                            "How often it appears",
+                            "Trend indicators"
                         ]
                     )
                 }
                 .padding(.horizontal, 20)
 
-                InfoBox(text: "Nutrients track automatically - just log your meals!")
+                InfoBox(text: "All nutrients are tracked automatically as you log meals!")
                     .padding(.horizontal, 24)
 
                 HStack(spacing: 12) {
@@ -313,20 +297,19 @@ struct FoodReactionsScreen: View {
                     .padding(.horizontal, 24)
                     .padding(.top, 40)
 
-                Text("Food Tab → Reactions Sub-tab")
+                Text("Food Tab → Reactions")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.blue)
                     .padding(.horizontal, 24)
 
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("How to Log a Reaction:")
+                    Text("How to Log:")
                         .font(.system(size: 20, weight: .semibold))
 
                     StepItem(number: "1", text: "Tap 'Log Reaction'")
-                    StepItem(number: "2", text: "Select food from recent diary")
-                    StepItem(number: "3", text: "Choose symptoms (nausea, bloating, etc.)")
-                    StepItem(number: "4", text: "Select severity: Mild/Moderate/Severe")
-                    StepItem(number: "5", text: "Save - app analyses patterns")
+                    StepItem(number: "2", text: "Select food from your recent meals")
+                    StepItem(number: "3", text: "Pick symptoms and severity level")
+                    StepItem(number: "4", text: "Save to track patterns over time")
                 }
                 .padding(.horizontal, 24)
 
@@ -334,13 +317,13 @@ struct FoodReactionsScreen: View {
                     Text("Pattern Analysis")
                         .font(.system(size: 20, weight: .semibold))
 
-                    Text("After logging reactions, the app identifies:")
+                    Text("The app helps you spot patterns:")
                         .font(.system(size: 16))
                         .foregroundColor(.secondary)
 
-                    BulletPoint(text: "Problematic ingredients (e.g., 'Lactose appears in 4/5 reactions')")
-                    BulletPoint(text: "Time-based patterns")
-                    BulletPoint(text: "Severity trends")
+                    BulletPoint(text: "Ingredients that appear frequently")
+                    BulletPoint(text: "Time-based trends")
+                    BulletPoint(text: "Severity tracking")
                 }
                 .padding(.horizontal, 24)
 
@@ -422,14 +405,14 @@ struct UseByTrackerScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                Text("Never Waste Food")
+                Text("Use By")
                     .font(.system(size: 32, weight: .bold))
                     .padding(.horizontal, 24)
                     .padding(.top, 40)
 
-                Text("Use By Tab")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.blue)
+                Text("Track open foods and know when they expire")
+                    .font(.system(size: 18))
+                    .foregroundColor(.secondary)
                     .padding(.horizontal, 24)
 
                 VStack(alignment: .leading, spacing: 16) {
@@ -438,7 +421,7 @@ struct UseByTrackerScreen: View {
 
                     StepItem(number: "1", text: "Tap + to add food item")
                     StepItem(number: "2", text: "Set expiry date")
-                    StepItem(number: "3", text: "Mark as 'Unopened' or 'Opened'")
+                    StepItem(number: "3", text: "Add storage notes (optional)")
                     StepItem(number: "4", text: "Get reminders before it spoils")
                 }
                 .padding(.horizontal, 24)
@@ -447,7 +430,7 @@ struct UseByTrackerScreen: View {
                     Text("Smart Countdown:")
                         .font(.system(size: 20, weight: .semibold))
 
-                    OnboardingStatusIndicator(colour: .gray, label: "Unopened", description: "Shows 'Unopened' (no countdown)")
+                    // Removed 'Unopened' indicator (deprecated)
                     OnboardingStatusIndicator(colour: .green, label: "Fresh", description: "7+ days remaining")
                     OnboardingStatusIndicator(colour: .yellow, label: "This Week", description: "4-7 days")
                     OnboardingStatusIndicator(colour: .orange, label: "Soon", description: "1-3 days")
@@ -455,7 +438,7 @@ struct UseByTrackerScreen: View {
                 }
                 .padding(.horizontal, 24)
 
-                InfoBox(text: "Example: Opened milk on Monday → '5 days left' → Reminder Friday → Use by Saturday!")
+                InfoBox(text: "Never forget about food again - get notified before it expires!")
                     .padding(.horizontal, 24)
 
                 HStack(spacing: 12) {
@@ -469,7 +452,62 @@ struct UseByTrackerScreen: View {
     }
 }
 
-// MARK: - Screen 9: Completion
+// MARK: - Screen 9: Settings & Permissions
+
+struct SettingsFeatureScreen: View {
+    @Binding var currentPage: Int
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                Text("Optional Features")
+                    .font(.system(size: 32, weight: .bold))
+                    .padding(.horizontal, 24)
+                    .padding(.top, 40)
+
+                Text("Settings Tab → Preferences")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.blue)
+                    .padding(.horizontal, 24)
+
+                VStack(spacing: 16) {
+                    NutrientFeature(
+                        title: "Apple Health Integration",
+                        description: "Sync exercise calories to your diary",
+                        details: [
+                            "Enable in Settings → Apple Health",
+                            "Shows activity calories in diary header",
+                            "Updates automatically throughout the day"
+                        ]
+                    )
+
+                    NutrientFeature(
+                        title: "Use By Notifications",
+                        description: "Get reminders for expiring items",
+                        details: [
+                            "Enable in Settings → Notifications",
+                            "Choose notification time",
+                            "Never miss an expiration date"
+                        ]
+                    )
+                }
+                .padding(.horizontal, 20)
+
+                InfoBox(text: "Both features are optional and can be enabled anytime in Settings!")
+                    .padding(.horizontal, 24)
+
+                HStack(spacing: 12) {
+                    SkipButton(currentPage: $currentPage)
+                    ContinueButton(currentPage: $currentPage)
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 40)
+            }
+        }
+    }
+}
+
+// MARK: - Screen 10: Completion
 
 struct CompletionScreen: View {
     let onComplete: () -> Void
@@ -487,15 +525,15 @@ struct CompletionScreen: View {
                     .font(.system(size: 34, weight: .bold))
 
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("You Now Know How To:")
+                    Text("You're Ready To:")
                         .font(.system(size: 20, weight: .semibold))
 
-                    CheckmarkItem(text: "Add food using 4 methods")
-                    CheckmarkItem(text: "View detailed nutrition & allergen info")
-                    CheckmarkItem(text: "Track essential vitamins and minerals automatically")
-                    CheckmarkItem(text: "Log food reactions and spot patterns")
-                    CheckmarkItem(text: "Time intermittent fasts")
-                    CheckmarkItem(text: "Track food expiry dates")
+                    CheckmarkItem(text: "Add food 3 ways: Scan, Search, or Manual")
+                    CheckmarkItem(text: "See nutrition scores & allergen warnings")
+                    CheckmarkItem(text: "Track 20+ vitamins & minerals automatically")
+                    CheckmarkItem(text: "Log reactions and identify patterns")
+                    CheckmarkItem(text: "Track intermittent fasts with 8 stages")
+                    CheckmarkItem(text: "Track expiry dates and never waste food")
                 }
                 .padding(.horizontal, 24)
 
@@ -778,8 +816,8 @@ struct SkipButton: View {
     @Binding var currentPage: Int
 
     var body: some View {
-        Button(action: { currentPage += 1 }) {
-            Text("Skip")
+        Button(action: { if currentPage > 0 { currentPage -= 1 } }) {
+            Text("Back")
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(.blue)
                 .frame(maxWidth: .infinity)
@@ -791,6 +829,7 @@ struct SkipButton: View {
                         .stroke(Color.blue.opacity(0.15), lineWidth: 1)
                 )
         }
+        .disabled(currentPage == 0)
     }
 }
 

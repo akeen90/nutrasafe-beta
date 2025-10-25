@@ -91,16 +91,18 @@ struct FoodSearchResultRowEnhanced: View {
     let sourceType: FoodSourceType
     @Binding var selectedTab: TabItem
     @Binding var destination: AddFoodMainView.AddDestination
+    var onComplete: ((TabItem) -> Void)?
     @State private var showingFoodDetail = false
     @State private var showingUseBySheet = false
     @State private var isPressed = false
     @EnvironmentObject var diaryDataManager: DiaryDataManager
 
-    init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, destination: Binding<AddFoodMainView.AddDestination>) {
+    init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, destination: Binding<AddFoodMainView.AddDestination>, onComplete: ((TabItem) -> Void)? = nil) {
         self.food = food
         self.sourceType = sourceType
         self._selectedTab = selectedTab
         self._destination = destination
+        self.onComplete = onComplete
     }
     
     private var nutritionScore: ProcessingGrade {
@@ -219,12 +221,14 @@ struct FoodSearchResultRowEnhanced: View {
         )
         .buttonStyle(PlainButtonStyle())
         .sheet(isPresented: $showingFoodDetail) {
-            FoodDetailViewFromSearch(food: food, sourceType: sourceType, selectedTab: $selectedTab, destination: destination)
+            FoodDetailViewFromSearch(food: food, sourceType: sourceType, selectedTab: $selectedTab, destination: destination) { tab in
+                onComplete?(tab)
+            }
                 .environmentObject(diaryDataManager)
         }
         .sheet(isPresented: $showingUseBySheet) {
             AddFoundFoodToUseBySheet(food: food) { tab in
-                selectedTab = tab
+                onComplete?(tab)
             }
         }
     }
@@ -269,6 +273,7 @@ enum FoodSourceType {
 struct AddFoodSearchView: View {
     @Binding var selectedTab: TabItem
     @Binding var destination: AddFoodMainView.AddDestination
+    var onComplete: ((TabItem) -> Void)?
     @State private var searchText = ""
     @State private var searchResults: [FoodSearchResult] = []
     @State private var isSearching = false
@@ -290,6 +295,8 @@ struct AddFoodSearchView: View {
 
                     TextField("Search foods...", text: $searchText)
                         .textFieldStyle(PlainTextFieldStyle())
+                        .autocorrectionDisabled(true)
+                        .textInputAutocapitalization(.never)
                         .onChange(of: searchText, perform: { newValue in
                             performLiveSearch(query: newValue)
                         })
@@ -357,7 +364,7 @@ struct AddFoodSearchView: View {
 
                                     ForEach(recentFoods, id: \.id) { recentFood in
                                         let searchResult = convertToSearchResult(recentFood)
-                                        FoodSearchResultRowEnhanced(food: searchResult, selectedTab: $selectedTab, destination: $destination)
+                                        FoodSearchResultRowEnhanced(food: searchResult, selectedTab: $selectedTab, destination: $destination, onComplete: onComplete)
                                             .padding(.horizontal, 16)
                                     }
                                 }
@@ -365,7 +372,7 @@ struct AddFoodSearchView: View {
 
                             // Show search results when searching
                             ForEach(Array(searchResults.enumerated()), id: \.element.id) { index, food in
-                                FoodSearchResultRowEnhanced(food: food, selectedTab: $selectedTab, destination: $destination)
+                                FoodSearchResultRowEnhanced(food: food, selectedTab: $selectedTab, destination: $destination, onComplete: onComplete)
                                     .id("result_\(index)")
                             }
 
@@ -440,21 +447,28 @@ struct AddFoodSearchView: View {
     private func performLiveSearch(query: String) {
         // Cancel previous search
         searchTask?.cancel()
-        
+
         guard !query.isEmpty, query.count >= 2 else {
             searchResults = []
             isSearching = false
             return
         }
-        
+
+        print("🔎 AddFoodSearchView: Starting search for '\(query)' (length: \(query.count))")
+
         isSearching = true
-        
+
         // Debounce search by 0.5 seconds
         searchTask = Task {
             try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-            
-            if Task.isCancelled { return }
-            
+
+            if Task.isCancelled {
+                print("⚠️ AddFoodSearchView: Search cancelled for '\(query)'")
+                return
+            }
+
+            print("🔍 AddFoodSearchView: Executing search for '\(query)'")
+
             do {
                 let results = try await FirebaseManager.shared.searchFoods(query: query)
                 

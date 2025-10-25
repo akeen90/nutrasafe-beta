@@ -22,6 +22,7 @@ struct FoodDetailViewFromSearch: View {
     let sourceType: FoodSourceType
     @Binding var selectedTab: TabItem
     let destination: AddFoodMainView.AddDestination
+    var onComplete: ((TabItem) -> Void)?
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var diaryDataManager: DiaryDataManager
     @State private var gramsAmount: String = "100"
@@ -33,11 +34,12 @@ struct FoodDetailViewFromSearch: View {
     @State private var showingNotificationError = false
     @State private var notificationErrorMessage = ""
 
-    init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, destination: AddFoodMainView.AddDestination) {
+    init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, destination: AddFoodMainView.AddDestination, onComplete: ((TabItem) -> Void)? = nil) {
         self.food = food
         self.sourceType = sourceType
         self._selectedTab = selectedTab
         self.destination = destination
+        self.onComplete = onComplete
     }
 
     // OPTIMIZED: Use food directly - search already returns complete data
@@ -1449,9 +1451,9 @@ struct FoodDetailViewFromSearch: View {
 
             print("FoodDetailView: Successfully added \(diaryEntry.name) to \(selectedMeal) on \(targetDate)")
 
-            // Navigate back to diary
-            selectedTab = .diary
+            // Dismiss and navigate to the destination tab
             dismiss()
+            onComplete?(destination == .diary ? .diary : .useBy)
         }
     }
     
@@ -1556,10 +1558,10 @@ struct FoodDetailViewFromSearch: View {
             
             let detectedAllergens = detectAllergens(in: food.ingredients)
             let additiveAnalysis: AdditiveDetectionResult? = nil // Placeholder for now
-            
+
             VStack(alignment: .leading, spacing: 12) {
                 // Show child warnings from additives first
-                if let analysis = additiveAnalysis {
+                if additiveAnalysis != nil {
                     HStack(alignment: .top, spacing: 8) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundColor(.orange)
@@ -1742,11 +1744,9 @@ struct FoodDetailViewFromSearch: View {
 
         Task {
             do {
-                // Use FirebaseManager to call the Cloud Function
-                try await firebaseManager.notifyIncompleteFood(
-                    foodName: food.name,
-                    brandName: food.brand ?? ""
-                )
+                // Send complete food object to FirebaseManager
+                // This will save to Firestore database and notify team via email
+                try await firebaseManager.notifyIncompleteFood(food: food)
 
                 await MainActor.run {
                     isNotifyingTeam = false
@@ -3198,7 +3198,7 @@ struct NutrientInfoCard: View {
 
     // Helper function to format benefits (remove brackets and quotes)
     private func formatBenefits(_ benefits: String) -> String {
-        var formatted = benefits
+        let formatted = benefits
             .replacingOccurrences(of: "[", with: "")
             .replacingOccurrences(of: "]", with: "")
             .replacingOccurrences(of: "\"", with: "")

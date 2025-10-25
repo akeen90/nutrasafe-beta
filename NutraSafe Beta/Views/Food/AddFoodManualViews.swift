@@ -8,6 +8,7 @@
 
 import SwiftUI
 import Foundation
+import AVFoundation
 
 // MARK: - Main Manual Add View
 
@@ -90,6 +91,7 @@ struct ManualFoodDetailEntryView: View {
     // Basic Info
     @State private var foodName = ""
     @State private var brand = ""
+    @State private var barcode = ""
 
     // Serving
     @State private var servingSize = "100"
@@ -116,12 +118,20 @@ struct ManualFoodDetailEntryView: View {
     @State private var expiryDate = Date()
     @State private var quantity = "1"
     @State private var location = "General"
+    @State private var expiryAmount = 7
+    @State private var expiryUnit: ExpiryUnit = .days
+
+    enum ExpiryUnit: String, CaseIterable {
+        case days = "Days"
+        case weeks = "Weeks"
+    }
 
     // UI State
     @State private var showingIngredients = false
     @State private var isSaving = false
     @State private var showingError = false
     @State private var errorMessage = ""
+    @State private var showingBarcodeScanner = false
 
     let servingUnits = ["g", "ml", "oz", "cup", "tbsp", "tsp", "piece", "slice", "serving"]
     let useByLocations = ["General", "UseBy", "Freezer", "Pantry", "Cupboard"]
@@ -129,11 +139,11 @@ struct ManualFoodDetailEntryView: View {
 
     var isFormValid: Bool {
         if destination == .useBy {
-            // For useBy: need food name, brand, and quantity
-            return !foodName.isEmpty && !brand.isEmpty && !quantity.isEmpty
+            // For useBy: need food name and brand only
+            return !foodName.isEmpty && !brand.isEmpty
         } else {
-            // For diary: need food name, brand, and calories
-            return !foodName.isEmpty && !brand.isEmpty && !calories.isEmpty
+            // For diary: need food name, brand, calories, carbs, protein, and fat
+            return !foodName.isEmpty && !brand.isEmpty && !calories.isEmpty && !carbs.isEmpty && !protein.isEmpty && !fat.isEmpty
         }
     }
 
@@ -149,8 +159,12 @@ struct ManualFoodDetailEntryView: View {
             return brand.isEmpty
         case "calories":
             return destination == .diary && calories.isEmpty
-        case "quantity":
-            return destination == .useBy && quantity.isEmpty
+        case "carbs":
+            return destination == .diary && carbs.isEmpty
+        case "protein":
+            return destination == .diary && protein.isEmpty
+        case "fat":
+            return destination == .diary && fat.isEmpty
         default:
             return false
         }
@@ -180,6 +194,25 @@ struct ManualFoodDetailEntryView: View {
                                     RoundedRectangle(cornerRadius: 5)
                                         .stroke(shouldShowError(for: "brand") ? Color.red : Color.clear, lineWidth: 2)
                                 )
+                        }
+
+                        FormField(label: "Barcode (Optional)", isRequired: false) {
+                            HStack(spacing: 8) {
+                                TextField("Enter barcode...", text: $barcode)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                    .keyboardType(.numberPad)
+
+                                Button(action: {
+                                    showingBarcodeScanner = true
+                                }) {
+                                    Image(systemName: "barcode.viewfinder")
+                                        .font(.system(size: 20))
+                                        .foregroundColor(.white)
+                                        .frame(width: 44, height: 44)
+                                        .background(Color.blue)
+                                        .cornerRadius(8)
+                                }
+                            }
                         }
                     }
 
@@ -230,9 +263,9 @@ struct ManualFoodDetailEntryView: View {
 
                             VStack(spacing: 12) {
                                 ManualNutritionInputRow(label: "Energy", value: $calories, unit: "kcal", isRequired: true, showError: shouldShowError(for: "calories"))
-                                ManualNutritionInputRow(label: "Protein", value: $protein, unit: "g")
-                                ManualNutritionInputRow(label: "Carbs", value: $carbs, unit: "g")
-                                ManualNutritionInputRow(label: "Fat", value: $fat, unit: "g")
+                                ManualNutritionInputRow(label: "Carbs", value: $carbs, unit: "g", isRequired: true, showError: shouldShowError(for: "carbs"))
+                                ManualNutritionInputRow(label: "Protein", value: $protein, unit: "g", isRequired: true, showError: shouldShowError(for: "protein"))
+                                ManualNutritionInputRow(label: "Fat", value: $fat, unit: "g", isRequired: true, showError: shouldShowError(for: "fat"))
                             }
                         }
 
@@ -309,44 +342,55 @@ struct ManualFoodDetailEntryView: View {
                         VStack(alignment: .leading, spacing: 16) {
                             SectionHeader(title: "Use By Details")
 
-                            FormField(label: "Quantity", isRequired: true) {
-                                TextField("1", text: $quantity)
-                                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                                    .keyboardType(.numberPad)
-                            }
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Expires In")
+                                    .font(.system(size: 14, weight: .medium))
 
-                            FormField(label: "Unit") {
-                                Picker("Unit", selection: $servingUnit) {
-                                    ForEach(servingUnits, id: \.self) { unit in
-                                        Text(unit).tag(unit)
+                                HStack(spacing: 12) {
+                                    // Counter for days/weeks
+                                    HStack(spacing: 0) {
+                                        Button(action: { if expiryAmount > 1 { expiryAmount -= 1; updateExpiryDate() } }) {
+                                            Image(systemName: "minus")
+                                                .font(.system(size: 16, weight: .semibold))
+                                        }
+                                        .frame(width: 40, height: 36)
+
+                                        Divider().frame(height: 20)
+
+                                        Text("\(expiryAmount)")
+                                            .frame(minWidth: 44)
+                                            .font(.system(size: 16, weight: .semibold))
+
+                                        Divider().frame(height: 20)
+
+                                        Button(action: { if expiryAmount < 365 { expiryAmount += 1; updateExpiryDate() } }) {
+                                            Image(systemName: "plus")
+                                                .font(.system(size: 16, weight: .semibold))
+                                        }
+                                        .frame(width: 40, height: 36)
                                     }
-                                }
-                                .pickerStyle(MenuPickerStyle())
-                                .frame(maxWidth: .infinity)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(Color(.systemGray6))
-                                .cornerRadius(8)
-                            }
+                                    .foregroundColor(.primary)
+                                    .background(RoundedRectangle(cornerRadius: 10).fill(Color(.systemGray6)))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .stroke(Color(.systemGray4), lineWidth: 1)
+                                    )
 
-                            FormField(label: "Location") {
-                                Picker("Location", selection: $location) {
-                                    ForEach(useByLocations, id: \.self) { loc in
-                                        Text(loc).tag(loc)
+                                    // Days/Weeks picker
+                                    Picker("Unit", selection: $expiryUnit) {
+                                        ForEach(ExpiryUnit.allCases, id: \.self) { unit in
+                                            Text(unit.rawValue).tag(unit)
+                                        }
                                     }
+                                    .pickerStyle(.segmented)
+                                    .onChange(of: expiryUnit) { _ in updateExpiryDate() }
                                 }
-                                .pickerStyle(MenuPickerStyle())
-                                .frame(maxWidth: .infinity)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(Color(.systemGray6))
-                                .cornerRadius(8)
                             }
 
-                            FormField(label: "Expiry Date", isRequired: true) {
-                                DatePicker("", selection: $expiryDate, displayedComponents: .date)
-                                    .labelsHidden()
-                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            FormField(label: "Calculated Expiry Date") {
+                                Text(expiryDate, style: .date)
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.secondary)
                             }
 
                             FormField(label: "Notes (Optional)") {
@@ -408,7 +452,25 @@ struct ManualFoodDetailEntryView: View {
             } message: {
                 Text(errorMessage)
             }
+            .sheet(isPresented: $showingBarcodeScanner) {
+                BarcodeScannerSheetView(barcode: $barcode, isPresented: $showingBarcodeScanner)
+            }
+            .onAppear {
+                // Initialize barcode from prefilledBarcode if provided
+                if let prefilledBarcode = prefilledBarcode {
+                    barcode = prefilledBarcode
+                }
+                // Initialize expiry date for Use By
+                if destination == .useBy {
+                    updateExpiryDate()
+                }
+            }
         }
+    }
+
+    private func updateExpiryDate() {
+        let daysToAdd = expiryUnit == .weeks ? expiryAmount * 7 : expiryAmount
+        expiryDate = Date().addingTimeInterval(TimeInterval(daysToAdd * 24 * 60 * 60))
     }
 
     private func saveFood() {
@@ -495,7 +557,7 @@ struct ManualFoodDetailEntryView: View {
             if let ingredients = ingredients {
                 foodData["ingredients"] = ingredients.joined(separator: ", ")
             }
-            if let barcode = prefilledBarcode {
+            if !barcode.isEmpty {
                 foodData["barcode"] = barcode
             }
 
@@ -523,7 +585,7 @@ struct ManualFoodDetailEntryView: View {
                 sugarLevel: nil,
                 ingredients: ingredients,
                 additives: nil,
-                barcode: prefilledBarcode,
+                barcode: barcode.isEmpty ? nil : barcode,
                 micronutrientProfile: nil
             )
 
@@ -550,9 +612,10 @@ struct ManualFoodDetailEntryView: View {
         }
     }
 
+
     private func saveFoodToUseBy() async throws {
-        // Create use-by item from manual data using existing UseByItem structure
-        guard let userId = FirebaseManager.shared.currentUser?.uid else {
+        // Create use-by item from manual data using UseByInventoryItem structure
+        guard FirebaseManager.shared.currentUser?.uid != nil else {
             let error = NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to add items"])
             await MainActor.run {
                 errorMessage = error.localizedDescription
@@ -565,21 +628,35 @@ struct ManualFoodDetailEntryView: View {
         let capitalizedFoodName = foodName.capitalized
         let capitalizedBrand = brand.capitalized
 
-        let useByItem = UseByItem(
-            userId: userId,
-            name: "\(capitalizedFoodName) - \(capitalizedBrand)",
-            quantity: Int(quantity) ?? 1,
-            unit: servingUnit,
+        // Build UseByInventoryItem to align with Use By views and Firebase storage
+        let item = UseByInventoryItem(
+            name: capitalizedFoodName,
+            brand: capitalizedBrand.isEmpty ? nil : capitalizedBrand,
+            quantity: quantity.isEmpty ? "1" : quantity,
             expiryDate: expiryDate,
-            category: location,
-            notes: ingredientsText.isEmpty ? nil : ingredientsText,
-            barcode: prefilledBarcode
+            addedDate: Date(),
+            barcode: barcode.isEmpty ? nil : barcode,
+            category: nil,
+            imageURL: nil,
+            notes: ingredientsText.isEmpty ? nil : ingredientsText
         )
 
-        // Save to Firebase
+        // Save to Firebase (users/{uid}/useByInventory)
         do {
-            try await FirebaseManager.shared.saveUseByItem(useByItem)
-            print("✅ Successfully saved item to use-by tracking")
+            try await FirebaseManager.shared.addUseByItem(item)
+            print("✅ Successfully saved item to use-by inventory")
+
+            // Switch to Use By tab and trigger refresh
+            await MainActor.run {
+                selectedTab = .useBy
+            }
+
+            // Give time for tab switch, then notify to refresh
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+
+            await MainActor.run {
+                NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
+            }
         } catch {
             await MainActor.run {
                 errorMessage = error.localizedDescription
@@ -661,6 +738,52 @@ struct ManualNutritionInputRow: View {
                 .font(.system(size: 14))
                 .foregroundColor(.secondary)
                 .frame(width: 40, alignment: .leading)
+        }
+    }
+}
+
+// MARK: - Barcode Scanner Sheet View
+
+/// Simple barcode scanner sheet that populates the barcode field without searching
+struct BarcodeScannerSheetView: View {
+    @Binding var barcode: String
+    @Binding var isPresented: Bool
+    @State private var isSearching = false
+
+    var body: some View {
+        NavigationView {
+            ZStack {
+                ModernBarcodeScanner(
+                    onBarcodeScanned: { scannedBarcode in
+                        barcode = scannedBarcode
+                        isPresented = false
+                    },
+                    isSearching: $isSearching
+                )
+                .ignoresSafeArea()
+
+                VStack {
+                    Spacer()
+
+                    Text("Scan barcode to auto-fill")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                        .background(Color.black.opacity(0.7))
+                        .cornerRadius(10)
+                        .padding(.bottom, 40)
+                }
+            }
+            .navigationTitle("Scan Barcode")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        isPresented = false
+                    }
+                }
+            }
         }
     }
 }

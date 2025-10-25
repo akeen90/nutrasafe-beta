@@ -31,7 +31,7 @@ struct FoodTabView: View {
                         Text("Food")
                             .font(.system(size: 38, weight: .bold, design: .rounded))
                             .frame(height: 44, alignment: .center)
-                            .foregroundColor(.black)
+                            .foregroundColor(.primary)
 
                         Spacer()
 
@@ -56,7 +56,7 @@ struct FoodTabView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 8)
                 }
-                .background(Color(.systemBackground))
+                .background(Color.adaptiveBackground)
                 
                 // MARK: - Fasting Components have been extracted to Views/Fasting/FastingTimerView.swift
                 // The following components were moved as part of Phase 13 ContentView.swift modularization effort:
@@ -75,9 +75,10 @@ struct FoodTabView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .background(Color(.systemBackground))
+            .background(Color.adaptiveBackground)
             .navigationBarHidden(true)
         }
+        .navigationViewStyle(StackNavigationViewStyle())
     }
 }
 
@@ -190,6 +191,13 @@ struct FoodReactionsView: View {
                     .fill(Color.clear)
                     .frame(height: 100)
             }
+        }
+        .onAppear {
+            print("🔵 FoodReactionsView appeared - checking reactions data")
+            print("🔵 Current reactions count: \(reactionManager.reactions.count)")
+            print("🔵 Is loading: \(reactionManager.isLoading)")
+            // Trigger data load if needed
+            reactionManager.reloadIfAuthenticated()
         }
         .alert("Error", isPresented: $reactionManager.showingError) {
             Button("OK", role: .cancel) {
@@ -1152,7 +1160,7 @@ struct ReactionDetailView: View {
                 }
                 .padding(20)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Color.adaptiveBackground)
             .navigationTitle("Reaction Details")
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarItems(
@@ -1423,16 +1431,21 @@ class ReactionManager: ObservableObject {
     }
 
     private func loadReactions() {
-        isLoading = true
         Task {
+            await MainActor.run {
+                isLoading = true
+            }
+
             do {
                 let fetchedReactions = try await firebaseManager.getReactions()
+                print("🔄 ReactionManager: About to update UI with \(fetchedReactions.count) reactions")
                 await MainActor.run {
                     self.reactions = fetchedReactions.sorted { $0.timestamp.dateValue() > $1.timestamp.dateValue() }
                     self.isLoading = false
+                    print("✅ ReactionManager: UI updated - reactions.count = \(self.reactions.count)")
                 }
             } catch {
-                print("Failed to load reactions: \(error)")
+                print("❌ Failed to load reactions: \(error)")
                 await MainActor.run {
                     self.reactions = []
                     self.isLoading = false
@@ -1951,6 +1964,8 @@ struct FoodReactionSearchView: View {
 
                     TextField("Search foods...", text: $searchText)
                         .textFieldStyle(PlainTextFieldStyle())
+                        .autocorrectionDisabled(true)
+                        .textInputAutocapitalization(.never)
                         .focused($isSearchFieldFocused)
                         .onChange(of: searchText, perform: { newValue in
                             performLiveSearch(query: newValue)

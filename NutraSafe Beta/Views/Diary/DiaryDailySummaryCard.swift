@@ -21,6 +21,7 @@ struct DiaryDailySummaryCard: View {
     let snackFoods: [DiaryFoodItem]
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var firebaseManager: FirebaseManager
+    @AppStorage("healthKitRingsEnabled") private var healthKitRingsEnabled = false
 
     // MARK: - Daily Goals
     @State private var calorieGoal: Double = 1800
@@ -206,11 +207,28 @@ struct DiaryDailySummaryCard: View {
         .onAppear {
             Task {
                 await loadNutritionGoals()
+                if healthKitRingsEnabled {
+                    await healthKitManager.updateExerciseCalories()
+                } else {
+                    await MainActor.run { healthKitManager.exerciseCalories = 0 }
+                }
             }
         }
         .onChange(of: currentDate) { _ in
             Task {
                 await loadNutritionGoals()
+                if healthKitRingsEnabled {
+                    await healthKitManager.updateExerciseCalories()
+                }
+            }
+        }
+        .onChange(of: healthKitRingsEnabled) { enabled in
+            Task {
+                if enabled {
+                    await healthKitManager.updateExerciseCalories()
+                } else {
+                    await MainActor.run { healthKitManager.exerciseCalories = 0 }
+                }
             }
         }
     }

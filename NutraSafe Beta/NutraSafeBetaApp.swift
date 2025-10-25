@@ -3,6 +3,10 @@ import Firebase
 import UserNotifications
 import WidgetKit
 import ActivityKit
+import StoreKit
+#if DEBUG && canImport(StoreKitTest)
+import StoreKitTest
+#endif
 
 // Explicit app delegate for proper Firebase initialization and to satisfy swizzler expectations
 class AppDelegate: NSObject, UIApplicationDelegate {
@@ -25,6 +29,32 @@ struct NutraSafeBetaApp: App {
     @StateObject private var workoutManager = WorkoutManager.shared
     @StateObject private var restTimerManager = ExerciseRestTimerManager()
     @StateObject private var subscriptionManager = SubscriptionManager()
+    
+    init() {
+        // Initialize StoreKitTest session for reliable local testing in debug builds
+        #if DEBUG && canImport(StoreKitTest)
+        if #available(iOS 15.0, *) {
+            if let storeKitURL = Bundle.main.url(forResource: "NutraSafe", withExtension: "storekit") {
+                do {
+                    let session = try SKTestSession(configurationFileURL: storeKitURL)
+                    session.resetToDefaultState()
+                    SKTestSession.default = session
+                    print("StoreKitTest: Initialized session with NutraSafe.storekit at \(storeKitURL)")
+                } catch {
+                    print("StoreKitTest: Failed to initialize with error: \(error)")
+                }
+            } else {
+                print("StoreKitTest: Could not find NutraSafe.storekit in bundle")
+            }
+        }
+        #endif
+    }
+
+    // Add theme binding at the scene level so changes apply instantly across sheets and overlays
+    @AppStorage("appearanceMode") private var appearanceModeString: String = AppearanceMode.system.rawValue
+    private var appearanceMode: AppearanceMode {
+        AppearanceMode(rawValue: appearanceModeString) ?? .system
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -34,6 +64,7 @@ struct NutraSafeBetaApp: App {
                 .environmentObject(workoutManager)
                 .environmentObject(restTimerManager)
                 .environmentObject(subscriptionManager)
+                .preferredColorScheme(appearanceMode.colorScheme)
         }
     }
 }
@@ -50,6 +81,7 @@ struct MainAppView: View {
     @EnvironmentObject var firebaseManager: FirebaseManager
     @EnvironmentObject var healthKitManager: HealthKitManager
     @AppStorage("appearanceMode") private var appearanceModeString: String = AppearanceMode.system.rawValue
+    @AppStorage("healthKitRingsEnabled") private var healthKitRingsEnabled = false
 
     private var appearanceMode: AppearanceMode {
         AppearanceMode(rawValue: appearanceModeString) ?? .system
@@ -58,11 +90,25 @@ struct MainAppView: View {
     var body: some View {
         AuthenticationView()
             .preferredColorScheme(appearanceMode.colorScheme)
-            .id(appearanceModeString) // Force view refresh when theme changes
             .onAppear {
                 Task {
-                    await healthKitManager.requestAuthorization()
+                    if healthKitRingsEnabled {
+                        await healthKitManager.requestAuthorization()
+                        await healthKitManager.updateExerciseCalories()
+                    } else {
+                        await MainActor.run { healthKitManager.exerciseCalories = 0 }
+                    }
                     await requestNotificationPermission()
+                }
+            }
+            .onChange(of: healthKitRingsEnabled) { enabled in
+                Task {
+                    if enabled {
+                        await healthKitManager.requestAuthorization()
+                        await healthKitManager.updateExerciseCalories()
+                    } else {
+                        await MainActor.run { healthKitManager.exerciseCalories = 0 }
+                    }
                 }
             }
     }

@@ -108,7 +108,7 @@ struct NutrientRingCard: View {
             }
 
             // 30-day activity bar
-            if let freq = frequency {
+            if frequency != nil {
                 Nutrient30DayActivityBar(
                     nutrientId: nutrient.id,
                     dayActivities: trackingManager.dayActivities,

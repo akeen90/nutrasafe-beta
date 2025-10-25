@@ -129,7 +129,7 @@ struct DiaryMealCard: View {
                             onDelete: {
                                 // Delete food from list
                                 if let index = foods.firstIndex(of: food) {
-                                    withAnimation(.easeOut(duration: 0.3)) {
+                                    _ = withAnimation(.easeOut(duration: 0.3)) {
                                         foods.remove(at: index)
                                     }
                                     // Delete from Firebase

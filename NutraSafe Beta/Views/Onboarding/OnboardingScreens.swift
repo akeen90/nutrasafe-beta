@@ -475,7 +475,96 @@ struct UseByTrackerScreen: View {
     }
 }
 
-// MARK: - Screen 9: Completion
+// MARK: - Screen 9: Optional Features
+
+struct OptionalFeaturesScreen: View {
+    @Binding var currentPage: Int
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                Text("Optional Features")
+                    .font(.system(size: 32, weight: .bold))
+                    .padding(.horizontal, 24)
+                    .padding(.top, 40)
+
+                Text("Enable these features later in Settings whenever you're ready")
+                    .font(.system(size: 16))
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 24)
+
+                VStack(spacing: 16) {
+                    OptionalFeatureCard(
+                        icon: "bell.badge.fill",
+                        title: "Use-By Notifications",
+                        description: "Get reminders before food expires so nothing goes to waste",
+                        location: "Enable in: Settings → Notifications"
+                    )
+
+                    OptionalFeatureCard(
+                        icon: "heart.circle.fill",
+                        title: "Apple Health Integration",
+                        description: "Sync exercise calories to see accurate daily targets in your diary",
+                        location: "Enable in: Settings → Apple Health"
+                    )
+                }
+                .padding(.horizontal, 24)
+
+                InfoBox(text: "We won't ask for permissions now - enable them yourself when you're ready and understand why they're useful")
+                    .padding(.horizontal, 24)
+
+                WarningBox(text: "Both features are entirely optional - NutraSafe works perfectly without them!")
+                    .padding(.horizontal, 24)
+
+                HStack(spacing: 12) {
+                    SkipButton(currentPage: $currentPage)
+                    ContinueButton(currentPage: $currentPage)
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 40)
+            }
+        }
+    }
+}
+
+struct OptionalFeatureCard: View {
+    let icon: String
+    let title: String
+    let description: String
+    let location: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 28))
+                    .foregroundColor(.blue)
+                    .frame(width: 40)
+
+                Text(title)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.primary)
+            }
+
+            Text(description)
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(location)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(.blue)
+                .padding(.top, 4)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(.thinMaterial)
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.1), radius: 12, y: 6)
+    }
+}
+
+// MARK: - Screen 10: Completion
 
 struct CompletionScreen: View {
     let onComplete: () -> Void
@@ -509,9 +598,9 @@ struct CompletionScreen: View {
                     Text("Quick Start Guide:")
                         .font(.system(size: 20, weight: .semibold))
 
-                    QuickTip(number: "1", text: "Set up your allergens first: Settings → Health & Safety")
-                    QuickTip(number: "2", text: "Add your first meal: Tap + → Search or Scan")
-                    QuickTip(number: "3", text: "Check your nutrients: Diary → Nutrients tab")
+                    QuickTip(number: "1", text: "Set up your allergens: Settings → Health & Safety")
+                    QuickTip(number: "2", text: "Enable notifications/Apple Health if desired: Settings")
+                    QuickTip(number: "3", text: "Add your first meal: Tap + → Search or Scan")
                 }
                 .padding(.horizontal, 24)
 

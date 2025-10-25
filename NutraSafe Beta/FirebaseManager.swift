@@ -140,8 +140,23 @@ class FirebaseManager: ObservableObject {
 
         print("✅ All user data deleted successfully - Total: \(totalDeleted) documents deleted")
 
-        // Notify observers that all data has been cleared
+        // Clear caches and notify observers so the UI refreshes immediately
         await MainActor.run {
+            // Invalidate internal caches
+            self.searchCache.removeAllObjects()
+            self.foodEntriesCache.removeAll()
+            self.periodCache.removeAll()
+            self.cachedUserAllergens = []
+            self.allergensLastFetched = nil
+
+            // Broadcast updates to active views
+            NotificationCenter.default.post(name: .foodDiaryUpdated, object: nil)
+            NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
+            NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
+            NotificationCenter.default.post(name: .goalWeightUpdated, object: nil, userInfo: ["goalWeight": 0])
+            NotificationCenter.default.post(name: .userDataCleared, object: nil)
+
+            // Notify SwiftUI observers
             self.objectWillChange.send()
         }
     }
@@ -188,6 +203,29 @@ class FirebaseManager: ObservableObject {
 
         // Invalidate cache for this date
         invalidateFoodEntriesCache(for: entry.date, userId: userId)
+
+        // Invalidate period cache (7-day queries)
+        periodCache.removeAll()
+        print("🗑️ Cleared period cache after saving food entry")
+
+        // Notify that food diary was updated
+        await MainActor.run {
+            print("📢 Posting foodDiaryUpdated notification...")
+            NotificationCenter.default.post(name: .foodDiaryUpdated, object: nil)
+        }
+
+        // Write dietary energy to Apple Health when enabled
+        let ringsEnabled = UserDefaults.standard.bool(forKey: "healthKitRingsEnabled")
+        if ringsEnabled {
+            Task {
+                await HealthKitManager.shared.requestAuthorization()
+                do {
+                    try await HealthKitManager.shared.writeDietaryEnergyConsumed(calories: entry.calories, date: entry.date)
+                } catch {
+                    print("⚠️ Failed to write dietary energy to HealthKit: \(error)")
+                }
+            }
+        }
     }
 
     /// Invalidate food entries cache for a specific date
@@ -257,14 +295,20 @@ class FirebaseManager: ObservableObject {
     func getFoodEntriesForPeriod(days: Int) async throws -> [FoodEntry] {
         guard let userId = currentUser?.uid else { return [] }
 
-        // Check cache first
-        if let cached = periodCache[days] {
+        // Check cache first (thread-safe)
+        let cachedResult = await MainActor.run {
+            periodCache[days]
+        }
+
+        if let cached = cachedResult {
             let age = Date().timeIntervalSince(cached.timestamp)
             if age < periodCacheExpirationSeconds {
                 print("⚡️ Period Cache HIT - instant load for \(days) days (cached \(Int(age))s ago)")
                 return cached.entries
             } else {
-                periodCache.removeValue(forKey: days)
+                _ = await MainActor.run {
+                    periodCache.removeValue(forKey: days)
+                }
                 print("🔄 Period Cache EXPIRED - refreshing \(days) days")
             }
         }
@@ -286,8 +330,10 @@ class FirebaseManager: ObservableObject {
             FoodEntry.fromDictionary(doc.data())
         }
 
-        // Cache the result
-        periodCache[days] = (entries, Date())
+        // Cache the result (thread-safe)
+        await MainActor.run {
+            periodCache[days] = (entries, Date())
+        }
         print("💾 Cached \(entries.count) food entries for \(days)-day period")
 
         return entries
@@ -341,6 +387,16 @@ class FirebaseManager: ObservableObject {
         // Clear entire cache since we don't know which date this entry belongs to
         foodEntriesCache.removeAll()
         print("🗑️ Cleared all food entries cache after deletion")
+
+        // Invalidate period cache (7-day queries)
+        periodCache.removeAll()
+        print("🗑️ Cleared period cache after deletion")
+
+        // Notify that food diary was updated
+        await MainActor.run {
+            print("📢 Posting foodDiaryUpdated notification after deletion...")
+            NotificationCenter.default.post(name: .foodDiaryUpdated, object: nil)
+        }
     }
     
     // MARK: - Food Reactions
@@ -436,14 +492,7 @@ class FirebaseManager: ObservableObject {
         let data = try encoder.encode(item)
         var dict = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] ?? [:]
 
-        // Handle nil values explicitly - Firebase merge doesn't delete fields when they're nil
-        // If openedDate is nil, explicitly delete it from Firebase
-        if item.openedDate == nil {
-            dict["openedDate"] = FieldValue.delete()
-        }
-        if item.useWithinDaysOfOpening == nil {
-            dict["useWithinDaysOfOpening"] = FieldValue.delete()
-        }
+
         if item.notes == nil {
             dict["notes"] = FieldValue.delete()
         }
@@ -587,10 +636,20 @@ class FirebaseManager: ObservableObject {
             .order(by: "date", descending: true)
             .getDocuments()
 
-        let reactions = snapshot.documents.compactMap { doc in
-            FoodReaction.fromDictionary(doc.data())
+        print("📄 Found \(snapshot.documents.count) reaction documents in Firebase")
+
+        let reactions = snapshot.documents.compactMap { doc -> FoodReaction? in
+            let data = doc.data()
+            print("🔍 Parsing reaction document: \(doc.documentID)")
+            if let reaction = FoodReaction.fromDictionary(data) {
+                return reaction
+            } else {
+                print("⚠️ Failed to parse reaction document \(doc.documentID)")
+                print("   Data keys: \(data.keys.joined(separator: ", "))")
+                return nil
+            }
         }
-        print("✅ Loaded \(reactions.count) reactions from Firebase")
+        print("✅ Successfully loaded \(reactions.count) reactions from Firebase")
         return reactions
     }
 
@@ -696,8 +755,8 @@ class FirebaseManager: ObservableObject {
             guard let id = data["id"] as? String,
                   let foodName = data["foodName"] as? String,
                   let statusString = data["status"] as? String,
-                  let status = PendingFoodVerification.VerificationStatus(rawValue: statusString),
-                  let submittedAtTimestamp = data["submittedAt"] as? FirebaseFirestore.Timestamp,
+                  let _ = PendingFoodVerification.VerificationStatus(rawValue: statusString),
+                  let _ = data["submittedAt"] as? FirebaseFirestore.Timestamp,
                   let userId = data["userId"] as? String else { return nil }
             
             return PendingFoodVerification(
@@ -904,8 +963,8 @@ class FirebaseManager: ObservableObject {
             .getDocuments()
 
         let entries = snapshot.documents.compactMap { doc -> WeightEntry? in
-            guard let data = doc.data() as? [String: Any],
-                  let idString = data["id"] as? String,
+            let data = doc.data()
+            guard let idString = data["id"] as? String,
                   let id = UUID(uuidString: idString),
                   let weight = data["weight"] as? Double,
                   let timestamp = data["date"] as? FirebaseFirestore.Timestamp else {
@@ -961,6 +1020,17 @@ class FirebaseManager: ObservableObject {
         try await db.collection("users").document(userId)
             .collection("settings").document("preferences").setData(data, merge: true)
         print("✅ User settings saved successfully")
+
+        await MainActor.run {
+            // Broadcast granular updates to refresh live UI
+            if let goalWeight = goalWeight {
+                NotificationCenter.default.post(name: .goalWeightUpdated, object: nil, userInfo: ["goalWeight": goalWeight])
+            }
+            if caloricGoal != nil {
+                NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
+            }
+            NotificationCenter.default.post(name: .userSettingsUpdated, object: nil)
+        }
     }
 
     func getUserSettings() async throws -> (height: Double?, goalWeight: Double?, caloricGoal: Int?, proteinPercent: Int?, carbsPercent: Int?, fatPercent: Int?, allergens: [Allergen]?) {
@@ -1363,8 +1433,12 @@ class FirebaseManager: ObservableObject {
 
     // MARK: - Incomplete Food Notification
 
-    /// Notify team about incomplete food information via email
-    func notifyIncompleteFood(foodName: String, brandName: String) async throws {
+    /// Notify team about incomplete food information and save to Firestore
+    func notifyIncompleteFood(food: FoodSearchResult) async throws {
+        // Save to Firestore database first
+        try await saveIncompleteFoodToFirestore(food: food)
+
+        // Then call the Cloud Function for email notification
         guard let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/notifyIncompleteFood") else {
             throw NSError(domain: "Invalid URL", code: -1)
         }
@@ -1375,8 +1449,9 @@ class FirebaseManager: ObservableObject {
 
         let requestBody: [String: Any] = [
             "data": [
-                "foodName": foodName,
-                "brandName": brandName,
+                "foodName": food.name,
+                "brandName": food.brand ?? "",
+                "foodId": food.id,
                 "userId": currentUser?.uid ?? "anonymous",
                 "userEmail": currentUser?.email ?? "anonymous"
             ]
@@ -1396,10 +1471,55 @@ class FirebaseManager: ObservableObject {
            let result = json["result"] as? [String: Any],
            let success = result["success"] as? Bool,
            success {
-            print("✅ Team notified about incomplete food: \(foodName)")
+            print("✅ Team notified about incomplete food: \(food.name)")
         } else {
             throw NSError(domain: "Notification failed", code: -1)
         }
+    }
+
+    /// Save incomplete food data to Firestore for team review
+    private func saveIncompleteFoodToFirestore(food: FoodSearchResult) async throws {
+        let db = Firestore.firestore()
+        let timestamp = Timestamp(date: Date())
+
+        // Create document data with all available food information
+        var foodData: [String: Any] = [
+            "foodId": food.id,
+            "name": food.name,
+            "brand": food.brand ?? "",
+            "calories": food.calories,
+            "protein": food.protein,
+            "carbs": food.carbs,
+            "fat": food.fat,
+            "fiber": food.fiber,
+            "sugar": food.sugar,
+            "sodium": food.sodium,
+            "reportedBy": currentUser?.uid ?? "anonymous",
+            "reportedByEmail": currentUser?.email ?? "anonymous",
+            "reportedAt": timestamp,
+            "status": "pending", // pending, in_progress, resolved
+            "resolved": false
+        ]
+
+        // Add optional values if available
+        if let servingDescription = food.servingDescription {
+            foodData["servingDescription"] = servingDescription
+        }
+        if let servingSizeG = food.servingSizeG {
+            foodData["servingSizeG"] = servingSizeG
+        }
+        if let ingredients = food.ingredients {
+            foodData["ingredients"] = ingredients
+        }
+        if let barcode = food.barcode {
+            foodData["barcode"] = barcode
+        }
+
+        // Add to incomplete_foods collection
+        let docRef = db.collection("incomplete_foods").document()
+        try await docRef.setData(foodData)
+
+        print("✅ Incomplete food saved to Firestore: \(food.name) (ID: \(docRef.documentID))")
     }
 }
 
@@ -1408,6 +1528,12 @@ extension Notification.Name {
     static let navigateToUseBy = Notification.Name("navigateToUseBy")
     static let restartOnboarding = Notification.Name("restartOnboarding")
     static let authStateChanged = Notification.Name("authStateChanged")
+    static let foodDiaryUpdated = Notification.Name("foodDiaryUpdated")
+    static let nutritionGoalsUpdated = Notification.Name("nutritionGoalsUpdated")
+    // New notifications for live settings updates
+    static let goalWeightUpdated = Notification.Name("goalWeightUpdated")
+    static let userSettingsUpdated = Notification.Name("userSettingsUpdated")
+    static let userDataCleared = Notification.Name("userDataCleared")
 }
 
 // MARK: - Response Models for Food Search

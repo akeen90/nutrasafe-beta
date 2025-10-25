@@ -252,7 +252,7 @@ struct PhotoCaptureSection: View {
                 
                 Spacer()
                 
-                if let image = image {
+                if image != nil {
                     Button(action: onRemove) {
                         Image(systemName: "trash.circle.fill")
                             .font(.title2)
@@ -325,7 +325,7 @@ struct EnhancedPhotoCaptureSection: View {
                 
                 Spacer()
                 
-                if let image = image {
+                if image != nil {
                     Button(action: onRemove) {
                         Image(systemName: "trash.circle.fill")
                             .font(.title2)
@@ -672,7 +672,6 @@ struct MoveFoodBottomSheet: View {
                         }
                     }
                     .pickerStyle(.segmented)
-                    .colorScheme(.light)
                 }
                 .padding(.horizontal, 20)
             }
@@ -1109,7 +1108,6 @@ struct CopyFoodBottomSheet: View {
                         }
                     }
                     .pickerStyle(.segmented)
-                    .colorScheme(.light)
                 }
                 .padding(.horizontal, 20)
             }

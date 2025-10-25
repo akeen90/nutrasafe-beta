@@ -42,9 +42,10 @@ class UseByNotificationManager {
                 let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
                 return granted
             } catch {
-                print("Error requesting notification permission: \(error)")
                 return false
             }
+        case .ephemeral:
+            return true
         @unknown default:
             return false
         }

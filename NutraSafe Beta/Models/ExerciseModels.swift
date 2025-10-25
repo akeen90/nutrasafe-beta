@@ -189,21 +189,22 @@ enum SetType: String, Codable, CaseIterable {
 }
 
 struct WorkoutSet: Identifiable, Codable {
-    let id = UUID()
+    var id = UUID()
     var weight: Double
     var reps: Int
     var isCompleted: Bool
     var setType: SetType
     var rpe: Int? // Rate of Perceived Exertion (6-10)
     var note: String?
-    let restTime: TimeInterval?
-    let completedAt: Date
+    var restTime: TimeInterval?
+    var completedAt: Date
 
     // Previous performance for comparison
     var previousWeight: Double?
     var previousReps: Int?
 
     init(weight: Double = 0.0, reps: Int = 0, isCompleted: Bool = false, setType: SetType = .normal, rpe: Int? = nil, note: String? = nil, restTime: TimeInterval? = nil, previousWeight: Double? = nil, previousReps: Int? = nil) {
+        self.id = UUID()
         self.weight = weight
         self.reps = reps
         self.isCompleted = isCompleted
@@ -218,8 +219,8 @@ struct WorkoutSet: Identifiable, Codable {
 }
 
 struct WorkoutExercise: Identifiable, Codable {
-    let id = UUID()
-    let name: String
+    var id = UUID()
+    var name: String
     var sets: [WorkoutSet]
     var notes: String?
     let muscleGroups: [String] // e.g., ["Chest", "Shoulders", "Triceps"]
@@ -228,6 +229,7 @@ struct WorkoutExercise: Identifiable, Codable {
     var previousPerformance: [WorkoutSet]? // Last workout's sets for comparison
 
     init(name: String, sets: [WorkoutSet] = [], notes: String? = nil, muscleGroups: [String] = [], supersetId: UUID? = nil, restTimerSeconds: Int = 90, previousPerformance: [WorkoutSet]? = nil) {
+        self.id = UUID()
         self.name = name
         self.sets = sets
         self.notes = notes
@@ -260,16 +262,17 @@ struct WorkoutExercise: Identifiable, Codable {
 }
 
 struct WorkoutSession: Identifiable, Codable {
-    let id = UUID()
-    let userId: String
-    let name: String // e.g., "Push Day", "Upper Body"
-    let exercises: [WorkoutExercise]
-    let startTime: Date
-    let endTime: Date?
-    let notes: String?
-    let totalCaloriesBurned: Int
+    var id = UUID()
+    var userId: String
+    var name: String // e.g., "Push Day", "Upper Body"
+    var exercises: [WorkoutExercise]
+    var startTime: Date
+    var endTime: Date?
+    var notes: String?
+    var totalCaloriesBurned: Int
     
     init(userId: String, name: String, exercises: [WorkoutExercise] = [], notes: String? = nil) {
+        self.id = UUID()
         self.userId = userId
         self.name = name
         self.exercises = exercises
