@@ -525,9 +525,19 @@ struct AIFoodSelectionRow: View {
     let onToggleSelection: () -> Void
     let onViewDetails: () -> Void
     
-    private var nutritionScore: ProcessingGrade {
-        let ingredientsString = (food.ingredients ?? []).joined(separator: ", ")
-        return ProcessingScorer.shared.calculateProcessingScore(for: food.name, ingredients: ingredientsString).grade
+    private func getNutraSafeColor(_ grade: String) -> Color {
+        switch grade.uppercased() {
+        case "A", "A+":
+            return .green
+        case "B":
+            return .mint
+        case "C":
+            return .orange
+        case "D", "E", "F":
+            return .red
+        default:
+            return .gray
+        }
     }
     
     // Calculate per-serving calories from per-100g values
@@ -607,12 +617,13 @@ struct AIFoodSelectionRow: View {
                             .foregroundColor(Color.blue)
                     }
                     
-                    // Nutrition score
-                    Text(nutritionScore.rawValue)
+                    // NutraSafe grade
+                    let ns = ProcessingScorer.shared.computeNutraSafeProcessingGrade(for: food)
+                    Text(ns.grade)
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(.white)
                         .frame(width: 24, height: 24)
-                        .background(nutritionScore.color)
+                        .background(getNutraSafeColor(ns.grade))
                         .clipShape(Circle())
                     
                     // Calories

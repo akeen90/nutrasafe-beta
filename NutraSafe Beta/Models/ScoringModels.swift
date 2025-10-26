@@ -71,6 +71,151 @@ class ProcessingScorer {
 
     private init() {}
 
+    // MARK: - NutraSafe Processing Grade™
+    struct NutraSafeProcessingGradeResult: Codable, Equatable {
+        let processing_intensity: Double
+        let nutrient_integrity: Double
+        let final_index: Double
+        let grade: String
+        let label: String
+        let explanation: String
+    }
+
+    func computeNutraSafeProcessingGrade(for food: FoodSearchResult) -> NutraSafeProcessingGradeResult {
+        // Aggregate text for additive/industrial detection
+        let ingredientsText = (food.ingredients?.joined(separator: ", ") ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let analysisText = (ingredientsText.isEmpty ? food.name : "\(food.name) \(ingredientsText)")
+        let lowerText = analysisText.lowercased()
+
+        // Additive count (prefer provided additives; fallback to analysis)
+        let additiveCount: Int = {
+            if let additives = food.additives {
+                return additives.count
+            } else {
+                let detected = analyzeAdditives(in: analysisText)
+                return detected.count
+            }
+        }()
+
+        // Ingredient complexity weight
+        let ingredientCount = food.ingredients?.count ?? 0
+        let ingredientComplexityWeight: Double = ingredientCount > 20 ? 1.0 : (ingredientCount > 10 ? 0.5 : 0.0)
+
+        // Industrial process weight
+        let industrialProcessWeight: Double = {
+            let industrialKeywords = [
+                "powder", "powdered", "protein powder", "isolate", "extruded",
+                "blend", "blended", "shake", "smoothie", "instant mix", "meal replacement", "bar"
+            ]
+            return industrialKeywords.contains(where: { lowerText.contains($0) }) ? 0.5 : 0.0
+        }()
+
+        // Additive weight
+        let additiveWeight: Double = additiveCount > 5 ? 1.5 : (additiveCount >= 3 ? 1.0 : (additiveCount >= 1 ? 0.5 : 0.0))
+
+        // Processing Intensity: clamp(1 + additive_weight + ingredient_complexity_weight + industrial_process_weight, 1, 5)
+        let processingIntensity = clamp(1.0 + additiveWeight + ingredientComplexityWeight + industrialProcessWeight, min: 1.0, max: 5.0)
+
+        // Nutrient Integrity
+        let base: Double = 2.0
+        let macroBalance: Double = (food.protein > 10 && food.fiber > 2 && food.sugar < 10) ? 1.0 : 0.0
+        let fortifiedCount = countFortifiedMicronutrients(food.micronutrientProfile)
+        let fortificationBonus: Double = fortifiedCount >= 10 ? 1.0 : 0.0
+        let sugarPenalty: Double = (food.sugar > 15) ? 1.0 : 0.0
+        let fibreBonus: Double = (food.fiber > 3) ? 0.5 : 0.0
+
+        // nutrient_integrity = clamp(base + macro_balance + fortification_bonus - sugar_penalty + fibre_bonus, 1, 5)
+        let nutrientIntegrity = clamp(base + macroBalance + fortificationBonus - sugarPenalty + fibreBonus, min: 1.0, max: 5.0)
+
+        // final_index = (processing_intensity * 0.6) + ((6 - nutrient_integrity) * 0.4)
+        let finalIndex = (processingIntensity * 0.6) + ((6.0 - nutrientIntegrity) * 0.4)
+
+        // Grade thresholds
+        let (grade, label): (String, String) = {
+            switch finalIndex {
+            case 1.0...1.5: return ("A", "Natural & nutrient-dense")
+            case 1.6...2.3: return ("B", "Lightly processed & balanced")
+            case 2.4...3.1: return ("C", "Moderately processed")
+            case 3.2...3.8: return ("D", "Heavily processed but functional")
+            case 3.9...4.5: return ("E", "Ultra-processed, weak nutrition")
+            default:         return ("F", "Highly processed, poor nutrition")
+            }
+        }()
+
+        // Explanation (user-facing, branded)
+        let explanation = buildNutraSafeExplanation(
+            foodName: food.name,
+            processingIntensity: processingIntensity,
+            nutrientIntegrity: nutrientIntegrity,
+            finalIndex: finalIndex,
+            grade: grade,
+            additiveCount: additiveCount,
+            ingredientCount: ingredientCount,
+            fortifiedCount: fortifiedCount,
+            sugarPer100g: food.sugar,
+            fiberPer100g: food.fiber,
+            proteinPer100g: food.protein,
+            industrialProcessApplied: industrialProcessWeight > 0
+        )
+
+        return NutraSafeProcessingGradeResult(
+            processing_intensity: processingIntensity,
+            nutrient_integrity: nutrientIntegrity,
+            final_index: finalIndex,
+            grade: grade,
+            label: label,
+            explanation: explanation
+        )
+    }
+
+    private func clamp(_ value: Double, min: Double, max: Double) -> Double {
+        return Swift.max(min, Swift.min(max, value))
+    }
+
+    private func countFortifiedMicronutrients(_ profile: MicronutrientProfile?) -> Int {
+        guard let profile = profile else { return 0 }
+        let vitaminCount = profile.vitamins.values.filter { $0 > 0 }.count
+        let mineralCount = profile.minerals.values.filter { $0 > 0 }.count
+        return vitaminCount + mineralCount
+    }
+
+    private func buildNutraSafeExplanation(
+        foodName: String,
+        processingIntensity: Double,
+        nutrientIntegrity: Double,
+        finalIndex: Double,
+        grade: String,
+        additiveCount: Int,
+        ingredientCount: Int,
+        fortifiedCount: Int,
+        sugarPer100g: Double,
+        fiberPer100g: Double,
+        proteinPer100g: Double,
+        industrialProcessApplied: Bool
+    ) -> String {
+        var parts: [String] = []
+        parts.append("NutraSafe Processing Grade™ for '\(foodName)': \(grade).")
+        parts.append("Processing intensity \(String(format: "%.1f", processingIntensity)) driven by \(additiveCount) additive(s)\(industrialProcessApplied ? ", industrial processing indicators" : "") and \(ingredientCount) ingredient(s).")
+        var nutritionBits: [String] = []
+        nutritionBits.append("protein \(String(format: "%.0f", proteinPer100g))g")
+        nutritionBits.append("fiber \(String(format: "%.1f", fiberPer100g))g")
+        nutritionBits.append("sugar \(String(format: "%.0f", sugarPer100g))g")
+        parts.append("Nutrient integrity \(String(format: "%.1f", nutrientIntegrity)) considering balanced macros (\(nutritionBits.joined(separator: ", "))) and \(fortifiedCount >= 10 ? "broad fortification (\(fortifiedCount) micronutrients)" : "limited micronutrient coverage").")
+        parts.append("Overall index \(String(format: "%.1f", finalIndex)).")
+        let summary: String = {
+            switch grade {
+            case "A": return "Natural & nutrient-dense."
+            case "B": return "Lightly processed and balanced."
+            case "C": return "Moderately processed with acceptable nutrition."
+            case "D": return "Heavily processed but functional."
+            case "E": return "Ultra-processed with weak nutrition."
+            default:  return "Highly processed with poor nutrition."
+            }
+        }()
+        parts.append(summary)
+        return parts.joined(separator: " ")
+    }
+
     // Public method to analyze additives in ingredients
     func analyzeAdditives(in ingredientsText: String) -> [AdditiveInfo] {
         // PERFORMANCE: Check cache first

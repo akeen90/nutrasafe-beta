@@ -508,9 +508,12 @@ class IngredientSubmissionService: ObservableObject {
         }
         
         let pendingVerification = PendingFoodVerification(
+            id: UUID().uuidString,
             foodName: foodName,
             brandName: brandName,
             ingredients: extractedIngredients.isEmpty ? "Processing ingredient image..." : extractedIngredients,
+            submittedAt: Date(),
+            status: .pending,
             userId: userId
         )
         

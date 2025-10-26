@@ -550,25 +550,33 @@ struct AddFoodSearchView: View {
     }
     
     private func convertToSearchResult(_ diaryItem: DiaryFoodItem) -> FoodSearchResult {
+        // Use the canonical conversion to ensure nutrients are per-100g
+        // and the actual serving size from the diary item is preserved.
+        let base = diaryItem.toFoodSearchResult()
+        let ns = ProcessingScorer.shared.computeNutraSafeProcessingGrade(for: base)
         return FoodSearchResult(
-            id: diaryItem.id.uuidString,
-            name: diaryItem.name,
-            brand: nil,
-            calories: Double(diaryItem.calories),
-            protein: diaryItem.protein,
-            carbs: diaryItem.carbs,
-            fat: diaryItem.fat,
-            fiber: 0.0, // Default value
-            sugar: 0.0, // Default value
-            sodium: 0.0, // Default value
-            servingDescription: "100g",
-            ingredients: diaryItem.ingredients,
-            confidence: nil,
-            isVerified: true, // Recent foods are already verified
-            additives: nil,
-            processingScore: nil,
-            processingGrade: nil,
-            processingLabel: diaryItem.processedScore
+            id: base.id,
+            name: base.name,
+            brand: base.brand,
+            calories: base.calories,
+            protein: base.protein,
+            carbs: base.carbs,
+            fat: base.fat,
+            fiber: base.fiber,
+            sugar: base.sugar,
+            sodium: base.sodium,
+            servingDescription: base.servingDescription,
+            servingSizeG: base.servingSizeG,
+            ingredients: base.ingredients,
+            confidence: base.confidence,
+            isVerified: base.isVerified,
+            additives: base.additives,
+            additivesDatabaseVersion: base.additivesDatabaseVersion,
+            processingScore: base.processingScore,
+            processingGrade: ns.grade,
+            processingLabel: ns.label,
+            barcode: base.barcode,
+            micronutrientProfile: base.micronutrientProfile
         )
     }
     
@@ -829,33 +837,42 @@ struct FoodDetailView: View {
                         .padding(.horizontal)
                     }
                     
-                    // Processing Score
+                    // NutraSafe Grade
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Processing Score")
+                        Text("NutraSafe Grade")
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundColor(.primary)
                         
                         HStack {
-                            // DiaryFoodItem doesn't have ingredients, use food name only
-                            let score = ProcessingScorer.shared.calculateProcessingScore(for: food.name)
+                            let ns = ProcessingScorer.shared.computeNutraSafeProcessingGrade(for: food.toFoodSearchResult())
+                            let gColor: Color = {
+                                switch ns.grade {
+                                case "A": return .green
+                                case "B": return .green
+                                case "C": return .orange
+                                case "D": return .orange
+                                case "E": return .red
+                                case "F": return .red
+                                default: return .gray
+                                }
+                            }()
                             
-                            // Score circle
                             ZStack {
                                 Circle()
-                                    .fill(score.grade.color)
+                                    .fill(gColor)
                                     .frame(width: 50, height: 50)
                                 
-                                Text(score.grade.rawValue)
+                                Text(ns.grade)
                                     .font(.system(size: 16, weight: .bold))
                                     .foregroundColor(.white)
                             }
                             
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(score.processingLevel.rawValue)
+                                Text(ns.label)
                                     .font(.system(size: 16, weight: .medium))
                                     .foregroundColor(.primary)
                                 
-                                Text(score.explanation)
+                                Text(ns.explanation)
                                     .font(.system(size: 14))
                                     .foregroundColor(.secondary)
                                     .multilineTextAlignment(.leading)
@@ -1026,7 +1043,8 @@ struct FoodDetailView: View {
         
         switch allergen {
         case .dairy:
-            keywords = ["milk", "dairy", "cheese", "butter", "cream", "yogurt", "whey", "casein", "lactose"]
+            // Use refined dairy detection to avoid false positives like "coconut milk"
+            return AllergenDetector.shared.containsDairyMilk(in: text)
         case .eggs:
             keywords = ["egg", "albumin", "mayonnaise"]
         case .fish:

@@ -23,6 +23,12 @@ struct FastingTimerView: View {
     @State private var currentTime = Date()
     @State private var showingSettings = false
     @State private var isLoading = true
+    @State private var streakSettings = FastingStreakSettings.default
+    @State private var showStopConfirm = false
+    @State private var stopConfirmText = ""
+    @State private var showStopError = false
+    @State private var stopErrorText = ""
+    @State private var fastHistory: [FastRecord] = []
 
     // Live Activity
     @State private var currentActivity: Any? // Holds Activity<FastingActivityAttributes> on iOS 16.1+
@@ -42,6 +48,17 @@ struct FastingTimerView: View {
         let minutes = (Int(fastingDuration) % 3600) / 60
         let seconds = Int(fastingDuration) % 60
         return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+    }
+
+    private var remainingText: String {
+        let remaining = max(0, Double(fastingGoal) * 3600 - fastingDuration)
+        let remainingHours = Int(remaining) / 3600
+        let remainingMinutes = (Int(remaining) % 3600) / 60
+        return "\(remainingHours)h \(remainingMinutes)m"
+    }
+    
+    private var analytics: FastingAnalyticsSummary {
+        FastingManager.analytics(from: fastHistory, settings: streakSettings)
     }
     
     var body: some View {
@@ -131,10 +148,7 @@ struct FastingTimerView: View {
                             Text("Remaining")
                                 .font(.system(size: 14))
                                 .foregroundColor(.secondary)
-                            let remaining = max(0, Double(fastingGoal) * 3600 - fastingDuration)
-                            let remainingHours = Int(remaining) / 3600
-                            let remainingMinutes = (Int(remaining) % 3600) / 60
-                            Text("\(remainingHours)h \(remainingMinutes)m")
+                            Text(remainingText)
                                 .font(.system(size: 18, weight: .semibold))
                                 .foregroundColor(.green)
                         }
@@ -143,7 +157,7 @@ struct FastingTimerView: View {
                     // Action Buttons
                     HStack(spacing: 16) {
                         if isFasting {
-                            Button(action: stopFasting) {
+                            Button(action: prepareStopFasting) {
                                 HStack(spacing: 8) {
                                     Image(systemName: "stop.circle.fill")
                                         .font(.system(size: 18))
@@ -180,6 +194,32 @@ struct FastingTimerView: View {
                 .cornerRadius(24)
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
+                
+                // Fasting History Dropdown
+                FastingHistoryDropdown()
+                    .environmentObject(firebaseManager)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                
+                // Fasting Streak Summary
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Fasting Streak")
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundColor(.primary)
+                    
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                        metricChip(title: "Current", value: "\(analytics.currentWeeklyStreak)")
+                        metricChip(title: "Best", value: "\(analytics.bestWeeklyStreak)")
+                        metricChip(title: "Goal", value: "\(streakSettings.daysPerWeekGoal) days per week")
+                        metricChip(title: "Total Fasts", value: "\(fastHistory.count)")
+                        metricChip(title: "Average", value: String(format: "%.1f h", analytics.averageDurationHours))
+                        metricChip(title: "Longest", value: String(format: "%.1f h", analytics.longestFastHours))
+                    }
+                }
+                .padding(24)
+                .background(Color(.systemBackground))
+                .cornerRadius(16)
+                .padding(.horizontal, 16)
                 
                 // Fasting Benefits Card
                 VStack(alignment: .leading, spacing: 16) {
@@ -234,6 +274,8 @@ struct FastingTimerView: View {
                 .cornerRadius(16)
                 .padding(.horizontal, 16)
                 
+                // History moved above stages; duplicate removed
+                
                 // Quick Goal Presets
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Popular Fasting Plans")
@@ -271,7 +313,43 @@ struct FastingTimerView: View {
         .onAppear {
             Task {
                 await loadFastingState()
+                do {
+                    let settings = try await firebaseManager.getFastingStreakSettings()
+                    await MainActor.run { streakSettings = settings }
+                } catch {
+                    // keep defaults if load fails
+                    print("⚠️ Failed to load fasting streak settings: \(error.localizedDescription)")
+                }
+                do {
+                    let records = try await firebaseManager.getFastHistory()
+                    await MainActor.run { fastHistory = records }
+                } catch {
+                    print("⚠️ Failed to load fast history: \(error.localizedDescription)")
+                }
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .fastHistoryUpdated)) { _ in
+            Task {
+                do {
+                    let records = try await firebaseManager.getFastHistory()
+                    await MainActor.run { fastHistory = records }
+                } catch {
+                    print("⚠️ Failed to refresh fast history: \(error.localizedDescription)")
+                }
+            }
+        }
+        .alert("Confirm End Fast", isPresented: $showStopConfirm) {
+            Button("Cancel", role: .cancel) {}
+            Button("Save Fast & Stop", role: .destructive) {
+                stopFastingAndRecord()
+            }
+        } message: {
+            Text(stopConfirmText)
+        }
+        .alert("Fast Not Allowed", isPresented: $showStopError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(stopErrorText)
         }
         .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
             currentTime = Date()
@@ -290,6 +368,7 @@ struct FastingTimerView: View {
                 fastingGoal: $fastingGoal,
                 notificationsEnabled: $notificationsEnabled,
                 reminderInterval: $reminderInterval,
+                streakSettings: $streakSettings,
                 onSave: saveFastingSettings
             )
             .environmentObject(firebaseManager)
@@ -673,6 +752,56 @@ struct FastingTimerView: View {
         center.removePendingNotificationRequests(withIdentifiers: identifiers)
         print("🗑️ Cancelled all fasting notifications")
     }
+
+    private func prepareStopFasting() {
+        guard let start = fastingStartTime else {
+            stopErrorText = "No start time found."
+            showStopError = true
+            return
+        }
+        let end = Date()
+        let result = FastingManager.buildRecord(startTime: start,
+                                                endTime: end,
+                                                settings: streakSettings,
+                                                goalHours: fastingGoal)
+        switch result {
+        case .failure(let err):
+            stopErrorText = err.reason
+            showStopError = true
+        case .success(let record):
+            let within = record.withinTarget ? "within target" : "outside target"
+            stopConfirmText = String(format: "Duration: %.1f h (%@). Save to NutraSafe history?",
+                                     record.durationHours, within)
+            showStopConfirm = true
+        }
+    }
+
+    private func stopFastingAndRecord() {
+        guard let start = fastingStartTime else {
+            stopErrorText = "No start time found."
+            showStopError = true
+            return
+        }
+        let end = Date()
+        let result = FastingManager.buildRecord(startTime: start,
+                                                endTime: end,
+                                                settings: streakSettings,
+                                                goalHours: fastingGoal)
+        switch result {
+        case .failure(let err):
+            stopErrorText = err.reason
+            showStopError = true
+        case .success(let record):
+            Task {
+                do {
+                    _ = try await firebaseManager.saveFastRecord(record)
+                } catch {
+                    print("❌ Error saving fast record: \(error.localizedDescription)")
+                }
+            }
+            stopFasting()
+        }
+    }
 }
 
 // MARK: - Fasting Stage Row Component
@@ -762,17 +891,25 @@ struct FastingSettingsView: View {
     @Binding var fastingGoal: Int
     @Binding var notificationsEnabled: Bool
     @Binding var reminderInterval: Int
+    @Binding var streakSettings: FastingStreakSettings
     @State private var customGoal: Int
+    @State private var daysGoal: Int
+    @State private var minHours: Int
+    @State private var maxHours: Int
     let onSave: () -> Void
-
-    init(fastingGoal: Binding<Int>, notificationsEnabled: Binding<Bool>, reminderInterval: Binding<Int>, onSave: @escaping () -> Void) {
+    
+    init(fastingGoal: Binding<Int>, notificationsEnabled: Binding<Bool>, reminderInterval: Binding<Int>, streakSettings: Binding<FastingStreakSettings>, onSave: @escaping () -> Void) {
         self._fastingGoal = fastingGoal
         self._notificationsEnabled = notificationsEnabled
         self._reminderInterval = reminderInterval
+        self._streakSettings = streakSettings
         self._customGoal = State(initialValue: fastingGoal.wrappedValue)
+        self._daysGoal = State(initialValue: streakSettings.wrappedValue.daysPerWeekGoal)
+        self._minHours = State(initialValue: streakSettings.wrappedValue.targetMinHours)
+        self._maxHours = State(initialValue: streakSettings.wrappedValue.targetMaxHours)
         self.onSave = onSave
     }
-
+    
     var body: some View {
         NavigationView {
             Form {
@@ -819,6 +956,15 @@ struct FastingSettingsView: View {
                     }
                 }
 
+                Section(header: Text("Streak Settings"), footer: Text("Used to compute weekly streaks and target window.")) {
+                    Stepper("Days per week goal: \(daysGoal)/wk", value: $daysGoal, in: 1...7)
+                    Stepper("Min hours: \(minHours)h", value: $minHours, in: 12...36, step: 1)
+                    Stepper("Max hours: \(maxHours)h", value: $maxHours, in: max(minHours, 12)...48, step: 1)
+                    Text("Target window: \(minHours)–\(maxHours) h")
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                }
+
                 Section(header: Text("About Intermittent Fasting")) {
                     VStack(alignment: .leading, spacing: 12) {
                         InfoRow(icon: "clock.fill", color: .orange, title: "12:12", description: "Good for beginners, gentle fasting")
@@ -832,9 +978,7 @@ struct FastingSettingsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
+                    Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
@@ -848,7 +992,18 @@ struct FastingSettingsView: View {
 
     private func saveSettings() {
         fastingGoal = customGoal
+        streakSettings.daysPerWeekGoal = daysGoal
+        streakSettings.targetMinHours = minHours
+        streakSettings.targetMaxHours = maxHours
         onSave()
+        
+        Task {
+            do {
+                try await firebaseManager.saveFastingStreakSettings(streakSettings)
+            } catch {
+                print("❌ Error saving streak settings: \(error.localizedDescription)")
+            }
+        }
 
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
@@ -928,3 +1083,23 @@ struct InfoRow: View {
         }
     }
 }
+
+
+private func metricChip(title: String, value: String) -> some View {
+        VStack(spacing: 6) {
+            Text(value)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(.primary)
+                .lineLimit(1)
+            Text(title)
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, minHeight: 64)
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemGray6))
+        )
+    }

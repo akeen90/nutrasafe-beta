@@ -199,6 +199,22 @@ enum AllergenSeverity: String {
     }
 }
 
+// Ingredient typing used across NutritionModels and FoodSafetyModels
+enum IngredientCategory: String, Codable, CaseIterable {
+    case core        // core ingredient, e.g., flour, sugar
+    case additive    // additive like emulsifier, stabilizer
+    case allergen    // known allergen source
+    case micronutrient // fortified micronutrient source
+    case flavoring   // natural or artificial flavors/spices
+    case other
+}
+
+enum IngredientRiskLevel: String, Codable, CaseIterable {
+    case unknown
+    case low
+    case medium
+    case high
+}
 
 struct AllergenDetectionResult {
     let detectedAllergens: [Allergen]
@@ -277,710 +293,31 @@ class AllergenDetector {
         
         return max(0.0, 1.0 - severityPenalty)
     }
-}
-
-struct IngredientPattern {
-    let ingredient: String
-    let occurrenceCount: Int
-    let averageSeverity: ReactionSeverity
-    let confidence: Double
-}
-
-struct PatternAnalysisResult {
-    let suspiciousFoods: [SuspiciousFood]
-    let commonIngredients: [IngredientPattern]
-    let timePatterns: [TimePattern]
-    let recommendations: [String]
-    let confidence: Double
-}
-
-struct TimePattern {
-    let pattern: String
-    let description: String
-    let occurrenceCount: Int
-}
-
-enum IngredientCategory: String, CaseIterable {
-    case protein = "protein"
-    case carbohydrate = "carbohydrate"
-    case fat = "fat"
-    case vitamin = "vitamin"
-    case mineral = "mineral"
-    case additive = "additive"
-    case preservative = "preservative"
-    case flavoring = "flavoring"
-    case coloring = "coloring"
-    case emulsifier = "emulsifier"
-    case stabilizer = "stabilizer"
-    case sweetener = "sweetener"
-    case fiber = "fiber"
-    case other = "other"
-}
-
-enum IngredientRiskLevel: String {
-    case safe = "safe"
-    case caution = "caution"
-    case avoid = "avoid"
-    case unknown = "unknown"
     
-    var color: String {
-        switch self {
-        case .safe: return "green"
-        case .caution: return "orange"
-        case .avoid: return "red"
-        case .unknown: return "gray"
-        }
-    }
-}
-
-enum AdditivePurpose: String, CaseIterable {
-    case preservative = "preservative"
-    case colorant = "colorant"
-    case flavoring = "flavoring"
-    case emulsifier = "emulsifier"
-    case stabilizer = "stabilizer"
-    case thickener = "thickener"
-    case sweetener = "sweetener"
-    case antioxidant = "antioxidant"
-    case acidRegulator = "acid_regulator"
-    case other = "other"
-}
-
-enum AdditiveRating: String {
-    case safe = "safe"
-    case generallyRecognizedAsSafe = "gras"
-    case limitedUse = "limited_use"
-    case caution = "caution"
-    case avoid = "avoid"
-    case banned = "banned"
-    
-    var color: String {
-        switch self {
-        case .safe, .generallyRecognizedAsSafe: return "green"
-        case .limitedUse: return "yellow"
-        case .caution: return "orange"
-        case .avoid, .banned: return "red"
-        }
-    }
-}
-
-struct IngredientAnalysisResult {
-    let ingredients: [Ingredient]
-    let detectedAllergens: [Allergen]
-    let micronutrients: [Micronutrient]
-    let additives: [FoodAdditive]
-    let overallRiskLevel: IngredientRiskLevel
-    let warnings: [String]
-    let benefits: [String]
-    let recommendations: [String]
-}
-
-// MARK: - Safe Food Models
-
-struct SafeFood: Identifiable, Codable {
-    let id: UUID
-    let userId: String
-    let name: String
-    let notes: String?
-    let dateAdded: Date
-
-    init(userId: String, name: String, notes: String? = nil) {
-        self.id = UUID()
-        self.userId = userId
-        self.name = name
-        self.notes = notes
-        self.dateAdded = Date()
-    }
-
-    func toDictionary() -> [String: Any] {
-        return [
-            "id": id.uuidString,
-            "userId": userId,
-            "name": name,
-            "notes": notes ?? "",
-            "dateAdded": FirebaseFirestore.Timestamp(date: dateAdded)
+    // Refined dairy detection: flags animal dairy terms and excludes plant milks
+    func containsDairyMilk(in rawText: String) -> Bool {
+        let text = rawText.lowercased()
+        let explicitDairyTerms = [
+            "dairy","cheese","cream","butter","yogurt","yoghurt","whey","casein","lactose",
+            "milk powder","skimmed milk powder","condensed milk","evaporated milk",
+            "milk solids","milkfat","whole milk","semi skimmed milk","semi-skimmed milk","skimmed milk",
+            "cow milk","cow's milk","goat milk","sheep milk","milk chocolate"
         ]
-    }
-
-    static func fromDictionary(_ data: [String: Any]) -> SafeFood? {
-        guard let idString = data["id"] as? String,
-              let _ = UUID(uuidString: idString),
-              let userId = data["userId"] as? String,
-              let name = data["name"] as? String,
-              let _ = data["dateAdded"] as? FirebaseFirestore.Timestamp else {
-            return nil
+        if explicitDairyTerms.contains(where: { text.contains($0) }) {
+            return true
         }
-
-        let notes = data["notes"] as? String
-
-        // We need to manually set the id and dateAdded since init() generates new ones
-        return SafeFood(userId: userId, name: name, notes: notes)
-    }
-}
-
-// MARK: - Pending Food Verification Models
-
-struct PendingFoodVerification: Identifiable, Codable {
-    let id: String
-    let foodName: String
-    let brandName: String?
-    let ingredients: String?
-    let submittedAt: Date
-    let status: VerificationStatus
-    let userId: String
-
-    enum VerificationStatus: String, Codable, CaseIterable {
-        case pending = "pending"
-        case approved = "approved"
-        case rejected = "rejected"
-    }
-
-    init(id: String = UUID().uuidString, foodName: String, brandName: String? = nil,
-         ingredients: String? = nil, userId: String) {
-        self.id = id
-        self.foodName = foodName
-        self.brandName = brandName
-        self.ingredients = ingredients
-        self.submittedAt = Date()
-        self.status = .pending
-        self.userId = userId
-    }
-}
-
-class IngredientAnalyzer {
-    static let shared = IngredientAnalyzer()
-    
-    private init() {}
-    
-    func analyseIngredients(_ ingredientList: [String], userAllergens: [Allergen] = []) -> IngredientAnalysisResult {
-        var analyzedIngredients: [Ingredient] = []
-        var detectedAllergens: [Allergen] = []
-        var micronutrients: [Micronutrient] = []
-        var additives: [FoodAdditive] = []
-        var warnings: [String] = []
-        var benefits: [String] = []
-        var recommendations: [String] = []
-        
-        for ingredientName in ingredientList {
-            let ingredient = analyseIndividualIngredient(ingredientName)
-            analyzedIngredients.append(ingredient)
-            
-            // Check for allergens
-            for allergen in ingredient.allergens {
-                if userAllergens.contains(allergen) && !detectedAllergens.contains(allergen) {
-                    detectedAllergens.append(allergen)
-                    warnings.append("Contains \(allergen.displayName): \(ingredientName)")
-                }
-            }
-            
-            // Collect micronutrients
-            micronutrients.append(contentsOf: ingredient.micronutrients)
-            
-            // Collect additives
-            additives.append(contentsOf: ingredient.additives)
-            
-            // Add warnings for risky ingredients
-            if ingredient.riskLevel == .avoid {
-                warnings.append("Avoid: \(ingredientName) - potential health concerns")
-            } else if ingredient.riskLevel == .caution {
-                warnings.append("Caution: \(ingredientName) - consume in moderation")
-            }
-            
-            // Add benefits for beneficial ingredients
-            if ingredient.riskLevel == .safe && !ingredient.micronutrients.isEmpty {
-                let nutrientNames = ingredient.micronutrients.map { $0.name }
-                benefits.append("\(ingredientName): Rich in \(nutrientNames.joined(separator: ", "))")
-            }
-        }
-        
-        // Calculate overall risk level
-        let overallRiskLevel = calculateOverallRiskLevel(analyzedIngredients)
-        
-        // Generate recommendations
-        recommendations = generateRecommendations(
-            ingredients: analyzedIngredients,
-            allergens: detectedAllergens,
-            additives: additives
-        )
-        
-        return IngredientAnalysisResult(
-            ingredients: analyzedIngredients,
-            detectedAllergens: detectedAllergens,
-            micronutrients: Array(Set(micronutrients.map { $0.name })).compactMap { name in
-                micronutrients.first { $0.name == name }
-            }, // Remove duplicates
-            additives: additives,
-            overallRiskLevel: overallRiskLevel,
-            warnings: warnings,
-            benefits: benefits,
-            recommendations: recommendations
-        )
-    }
-    
-    private func analyseIndividualIngredient(_ ingredientName: String) -> Ingredient {
-        let lowerName = ingredientName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        // Determine category
-        let category = categorizeIngredient(lowerName)
-        
-        // Detect allergens
-        let allergens = detectAllergensInIngredient(lowerName)
-        
-        // Get micronutrients
-        let micronutrients = getMicronutrientsForIngredient(lowerName)
-        
-        // Detect additives
-        let additives = detectAdditives(lowerName)
-        
-        // Calculate risk level
-        let riskLevel = calculateIngredientRiskLevel(lowerName, additives: additives)
-        
-        return Ingredient(
-            name: ingredientName,
-            category: category,
-            allergens: allergens,
-            micronutrients: micronutrients,
-            additives: additives,
-            riskLevel: riskLevel
-        )
-    }
-    
-    private func categorizeIngredient(_ ingredient: String) -> IngredientCategory {
-        // Proteins
-        if ingredient.contains("protein") || ingredient.contains("casein") || ingredient.contains("whey") ||
-           ["egg", "milk", "meat", "chicken", "beef", "pork", "fish", "tofu", "soy"].contains(where: ingredient.contains) {
-            return .protein
-        }
-        
-        // Carbohydrates
-        if ["sugar", "glucose", "fructose", "sucrose", "maltose", "starch", "flour", "rice", "wheat", "corn"].contains(where: ingredient.contains) {
-            return .carbohydrate
-        }
-        
-        // Fats
-        if ingredient.contains("oil") || ingredient.contains("fat") || ingredient.contains("butter") ||
-           ["palm", "coconut", "olive", "sunflower", "canola", "lard"].contains(where: ingredient.contains) {
-            return .fat
-        }
-        
-        // Vitamins
-        if ingredient.contains("vitamin") || ["ascorbic acid", "thiamine", "riboflavin", "niacin", "folate", "biotin"].contains(where: ingredient.contains) {
-            return .vitamin
-        }
-        
-        // Minerals
-        if ["calcium", "iron", "magnesium", "zinc", "potassium", "sodium", "phosphorus"].contains(where: ingredient.contains) {
-            return .mineral
-        }
-        
-        // Additives with E-numbers
-        if ingredient.hasPrefix("e") && ingredient.count >= 3 {
-            return .additive
-        }
-        
-        // Preservatives
-        if ["preservative", "sodium benzoate", "potassium sorbate", "citric acid"].contains(where: ingredient.contains) {
-            return .preservative
-        }
-        
-        // Sweeteners
-        if ["sweetener", "aspartame", "sucralose", "stevia", "saccharin"].contains(where: ingredient.contains) {
-            return .sweetener
-        }
-        
-        // Colors
-        if ingredient.contains("color") || ingredient.contains("colour") || ["caramel", "annatto", "turmeric"].contains(where: ingredient.contains) {
-            return .coloring
-        }
-        
-        // Flavors
-        if ingredient.contains("flavor") || ingredient.contains("flavour") || ingredient.contains("extract") {
-            return .flavoring
-        }
-        
-        // Fiber
-        if ingredient.contains("fiber") || ingredient.contains("fibre") || ["cellulose", "pectin", "inulin"].contains(where: ingredient.contains) {
-            return .fiber
-        }
-        
-        return .other
-    }
-    
-    private func detectAllergensInIngredient(_ ingredient: String) -> [Allergen] {
-        var detectedAllergens: [Allergen] = []
-        
-        for allergen in Allergen.allCases {
-            for keyword in allergen.keywords {
-                if ingredient.contains(keyword.lowercased()) {
-                    if !detectedAllergens.contains(allergen) {
-                        detectedAllergens.append(allergen)
-                    }
-                    break
-                }
-            }
-        }
-        
-        return detectedAllergens
-    }
-    
-    private func getMicronutrientsForIngredient(_ ingredient: String) -> [Micronutrient] {
-        var micronutrients: [Micronutrient] = []
-        
-        // COMPREHENSIVE MICRONUTRIENT MAPPINGS
-        
-        // FORTIFIED WHEAT FLOUR - UK law requires fortification
-        if ingredient.contains("wheat flour") || ingredient.contains("flour") {
-            // UK fortified flour contains iron, niacin, thiamin, and calcium carbonate
-            micronutrients.append(Micronutrient(
-                name: "Iron", type: .mineral, amount: 1.65, unit: "mg", dailyValuePercentage: 9,
-                benefits: ["Oxygen transport", "Energy production"], deficiencyRisks: ["Anemia", "Fatigue"]
-            ))
-            micronutrients.append(Micronutrient(
-                name: "Niacin", type: .vitamin, amount: 1.6, unit: "mg", dailyValuePercentage: 10,
-                benefits: ["Energy metabolism", "Nervous system"], deficiencyRisks: ["Pellagra", "Fatigue"]
-            ))
-            micronutrients.append(Micronutrient(
-                name: "Thiamine", type: .vitamin, amount: 0.24, unit: "mg", dailyValuePercentage: 20,
-                benefits: ["Energy metabolism", "Nerve function"], deficiencyRisks: ["Beriberi", "Neurological issues"]
-            ))
-            if ingredient.contains("calcium carbonate") {
-                micronutrients.append(Micronutrient(
-                    name: "Calcium", type: .mineral, amount: 150, unit: "mg", dailyValuePercentage: 15,
-                    benefits: ["Bone health", "Muscle function"], deficiencyRisks: ["Osteoporosis", "Muscle cramps"]
-                ))
-            }
-        }
-        
-        // CALCIUM CARBONATE as separate ingredient
-        if ingredient.contains("calcium carbonate") || ingredient == "calcium carbonate" {
-            micronutrients.append(Micronutrient(
-                name: "Calcium", type: .mineral, amount: 400, unit: "mg", dailyValuePercentage: 40,
-                benefits: ["Bone health", "Muscle function"], deficiencyRisks: ["Osteoporosis", "Muscle cramps"]
-            ))
-        }
-        
-        // INDIVIDUAL VITAMIN AND MINERAL INGREDIENTS (from fortification)
-        if ingredient == "iron" || ingredient.contains("iron") {
-            micronutrients.append(Micronutrient(
-                name: "Iron", type: .mineral, amount: 1.65, unit: "mg", dailyValuePercentage: 9,
-                benefits: ["Oxygen transport", "Energy production"], deficiencyRisks: ["Anemia", "Fatigue"]
-            ))
-        }
-        
-        if ingredient == "niacin" || ingredient.contains("niacin") {
-            micronutrients.append(Micronutrient(
-                name: "Niacin", type: .vitamin, amount: 1.6, unit: "mg", dailyValuePercentage: 10,
-                benefits: ["Energy metabolism", "Nervous system"], deficiencyRisks: ["Pellagra", "Fatigue"]
-            ))
-        }
-        
-        if ingredient == "thiamin" || ingredient.contains("thiamin") || ingredient == "thiamine" || ingredient.contains("thiamine") {
-            micronutrients.append(Micronutrient(
-                name: "Thiamine", type: .vitamin, amount: 0.24, unit: "mg", dailyValuePercentage: 20,
-                benefits: ["Energy metabolism", "Nerve function"], deficiencyRisks: ["Beriberi", "Neurological issues"]
-            ))
-        }
-        
-        if ingredient == "folate" || ingredient.contains("folate") || ingredient == "folic acid" || ingredient.contains("folic acid") {
-            micronutrients.append(Micronutrient(
-                name: "Folate", type: .vitamin, amount: 40, unit: "mcg", dailyValuePercentage: 10,
-                benefits: ["Cell division", "DNA synthesis"], deficiencyRisks: ["Anemia", "Birth defects"]
-            ))
-        }
-        
-        if ingredient == "riboflavin" || ingredient.contains("riboflavin") || ingredient == "vitamin b2" || ingredient.contains("vitamin b2") {
-            micronutrients.append(Micronutrient(
-                name: "Riboflavin", type: .vitamin, amount: 0.16, unit: "mg", dailyValuePercentage: 12,
-                benefits: ["Energy metabolism", "Cell function"], deficiencyRisks: ["Skin problems", "Eye issues"]
-            ))
-        }
-        
-        // DAIRY PRODUCTS - comprehensive vitamin profile
-        if ingredient.contains("milk") || ingredient.contains("dairy") || ingredient.contains("cheese") || 
-           ingredient.contains("cheddar") || ingredient.contains("cream") || ingredient.contains("butter") {
-            micronutrients.append(Micronutrient(
-                name: "Calcium", type: .mineral, amount: 120, unit: "mg", dailyValuePercentage: 12,
-                benefits: ["Bone health", "Muscle function"], deficiencyRisks: ["Osteoporosis", "Muscle cramps"]
-            ))
-            micronutrients.append(Micronutrient(
-                name: "Vitamin B12", type: .vitamin, amount: 0.4, unit: "mcg", dailyValuePercentage: 17,
-                benefits: ["Red blood cell formation", "Nervous system"], deficiencyRisks: ["Pernicious anemia", "Nerve damage"]
-            ))
-            micronutrients.append(Micronutrient(
-                name: "Riboflavin", type: .vitamin, amount: 0.17, unit: "mg", dailyValuePercentage: 13,
-                benefits: ["Energy metabolism", "Cell function"], deficiencyRisks: ["Skin problems", "Eye issues"]
-            ))
-            micronutrients.append(Micronutrient(
-                name: "Vitamin A", type: .vitamin, amount: 47, unit: "mcg", dailyValuePercentage: 5,
-                benefits: ["Vision", "Immune function"], deficiencyRisks: ["Night blindness", "Immune deficiency"]
-            ))
-            micronutrients.append(Micronutrient(
-                name: "Phosphorus", type: .mineral, amount: 93, unit: "mg", dailyValuePercentage: 13,
-                benefits: ["Bone health", "Energy storage"], deficiencyRisks: ["Weak bones", "Muscle weakness"]
-            ))
-            // Vitamin D in fortified dairy products
-            micronutrients.append(Micronutrient(
-                name: "Vitamin D", type: .vitamin, amount: 0.03, unit: "mcg", dailyValuePercentage: 1,
-                benefits: ["Bone health", "Immune function"], deficiencyRisks: ["Rickets", "Bone weakness"]
-            ))
-        }
-        
-        // MEAT PRODUCTS - beef and pork
-        if ingredient.contains("beef") || ingredient.contains("pork") || ingredient.contains("bacon") || ingredient.contains("meat") {
-            micronutrients.append(Micronutrient(
-                name: "Iron", type: .mineral, amount: 2.6, unit: "mg", dailyValuePercentage: 14,
-                benefits: ["Oxygen transport", "Energy production"], deficiencyRisks: ["Anemia", "Fatigue"]
-            ))
-            micronutrients.append(Micronutrient(
-                name: "Zinc", type: .mineral, amount: 4.8, unit: "mg", dailyValuePercentage: 44,
-                benefits: ["Immune function", "Wound healing"], deficiencyRisks: ["Immune deficiency", "Poor wound healing"]
-            ))
-            micronutrients.append(Micronutrient(
-                name: "Vitamin B6", type: .vitamin, amount: 0.4, unit: "mg", dailyValuePercentage: 24,
-                benefits: ["Protein metabolism", "Brain function"], deficiencyRisks: ["Skin problems", "Anemia"]
-            ))
-            micronutrients.append(Micronutrient(
-                name: "Vitamin B12", type: .vitamin, amount: 2.6, unit: "mcg", dailyValuePercentage: 108,
-                benefits: ["Red blood cell formation", "Nervous system"], deficiencyRisks: ["Pernicious anemia", "Nerve damage"]
-            ))
-            micronutrients.append(Micronutrient(
-                name: "Phosphorus", type: .mineral, amount: 200, unit: "mg", dailyValuePercentage: 20,
-                benefits: ["Bone health", "Energy storage"], deficiencyRisks: ["Weak bones", "Muscle weakness"]
-            ))
-            micronutrients.append(Micronutrient(
-                name: "Niacin", type: .vitamin, amount: 5.8, unit: "mg", dailyValuePercentage: 36,
-                benefits: ["Energy metabolism", "Nervous system"], deficiencyRisks: ["Pellagra", "Fatigue"]
-            ))
-        }
-        
-        // TOMATOES and TOMATO PRODUCTS
-        if ingredient.contains("tomato") {
-            micronutrients.append(Micronutrient(
-                name: "Vitamin C", type: .vitamin, amount: 13.7, unit: "mg", dailyValuePercentage: 15,
-                benefits: ["Immune support", "Antioxidant"], deficiencyRisks: ["Scurvy", "Impaired wound healing"]
-            ))
-            micronutrients.append(Micronutrient(
-                name: "Potassium", type: .mineral, amount: 237, unit: "mg", dailyValuePercentage: 5,
-                benefits: ["Heart health", "Blood pressure"], deficiencyRisks: ["High blood pressure", "Muscle cramps"]
-            ))
-            micronutrients.append(Micronutrient(
-                name: "Folate", type: .vitamin, amount: 15, unit: "mcg", dailyValuePercentage: 4,
-                benefits: ["Cell division", "DNA synthesis"], deficiencyRisks: ["Anemia", "Birth defects"]
-            ))
-        }
-        
-        // CARROTS
-        if ingredient.contains("carrot") {
-            micronutrients.append(Micronutrient(
-                name: "Vitamin A", type: .vitamin, amount: 835, unit: "mcg", dailyValuePercentage: 93,
-                benefits: ["Vision", "Immune function"], deficiencyRisks: ["Night blindness", "Immune deficiency"]
-            ))
-            micronutrients.append(Micronutrient(
-                name: "Vitamin K", type: .vitamin, amount: 13.2, unit: "mcg", dailyValuePercentage: 11,
-                benefits: ["Blood clotting", "Bone health"], deficiencyRisks: ["Bleeding disorders", "Weak bones"]
-            ))
-        }
-        
-        // ONIONS
-        if ingredient.contains("onion") {
-            micronutrients.append(Micronutrient(
-                name: "Vitamin C", type: .vitamin, amount: 7.4, unit: "mg", dailyValuePercentage: 8,
-                benefits: ["Immune support", "Antioxidant"], deficiencyRisks: ["Scurvy", "Impaired wound healing"]
-            ))
-            micronutrients.append(Micronutrient(
-                name: "Folate", type: .vitamin, amount: 19, unit: "mcg", dailyValuePercentage: 5,
-                benefits: ["Cell division", "DNA synthesis"], deficiencyRisks: ["Anemia", "Birth defects"]
-            ))
-        }
-        
-        // CELERY
-        if ingredient.contains("celery") {
-            micronutrients.append(Micronutrient(
-                name: "Vitamin K", type: .vitamin, amount: 29.3, unit: "mcg", dailyValuePercentage: 24,
-                benefits: ["Blood clotting", "Bone health"], deficiencyRisks: ["Bleeding disorders", "Weak bones"]
-            ))
-        }
-        
-        // EGGS
-        if ingredient.contains("egg") {
-            micronutrients.append(Micronutrient(
-                name: "Vitamin B12", type: .vitamin, amount: 0.9, unit: "mcg", dailyValuePercentage: 38,
-                benefits: ["Red blood cell formation", "Nervous system"], deficiencyRisks: ["Pernicious anemia", "Nerve damage"]
-            ))
-            micronutrients.append(Micronutrient(
-                name: "Vitamin D", type: .vitamin, amount: 2, unit: "mcg", dailyValuePercentage: 10,
-                benefits: ["Bone health", "Immune function"], deficiencyRisks: ["Rickets", "Bone weakness"]
-            ))
-            micronutrients.append(Micronutrient(
-                name: "Riboflavin", type: .vitamin, amount: 0.457, unit: "mg", dailyValuePercentage: 35,
-                benefits: ["Energy metabolism", "Cell function"], deficiencyRisks: ["Skin problems", "Eye issues"]
-            ))
-            micronutrients.append(Micronutrient(
-                name: "Phosphorus", type: .mineral, amount: 198, unit: "mg", dailyValuePercentage: 20,
-                benefits: ["Bone health", "Energy storage"], deficiencyRisks: ["Weak bones", "Muscle weakness"]
-            ))
-        }
-        
-        // LEAFY GREENS
-        if ingredient.contains("spinach") || ingredient.contains("kale") {
-            micronutrients.append(Micronutrient(
-                name: "Iron", type: .mineral, amount: 2.7, unit: "mg", dailyValuePercentage: 15,
-                benefits: ["Oxygen transport", "Energy production"], deficiencyRisks: ["Anemia", "Fatigue"]
-            ))
-            micronutrients.append(Micronutrient(
-                name: "Vitamin K", type: .vitamin, amount: 483, unit: "mcg", dailyValuePercentage: 402,
-                benefits: ["Blood clotting", "Bone health"], deficiencyRisks: ["Bleeding disorders", "Weak bones"]
-            ))
-            micronutrients.append(Micronutrient(
-                name: "Folate", type: .vitamin, amount: 194, unit: "mcg", dailyValuePercentage: 49,
-                benefits: ["Cell division", "DNA synthesis"], deficiencyRisks: ["Anemia", "Birth defects"]
-            ))
-        }
-        
-        // CITRUS FRUITS
-        if ingredient.contains("orange") || ingredient.contains("citrus") {
-            micronutrients.append(Micronutrient(
-                name: "Vitamin C", type: .vitamin, amount: 53, unit: "mg", dailyValuePercentage: 59,
-                benefits: ["Immune support", "Antioxidant", "Collagen synthesis"], deficiencyRisks: ["Scurvy", "Impaired wound healing"]
-            ))
-        }
-        
-        // FISH
-        if ingredient.contains("fish") || ingredient.contains("salmon") {
-            micronutrients.append(Micronutrient(
-                name: "Vitamin D", type: .vitamin, amount: 11, unit: "mcg", dailyValuePercentage: 44,
-                benefits: ["Bone health", "Immune function"], deficiencyRisks: ["Rickets", "Bone weakness"]
-            ))
-            micronutrients.append(Micronutrient(
-                name: "Vitamin B12", type: .vitamin, amount: 4.8, unit: "mcg", dailyValuePercentage: 200,
-                benefits: ["Red blood cell formation", "Nervous system"], deficiencyRisks: ["Pernicious anemia", "Nerve damage"]
-            ))
-        }
-        
-        return micronutrients
-    }
-    
-    private func detectAdditives(_ ingredient: String) -> [FoodAdditive] {
-        var additives: [FoodAdditive] = []
-        
-        // Common food additives
-        if ingredient.contains("sodium benzoate") || ingredient.contains("e211") {
-            additives.append(FoodAdditive(
-                name: "Sodium Benzoate",
-                code: "E211",
-                purpose: .preservative,
-                safetyRating: .generallyRecognizedAsSafe,
-                commonNames: ["Sodium benzoate"],
-                potentialEffects: ["May cause hyperactivity in sensitive individuals"]
-            ))
-        }
-        
-        if ingredient.contains("aspartame") || ingredient.contains("e951") {
-            additives.append(FoodAdditive(
-                name: "Aspartame",
-                code: "E951",
-                purpose: .sweetener,
-                safetyRating: .caution,
-                commonNames: ["NutraSweet", "Equal"],
-                potentialEffects: ["Not suitable for phenylketonuria", "May cause headaches in sensitive individuals"]
-            ))
-        }
-        
-        if ingredient.contains("msg") || ingredient.contains("monosodium glutamate") || ingredient.contains("e621") {
-            additives.append(FoodAdditive(
-                name: "Monosodium Glutamate",
-                code: "E621",
-                purpose: .flavoring,
-                safetyRating: .caution,
-                commonNames: ["MSG", "Flavour enhancer"],
-                potentialEffects: ["May cause headaches", "Flushing", "Sweating in sensitive individuals"]
-            ))
-        }
-        
-        return additives
-    }
-    
-    private func calculateIngredientRiskLevel(_ ingredient: String, additives: [FoodAdditive]) -> IngredientRiskLevel {
-        // Check for banned or avoid-level additives
-        if additives.contains(where: { $0.safetyRating == .avoid || $0.safetyRating == .banned }) {
-            return .avoid
-        }
-        
-        // Check for caution-level additives
-        if additives.contains(where: { $0.safetyRating == .caution }) {
-            return .caution
-        }
-        
-        // Check for known problematic ingredients
-        let problematicIngredients = [
-            "trans fat", "partially hydrogenated", "high fructose corn syrup",
-            "sodium nitrite", "sodium nitrate", "artificial colors"
+        guard text.contains("milk") else { return false }
+        let plantMilkPhrases = [
+            "coconut milk","almond milk","soy milk","soya milk","oat milk","rice milk",
+            "cashew milk","hazelnut milk","pea milk","plant milk","non-dairy milk",
+            "non dairy milk","dairy-free milk","dairy free milk"
         ]
-        
-        for problematic in problematicIngredients {
-            if ingredient.contains(problematic) {
-                return .avoid
-            }
+        var scrubbed = text
+        for phrase in plantMilkPhrases {
+            scrubbed = scrubbed.replacingOccurrences(of: phrase, with: "")
         }
-        
-        // Natural whole food ingredients are generally safe
-        let wholeFoodIngredients = [
-            "apple", "banana", "orange", "spinach", "broccoli", "carrot",
-            "chicken", "beef", "fish", "rice", "oats", "quinoa"
-        ]
-        
-        for wholeFood in wholeFoodIngredients {
-            if ingredient.contains(wholeFood) {
-                return .safe
-            }
-        }
-        
-        return .unknown
-    }
-    
-    private func calculateOverallRiskLevel(_ ingredients: [Ingredient]) -> IngredientRiskLevel {
-        let riskLevels = ingredients.map { $0.riskLevel }
-        
-        if riskLevels.contains(.avoid) {
-            return .avoid
-        } else if riskLevels.contains(.caution) {
-            return .caution
-        } else if riskLevels.allSatisfy({ $0 == .safe }) {
-            return .safe
-        } else {
-            return .unknown
-        }
-    }
-    
-    private func generateRecommendations(
-        ingredients: [Ingredient],
-        allergens: [Allergen],
-        additives: [FoodAdditive]
-    ) -> [String] {
-        var recommendations: [String] = []
-        
-        if !allergens.isEmpty {
-            recommendations.append("⚠️ Contains allergens you're sensitive to - consider alternatives")
-        }
-        
-        let avoidAdditives = additives.filter { $0.safetyRating == .avoid || $0.safetyRating == .banned }
-        if !avoidAdditives.isEmpty {
-            recommendations.append("🚫 Contains additives you should avoid: \(avoidAdditives.map { $0.name }.joined(separator: ", "))")
-        }
-        
-        let cautionAdditives = additives.filter { $0.safetyRating == .caution }
-        if !cautionAdditives.isEmpty {
-            recommendations.append("⚠️ Use caution with: \(cautionAdditives.map { $0.name }.joined(separator: ", "))")
-        }
-        
-        let beneficialIngredients = ingredients.filter { $0.riskLevel == .safe && !$0.micronutrients.isEmpty }
-        if !beneficialIngredients.isEmpty {
-            recommendations.append("✅ Good sources of nutrients from: \(beneficialIngredients.map { $0.name }.joined(separator: ", "))")
-        }
-        
-        recommendations.append("💡 Always check full ingredient lists and consult healthcare providers for specific concerns")
-        
-        return recommendations
+        // If any 'milk' remains after removing plant-milk phrases, treat as dairy
+        return scrubbed.contains("milk")
     }
 }
 
@@ -1230,9 +567,24 @@ class AdditiveWatchService {
         }
     }
     
-    // REMOVED: Local analysis method - now using Firebase Cloud Function as SINGLE SOURCE OF TRUTH
+    // Local helpers for fallback matching
+    private func normalizeIngredientTextLocal(_ text: String) -> String {
+        let lower = text.lowercased()
+        let cleaned = lower.replacingOccurrences(of: "[\\n\\r\\t]", with: " ", options: .regularExpression)
+            .replacingOccurrences(of: "[\\(\\)\\[\\]\\{\\};:\\\\|/\\\\\\\\]", with: " ", options: .regularExpression)
+            .replacingOccurrences(of: "[,\\.\\u{00B7}]", with: " ", options: .regularExpression)
+            .replacingOccurrences(of: "\u{00A0}", with: " ")
+        return cleaned.replacingOccurrences(of: " +", with: " ", options: .regularExpression).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
     
-    // Local comprehensive additive analysis using ProcessingScorer
+    private func matchesWithWordBoundaryLocal(text: String, pattern: String) -> Bool {
+        let escaped = NSRegularExpression.escapedPattern(for: pattern)
+        let regexPattern = "(?<![A-Za-z0-9])\(escaped)(?![A-Za-z0-9])"
+        guard let regex = try? NSRegularExpression(pattern: regexPattern, options: []) else { return false }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        return regex.firstMatch(in: text, options: [], range: range) != nil
+    }
+    
     func analyzeIngredients(_ ingredients: [String], completion: @escaping (AdditiveDetectionResult) -> Void) {
         print("🔬 [AdditiveWatchService] Starting local comprehensive additive analysis")
         print("🔬 [AdditiveWatchService] Input ingredients array: \(ingredients)")
@@ -1242,29 +594,61 @@ class AdditiveWatchService {
         print("🔬 [AdditiveWatchService] Joined ingredients text: '\(ingredientsText)'")
 
         // Use ProcessingScorer's exposed additive analysis method
-        let detectedAdditives = ProcessingScorer.shared.analyzeAdditives(in: ingredientsText)
+        let primaryDetected = ProcessingScorer.shared.analyzeAdditives(in: ingredientsText)
+        var finalDetected = primaryDetected
 
-        print("✅ [AdditiveWatchService] Additive analysis complete!")
-        print("✅ [AdditiveWatchService] Total additives detected: \(detectedAdditives.count)")
+        print("✅ [AdditiveWatchService] Primary analysis complete!")
+        print("✅ [AdditiveWatchService] Total additives detected: \(primaryDetected.count)")
+
+        // Fallback: scan CSV database with boundary-aware matching if primary found nothing
+        if primaryDetected.isEmpty && isLoaded {
+            print("🔁 [AdditiveWatchService] Performing CSV fallback scan")
+            let normalized = normalizeIngredientTextLocal(ingredientsText)
+            var csvMatches: [AdditiveInfo] = []
+            var seenCodes = Set<String>()
+            for additive in additiveDatabase {
+                let code = additive.eNumber.lowercased()
+                let name = additive.name.lowercased()
+                var matched = false
+                if matchesWithWordBoundaryLocal(text: normalized, pattern: code) || matchesWithWordBoundaryLocal(text: normalized, pattern: name) {
+                    matched = true
+                } else {
+                    for syn in additive.synonyms {
+                        let term = syn.lowercased()
+                        if term.isEmpty { continue }
+                        if matchesWithWordBoundaryLocal(text: normalized, pattern: term) {
+                            matched = true
+                            break
+                        }
+                    }
+                }
+                if matched && !seenCodes.contains(additive.eNumber) {
+                    csvMatches.append(additive)
+                    seenCodes.insert(additive.eNumber)
+                }
+            }
+            print("🔁 [AdditiveWatchService] CSV fallback matches: \(csvMatches.count)")
+            finalDetected = csvMatches
+        }
 
         // Extract child warnings
-        let childWarnings = detectedAdditives.filter { $0.hasChildWarning }
+        let childWarnings = finalDetected.filter { $0.hasChildWarning }
         print("✅ [AdditiveWatchService] Child warnings: \(childWarnings.count)")
 
         // Build result
         let result = AdditiveDetectionResult(
-            detectedAdditives: detectedAdditives,
+            detectedAdditives: finalDetected,
             childWarnings: childWarnings,
             hasChildConcernAdditives: !childWarnings.isEmpty,
-            analysisConfidence: 0.95, // High confidence for local analysis
+            analysisConfidence: finalDetected.isEmpty ? 0.0 : (primaryDetected.isEmpty ? 0.85 : 0.95),
             processingScore: nil,
             comprehensiveWarnings: nil
         )
 
         // Log detected additives for debugging
-        if !detectedAdditives.isEmpty {
+        if !finalDetected.isEmpty {
             print("✅ [AdditiveWatchService] Detected additives:")
-            for additive in detectedAdditives {
+            for additive in finalDetected {
                 print("   - \(additive.eNumber): \(additive.name)")
             }
         } else {
@@ -1275,7 +659,7 @@ class AdditiveWatchService {
             completion(result)
         }
     }
-    
+
     private func parseProcessingScore(_ processing: [String: Any]?) -> ProcessingAnalysisResult? {
         guard let processing = processing,
               let score = processing["score"] as? Int,
@@ -1318,32 +702,48 @@ class AdditiveWatchService {
         var additives: [AdditiveInfo] = []
         for data in additivesData {
             if let code = data["code"] as? String,
-               let name = data["name"] as? String,
-               let category = data["category"] as? String {
+                let name = data["name"] as? String {
+                let effectsVerdictString = data["effectsVerdict"] as? String ?? "neutral"
+                let verdict: AdditiveVerdict = effectsVerdictString == "avoid" ? .avoid : (effectsVerdictString == "caution" ? .caution : .neutral)
+                let groupString = data["group"] as? String ?? "other"
+                let group = AdditiveGroup(rawValue: groupString) ?? .other
+                let originString = data["origin"] as? String ?? "synthetic"
+                let origin = AdditiveOrigin(rawValue: originString) ?? .synthetic
+                let synonyms = data["synonyms"] as? [String] ?? []
+                let consumerInfo = data["consumerInfo"] as? String
+                let typicalUses = data["typicalUses"] as? String ?? ""
+                let overview = data["overview"] as? String ?? ""
+                let effectsSummary = data["effectsSummary"] as? String ?? ""
+                let hasChildWarning = data["hasChildWarning"] as? Bool ?? false
+                let insNumber = data["insNumber"] as? String
+                let statusNotes = data["statusNotes"] as? String
+                let isPermittedGB = data["isPermittedGB"] as? Bool ?? true
+                let isPermittedNI = data["isPermittedNI"] as? Bool ?? true
+                let isPermittedEU = data["isPermittedEU"] as? Bool ?? true
                 
                 let additive = AdditiveInfo(
                     id: code,
                     eNumber: code,
                     name: name,
-                    group: AdditiveGroup(rawValue: category) ?? .other,
-                    isPermittedGB: data["permitted_GB"] as? Bool ?? true,
-                    isPermittedNI: data["permitted_NI"] as? Bool ?? true,
-                    isPermittedEU: data["permitted_EU"] as? Bool ?? true,
-                    statusNotes: data["status_notes"] as? String,
-                    hasChildWarning: data["child_warning"] as? Bool ?? false,
-                    hasPKUWarning: data["PKU_warning"] as? Bool ?? false,
-                    hasPolyolsWarning: data["polyols_warning"] as? Bool ?? false,
-                    hasSulphitesAllergenLabel: data["sulphites_allergen_label"] as? Bool ?? false,
-                    category: AdditiveCategory(rawValue: category) ?? .other,
-                    origin: AdditiveOrigin(rawValue: data["origin"] as? String ?? "synthetic") ?? .synthetic,
-                    overview: data["overview"] as? String ?? "",
-                    typicalUses: data["typical_uses"] as? String ?? "",
-                    effectsSummary: data["effects_summary"] as? String ?? "",
-                    effectsVerdict: AdditiveVerdict(rawValue: data["effects_verdict"] as? String ?? "neutral") ?? .neutral,
-                    synonyms: (data["synonyms"] as? [String]) ?? [],
-                    insNumber: data["ins_number"] as? String,
-                    sources: [], // Can be enhanced with source parsing
-                    consumerInfo: data["consumerInfo"] as? String
+                    group: group,
+                    isPermittedGB: isPermittedGB,
+                    isPermittedNI: isPermittedNI,
+                    isPermittedEU: isPermittedEU,
+                    statusNotes: statusNotes,
+                    hasChildWarning: hasChildWarning,
+                    hasPKUWarning: false,
+                    hasPolyolsWarning: false,
+                    hasSulphitesAllergenLabel: false,
+                    category: .other,
+                    origin: origin,
+                    overview: overview,
+                    typicalUses: typicalUses,
+                    effectsSummary: effectsSummary,
+                    effectsVerdict: verdict,
+                    synonyms: synonyms,
+                    insNumber: insNumber,
+                    sources: [],
+                    consumerInfo: consumerInfo
                 )
                 additives.append(additive)
             }
@@ -1352,92 +752,17 @@ class AdditiveWatchService {
         return additives
     }
     
-    // MARK: - Helper: Word Boundary Matching
-
-    private func matchesWithWordBoundary(text: String, pattern: String) -> Bool {
-        // Escape special regex characters in the pattern
-        let escapedPattern = NSRegularExpression.escapedPattern(for: pattern)
-
-        // Use word boundaries (\b) to ensure we match complete words/codes only
-        let regexPattern = "\\b\(escapedPattern)\\b"
-
-        guard let regex = try? NSRegularExpression(pattern: regexPattern, options: .caseInsensitive) else {
-            return false
-        }
-
-        let range = NSRange(text.startIndex..., in: text)
-        return regex.firstMatch(in: text, range: range) != nil
-    }
-
-    // MARK: - Helper: Text Normalization
-
-    private func normalizeIngredientText(_ text: String) -> String {
-        var normalized = text.lowercased()
-
-        // Add spaces around punctuation to create word boundaries
-        // This helps detect "Colour: paprika extract" as "paprika extract"
-        normalized = normalized.replacingOccurrences(of: ":", with: " : ")
-        normalized = normalized.replacingOccurrences(of: ";", with: " ; ")
-        normalized = normalized.replacingOccurrences(of: ",", with: " , ")
-        normalized = normalized.replacingOccurrences(of: "(", with: " ( ")
-        normalized = normalized.replacingOccurrences(of: ")", with: " ) ")
-
-        // Remove extra spaces
-        normalized = normalized.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
-
-        // Normalize E-number formats (e-102 → e102, e 102 → e102)
-        normalized = normalized.replacingOccurrences(of: "e-", with: "e")
-        normalized = normalized.replacingOccurrences(of: "e ", with: "e")
-
-        return normalized.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private func calculateMatchScore(additive: AdditiveInfo, text: String) -> Double {
-        var score = 0.0
-        let normalized = normalizeIngredientText(text)
-
-        // E-number exact match with word boundaries (highest priority)
-        if matchesWithWordBoundary(text: normalized, pattern: additive.eNumber.lowercased()) {
-            score += 0.95
-        }
-
-        // Full name exact match with word boundaries
-        if matchesWithWordBoundary(text: normalized, pattern: additive.name.lowercased()) {
-            score += 0.85
-        }
-
-        // Synonym matches (with word boundaries)
-        for synonym in additive.synonyms {
-            if !synonym.isEmpty && matchesWithWordBoundary(text: normalized, pattern: synonym.lowercased()) {
-                score += 0.70
-                break
-            }
-        }
-
-        // Check INS number if available (with word boundaries)
-        if let insNumber = additive.insNumber, !insNumber.isEmpty {
-            if matchesWithWordBoundary(text: normalized, pattern: insNumber.lowercased()) {
-                score += 0.75
-            }
-        }
-
-        return min(score, 1.0)  // Cap at 100%
-    }
-    
     private func parseCSV(_ content: String) -> [AdditiveInfo] {
         let lines = content.components(separatedBy: .newlines)
         guard lines.count > 2 else { return [] }
-        
         // Skip table name row and header row
         let dataLines = Array(lines[2...]).filter { !$0.isEmpty }
         var additives: [AdditiveInfo] = []
-        
         for line in dataLines {
             if let additive = parseCSVLine(line) {
                 additives.append(additive)
             }
         }
-        
         return additives
     }
     
@@ -1447,11 +772,8 @@ class AdditiveWatchService {
             print("❌ CSV line has \(components.count) components, need at least 16. Line: \(line.prefix(100))")
             return nil
         }
-
-        // Parse and clean synonyms
         let rawSynonyms = components.count > 16 ? components[16].split(separator: ";").map { $0.trimmingCharacters(in: .whitespaces) } : []
         let synonyms = cleanSynonyms(rawSynonyms, eNumber: components[0])
-
         return AdditiveInfo(
             id: components[0],
             eNumber: components[0],
@@ -1477,34 +799,17 @@ class AdditiveWatchService {
             consumerInfo: nil
         )
     }
-
-    // MARK: - Helper: Clean Synonyms
-
+    
     private func cleanSynonyms(_ rawSynonyms: [String], eNumber: String) -> [String] {
-        // Generic single-word terms that should be excluded (too broad)
-        let blacklist = ["red", "yellow", "blue", "green", "orange", "white", "black", "brown",
-                         "pink", "purple", "color", "colour", "dye"]
-
+        let blacklist = ["red","yellow","blue","green","orange","white","black","brown","pink","purple","color","colour","dye"]
         return rawSynonyms.filter { synonym in
             let lower = synonym.lowercased()
-
-            // Always keep E-numbers and INS numbers
-            if lower.starts(with: "e") || lower.starts(with: "ins") {
-                return true
-            }
-
-            // Always keep multi-word synonyms (more specific)
-            if lower.contains(" ") {
-                return true
-            }
-
-            // Filter out generic single-word terms
+            if lower.starts(with: "e") || lower.starts(with: "ins") { return true }
+            if lower.contains(" ") { return true }
             if blacklist.contains(lower) {
                 print("🧹 Filtered out generic synonym '\(synonym)' for \(eNumber)")
                 return false
             }
-
-            // Keep everything else
             return true
         }
     }
@@ -1524,28 +829,22 @@ class AdditiveWatchService {
         var current = ""
         var inQuotes = false
         var i = line.startIndex
-        
         while i < line.endIndex {
             let char = line[i]
-            
-            if char == "\"" {
-                inQuotes.toggle()
-            } else if char == "," && !inQuotes {
+            if char == "\"" { inQuotes.toggle() }
+            else if char == "," && !inQuotes {
                 components.append(current.trimmingCharacters(in: .whitespacesAndNewlines))
                 current = ""
             } else {
                 current.append(char)
             }
-            
             i = line.index(after: i)
         }
-        
-        // Add the last component
         components.append(current.trimmingCharacters(in: .whitespacesAndNewlines))
-        
         return components
     }
 }
+
 
 struct ReferenceFood: Codable {
     let id: String
@@ -1560,5 +859,72 @@ struct IngredientMapping: Codable {
     let estimatedWeight: Double // Weight per 100g of final product
     let matchedReferenceFood: ReferenceFood
     let matchConfidence: Double // 0.0 to 1.0
+}
+
+
+// MARK: - Core Food Models needed by FirebaseManager
+
+struct PendingFoodVerification: Identifiable, Codable {
+    enum VerificationStatus: String, Codable {
+        case pending
+        case approved
+        case rejected
+    }
+
+    let id: String
+    let foodName: String
+    let brandName: String?
+    let ingredients: String?
+    let submittedAt: Date
+    let status: VerificationStatus
+    let userId: String
+}
+
+struct SafeFood: Identifiable, Codable {
+    let id: UUID
+    let foodName: String
+    let brandName: String?
+    let ingredients: [String]?
+    let addedAt: Date
+
+    init(id: UUID = UUID(), foodName: String, brandName: String? = nil, ingredients: [String]? = nil, addedAt: Date = Date()) {
+        self.id = id
+        self.foodName = foodName
+        self.brandName = brandName
+        self.ingredients = ingredients
+        self.addedAt = addedAt
+    }
+
+    func toDictionary() -> [String: Any] {
+        return [
+            "id": id.uuidString,
+            "foodName": foodName,
+            "brandName": brandName ?? "",
+            "ingredients": (ingredients ?? []).joined(separator: ", "),
+            "addedAt": FirebaseFirestore.Timestamp(date: addedAt)
+        ]
+    }
+}
+
+
+// Additive purpose and rating enums used by FoodAdditive
+enum AdditivePurpose: String, Codable, CaseIterable {
+    case colour
+    case preservative
+    case antioxidant
+    case emulsifier
+    case stabilizer
+    case thickener
+    case sweetener
+    case flavourEnhancer
+    case acidRegulator
+    case anticaking
+    case other
+}
+
+enum AdditiveRating: String, Codable, CaseIterable {
+    case safe
+    case caution
+    case avoid
 }
 

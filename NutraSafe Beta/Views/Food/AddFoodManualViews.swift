@@ -110,6 +110,7 @@ struct ManualFoodDetailEntryView: View {
 
     // Ingredients
     @State private var ingredientsText = ""
+    //
 
     // Diary-specific fields
     @State private var selectedMealTime = "Breakfast"
@@ -330,10 +331,12 @@ struct ManualFoodDetailEntryView: View {
                                             RoundedRectangle(cornerRadius: 8)
                                                 .stroke(Color(.systemGray4), lineWidth: 1)
                                         )
+
+                                    }
                                 }
                             }
-                        }
-                    }
+
+                        } // end diary section
 
                     // Use By-specific fields (simplified form)
                     if destination == .useBy {
@@ -499,6 +502,15 @@ struct ManualFoodDetailEntryView: View {
                     isSaving = false
                     dismiss()
                 }
+
+                // After sheet dismisses, switch to appropriate tab
+                if destination == .diary {
+                    await MainActor.run {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                            selectedTab = .diary
+                        }
+                    }
+                }
             } catch {
                 // Don't dismiss on error - show error message instead
                 await MainActor.run {
@@ -597,9 +609,8 @@ struct ManualFoodDetailEntryView: View {
             }
 
             // Switch to diary tab to show the added food
-            await MainActor.run {
-                selectedTab = .diary
-            }
+            // REMOVED: tab switch here to avoid race with sheet dismissal
+            // selectedTab = .diary
 
         } catch {
             // Show error to user and re-throw to prevent dismissal

@@ -478,11 +478,8 @@ struct FoodPatternAnalysisCard: View {
     private func getBaseAllergen(for ingredient: String) -> String? {
         let lower = ingredient.lowercased()
 
-        // Milk and dairy products
-        if lower.contains("milk") || lower.contains("dairy") || lower.contains("lactose") ||
-           lower.contains("cream") || lower.contains("butter") || lower.contains("cheese") ||
-           lower.contains("yogurt") || lower.contains("yoghurt") || lower.contains("whey") ||
-           lower.contains("casein") || lower.contains("ghee") {
+        // Milk and dairy products (refined detection)
+        if AllergenDetector.shared.containsDairyMilk(in: lower) {
             return "Milk"
         }
 

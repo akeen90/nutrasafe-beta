@@ -43,6 +43,9 @@
 		A1234567890123456789012306 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = A1234567890123456789012012 /* GoogleService-Info.plist */; };
 		A1234567890123456789012307 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890123456789012013 /* HealthKitManager.swift */; };
 		A4F3F73658E143099BDCA612 /* NutraSafe Beta/Configuration/AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22C6BF8B3C55423CB194379A /* NutraSafe Beta/Configuration/AppConfig.swift */; };
+		AB13BC192EAE215A00C7B892 /* AIMicronutrientParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB13BC172EAE215A00C7B892 /* AIMicronutrientParser.swift */; };
+		AB13BC1A2EAE215A00C7B892 /* IngredientMicronutrientParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB13BC182EAE215A00C7B892 /* IngredientMicronutrientParser.swift */; };
+		AB13BC1C2EAE253100C7B892 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = AB13BC1B2EAE253100C7B892 /* FirebaseFunctions */; };
 		AB4B75A72E72DEF60058DCD3 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = AB4B75A62E72DEF60058DCD3 /* FirebaseAuth */; };
 		AB4B75A92E72DEFC0058DCD3 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = AB4B75A82E72DEFC0058DCD3 /* FirebaseCore */; };
 		AB4B75AB2E72DF020058DCD3 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = AB4B75AA2E72DF020058DCD3 /* FirebaseFirestore */; };
@@ -55,6 +58,7 @@
 		AUTH1234567890123456789001 /* AuthenticationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AUTH1234567890123456789002 /* AuthenticationView.swift */; };
 		B1234567890123456789CM02 /* CoreModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1234567890123456789CM01 /* CoreModels.swift */; };
 		B1234567890123456789EM02 /* ExerciseModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1234567890123456789EM01 /* ExerciseModels.swift */; };
+		B1234567890123456789FA02 /* FastingModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1234567890123456789FA01 /* FastingModels.swift */; };
 		B1234567890123456789FS02 /* FoodSafetyModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1234567890123456789FS01 /* FoodSafetyModels.swift */; };
 		B1234567890123456789HM02 /* HealthKitModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1234567890123456789HM01 /* HealthKitModels.swift */; };
 		B1234567890123456789NM02 /* NutritionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1234567890123456789NM01 /* NutritionModels.swift */; };
@@ -75,6 +79,8 @@
 		F274CF78968B4290ADA3C260F96936CE /* UseByTabViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4841D8FB19F4A7091A7DD0A429B645E /* UseByTabViews.swift */; };
 		F2A1EA64DE5874696AC72D24 /* PrivacyPolicyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55FA70B49C3C721A45AA1C88 /* PrivacyPolicyView.swift */; };
 		F71736FEB2E843E18F674753 /* FastingTimerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 034F60AA8BCB4662A86709D4 /* FastingTimerView.swift */; };
+		FASTHIST0001BUILD /* FastingHistoryDropdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = FASTHIST0001FILE /* FastingHistoryDropdown.swift */; };
+		FASTMGR0001BUILD /* Managers/FastingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FASTMGR0001FILE /* Managers/FastingManager.swift */; };
 		FC60C4299246265536D0CF46 /* NutrientTrackingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92A9EF78D75CD70F28F3810E /* NutrientTrackingManager.swift */; };
 		FDACD6EE052840C79A707950 /* AddTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0B6A2D7294D44D9A25481CE /* AddTabView.swift */; };
 		PAYWALL0001BUILD /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PAYWALL0001FILE /* PaywallView.swift */; };
@@ -118,6 +124,8 @@
 		A1234567890123456789012012 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		A1234567890123456789012013 /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
 		A4B4BB31C0ED4E9FAF2B4EE0 /* nutrasafe_foods.db */ = {isa = PBXFileReference; lastKnownFileType = file; path = nutrasafe_foods.db; sourceTree = "<group>"; };
+		AB13BC172EAE215A00C7B892 /* AIMicronutrientParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIMicronutrientParser.swift; sourceTree = "<group>"; };
+		AB13BC182EAE215A00C7B892 /* IngredientMicronutrientParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IngredientMicronutrientParser.swift; sourceTree = "<group>"; };
 		AB77ABAB2E686D0E00857409 /* NutraSafe BetaDebug.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "NutraSafe BetaDebug.entitlements"; sourceTree = "<group>"; };
 		ABB0AEF22EA8CCA3009F044D /* OnboardingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingManager.swift; sourceTree = "<group>"; };
 		ABB0AEF42EA8CCD1009F044D /* OnboardingScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingScreens.swift; sourceTree = "<group>"; };
@@ -129,6 +137,7 @@
 		AUTH1234567890123456789002 /* AuthenticationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationView.swift; sourceTree = "<group>"; };
 		B1234567890123456789CM01 /* CoreModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CoreModels.swift; path = "NutraSafe Beta/Models/CoreModels.swift"; sourceTree = "<group>"; };
 		B1234567890123456789EM01 /* ExerciseModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ExerciseModels.swift; path = "NutraSafe Beta/Models/ExerciseModels.swift"; sourceTree = "<group>"; };
+		B1234567890123456789FA01 /* FastingModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FastingModels.swift; sourceTree = "<group>"; };
 		B1234567890123456789FS01 /* FoodSafetyModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = FoodSafetyModels.swift; path = "NutraSafe Beta/Models/FoodSafetyModels.swift"; sourceTree = "<group>"; };
 		B1234567890123456789HM01 /* HealthKitModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitModels.swift; path = "NutraSafe Beta/Models/HealthKitModels.swift"; sourceTree = "<group>"; };
 		B1234567890123456789NM01 /* NutritionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NutritionModels.swift; path = "NutraSafe Beta/Models/NutritionModels.swift"; sourceTree = "<group>"; };
@@ -151,6 +160,8 @@
 		EF86AB54327E46EA98DD76AB /* FoodManagementViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodManagementViews.swift; sourceTree = "<group>"; };
 		F424654E4CD941D1B3565C0B /* FoodSearchViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodSearchViews.swift; sourceTree = "<group>"; };
 		FA2F7F8ABA91448198A8CB77 /* NutraSafe Beta/Views/Diary/DiaryComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Diary/DiaryComponents.swift"; sourceTree = "<group>"; };
+		FASTHIST0001FILE /* FastingHistoryDropdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastingHistoryDropdown.swift; sourceTree = "<group>"; };
+		FASTMGR0001FILE /* Managers/FastingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/FastingManager.swift; sourceTree = "<group>"; };
 		FEAB7CC556B14207BD435571 /* AddFoodAIView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFoodAIView.swift; sourceTree = "<group>"; };
 		FF612B9BEC774EC78502B67C /* FoodDetailViewFromSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodDetailViewFromSearch.swift; sourceTree = "<group>"; };
 		PAYWALL0001FILE /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
@@ -167,6 +178,7 @@
 				AB4B75A92E72DEFC0058DCD3 /* FirebaseCore in Frameworks */,
 				AB4B75A72E72DEF60058DCD3 /* FirebaseAuth in Frameworks */,
 				ABB0AEFA2EAC3F14009F044D /* StoreKit.framework in Frameworks */,
+				AB13BC1C2EAE253100C7B892 /* FirebaseFunctions in Frameworks */,
 				AB4B75AB2E72DF020058DCD3 /* FirebaseFirestore in Frameworks */,
 				AB4B75AD2E72DF080058DCD3 /* FirebaseStorage in Frameworks */,
 			);
@@ -230,6 +242,7 @@
 			isa = PBXGroup;
 			children = (
 				034F60AA8BCB4662A86709D4 /* FastingTimerView.swift */,
+				FASTHIST0001FILE /* FastingHistoryDropdown.swift */,
 			);
 			path = Fasting;
 			sourceTree = "<group>";
@@ -248,6 +261,7 @@
 			isa = PBXGroup;
 			children = (
 				40A9E8C4089D4E1EF9BCBAD1 /* NutrientTrackingModels.swift */,
+				B1234567890123456789FA01 /* FastingModels.swift */,
 				B4C4FD21E58EE1B4FF761877 /* MicronutrientScoringModels.swift */,
 			);
 			path = Models;
@@ -288,6 +302,8 @@
 		A1234567890123456789012004 /* NutraSafe Beta */ = {
 			isa = PBXGroup;
 			children = (
+				AB13BC172EAE215A00C7B892 /* AIMicronutrientParser.swift */,
+				AB13BC182EAE215A00C7B892 /* IngredientMicronutrientParser.swift */,
 				ABB0AEFB2EAC4FA5009F044D /* NutraSafe Beta.entitlements */,
 				ABB0AEF62EA8CCD1009F044D /* Onboarding */,
 				ABB0AEF22EA8CCA3009F044D /* OnboardingManager.swift */,
@@ -299,6 +315,7 @@
 				A1234567890123456789012011 /* FirebaseManager.swift */,
 				A1234567890123456789012013 /* HealthKitManager.swift */,
 				SUBS0001FILE /* Managers/SubscriptionManager.swift */,
+				FASTMGR0001FILE /* Managers/FastingManager.swift */,
 				A1234567890123456789012003 /* Assets.xcassets */,
 				A1234567890123456789012012 /* GoogleService-Info.plist */,
 				96AFEAFFFC70426C97B3CF2E /* additives_full_described_with_sources_2025.csv */,
@@ -458,14 +475,18 @@
 				AUTH1234567890123456789001 /* AuthenticationView.swift in Sources */,
 				A1234567890123456789012302 /* ContentView.swift in Sources */,
 				A1234567890123456789012301 /* NutraSafeBetaApp.swift in Sources */,
+				AB13BC192EAE215A00C7B892 /* AIMicronutrientParser.swift in Sources */,
+				AB13BC1A2EAE215A00C7B892 /* IngredientMicronutrientParser.swift in Sources */,
 				A1234567890123456789012305 /* FirebaseManager.swift in Sources */,
 				A1234567890123456789012307 /* HealthKitManager.swift in Sources */,
 				SUBS0001BUILD /* Managers/SubscriptionManager.swift in Sources */,
+				FASTMGR0001BUILD /* Managers/FastingManager.swift in Sources */,
 				ABB0AEF32EA8CCA3009F044D /* OnboardingManager.swift in Sources */,
 				26E954E4A2634655AB0F1224 /* FoodDetailViewFromSearch.swift in Sources */,
 				99C873C9DCA241B8B3F6C5CA /* FoodSearchViews.swift in Sources */,
 				5499F48301DC4732BB15091B /* FoodManagementViews.swift in Sources */,
 				F71736FEB2E843E18F674753 /* FastingTimerView.swift in Sources */,
+				FASTHIST0001BUILD /* FastingHistoryDropdown.swift in Sources */,
 				B9AC0B956B3045128E12E890 /* AddFoodAIView.swift in Sources */,
 				23B28F0F809D4105ADF5E5261CCE0E54 /* DiaryHydrationView.swift in Sources */,
 				013A7F75B09C430AB1EE40154700DAAB /* DiaryDailySummaryCard.swift in Sources */,
@@ -507,6 +528,7 @@
 				E0D7A2553A41000A8C20AA18 /* FastingLiveActivity.swift in Sources */,
 				EC0CE2C1561B24FEFEEB9408 /* UseByNotificationManager.swift in Sources */,
 				79517406CCBD54CFEC482DB9 /* NutrientTrackingModels.swift in Sources */,
+				B1234567890123456789FA02 /* FastingModels.swift in Sources */,
 				FC60C4299246265536D0CF46 /* NutrientTrackingManager.swift in Sources */,
 				BFEA1EBFC21031BC05146B62 /* NutrientActivityDashboard.swift in Sources */,
 				17DEC2E4FA075B1C522AA72E /* NutrientRingComponents.swift in Sources */,
@@ -663,6 +685,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -697,6 +720,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -745,6 +769,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		AB13BC1B2EAE253100C7B892 /* FirebaseFunctions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AB4B75A52E72DD260058DCD3 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFunctions;
+		};
 		AB4B75A62E72DEF60058DCD3 /* FirebaseAuth */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = AB4B75A52E72DD260058DCD3 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;

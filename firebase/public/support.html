@@ -11,80 +11,126 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --primary: #F5A623;
+            --primary-dark: #E08E0B;
+            --secondary: #FFF5E6;
+            --accent: #FF8C42;
+            --text-dark: #2C3E50;
+            --text-light: #6C757D;
+            --bg-cream: #FFFBF5;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, var(--bg-cream) 0%, var(--secondary) 100%);
             min-height: 100vh;
             padding: 40px 20px;
-            color: #333;
+            color: var(--text-dark);
+        }
+
+        /* Header - matches main site */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            text-decoration: none;
+        }
+        
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .logo-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+        
+        .nav-links a {
+            color: var(--text-dark);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        
+        .nav-links a:hover {
+            color: var(--primary);
         }
 
         .container {
             max-width: 900px;
-            margin: 0 auto;
+            margin: 100px auto 40px;
             background: white;
             border-radius: 20px;
             padding: 60px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
         }
 
-        .header {
+        .page-header {
             text-align: center;
             margin-bottom: 50px;
             padding-bottom: 30px;
-            border-bottom: 2px solid #f0f0f0;
+            border-bottom: 2px solid var(--secondary);
         }
 
-        .logo {
-            font-size: 3em;
-            margin-bottom: 15px;
-        }
-
-        h1 {
+        .page-header h1 {
             font-size: 2.5em;
-            color: #667eea;
+            color: var(--text-dark);
             margin-bottom: 10px;
         }
 
         .tagline {
-            color: #666;
+            color: var(--text-light);
             font-size: 1.1em;
             margin-top: 15px;
         }
 
-        .nav-links {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            margin-top: 20px;
-            flex-wrap: wrap;
-        }
-
-        .nav-link {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 500;
-            padding: 8px 16px;
-            border-radius: 8px;
-            transition: all 0.3s;
-        }
-
-        .nav-link:hover {
-            background: #f0f4ff;
-        }
-
         h2 {
             font-size: 1.8em;
-            color: #333;
+            color: var(--text-dark);
             margin-top: 40px;
             margin-bottom: 20px;
             padding-bottom: 10px;
-            border-bottom: 2px solid #667eea;
+            border-bottom: 2px solid var(--primary);
         }
 
         h3 {
             font-size: 1.3em;
-            color: #555;
+            color: var(--text-dark);
             margin-top: 25px;
             margin-bottom: 15px;
         }
@@ -92,7 +138,7 @@
         p {
             line-height: 1.8;
             margin-bottom: 15px;
-            color: #555;
+            color: var(--text-light);
         }
 
         ul {
@@ -103,19 +149,30 @@
         li {
             line-height: 1.8;
             margin-bottom: 10px;
-            color: #555;
+            color: var(--text-light);
+        }
+
+        a {
+            color: var(--primary);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        a:hover {
+            color: var(--primary-dark);
+            text-decoration: underline;
         }
 
         .contact-box {
-            background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%);
-            border-left: 4px solid #667eea;
+            background: linear-gradient(135deg, var(--secondary) 0%, #FFEDD5 100%);
+            border-left: 4px solid var(--primary);
             padding: 30px;
             border-radius: 12px;
             margin: 30px 0;
         }
 
         .contact-box h3 {
-            color: #667eea;
+            color: var(--primary-dark);
             margin-top: 0;
             margin-bottom: 20px;
         }
@@ -133,7 +190,11 @@
 
         .contact-method:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+            box-shadow: 0 4px 15px rgba(245, 166, 35, 0.2);
+        }
+
+        .contact-method:last-child {
+            margin-bottom: 0;
         }
 
         .contact-icon {
@@ -143,18 +204,18 @@
         }
 
         .contact-details h4 {
-            color: #333;
+            color: var(--text-dark);
             margin-bottom: 5px;
             font-size: 1.1em;
         }
 
         .contact-details p {
             margin: 0;
-            color: #666;
+            color: var(--text-light);
         }
 
         .contact-details a {
-            color: #667eea;
+            color: var(--primary);
             text-decoration: none;
             font-weight: 600;
         }
@@ -168,27 +229,32 @@
         }
 
         .faq-item {
-            background: #f8f9fa;
+            background: var(--bg-cream);
             padding: 25px;
             border-radius: 12px;
             margin-bottom: 20px;
-            border-left: 4px solid #667eea;
+            border-left: 4px solid var(--primary);
+            transition: all 0.3s;
+        }
+
+        .faq-item:hover {
+            box-shadow: 0 4px 15px rgba(245, 166, 35, 0.15);
         }
 
         .faq-item h4 {
-            color: #333;
+            color: var(--text-dark);
             margin-bottom: 10px;
             font-size: 1.1em;
         }
 
         .faq-item p {
             margin: 0;
-            color: #555;
+            color: var(--text-light);
         }
 
         .info-box {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
+            background: #FFF3CD;
+            border-left: 4px solid var(--accent);
             padding: 25px;
             margin: 30px 0;
             border-radius: 8px;
@@ -199,44 +265,69 @@
             margin-top: 0;
         }
 
+        .info-box p {
+            color: #856404;
+        }
+
         .divider {
             height: 2px;
-            background: linear-gradient(to right, transparent, #e0e0e0, transparent);
+            background: linear-gradient(to right, transparent, var(--secondary), transparent);
             margin: 40px 0;
         }
 
-        .footer {
-            text-align: center;
-            margin-top: 60px;
-            padding-top: 30px;
-            border-top: 2px solid #f0f0f0;
-            color: #666;
-        }
-
-        .back-home {
-            display: inline-block;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+        /* Footer - matches main site */
+        footer {
+            background: var(--text-dark);
             color: white;
-            text-decoration: none;
-            padding: 15px 35px;
-            border-radius: 12px;
-            font-weight: 600;
-            margin-top: 20px;
-            transition: all 0.3s;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            padding: 4rem 2rem 2rem;
+            margin-top: 60px;
         }
-
-        .back-home:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 3rem;
+            margin-bottom: 2rem;
+        }
+        
+        .footer-section h4 {
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+        
+        .footer-section ul {
+            list-style: none;
+            margin-left: 0;
+        }
+        
+        .footer-section a {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            display: block;
+            margin-bottom: 0.5rem;
+            transition: color 0.3s;
+        }
+        
+        .footer-section a:hover {
+            color: white;
+        }
+        
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.5);
         }
 
         @media (max-width: 768px) {
             .container {
                 padding: 30px 25px;
+                margin-top: 80px;
             }
 
-            h1 {
+            .page-header h1 {
                 font-size: 2em;
             }
 
@@ -248,20 +339,35 @@
                 flex-direction: column;
                 text-align: center;
             }
+
+            .nav-links {
+                display: none;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- Header -->
+    <header>
+        <nav>
+            <a href="/" class="logo">
+                <div class="logo-icon">
+                    <img src="app-icon.png" alt="NutraSafe">
+                </div>
+                <span>NutraSafe</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                <li><a href="/privacy-policy.html">Privacy Policy</a></li>
+                <li><a href="/terms-of-service.html">Terms of Service</a></li>
+            </ul>
+        </nav>
+    </header>
+
     <div class="container">
-        <div class="header">
-            <div class="logo">💬</div>
-            <h1>NutraSafe Support</h1>
+        <div class="page-header">
+            <h1>Support</h1>
             <p class="tagline">We're here to help you get the most out of NutraSafe</p>
-            <div class="nav-links">
-                <a href="/" class="nav-link">Home</a>
-                <a href="/privacy-policy.html" class="nav-link">Privacy Policy</a>
-                <a href="/terms-of-service.html" class="nav-link">Terms of Service</a>
-            </div>
         </div>
 
         <div class="contact-box">
@@ -377,17 +483,50 @@
 
         <div class="contact-box">
             <div class="contact-details" style="text-align: center;">
-                <h4 style="color: #667eea; font-size: 1.2em; margin-bottom: 15px;">Contact Us</h4>
-                <p style="font-size: 1.1em; margin-bottom: 10px;"><strong>Email:</strong> <a href="mailto:contact@nutrasafe.co.uk">contact@nutrasafe.co.uk</a></p>
-                <p><strong>Operated by:</strong> Aaron Keen, United Kingdom</p>
+                <h4 style="color: var(--primary-dark); font-size: 1.2em; margin-bottom: 15px;">Contact Us</h4>
+                <p style="font-size: 1.1em; margin-bottom: 10px; color: var(--text-dark);"><strong>Email:</strong> <a href="mailto:contact@nutrasafe.co.uk">contact@nutrasafe.co.uk</a></p>
+                <p style="color: var(--text-light);"><strong>Operated by:</strong> Aaron Keen, United Kingdom</p>
             </div>
         </div>
-
-        <div class="footer">
-            <p>&copy; 2025 NutraSafe. All rights reserved.</p>
-            <p>Operated by Aaron Keen, United Kingdom</p>
-            <a href="/" class="back-home">Return to Home</a>
-        </div>
     </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>NutraSafe</h4>
+                <p style="color: rgba(255,255,255,0.7);">Your personal food intelligence assistant. Make informed choices about what you eat.</p>
+            </div>
+            
+            <div class="footer-section">
+                <h4>Product</h4>
+                <ul>
+                    <li><a href="/#features">Features</a></li>
+                    <li><a href="/#how-it-works">How It Works</a></li>
+                    <li><a href="/#faqs">FAQs</a></li>
+                </ul>
+            </div>
+            
+            <div class="footer-section">
+                <h4>Company</h4>
+                <ul>
+                    <li><a href="/support.html">Support</a></li>
+                    <li><a href="#">Contact</a></li>
+                </ul>
+            </div>
+            
+            <div class="footer-section">
+                <h4>Legal</h4>
+                <ul>
+                    <li><a href="/privacy-policy.html">Privacy Policy</a></li>
+                    <li><a href="/terms-of-service.html">Terms of Service</a></li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="footer-bottom">
+            <p>&copy; 2025 NutraSafe. All rights reserved. Operated by Aaron Keen, United Kingdom</p>
+        </div>
+    </footer>
 </body>
 </html>

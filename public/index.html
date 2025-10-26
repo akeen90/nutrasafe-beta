@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NutraSafe - Welcome</title>
+    <title>NutraSafe - Your Personal Food Intelligence Assistant</title>
+    <meta name="description" content="Scan any food product and instantly understand what you're eating. Track nutrition, identify allergens, and make informed food choices.">
+    
     <style>
         * {
             margin: 0;
@@ -11,138 +13,907 @@
             box-sizing: border-box;
         }
         
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
+        :root {
+            --primary: #2D8B6E;
+            --primary-dark: #1F6651;
+            --secondary: #F4F1E8;
+            --accent: #FF6B6B;
+            --text-dark: #2C3E50;
+            --text-light: #6C757D;
+            --bg-cream: #F9F7F4;
         }
         
-        .welcome-container {
-            text-align: center;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(20px);
-            padding: 60px 40px;
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            max-width: 500px;
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            color: var(--text-dark);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        
+        /* Header */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
         .logo {
-            font-size: 3rem;
-            font-weight: bold;
-            margin-bottom: 20px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .tagline {
-            font-size: 1.2rem;
-            margin-bottom: 40px;
-            opacity: 0.9;
-        }
-        
-        .dashboard-links {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-        
-        .dashboard-btn {
-            padding: 15px 30px;
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 12px;
-            color: white;
-            text-decoration: none;
-            font-size: 1.1rem;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-        
-        .dashboard-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        }
-        
-        .dashboard-btn .icon {
-            font-size: 1.5rem;
-            margin-right: 10px;
-        }
-        
-        .description {
-            font-size: 0.9rem;
-            opacity: 0.8;
-            margin-top: 5px;
-        }
-        
-        .status-info {
-            margin-top: 40px;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .status-item {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            margin-bottom: 10px;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            text-decoration: none;
         }
         
-        .status-item:last-child {
-            margin-bottom: 0;
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
         }
         
-        .status-label {
-            font-size: 0.9rem;
-            opacity: 0.8;
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
         }
         
-        .status-value {
+        .nav-links a {
+            color: var(--text-dark);
+            text-decoration: none;
             font-weight: 500;
-            color: #4ade80;
+            transition: color 0.3s;
+        }
+        
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+        
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, var(--bg-cream) 0%, #E8F5E9 100%);
+            padding: 120px 2rem 80px;
+            text-align: center;
+        }
+        
+        .hero-content {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.5rem 1.5rem;
+            background: white;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+        
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            color: var(--text-dark);
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+        }
+        
+        .hero p {
+            font-size: 1.3rem;
+            color: var(--text-light);
+            margin-bottom: 3rem;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 3rem;
+        }
+        
+        .btn-primary {
+            padding: 1rem 2.5rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(45, 139, 110, 0.3);
+        }
+        
+        .btn-secondary {
+            padding: 1rem 2.5rem;
+            background: white;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-secondary:hover {
+            background: var(--primary);
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        /* Social Proof */
+        .social-proof {
+            background: white;
+            padding: 3rem 2rem;
+            border-radius: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .laurel-section {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .laurel {
+            font-size: 3rem;
+            opacity: 0.3;
+        }
+        
+        .social-proof h2 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+        
+        .stars {
+            font-size: 2rem;
+            color: #FFD700;
+            margin-bottom: 1rem;
+        }
+        
+        .ratings {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+        
+        .rating {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.1rem;
+            color: var(--text-light);
+        }
+        
+        .rating strong {
+            color: var(--text-dark);
+            font-size: 1.3rem;
+        }
+        
+        .app-badges {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .app-badge {
+            height: 50px;
+            transition: transform 0.3s;
+        }
+        
+        .app-badge:hover {
+            transform: scale(1.05);
+        }
+        
+        /* Features Section */
+        .features {
+            padding: 100px 2rem;
+            background: white;
+        }
+        
+        .section-header {
+            text-align: center;
+            max-width: 700px;
+            margin: 0 auto 4rem;
+        }
+        
+        .section-header h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .section-header p {
+            font-size: 1.2rem;
+            color: var(--text-light);
+        }
+        
+        .feature-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            gap: 4rem;
+        }
+        
+        .feature {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+        
+        .feature:nth-child(even) .feature-content {
+            order: 2;
+        }
+        
+        .feature:nth-child(even) .feature-image {
+            order: 1;
+        }
+        
+        .feature-content h3 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: var(--text-dark);
+        }
+        
+        .feature-content p {
+            font-size: 1.1rem;
+            color: var(--text-light);
+            margin-bottom: 1.5rem;
+            line-height: 1.8;
+        }
+        
+        .feature-list {
+            list-style: none;
+        }
+        
+        .feature-list li {
+            padding: 0.75rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.05rem;
+        }
+        
+        .feature-list li:before {
+            content: "✓";
+            color: var(--primary);
+            font-weight: bold;
+            font-size: 1.3rem;
+        }
+        
+        .feature-image {
+            position: relative;
+            text-align: center;
+        }
+        
+        .phone-mockup {
+            max-width: 350px;
+            width: 100%;
+            height: auto;
+            border-radius: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* How It Works */
+        .how-it-works {
+            padding: 100px 2rem;
+            background: var(--bg-cream);
+        }
+        
+        .steps {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 3rem;
+        }
+        
+        .step {
+            text-align: center;
+            padding: 2rem;
+            background: white;
+            border-radius: 20px;
+            transition: transform 0.3s;
+        }
+        
+        .step:hover {
+            transform: translateY(-10px);
+        }
+        
+        .step-number {
+            width: 60px;
+            height: 60px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 0 auto 1.5rem;
+        }
+        
+        .step h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .step p {
+            color: var(--text-light);
+            font-size: 1.05rem;
+        }
+        
+        /* FAQs */
+        .faqs {
+            padding: 100px 2rem;
+            background: white;
+        }
+        
+        .faq-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .faq-item {
+            background: white;
+            border: 2px solid #E8E8E8;
+            border-radius: 15px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+        
+        .faq-item:hover {
+            border-color: var(--primary);
+        }
+        
+        .faq-question {
+            padding: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--primary);
+        }
+        
+        .faq-arrow {
+            transition: transform 0.3s;
+            font-size: 1.2rem;
+        }
+        
+        .faq-item.active .faq-arrow {
+            transform: rotate(180deg);
+        }
+        
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            padding: 0 1.5rem;
+        }
+        
+        .faq-item.active .faq-answer {
+            max-height: 500px;
+            padding: 0 1.5rem 1.5rem;
+        }
+        
+        .faq-answer p {
+            color: var(--text-light);
+            line-height: 1.8;
+        }
+        
+        /* Newsletter */
+        .newsletter {
+            padding: 100px 2rem;
+            background: var(--bg-cream);
+        }
+        
+        .newsletter-content {
+            max-width: 700px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        
+        .newsletter h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .newsletter p {
+            font-size: 1.2rem;
+            color: var(--text-light);
+            margin-bottom: 2rem;
+        }
+        
+        .newsletter-form {
+            display: flex;
+            gap: 1rem;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .newsletter-form input {
+            flex: 1;
+            padding: 1rem 1.5rem;
+            border: 2px solid #E8E8E8;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        
+        .newsletter-form input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        .newsletter-form button {
+            padding: 1rem 2rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .newsletter-form button:hover {
+            background: var(--primary-dark);
+        }
+        
+        /* Footer */
+        footer {
+            background: var(--text-dark);
+            color: white;
+            padding: 4rem 2rem 2rem;
+        }
+        
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 3rem;
+            margin-bottom: 2rem;
+        }
+        
+        .footer-section h4 {
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+        
+        .footer-section ul {
+            list-style: none;
+        }
+        
+        .footer-section a {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            display: block;
+            margin-bottom: 0.5rem;
+            transition: color 0.3s;
+        }
+        
+        .footer-section a:hover {
+            color: white;
+        }
+        
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+            
+            .hero p {
+                font-size: 1.1rem;
+            }
+            
+            .feature {
+                grid-template-columns: 1fr;
+            }
+            
+            .feature:nth-child(even) .feature-content,
+            .feature:nth-child(even) .feature-image {
+                order: initial;
+            }
+            
+            .newsletter-form {
+                flex-direction: column;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+        }
+        
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .fade-in-up {
+            animation: fadeInUp 0.6s ease-out;
         }
     </style>
 </head>
 <body>
-    <div class="welcome-container">
-        <div class="logo">🥗 NutraSafe</div>
-        <div class="tagline">Track your nutrition, manage allergies, and maintain a healthy lifestyle</div>
-        
-        <div class="dashboard-links">
-            <a href="/dashboard" class="dashboard-btn">
-                <span class="icon">👤</span>
-                User Dashboard
-                <div class="description">Access your personal nutrition tracking and food diary</div>
+    <!-- Header -->
+    <header>
+        <nav>
+            <a href="/" class="logo">
+                <div class="logo-icon">🥗</div>
+                <span>NutraSafe</span>
             </a>
+            <ul class="nav-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#how-it-works">How It Works</a></li>
+                <li><a href="#faqs">FAQs</a></li>
+                <li><a href="/dashboard">Dashboard</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content fade-in-up">
+            <div class="badge">🎉 Now available on iOS</div>
+            <h1>Know What You're Really Eating</h1>
+            <p>Scan any food product and instantly discover hidden additives, allergens, and nutritional insights. Make informed choices for your health.</p>
+            <div class="cta-buttons">
+                <a href="#download" class="btn-primary">Download Now</a>
+                <a href="#features" class="btn-secondary">Learn More</a>
+            </div>
+        </div>
+        
+        <div class="social-proof">
+            <div class="laurel-section">
+                <span class="laurel">🌿</span>
+                <h2>Trusted by Thousands</h2>
+                <span class="laurel">🌿</span>
+            </div>
+            <div class="stars">★★★★★</div>
+            <div class="ratings">
+                <div class="rating">
+                    <span>🍎</span>
+                    <strong>4.8/5</strong>
+                    <span>iOS</span>
+                </div>
+            </div>
+            <div class="app-badges">
+                <a href="#" target="_blank">
+                    <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on App Store" class="app-badge">
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="section-header">
+            <h2>Everything You Need to Eat Better</h2>
+            <p>Comprehensive food intelligence at your fingertips</p>
+        </div>
+        
+        <div class="feature-grid">
+            <div class="feature">
+                <div class="feature-content">
+                    <h3>🔍 Instant Barcode Scanning</h3>
+                    <p>Point your camera at any food barcode and get instant, detailed information about what you're about to eat.</p>
+                    <ul class="feature-list">
+                        <li>Comprehensive nutrition breakdown</li>
+                        <li>Hidden additives and E-numbers</li>
+                        <li>Allergen warnings</li>
+                        <li>Proprietary processing score</li>
+                    </ul>
+                </div>
+                <div class="feature-image">
+                    <img src="scan-screen.png" alt="Barcode scanning feature" class="phone-mockup">
+                </div>
+            </div>
             
-            <a href="/admin" class="dashboard-btn">
-                <span class="icon">⚙️</span>
-                Admin Dashboard
-                <div class="description">Company management, user analytics, and system monitoring</div>
-            </a>
+            <div class="feature">
+                <div class="feature-content">
+                    <h3>🧪 Decode Hidden Ingredients</h3>
+                    <p>Understand what's really in your food with our comprehensive additive database covering 6000+ ingredients.</p>
+                    <ul class="feature-list">
+                        <li>E-numbers explained in plain English</li>
+                        <li>Health impact ratings</li>
+                        <li>Scientific studies cited</li>
+                        <li>GMO and processing aids revealed</li>
+                    </ul>
+                </div>
+                <div class="feature-image">
+                    <img src="ingredients-view.png" alt="Ingredients analysis" class="phone-mockup">
+                </div>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-content">
+                    <h3>🌾 Smart Allergy Tracking</h3>
+                    <p>Set your dietary restrictions and allergens once, and get instant alerts when scanning incompatible products.</p>
+                    <ul class="feature-list">
+                        <li>Custom allergen profiles</li>
+                        <li>Intolerance pattern recognition</li>
+                        <li>Cross-contamination warnings</li>
+                        <li>Family member profiles</li>
+                    </ul>
+                </div>
+                <div class="feature-image">
+                    <img src="allergy-alerts.png" alt="Allergy tracking" class="phone-mockup">
+                </div>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-content">
+                    <h3>📊 Nutrition Intelligence</h3>
+                    <p>Track your daily intake with visual insights and personalized recommendations based on your health goals.</p>
+                    <ul class="feature-list">
+                        <li>Micronutrient tracking</li>
+                        <li>Daily goals and progress</li>
+                        <li>Pattern recognition</li>
+                        <li>Smart food suggestions</li>
+                    </ul>
+                </div>
+                <div class="feature-image">
+                    <img src="nutrition-dashboard.png" alt="Nutrition tracking" class="phone-mockup">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works" id="how-it-works">
+        <div class="section-header">
+            <h2>How It Works</h2>
+            <p>Start making better food choices in three simple steps</p>
         </div>
         
-        <div class="status-info">
-            <div class="status-item">
-                <span class="status-label">System Status</span>
-                <span class="status-value">✅ Online</span>
+        <div class="steps">
+            <div class="step">
+                <div class="step-number">1</div>
+                <h3>Scan Anything</h3>
+                <p>Point your camera at any food barcode. Our instant recognition works on thousands of products.</p>
             </div>
-            <div class="status-item">
-                <span class="status-label">FatSecret API</span>
-                <span class="status-value">✅ Connected</span>
+            
+            <div class="step">
+                <div class="step-number">2</div>
+                <h3>Understand Everything</h3>
+                <p>Get a clear breakdown of ingredients, additives, nutritional value, and potential health impacts in seconds.</p>
             </div>
-            <div class="status-item">
-                <span class="status-label">Static IP</span>
-                <span class="status-value">34.44.189.206</span>
+            
+            <div class="step">
+                <div class="step-number">3</div>
+                <h3>Make Better Choices</h3>
+                <p>See personalized recommendations based on your health goals, allergies, and dietary preferences.</p>
             </div>
         </div>
-    </div>
+    </section>
+
+    <!-- FAQs -->
+    <section class="faqs" id="faqs">
+        <div class="section-header">
+            <h2>Frequently Asked Questions</h2>
+        </div>
+        
+        <div class="faq-container">
+            <div class="faq-item">
+                <div class="faq-question">
+                    What is NutraSafe and how does it work?
+                    <span class="faq-arrow">▼</span>
+                </div>
+                <div class="faq-answer">
+                    <p>NutraSafe is a comprehensive food intelligence app that helps you understand what you're eating. Simply scan any food barcode with your phone's camera, and instantly receive detailed information about ingredients, additives, allergens, nutritional content, and health impacts. Our database covers thousands of products and includes scientific research on food additives and processing methods.</p>
+                </div>
+            </div>
+            
+            <div class="faq-item">
+                <div class="faq-question">
+                    How are the health scores calculated?
+                    <span class="faq-arrow">▼</span>
+                </div>
+                <div class="faq-answer">
+                    <p>Our health scores use a proprietary algorithm that considers multiple factors: processing level, additive safety profiles based on scientific studies, nutritional density, presence of allergens, and content of beneficial vs. harmful ingredients. Each factor is weighted based on current nutritional science and public health recommendations.</p>
+                </div>
+            </div>
+            
+            <div class="faq-item">
+                <div class="faq-question">
+                    Which products can I scan with NutraSafe?
+                    <span class="faq-arrow">▼</span>
+                </div>
+                <div class="faq-answer">
+                    <p>You can scan any packaged food or beverage product with a barcode. Our database includes thousands of products from major supermarkets, specialty stores, and international brands. If a product isn't in our database, you can request it to be added.</p>
+                </div>
+            </div>
+            
+            <div class="faq-item">
+                <div class="faq-question">
+                    What if a product doesn't exist in the database?
+                    <span class="faq-arrow">▼</span>
+                </div>
+                <div class="faq-answer">
+                    <p>If you scan a product that's not in our database, you'll have the option to submit it for review. Our team and AI systems will analyze the product and add it to the database, usually within 24-48 hours. You'll receive a notification when the product information is available.</p>
+                </div>
+            </div>
+            
+            <div class="faq-item">
+                <div class="faq-question">
+                    Is NutraSafe free to use?
+                    <span class="faq-arrow">▼</span>
+                </div>
+                <div class="faq-answer">
+                    <p>NutraSafe offers a free tier with unlimited barcode scanning and basic nutritional information. Premium features like detailed additive analysis, pattern recognition for intolerances, and advanced nutrition tracking are available with NutraSafe Pro for £1.99/month.</p>
+                </div>
+            </div>
+            
+            <div class="faq-item">
+                <div class="faq-question">
+                    Where can I download NutraSafe?
+                    <span class="faq-arrow">▼</span>
+                </div>
+                <div class="faq-answer">
+                    <p>NutraSafe is currently available for iOS devices. You can download it from the Apple App Store. Simply search for "NutraSafe" or use the download button on this page.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Newsletter -->
+    <section class="newsletter" id="download">
+        <div class="newsletter-content">
+            <h2>Stay in the Loop</h2>
+            <p>Sign up with your email address to receive news, updates, and exclusive nutrition tips.</p>
+            <form class="newsletter-form" id="newsletterForm">
+                <input type="email" placeholder="Enter your email" required>
+                <button type="submit">Sign Up</button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>NutraSafe</h4>
+                <p style="color: rgba(255,255,255,0.7);">Your personal food intelligence assistant. Make informed choices about what you eat.</p>
+            </div>
+            
+            <div class="footer-section">
+                <h4>Product</h4>
+                <ul>
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#how-it-works">How It Works</a></li>
+                    <li><a href="#faqs">FAQs</a></li>
+                    <li><a href="#">Pricing</a></li>
+                </ul>
+            </div>
+            
+            <div class="footer-section">
+                <h4>Company</h4>
+                <ul>
+                    <li><a href="#">About Us</a></li>
+                    <li><a href="#">Blog</a></li>
+                    <li><a href="#">Careers</a></li>
+                    <li><a href="#">Contact</a></li>
+                </ul>
+            </div>
+            
+            <div class="footer-section">
+                <h4>Legal</h4>
+                <ul>
+                    <li><a href="#">Privacy Policy</a></li>
+                    <li><a href="#">Terms of Service</a></li>
+                    <li><a href="#">Cookie Policy</a></li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="footer-bottom">
+            <p>&copy; 2025 NutraSafe. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // FAQ Accordion
+        document.querySelectorAll('.faq-question').forEach(question => {
+            question.addEventListener('click', () => {
+                const faqItem = question.parentElement;
+                const isActive = faqItem.classList.contains('active');
+                
+                // Close all FAQs
+                document.querySelectorAll('.faq-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                // Open clicked FAQ if it wasn't active
+                if (!isActive) {
+                    faqItem.classList.add('active');
+                }
+            });
+        });
+        
+        // Newsletter Form
+        document.getElementById('newsletterForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = e.target.querySelector('input').value;
+            alert('Thank you for subscribing! We\'ll keep you updated.');
+            e.target.reset();
+        });
+        
+        // Smooth Scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
 </body>
 </html>

@@ -659,10 +659,18 @@ struct CategoricalNutrientTrackingView: View {
             }
         }
         .sheet(isPresented: $showingGaps) {
-            NutrientGapsView(rows: vm.nutrientCoverageRows)
+            if #available(iOS 16.0, *) {
+                NutrientGapsView(rows: vm.nutrientCoverageRows)
+            } else {
+                Text("Nutrient gaps requires iOS 16.0 or later")
+            }
         }
         .sheet(item: $selectedNutrientRow) { row in
-            NutrientDetailModal(row: row)
+            if #available(iOS 16.0, *) {
+                NutrientDetailModal(row: row)
+            } else {
+                Text(row.name)
+            }
         }
     }
 

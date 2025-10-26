@@ -20,13 +20,14 @@ export { getUsers, addUser, updateUser, deleteUsers, getUserAnalytics } from './
 export { getContextualNutritionScore } from './contextual-nutrition';
 export { analyzeAdditivesEnhanced } from './additive-analyzer-enhanced';
 export { extractIngredientsWithAI } from './intelligent-ingredient-extractor';
-export { searchFoodsWithMicronutrients } from './enhanced-micronutrient-search';
 export { importGenericFoods, getNutrientSuggestions } from './import-generic-foods';
 export { getAllFoods } from './get-all-foods';
 export { analyzeAndCleanFoods, getCleansedFoods, exportCleansedFoods, deleteCleansedFood, updateCleansedFood, emergencyCleanCleansedFoods, updateCleansedFoodStatus } from './ai-food-cleaner';
 export { testCors } from './test-cors';
 export { detectLiveText } from './detect-live-text';
-export { processIngredientText } from './process-ingredient-text';
+// export { processIngredientText } from './process-ingredient-text'; // Disabled - uses old SDK
 export { replaceAllFoods } from './replace-foods-database';
 export { standardizeIngredients } from './standardize-ingredients';
 export { notifyIncompleteFood } from './notify-incomplete-food';
+export { parseMicronutrientsWithAI, parseMicronutrientsWithAICached } from './parse-micronutrients-ai';
+export { parseAdditivesWithAI, parseAdditivesWithAICached } from './parse-additives-ai';

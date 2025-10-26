@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.notifyIncompleteFood = exports.standardizeIngredients = exports.replaceAllFoods = exports.processIngredientText = exports.detectLiveText = exports.testCors = exports.updateCleansedFoodStatus = exports.emergencyCleanCleansedFoods = exports.updateCleansedFood = exports.deleteCleansedFood = exports.exportCleansedFoods = exports.getCleansedFoods = exports.analyzeAndCleanFoods = exports.getAllFoods = exports.getNutrientSuggestions = exports.importGenericFoods = exports.searchFoodsWithMicronutrients = exports.extractIngredientsWithAI = exports.analyzeAdditivesEnhanced = exports.getContextualNutritionScore = exports.getUserAnalytics = exports.deleteUsers = exports.updateUser = exports.addUser = exports.getUsers = exports.getAnalyticsData = exports.getOverviewStats = exports.updateServingSizes = exports.fixExistingFoodsVerification = exports.resetAllFoodsToInitial = exports.resetAdminManualFoods = exports.moveFoodBetweenCollections = exports.deleteVerifiedFoods = exports.updateVerifiedFood = exports.addVerifiedFood = exports.searchFoodsByCollection = exports.getFoodDetails = exports.searchFoodsWeb = exports.fastSearchFoods = exports.searchFoodByBarcode = exports.searchCleansedFoods = exports.searchFoods = exports.addVerifiedFoodComplete = void 0;
+exports.parseAdditivesWithAICached = exports.parseAdditivesWithAI = exports.parseMicronutrientsWithAICached = exports.parseMicronutrientsWithAI = exports.notifyIncompleteFood = exports.standardizeIngredients = exports.replaceAllFoods = exports.detectLiveText = exports.testCors = exports.updateCleansedFoodStatus = exports.emergencyCleanCleansedFoods = exports.updateCleansedFood = exports.deleteCleansedFood = exports.exportCleansedFoods = exports.getCleansedFoods = exports.analyzeAndCleanFoods = exports.getAllFoods = exports.getNutrientSuggestions = exports.importGenericFoods = exports.extractIngredientsWithAI = exports.analyzeAdditivesEnhanced = exports.getContextualNutritionScore = exports.getUserAnalytics = exports.deleteUsers = exports.updateUser = exports.addUser = exports.getUsers = exports.getAnalyticsData = exports.getOverviewStats = exports.updateServingSizes = exports.fixExistingFoodsVerification = exports.resetAllFoodsToInitial = exports.resetAdminManualFoods = exports.moveFoodBetweenCollections = exports.deleteVerifiedFoods = exports.updateVerifiedFood = exports.addVerifiedFood = exports.searchFoodsByCollection = exports.getFoodDetails = exports.searchFoodsWeb = exports.fastSearchFoods = exports.searchFoodByBarcode = exports.searchCleansedFoods = exports.searchFoods = exports.addVerifiedFoodComplete = void 0;
 const admin = require("firebase-admin");
 // Initialize Firebase Admin
 if (!admin.apps.length) {
@@ -47,8 +47,6 @@ var additive_analyzer_enhanced_1 = require("./additive-analyzer-enhanced");
 Object.defineProperty(exports, "analyzeAdditivesEnhanced", { enumerable: true, get: function () { return additive_analyzer_enhanced_1.analyzeAdditivesEnhanced; } });
 var intelligent_ingredient_extractor_1 = require("./intelligent-ingredient-extractor");
 Object.defineProperty(exports, "extractIngredientsWithAI", { enumerable: true, get: function () { return intelligent_ingredient_extractor_1.extractIngredientsWithAI; } });
-var enhanced_micronutrient_search_1 = require("./enhanced-micronutrient-search");
-Object.defineProperty(exports, "searchFoodsWithMicronutrients", { enumerable: true, get: function () { return enhanced_micronutrient_search_1.searchFoodsWithMicronutrients; } });
 var import_generic_foods_1 = require("./import-generic-foods");
 Object.defineProperty(exports, "importGenericFoods", { enumerable: true, get: function () { return import_generic_foods_1.importGenericFoods; } });
 Object.defineProperty(exports, "getNutrientSuggestions", { enumerable: true, get: function () { return import_generic_foods_1.getNutrientSuggestions; } });
@@ -66,12 +64,17 @@ var test_cors_1 = require("./test-cors");
 Object.defineProperty(exports, "testCors", { enumerable: true, get: function () { return test_cors_1.testCors; } });
 var detect_live_text_1 = require("./detect-live-text");
 Object.defineProperty(exports, "detectLiveText", { enumerable: true, get: function () { return detect_live_text_1.detectLiveText; } });
-var process_ingredient_text_1 = require("./process-ingredient-text");
-Object.defineProperty(exports, "processIngredientText", { enumerable: true, get: function () { return process_ingredient_text_1.processIngredientText; } });
+// export { processIngredientText } from './process-ingredient-text'; // Disabled - uses old SDK
 var replace_foods_database_1 = require("./replace-foods-database");
 Object.defineProperty(exports, "replaceAllFoods", { enumerable: true, get: function () { return replace_foods_database_1.replaceAllFoods; } });
 var standardize_ingredients_1 = require("./standardize-ingredients");
 Object.defineProperty(exports, "standardizeIngredients", { enumerable: true, get: function () { return standardize_ingredients_1.standardizeIngredients; } });
 var notify_incomplete_food_1 = require("./notify-incomplete-food");
 Object.defineProperty(exports, "notifyIncompleteFood", { enumerable: true, get: function () { return notify_incomplete_food_1.notifyIncompleteFood; } });
+var parse_micronutrients_ai_1 = require("./parse-micronutrients-ai");
+Object.defineProperty(exports, "parseMicronutrientsWithAI", { enumerable: true, get: function () { return parse_micronutrients_ai_1.parseMicronutrientsWithAI; } });
+Object.defineProperty(exports, "parseMicronutrientsWithAICached", { enumerable: true, get: function () { return parse_micronutrients_ai_1.parseMicronutrientsWithAICached; } });
+var parse_additives_ai_1 = require("./parse-additives-ai");
+Object.defineProperty(exports, "parseAdditivesWithAI", { enumerable: true, get: function () { return parse_additives_ai_1.parseAdditivesWithAI; } });
+Object.defineProperty(exports, "parseAdditivesWithAICached", { enumerable: true, get: function () { return parse_additives_ai_1.parseAdditivesWithAICached; } });
 //# sourceMappingURL=index.js.map

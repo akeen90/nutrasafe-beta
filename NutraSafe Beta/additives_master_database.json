@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "version": "2025.2",
-    "total_additives": 309,
-    "last_updated": "2025-10-19",
+    "version": "2025.3",
+    "total_additives": 312,
+    "last_updated": "2025-10-26",
     "categories": 8,
     "description": "Comprehensive food additives database with detailed safety information, origins, and health concerns"
   },
@@ -1161,7 +1161,8 @@
           "vegetarian": true,
           "synonyms": [
             "Soy lecithin",
-            "Sunflower lecithin"
+            "Sunflower lecithin",
+            "Lecithin"
           ]
         },
         "E325": {
@@ -1822,7 +1823,7 @@
           "concerns": "",
           "vegetarian": true,
           "synonyms": [
-            "\u03b2-cyclodextrin"
+            "β-cyclodextrin"
           ]
         },
         "E460": {
@@ -2959,7 +2960,7 @@
           "concerns": "Very new (2014); limited long-term safety data",
           "vegetarian": true,
           "synonyms": [
-            "N-[N-[3-(3-hydroxy-4-methoxyphenyl)propyl]-\u03b1-aspartyl]-L-phenylalanine 1-methyl ester"
+            "N-[N-[3-(3-hydroxy-4-methoxyphenyl)propyl]-α-aspartyl]-L-phenylalanine 1-methyl ester"
           ]
         }
       }
@@ -3509,6 +3510,46 @@
           "synonyms": [
             "Propane-1,2-diol",
             "1,2-propanediol"
+          ]
+        }
+      },
+      "OTHER": {
+        "MISC-001": {
+          "name": "Maltodextrin",
+          "origin": "corn/wheat/potato starch",
+          "uses": "thickener, filler, sweetener",
+          "safety": "caution",
+          "concerns": "High glycemic index; may spike blood sugar",
+          "vegetarian": true,
+          "synonyms": [
+            "Modified starch",
+            "Corn maltodextrin"
+          ]
+        },
+        "MISC-002": {
+          "name": "Natural flavourings",
+          "origin": "plant/animal",
+          "uses": "flavor enhancement",
+          "safety": "neutral",
+          "concerns": "Vague term; may contain unlisted chemicals",
+          "vegetarian": false,
+          "synonyms": [
+            "Natural flavouring",
+            "Natural flavors",
+            "Natural flavor"
+          ]
+        },
+        "MISC-003": {
+          "name": "Medium-chain triglycerides",
+          "origin": "coconut/palm oil",
+          "uses": "carrier oil, emulsifier",
+          "safety": "neutral",
+          "concerns": "May cause digestive discomfort",
+          "vegetarian": true,
+          "synonyms": [
+            "MCT oil",
+            "MCT",
+            "Medium chain triglycerides"
           ]
         }
       }

@@ -25,7 +25,7 @@ struct FoodDetailViewFromSearch: View {
     var onComplete: ((TabItem) -> Void)?
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var diaryDataManager: DiaryDataManager
-    @State private var gramsAmount: String = "100"
+    @State private var gramsAmount: String
     @State private var servings: String = "1"
     @State private var quantity: Double = 1.0
     @State private var selectedMeal = "Breakfast"
@@ -40,6 +40,41 @@ struct FoodDetailViewFromSearch: View {
         self._selectedTab = selectedTab
         self.destination = destination
         self.onComplete = onComplete
+
+        // CRITICAL FIX: Initialize serving size from food data immediately
+        var initialServingSize = "100"  // Default fallback
+        let initialUnit = "g"
+
+        // Priority 1: Use servingSizeG if available (most reliable)
+        if let sizeG = food.servingSizeG, sizeG > 0 {
+            initialServingSize = String(format: "%.0f", sizeG)
+            print("🔧 INIT: Using servingSizeG: \(sizeG)g for \(food.name)")
+        } else if let servingDesc = food.servingDescription {
+            // Priority 2: Extract from serving description
+            print("🔧 INIT: Parsing serving description: '\(servingDesc)' for \(food.name)")
+
+            let patterns = [
+                #"(\d+(?:\.\d+)?)\s*g\s+serving"#,  // Match "150g serving"
+                #"\((\d+(?:\.\d+)?)\s*g\)"#,         // Match "(345 g)"
+                #"^(\d+(?:\.\d+)?)\s*g$"#,           // Match "345g"
+                #"^(\d+(?:\.\d+)?)\s+g$"#            // Match "345 g"
+            ]
+
+            for pattern in patterns {
+                if let regex = try? NSRegularExpression(pattern: pattern, options: []),
+                   let match = regex.firstMatch(in: servingDesc, options: [], range: NSRange(location: 0, length: servingDesc.count)),
+                   let range = Range(match.range(at: 1), in: servingDesc) {
+                    initialServingSize = String(servingDesc[range])
+                    print("🔧 INIT: Extracted \(initialServingSize)g from '\(servingDesc)'")
+                    break
+                }
+            }
+        }
+
+        // Initialize all serving size state variables with the determined value
+        self._servingAmount = State(initialValue: initialServingSize)
+        self._gramsAmount = State(initialValue: initialServingSize)
+        self._servingUnit = State(initialValue: initialUnit)
     }
 
     // OPTIMIZED: Use food directly - search already returns complete data
@@ -63,9 +98,11 @@ struct FoodDetailViewFromSearch: View {
     @State private var originalMealType = ""
     @State private var quantityMultiplier: Double = 1.0 // New quantity multiplier
     @State private var servingSizeText: String = "" // Editable serving size (legacy)
-    @State private var servingAmount: String = "1" // Split serving size - amount only
-    @State private var servingUnit: String = "g" // Split serving size - unit only
+    @State private var servingAmount: String // Split serving size - amount only
+    @State private var servingUnit: String // Split serving size - unit only
     @State private var showingUseByAddSheet: Bool = false
+    @State private var showingNutraSafeInfo: Bool = false
+    @State private var showingSugarInfo: Bool = false
 
     // Allergen warning
     @EnvironmentObject var firebaseManager: FirebaseManager
@@ -83,6 +120,9 @@ struct FoodDetailViewFromSearch: View {
 
     // PERFORMANCE: Cache nutrition score to prevent 40+ calls to analyseAdditives on every render
     @State private var cachedNutritionScore: NutritionProcessingScore? = nil
+
+    // PERFORMANCE: Cache NutraSafe processing grade to avoid recompute
+    @State private var cachedNutraSafeGrade: ProcessingScorer.NutraSafeProcessingGradeResult? = nil
 
     // PERFORMANCE: Flag to ensure initialization only happens once
     @State private var hasInitialized = false
@@ -617,7 +657,12 @@ struct FoodDetailViewFromSearch: View {
         let ingredientsText = ingredients.joined(separator: " ").lowercased()
         
         for (allergen, keywords) in commonAllergens {
-            if keywords.contains(where: { ingredientsText.contains($0) }) {
+            if allergen == "Dairy" {
+                // Use refined dairy helper to avoid false positives like "coconut milk"
+                if AllergenDetector.shared.containsDairyMilk(in: ingredientsText) {
+                    detectedAllergens.append(allergen)
+                }
+            } else if keywords.contains(where: { ingredientsText.contains($0) }) {
                 detectedAllergens.append(allergen)
             }
         }
@@ -664,9 +709,15 @@ struct FoodDetailViewFromSearch: View {
         var detected: [Allergen] = []
 
         for allergen in userAllergens {
-            // Check if any of the allergen's keywords appear in the food
-            let found = allergen.keywords.contains { keyword in
-                searchText.contains(keyword.lowercased())
+            let found: Bool
+            if allergen == .dairy {
+                // Centralized dairy detection – excludes plant-based milks
+                found = AllergenDetector.shared.containsDairyMilk(in: searchText)
+            } else {
+                // Keyword match for other allergens
+                found = allergen.keywords.contains { keyword in
+                    searchText.contains(keyword.lowercased())
+                }
             }
 
             if found {
@@ -1007,18 +1058,23 @@ struct FoodDetailViewFromSearch: View {
                     servingControlsSection
                         .onAppear {
                             if servingAmount == "1" && servingUnit == "g" {
-                                // Use servingSizeG if available (from SQLite database)
+                                // PRIORITY 1: Use servingSizeG if available (most reliable)
                                 if let sizeG = food.servingSizeG, sizeG > 0 {
+                                    print("🔧 Using servingSizeG: \(sizeG)g")
                                     servingAmount = String(format: "%.0f", sizeG)
                                     servingUnit = "g"
+                                    gramsAmount = String(format: "%.0f", sizeG)  // Also update gramsAmount
                                 } else {
-                                    // Extract number and unit from serving description
+                                    // PRIORITY 2: Extract from serving description
                                     let description = food.servingDescription ?? "100g"
+                                    print("🔧 Parsing serving description: '\(description)'")
 
-                                    // Try to extract grams from patterns like "1 portion (345 g)" or "345g"
+                                    // Try to extract grams from multiple patterns
                                     let patterns = [
-                                        #"\((\d+(?:\.\d+)?)\s*g\)"#,  // Match "(345 g)" in parentheses
-                                        #"^(\d+(?:\.\d+)?)\s*g$"#      // Match "345g" at start
+                                        #"(\d+(?:\.\d+)?)\s*g\s+serving"#,  // Match "150g serving"
+                                        #"\((\d+(?:\.\d+)?)\s*g\)"#,         // Match "(345 g)" in parentheses
+                                        #"^(\d+(?:\.\d+)?)\s*g$"#,           // Match "345g" at start
+                                        #"^(\d+(?:\.\d+)?)\s+g$"#            // Match "345 g" at start with space
                                     ]
 
                                     var found = false
@@ -1026,17 +1082,22 @@ struct FoodDetailViewFromSearch: View {
                                         if let regex = try? NSRegularExpression(pattern: pattern, options: []),
                                            let match = regex.firstMatch(in: description, options: [], range: NSRange(location: 0, length: description.count)),
                                            let range = Range(match.range(at: 1), in: description) {
-                                            servingAmount = String(description[range])  // Just the number
-                                            servingUnit = "g"  // Just the unit
+                                            let extractedValue = String(description[range])
+                                            print("🔧 Extracted serving size: \(extractedValue)g")
+                                            servingAmount = extractedValue
+                                            servingUnit = "g"
+                                            gramsAmount = extractedValue  // Also update gramsAmount
                                             found = true
                                             break
                                         }
                                     }
 
-                                    // Fallback to 100g if no grams found
+                                    // PRIORITY 3: Default to 100g only if nothing found
                                     if !found {
+                                        print("⚠️ No serving size found, defaulting to 100g")
                                         servingAmount = "100"
                                         servingUnit = "g"
+                                        gramsAmount = "100"
                                     }
                                 }
                             }
@@ -1063,7 +1124,7 @@ struct FoodDetailViewFromSearch: View {
 
                     // Photo prompts and improvement section right after ingredients (PERFORMANCE: use cached status)
                     let ingredientsStatus = cachedIngredientsStatus ?? .none
-                    if ingredientsStatus == .unverified || ingredientsStatus == .none || nutritionScore.grade == .unknown {
+                    if ingredientsStatus == .unverified || ingredientsStatus == .none {
                         ingredientVerificationSection
                     } else if ingredientsStatus == .pending {
                         ingredientInReviewSection
@@ -1099,7 +1160,61 @@ struct FoodDetailViewFromSearch: View {
 
             // PERFORMANCE: Compute additives ONCE on appear and cache
             if cachedAdditives == nil {
-                cachedAdditives = getDetectedAdditives()
+                // Prefer saved additives if present (e.g., from Firebase)
+                if let firebaseAdditives = displayFood.additives, !firebaseAdditives.isEmpty {
+                    cachedAdditives = firebaseAdditives.map { additive in
+                        let riskLevel: String
+                        if additive.effectsVerdict == "avoid" {
+                            riskLevel = "High"
+                        } else if additive.effectsVerdict == "caution" {
+                            riskLevel = "Moderate"
+                        } else {
+                            riskLevel = "Low"
+                        }
+
+                        let description = additive.consumerGuide ?? "No detailed information available for this additive."
+
+                        return DetailedAdditive(
+                            name: additive.name,
+                            code: additive.code,
+                            purpose: additive.category.capitalized,
+                            origin: additive.origin ?? "Unknown",
+                            childWarning: additive.childWarning,
+                            riskLevel: riskLevel,
+                            description: description
+                        )
+                    }
+                } else {
+                    // Use enhanced AdditiveWatchService which includes CSV fallback when comprehensive DB is missing
+                    let ingredientsArray = cachedIngredients ?? displayFood.ingredients ?? []
+                    AdditiveWatchService.shared.analyzeIngredients(ingredientsArray) { result in
+                        let mapped: [DetailedAdditive] = result.detectedAdditives.map { additive in
+                            let riskLevel: String
+                            if additive.effectsVerdict == .avoid {
+                                riskLevel = "High"
+                            } else if additive.effectsVerdict == .caution {
+                                riskLevel = "Moderate"
+                            } else {
+                                riskLevel = "Low"
+                            }
+
+                            let description = additive.consumerInfo ?? "No detailed information available for this additive."
+
+                            return DetailedAdditive(
+                                name: additive.name,
+                                code: additive.eNumber,
+                                purpose: additive.group.rawValue.capitalized,
+                                origin: additive.origin.rawValue.capitalized,
+                                childWarning: additive.hasChildWarning,
+                                riskLevel: riskLevel,
+                                description: description
+                            )
+                        }
+                        DispatchQueue.main.async {
+                            self.cachedAdditives = mapped
+                        }
+                    }
+                }
             }
 
             // PERFORMANCE: Compute nutrition score ONCE on appear and cache (prevents 40+ analyseAdditives calls)
@@ -1139,6 +1254,11 @@ struct FoodDetailViewFromSearch: View {
                 else {
                     cachedNutritionScore = ProcessingScorer.shared.calculateProcessingScore(for: displayFood.name, sugarPer100g: displayFood.sugar)
                 }
+            }
+
+            // PERFORMANCE: Compute NutraSafe grade ONCE on appear and cache
+            if cachedNutraSafeGrade == nil {
+                cachedNutraSafeGrade = ProcessingScorer.shared.computeNutraSafeProcessingGrade(for: displayFood)
             }
 
             // Load user allergens from cache (instant) and detect if present in this food
@@ -1233,6 +1353,27 @@ struct FoodDetailViewFromSearch: View {
                 selectedTab = tab
                 dismiss()
             }
+        }
+        .sheet(isPresented: $showingNutraSafeInfo) {
+            if let result = cachedNutraSafeGrade {
+                NutraSafeGradeInfoView(result: result, food: displayFood)
+            } else {
+                VStack(spacing: 16) {
+                    Text("NutraSafe Grade")
+                        .font(.title2.weight(.bold))
+                    Text("Grade information isn't available for this food yet.")
+                        .font(.callout)
+                        .foregroundColor(.secondary)
+                }
+                .padding()
+            }
+        }
+        .sheet(isPresented: $showingSugarInfo) {
+            SugarScoreInfoView(
+                score: sugarScore,
+                food: displayFood,
+                perServingSugar: displayFood.sugar * perServingMultiplier * quantityMultiplier
+            )
         }
     }
     
@@ -1418,7 +1559,7 @@ struct FoodDetailViewFromSearch: View {
             servingDescription: "\(String(format: "%.0f", servingSize))g serving",
             quantity: quantityMultiplier,
             time: selectedMeal,
-            processedScore: nutritionScore.grade.rawValue,
+            processedScore: cachedNutraSafeGrade?.grade ?? "",
             sugarLevel: getSugarLevel(),
             ingredients: displayFood.ingredients,
             additives: displayFood.additives,
@@ -2127,60 +2268,68 @@ struct FoodDetailViewFromSearch: View {
     // MARK: - Food Scores Section
     private var foodScoresSection: some View {
         HStack(spacing: 12) {
-            // Processing Level Square
-            VStack(spacing: 6) {
-                Text("PROCESS SCORE")
-                    .font(.system(size: 10, weight: .semibold, design: .rounded))
-                    .foregroundColor(.secondary)
-                    .tracking(0.5)
-                
-                Text(nutritionScore.grade.rawValue)
-                    .font(.system(size: 24, weight: .black, design: .rounded))
-                    .foregroundColor(nutritionScore.grade.color)
-                
-                Text(getSimplifiedProcessingLevel())
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundColor(.primary)
-                    .multilineTextAlignment(.center)
+            // NutraSafe Grade Square
+            if let ns = cachedNutraSafeGrade {
+                Button(action: { showingNutraSafeInfo = true }) {
+                    VStack(spacing: 6) {
+                        Text("NUTRASAFE GRADE")
+                            .font(.system(size: 10, weight: .semibold, design: .rounded))
+                            .foregroundColor(.secondary)
+                            .tracking(0.5)
+                        Text(ns.grade)
+                            .font(.system(size: 24, weight: .black, design: .rounded))
+                            .foregroundColor(getNutraSafeColor(ns.grade))
+                        Text(ns.label)
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 100)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PlainButtonStyle())
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(getNutraSafeColor(ns.grade).opacity(0.08))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(getNutraSafeColor(ns.grade).opacity(0.2), lineWidth: 1)
+                        )
+                )
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 100)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(nutritionScore.grade.color.opacity(0.3 - 0.22))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(nutritionScore.grade.color.opacity(0.2), lineWidth: 1)
-                    )
-            )
             
             // Sugar Score Square (only show if sugar data available)
             if sugarScore.grade != .unknown {
-                VStack(spacing: 6) {
-                    Text("SUGAR SCORE")
-                        .font(.system(size: 10, weight: .semibold, design: .rounded))
-                        .foregroundColor(.secondary)
-                        .tracking(0.5)
-                    
-                    Text(sugarScore.grade.rawValue)
-                        .font(.system(size: 24, weight: .black, design: .rounded))
-                        .foregroundColor(sugarScore.color)
-                    
-                    Text(getSugarLevelDescription())
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
+                Button(action: { showingSugarInfo = true }) {
+                    VStack(spacing: 6) {
+                        Text("SUGAR SCORE")
+                            .font(.system(size: 10, weight: .semibold, design: .rounded))
+                            .foregroundColor(.secondary)
+                            .tracking(0.5)
+                        
+                        Text(sugarScore.grade.rawValue)
+                            .font(.system(size: 24, weight: .black, design: .rounded))
+                            .foregroundColor(sugarScore.color)
+                        
+                        Text(getSugarLevelDescription())
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 100)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(sugarScore.color.opacity(0.3 - 0.22))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .stroke(sugarScore.color.opacity(0.2), lineWidth: 1)
+                            )
+                    )
                 }
-                .frame(maxWidth: .infinity)
-                .frame(height: 100)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(sugarScore.color.opacity(0.3 - 0.22))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(sugarScore.color.opacity(0.2), lineWidth: 1)
-                        )
-                )
+                .buttonStyle(PlainButtonStyle())
+                .contentShape(Rectangle())
             }
         }
     }
@@ -2212,6 +2361,21 @@ struct FoodDetailViewFromSearch: View {
             return "Very High Sugar"
         case .unknown:
             return "Unknown"
+        }
+    }
+    
+    private func getNutraSafeColor(_ grade: String) -> Color {
+        switch grade.uppercased() {
+        case "A", "A+":
+            return .green
+        case "B":
+            return .mint
+        case "C":
+            return .orange
+        case "D", "E", "F":
+            return .red
+        default:
+            return .gray
         }
     }
     
@@ -2447,7 +2611,7 @@ struct FoodDetailViewFromSearch: View {
             servingDescription: "\(String(format: "%.0f", actualServingSize))g serving",
             quantity: quantityMultiplier,
             time: getCurrentTimeString(),
-            processedScore: nutritionScore.grade.rawValue,
+            processedScore: cachedNutraSafeGrade?.grade ?? "",
             sugarLevel: getSugarLevel(),
             ingredients: food.ingredients,
             additives: food.additives,
@@ -2517,7 +2681,7 @@ struct FoodDetailViewFromSearch: View {
             carbs: adjustedCarbs,
             fat: adjustedFat,
             time: getCurrentTimeString(),
-            processedScore: nutritionScore.grade.rawValue,
+            processedScore: cachedNutraSafeGrade?.grade ?? "",
             sugarLevel: getSugarLevel(),
             ingredients: food.ingredients,
             additives: food.additives
@@ -2558,7 +2722,7 @@ struct FoodDetailViewFromSearch: View {
             carbs: adjustedCarbs,
             fat: adjustedFat,
             time: getCurrentTimeString(),
-            processedScore: nutritionScore.grade.rawValue,
+            processedScore: cachedNutraSafeGrade?.grade ?? "",
             sugarLevel: getSugarLevel(),
             ingredients: food.ingredients,
             additives: food.additives
@@ -2601,10 +2765,18 @@ struct FoodDetailViewFromSearch: View {
     }
     
     private func getSugarLevel() -> String {
-        let scaledSugar = food.sugar * quantityMultiplier
-        if scaledSugar < 5 { return "Low" }
-        else if scaledSugar < 15 { return "Med" }
-        else { return "High" }
+        let perServingSugar = displayFood.sugar * perServingMultiplier * quantityMultiplier
+        let unit = servingUnit.lowercased()
+        let isLiquid = unit == "ml" || unit == "oz"
+        if isLiquid {
+            if perServingSugar < 6 { return "Low" }
+            else if perServingSugar < 16 { return "Med" }
+            else { return "High" }
+        } else {
+            if perServingSugar < 5 { return "Low" }
+            else if perServingSugar < 15 { return "Med" }
+            else { return "High" }
+        }
     }
     
     private func getEditingDate() -> Date {
@@ -3236,6 +3408,221 @@ struct ScrollDismissModifier: ViewModifier {
             content.scrollDismissesKeyboard(.interactively)
         } else {
             content
+        }
+    }
+}
+
+// MARK: - NutraSafe Grade Info View (inline fallback)
+struct NutraSafeGradeInfoView: View {
+    let result: ProcessingScorer.NutraSafeProcessingGradeResult
+    let food: FoodSearchResult
+    @Environment(\.dismiss) private var dismiss
+
+    private func color(for grade: String) -> Color {
+        switch grade.uppercased() {
+        case "A", "A+": return .green
+        case "B": return .mint
+        case "C": return .orange
+        case "D", "E", "F": return .red
+        default: return .gray
+        }
+    }
+
+    private var tips: [String] {
+        var out: [String] = []
+        if food.protein < 7 { out.append("Boost protein: add eggs, yogurt, lean meat, or legumes.") }
+        if food.fiber < 3 { out.append("Add fiber: include whole grains, fruit, veg, or nuts.") }
+        if food.sugar > 10 { out.append("Choose lower-sugar options or reduce sweet add-ons.") }
+        if (food.ingredients?.count ?? 0) > 15 { out.append("Simplify: shorter ingredient lists often mean gentler processing.") }
+        if (food.additives?.count ?? 0) > 0 { out.append("Prefer versions with fewer additives when possible.") }
+        return out.isEmpty ? ["Enjoy in balanced portions and pair with whole foods."] : out
+    }
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(alignment: .center, spacing: 12) {
+                        Text(result.grade)
+                            .font(.system(size: 34, weight: .black, design: .rounded))
+                            .foregroundColor(color(for: result.grade))
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(result.label)
+                                .font(.headline)
+                            Text("NutraSafe Processing Grade")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(color(for: result.grade).opacity(0.08))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(color(for: result.grade).opacity(0.2), lineWidth: 1)
+                            )
+                    )
+
+                    Group {
+                        Text("What this means")
+                            .font(.headline)
+                        Text(result.label)
+                            .font(.callout)
+                            .foregroundColor(.primary)
+                    }
+
+                    Group {
+                        Text("How we calculate it")
+                            .font(.headline)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("• Processing intensity: additives, industrial processes, and ingredient complexity.")
+                            Text("• Nutrient integrity: balance of protein, fiber, sugar, and micronutrients.")
+                            Text("• We combine these into a simple A–F grade for clarity.")
+                        }
+                        .font(.callout)
+                        .foregroundColor(.secondary)
+                    }
+
+                    Group {
+                        Text("Tips to improve similar foods")
+                            .font(.headline)
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(tips, id: \.self) { tip in
+                                Text("• \(tip)")
+                            }
+                        }
+                        .font(.callout)
+                        .foregroundColor(.secondary)
+                    }
+
+                    Group {
+                        Text("Details")
+                            .font(.headline)
+                        Text(result.explanation)
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(20)
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+struct SugarScoreInfoView: View {
+    let score: SugarContentScore
+    let food: FoodSearchResult
+    let perServingSugar: Double
+    @Environment(\.dismiss) private var dismiss
+
+    private func description(for grade: SugarGrade) -> String {
+        switch grade {
+        case .excellent, .veryGood:
+            return "Low Sugar"
+        case .good:
+            return "Moderate Sugar"
+        case .moderate:
+            return "High Sugar"
+        case .high, .veryHigh:
+            return "Very High Sugar"
+        case .unknown:
+            return "Unknown"
+        }
+    }
+
+    private var tips: [String] {
+        var out: [String] = []
+        if food.sugar > 15 { out.append("Choose unsweetened versions or smaller portions.") }
+        if food.sugar > 10 { out.append("Pair with protein or fiber to slow absorption.") }
+        out.append("Watch added sugars like syrups and sweeteners.")
+        out.append("Prefer whole foods: fruit, yoghurt, nuts, seeds.")
+        return out
+    }
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(alignment: .center, spacing: 12) {
+                        Text(score.grade.rawValue)
+                            .font(.system(size: 34, weight: .black, design: .rounded))
+                            .foregroundColor(score.color)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(description(for: score.grade))
+                                .font(.headline)
+                            Text("Sugar Score")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(score.color.opacity(0.08))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(score.color.opacity(0.2), lineWidth: 1)
+                            )
+                    )
+
+                    Group {
+                        Text("What this means")
+                            .font(.headline)
+                        Text(description(for: score.grade))
+                            .font(.callout)
+                            .foregroundColor(.primary)
+                    }
+
+                    Group {
+                        Text("How we estimate it")
+                            .font(.headline)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("• Based on sugar per 100g as declared.")
+                            Text("• Thresholds align with public health guidance.")
+                            Text("• Helps you spot foods that are higher in sugar.")
+                        }
+                        .font(.callout)
+                        .foregroundColor(.secondary)
+                    }
+
+                    Group {
+                        Text("Tips for similar foods")
+                            .font(.headline)
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(tips, id: \.self) { tip in
+                                Text("• \(tip)")
+                            }
+                        }
+                        .font(.callout)
+                        .foregroundColor(.secondary)
+                    }
+
+                    Group {
+                        Text("Details")
+                            .font(.headline)
+                        Text("Estimated sugar: \(String(format: "%.1f", food.sugar))g per 100g")
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                        Text("Per serving: \(String(format: "%.1f", perServingSugar))g")
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(20)
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { dismiss() }
+                }
+            }
         }
     }
 }

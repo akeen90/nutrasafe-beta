@@ -42,7 +42,6 @@
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
@@ -57,5 +56,8 @@
 	<true/>
 	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
 	<true/>
+	<!-- Ingredient Finder endpoint URL (Cloud Function or local dev) -->
+	<key>IngredientFinderEndpointURL</key>
+	<string>https://us-central1-YOUR_PROJECT.cloudfunctions.net/findIngredients</string>
 </dict>
 </plist>

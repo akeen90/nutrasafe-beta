@@ -344,6 +344,20 @@ struct NutrientDetector {
             print("🔍 Detecting nutrients in '\(food.name)' using keyword matching (no micronutrient profile)")
         }
 
+        // ENHANCED: Use pattern-based parser for fortified nutrients from ingredients
+        if let ingredients = food.ingredients, !ingredients.isEmpty {
+            print("  🔬 Using pattern-based parser for fortified nutrients...")
+            let fortifiedNutrients = IngredientMicronutrientParser.shared.parseIngredientsArray(ingredients)
+
+            for detected in fortifiedNutrients {
+                let wasNew = detectedNutrients.insert(detected.nutrient).inserted
+                if wasNew {
+                    print("  ✅ Found fortified nutrient: \(detected.nutrient) from '\(detected.rawText)'")
+                }
+            }
+            print("  📊 Pattern parser found \(fortifiedNutrients.count) fortified nutrients")
+        }
+
         // ALWAYS do keyword-based detection for nutrients not in micronutrient profiles
         // (like omega-3, lutein, lycopene, etc.) regardless of whether food has a profile
         print("  🔎 Supplementing with keyword matching for special nutrients...")
@@ -406,7 +420,7 @@ struct NutrientDetector {
             "magnesium": "magnesium",
             "phosphorus": "phosphorus",
             "potassium": "potassium",
-            "sodium": "potassium", // sodium tracking not in our nutrient list
+            "sodium": "", // sodium not tracked as a nutrient here; ignore
             "zinc": "zinc",
             "selenium": "selenium",
             "copper": "copper",

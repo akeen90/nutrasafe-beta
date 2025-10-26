@@ -1057,20 +1057,26 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
     // Convert DiaryFoodItem back to FoodSearchResult for full feature access
     func toFoodSearchResult() -> FoodSearchResult {
         print("🔄 toFoodSearchResult called for: \(self.name)")
+        print("🔄 DiaryFoodItem.servingDescription: '\(self.servingDescription)'")
+        print("🔄 DiaryFoodItem.quantity: \(self.quantity)")
+        print("🔄 DiaryFoodItem.calories: \(self.calories)")
+        print("🔄 DiaryFoodItem.protein: \(self.protein)")
         print("🔄 DiaryFoodItem.ingredients: \(self.ingredients?.count ?? 0) items")
-        print("🔄 DiaryFoodItem.ingredients: \(self.ingredients ?? [])")
         print("🔄 DiaryFoodItem.additives: \(self.additives?.count ?? 0) items")
         print("🔄 DiaryFoodItem.barcode: \(self.barcode ?? "nil")")
 
         // Extract serving size from servingDescription (e.g., "150g serving" -> 150)
         let servingSize = extractServingSize(from: servingDescription)
+        print("🔄 Extracted servingSize: \(servingSize)g")
 
         // DiaryFoodItem stores total values (servingSize * quantity)
         // We need to reverse-calculate to per-100g base values
         let multiplier = (servingSize / 100.0) * quantity
+        print("🔄 Calculated multiplier: \(multiplier) (servingSize: \(servingSize), quantity: \(quantity))")
 
         // Convert stored totals back to per-100g values
         let per100gCalories = multiplier > 0 ? Double(calories) / multiplier : Double(calories)
+        print("🔄 Per-100g calories: \(per100gCalories) (from total: \(calories))")
         let per100gProtein = multiplier > 0 ? protein / multiplier : protein
         let per100gCarbs = multiplier > 0 ? carbs / multiplier : carbs
         let per100gFat = multiplier > 0 ? fat / multiplier : fat

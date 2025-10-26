@@ -271,6 +271,9 @@ class NutrientTrackingManager: ObservableObject {
             )
             dayActivities[dateId] = activity
 
+            // Update top food sources for detected nutrients
+            await updateTopFoodSources(userId: userId, date: date, foods: allFoods)
+
             // Save to Firebase
             await saveDayActivity(userId: userId, activity: activity)
         }
@@ -452,6 +455,65 @@ class NutrientTrackingManager: ObservableObject {
 
             // Save to Firebase
             await saveMonthlySnapshot(userId: userId, nutrientId: nutrientId, snapshot: snapshot)
+        }
+    }
+
+    // MARK: - Food Source Tracking
+
+    private func updateTopFoodSources(userId: String, date: Date, foods: [DiaryFoodItem]) async {
+        let calendar = Calendar.current
+        let cutoff = calendar.date(byAdding: .day, value: -60, to: date) ?? date
+
+        var updatedNutrientIds: Set<String> = []
+
+        for food in foods {
+            let detected = NutrientDetector.detectNutrients(in: food)
+            for nutrientId in detected {
+                var frequency = nutrientFrequencies[nutrientId] ?? NutrientFrequency(
+                    nutrientId: nutrientId,
+                    nutrientName: NutrientDatabase.allNutrients.first(where: { $0.id == nutrientId })?.displayName ?? nutrientId
+                )
+
+                var sources = frequency.topFoodSources.filter { $0.lastConsumed >= cutoff }
+                let matchIndex = sources.firstIndex { src in
+                    src.foodName.caseInsensitiveCompare(food.name) == .orderedSame &&
+                    (src.brand ?? "") == (food.brand ?? "")
+                }
+
+                if let idx = matchIndex {
+                    let existing = sources[idx]
+                    let updated = FoodSource(
+                        id: existing.id,
+                        foodName: existing.foodName,
+                        brand: existing.brand,
+                        timesConsumed: existing.timesConsumed + 1,
+                        lastConsumed: date
+                    )
+                    sources[idx] = updated
+                } else {
+                    sources.append(FoodSource(foodName: food.name, brand: food.brand, timesConsumed: 1, lastConsumed: date))
+                }
+
+                sources.sort {
+                    if $0.timesConsumed == $1.timesConsumed {
+                        return $0.lastConsumed > $1.lastConsumed
+                    }
+                    return $0.timesConsumed > $1.timesConsumed
+                }
+                if sources.count > 50 {
+                    sources = Array(sources.prefix(50))
+                }
+
+                frequency.topFoodSources = sources
+                nutrientFrequencies[nutrientId] = frequency
+                updatedNutrientIds.insert(nutrientId)
+            }
+        }
+
+        for nutrientId in updatedNutrientIds {
+            if let frequency = nutrientFrequencies[nutrientId] {
+                await saveNutrientFrequency(userId: userId, frequency: frequency)
+            }
         }
     }
 

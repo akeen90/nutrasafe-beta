@@ -755,8 +755,8 @@ class FirebaseManager: ObservableObject {
             guard let id = data["id"] as? String,
                   let foodName = data["foodName"] as? String,
                   let statusString = data["status"] as? String,
-                  let _ = PendingFoodVerification.VerificationStatus(rawValue: statusString),
-                  let _ = data["submittedAt"] as? FirebaseFirestore.Timestamp,
+                  let status = PendingFoodVerification.VerificationStatus(rawValue: statusString),
+                  let submittedAtTs = data["submittedAt"] as? FirebaseFirestore.Timestamp,
                   let userId = data["userId"] as? String else { return nil }
             
             return PendingFoodVerification(
@@ -764,6 +764,8 @@ class FirebaseManager: ObservableObject {
                 foodName: foodName,
                 brandName: data["brandName"] as? String,
                 ingredients: data["ingredients"] as? String,
+                submittedAt: submittedAtTs.dateValue(),
+                status: status,
                 userId: userId
             )
         }
@@ -1525,6 +1527,74 @@ class FirebaseManager: ObservableObject {
 
         print("✅ Incomplete food saved to Firestore: \(food.name) (ID: \(docRef.documentID))")
     }
+ 
+
+    func saveFastRecord(_ record: FastRecord) async throws -> String {
+        ensureAuthStateLoaded()
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save fast records"])
+        }
+        let docRef = db.collection("users").document(userId)
+            .collection("fasts").document(record.id)
+        try await docRef.setData(record.firestoreData, merge: true)
+        NotificationCenter.default.post(name: .fastHistoryUpdated, object: nil)
+        return docRef.documentID
+    }
+
+    func getFastHistory() async throws -> [FastRecord] {
+        ensureAuthStateLoaded()
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view fast history"])
+        }
+        let snapshot = try await db.collection("users").document(userId)
+            .collection("fasts").order(by: "startTime", descending: true).getDocuments()
+        var result: [FastRecord] = []
+        for doc in snapshot.documents {
+            if let record = FastRecord(id: doc.documentID, data: doc.data()) {
+                result.append(record)
+            }
+        }
+        return result
+    }
+
+    func deleteFastRecord(id: String) async throws {
+        ensureAuthStateLoaded()
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to delete fast records"])
+        }
+        try await db.collection("users").document(userId)
+            .collection("fasts").document(id).delete()
+        NotificationCenter.default.post(name: .fastHistoryUpdated, object: nil)
+    }
+
+    func saveFastingStreakSettings(_ settings: FastingStreakSettings) async throws {
+        ensureAuthStateLoaded()
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save fasting settings"])
+        }
+        let data: [String: Any] = [
+            "daysPerWeekGoal": settings.daysPerWeekGoal,
+            "targetMinHours": settings.targetMinHours,
+            "targetMaxHours": settings.targetMaxHours
+        ]
+        try await db.collection("users").document(userId)
+            .collection("settings").document("fasting_streak").setData(data, merge: true)
+        NotificationCenter.default.post(name: .fastingSettingsUpdated, object: nil)
+    }
+
+    func getFastingStreakSettings() async throws -> FastingStreakSettings {
+        ensureAuthStateLoaded()
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view fasting settings"])
+        }
+        let document = try await db.collection("users").document(userId)
+            .collection("settings").document("fasting_streak").getDocument()
+        guard let data = document.data() else { return .default }
+        let daysPerWeekGoal = data["daysPerWeekGoal"] as? Int ?? FastingStreakSettings.default.daysPerWeekGoal
+        let targetMinHours = data["targetMinHours"] as? Int ?? FastingStreakSettings.default.targetMinHours
+        let targetMaxHours = data["targetMaxHours"] as? Int ?? FastingStreakSettings.default.targetMaxHours
+        return FastingStreakSettings(daysPerWeekGoal: daysPerWeekGoal, targetMinHours: targetMinHours, targetMaxHours: targetMaxHours)
+    }
 }
 
 extension Notification.Name {
@@ -1539,6 +1609,9 @@ extension Notification.Name {
     static let weightHistoryUpdated = Notification.Name("weightHistoryUpdated")
     static let userSettingsUpdated = Notification.Name("userSettingsUpdated")
     static let userDataCleared = Notification.Name("userDataCleared")
+    // Fasting-related updates
+    static let fastHistoryUpdated = Notification.Name("fastHistoryUpdated")
+    static let fastingSettingsUpdated = Notification.Name("fastingSettingsUpdated")
 }
 
 // MARK: - Response Models for Food Search
@@ -1564,4 +1637,57 @@ extension FirebaseManager {
         let value = doc.data()? ["premiumOverride"] as? Bool ?? false
         return value
     }
+}
+
+// MARK: - Ingredient Cache
+
+struct IngredientCacheEntry: Codable {
+    let productName: String
+    let brand: String?
+    let ingredientsText: String
+    let sourceUrl: String?
+    let createdAt: FirebaseFirestore.Timestamp
+}
+
+extension FirebaseManager {
+    func getIngredientCache(productName: String, brand: String?) async throws -> IngredientResult? {
+        ensureAuthStateLoaded()
+        guard let userId = currentUser?.uid else { return nil }
+        let key = cacheKey(productName: productName, brand: brand)
+        let doc = try await db.collection("users").document(userId)
+            .collection("ingredientCache").document(key).getDocument()
+        guard let data = doc.data() else { return nil }
+        let text = data["ingredientsText"] as? String ?? ""
+        let source = data["sourceUrl"] as? String
+        if text.isEmpty { return nil }
+        return IngredientResult(ingredients_found: true, ingredients_text: text, source_url: source)
+    }
+
+    func setIngredientCache(productName: String, brand: String?, ingredientsText: String, sourceUrl: String?) async throws {
+        ensureAuthStateLoaded()
+        guard let userId = currentUser?.uid else { return }
+        let key = cacheKey(productName: productName, brand: brand)
+        let payload: [String: Any] = [
+            "productName": productName,
+            "brand": brand ?? "",
+            "ingredientsText": ingredientsText,
+            "sourceUrl": sourceUrl ?? "",
+            "createdAt": FirebaseFirestore.Timestamp(date: Date())
+        ]
+        try await db.collection("users").document(userId)
+            .collection("ingredientCache").document(key).setData(payload, merge: true)
+    }
+
+    private func cacheKey(productName: String, brand: String?) -> String {
+        let pn = productName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let br = (brand ?? "").lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        return br.isEmpty ? pn : "\(pn)__\(br)"
+    }
+}
+
+// Fallback model for Ingredient Finder to satisfy compilation when model file is missing from target
+struct IngredientResult: Codable {
+    let ingredients_found: Bool
+    let ingredients_text: String?
+    let source_url: String?
 }

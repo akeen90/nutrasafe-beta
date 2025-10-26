@@ -520,14 +520,24 @@ class MicronutrientDatabase {
 
     /// Analyze a food item and return all detected micronutrients with their strengths
     /// Combines ingredient matching and token matching
-    func analyzeFoodItem(name: String, ingredients: [String] = []) -> [String: NutrientStrength.Strength] {
+    /// Set useAI=true to enable Phase 2 AI enhancement (requires internet)
+    func analyzeFoodItem(name: String, ingredients: [String] = [], useAI: Bool = false) -> [String: NutrientStrength.Strength] {
         // Use intelligent weighting system for realistic nutrient contributions
-        return analyzeFoodItemWithWeighting(name: name, ingredients: ingredients)
+        return analyzeFoodItemWithWeighting(name: name, ingredients: ingredients, useAI: useAI)
+    }
+
+    /// Async version with AI support
+    /// Note: AI support (useAI=true) requires AIMicronutrientParser to be compiled
+    /// For now, always uses local pattern-based parser
+    func analyzeFoodItemAsync(name: String, ingredients: [String] = [], useAI: Bool = false) async -> [String: NutrientStrength.Strength] {
+        // Phase 1: Use local pattern-based parser only (Phase 2 AI coming soon)
+        return analyzeFoodItemWithWeighting(name: name, ingredients: ingredients, useAI: false)
     }
 
     /// INTELLIGENT WEIGHTING SYSTEM: Calculate realistic nutrient contributions
     /// Based on ingredient position, count, and dish complexity
-    private func analyzeFoodItemWithWeighting(name: String, ingredients: [String]) -> [String: NutrientStrength.Strength] {
+    /// ENHANCED: Now includes pattern-based fortification detection
+    private func analyzeFoodItemWithWeighting(name: String, ingredients: [String], useAI: Bool) -> [String: NutrientStrength.Strength] {
         var nutrientContributions: [String: Double] = [:]
 
         // 1. Check for tokens in food name (these are always "strong")
@@ -536,11 +546,24 @@ class MicronutrientDatabase {
             nutrientContributions[nutrient] = 1.0 // Maximum contribution
         }
 
-        // 2. Calculate dish complexity penalty
+        // 2. PATTERN-BASED FORTIFICATION DETECTION (Phase 1 of hybrid approach)
+        // This catches vitamins/minerals in complex ingredient phrases like:
+        // "vitamin C (as l-ascorbic acid)", "calcium carbonate", etc.
+        let detectedFortifications = IngredientMicronutrientParser.shared.parseIngredientsArray(ingredients)
+
+        print("🔬 Pattern parser detected \(detectedFortifications.count) fortified nutrients")
+
+        for detected in detectedFortifications {
+            // Fortified nutrients are ALWAYS strong sources (1.0 contribution)
+            nutrientContributions[detected.nutrient] = 1.0
+            print("   ✅ \(detected.nutrient) (fortified) - from: \(detected.rawText)")
+        }
+
+        // 3. Calculate dish complexity penalty
         let ingredientCount = ingredients.count
         let complexityPenalty: Double = ingredientCount > 8 ? 0.25 : 0.30 // 25-30% reduction for complex dishes
 
-        // 3. Process each ingredient with weighted contribution
+        // 4. Process each ingredient with weighted contribution (NATURAL SOURCES)
         for (index, ingredient) in ingredients.enumerated() {
             if let ingredientData = lookupIngredient(ingredient) {
                 // Calculate ingredient weight based on position
@@ -554,13 +577,14 @@ class MicronutrientDatabase {
                     let nutrientValue = Double(nutrientStrength.strength.points) / 3.0 // Normalize to 0.33-1.0
                     let weightedContribution = adjustedWeight * nutrientValue
 
-                    // Accumulate contributions
-                    nutrientContributions[nutrientStrength.nutrient, default: 0.0] += weightedContribution
+                    // Accumulate contributions (max() ensures fortified sources aren't diluted)
+                    let currentContribution = nutrientContributions[nutrientStrength.nutrient] ?? 0.0
+                    nutrientContributions[nutrientStrength.nutrient] = max(currentContribution, weightedContribution)
                 }
             }
         }
 
-        // 4. Convert weighted contributions to strength levels
+        // 5. Convert weighted contributions to strength levels
         return convertWeightedContributionsToStrengths(nutrientContributions)
     }
 
