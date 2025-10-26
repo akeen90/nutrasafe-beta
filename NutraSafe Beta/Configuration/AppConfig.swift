@@ -46,6 +46,7 @@ enum AppConfig {
             static let processIngredientImage = "\(functionsBaseURL)/processIngredientImage"
             static let processCompleteFoodProfile = "\(functionsBaseURL)/processCompleteFoodProfile"
             static let extractIngredientsWithAI = "\(functionsBaseURL)/extractIngredientsWithAI"
+            static let findIngredients = "\(functionsBaseURL)/findIngredients"
         }
     }
     

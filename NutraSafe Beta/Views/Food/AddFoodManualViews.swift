@@ -9,6 +9,160 @@
 import SwiftUI
 import Foundation
 import AVFoundation
+import FirebaseFirestore
+
+// MARK: - Ingredient Finder Models & Service
+
+/// Response model from Cloud Function
+struct IngredientFinderResponse: Codable {
+    let ingredients_found: Bool
+    let ingredients_text: String?
+    let source_url: String?
+}
+
+/// Service for finding ingredients using AI
+@MainActor
+class IngredientFinderService: ObservableObject {
+    static let shared = IngredientFinderService()
+
+    @Published var isSearching = false
+    @Published var lastSearchTime: Date?
+    @Published var searchCount = 0
+
+    private let rateLimitWindow: TimeInterval = 60 // 1 minute
+    private let maxSearchesPerWindow = 2
+
+    private init() {}
+
+    /// Search for ingredients using AI (checks cache first)
+    func findIngredients(productName: String, brand: String?) async throws -> IngredientFinderResponse {
+        // Check rate limit
+        try checkRateLimit()
+
+        // Check cache first
+        if let cached = try? await FirebaseManager.shared.getIngredientCache(productName: productName, brand: brand) {
+            print("✅ Found ingredients in cache for \(productName)")
+            return IngredientFinderResponse(
+                ingredients_found: cached.ingredients_found,
+                ingredients_text: cached.ingredients_text,
+                source_url: cached.source_url
+            )
+        }
+
+        // Call Cloud Function
+        isSearching = true
+        defer { isSearching = false }
+
+        let response = try await callCloudFunction(productName: productName, brand: brand)
+
+        // Cache the result if ingredients were found
+        if response.ingredients_found, let ingredientsText = response.ingredients_text {
+            try? await FirebaseManager.shared.setIngredientCache(
+                productName: productName,
+                brand: brand,
+                ingredientsText: ingredientsText,
+                sourceUrl: response.source_url
+            )
+        }
+
+        // Update rate limit tracking
+        await MainActor.run {
+            lastSearchTime = Date()
+            searchCount += 1
+        }
+
+        return response
+    }
+
+    private func checkRateLimit() throws {
+        guard let lastSearch = lastSearchTime else {
+            return // First search, allow it
+        }
+
+        let timeSinceLastSearch = Date().timeIntervalSince(lastSearch)
+
+        if timeSinceLastSearch < rateLimitWindow {
+            if searchCount >= maxSearchesPerWindow {
+                let waitTime = Int(rateLimitWindow - timeSinceLastSearch)
+                throw IngredientFinderError.rateLimitExceeded(waitSeconds: waitTime)
+            }
+        } else {
+            // Reset counter after window expires
+            searchCount = 0
+        }
+    }
+
+    private func callCloudFunction(productName: String, brand: String?) async throws -> IngredientFinderResponse {
+        // Get endpoint URL from AppConfig
+        let endpointURLString = AppConfig.Firebase.Functions.findIngredients
+        print("🔍 Debug: Endpoint URL from AppConfig: \(endpointURLString)")
+
+        guard let url = URL(string: endpointURLString) else {
+            print("❌ Debug: Invalid URL: \(endpointURLString)")
+            throw IngredientFinderError.notConfigured
+        }
+
+        // Prepare request body
+        var requestBody: [String: Any] = ["productName": productName]
+        if let brand = brand, !brand.isEmpty {
+            requestBody["brand"] = brand
+        }
+
+        let jsonData = try JSONSerialization.data(withJSONObject: requestBody)
+
+        // Create request
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = jsonData
+        request.timeoutInterval = 30
+
+        // Execute request
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        // Check HTTP status
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw IngredientFinderError.invalidResponse
+        }
+
+        if httpResponse.statusCode == 429 {
+            throw IngredientFinderError.rateLimitExceeded(waitSeconds: 60)
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw IngredientFinderError.serverError(statusCode: httpResponse.statusCode)
+        }
+
+        // Parse response
+        let decoder = JSONDecoder()
+        let result = try decoder.decode(IngredientFinderResponse.self, from: data)
+
+        return result
+    }
+}
+
+enum IngredientFinderError: LocalizedError {
+    case notConfigured
+    case rateLimitExceeded(waitSeconds: Int)
+    case invalidResponse
+    case serverError(statusCode: Int)
+    case noIngredientsFound
+
+    var errorDescription: String? {
+        switch self {
+        case .notConfigured:
+            return "Ingredient Finder is not configured. Please contact support."
+        case .rateLimitExceeded(let seconds):
+            return "Search limit reached. Please wait \(seconds) seconds before searching again."
+        case .invalidResponse:
+            return "Invalid response from server. Please try again."
+        case .serverError(let code):
+            return "Server error (\(code)). Please try again later."
+        case .noIngredientsFound:
+            return "No ingredients found from trusted sources. Try entering them manually."
+        }
+    }
+}
 
 // MARK: - Main Manual Add View
 
@@ -110,7 +264,10 @@ struct ManualFoodDetailEntryView: View {
 
     // Ingredients
     @State private var ingredientsText = ""
-    //
+    @State private var isSearchingIngredients = false
+    @State private var showIngredientConfirmation = false
+    @State private var foundIngredients: IngredientFinderResponse?
+    @StateObject private var ingredientFinder = IngredientFinderService.shared
 
     // Diary-specific fields
     @State private var selectedMealTime = "Breakfast"
@@ -188,7 +345,7 @@ struct ManualFoodDetailEntryView: View {
                                 )
                         }
 
-                        FormField(label: "Brand Name", isRequired: true) {
+                        FormField(label: "Brand Name", isRequired: destination != .diary) {
                             TextField("Enter brand name...", text: $brand)
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
                                 .overlay(
@@ -301,26 +458,44 @@ struct ManualFoodDetailEntryView: View {
 
                         // Ingredients Section
                         VStack(alignment: .leading, spacing: 16) {
-                            Button(action: {
-                                withAnimation {
-                                    showingIngredients.toggle()
-                                }
-                            }) {
-                                HStack {
-                                    SectionHeader(title: "Ingredients (Optional)")
-                                    Spacer()
-                                    Image(systemName: showingIngredients ? "chevron.up" : "chevron.down")
-                                        .foregroundColor(.secondary)
-                                        .font(.system(size: 14, weight: .medium))
-                                }
-                            }
-                            .buttonStyle(PlainButtonStyle())
+                            SectionHeader(title: "Ingredients (Optional)")
 
-                            if showingIngredients {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("Enter ingredients separated by commas")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.secondary)
+                            VStack(alignment: .leading, spacing: 12) {
+                                    HStack {
+                                        Text("Enter ingredients separated by commas")
+                                            .font(.system(size: 14))
+                                            .foregroundColor(.secondary)
+                                        Spacer()
+                                        // AI Search Button
+                                        Button(action: {
+                                            searchIngredientsWithAI()
+                                        }) {
+                                            HStack(spacing: 6) {
+                                                if isSearchingIngredients {
+                                                    ProgressView()
+                                                        .scaleEffect(0.8)
+                                                } else {
+                                                    Image(systemName: "sparkles")
+                                                        .font(.system(size: 14))
+                                                }
+                                                Text(isSearchingIngredients ? "Searching..." : "Search with AI")
+                                                    .font(.system(size: 14, weight: .semibold))
+                                            }
+                                            .foregroundColor(.white)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 8)
+                                            .background(
+                                                LinearGradient(
+                                                    gradient: Gradient(colors: [Color.blue, Color.purple.opacity(0.8)]),
+                                                    startPoint: .leading,
+                                                    endPoint: .trailing
+                                                )
+                                            )
+                                            .cornerRadius(8)
+                                        }
+                                        .disabled(isSearchingIngredients || foodName.isEmpty)
+                                        .opacity(foodName.isEmpty ? 0.5 : 1.0)
+                                    }
 
                                     TextEditor(text: $ingredientsText)
                                         .frame(height: 100)
@@ -331,10 +506,34 @@ struct ManualFoodDetailEntryView: View {
                                             RoundedRectangle(cornerRadius: 8)
                                                 .stroke(Color(.systemGray4), lineWidth: 1)
                                         )
+                                        .overlay(
+                                            // Searching overlay
+                                            Group {
+                                                if isSearchingIngredients {
+                                                    ZStack {
+                                                        Color.black.opacity(0.3)
+                                                            .cornerRadius(8)
 
-                                    }
-                                }
+                                                        VStack(spacing: 12) {
+                                                            ProgressView()
+                                                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                                                .scaleEffect(1.2)
+
+                                                            Text("NutraSafe Ingredient Finder™")
+                                                                .font(.system(size: 14, weight: .semibold))
+                                                                .foregroundColor(.white)
+
+                                                            Text("Searching trusted sources...")
+                                                                .font(.system(size: 12))
+                                                                .foregroundColor(.white.opacity(0.9))
+                                                        }
+                                                        .padding()
+                                                    }
+                                                }
+                                            }
+                                        )
                             }
+                        }
 
                         } // end diary section
 
@@ -458,6 +657,26 @@ struct ManualFoodDetailEntryView: View {
             .sheet(isPresented: $showingBarcodeScanner) {
                 BarcodeScannerSheetView(barcode: $barcode, isPresented: $showingBarcodeScanner)
             }
+            .sheet(isPresented: $showIngredientConfirmation) {
+                IngredientConfirmationModal(
+                    response: foundIngredients,
+                    onUse: {
+                        if let ingredients = foundIngredients?.ingredients_text {
+                            ingredientsText = ingredients
+                            showIngredientConfirmation = false
+                        }
+                    },
+                    onEdit: {
+                        if let ingredients = foundIngredients?.ingredients_text {
+                            ingredientsText = ingredients
+                        }
+                        showIngredientConfirmation = false
+                    },
+                    onCancel: {
+                        showIngredientConfirmation = false
+                    }
+                )
+            }
             .onAppear {
                 // Initialize barcode from prefilledBarcode if provided
                 if let prefilledBarcode = prefilledBarcode {
@@ -466,6 +685,52 @@ struct ManualFoodDetailEntryView: View {
                 // Initialize expiry date for Use By
                 if destination == .useBy {
                     updateExpiryDate()
+                }
+            }
+        }
+    }
+
+    private func searchIngredientsWithAI() {
+        // Require food name
+        guard !foodName.isEmpty else {
+            errorMessage = "Please enter a food name first"
+            showingError = true
+            return
+        }
+
+        isSearchingIngredients = true
+
+        Task {
+            do {
+                let response = try await ingredientFinder.findIngredients(
+                    productName: foodName,
+                    brand: brand.isEmpty ? nil : brand
+                )
+
+                await MainActor.run {
+                    isSearchingIngredients = false
+
+                    if response.ingredients_found, let _ = response.ingredients_text {
+                        // Show confirmation modal
+                        foundIngredients = response
+                        showIngredientConfirmation = true
+                    } else {
+                        // No ingredients found
+                        errorMessage = "No ingredients found from trusted sources. Try entering them manually or check the product name."
+                        showingError = true
+                    }
+                }
+            } catch let error as IngredientFinderError {
+                await MainActor.run {
+                    isSearchingIngredients = false
+                    errorMessage = error.localizedDescription ?? "Unable to search for ingredients"
+                    showingError = true
+                }
+            } catch {
+                await MainActor.run {
+                    isSearchingIngredients = false
+                    errorMessage = "Network error. Please check your connection and try again."
+                    showingError = true
                 }
             }
         }
@@ -796,6 +1061,135 @@ struct BarcodeScannerSheetView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Ingredient Confirmation Modal
+
+/// Modal to confirm AI-found ingredients
+struct IngredientConfirmationModal: View {
+    let response: IngredientFinderResponse?
+    let onUse: () -> Void
+    let onEdit: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                // Success Icon
+                ZStack {
+                    Circle()
+                        .fill(Color.green.opacity(0.1))
+                        .frame(width: 80, height: 80)
+
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 50))
+                        .foregroundColor(.green)
+                }
+                .padding(.top, 32)
+
+                // Title
+                VStack(spacing: 8) {
+                    Text("Ingredients Found!")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.primary)
+
+                    Text("NutraSafe Ingredient Finder™")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+
+                // Ingredients Preview
+                if let ingredientsText = response?.ingredients_text {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Found ingredients from verified sites:")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.secondary)
+
+                        ScrollView {
+                            Text(ingredientsText)
+                                .font(.system(size: 14))
+                                .foregroundColor(.primary)
+                                .padding(12)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(8)
+                        }
+                        .frame(maxHeight: 200)
+
+                        if let sourceUrl = response?.source_url {
+                            HStack(spacing: 4) {
+                                Image(systemName: "link.circle.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.blue)
+
+                                Text("Source: \(extractDomain(from: sourceUrl))")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.blue)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                }
+
+                // Action Buttons
+                VStack(spacing: 12) {
+                    // Use Button
+                    Button(action: onUse) {
+                        HStack {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 18))
+                            Text("Use These Ingredients")
+                                .font(.system(size: 16, weight: .semibold))
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color.blue)
+                        .cornerRadius(12)
+                    }
+
+                    // Edit Button
+                    Button(action: onEdit) {
+                        HStack {
+                            Image(systemName: "pencil.circle")
+                                .font(.system(size: 18))
+                            Text("Use & Edit")
+                                .font(.system(size: 16, weight: .semibold))
+                        }
+                        .foregroundColor(.blue)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color.blue.opacity(0.1))
+                        .cornerRadius(12)
+                    }
+
+                    // Cancel Button
+                    Button(action: onCancel) {
+                        Text("Cancel")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.red)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
+
+                Spacer()
+            }
+            .navigationTitle("AI Search Result")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+
+    private func extractDomain(from urlString: String) -> String {
+        guard let url = URL(string: urlString),
+              let host = url.host else {
+            return "Unknown"
+        }
+        return host.replacingOccurrences(of: "www.", with: "")
     }
 }
 

@@ -1,0 +1,13 @@
+{
+  "name": "nutrasafe-ingredient-finder",
+  "version": "1.0.0",
+  "description": "Google Cloud HTTP function for NutraSafe Ingredient Finder (Custom Search → Gemini).",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "express": "^4.19.2"
+  }
+}
