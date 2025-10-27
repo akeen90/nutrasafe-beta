@@ -1349,7 +1349,7 @@ class FirebaseManager: ObservableObject {
         return foodId
     }
 
-    /// Save an AI-enhanced food to the global aiEnhancedFoods collection (accessible by all users)
+    /// Save an AI-enhanced food to the global aiManuallyAdded collection (accessible by all users)
     /// This is used when a user uses the "Find with AI" feature to auto-fill ingredient data from trusted UK sources
     func saveAIEnhancedFood(_ food: [String: Any], sourceURL: String?, aiProductName: String?) async throws -> String {
         ensureAuthStateLoaded()
@@ -1394,8 +1394,8 @@ class FirebaseManager: ObservableObject {
         // Add lowercase version of foodName for case-insensitive search
         foodData["foodNameLower"] = foodName.lowercased()
 
-        // Save to global aiEnhancedFoods collection (accessible by all users)
-        try await db.collection("aiEnhancedFoods")
+        // Save to global aiManuallyAdded collection (accessible by all users)
+        try await db.collection("aiManuallyAdded")
             .document(foodId)
             .setData(foodData)
 

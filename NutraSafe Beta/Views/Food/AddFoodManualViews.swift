@@ -948,13 +948,13 @@ struct ManualFoodDetailEntryView: View {
             let foodId: String
 
             if usedAI {
-                // Save to aiEnhancedFoods collection with AI metadata
+                // Save to aiManuallyAdded collection with AI metadata
                 foodId = try await FirebaseManager.shared.saveAIEnhancedFood(
                     foodData,
                     sourceURL: foundIngredients?.source_url,
                     aiProductName: foundIngredients?.product_name
                 )
-                print("✅ AI-enhanced food saved to aiEnhancedFoods collection: \(foodId)")
+                print("✅ AI-enhanced food saved to aiManuallyAdded collection: \(foodId)")
             } else {
                 // Save to userAdded collection (manual entry with profanity check)
                 foodId = try await FirebaseManager.shared.saveUserAddedFood(foodData)
