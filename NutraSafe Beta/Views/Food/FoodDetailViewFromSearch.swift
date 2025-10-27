@@ -208,19 +208,13 @@ struct FoodDetailViewFromSearch: View {
 
         // Check if we're replacing a diary entry
         if let _ = diaryEntryId {
-            print("  -> Has diaryEntryId, returning Replace/Move")
-            if selectedMeal == originalMealType {
-                return "Replace in Diary"
-            } else {
-                return "Move to \(selectedMeal)"
-            }
+            // When editing, we ALWAYS stay in the same meal, so just say "Update"
+            print("  -> Has diaryEntryId, returning Update")
+            return "Update"
         } else if isEditingMode {
-            print("  -> isEditingMode true, returning Update/Move")
-            if selectedMeal == originalMealType {
-                return "Update Portion"
-            } else {
-                return "Move to \(selectedMeal)"
-            }
+            // When editing, we ALWAYS stay in the same meal, so just say "Update"
+            print("  -> isEditingMode true, returning Update")
+            return "Update"
         } else {
             print("  -> Default case, returning Add")
             // Reflect destination selection
@@ -323,6 +317,78 @@ struct FoodDetailViewFromSearch: View {
 
         // Fallback: treat entire text as amount "1" and unit
         return ("1", text)
+    }
+
+    /// Parse serving size string from AI finder (e.g., "330ml", "1 can (330ml)", "250g")
+    private func parseServingSizeString(_ servingSizeStr: String) -> (amount: String, unit: String) {
+        let cleaned = servingSizeStr.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        // Try to find parentheses pattern like "1 can (330ml)"
+        if let match = cleaned.range(of: #"\((\d+(?:\.\d+)?)\s*(ml|g|oz|kg|lb|cup|tbsp|tsp|piece|slice|serving|grams|milliliters|ounces|kilograms|pounds)\)"#, options: .regularExpression) {
+            let extracted = String(cleaned[match])
+            let withoutParens = extracted.replacingOccurrences(of: "(", with: "").replacingOccurrences(of: ")", with: "")
+            return extractAmountAndUnit(from: withoutParens)
+        }
+
+        // Otherwise try direct pattern like "330ml" or "30 g"
+        return extractAmountAndUnit(from: cleaned)
+    }
+
+    /// Extract amount and unit from a string like "330ml" or "30 g"
+    private func extractAmountAndUnit(from text: String) -> (amount: String, unit: String) {
+        // Match pattern: number followed by optional space and unit
+        if let match = text.range(of: #"(\d+(?:\.\d+)?)\s*(ml|g|oz|kg|lb|cup|tbsp|tsp|piece|slice|serving|grams|milliliters|ounces|kilograms|pounds)"#, options: .regularExpression) {
+            let extracted = String(text[match])
+
+            // Split into number and unit
+            if let numMatch = extracted.range(of: #"\d+(?:\.\d+)?"#, options: .regularExpression) {
+                let amount = String(extracted[numMatch])
+                let unit = extracted.replacingOccurrences(of: amount, with: "").trimmingCharacters(in: .whitespaces)
+
+                // Normalize unit names
+                let normalizedUnit = normalizeUnitName(unit)
+
+                return (amount, normalizedUnit)
+            }
+        }
+
+        // Fallback: return default
+        return ("100", "g")
+    }
+
+    /// Normalize unit names to match the app's standard units
+    private func normalizeUnitName(_ unit: String) -> String {
+        let lowercase = unit.lowercased()
+
+        // Map variations to standard units
+        switch lowercase {
+        case "milliliters", "milliliter", "mls":
+            return "ml"
+        case "grams", "gram", "gr":
+            return "g"
+        case "ounces", "ounce":
+            return "oz"
+        case "kilograms", "kilogram", "kgs", "kg":
+            return "g" // Keep as g for now, could convert amount later
+        case "pounds", "pound", "lbs", "lb":
+            return "oz" // Convert to oz as closest match
+        case "tablespoons", "tablespoon":
+            return "tbsp"
+        case "teaspoons", "teaspoon":
+            return "tsp"
+        case "pieces":
+            return "piece"
+        case "slices":
+            return "slice"
+        case "servings":
+            return "serving"
+        case "cups":
+            return "cup"
+        default:
+            // Return as-is if it's already a standard unit, or default to "g"
+            let validUnits = ["g", "ml", "oz", "cup", "tbsp", "tsp", "piece", "slice", "serving"]
+            return validUnits.contains(lowercase) ? lowercase : "g"
+        }
     }
 
     private var perServingMultiplier: Double {
@@ -1703,11 +1769,22 @@ struct FoodDetailViewFromSearch: View {
 
             // Check if we're replacing an existing diary entry or adding a new one
             if let _ = diaryEntryId {
-                print("FoodDetailView: About to replace food '\(diaryEntry.name)' (ID: \(diaryEntry.id)) in meal '\(selectedMeal)' on date '\(targetDate)'")
+                // When editing, ALWAYS use originalMealType to preserve the meal
+                // Ignore selectedMeal changes from UI - editing should never move meals
+                let targetMeal = originalMealType
+                print("🔍 MEAL TIME DEBUG:")
+                print("  - diaryEntryId exists (editing mode)")
+                print("  - originalMealType: '\(originalMealType)'")
+                print("  - selectedMeal: '\(selectedMeal)' (IGNORED for editing)")
+                print("  - targetMeal will be: '\(targetMeal)'")
+                print("FoodDetailView: About to replace food '\(diaryEntry.name)' (ID: \(diaryEntry.id)) in meal '\(targetMeal)' on date '\(targetDate)'")
                 print("FoodDetailView: DiaryEntry details - Calories: \(diaryEntry.calories), Protein: \(diaryEntry.protein), Serving: \(diaryEntry.servingDescription), Quantity: \(diaryEntry.quantity)")
-                diaryDataManager.replaceFoodItem(diaryEntry, to: selectedMeal, for: targetDate)
-                print("FoodDetailView: Successfully replaced \(diaryEntry.name) in \(selectedMeal) on \(targetDate)")
+                diaryDataManager.replaceFoodItem(diaryEntry, to: targetMeal, for: targetDate)
+                print("FoodDetailView: Successfully replaced \(diaryEntry.name) in \(targetMeal) on \(targetDate)")
             } else {
+                print("🔍 MEAL TIME DEBUG:")
+                print("  - NO diaryEntryId (adding new)")
+                print("  - selectedMeal: '\(selectedMeal)'")
                 print("FoodDetailView: About to add food '\(diaryEntry.name)' to meal '\(selectedMeal)' on date '\(targetDate)'")
                 print("FoodDetailView: DiaryEntry details - Calories: \(diaryEntry.calories), Protein: \(diaryEntry.protein), Serving: \(diaryEntry.servingDescription), Quantity: \(diaryEntry.quantity)")
                 diaryDataManager.addFoodItem(diaryEntry, to: selectedMeal, for: targetDate)
@@ -2070,6 +2147,10 @@ struct FoodDetailViewFromSearch: View {
                 print("  - ingredients_found: \(result.ingredients_found)")
                 print("  - ingredients_text: \(result.ingredients_text?.prefix(50) ?? "nil")")
                 print("  - nutrition: \(result.nutrition_per_100g != nil ? "YES" : "NO")")
+                print("  - serving_size: \(result.serving_size ?? "NIL")")
+                print("  - product_name: \(result.product_name ?? "nil")")
+                print("  - brand: \(result.brand ?? "nil")")
+                print("  - source_url: \(result.source_url ?? "nil")")
 
                 // Save to Firebase AI-improved foods collection (outside MainActor)
                 if result.ingredients_found {
@@ -2147,6 +2228,20 @@ struct FoodDetailViewFromSearch: View {
                         enhancedProductName = result.product_name
                         enhancedBrand = result.brand
                         print("📦 Product details: name=\(result.product_name ?? "nil"), brand=\(result.brand ?? "nil")")
+
+                        // Update serving size if found
+                        print("🔎 Checking serving size: result.serving_size = \(result.serving_size ?? "NIL")")
+                        if let servingSizeStr = result.serving_size, !servingSizeStr.isEmpty {
+                            print("📏 Updating serving size from AI: \(servingSizeStr)")
+                            let parsed = parseServingSizeString(servingSizeStr)
+                            print("🔧 Parsed serving size: amount=\(parsed.amount), unit=\(parsed.unit)")
+                            servingAmount = parsed.amount
+                            servingUnit = parsed.unit
+                            gramsAmount = parsed.amount
+                            print("✅ Serving size updated: servingAmount=\(servingAmount), servingUnit=\(servingUnit), gramsAmount=\(gramsAmount)")
+                        } else {
+                            print("⚠️ No serving size in result OR serving size is empty")
+                        }
 
                         // Clear and repopulate cached data with enhanced information
                         print("🗑️ Clearing all caches and repopulating with enhanced data")
