@@ -407,35 +407,59 @@ struct ManualFoodDetailEntryView: View {
 
                         // AI Search Button
                         if destination == .diary {
-                            Button(action: {
-                                searchIngredientsWithAI()
-                            }) {
-                                HStack(spacing: 6) {
-                                    if isSearchingIngredients {
-                                        ProgressView()
-                                            .scaleEffect(0.8)
-                                    } else {
-                                        Image(systemName: "sparkles")
-                                            .font(.system(size: 14))
+                            VStack(spacing: 8) {
+                                Button(action: {
+                                    searchIngredientsWithAI()
+                                }) {
+                                    HStack(spacing: 6) {
+                                        if isSearchingIngredients {
+                                            ProgressView()
+                                                .scaleEffect(0.8)
+                                        } else {
+                                            Image(systemName: "sparkles")
+                                                .font(.system(size: 14))
+                                        }
+                                        Text(isSearchingIngredients ? "Searching..." : "Find with AI")
+                                            .font(.system(size: 14, weight: .semibold))
                                     }
-                                    Text(isSearchingIngredients ? "Searching..." : "Find with AI")
-                                        .font(.system(size: 14, weight: .semibold))
-                                }
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [Color.blue, Color.purple.opacity(0.8)]),
-                                        startPoint: .leading,
-                                        endPoint: .trailing
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [Color.blue, Color.purple.opacity(0.8)]),
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
                                     )
-                                )
-                                .cornerRadius(8)
+                                    .cornerRadius(8)
+                                }
+                                .disabled(isSearchingIngredients || foodName.isEmpty)
+                                .opacity(foodName.isEmpty ? 0.5 : 1.0)
+
+                                // Status indicator
+                                if isSearchingIngredients {
+                                    HStack(spacing: 6) {
+                                        ProgressView()
+                                            .scaleEffect(0.7)
+                                        Text("Searching UK supermarkets for ingredients...")
+                                            .font(.system(size: 13))
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding(.horizontal, 4)
+                                } else if foundIngredients != nil && !ingredients.isEmpty {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.green)
+                                            .font(.system(size: 14))
+                                        Text("Ingredients found and added below")
+                                            .font(.system(size: 13))
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding(.horizontal, 4)
+                                }
                             }
-                            .disabled(isSearchingIngredients || foodName.isEmpty)
-                            .opacity(foodName.isEmpty ? 0.5 : 1.0)
                         }
 
                         FormField(label: "Barcode (Optional)", isRequired: false) {
