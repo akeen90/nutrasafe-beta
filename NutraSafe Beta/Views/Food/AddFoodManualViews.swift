@@ -448,7 +448,7 @@ struct ManualFoodDetailEntryView: View {
                                             .foregroundColor(.secondary)
                                     }
                                     .padding(.horizontal, 4)
-                                } else if foundIngredients != nil && !ingredients.isEmpty {
+                                } else if foundIngredients != nil && !ingredientsText.isEmpty {
                                     HStack(spacing: 6) {
                                         Image(systemName: "checkmark.circle.fill")
                                             .foregroundColor(.green)
