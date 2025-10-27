@@ -405,6 +405,39 @@ struct ManualFoodDetailEntryView: View {
                                 )
                         }
 
+                        // AI Search Button
+                        if destination == .diary {
+                            Button(action: {
+                                searchIngredientsWithAI()
+                            }) {
+                                HStack(spacing: 6) {
+                                    if isSearchingIngredients {
+                                        ProgressView()
+                                            .scaleEffect(0.8)
+                                    } else {
+                                        Image(systemName: "sparkles")
+                                            .font(.system(size: 14))
+                                    }
+                                    Text(isSearchingIngredients ? "Searching..." : "Find with AI")
+                                        .font(.system(size: 14, weight: .semibold))
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [Color.blue, Color.purple.opacity(0.8)]),
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .cornerRadius(8)
+                            }
+                            .disabled(isSearchingIngredients || foodName.isEmpty)
+                            .opacity(foodName.isEmpty ? 0.5 : 1.0)
+                        }
+
                         FormField(label: "Barcode (Optional)", isRequired: false) {
                             HStack(spacing: 8) {
                                 TextField("Enter barcode...", text: $barcode)
@@ -509,44 +542,12 @@ struct ManualFoodDetailEntryView: View {
 
                         // Ingredients Section
                         VStack(alignment: .leading, spacing: 16) {
-                            SectionHeader(title: "Ingredients (Optional)")
+                            SectionHeader(title: "Ingredients")
 
                             VStack(alignment: .leading, spacing: 12) {
-                                    HStack {
-                                        Text("Enter ingredients separated by commas")
-                                            .font(.system(size: 14))
-                                            .foregroundColor(.secondary)
-                                        Spacer()
-                                        // AI Search Button
-                                        Button(action: {
-                                            searchIngredientsWithAI()
-                                        }) {
-                                            HStack(spacing: 6) {
-                                                if isSearchingIngredients {
-                                                    ProgressView()
-                                                        .scaleEffect(0.8)
-                                                } else {
-                                                    Image(systemName: "sparkles")
-                                                        .font(.system(size: 14))
-                                                }
-                                                Text(isSearchingIngredients ? "Searching..." : "Find with AI")
-                                                    .font(.system(size: 14, weight: .semibold))
-                                            }
-                                            .foregroundColor(.white)
-                                            .padding(.horizontal, 12)
-                                            .padding(.vertical, 8)
-                                            .background(
-                                                LinearGradient(
-                                                    gradient: Gradient(colors: [Color.blue, Color.purple.opacity(0.8)]),
-                                                    startPoint: .leading,
-                                                    endPoint: .trailing
-                                                )
-                                            )
-                                            .cornerRadius(8)
-                                        }
-                                        .disabled(isSearchingIngredients || foodName.isEmpty)
-                                        .opacity(foodName.isEmpty ? 0.5 : 1.0)
-                                    }
+                                    Text("Enter ingredients separated by commas")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.secondary)
 
                                     TextEditor(text: $ingredientsText)
                                         .frame(height: 100)
