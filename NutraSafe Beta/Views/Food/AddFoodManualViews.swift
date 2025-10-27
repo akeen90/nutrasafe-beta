@@ -13,10 +13,26 @@ import FirebaseFirestore
 
 // MARK: - Ingredient Finder Models & Service
 
+/// Nutrition data per 100g
+struct NutritionPer100g: Codable {
+    let calories: Double?
+    let protein: Double?
+    let carbs: Double?
+    let fat: Double?
+    let fiber: Double?
+    let sugar: Double?
+    let salt: Double?
+}
+
 /// Response model from Cloud Function
 struct IngredientFinderResponse: Codable {
     let ingredients_found: Bool
+    let product_name: String?
+    let brand: String?
+    let barcode: String?
+    let serving_size: String?
     let ingredients_text: String?
+    let nutrition_per_100g: NutritionPer100g?
     let source_url: String?
 }
 
@@ -44,7 +60,12 @@ class IngredientFinderService: ObservableObject {
             print("✅ Found ingredients in cache for \(productName)")
             return IngredientFinderResponse(
                 ingredients_found: cached.ingredients_found,
+                product_name: nil,  // Cache doesn't store product name yet
+                brand: nil,  // Cache doesn't store brand yet
+                barcode: nil,  // Cache doesn't store barcode yet
+                serving_size: nil,  // Cache doesn't store serving size yet
                 ingredients_text: cached.ingredients_text,
+                nutrition_per_100g: nil,  // Cache doesn't store nutrition yet
                 source_url: cached.source_url
             )
         }
@@ -332,6 +353,36 @@ struct ManualFoodDetailEntryView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 24) {
+                    // AI Helper Banner - only for Diary destination
+                    if destination == .diary {
+                        HStack(spacing: 12) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 20))
+                                .foregroundColor(.purple)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("AI-Powered Search")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(.primary)
+                                Text("Enter what you know, then use 'Find with AI' to auto-complete ingredients & nutrition")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+
+                            Spacer()
+                        }
+                        .padding(12)
+                        .background(
+                            LinearGradient(
+                                gradient: Gradient(colors: [Color.purple.opacity(0.1), Color.blue.opacity(0.1)]),
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(12)
+                    }
+
                     // Basic Information Section
                     VStack(alignment: .leading, spacing: 16) {
                         SectionHeader(title: "Basic Information")
@@ -436,7 +487,7 @@ struct ManualFoodDetailEntryView: View {
                             VStack(spacing: 12) {
                                 ManualNutritionInputRow(label: "Fibre", value: $fiber, unit: "g")
                                 ManualNutritionInputRow(label: "Sugar", value: $sugar, unit: "g")
-                                ManualNutritionInputRow(label: "Sodium", value: $sodium, unit: "mg")
+                                ManualNutritionInputRow(label: "Salt", value: $sodium, unit: "g")
                             }
                         }
 
@@ -478,7 +529,7 @@ struct ManualFoodDetailEntryView: View {
                                                     Image(systemName: "sparkles")
                                                         .font(.system(size: 14))
                                                 }
-                                                Text(isSearchingIngredients ? "Searching..." : "Search with AI")
+                                                Text(isSearchingIngredients ? "Searching..." : "Find with AI")
                                                     .font(.system(size: 14, weight: .semibold))
                                             }
                                             .foregroundColor(.white)
@@ -661,14 +712,55 @@ struct ManualFoodDetailEntryView: View {
                 IngredientConfirmationModal(
                     response: foundIngredients,
                     onUse: {
+                        // Apply product name and brand if found
+                        if let productName = foundIngredients?.product_name, !productName.isEmpty {
+                            foodName = productName
+                        }
+                        if let brandName = foundIngredients?.brand, !brandName.isEmpty {
+                            brand = brandName
+                        }
+                        if let barcodeValue = foundIngredients?.barcode, !barcodeValue.isEmpty {
+                            barcode = barcodeValue
+                        }
+                        // Apply ingredients
                         if let ingredients = foundIngredients?.ingredients_text {
                             ingredientsText = ingredients
-                            showIngredientConfirmation = false
                         }
+                        // Apply nutrition per 100g
+                        if let nutrition = foundIngredients?.nutrition_per_100g {
+                            if let cal = nutrition.calories { calories = String(format: "%.0f", cal) }
+                            if let prot = nutrition.protein { protein = String(format: "%.1f", prot) }
+                            if let carb = nutrition.carbs { carbs = String(format: "%.1f", carb) }
+                            if let f = nutrition.fat { fat = String(format: "%.1f", f) }
+                            if let fib = nutrition.fiber { fiber = String(format: "%.1f", fib) }
+                            if let sug = nutrition.sugar { sugar = String(format: "%.1f", sug) }
+                            if let saltValue = nutrition.salt { sodium = String(format: "%.1f", saltValue) }
+                        }
+                        showIngredientConfirmation = false
                     },
                     onEdit: {
+                        // Apply product name and brand if found
+                        if let productName = foundIngredients?.product_name, !productName.isEmpty {
+                            foodName = productName
+                        }
+                        if let brandName = foundIngredients?.brand, !brandName.isEmpty {
+                            brand = brandName
+                        }
+                        if let barcodeValue = foundIngredients?.barcode, !barcodeValue.isEmpty {
+                            barcode = barcodeValue
+                        }
+                        // Apply ingredients and nutrition for editing
                         if let ingredients = foundIngredients?.ingredients_text {
                             ingredientsText = ingredients
+                        }
+                        if let nutrition = foundIngredients?.nutrition_per_100g {
+                            if let cal = nutrition.calories { calories = String(format: "%.0f", cal) }
+                            if let prot = nutrition.protein { protein = String(format: "%.1f", prot) }
+                            if let carb = nutrition.carbs { carbs = String(format: "%.1f", carb) }
+                            if let f = nutrition.fat { fat = String(format: "%.1f", f) }
+                            if let fib = nutrition.fiber { fiber = String(format: "%.1f", fib) }
+                            if let sug = nutrition.sugar { sugar = String(format: "%.1f", sug) }
+                            if let saltValue = nutrition.salt { sodium = String(format: "%.1f", saltValue) }
                         }
                         showIngredientConfirmation = false
                     },
@@ -723,7 +815,7 @@ struct ManualFoodDetailEntryView: View {
             } catch let error as IngredientFinderError {
                 await MainActor.run {
                     isSearchingIngredients = false
-                    errorMessage = error.localizedDescription ?? "Unable to search for ingredients"
+                    errorMessage = error.localizedDescription
                     showingError = true
                 }
             } catch {
@@ -1075,28 +1167,99 @@ struct IngredientConfirmationModal: View {
 
     var body: some View {
         NavigationView {
-            VStack(spacing: 24) {
-                // Success Icon
-                ZStack {
-                    Circle()
-                        .fill(Color.green.opacity(0.1))
-                        .frame(width: 80, height: 80)
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Success Icon
+                    ZStack {
+                        Circle()
+                            .fill(Color.green.opacity(0.1))
+                            .frame(width: 80, height: 80)
 
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 50))
-                        .foregroundColor(.green)
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 50))
+                            .foregroundColor(.green)
+                    }
+                    .padding(.top, 32)
+
+                    // Title
+                    VStack(spacing: 8) {
+                        Text("Product Information Found!")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(.primary)
+
+                        Text("NutraSafe Ingredient Finder™")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+
+                // Serving Size (if available)
+                if let servingSize = response?.serving_size {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "gauge.with.dots.needle.67percent")
+                                .font(.system(size: 14))
+                                .foregroundColor(.blue)
+                            Text("Serving Size:")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.secondary)
+                        }
+
+                        Text(servingSize)
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.primary)
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.blue.opacity(0.1))
+                            .cornerRadius(8)
+                    }
+                    .padding(.horizontal, 20)
                 }
-                .padding(.top, 32)
 
-                // Title
-                VStack(spacing: 8) {
-                    Text("Ingredients Found!")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.primary)
+                // Nutrition Preview (if available)
+                if let nutrition = response?.nutrition_per_100g, hasAnyNutrition(nutrition) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "chart.bar.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(.green)
+                            Text("Nutrition per 100g:")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.secondary)
+                        }
 
-                    Text("NutraSafe Ingredient Finder™")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
+                        Text("The values below are standardized to 100g for easy comparison")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                            .italic()
+
+                        VStack(spacing: 6) {
+                            if let cal = nutrition.calories {
+                                NutritionRow(label: "Calories", value: "\(Int(cal)) kcal")
+                            }
+                            if let prot = nutrition.protein {
+                                NutritionRow(label: "Protein", value: String(format: "%.1fg", prot))
+                            }
+                            if let carbs = nutrition.carbs {
+                                NutritionRow(label: "Carbs", value: String(format: "%.1fg", carbs))
+                            }
+                            if let fat = nutrition.fat {
+                                NutritionRow(label: "Fat", value: String(format: "%.1fg", fat))
+                            }
+                            if let fiber = nutrition.fiber {
+                                NutritionRow(label: "Fiber", value: String(format: "%.1fg", fiber))
+                            }
+                            if let sugar = nutrition.sugar {
+                                NutritionRow(label: "Sugar", value: String(format: "%.1fg", sugar))
+                            }
+                            if let salt = nutrition.salt {
+                                NutritionRow(label: "Salt", value: String(format: "%.1fg", salt))
+                            }
+                        }
+                        .padding(12)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(8)
+                    }
+                    .padding(.horizontal, 20)
                 }
 
                 // Ingredients Preview
@@ -1140,7 +1303,7 @@ struct IngredientConfirmationModal: View {
                         HStack {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.system(size: 18))
-                            Text("Use These Ingredients")
+                            Text("Use This Information")
                                 .font(.system(size: 16, weight: .semibold))
                         }
                         .foregroundColor(.white)
@@ -1175,10 +1338,9 @@ struct IngredientConfirmationModal: View {
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.bottom, 20)
-
-                Spacer()
+                .padding(.bottom, 32)
             }
+        }
             .navigationTitle("AI Search Result")
             .navigationBarTitleDisplayMode(.inline)
         }
@@ -1190,6 +1352,29 @@ struct IngredientConfirmationModal: View {
             return "Unknown"
         }
         return host.replacingOccurrences(of: "www.", with: "")
+    }
+
+    private func hasAnyNutrition(_ nutrition: NutritionPer100g) -> Bool {
+        return nutrition.calories != nil || nutrition.protein != nil || nutrition.carbs != nil ||
+               nutrition.fat != nil || nutrition.fiber != nil || nutrition.sugar != nil
+    }
+}
+
+// MARK: - Nutrition Row Component
+struct NutritionRow: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 13))
+                .foregroundColor(.secondary)
+            Spacer()
+            Text(value)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(.primary)
+        }
     }
 }
 

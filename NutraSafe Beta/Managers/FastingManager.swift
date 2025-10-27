@@ -132,7 +132,7 @@ struct FastingManager {
         }
 
         var groups: [WeekGroup] = []
-        for (key, days) in allDaysPerWeek {
+        for (key, _) in allDaysPerWeek {
             let completed = perWeek[key]?.count ?? 0
             let meta = weekMeta[key] ?? (0, 0)
             let metGoal = completed >= 1 // baseline; actual goal applied below via goalDays

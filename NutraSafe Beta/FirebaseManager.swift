@@ -1416,6 +1416,56 @@ class FirebaseManager: ObservableObject {
         return document.data()
     }
 
+    // MARK: - AI-Improved Foods
+
+    /// Save AI-improved food data to Firebase
+    func saveAIImprovedFood(originalFood: FoodSearchResult, enhancedData: [String: Any]) async throws -> String {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save AI-improved foods"])
+        }
+
+        let timestamp = Timestamp(date: Date())
+        let foodId = UUID().uuidString
+
+        var aiImprovedData: [String: Any] = [
+            "id": foodId,
+            "originalFoodId": originalFood.id,
+            "originalFoodName": originalFood.name,
+            "originalBrand": originalFood.brand ?? "",
+            "improvedBy": userId,
+            "improvedAt": timestamp,
+            "status": "pending_review"  // Can be: pending_review, approved, rejected
+        ]
+
+        // Merge enhanced data
+        aiImprovedData.merge(enhancedData) { (_, new) in new }
+
+        // Save to aiImprovedFoods collection (global, accessible by all users)
+        try await db.collection("aiImprovedFoods").document(foodId).setData(aiImprovedData)
+        print("✅ AI-improved food saved to Firebase: \(foodId)")
+
+        return foodId
+    }
+
+    /// Get AI-improved version of a food by original food ID
+    func getAIImprovedFood(originalFoodId: String) async throws -> [String: Any]? {
+        let snapshot = try await db.collection("aiImprovedFoods")
+            .whereField("originalFoodId", isEqualTo: originalFoodId)
+            .whereField("status", isEqualTo: "approved")
+            .limit(to: 1)
+            .getDocuments()
+
+        return snapshot.documents.first?.data()
+    }
+
+    /// Check if a food has been AI-improved
+    func hasAIImprovedVersion(originalFoodId: String) async throws -> Bool {
+        let improved = try await getAIImprovedFood(originalFoodId: originalFoodId)
+        return improved != nil
+    }
+
     /// Profanity filter - basic implementation
     private func containsProfanity(_ text: String) -> Bool {
         let lowercased = text.lowercased()
@@ -1564,7 +1614,9 @@ class FirebaseManager: ObservableObject {
         }
         try await db.collection("users").document(userId)
             .collection("fasts").document(id).delete()
-        NotificationCenter.default.post(name: .fastHistoryUpdated, object: nil)
+        await MainActor.run {
+            NotificationCenter.default.post(name: .fastHistoryUpdated, object: nil)
+        }
     }
 
     func saveFastingStreakSettings(_ settings: FastingStreakSettings) async throws {
@@ -1579,7 +1631,9 @@ class FirebaseManager: ObservableObject {
         ]
         try await db.collection("users").document(userId)
             .collection("settings").document("fasting_streak").setData(data, merge: true)
-        NotificationCenter.default.post(name: .fastingSettingsUpdated, object: nil)
+        await MainActor.run {
+            NotificationCenter.default.post(name: .fastingSettingsUpdated, object: nil)
+        }
     }
 
     func getFastingStreakSettings() async throws -> FastingStreakSettings {

@@ -446,12 +446,16 @@ struct AddFoundFoodToUseBySheet: View {
             }
             .sheet(isPresented: $showCameraPicker) {
                 ImagePicker(selectedImage: nil, sourceType: .camera) { image in
-                    showCameraPicker = false
                     if let image = image {
                         capturedImage = image
                         Task {
                             await uploadPhoto(image)
+                            await MainActor.run {
+                                showCameraPicker = false
+                            }
                         }
+                    } else {
+                        showCameraPicker = false
                     }
                 }
             }
@@ -2774,7 +2778,11 @@ struct UseByItemDetailView: View {
                                     .clipped()
                                     .cornerRadius(12)
 
-                                Button(action: { capturedImage = nil; uploadedImageURL = nil }) {
+                                Button(action: {
+                                    capturedImage = nil
+                                    uploadedImageURL = nil
+                                    Task { await deletePhotoOnly() }
+                                }) {
                                     Image(systemName: "xmark.circle.fill")
                                         .font(.system(size: 24))
                                         .foregroundColor(.white)
@@ -2944,12 +2952,16 @@ struct UseByItemDetailView: View {
         }
         .sheet(isPresented: $showCameraPicker) {
             ImagePicker(selectedImage: nil, sourceType: .camera) { image in
-                showCameraPicker = false
                 if let image = image {
                     capturedImage = image
                     Task {
                         await uploadPhoto(image)
+                        await MainActor.run {
+                            showCameraPicker = false
+                        }
                     }
+                } else {
+                    showCameraPicker = false
                 }
             }
         }
@@ -3132,6 +3144,32 @@ struct UseByItemDetailView: View {
                     isSaving = false
                 }
             }
+        }
+    }
+
+    private func deletePhotoOnly() async {
+        // Only update photo in Firebase without dismissing
+        guard let item = item else { return }
+
+        let updatedItem = UseByInventoryItem(
+            id: item.id,
+            name: item.name,
+            brand: item.brand,
+            quantity: editedQuantity,
+            expiryDate: editedExpiryDate,
+            addedDate: item.addedDate,
+            barcode: item.barcode,
+            category: item.category,
+            imageURL: nil, // Remove the photo
+            notes: notes.isEmpty ? nil : notes
+        )
+
+        do {
+            try await FirebaseManager.shared.updateUseByItem(updatedItem)
+            NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
+            print("✅ Photo deleted successfully")
+        } catch {
+            print("❌ Failed to delete photo: \(error)")
         }
     }
 }
