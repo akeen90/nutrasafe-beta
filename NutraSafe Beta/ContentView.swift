@@ -766,7 +766,7 @@ class FatSecretService: ObservableObject {
         
         // Debug: Print raw JSON response
         if let jsonString = String(data: data, encoding: .utf8) {
-            print("🔍 Raw API response: \(jsonString.prefix(500))")
+        // DEBUG LOG: print("🔍 Raw API response: \(jsonString.prefix(500))")
         }
         
         let searchResponse: FirebaseFoodSearchResponse
@@ -1513,7 +1513,7 @@ struct ContentView: View {
         .onChange(of: selectedTab) { newTab in
             // PERFORMANCE: Mark tab as visited for lazy initialization
             visitedTabs.insert(newTab)
-            print("⚡️ Tab switched to \(newTab) - Total visited: \(visitedTabs.count)/5")
+        // DEBUG LOG: print("⚡️ Tab switched to \(newTab) - Total visited: \(visitedTabs.count)/5")
 
             // Enforce subscription gating for programmatic tab changes
             if !(subscriptionManager.isSubscribed || subscriptionManager.isInTrial || subscriptionManager.isPremiumOverride) {
@@ -2079,7 +2079,7 @@ struct WeightTrackingView: View {
         .onAppear {
             // PERFORMANCE: Skip if already loaded - prevents redundant Firebase calls on tab switches
             guard !hasLoadedOnce else {
-                print("⚡️ WeightTrackingView: Skipping load - data already loaded")
+        // DEBUG LOG: print("⚡️ WeightTrackingView: Skipping load - data already loaded")
                 return
             }
             hasLoadedOnce = true
@@ -3042,7 +3042,7 @@ struct AddWeightView: View {
 
                                     // Delete button
                                     Button(action: {
-                                        print("🗑️ Deleting photo with ID: \(identifiableImage.id)")
+        // DEBUG LOG: print("🗑️ Deleting photo with ID: \(identifiableImage.id)")
                                         print("   Current photo count: \(selectedPhotos.count)")
                                         selectedPhotos.removeAll { $0.id == identifiableImage.id }
                                         print("   After deletion count: \(selectedPhotos.count)")
@@ -3078,7 +3078,7 @@ struct AddWeightView: View {
                         }
 
                         Button(action: {
-                            print("📚 Choose from Library button tapped")
+        // DEBUG LOG: print("📚 Choose from Library button tapped")
                             showingMultiImagePicker = true
                         }) {
                             HStack {
@@ -3170,7 +3170,7 @@ struct AddWeightView: View {
             }
             .sheet(isPresented: $showingMultiImagePicker) {
                 MultiImagePicker(maxSelection: 3 - selectedPhotos.count) { images in
-                    print("🎯 AddWeightView: Received \(images.count) images from MultiImagePicker")
+        // DEBUG LOG: print("🎯 AddWeightView: Received \(images.count) images from MultiImagePicker")
                     print("   Current photo count before adding: \(selectedPhotos.count)")
 
                     // Add photos up to the limit of 3
@@ -3193,7 +3193,7 @@ struct AddWeightView: View {
                     activePickerType = .camera
                 }
                 Button("Choose from Library") {
-                    print("📚 Dialog: Choose from Library selected")
+        // DEBUG LOG: print("📚 Dialog: Choose from Library selected")
                     activePickerType = .photoLibrary
                 }
                 Button("Cancel", role: .cancel) { }
@@ -3440,7 +3440,7 @@ struct EditWeightView: View {
 
                                     // Delete button
                                     Button(action: {
-                                        print("🗑️ Deleting photo with ID: \(identifiableImage.id)")
+        // DEBUG LOG: print("🗑️ Deleting photo with ID: \(identifiableImage.id)")
                                         print("   Current photo count: \(selectedPhotos.count)")
                                         selectedPhotos.removeAll { $0.id == identifiableImage.id }
                                         print("   After deletion count: \(selectedPhotos.count)")
@@ -3602,14 +3602,14 @@ struct EditWeightView: View {
                     activePickerType = .camera
                 }
                 Button("Choose from Library") {
-                    print("📚 Choose from Library button tapped")
+        // DEBUG LOG: print("📚 Choose from Library button tapped")
                     showingMultiImagePicker = true
                 }
                 Button("Cancel", role: .cancel) { }
             }
             .sheet(isPresented: $showingMultiImagePicker) {
                 MultiImagePicker(maxSelection: 3 - selectedPhotos.count) { images in
-                    print("🎯 Received \(images.count) images from MultiImagePicker")
+        // DEBUG LOG: print("🎯 Received \(images.count) images from MultiImagePicker")
                     print("   Current photo count before adding: \(selectedPhotos.count)")
 
                     // Add photos up to the limit of 3
@@ -3657,7 +3657,7 @@ struct EditWeightView: View {
     }
 
     private func convertWeight(from oldUnit: WeightUnit, to newUnit: WeightUnit) {
-        print("🔄 EditWeightView: Converting weight from \(oldUnit.rawValue) to \(newUnit.rawValue)")
+        // DEBUG LOG: print("🔄 EditWeightView: Converting weight from \(oldUnit.rawValue) to \(newUnit.rawValue)")
         print("   Current primaryWeight: '\(primaryWeight)', secondaryWeight: '\(secondaryWeight)'")
 
         withAnimation(.easeInOut(duration: 0.2)) {
@@ -3701,7 +3701,7 @@ struct EditWeightView: View {
     }
 
     private func convertHeight(from oldUnit: HeightUnit, to newUnit: HeightUnit) {
-        print("🔄 EditWeightView: Converting height from \(oldUnit.rawValue) to \(newUnit.rawValue)")
+        // DEBUG LOG: print("🔄 EditWeightView: Converting height from \(oldUnit.rawValue) to \(newUnit.rawValue)")
         print("   Current primaryHeight: '\(primaryHeight)', secondaryHeight: '\(secondaryHeight)'")
 
         withAnimation(.easeInOut(duration: 0.2)) {
@@ -5436,7 +5436,7 @@ struct ExerciseEntryView: View {
                             Text(exerciseType.displayName)
                                 .foregroundColor(.secondary)
                                 .onAppear {
-                                    print("🎯 ExerciseEntryView opened with type: \(exerciseType.rawValue)")
+        // DEBUG LOG: print("🎯 ExerciseEntryView opened with type: \(exerciseType.rawValue)")
                                 }
                         }
                     }

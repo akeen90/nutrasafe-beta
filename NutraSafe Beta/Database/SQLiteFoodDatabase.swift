@@ -292,7 +292,7 @@ actor SQLiteFoodDatabase {
         if sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK {
             if sqlite3_step(statement) == SQLITE_ROW {
                 let count = sqlite3_column_int(statement, 0)
-                print("📊 Current food count in SQLite: \(count)")
+        // DEBUG LOG: print("📊 Current food count in SQLite: \(count)")
 
                 if count == 0 {
                     print("⚠️ Database is empty. You need to import data from Firebase or a CSV file.")

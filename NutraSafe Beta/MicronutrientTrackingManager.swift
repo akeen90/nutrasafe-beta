@@ -30,7 +30,7 @@ class MicronutrientTrackingManager: ObservableObject {
 
     private init() {
         // Don't load on init - use lazy loading instead
-        print("🚀 MicronutrientTrackingManager initialized (lazy loading enabled)")
+        // DEBUG LOG: print("🚀 MicronutrientTrackingManager initialized (lazy loading enabled)")
     }
 
     // MARK: - Food Analysis
@@ -108,7 +108,7 @@ class MicronutrientTrackingManager: ObservableObject {
 
     /// Process actual micronutrient data from a food's nutrient profile
     func processNutrientProfile(_ profile: MicronutrientProfile, foodName: String, servingSize: Double = 1.0, date: Date = Date()) async {
-        print("🔬 Processing nutrient profile for: \(foodName) (serving: \(servingSize)x)")
+        // DEBUG LOG: print("🔬 Processing nutrient profile for: \(foodName) (serving: \(servingSize)x)")
         print("  📊 Profile has \(profile.vitamins.count) vitamins, \(profile.minerals.count) minerals")
 
         var processedCount = 0
@@ -394,11 +394,11 @@ class MicronutrientTrackingManager: ObservableObject {
     /// Ensure data is loaded before accessing (lazy loading)
     private func ensureDataLoaded() async {
         guard !hasLoadedData else {
-            print("⚡️ Micronutrient data already loaded - using cache")
+        // DEBUG LOG: print("⚡️ Micronutrient data already loaded - using cache")
             return
         }
 
-        print("🔄 Lazy loading micronutrient data on first access...")
+        // DEBUG LOG: print("🔄 Lazy loading micronutrient data on first access...")
         await loadFromFirestore()
         hasLoadedData = true
     }
@@ -464,7 +464,7 @@ class MicronutrientTrackingManager: ObservableObject {
         // MEMORY CACHE: Invalidate cache when saving new data
         firebaseCache = nil
         cacheTimestamp = nil
-        print("🗑️ Cache invalidated due to new data save")
+        // DEBUG LOG: print("🗑️ Cache invalidated due to new data save")
 
         // Save to Firestore
         for (_, scores) in dailyScores {
@@ -519,7 +519,7 @@ class MicronutrientTrackingManager: ObservableObject {
         if let cache = firebaseCache,
            let timestamp = cacheTimestamp,
            Date().timeIntervalSince(timestamp) < cacheExpirationSeconds {
-            print("⚡️ Using cached Firebase data (age: \(Int(Date().timeIntervalSince(timestamp)))s)")
+        // DEBUG LOG: print("⚡️ Using cached Firebase data (age: \(Int(Date().timeIntervalSince(timestamp)))s)")
             dailyScores = cache.scores
             balanceHistory = cache.balance
             return
@@ -530,7 +530,7 @@ class MicronutrientTrackingManager: ObservableObject {
 
         // OPTIMIZED: Load only last 7 days instead of 30 for faster initial load
         let sevenDaysAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
-        print("📊 Loading micronutrient data from Firebase for last 7 days (optimized)")
+        // DEBUG LOG: print("📊 Loading micronutrient data from Firebase for last 7 days (optimized)")
 
         do {
             // Load nutrient scores
@@ -610,7 +610,7 @@ class MicronutrientTrackingManager: ObservableObject {
             print("✅ Loaded \(dailyScores.count) nutrients with scores and \(balanceHistory.count) balance records")
 
             // Recalculate all balance scores with new formula (fixes old weighted data)
-            print("🔄 Recalculating balance scores with new average coverage formula...")
+        // DEBUG LOG: print("🔄 Recalculating balance scores with new average coverage formula...")
             let uniqueDates = Set(dailyScores.values.flatMap { $0.map { formatDate($0.date) } })
             for dateKey in uniqueDates {
                 // Parse date from dateKey
@@ -626,7 +626,7 @@ class MicronutrientTrackingManager: ObservableObject {
             // MEMORY CACHE: Cache the loaded data
             firebaseCache = (scores: dailyScores, balance: balanceHistory)
             cacheTimestamp = Date()
-            print("💾 Cached Firebase data for future access")
+        // DEBUG LOG: print("💾 Cached Firebase data for future access")
 
         } catch {
             print("❌ Error loading micronutrient data: \(error)")

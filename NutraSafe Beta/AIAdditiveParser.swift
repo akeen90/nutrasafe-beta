@@ -38,7 +38,7 @@ class AIAdditiveParser {
 
         do {
             // Try AI parsing first
-            print("🤖 Calling AI additive parser...")
+        // DEBUG LOG: print("🤖 Calling AI additive parser...")
             let additives = try await callAIParser(ingredientsText: ingredientsText)
 
             // Cache the result locally

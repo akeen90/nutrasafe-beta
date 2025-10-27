@@ -223,24 +223,24 @@ class ProcessingScorer {
         cacheLock.lock()
         if let cached = additivesCache[cacheKey] {
             cacheLock.unlock()
-            print("⚡ [ProcessingScorer] Using cached additives analysis (\(cached.count) additives)")
+        // DEBUG LOG: print("⚡ [ProcessingScorer] Using cached additives analysis (\(cached.count) additives)")
             return cached
         }
         cacheLock.unlock()
 
-        print("⚗️ [ProcessingScorer] analyzeAdditives() called")
-        print("⚗️ [ProcessingScorer] Input text: '\(ingredientsText)'")
-        print("⚗️ [ProcessingScorer] Text length: \(ingredientsText.count) characters")
-        print("⚗️ [ProcessingScorer] Database status: \(comprehensiveAdditives != nil ? "LOADED (\(comprehensiveAdditives!.count) additives)" : "NOT LOADED")")
-        print("⚗️ [ProcessingScorer] Database version: \(databaseVersion)")
+        // DEBUG LOG: print("⚗️ [ProcessingScorer] analyzeAdditives() called")
+        // DEBUG LOG: print("⚗️ [ProcessingScorer] Input text: '\(ingredientsText)'")
+        // DEBUG LOG: print("⚗️ [ProcessingScorer] Text length: \(ingredientsText.count) characters")
+        // DEBUG LOG: print("⚗️ [ProcessingScorer] Database status: \(comprehensiveAdditives != nil ? "LOADED (\(comprehensiveAdditives!.count) additives)" : "NOT LOADED")")
+        // DEBUG LOG: print("⚗️ [ProcessingScorer] Database version: \(databaseVersion)")
 
         let analysis = analyseAdditives(in: ingredientsText)
 
-        print("⚗️ [ProcessingScorer] Analysis complete")
-        print("⚗️ [ProcessingScorer] Comprehensive additives found: \(analysis.comprehensiveAdditives.count)")
+        // DEBUG LOG: print("⚗️ [ProcessingScorer] Analysis complete")
+        // DEBUG LOG: print("⚗️ [ProcessingScorer] Comprehensive additives found: \(analysis.comprehensiveAdditives.count)")
 
         if !analysis.comprehensiveAdditives.isEmpty {
-            print("⚗️ [ProcessingScorer] Detected:")
+        // DEBUG LOG: print("⚗️ [ProcessingScorer] Detected:")
             for additive in analysis.comprehensiveAdditives {
                 print("   - \(additive.eNumber): \(additive.name)")
             }
@@ -262,7 +262,7 @@ class ProcessingScorer {
         cacheLock.lock()
         if let cached = scoreCache[cacheKey] {
             cacheLock.unlock()
-            print("⚡ [ProcessingScorer] Using cached score for: \(foodName)")
+        // DEBUG LOG: print("⚡ [ProcessingScorer] Using cached score for: \(foodName)")
             return cached
         }
         cacheLock.unlock()
@@ -512,7 +512,7 @@ class ProcessingScorer {
     }
     
     private lazy var comprehensiveAdditives: [String: AdditiveInfo]? = {
-        print("🔍 Attempting to load master additives database...")
+        // DEBUG LOG: print("🔍 Attempting to load master additives database...")
 
         guard let path = Bundle.main.path(forResource: "additives_master_database", ofType: "json") else {
             print("❌ ERROR: additives_master_database.json not found in bundle!")
@@ -539,7 +539,7 @@ class ProcessingScorer {
 
         // Check metadata and extract version
         if let metadata = json["metadata"] as? [String: Any] {
-            print("📊 Database metadata:")
+        // DEBUG LOG: print("📊 Database metadata:")
             let version = metadata["version"] as? String ?? "2025.1"
             print("   - Version: \(version)")
             print("   - Total additives: \(metadata["total_additives"] as? Int ?? 0)")
@@ -783,17 +783,17 @@ class ProcessingScorer {
         cacheLock.lock()
         if let cached = analysisCache[cacheKey] {
             cacheLock.unlock()
-            print("⚡ [analyseAdditives] Using cached analysis (\(cached.comprehensiveAdditives.count) additives)")
+        // DEBUG LOG: print("⚡ [analyseAdditives] Using cached analysis (\(cached.comprehensiveAdditives.count) additives)")
             return cached
         }
         cacheLock.unlock()
 
-        print("🔬 [analyseAdditives] Starting analysis")
-        print("🔬 [analyseAdditives] Input text: '\(food)'")
+        // DEBUG LOG: print("🔬 [analyseAdditives] Starting analysis")
+        // DEBUG LOG: print("🔬 [analyseAdditives] Input text: '\(food)'")
 
         let foodLower = food.lowercased()
         let normalizedFood = normalizeIngredientText(food)
-        print("🔬 [analyseAdditives] Normalized text: '\(normalizedFood)'")
+        // DEBUG LOG: print("🔬 [analyseAdditives] Normalized text: '\(normalizedFood)'")
 
         var detectedAdditives: [AdditiveInfo] = []
         var eNumbers: [String] = []
@@ -803,8 +803,8 @@ class ProcessingScorer {
 
         // Use comprehensive database if available
         if let comprehensiveDB = comprehensiveAdditives {
-            print("🔬 [analyseAdditives] Database available with \(comprehensiveDB.count) additives")
-            print("🔬 [analyseAdditives] Starting matching loop...")
+        // DEBUG LOG: print("🔬 [analyseAdditives] Database available with \(comprehensiveDB.count) additives")
+        // DEBUG LOG: print("🔬 [analyseAdditives] Starting matching loop...")
 
             var matchCount = 0
             // Check for E-numbers and additive names with word boundary detection
@@ -815,7 +815,7 @@ class ProcessingScorer {
                 // Only include matches with confidence >= 60%
                 if confidence >= 0.6 {
                     matchCount += 1
-                    print("🔬 [analyseAdditives] MATCH #\(matchCount): \(code) - \(additiveInfo.name) (confidence: \(confidence))")
+        // DEBUG LOG: print("🔬 [analyseAdditives] MATCH #\(matchCount): \(code) - \(additiveInfo.name) (confidence: \(confidence))")
 
                     // Check if already detected (avoid duplicates)
                     if !detectedAdditives.contains(where: { $0.eNumber == additiveInfo.eNumber }) {
@@ -836,8 +836,8 @@ class ProcessingScorer {
                 }
             }
 
-            print("🔬 [analyseAdditives] Matching loop complete. Total matches: \(matchCount)")
-            print("🔬 [analyseAdditives] Detected additives: \(detectedAdditives.count)")
+        // DEBUG LOG: print("🔬 [analyseAdditives] Matching loop complete. Total matches: \(matchCount)")
+        // DEBUG LOG: print("🔬 [analyseAdditives] Detected additives: \(detectedAdditives.count)")
         } else {
             print("⚠️ [analyseAdditives] Database NOT available! Using fallback analysis")
         }

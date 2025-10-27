@@ -748,7 +748,7 @@ struct UseByExpiryView: View {
         .onAppear {
             // PERFORMANCE: Skip if already loaded - prevents redundant Firebase calls on tab switches
             guard !hasLoadedOnce else {
-                print("⚡️ UseByExpiryView: Skipping load - data already loaded (count: \(useByItems.count))")
+        // DEBUG LOG: print("⚡️ UseByExpiryView: Skipping load - data already loaded (count: \(useByItems.count))")
                 return
             }
             hasLoadedOnce = true
@@ -778,15 +778,15 @@ struct UseByExpiryView: View {
         await MainActor.run { self.isLoading = true }
         do {
             let items: [UseByInventoryItem] = try await FirebaseManager.shared.getUseByItems()
-            print("🍳 UseByView: Loaded \(items.count) items from Firebase")
+        // DEBUG LOG: print("🍳 UseByView: Loaded \(items.count) items from Firebase")
             for item in items {
                 print("  - \(item.name): \(item.daysUntilExpiry) days left")
             }
             await MainActor.run {
                 self.useByItems = items
                 self.isLoading = false
-                print("🍳 UseByView: useByItems set to \(self.useByItems.count) items")
-                print("🍳 UseByView: sortedItems has \(self.sortedItems.count) items")
+        // DEBUG LOG: print("🍳 UseByView: useByItems set to \(self.useByItems.count) items")
+        // DEBUG LOG: print("🍳 UseByView: sortedItems has \(self.sortedItems.count) items")
             }
         } catch {
             print("❌ UseByView: Error loading items: \(error)")

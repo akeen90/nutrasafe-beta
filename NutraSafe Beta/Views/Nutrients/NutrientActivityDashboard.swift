@@ -50,7 +50,7 @@ struct NutrientActivityDashboard: View {
             }
         }
         .onAppear {
-            print("🎯 NutrientActivityDashboard appeared")
+        // DEBUG LOG: print("🎯 NutrientActivityDashboard appeared")
             // Only process once on initial load
             if !hasProcessedInitialData {
                 processCurrentDiaryData()
@@ -58,7 +58,7 @@ struct NutrientActivityDashboard: View {
             }
         }
         .onChange(of: diaryDataManager.dataReloadTrigger) { _ in
-            print("🔄 Diary data changed, reprocessing nutrients...")
+        // DEBUG LOG: print("🔄 Diary data changed, reprocessing nutrients...")
             // Only reprocess if we've already done initial load
             // This prevents duplicate processing on first appearance
             if hasProcessedInitialData {
@@ -341,7 +341,7 @@ struct NutrientActivityDashboard: View {
     }
 
     private func processCurrentDiaryData() {
-        print("🔄 Processing nutrients from diary...")
+        // DEBUG LOG: print("🔄 Processing nutrients from diary...")
         Task {
             // Get food data for the last 30 days
             let calendar = Calendar.current

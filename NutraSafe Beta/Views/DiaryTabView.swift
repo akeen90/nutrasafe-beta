@@ -312,7 +312,7 @@ struct DiaryTabView: View {
         .onAppear {
             // PERFORMANCE: Skip if already loaded - prevents redundant Firebase calls on tab switches
             guard !hasLoadedOnce else {
-                print("⚡️ DiaryTabView: Skipping load - data already loaded")
+        // DEBUG LOG: print("⚡️ DiaryTabView: Skipping load - data already loaded")
                 return
             }
             hasLoadedOnce = true
@@ -334,13 +334,13 @@ struct DiaryTabView: View {
         }
         .onChange(of: editTrigger) { newValue in
             guard newValue else { return }
-            print("📝 Edit trigger fired. Selected items: \(selectedFoodItems)")
+        // DEBUG LOG: print("📝 Edit trigger fired. Selected items: \(selectedFoodItems)")
 
             if let foodId = selectedFoodItems.first {
-                print("📝 Looking for food with ID: \(foodId)")
+        // DEBUG LOG: print("📝 Looking for food with ID: \(foodId)")
                 if let itemToEdit = findFood(byId: foodId) {
-                    print("📝 Found food to edit: \(itemToEdit.name)")
-                    print("📝 Setting editingFood to trigger sheet...")
+        // DEBUG LOG: print("📝 Found food to edit: \(itemToEdit.name)")
+        // DEBUG LOG: print("📝 Setting editingFood to trigger sheet...")
                     editingFood = itemToEdit
                 } else {
                     print("❌ Could not find food with ID: \(foodId)")
@@ -375,7 +375,7 @@ struct DiaryTabView: View {
             copyFoodSheet
         }
         .sheet(item: $editingFood, onDismiss: {
-            print("📝 Edit sheet dismissed, resetting editingFood")
+        // DEBUG LOG: print("📝 Edit sheet dismissed, resetting editingFood")
             editingFood = nil
         }) { food in
             let _ = print("📝 Presenting edit sheet for: \(food.name)")
@@ -648,13 +648,13 @@ struct CategoricalNutrientTrackingView: View {
         }
         .onChange(of: diaryDataManager.dataReloadTrigger) { _ in
             Task {
-                print("📊 CategoricalNutrientTrackingView: Data changed, reloading...")
+        // DEBUG LOG: print("📊 CategoricalNutrientTrackingView: Data changed, reloading...")
                 await vm.loadLast7Days()
             }
         }
         .onAppear {
             Task {
-                print("📊 CategoricalNutrientTrackingView: View appeared, force reloading...")
+        // DEBUG LOG: print("📊 CategoricalNutrientTrackingView: View appeared, force reloading...")
                 await vm.loadLast7Days()
             }
         }
@@ -663,7 +663,7 @@ struct CategoricalNutrientTrackingView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .foodDiaryUpdated)) { _ in
             Task {
-                print("🔄 Food diary updated, refreshing Nutrient Rhythm Bar...")
+        // DEBUG LOG: print("🔄 Food diary updated, refreshing Nutrient Rhythm Bar...")
                 await vm.loadLast7Days()
             }
         }
@@ -1120,7 +1120,7 @@ final class CategoricalNutrientViewModel: ObservableObject {
 
     // Load last 7 days of rhythm and coverage data
     func loadLast7Days() async {
-        print("🔄 CategoricalNutrientViewModel: Starting loadLast7Days...")
+        // DEBUG LOG: print("🔄 CategoricalNutrientViewModel: Starting loadLast7Days...")
 
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
@@ -1133,7 +1133,7 @@ final class CategoricalNutrientViewModel: ObservableObject {
         do {
             // Fetch food entries for last 7 days
             let entries = try await FirebaseManager.shared.getFoodEntriesForPeriod(days: 7)
-            print("📥 Fetched \(entries.count) food entries for last 7 days")
+        // DEBUG LOG: print("📥 Fetched \(entries.count) food entries for last 7 days")
 
             let grouped = Dictionary(grouping: entries, by: { calendar.startOfDay(for: $0.date) })
 
@@ -1146,7 +1146,7 @@ final class CategoricalNutrientViewModel: ObservableObject {
 
             // Build coverage rows
             let nutrients = nutrientList()
-            print("📊 Processing \(nutrients.count) nutrients...")
+        // DEBUG LOG: print("📊 Processing \(nutrients.count) nutrients...")
 
             for nutrient in nutrients {
                 var segments: [Segment] = []

@@ -3172,26 +3172,26 @@ struct AppleHealthSettingsView: View {
     }
 
     private func requestHealthKitPermission() async {
-        print("🔵 requestHealthKitPermission() called")
+        // DEBUG LOG: print("🔵 requestHealthKitPermission() called")
 
         // Trigger the native HealthKit authorization dialog
         await healthKitManager.requestAuthorization()
-        print("🔵 Authorization complete")
+        // DEBUG LOG: print("🔵 Authorization complete")
 
         // Enable rings after authorization
         await MainActor.run {
             healthKitRingsEnabled = true
-            print("🔵 Rings enabled: \(healthKitRingsEnabled)")
+        // DEBUG LOG: print("🔵 Rings enabled: \(healthKitRingsEnabled)")
         }
 
         // Update exercise calories
         await healthKitManager.updateExerciseCalories()
-        print("🔵 Exercise calories updated")
+        // DEBUG LOG: print("🔵 Exercise calories updated")
 
         // Refresh connection status
         await MainActor.run {
             checkConnectionStatus()
-            print("🔵 Final connection status: \(isConnected)")
+        // DEBUG LOG: print("🔵 Final connection status: \(isConnected)")
         }
     }
 
@@ -3221,19 +3221,19 @@ struct AppleHealthSettingsView: View {
     }
 
     private func openHealthKitSettings() {
-        print("🔵 openHealthKitSettings() called")
+        // DEBUG LOG: print("🔵 openHealthKitSettings() called")
 
         // Open Settings > Health > Data Access & Devices > NutraSafe
         let bundleId = Bundle.main.bundleIdentifier ?? ""
         let healthUrlString = "x-apple-health://Sources/\(bundleId)"
-        print("🔵 Attempting to open: \(healthUrlString)")
+        // DEBUG LOG: print("🔵 Attempting to open: \(healthUrlString)")
 
         if let url = URL(string: healthUrlString) {
             UIApplication.shared.open(url) { success in
-                print("🔵 Health settings opened: \(success)")
+        // DEBUG LOG: print("🔵 Health settings opened: \(success)")
             }
         } else if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
-            print("🔵 Fallback to app settings")
+        // DEBUG LOG: print("🔵 Fallback to app settings")
             UIApplication.shared.open(settingsUrl)
         }
     }

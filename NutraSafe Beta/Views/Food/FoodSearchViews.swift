@@ -467,7 +467,7 @@ struct AddFoodSearchView: View {
                 return
             }
 
-            print("🔍 AddFoodSearchView: Executing search for '\(query)'")
+        // DEBUG LOG: print("🔍 AddFoodSearchView: Executing search for '\(query)'")
 
             do {
                 let results = try await FirebaseManager.shared.searchFoods(query: query)
@@ -521,8 +521,8 @@ struct AddFoodSearchView: View {
                 }
                 
                 await MainActor.run {
-                    print("🍎 Setting search results: \(enrichedResults.count) foods found")
-                    print("🍎 First few results: \(enrichedResults.prefix(3).map { "\($0.name) (\($0.brand ?? "no brand"))" })")
+        // DEBUG LOG: print("🍎 Setting search results: \(enrichedResults.count) foods found")
+        // DEBUG LOG: print("🍎 First few results: \(enrichedResults.prefix(3).map { "\($0.name) (\($0.brand ?? "no brand"))" })")
                     self.searchResults = enrichedResults
                     self.isSearching = false
                 }
@@ -532,7 +532,7 @@ struct AddFoodSearchView: View {
                 if Task.isCancelled { return }
                 
                 await MainActor.run {
-                    print("🍎 Search failed - setting empty results")
+        // DEBUG LOG: print("🍎 Search failed - setting empty results")
                     self.searchResults = []
                     self.isSearching = false
                 }

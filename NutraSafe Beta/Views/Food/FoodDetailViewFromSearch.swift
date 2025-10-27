@@ -64,10 +64,10 @@ struct FoodDetailViewFromSearch: View {
         // Priority 1: Use servingSizeG if available (most reliable)
         if let sizeG = food.servingSizeG, sizeG > 0 {
             initialServingSize = String(format: "%.0f", sizeG)
-            print("🔧 INIT: Using servingSizeG: \(sizeG)g for \(food.name)")
+        // DEBUG LOG: print("🔧 INIT: Using servingSizeG: \(sizeG)g for \(food.name)")
         } else if let servingDesc = food.servingDescription {
             // Priority 2: Extract from serving description
-            print("🔧 INIT: Parsing serving description: '\(servingDesc)' for \(food.name)")
+        // DEBUG LOG: print("🔧 INIT: Parsing serving description: '\(servingDesc)' for \(food.name)")
 
             let patterns = [
                 #"(\d+(?:\.\d+)?)\s*g\s+serving"#,  // Match "150g serving"
@@ -81,7 +81,7 @@ struct FoodDetailViewFromSearch: View {
                    let match = regex.firstMatch(in: servingDesc, options: [], range: NSRange(location: 0, length: servingDesc.count)),
                    let range = Range(match.range(at: 1), in: servingDesc) {
                     initialServingSize = String(servingDesc[range])
-                    print("🔧 INIT: Extracted \(initialServingSize)g from '\(servingDesc)'")
+        // DEBUG LOG: print("🔧 INIT: Extracted \(initialServingSize)g from '\(servingDesc)'")
                     break
                 }
             }
@@ -98,7 +98,7 @@ struct FoodDetailViewFromSearch: View {
         self._originalMealType = State(initialValue: diaryMealType ?? "")
 
         // Debug logging
-        print("DEBUG FoodDetailViewFromSearch init:")
+        // DEBUG LOG: print("DEBUG FoodDetailViewFromSearch init:")
         print("  - diaryEntryId: \(String(describing: diaryEntryId))")
         print("  - diaryMealType: \(String(describing: diaryMealType))")
         print("  - isEditingMode will be: \(diaryEntryId != nil)")
@@ -199,7 +199,7 @@ struct FoodDetailViewFromSearch: View {
     @State private var selectedWatchTab: WatchTab = .additives
     
     private var buttonText: String {
-        print("DEBUG buttonText calculation:")
+        // DEBUG LOG: print("DEBUG buttonText calculation:")
         print("  - diaryEntryId: \(String(describing: diaryEntryId))")
         print("  - isEditingMode: \(isEditingMode)")
         print("  - selectedMeal: \(selectedMeal)")
@@ -738,7 +738,7 @@ struct FoodDetailViewFromSearch: View {
     }
     
     private func getIngredientsList() -> [String]? {
-        print("🔍 getIngredientsList() called")
+        // DEBUG LOG: print("🔍 getIngredientsList() called")
         print("  - enhancedIngredientsText: \(enhancedIngredientsText?.prefix(50) ?? "nil")")
         print("  - displayFood.ingredients: \(displayFood.ingredients?.count ?? 0) items")
 
@@ -968,7 +968,7 @@ struct FoodDetailViewFromSearch: View {
         let currentDBVersion = ProcessingScorer.shared.databaseVersion
         let savedDBVersion = displayFood.additivesDatabaseVersion
 
-        print("📊 Database versions - Current: \(currentDBVersion), Saved: \(savedDBVersion ?? "nil (legacy)")")
+        // DEBUG LOG: print("📊 Database versions - Current: \(currentDBVersion), Saved: \(savedDBVersion ?? "nil (legacy)")")
 
         // Re-analyze if:
         // 1. No saved version (legacy data)
@@ -978,7 +978,7 @@ struct FoodDetailViewFromSearch: View {
         let needsReAnalysis = (savedDBVersion == nil || savedDBVersion != currentDBVersion) && hasIngredients
 
         if needsReAnalysis {
-            print("🔄 RE-ANALYZING: Database version outdated or missing")
+        // DEBUG LOG: print("🔄 RE-ANALYZING: Database version outdated or missing")
             print("   - Saved version: \(savedDBVersion ?? "none")")
             print("   - Current version: \(currentDBVersion)")
             print("   - Ingredients available: \(displayFood.ingredients?.count ?? 0)")
@@ -987,7 +987,7 @@ struct FoodDetailViewFromSearch: View {
             let ingredientsText = displayFood.ingredients!.joined(separator: ", ")
             let freshAdditives = ProcessingScorer.shared.analyzeAdditives(in: ingredientsText)
 
-            print("🔄 Fresh analysis complete: Found \(freshAdditives.count) additives")
+        // DEBUG LOG: print("🔄 Fresh analysis complete: Found \(freshAdditives.count) additives")
 
             // Convert fresh analysis to DetailedAdditive format
             return freshAdditives.map { additive in
@@ -1246,14 +1246,14 @@ struct FoodDetailViewFromSearch: View {
                             if servingAmount == "1" && servingUnit == "g" {
                                 // PRIORITY 1: Use servingSizeG if available (most reliable)
                                 if let sizeG = food.servingSizeG, sizeG > 0 {
-                                    print("🔧 Using servingSizeG: \(sizeG)g")
+        // DEBUG LOG: print("🔧 Using servingSizeG: \(sizeG)g")
                                     servingAmount = String(format: "%.0f", sizeG)
                                     servingUnit = "g"
                                     gramsAmount = String(format: "%.0f", sizeG)  // Also update gramsAmount
                                 } else {
                                     // PRIORITY 2: Extract from serving description
                                     let description = food.servingDescription ?? "100g"
-                                    print("🔧 Parsing serving description: '\(description)'")
+        // DEBUG LOG: print("🔧 Parsing serving description: '\(description)'")
 
                                     // Try to extract grams from multiple patterns
                                     let patterns = [
@@ -1269,7 +1269,7 @@ struct FoodDetailViewFromSearch: View {
                                            let match = regex.firstMatch(in: description, options: [], range: NSRange(location: 0, length: description.count)),
                                            let range = Range(match.range(at: 1), in: description) {
                                             let extractedValue = String(description[range])
-                                            print("🔧 Extracted serving size: \(extractedValue)g")
+        // DEBUG LOG: print("🔧 Extracted serving size: \(extractedValue)g")
                                             servingAmount = extractedValue
                                             servingUnit = "g"
                                             gramsAmount = extractedValue  // Also update gramsAmount
@@ -1737,7 +1737,7 @@ struct FoodDetailViewFromSearch: View {
         let micronutrientProfile = MicronutrientManager.shared.getMicronutrientProfile(for: displayFood, quantity: (servingSize / 100) * quantityMultiplier)
 
         // Create diary entry
-        print("📝 Creating DiaryFoodItem:")
+        // DEBUG LOG: print("📝 Creating DiaryFoodItem:")
         print("  - displayFood.ingredients: \(displayFood.ingredients?.count ?? 0) items")
         print("  - displayFood.ingredients: \(displayFood.ingredients ?? [])")
         print("  - displayFood.additives: \(displayFood.additives?.count ?? 0) items")
@@ -1766,7 +1766,7 @@ struct FoodDetailViewFromSearch: View {
             micronutrientProfile: micronutrientProfile
         )
 
-        print("📝 Created DiaryFoodItem:")
+        // DEBUG LOG: print("📝 Created DiaryFoodItem:")
         print("  - diaryEntry.ingredients: \(diaryEntry.ingredients?.count ?? 0) items")
         print("  - diaryEntry.ingredients: \(diaryEntry.ingredients ?? [])")
 
@@ -1790,7 +1790,7 @@ struct FoodDetailViewFromSearch: View {
                 // When editing, ALWAYS use originalMealType to preserve the meal
                 // Ignore selectedMeal changes from UI - editing should never move meals
                 let targetMeal = originalMealType
-                print("🔍 MEAL TIME DEBUG:")
+        // DEBUG LOG: print("🔍 MEAL TIME DEBUG:")
                 print("  - diaryEntryId exists (editing mode)")
                 print("  - originalMealType: '\(originalMealType)'")
                 print("  - selectedMeal: '\(selectedMeal)' (IGNORED for editing)")
@@ -1800,7 +1800,7 @@ struct FoodDetailViewFromSearch: View {
                 diaryDataManager.replaceFoodItem(diaryEntry, to: targetMeal, for: targetDate)
                 print("FoodDetailView: Successfully replaced \(diaryEntry.name) in \(targetMeal) on \(targetDate)")
             } else {
-                print("🔍 MEAL TIME DEBUG:")
+        // DEBUG LOG: print("🔍 MEAL TIME DEBUG:")
                 print("  - NO diaryEntryId (adding new)")
                 print("  - selectedMeal: '\(selectedMeal)'")
                 print("FoodDetailView: About to add food '\(diaryEntry.name)' to meal '\(selectedMeal)' on date '\(targetDate)'")
@@ -2151,7 +2151,7 @@ struct FoodDetailViewFromSearch: View {
     // Enhance food data using AI ingredient finder
     private func enhanceWithAI() {
         isEnhancing = true
-        print("🤖 Starting AI enhancement for: \(food.name), brand: \(food.brand ?? "none")")
+        // DEBUG LOG: print("🤖 Starting AI enhancement for: \(food.name), brand: \(food.brand ?? "none")")
 
         Task {
             do {
@@ -2161,7 +2161,7 @@ struct FoodDetailViewFromSearch: View {
                     brand: food.brand
                 )
 
-                print("🔍 AI Search Result:")
+        // DEBUG LOG: print("🔍 AI Search Result:")
                 print("  - ingredients_found: \(result.ingredients_found)")
                 print("  - ingredients_text: \(result.ingredients_text?.prefix(50) ?? "nil")")
                 print("  - nutrition: \(result.nutrition_per_100g != nil ? "YES" : "NO")")
@@ -2172,7 +2172,7 @@ struct FoodDetailViewFromSearch: View {
 
                 // Save to Firebase AI-improved foods collection (outside MainActor)
                 if result.ingredients_found {
-                    print("💾 Saving AI-improved food to Firebase")
+        // DEBUG LOG: print("💾 Saving AI-improved food to Firebase")
                     var enhancedData: [String: Any] = [:]
 
                     if let ingredientsText = result.ingredients_text {
@@ -2226,7 +2226,7 @@ struct FoodDetailViewFromSearch: View {
                         if let ingredientsText = result.ingredients_text {
                             print("✅ AI found enhanced ingredients: \(ingredientsText.prefix(100))...")
                             enhancedIngredientsText = ingredientsText
-                            print("📝 enhancedIngredientsText is now: \(enhancedIngredientsText?.prefix(50) ?? "nil")")
+        // DEBUG LOG: print("📝 enhancedIngredientsText is now: \(enhancedIngredientsText?.prefix(50) ?? "nil")")
                         } else {
                             print("⚠️ No ingredients_text in result")
                         }
@@ -2252,7 +2252,7 @@ struct FoodDetailViewFromSearch: View {
                         if let servingSizeStr = result.serving_size, !servingSizeStr.isEmpty {
                             print("📏 Updating serving size from AI: \(servingSizeStr)")
                             let parsed = parseServingSizeString(servingSizeStr)
-                            print("🔧 Parsed serving size: amount=\(parsed.amount), unit=\(parsed.unit)")
+        // DEBUG LOG: print("🔧 Parsed serving size: amount=\(parsed.amount), unit=\(parsed.unit)")
                             servingAmount = parsed.amount
                             servingUnit = parsed.unit
                             gramsAmount = parsed.amount
@@ -2262,7 +2262,7 @@ struct FoodDetailViewFromSearch: View {
                         }
 
                         // Clear and repopulate cached data with enhanced information
-                        print("🗑️ Clearing all caches and repopulating with enhanced data")
+        // DEBUG LOG: print("🗑️ Clearing all caches and repopulating with enhanced data")
                         cachedIngredients = nil
                         cachedAdditives = nil
                         cachedIngredientsStatus = nil
@@ -2270,14 +2270,14 @@ struct FoodDetailViewFromSearch: View {
                         cachedNutraSafeGrade = nil
 
                         // Immediately repopulate ingredients cache with enhanced data
-                        print("🔄 Repopulating ingredients cache")
+        // DEBUG LOG: print("🔄 Repopulating ingredients cache")
                         cachedIngredients = getIngredientsList()
                         cachedIngredientsStatus = getIngredientsStatus()
 
                         print("✅ Cache repopulated: \(cachedIngredients?.count ?? 0) ingredients")
 
                         // Recalculate NutraSafe grade with enhanced data
-                        print("🔄 Recalculating NutraSafe grade with enhanced data")
+        // DEBUG LOG: print("🔄 Recalculating NutraSafe grade with enhanced data")
                         cachedNutraSafeGrade = ProcessingScorer.shared.computeNutraSafeProcessingGrade(for: displayFood)
                         if let grade = cachedNutraSafeGrade {
                             print("✅ NutraSafe grade recalculated: \(grade.grade)")
@@ -2285,7 +2285,7 @@ struct FoodDetailViewFromSearch: View {
 
                         // Trigger additive analysis with new ingredients
                         if let ingredientsArray = cachedIngredients, !ingredientsArray.isEmpty {
-                            print("🔬 Analyzing additives in enhanced ingredients")
+        // DEBUG LOG: print("🔬 Analyzing additives in enhanced ingredients")
                             AdditiveWatchService.shared.analyzeIngredients(ingredientsArray) { result in
                                 let mapped: [DetailedAdditive] = result.detectedAdditives.map { additive in
                                     let riskLevel: String
@@ -2315,7 +2315,7 @@ struct FoodDetailViewFromSearch: View {
                         }
 
                         // Trigger UI refresh
-                        print("🔄 Triggering UI refresh")
+        // DEBUG LOG: print("🔄 Triggering UI refresh")
                         refreshTrigger = UUID()
 
                         print("✨ Enhancement complete! Showing success alert")
@@ -2484,7 +2484,7 @@ struct FoodDetailViewFromSearch: View {
                     UserDefaults.standard.set(detectedAllergens, forKey: "userDetectedAllergens_\(foodKey)")
                     
                     print("✅ Intelligent extraction completed:")
-                    print("📝 Ingredients: \(cleanIngredientsText)")
+        // DEBUG LOG: print("📝 Ingredients: \(cleanIngredientsText)")
                     print("⚠️ Detected allergens: \(detectedAllergens.joined(separator: ", "))")
                     
                     // Trigger nutrition score recalculation with new ingredients
@@ -2534,7 +2534,7 @@ struct FoodDetailViewFromSearch: View {
     
     // Recalculate nutrition score with new user-verified ingredients
     private func recalculateNutritionScore(with ingredients: [String]) async {
-        print("🔄 Recalculating nutrition score with user-verified ingredients...")
+        // DEBUG LOG: print("🔄 Recalculating nutrition score with user-verified ingredients...")
 
         // PERFORMANCE: Invalidate caches and reset initialization flag to allow re-initialization
         await MainActor.run {
@@ -2552,7 +2552,7 @@ struct FoodDetailViewFromSearch: View {
         // Force UI refresh immediately so user sees the updated nutrition score
         await MainActor.run {
             refreshTrigger = UUID()
-            print("🔄 UI refresh triggered - nutrition score should now reflect user-verified ingredients")
+        // DEBUG LOG: print("🔄 UI refresh triggered - nutrition score should now reflect user-verified ingredients")
         }
     }
     
@@ -2996,7 +2996,7 @@ struct FoodDetailViewFromSearch: View {
     
     // NEW: Detect nutrients from ingredients using NutrientDetector and MicronutrientDatabase
     private func getDetectedNutrients() -> [String] {
-        print("🔬 getDetectedNutrients() called for food: \(food.name)")
+        // DEBUG LOG: print("🔬 getDetectedNutrients() called for food: \(food.name)")
         print("  📝 Ingredients: \(food.ingredients ?? [])")
 
         var detectedNutrients: [String] = []

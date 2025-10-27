@@ -42,6 +42,6 @@ class OnboardingManager: ObservableObject {
     func resetOnboarding() {
         UserDefaults.standard.set(false, forKey: hasCompletedKey)
         // Note: We don't reset disclaimer acceptance - user has already agreed
-        print("🔄 Onboarding reset - will show on next launch")
+        // DEBUG LOG: print("🔄 Onboarding reset - will show on next launch")
     }
 }

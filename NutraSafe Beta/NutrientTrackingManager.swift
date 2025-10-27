@@ -41,7 +41,7 @@ class NutrientTrackingManager: ObservableObject {
             print("⚠️ Cannot start tracking: userId is empty")
             return
         }
-        print("🚀 Starting nutrient tracking for user: \(userId)")
+        // DEBUG LOG: print("🚀 Starting nutrient tracking for user: \(userId)")
         Task {
             await loadUserData(userId: userId)
             await performInitialDiaryProcessing(userId: userId)

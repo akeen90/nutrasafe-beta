@@ -196,14 +196,14 @@ struct FoodReactionsView: View {
         .onAppear {
             // PERFORMANCE: Skip if already loaded - prevents redundant Firebase calls on tab switches
             guard !hasLoadedOnce else {
-                print("⚡️ FoodReactionsView: Skipping load - data already loaded (count: \(reactionManager.reactions.count))")
+        // DEBUG LOG: print("⚡️ FoodReactionsView: Skipping load - data already loaded (count: \(reactionManager.reactions.count))")
                 return
             }
             hasLoadedOnce = true
 
-            print("🔵 FoodReactionsView appeared - loading reactions data")
-            print("🔵 Current reactions count: \(reactionManager.reactions.count)")
-            print("🔵 Is loading: \(reactionManager.isLoading)")
+        // DEBUG LOG: print("🔵 FoodReactionsView appeared - loading reactions data")
+        // DEBUG LOG: print("🔵 Current reactions count: \(reactionManager.reactions.count)")
+        // DEBUG LOG: print("🔵 Is loading: \(reactionManager.isLoading)")
             reactionManager.reloadIfAuthenticated()
         }
         .alert("Error", isPresented: $reactionManager.showingError) {
@@ -1442,7 +1442,7 @@ class ReactionManager: ObservableObject {
 
             do {
                 let fetchedReactions = try await firebaseManager.getReactions()
-                print("🔄 ReactionManager: About to update UI with \(fetchedReactions.count) reactions")
+        // DEBUG LOG: print("🔄 ReactionManager: About to update UI with \(fetchedReactions.count) reactions")
                 await MainActor.run {
                     self.reactions = fetchedReactions.sorted { $0.timestamp.dateValue() > $1.timestamp.dateValue() }
                     self.isLoading = false

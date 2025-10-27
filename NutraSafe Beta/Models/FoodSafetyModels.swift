@@ -554,7 +554,7 @@ class AdditiveWatchService {
         
         do {
             let content = try String(contentsOf: url)
-            print("📄 CSV content length: \(content.count) characters")
+        // DEBUG LOG: print("📄 CSV content length: \(content.count) characters")
             additiveDatabase = parseCSV(content)
             isLoaded = true
             print("✅✅✅ ADDITIVE DATABASE LOADED: \(additiveDatabase.count) additives ✅✅✅")
@@ -586,12 +586,12 @@ class AdditiveWatchService {
     }
     
     func analyzeIngredients(_ ingredients: [String], completion: @escaping (AdditiveDetectionResult) -> Void) {
-        print("🔬 [AdditiveWatchService] Starting local comprehensive additive analysis")
-        print("🔬 [AdditiveWatchService] Input ingredients array: \(ingredients)")
-        print("🔬 [AdditiveWatchService] Ingredients count: \(ingredients.count)")
+        // DEBUG LOG: print("🔬 [AdditiveWatchService] Starting local comprehensive additive analysis")
+        // DEBUG LOG: print("🔬 [AdditiveWatchService] Input ingredients array: \(ingredients)")
+        // DEBUG LOG: print("🔬 [AdditiveWatchService] Ingredients count: \(ingredients.count)")
 
         let ingredientsText = ingredients.joined(separator: ", ")
-        print("🔬 [AdditiveWatchService] Joined ingredients text: '\(ingredientsText)'")
+        // DEBUG LOG: print("🔬 [AdditiveWatchService] Joined ingredients text: '\(ingredientsText)'")
 
         // Use ProcessingScorer's exposed additive analysis method
         let primaryDetected = ProcessingScorer.shared.analyzeAdditives(in: ingredientsText)

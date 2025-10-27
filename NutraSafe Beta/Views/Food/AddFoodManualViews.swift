@@ -118,7 +118,7 @@ class IngredientFinderService: ObservableObject {
     private func callCloudFunction(productName: String, brand: String?) async throws -> IngredientFinderResponse {
         // Get endpoint URL from AppConfig
         let endpointURLString = AppConfig.Firebase.Functions.findIngredients
-        print("🔍 Debug: Endpoint URL from AppConfig: \(endpointURLString)")
+        // DEBUG LOG: print("🔍 Debug: Endpoint URL from AppConfig: \(endpointURLString)")
 
         guard let url = URL(string: endpointURLString) else {
             print("❌ Debug: Invalid URL: \(endpointURLString)")
@@ -754,7 +754,7 @@ struct ManualFoodDetailEntryView: View {
                         if let servingSizeStr = foundIngredients?.serving_size, !servingSizeStr.isEmpty {
                             print("📏 MANUAL ADD (onUse) - Updating serving size from AI: \(servingSizeStr)")
                             let parsed = parseServingSize(servingSizeStr)
-                            print("🔧 MANUAL ADD (onUse) - Parsed: amount=\(parsed.amount), unit=\(parsed.unit)")
+        // DEBUG LOG: print("🔧 MANUAL ADD (onUse) - Parsed: amount=\(parsed.amount), unit=\(parsed.unit)")
                             servingSize = parsed.amount
                             servingUnit = parsed.unit
                             print("✅ MANUAL ADD (onUse) - Serving size updated: servingSize=\(servingSize), servingUnit=\(servingUnit)")
@@ -793,7 +793,7 @@ struct ManualFoodDetailEntryView: View {
                         if let servingSizeStr = foundIngredients?.serving_size, !servingSizeStr.isEmpty {
                             print("📏 MANUAL ADD (onEdit) - Updating serving size from AI: \(servingSizeStr)")
                             let parsed = parseServingSize(servingSizeStr)
-                            print("🔧 MANUAL ADD (onEdit) - Parsed: amount=\(parsed.amount), unit=\(parsed.unit)")
+        // DEBUG LOG: print("🔧 MANUAL ADD (onEdit) - Parsed: amount=\(parsed.amount), unit=\(parsed.unit)")
                             servingSize = parsed.amount
                             servingUnit = parsed.unit
                             print("✅ MANUAL ADD (onEdit) - Serving size updated: servingSize=\(servingSize), servingUnit=\(servingUnit)")
@@ -850,7 +850,7 @@ struct ManualFoodDetailEntryView: View {
                     brand: brand.isEmpty ? nil : brand
                 )
 
-                print("🍎 MANUAL ADD - AI Search Result:")
+        // DEBUG LOG: print("🍎 MANUAL ADD - AI Search Result:")
                 print("  - ingredients_found: \(response.ingredients_found)")
                 print("  - ingredients_text: \(response.ingredients_text?.prefix(50) ?? "nil")")
                 print("  - nutrition: \(response.nutrition_per_100g != nil ? "YES" : "NO")")

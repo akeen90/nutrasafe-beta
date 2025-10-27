@@ -829,7 +829,7 @@ class DiaryDataManager: ObservableObject {
     // MARK: - Micronutrient Processing
 
     private func processMicronutrientsForFood(_ item: DiaryFoodItem, date: Date) async {
-        print("🔬 Processing micronutrients for: \(item.name)")
+        // DEBUG LOG: print("🔬 Processing micronutrients for: \(item.name)")
 
         // Check if the food has a micronutrient profile with actual data
         if let profile = item.micronutrientProfile {

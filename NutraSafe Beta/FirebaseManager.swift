@@ -104,7 +104,7 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to delete data"])
         }
 
-        print("🗑️ Starting to delete all user data for user: \(userId)")
+        // DEBUG LOG: print("🗑️ Starting to delete all user data for user: \(userId)")
 
         // Delete all subcollections
         let collections = [
@@ -206,11 +206,11 @@ class FirebaseManager: ObservableObject {
 
         // Invalidate period cache (7-day queries)
         periodCache.removeAll()
-        print("🗑️ Cleared period cache after saving food entry")
+        // DEBUG LOG: print("🗑️ Cleared period cache after saving food entry")
 
         // Notify that food diary was updated
         await MainActor.run {
-            print("📢 Posting foodDiaryUpdated notification...")
+        // DEBUG LOG: print("📢 Posting foodDiaryUpdated notification...")
             NotificationCenter.default.post(name: .foodDiaryUpdated, object: nil)
         }
 
@@ -237,7 +237,7 @@ class FirebaseManager: ObservableObject {
         let dateKey = "\(userId)_\(dateFormatter.string(from: startOfDay))"
 
         foodEntriesCache.removeValue(forKey: dateKey)
-        print("🗑️ Invalidated food entries cache for \(dateFormatter.string(from: startOfDay))")
+        // DEBUG LOG: print("🗑️ Invalidated food entries cache for \(dateFormatter.string(from: startOfDay))")
     }
     
     func getFoodEntries(for date: Date) async throws -> [FoodEntry] {
@@ -254,16 +254,16 @@ class FirebaseManager: ObservableObject {
         if let cached = foodEntriesCache[dateKey] {
             let age = Date().timeIntervalSince(cached.timestamp)
             if age < foodEntriesCacheExpirationSeconds {
-                print("⚡️ Food Entries Cache HIT - instant load for \(dateFormatter.string(from: startOfDay)) (cached \(Int(age))s ago)")
+        // DEBUG LOG: print("⚡️ Food Entries Cache HIT - instant load for \(dateFormatter.string(from: startOfDay)) (cached \(Int(age))s ago)")
                 return cached.entries
             } else {
                 // Cache expired, remove it
                 foodEntriesCache.removeValue(forKey: dateKey)
-                print("🔄 Food Entries Cache EXPIRED - refreshing for \(dateFormatter.string(from: startOfDay))")
+        // DEBUG LOG: print("🔄 Food Entries Cache EXPIRED - refreshing for \(dateFormatter.string(from: startOfDay))")
             }
         }
 
-        print("🔍 Food Entries Cache MISS - fetching from Firestore for \(dateFormatter.string(from: startOfDay))")
+        // DEBUG LOG: print("🔍 Food Entries Cache MISS - fetching from Firestore for \(dateFormatter.string(from: startOfDay))")
 
         let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
 
@@ -282,7 +282,7 @@ class FirebaseManager: ObservableObject {
             entries: entries,
             timestamp: Date()
         )
-        print("💾 Cached \(entries.count) food entries for \(dateFormatter.string(from: startOfDay))")
+        // DEBUG LOG: print("💾 Cached \(entries.count) food entries for \(dateFormatter.string(from: startOfDay))")
 
         return entries
     }
@@ -303,17 +303,17 @@ class FirebaseManager: ObservableObject {
         if let cached = cachedResult {
             let age = Date().timeIntervalSince(cached.timestamp)
             if age < periodCacheExpirationSeconds {
-                print("⚡️ Period Cache HIT - instant load for \(days) days (cached \(Int(age))s ago)")
+        // DEBUG LOG: print("⚡️ Period Cache HIT - instant load for \(days) days (cached \(Int(age))s ago)")
                 return cached.entries
             } else {
                 _ = await MainActor.run {
                     periodCache.removeValue(forKey: days)
                 }
-                print("🔄 Period Cache EXPIRED - refreshing \(days) days")
+        // DEBUG LOG: print("🔄 Period Cache EXPIRED - refreshing \(days) days")
             }
         }
 
-        print("🔍 Period Cache MISS - fetching \(days) days from Firestore (ONE query)")
+        // DEBUG LOG: print("🔍 Period Cache MISS - fetching \(days) days from Firestore (ONE query)")
 
         let calendar = Calendar.current
         let endDate = Date()
@@ -334,7 +334,7 @@ class FirebaseManager: ObservableObject {
         await MainActor.run {
             periodCache[days] = (entries, Date())
         }
-        print("💾 Cached \(entries.count) food entries for \(days)-day period")
+        // DEBUG LOG: print("💾 Cached \(entries.count) food entries for \(days)-day period")
 
         return entries
     }
@@ -369,7 +369,7 @@ class FirebaseManager: ObservableObject {
             .whereField("date", isLessThan: FirebaseFirestore.Timestamp(date: startOfToday))
             .getDocuments()
 
-        print("🗑️ Deleting \(snapshot.documents.count) old food entries...")
+        // DEBUG LOG: print("🗑️ Deleting \(snapshot.documents.count) old food entries...")
 
         // Delete each old entry
         for document in snapshot.documents {
@@ -386,15 +386,15 @@ class FirebaseManager: ObservableObject {
 
         // Clear entire cache since we don't know which date this entry belongs to
         foodEntriesCache.removeAll()
-        print("🗑️ Cleared all food entries cache after deletion")
+        // DEBUG LOG: print("🗑️ Cleared all food entries cache after deletion")
 
         // Invalidate period cache (7-day queries)
         periodCache.removeAll()
-        print("🗑️ Cleared period cache after deletion")
+        // DEBUG LOG: print("🗑️ Cleared period cache after deletion")
 
         // Notify that food diary was updated
         await MainActor.run {
-            print("📢 Posting foodDiaryUpdated notification after deletion...")
+        // DEBUG LOG: print("📢 Posting foodDiaryUpdated notification after deletion...")
             NotificationCenter.default.post(name: .foodDiaryUpdated, object: nil)
         }
     }
@@ -409,7 +409,7 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save reactions"])
         }
 
-        print("💾 Saving reaction to Firebase for user: \(userId)")
+        // DEBUG LOG: print("💾 Saving reaction to Firebase for user: \(userId)")
         let reactionData = reaction.toDictionary()
         try await db.collection("users").document(userId)
             .collection("reactions").document(reaction.id.uuidString).setData(reactionData)
@@ -543,7 +543,7 @@ class FirebaseManager: ObservableObject {
         if let cached = searchCache.object(forKey: cacheKey) {
             let age = Date().timeIntervalSince(cached.timestamp)
             if age < cacheExpirationSeconds {
-                print("⚡️ Cache HIT - instant results for '\(query)' (cached \(Int(age))s ago)")
+        // DEBUG LOG: print("⚡️ Cache HIT - instant results for '\(query)' (cached \(Int(age))s ago)")
                 return cached.results
             } else {
                 // Cache expired, remove it
@@ -551,7 +551,7 @@ class FirebaseManager: ObservableObject {
             }
         }
 
-        print("🔍 Cache MISS - fetching '\(query)' from server...")
+        // DEBUG LOG: print("🔍 Cache MISS - fetching '\(query)' from server...")
 
         // Search all sources in parallel for maximum performance
         async let mainResults = searchMainDatabase(query: query)
@@ -588,14 +588,14 @@ class FirebaseManager: ObservableObject {
         // Convert back to array
         let mergedResults = Array(foodsById.values)
 
-        print("🔍 Search results for '\(query)': \(userFoods.count) user + \(aiEnhanced.count) AI-enhanced + \(aiManual.count) AI-manual + \(mainFoods.count) SQL = \(mergedResults.count) total (after deduplication)")
+        // DEBUG LOG: print("🔍 Search results for '\(query)': \(userFoods.count) user + \(aiEnhanced.count) AI-enhanced + \(aiManual.count) AI-manual + \(mainFoods.count) SQL = \(mergedResults.count) total (after deduplication)")
 
         // Store in cache for next time (NSCache auto-manages memory)
         searchCache.setObject(
             SearchCacheEntry(results: mergedResults, timestamp: Date()),
             forKey: cacheKey
         )
-        print("💾 Cached \(mergedResults.count) results for '\(query)'")
+        // DEBUG LOG: print("💾 Cached \(mergedResults.count) results for '\(query)'")
 
         return mergedResults
     }
@@ -617,7 +617,7 @@ class FirebaseManager: ObservableObject {
     /// Clear the search cache (useful for testing or memory management)
     func clearSearchCache() {
         searchCache.removeAllObjects()
-        print("🗑️ Search cache cleared")
+        // DEBUG LOG: print("🗑️ Search cache cleared")
     }
 
     /// Pre-warm cache with popular searches for instant results
@@ -654,17 +654,17 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view reactions"])
         }
 
-        print("📥 Loading reactions from Firebase for user: \(userId)")
+        // DEBUG LOG: print("📥 Loading reactions from Firebase for user: \(userId)")
         let snapshot = try await db.collection("users").document(userId)
             .collection("reactions")
             .order(by: "date", descending: true)
             .getDocuments()
 
-        print("📄 Found \(snapshot.documents.count) reaction documents in Firebase")
+        // DEBUG LOG: print("📄 Found \(snapshot.documents.count) reaction documents in Firebase")
 
         let reactions = snapshot.documents.compactMap { doc -> FoodReaction? in
             let data = doc.data()
-            print("🔍 Parsing reaction document: \(doc.documentID)")
+        // DEBUG LOG: print("🔍 Parsing reaction document: \(doc.documentID)")
             if let reaction = FoodReaction.fromDictionary(data) {
                 return reaction
             } else {
@@ -685,7 +685,7 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to delete reactions"])
         }
 
-        print("🗑️ Deleting reaction from Firebase for user: \(userId)")
+        // DEBUG LOG: print("🗑️ Deleting reaction from Firebase for user: \(userId)")
         try await db.collection("users").document(userId)
             .collection("reactions").document(reactionId.uuidString).delete()
         print("✅ Reaction deleted successfully")
@@ -1103,13 +1103,13 @@ class FirebaseManager: ObservableObject {
         if let lastFetched = allergensLastFetched,
            Date().timeIntervalSince(lastFetched) < allergenCacheExpirationSeconds,
            !cachedUserAllergens.isEmpty {
-            print("⚡ Using cached allergens: \(cachedUserAllergens.count) items")
+        // DEBUG LOG: print("⚡ Using cached allergens: \(cachedUserAllergens.count) items")
             return cachedUserAllergens
         }
 
         // Cache expired or empty - fetch fresh
         do {
-            print("🔄 Fetching fresh allergens from Firebase")
+        // DEBUG LOG: print("🔄 Fetching fresh allergens from Firebase")
             let settings = try await getUserSettings()
             return settings.allergens ?? []
         } catch {

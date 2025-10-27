@@ -143,7 +143,7 @@ class MicronutrientDatabase {
         if sqlite3_prepare_v2(db, countQuery, -1, &countStmt, nil) == SQLITE_OK {
             if sqlite3_step(countStmt) == SQLITE_ROW {
                 let count = sqlite3_column_int(countStmt, 0)
-                print("📊 Database contains \(count) nutrients")
+        // DEBUG LOG: print("📊 Database contains \(count) nutrients")
             }
         }
 
@@ -195,7 +195,7 @@ class MicronutrientDatabase {
         guard isInitialized, let db = db else { return }
 
         let startTime = Date()
-        print("⚡️ Preloading all nutrients into cache...")
+        // DEBUG LOG: print("⚡️ Preloading all nutrients into cache...")
 
         let query = """
         SELECT nutrient, name, category, benefits, deficiency_signs, common_sources, recommended_daily_intake
@@ -578,7 +578,7 @@ class MicronutrientDatabase {
         // "vitamin C (as l-ascorbic acid)", "calcium carbonate", etc.
         let detectedFortifications = IngredientMicronutrientParser.shared.parseIngredientsArray(ingredients)
 
-        print("🔬 Pattern parser detected \(detectedFortifications.count) fortified nutrients")
+        // DEBUG LOG: print("🔬 Pattern parser detected \(detectedFortifications.count) fortified nutrients")
 
         for detected in detectedFortifications {
             // Fortified nutrients are ALWAYS strong sources (1.0 contribution)

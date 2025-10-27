@@ -313,7 +313,7 @@ struct NutrientDetector {
 
         // Use actual micronutrient data if available
         if let profile = food.micronutrientProfile {
-            print("🔍 Detecting nutrients in '\(food.name)' using micronutrient profile")
+        // DEBUG LOG: print("🔍 Detecting nutrients in '\(food.name)' using micronutrient profile")
 
             // Check vitamins
             for (vitaminKey, amount) in profile.vitamins {
@@ -341,7 +341,7 @@ struct NutrientDetector {
 
             print("  📊 Total nutrients from profile: \(detectedNutrients.count)")
         } else {
-            print("🔍 Detecting nutrients in '\(food.name)' using keyword matching (no micronutrient profile)")
+        // DEBUG LOG: print("🔍 Detecting nutrients in '\(food.name)' using keyword matching (no micronutrient profile)")
         }
 
         // ENHANCED: Use pattern-based parser for fortified nutrients from ingredients
