@@ -115,6 +115,7 @@ struct DiaryMealCard: View {
                     ForEach(foods) { food in
                         DiaryFoodRow(
                             food: food,
+                            mealType: mealType,
                             isSelected: selectedFoodItems.contains(food.id.uuidString),
                             hasAnySelection: !selectedFoodItems.isEmpty,
                             onTap: {
@@ -213,6 +214,7 @@ struct DiaryMealCard: View {
 // MARK: - Diary Food Row
 struct DiaryFoodRow: View {
     let food: DiaryFoodItem
+    let mealType: String
     let isSelected: Bool
     let hasAnySelection: Bool
     let onTap: () -> Void
@@ -312,7 +314,9 @@ struct DiaryFoodRow: View {
                 food: food.toFoodSearchResult(),
                 sourceType: .diary,
                 selectedTab: .constant(.diary),
-                destination: .diary
+                destination: .diary,
+                diaryEntryId: food.id,
+                diaryMealType: mealType
             )
         }
     }

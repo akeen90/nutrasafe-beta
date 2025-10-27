@@ -44,11 +44,17 @@ struct FoodDetailViewFromSearch: View {
     @State private var enhancedProductName: String?
     @State private var enhancedBrand: String?
 
-    init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, destination: AddFoodMainView.AddDestination, onComplete: ((TabItem) -> Void)? = nil) {
+    // MARK: - Diary replacement support
+    let diaryEntryId: UUID?
+    let diaryMealType: String?
+
+    init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, destination: AddFoodMainView.AddDestination, diaryEntryId: UUID? = nil, diaryMealType: String? = nil, onComplete: ((TabItem) -> Void)? = nil) {
         self.food = food
         self.sourceType = sourceType
         self._selectedTab = selectedTab
         self.destination = destination
+        self.diaryEntryId = diaryEntryId
+        self.diaryMealType = diaryMealType
         self.onComplete = onComplete
 
         // CRITICAL FIX: Initialize serving size from food data immediately
@@ -85,6 +91,11 @@ struct FoodDetailViewFromSearch: View {
         self._servingAmount = State(initialValue: initialServingSize)
         self._gramsAmount = State(initialValue: initialServingSize)
         self._servingUnit = State(initialValue: initialUnit)
+
+        // Initialize selected meal from diary meal type if provided
+        self._selectedMeal = State(initialValue: diaryMealType ?? "Breakfast")
+        self._isEditingMode = State(initialValue: diaryEntryId != nil)
+        self._originalMealType = State(initialValue: diaryMealType ?? "")
     }
 
     // OPTIMIZED: Use food directly - search already returns complete data
@@ -181,7 +192,14 @@ struct FoodDetailViewFromSearch: View {
     @State private var selectedWatchTab: WatchTab = .additives
     
     private var buttonText: String {
-        if isEditingMode {
+        // Check if we're replacing a diary entry
+        if let _ = diaryEntryId {
+            if selectedMeal == originalMealType {
+                return "Replace in Diary"
+            } else {
+                return "Move to \(selectedMeal)"
+            }
+        } else if isEditingMode {
             if selectedMeal == originalMealType {
                 return "Update Portion"
             } else {
@@ -1624,7 +1642,9 @@ struct FoodDetailViewFromSearch: View {
         print("  - displayFood.additives: \(displayFood.additives?.count ?? 0) items")
         print("  - displayFood.barcode: \(displayFood.barcode ?? "nil")")
 
+        // Use existing diary entry ID if replacing, otherwise create new ID
         let diaryEntry = DiaryFoodItem(
+            id: diaryEntryId ?? UUID(),
             name: displayFood.name,
             brand: displayFood.brand,
             calories: Int(totalCalories),
@@ -1664,11 +1684,18 @@ struct FoodDetailViewFromSearch: View {
                 targetDate = Date()
             }
 
-            print("FoodDetailView: About to add food '\(diaryEntry.name)' to meal '\(selectedMeal)' on date '\(targetDate)'")
-            print("FoodDetailView: DiaryEntry details - Calories: \(diaryEntry.calories), Protein: \(diaryEntry.protein), Serving: \(diaryEntry.servingDescription), Quantity: \(diaryEntry.quantity)")
-            diaryDataManager.addFoodItem(diaryEntry, to: selectedMeal, for: targetDate)
-
-            print("FoodDetailView: Successfully added \(diaryEntry.name) to \(selectedMeal) on \(targetDate)")
+            // Check if we're replacing an existing diary entry or adding a new one
+            if let _ = diaryEntryId {
+                print("FoodDetailView: About to replace food '\(diaryEntry.name)' (ID: \(diaryEntry.id)) in meal '\(selectedMeal)' on date '\(targetDate)'")
+                print("FoodDetailView: DiaryEntry details - Calories: \(diaryEntry.calories), Protein: \(diaryEntry.protein), Serving: \(diaryEntry.servingDescription), Quantity: \(diaryEntry.quantity)")
+                diaryDataManager.replaceFoodItem(diaryEntry, to: selectedMeal, for: targetDate)
+                print("FoodDetailView: Successfully replaced \(diaryEntry.name) in \(selectedMeal) on \(targetDate)")
+            } else {
+                print("FoodDetailView: About to add food '\(diaryEntry.name)' to meal '\(selectedMeal)' on date '\(targetDate)'")
+                print("FoodDetailView: DiaryEntry details - Calories: \(diaryEntry.calories), Protein: \(diaryEntry.protein), Serving: \(diaryEntry.servingDescription), Quantity: \(diaryEntry.quantity)")
+                diaryDataManager.addFoodItem(diaryEntry, to: selectedMeal, for: targetDate)
+                print("FoodDetailView: Successfully added \(diaryEntry.name) to \(selectedMeal) on \(targetDate)")
+            }
 
             // Dismiss and navigate to the destination tab
             dismiss()
