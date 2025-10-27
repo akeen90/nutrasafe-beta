@@ -884,79 +884,42 @@ struct CategoricalNutrientTrackingView: View {
                 showingGaps = true
             }
         } label: {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 10) {
-                    ZStack {
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [Color.yellow.opacity(0.2), Color.orange.opacity(0.1)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 36, height: 36)
+            HStack(alignment: .top, spacing: 14) {
+                // Warning icon with prominent orange colour
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundColor(.orange)
 
-                        Image(systemName: "lightbulb.fill")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [Color.yellow, Color.orange],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                    }
+                // Insight text with full visibility
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Areas That Need Attention")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.secondary)
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Insight")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(.secondary)
-                            .textCase(.uppercase)
-                            .tracking(0.5)
-
-                        Text(text)
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .lineLimit(3)
-                    }
-
-                    Spacer()
-
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.secondary.opacity(0.5))
+                    Text(text)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(nil)
                 }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.secondary.opacity(0.4))
             }
             .padding(18)
             .background(
-                ZStack {
-                    RoundedRectangle(cornerRadius: 18)
-                        .fill(Color(.tertiarySystemBackground))
-
-                    RoundedRectangle(cornerRadius: 18)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.yellow.opacity(0.03), Color.clear],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                }
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.orange.opacity(0.08))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 18)
-                    .stroke(
-                        LinearGradient(
-                            colors: [Color.yellow.opacity(0.2), Color.orange.opacity(0.1)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1.5
-                    )
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.orange.opacity(0.25), lineWidth: 1.5)
             )
-            .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
+            .shadow(color: Color.orange.opacity(0.1), radius: 8, x: 0, y: 2)
         }
         .buttonStyle(ScaleButtonStyle())
     }
