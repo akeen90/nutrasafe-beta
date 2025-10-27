@@ -1349,6 +1349,60 @@ class FirebaseManager: ObservableObject {
         return foodId
     }
 
+    /// Save an AI-enhanced food to the global aiEnhancedFoods collection (accessible by all users)
+    /// This is used when a user uses the "Find with AI" feature to auto-fill ingredient data from trusted UK sources
+    func saveAIEnhancedFood(_ food: [String: Any], sourceURL: String?, aiProductName: String?) async throws -> String {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to add foods"])
+        }
+
+        guard let foodName = food["foodName"] as? String else {
+            throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Food name is required"])
+        }
+
+        // Check for profanity
+        if containsProfanity(foodName) {
+            throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Food name contains inappropriate language. Please use appropriate terms."])
+        }
+
+        // Also check brand name if present
+        if let brandName = food["brandName"] as? String, containsProfanity(brandName) {
+            throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Brand name contains inappropriate language. Please use appropriate terms."])
+        }
+
+        // Generate unique food ID
+        let foodId = "aiFood_\(UUID().uuidString)"
+
+        // Prepare food data with AI-specific fields
+        var foodData = food
+        foodData["id"] = foodId
+        foodData["userId"] = userId
+        foodData["timestamp"] = FirebaseFirestore.Timestamp(date: Date())
+        foodData["source"] = "ai_ingredient_finder"
+        foodData["isAIEnhanced"] = true
+
+        // Add AI metadata if available
+        if let sourceURL = sourceURL {
+            foodData["source_url"] = sourceURL
+        }
+        if let aiProductName = aiProductName {
+            foodData["ai_product_name"] = aiProductName
+        }
+
+        // Add lowercase version of foodName for case-insensitive search
+        foodData["foodNameLower"] = foodName.lowercased()
+
+        // Save to global aiEnhancedFoods collection (accessible by all users)
+        try await db.collection("aiEnhancedFoods")
+            .document(foodId)
+            .setData(foodData)
+
+        print("✅ AI enhanced food saved: \(foodId)")
+        return foodId
+    }
+
     /// Search user-added foods by name and convert to FoodSearchResult
     func searchUserAddedFoods(query: String) async throws -> [FoodSearchResult] {
         let searchTerm = query.lowercased().trimmingCharacters(in: .whitespaces)

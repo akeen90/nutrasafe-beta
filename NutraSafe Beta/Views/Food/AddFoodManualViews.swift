@@ -930,9 +930,23 @@ struct ManualFoodDetailEntryView: View {
                 foodData["barcode"] = barcode
             }
 
-            // Save to userAdded collection (with profanity check)
-            let foodId = try await FirebaseManager.shared.saveUserAddedFood(foodData)
-            print("✅ Manual food saved to userAdded collection: \(foodId)")
+            // Check if AI was used to find ingredients
+            let usedAI = foundIngredients != nil
+            let foodId: String
+
+            if usedAI {
+                // Save to aiEnhancedFoods collection with AI metadata
+                foodId = try await FirebaseManager.shared.saveAIEnhancedFood(
+                    foodData,
+                    sourceURL: foundIngredients?.source_url,
+                    aiProductName: foundIngredients?.product_name
+                )
+                print("✅ AI-enhanced food saved to aiEnhancedFoods collection: \(foodId)")
+            } else {
+                // Save to userAdded collection (manual entry with profanity check)
+                foodId = try await FirebaseManager.shared.saveUserAddedFood(foodData)
+                print("✅ Manual food saved to userAdded collection: \(foodId)")
+            }
 
             // Now add to user's diary with capitalized values
             let diaryEntry = DiaryFoodItem(
