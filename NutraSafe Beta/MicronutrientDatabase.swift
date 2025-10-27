@@ -120,6 +120,9 @@ class MicronutrientDatabase {
 
             // DIAGNOSTIC: Test database readability
             testDatabaseConnection()
+
+            // PERFORMANCE: Preload all nutrients into cache on startup (1 query instead of 33+)
+            preloadAllNutrients()
         } else {
             print("❌ MicronutrientDatabase: Failed to open database")
             if let error = sqlite3_errmsg(db) {
@@ -185,6 +188,51 @@ class MicronutrientDatabase {
             db = nil
             isInitialized = false
         }
+    }
+
+    /// PERFORMANCE: Preload all nutrients into cache at startup (1 batch query instead of 33+ individual queries)
+    private func preloadAllNutrients() {
+        guard isInitialized, let db = db else { return }
+
+        let startTime = Date()
+        print("⚡️ Preloading all nutrients into cache...")
+
+        let query = """
+        SELECT nutrient, name, category, benefits, deficiency_signs, common_sources, recommended_daily_intake
+        FROM nutrient_info
+        ORDER BY nutrient;
+        """
+        var statement: OpaquePointer?
+        var count = 0
+
+        defer {
+            sqlite3_finalize(statement)
+        }
+
+        guard sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK else {
+            print("❌ Failed to prepare preload query")
+            return
+        }
+
+        while sqlite3_step(statement) == SQLITE_ROW {
+            let info = NutrientInfo(
+                nutrient: String(cString: sqlite3_column_text(statement, 0)),
+                name: String(cString: sqlite3_column_text(statement, 1)),
+                category: sqlite3_column_text(statement, 2).map { String(cString: $0) },
+                benefits: sqlite3_column_text(statement, 3).map { String(cString: $0) },
+                deficiencySigns: sqlite3_column_text(statement, 4).map { String(cString: $0) },
+                commonSources: sqlite3_column_text(statement, 5).map { String(cString: $0) },
+                recommendedDailyIntake: sqlite3_column_text(statement, 6).map { String(cString: $0) }
+            )
+
+            // Cache using lowercase nutrient key for consistent lookups
+            let cacheKey = info.nutrient.lowercased() as NSString
+            nutrientInfoCache.setObject(NutrientInfoWrapper(info), forKey: cacheKey)
+            count += 1
+        }
+
+        let elapsed = Date().timeIntervalSince(startTime) * 1000 // Convert to milliseconds
+        print("✅ Preloaded \(count) nutrients into cache in \(String(format: "%.1f", elapsed))ms")
     }
 
     // MARK: - Synonym Lookup
@@ -345,11 +393,15 @@ class MicronutrientDatabase {
     func getNutrientInfo(_ nutrient: String) -> NutrientInfo? {
         guard isInitialized, let db = db else { return nil }
 
-        // Check cache first
+        // Check cache first (should hit after preload)
         let cacheKey = nutrient.lowercased() as NSString
         if let cached = nutrientInfoCache.object(forKey: cacheKey) {
+            // Cache hit - no logging needed (most common path after preload)
             return cached.info
         }
+
+        // Cache miss - query database (rare after preload)
+        print("⚠️  Cache miss for nutrient '\(nutrient)' - querying database")
 
         // Map detector IDs to database IDs
         let nutrientMapping: [String: String] = [
@@ -404,13 +456,11 @@ class MicronutrientDatabase {
         let normalizedNutrient: String
         if let mapped = nutrientMapping[nutrient.lowercased()] {
             normalizedNutrient = mapped
-            print("🔍 Mapped '\(nutrient)' -> '\(normalizedNutrient)'")
         } else {
             // For minerals and other nutrients: "iron" -> "Iron", "calcium" -> "Calcium"
             normalizedNutrient = nutrient.split(separator: "_")
                 .map { $0.prefix(1).uppercased() + $0.dropFirst().lowercased() }
                 .joined(separator: "_")
-            print("🔍 Converted '\(nutrient)' -> '\(normalizedNutrient)' (no mapping)")
         }
 
         let query = """
@@ -427,14 +477,9 @@ class MicronutrientDatabase {
 
         let prepareResult = sqlite3_prepare_v2(db, query, -1, &statement, nil)
         guard prepareResult == SQLITE_OK else {
-            print("❌ Failed to prepare statement: result = \(prepareResult)")
-            if let error = sqlite3_errmsg(db) {
-                print("   Prepare Error: \(String(cString: error))")
-            }
+            print("❌ Failed to prepare statement for '\(normalizedNutrient)': result = \(prepareResult)")
             return nil
         }
-
-        print("🔎 Executing query for: '\(normalizedNutrient)'")
 
         // CRITICAL: Use SQLITE_TRANSIENT to copy the string
         let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
@@ -442,27 +487,9 @@ class MicronutrientDatabase {
 
         let stepResult = sqlite3_step(statement)
         guard stepResult == SQLITE_ROW else {
-            print("❌ Query failed for '\(normalizedNutrient)': step result = \(stepResult), expected \(SQLITE_ROW)")
-            if let error = sqlite3_errmsg(db) {
-                print("   SQL Error: \(String(cString: error))")
-            }
-
-            // Try a direct query without binding to see if the data exists
-            let directQuery = "SELECT COUNT(*) FROM nutrient_info WHERE nutrient = '\(normalizedNutrient)';"
-            var directStmt: OpaquePointer?
-            defer { sqlite3_finalize(directStmt) }
-
-            if sqlite3_prepare_v2(db, directQuery, -1, &directStmt, nil) == SQLITE_OK {
-                if sqlite3_step(directStmt) == SQLITE_ROW {
-                    let count = sqlite3_column_int(directStmt, 0)
-                    print("   🔍 Direct query found \(count) matching records")
-                }
-            }
-
+            print("❌ Nutrient not found in database: '\(normalizedNutrient)'")
             return nil
         }
-
-        print("✅ Found data for '\(normalizedNutrient)'!")
 
         let info = NutrientInfo(
             nutrient: String(cString: sqlite3_column_text(statement, 0)),

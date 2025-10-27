@@ -515,7 +515,15 @@ struct FoodDetailViewFromSearch: View {
     }
 
     private var sugarScore: SugarContentScore {
-        return SugarContentScorer.shared.calculateSugarScore(sugarPer100g: displayFood.sugar)
+        // Calculate sugar per serving (accounting for serving size and quantity)
+        let sugarPerServing = displayFood.sugar * perServingMultiplier * quantityMultiplier
+
+        // Pass both density and serving information for smart scoring
+        return SugarContentScorer.shared.calculateSugarScore(
+            sugarPer100g: displayFood.sugar,
+            sugarPerServing: sugarPerServing,
+            servingSizeG: actualServingSize * quantityMultiplier
+        )
     }
     
     enum IngredientsStatus {
@@ -1175,45 +1183,55 @@ struct FoodDetailViewFromSearch: View {
         // PERFORMANCE: Use cached ingredients status
         let ingredientsStatus = cachedIngredientsStatus ?? .none
 
-        return HStack(spacing: 6) {
-            switch ingredientsStatus {
-            case .verified:
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 12))
-                    .foregroundColor(.green)
-                Text("Verified")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.green)
-                    
-            case .userVerified:
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 12))
-                    .foregroundColor(.yellow)
-                Text("User Verified")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.primary)
-                    
-            case .clientVerified:
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 12))
-                    .foregroundColor(.orange)
-                Text("User Verified")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.primary)
-                    
-            case .unverified, .none, .pending:
-                Image(systemName: "info.circle.fill")
-                    .font(.system(size: 12))
-                    .foregroundColor(.blue)
-                Text("Unverified")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.blue)
+        // Check if food has been AI enhanced - hide badge if so
+        let hasAIEnhancement = enhancedIngredientsText != nil || enhancedNutrition != nil
+
+        return Group {
+            if hasAIEnhancement {
+                // AI-enhanced foods show no badge at all
+                EmptyView()
+            } else {
+                HStack(spacing: 6) {
+                    switch ingredientsStatus {
+                    case .verified:
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(.green)
+                        Text("Verified")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.green)
+
+                    case .userVerified:
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(.yellow)
+                        Text("User Verified")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.primary)
+
+                    case .clientVerified:
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(.orange)
+                        Text("User Verified")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.primary)
+
+                    case .unverified, .none, .pending:
+                        Image(systemName: "info.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(.blue)
+                        Text("Unverified")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.blue)
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
     }
     
     var body: some View {
@@ -2765,6 +2783,13 @@ struct FoodDetailViewFromSearch: View {
     }
     
     private func getSugarLevelDescription() -> String {
+        // Use the smart explanation that considers both density and serving size
+        if let servingGrade = sugarScore.servingGrade, servingGrade.numericValue < sugarScore.densityGrade.numericValue {
+            // Large serving is the issue
+            return "⚠️ High Per Serving"
+        }
+
+        // Use standard descriptions based on grade
         switch sugarScore.grade {
         case .excellent, .veryGood:
             return "Low Sugar"
@@ -4007,18 +4032,67 @@ struct SugarScoreInfoView: View {
                     Group {
                         Text("What this means")
                             .font(.headline)
-                        Text(description(for: score.grade))
+                        Text(score.explanation)
                             .font(.callout)
                             .foregroundColor(.primary)
                     }
 
                     Group {
-                        Text("How we estimate it")
+                        Text("Health Impact")
+                            .font(.headline)
+                        Text(score.healthImpact)
+                            .font(.callout)
+                            .foregroundColor(.primary)
+                    }
+
+                    Group {
+                        Text("Recommendation")
+                            .font(.headline)
+                        Text(score.recommendation)
+                            .font(.callout)
+                            .foregroundColor(.primary)
+                    }
+
+                    // Show breakdown if both density and serving grades exist
+                    if let servingGrade = score.servingGrade {
+                        Group {
+                            Text("Score Breakdown")
+                                .font(.headline)
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Text("Density (per 100g):")
+                                        .font(.callout)
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                    Text(score.densityGrade.rawValue)
+                                        .font(.callout.bold())
+                                        .foregroundColor(score.densityGrade.color)
+                                }
+                                HStack {
+                                    Text("Per serving:")
+                                        .font(.callout)
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                    Text(servingGrade.rawValue)
+                                        .font(.callout.bold())
+                                        .foregroundColor(servingGrade.color)
+                                }
+                                Text("Final grade uses the worse of the two to warn you about large servings.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .padding(.top, 4)
+                            }
+                        }
+                    }
+
+                    Group {
+                        Text("How we calculate it")
                             .font(.headline)
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("• Based on sugar per 100g as declared.")
-                            Text("• Thresholds align with public health guidance.")
-                            Text("• Helps you spot foods that are higher in sugar.")
+                            Text("• Score based on both sugar density (per 100g) and actual serving size")
+                            Text("• Uses the worse of the two scores to warn about large servings")
+                            Text("• Thresholds align with public health guidance")
+                            Text("• Helps you spot foods that pack a lot of sugar per serving")
                         }
                         .font(.callout)
                         .foregroundColor(.secondary)
@@ -4039,10 +4113,15 @@ struct SugarScoreInfoView: View {
                     Group {
                         Text("Details")
                             .font(.headline)
-                        Text("Estimated sugar: \(String(format: "%.1f", food.sugar))g per 100g")
+                        Text("Sugar per 100g: \(String(format: "%.1f", food.sugar))g")
                             .font(.footnote)
                             .foregroundColor(.secondary)
-                        Text("Per serving: \(String(format: "%.1f", perServingSugar))g")
+                        if let servingSize = score.servingSizeG {
+                            Text("Serving size: \(String(format: "%.0f", servingSize))g")
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                        }
+                        Text("Sugar per serving: \(String(format: "%.1f", perServingSugar))g")
                             .font(.footnote)
                             .foregroundColor(.secondary)
                     }

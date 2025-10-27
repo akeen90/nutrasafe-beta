@@ -19,7 +19,6 @@ struct FastingTimerView: View {
     @State private var fastingStartTime: Date?
     @State private var fastingGoal = 16
     @State private var notificationsEnabled = false
-    @State private var reminderInterval = 4
     @State private var currentTime = Date()
     @State private var showingSettings = false
     @State private var isLoading = true
@@ -32,6 +31,9 @@ struct FastingTimerView: View {
 
     // Live Activity
     @State private var currentActivity: Any? // Holds Activity<FastingActivityAttributes> on iOS 16.1+
+
+    // Fast Session ID for notification validation
+    @AppStorage("activeFastSessionId") private var activeFastSessionId: String = ""
     
     private var fastingDuration: TimeInterval {
         guard isFasting, let startTime = fastingStartTime else { return 0 }
@@ -367,7 +369,6 @@ struct FastingTimerView: View {
             FastingSettingsView(
                 fastingGoal: $fastingGoal,
                 notificationsEnabled: $notificationsEnabled,
-                reminderInterval: $reminderInterval,
                 streakSettings: $streakSettings,
                 onSave: saveFastingSettings
             )
@@ -385,7 +386,6 @@ struct FastingTimerView: View {
                 fastingStartTime = state.startTime
                 fastingGoal = state.goal
                 notificationsEnabled = state.notificationsEnabled
-                reminderInterval = state.reminderInterval
                 isLoading = false
             }
 
@@ -408,6 +408,10 @@ struct FastingTimerView: View {
         isFasting = true
         fastingStartTime = Date()
 
+        // Generate unique session ID for this fast
+        activeFastSessionId = UUID().uuidString
+        print("🆔 Started fast session: \(activeFastSessionId)")
+
         Task {
             do {
                 try await firebaseManager.saveFastingState(
@@ -415,7 +419,7 @@ struct FastingTimerView: View {
                     startTime: fastingStartTime,
                     goal: fastingGoal,
                     notificationsEnabled: notificationsEnabled,
-                    reminderInterval: reminderInterval
+                    reminderInterval: 0  // No longer used - stage-based only
                 )
             } catch {
                 print("❌ Error saving fasting start: \(error.localizedDescription)")
@@ -438,6 +442,13 @@ struct FastingTimerView: View {
         isFasting = false
         fastingStartTime = nil
 
+        // Clear session ID immediately to prevent notifications
+        print("🛑 Stopping fast session: \(activeFastSessionId)")
+        activeFastSessionId = ""
+
+        // Cancel all fasting notifications IMMEDIATELY (synchronous)
+        cancelFastingNotifications()
+
         Task {
             do {
                 try await firebaseManager.saveFastingState(
@@ -445,7 +456,7 @@ struct FastingTimerView: View {
                     startTime: nil,
                     goal: fastingGoal,
                     notificationsEnabled: notificationsEnabled,
-                    reminderInterval: reminderInterval
+                    reminderInterval: 0  // No longer used - stage-based only
                 )
             } catch {
                 print("❌ Error saving fasting stop: \(error.localizedDescription)")
@@ -455,9 +466,6 @@ struct FastingTimerView: View {
             if #available(iOS 16.1, *) {
                 await endLiveActivity()
             }
-
-            // Cancel all fasting notifications
-            cancelFastingNotifications()
         }
 
         let impactFeedback = UIImpactFeedbackGenerator(style: .heavy)
@@ -474,7 +482,7 @@ struct FastingTimerView: View {
                     startTime: fastingStartTime,
                     goal: hours,
                     notificationsEnabled: notificationsEnabled,
-                    reminderInterval: reminderInterval
+                    reminderInterval: 0  // No longer used - stage-based only
                 )
             } catch {
                 print("❌ Error saving fasting goal: \(error.localizedDescription)")
@@ -493,7 +501,7 @@ struct FastingTimerView: View {
                     startTime: fastingStartTime,
                     goal: fastingGoal,
                     notificationsEnabled: notificationsEnabled,
-                    reminderInterval: reminderInterval
+                    reminderInterval: 0  // No longer used - stage-based only
                 )
             } catch {
                 print("❌ Error saving fasting settings: \(error.localizedDescription)")
@@ -649,6 +657,13 @@ struct FastingTimerView: View {
                 content.sound = .default
                 content.badge = 1
 
+                // Add session ID and type to userInfo for validation
+                content.userInfo = [
+                    "type": "fasting",
+                    "sessionId": activeFastSessionId,
+                    "stageHours": stage.hours
+                ]
+
                 let timeInterval = triggerDate.timeIntervalSinceNow
                 let trigger = UNTimeIntervalNotificationTrigger(timeInterval: timeInterval, repeats: false)
                 let request = UNNotificationRequest(
@@ -659,53 +674,22 @@ struct FastingTimerView: View {
 
                 do {
                     try await center.add(request)
-                    print("✅ Scheduled \(stage.hours)h fasting notification")
+                    print("✅ Scheduled \(stage.hours)h fasting notification (session: \(activeFastSessionId))")
                 } catch {
                     print("❌ Error scheduling \(stage.hours)h notification: \(error)")
                 }
             }
         }
 
-        // Schedule periodic reminders based on user interval
-        await schedulePeriodicReminders(startTime: startTime)
+        // Schedule goal completion notification
+        await scheduleGoalNotification(startTime: startTime)
     }
 
-    private func schedulePeriodicReminders(startTime: Date) async {
+    private func scheduleGoalNotification(startTime: Date) async {
         guard notificationsEnabled else { return }
 
         let center = UNUserNotificationCenter.current()
         let goalHours = fastingGoal
-        var currentHour = reminderInterval
-
-        // Schedule reminders at user-defined intervals until goal
-        while currentHour < goalHours {
-            let triggerDate = startTime.addingTimeInterval(TimeInterval(currentHour * 3600))
-
-            // Only schedule if in the future and not a stage notification
-            if triggerDate > Date() && ![4, 8, 12, 16].contains(currentHour) {
-                let content = UNMutableNotificationContent()
-                content.title = "Fasting Progress ⏰"
-                content.body = "\(currentHour)h of your \(goalHours)h fast complete!"
-                content.sound = .default
-
-                let timeInterval = triggerDate.timeIntervalSinceNow
-                let trigger = UNTimeIntervalNotificationTrigger(timeInterval: timeInterval, repeats: false)
-                let request = UNNotificationRequest(
-                    identifier: "fasting-reminder-\(currentHour)h",
-                    content: content,
-                    trigger: trigger
-                )
-
-                do {
-                    try await center.add(request)
-                    print("✅ Scheduled \(currentHour)h reminder notification")
-                } catch {
-                    print("❌ Error scheduling reminder: \(error)")
-                }
-            }
-
-            currentHour += reminderInterval
-        }
 
         // Goal reached notification
         let goalDate = startTime.addingTimeInterval(TimeInterval(goalHours * 3600))
@@ -714,6 +698,13 @@ struct FastingTimerView: View {
             content.title = "Fasting Goal Achieved! 🎉"
             content.body = "Congratulations! You've completed your \(goalHours)-hour fast!"
             content.sound = .default
+
+            // Add session ID and type to userInfo for validation
+            content.userInfo = [
+                "type": "fasting",
+                "sessionId": activeFastSessionId,
+                "isGoal": true
+            ]
 
             let timeInterval = goalDate.timeIntervalSinceNow
             let trigger = UNTimeIntervalNotificationTrigger(timeInterval: timeInterval, repeats: false)
@@ -725,7 +716,7 @@ struct FastingTimerView: View {
 
             do {
                 try await center.add(request)
-                print("✅ Scheduled goal completion notification")
+                print("✅ Scheduled goal completion notification (session: \(activeFastSessionId))")
             } catch {
                 print("❌ Error scheduling goal notification: \(error)")
             }
@@ -890,18 +881,16 @@ struct FastingSettingsView: View {
     @EnvironmentObject var firebaseManager: FirebaseManager
     @Binding var fastingGoal: Int
     @Binding var notificationsEnabled: Bool
-    @Binding var reminderInterval: Int
     @Binding var streakSettings: FastingStreakSettings
     @State private var customGoal: Int
     @State private var daysGoal: Int
     @State private var minHours: Int
     @State private var maxHours: Int
     let onSave: () -> Void
-    
-    init(fastingGoal: Binding<Int>, notificationsEnabled: Binding<Bool>, reminderInterval: Binding<Int>, streakSettings: Binding<FastingStreakSettings>, onSave: @escaping () -> Void) {
+
+    init(fastingGoal: Binding<Int>, notificationsEnabled: Binding<Bool>, streakSettings: Binding<FastingStreakSettings>, onSave: @escaping () -> Void) {
         self._fastingGoal = fastingGoal
         self._notificationsEnabled = notificationsEnabled
-        self._reminderInterval = reminderInterval
         self._streakSettings = streakSettings
         self._customGoal = State(initialValue: fastingGoal.wrappedValue)
         self._daysGoal = State(initialValue: streakSettings.wrappedValue.daysPerWeekGoal)
@@ -943,18 +932,9 @@ struct FastingSettingsView: View {
                     .padding(.vertical, 8)
                 }
 
-                Section(header: Text("Notifications"), footer: Text("Get reminders during your fasting window")) {
+                Section(header: Text("Notifications"), footer: Text("Receive notifications when you reach each fasting stage (4h, 8h, 12h, 16h) and when you complete your goal")) {
                     Toggle("Enable Notifications", isOn: $notificationsEnabled)
                         .tint(.blue)
-
-                    if notificationsEnabled {
-                        Picker("Reminder Interval", selection: $reminderInterval) {
-                            Text("Every 2 hours").tag(2)
-                            Text("Every 4 hours").tag(4)
-                            Text("Every 6 hours").tag(6)
-                            Text("Every 8 hours").tag(8)
-                        }
-                    }
                 }
 
                 Section(header: Text("Streak Settings"), footer: Text("Used to compute weekly streaks and target window.")) {

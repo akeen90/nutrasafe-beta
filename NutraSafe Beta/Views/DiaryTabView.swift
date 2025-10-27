@@ -40,6 +40,7 @@ struct DiaryTabView: View {
 
     // MARK: - Cached Nutrition Totals (Performance Optimization)
     @State private var cachedNutrition: NutritionTotals = NutritionTotals()
+    @State private var hasLoadedOnce = false // PERFORMANCE: Guard flag to prevent redundant loads
 
     private struct NutritionTotals {
         var totalCalories: Int = 0
@@ -309,6 +310,12 @@ struct DiaryTabView: View {
             loadFoodData()
         }
         .onAppear {
+            // PERFORMANCE: Skip if already loaded - prevents redundant Firebase calls on tab switches
+            guard !hasLoadedOnce else {
+                print("⚡️ DiaryTabView: Skipping load - data already loaded")
+                return
+            }
+            hasLoadedOnce = true
             loadFoodData()
         }
         .onChange(of: diarySubTab) { newTab in
@@ -709,7 +716,7 @@ struct CategoricalNutrientTrackingView: View {
                 HStack(spacing: 16) {
                     legendItem(color: Color(hex: "#3FD17C"), label: "Strong")
                     legendItem(color: Color(hex: "#FFA93A"), label: "Moderate")
-                    legendItem(color: Color(hex: "#57A5FF"), label: "Trace")
+                    legendItem(color: Color(hex: "#57A5FF"), label: "Low")
                     legendItem(color: Color(hex: "#CFCFCF"), label: "None")
                 }
                 .padding(.top, 8)
@@ -1579,7 +1586,7 @@ struct Segment: Identifiable, Hashable {
 
 enum SourceLevel: String, Comparable {
     case none = "None"
-    case trace = "Trace"
+    case trace = "Low"
     case moderate = "Moderate"
     case strong = "Strong"
 
@@ -1634,6 +1641,7 @@ enum CoverageStatus: String {
 struct NutrientDetailModal: View {
     let row: CoverageRow
     @Environment(\.dismiss) private var dismiss
+    @State private var nutrientInfo: NutrientInfo?
 
     var body: some View {
         NavigationView {
@@ -1641,6 +1649,11 @@ struct NutrientDetailModal: View {
                 VStack(alignment: .leading, spacing: 24) {
                     // Status card
                     statusCard
+
+                    // Good food sources (from database)
+                    if nutrientInfo != nil {
+                        goodFoodSourcesSection
+                    }
 
                     // 7-day breakdown
                     weekBreakdown
@@ -1659,6 +1672,9 @@ struct NutrientDetailModal: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") { dismiss() }
                 }
+            }
+            .task {
+                await loadNutrientInfo()
             }
         }
     }
@@ -1804,6 +1820,81 @@ struct NutrientDetailModal: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "E, MMM d"
         return formatter.string(from: date)
+    }
+
+    // MARK: - Good Food Sources Section
+
+    private var goodFoodSourcesSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Good Food Sources")
+                .font(.system(size: 18, weight: .bold))
+
+            if let info = nutrientInfo {
+                VStack(alignment: .leading, spacing: 12) {
+                    let sources = parseArrayContent(info.commonSources)
+                    if !sources.isEmpty {
+                        FlowLayout(spacing: 8) {
+                            ForEach(sources, id: \.self) { source in
+                                Text(source)
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.blue)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color.blue.opacity(0.1))
+                                    )
+                            }
+                        }
+                    } else {
+                        Text("No food source information available")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                            .italic()
+                    }
+                }
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color(.secondarySystemBackground))
+                )
+            }
+        }
+    }
+
+    private func loadNutrientInfo() async {
+        // Map display name to database ID
+        let nutrientId = row.id
+            .replacingOccurrences(of: " ", with: "_")
+            .replacingOccurrences(of: "(", with: "")
+            .replacingOccurrences(of: ")", with: "")
+
+        let info = await MicronutrientDatabase.shared.getNutrientInfo(nutrientId)
+        await MainActor.run {
+            self.nutrientInfo = info
+        }
+    }
+
+    private func parseArrayContent(_ content: String?) -> [String] {
+        guard let content = content else { return [] }
+
+        // Try to decode as JSON array first
+        if let data = content.data(using: .utf8),
+           let array = try? JSONDecoder().decode([String].self, from: data) {
+            return array.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        }
+
+        // Fallback: manually parse array format
+        let trimmed = content.trimmingCharacters(in: CharacterSet(charactersIn: "[]\""))
+        if trimmed.contains(",") {
+            return trimmed
+                .components(separatedBy: ",")
+                .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: " \"")) }
+                .filter { !$0.isEmpty }
+        }
+
+        // Return as single item if not parseable and not empty
+        return trimmed.isEmpty ? [] : [trimmed]
     }
 }
 

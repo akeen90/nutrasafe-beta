@@ -38,7 +38,7 @@ struct DiaryMealCard: View {
             // Column headers (only show once at the top)
             if mealType == "Breakfast" {
                 HStack {
-                    Text("DESC/SERVING")
+                    Text("ITEM")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.secondary)
 

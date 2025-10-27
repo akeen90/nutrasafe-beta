@@ -28,7 +28,7 @@ struct MicronutrientDashboard: View {
     case all = "All"
     case strong = "Strong"
     case moderate = "Moderate"
-    case traceMissing = "Trace/Missing"
+    case traceMissing = "Low/Missing"
 }
 
     var body: some View {
@@ -65,7 +65,12 @@ struct MicronutrientDashboard: View {
             SmartRecommendationsView()
         }
         .task {
-            // Always process today's foods to ensure fresh data
+            // PERFORMANCE: Skip if already loaded - prevents redundant Firebase calls on tab switches
+            guard !hasLoadedData, !isLoading else {
+                print("⚡️ MicronutrientDashboard: Skipping load - data already loaded")
+                return
+            }
+
             isLoading = true
             print("📊 MicronutrientDashboard: Loading data...")
 
@@ -294,7 +299,7 @@ struct MicronutrientDashboard: View {
 
                 balanceBreakdownItem(
                     count: balance.lowCount,
-                    label: "Trace",
+                    label: "Low",
                     color: .orange
                 )
             }
@@ -802,6 +807,22 @@ struct MicronutrientRow: View {
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                 }
+
+                // Show good food sources recommendations
+                if let sources = summary.info?.commonSources {
+                    let foodSources = parseArrayString(sources).prefix(3).joined(separator: ", ")
+                    if !foodSources.isEmpty {
+                        HStack(spacing: 4) {
+                            Image(systemName: "leaf.fill")
+                                .font(.system(size: 9))
+                                .foregroundColor(.green)
+                            Text("Good sources: \(foodSources)")
+                                .font(.system(size: 11))
+                                .foregroundColor(.green.opacity(0.8))
+                                .lineLimit(1)
+                        }
+                    }
+                }
             }
 
             Spacer()
@@ -813,6 +834,20 @@ struct MicronutrientRow: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(Color(.systemBackground))
+    }
+
+    // Helper to parse JSON array strings
+    private func parseArrayString(_ jsonString: String?) -> [String] {
+        guard let jsonString = jsonString else { return [] }
+
+        // Try to decode JSON array
+        if let data = jsonString.data(using: .utf8),
+           let array = try? JSONDecoder().decode([String].self, from: data) {
+            return array
+        }
+
+        // Fallback: split by comma if not valid JSON
+        return jsonString.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
     }
 }
 
@@ -829,12 +864,15 @@ struct NutrientInfoSheet: View {
                     // Status card
                     statusCard
 
+                    // Food sources - MOVED TO TOP for prominence
+                    foodSourcesSection
+
                     // Benefits
                     if let benefits = summary.info?.benefits {
                         infoSection(
                             title: "Benefits",
                             icon: "heart.fill",
-                            color: .green,
+                            color: .blue,
                             content: benefits
                         )
                     }
@@ -846,16 +884,6 @@ struct NutrientInfoSheet: View {
                             icon: "exclamationmark.triangle.fill",
                             color: .orange,
                             content: deficiency
-                        )
-                    }
-
-                    // Food sources
-                    if let sources = summary.info?.commonSources {
-                        infoSection(
-                            title: "Common Food Sources",
-                            icon: "leaf.fill",
-                            color: .blue,
-                            content: sources
                         )
                     }
 
@@ -1004,6 +1032,51 @@ struct NutrientInfoSheet: View {
 
         // Return as single item if not parseable
         return [trimmed]
+    }
+
+    private var foodSourcesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "leaf.fill")
+                    .foregroundColor(.green)
+                Text("Good Food Sources")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.primary)
+            }
+
+            // Load food sources from database
+            if let sources = summary.info?.commonSources {
+                let items = parseArrayContent(sources)
+                let _ = print("🍃 [NutrientInfoSheet] Rendering food sources for \(summary.nutrient): \(items)")
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(items, id: \.self) { item in
+                        HStack(alignment: .top, spacing: 8) {
+                            Text("🍃")
+                                .font(.system(size: 14))
+
+                            Text(item)
+                                .font(.system(size: 14))
+                                .foregroundColor(.primary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+            } else {
+                let _ = print("⚠️ [NutrientInfoSheet] No sources for \(summary.nutrient) - info: \(summary.info != nil), commonSources: \(summary.info?.commonSources ?? "nil")")
+                Text("Loading food sources...")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+                    .italic()
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemBackground))
+                .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
+        )
     }
 
     private var recentSourcesSection: some View {

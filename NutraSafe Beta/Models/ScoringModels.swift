@@ -1204,7 +1204,19 @@ enum SugarGrade: String, CaseIterable {
     case high = "D"        // 30-50g per 100g
     case veryHigh = "F"    // 50g+ per 100g
     case unknown = "?"
-    
+
+    var numericValue: Int {
+        switch self {
+        case .excellent: return 5
+        case .veryGood: return 4
+        case .good: return 3
+        case .moderate: return 2
+        case .high: return 1
+        case .veryHigh: return 0
+        case .unknown: return -1
+        }
+    }
+
     var color: Color {
         switch self {
         case .excellent: return .green
@@ -1221,10 +1233,14 @@ enum SugarGrade: String, CaseIterable {
 struct SugarContentScore {
     let grade: SugarGrade
     let sugarPer100g: Double
+    let sugarPerServing: Double?
+    let servingSizeG: Double?
+    let densityGrade: SugarGrade  // Grade based on per-100g
+    let servingGrade: SugarGrade? // Grade based on per-serving (if applicable)
     let explanation: String
     let healthImpact: String
     let recommendation: String
-    
+
     var color: Color {
         return grade.color
     }
@@ -1310,68 +1326,129 @@ class SugarContentScorer {
     static let shared = SugarContentScorer()
 
     private init() {}
-    
-    func calculateSugarScore(sugarPer100g: Double?) -> SugarContentScore {
+
+    /// Calculate sugar score considering both density (per 100g) and actual serving size
+    /// Returns the worse of the two scores to warn about large servings with moderate density
+    func calculateSugarScore(sugarPer100g: Double?, sugarPerServing: Double? = nil, servingSizeG: Double? = nil) -> SugarContentScore {
         guard let sugar = sugarPer100g, sugar >= 0 else {
             return SugarContentScore(
-                grade: SugarGrade.unknown,
+                grade: .unknown,
                 sugarPer100g: 0,
+                sugarPerServing: nil,
+                servingSizeG: nil,
+                densityGrade: .unknown,
+                servingGrade: nil,
                 explanation: "No sugar content data available",
                 healthImpact: "Cannot assess sugar content without data",
                 recommendation: "Check nutrition label for sugar content"
             )
         }
-        
-        let grade: SugarGrade
-        let explanation: String
-        let healthImpact: String
-        let recommendation: String
-        
-        switch sugar {
-        case 0..<5:
-            grade = .excellent
-            explanation = "Very low sugar content"
-            healthImpact = "Excellent choice for blood sugar management"
-            recommendation = "Perfect for regular consumption"
-            
-        case 5..<10:
-            grade = .veryGood
-            explanation = "Low sugar content"
-            healthImpact = "Good choice with minimal blood sugar impact"
-            recommendation = "Great for daily consumption"
-            
-        case 10..<20:
-            grade = .good
-            explanation = "Moderate sugar content"
-            healthImpact = "Some blood sugar impact, suitable in moderation"
-            recommendation = "Enjoy as part of balanced meals"
-            
-        case 20..<30:
-            grade = .moderate
-            explanation = "Moderately high sugar"
-            healthImpact = "Noticeable blood sugar impact"
-            recommendation = "Consume in smaller portions"
-            
-        case 30..<50:
-            grade = .high
-            explanation = "High sugar content"
-            healthImpact = "Significant blood sugar spike likely"
-            recommendation = "Limit intake, pair with protein/fiber"
-            
-        default: // 50+
-            grade = .veryHigh
-            explanation = "Very high sugar content"
-            healthImpact = "Major blood sugar spike expected"
-            recommendation = "Consume rarely and in very small amounts"
+
+        // Calculate density grade (per 100g)
+        let densityGrade = getGradeForSugarAmount(sugar)
+
+        // Calculate serving grade if we have serving data
+        var servingGrade: SugarGrade? = nil
+        var finalGrade = densityGrade
+        var explanation = ""
+        var healthImpact = ""
+        var recommendation = ""
+
+        if let perServing = sugarPerServing, let servingSize = servingSizeG, servingSize > 0 {
+            servingGrade = getGradeForSugarAmount(perServing)
+
+            // Use the WORSE of the two grades (lower numericValue = worse)
+            if servingGrade!.numericValue < densityGrade.numericValue {
+                finalGrade = servingGrade!
+                // Large serving causing high sugar despite moderate density
+                explanation = "High per-serving (\(String(format: "%.1f", perServing))g in \(String(format: "%.0f", servingSize))g serving) despite moderate density (\(String(format: "%.1f", sugar))g per 100g)"
+                healthImpact = getHealthImpact(for: servingGrade!)
+                recommendation = "⚠️ Large serving size - consider eating less. " + getRecommendation(for: servingGrade!)
+            } else if densityGrade.numericValue < servingGrade!.numericValue {
+                finalGrade = densityGrade
+                // High density even though serving might be small
+                explanation = "High sugar density (\(String(format: "%.1f", sugar))g per 100g) - \(String(format: "%.1f", perServing))g in \(String(format: "%.0f", servingSize))g serving"
+                healthImpact = getHealthImpact(for: densityGrade)
+                recommendation = getRecommendation(for: densityGrade)
+            } else {
+                // Both grades are the same
+                explanation = "\(String(format: "%.1f", perServing))g sugar in \(String(format: "%.0f", servingSize))g serving (\(String(format: "%.1f", sugar))g per 100g)"
+                healthImpact = getHealthImpact(for: finalGrade)
+                recommendation = getRecommendation(for: finalGrade)
+            }
+        } else {
+            // Only have per-100g data
+            explanation = "\(String(format: "%.1f", sugar))g per 100g"
+            healthImpact = getHealthImpact(for: densityGrade)
+            recommendation = getRecommendation(for: densityGrade)
         }
-        
+
         return SugarContentScore(
-            grade: grade,
+            grade: finalGrade,
             sugarPer100g: sugar,
+            sugarPerServing: sugarPerServing,
+            servingSizeG: servingSizeG,
+            densityGrade: densityGrade,
+            servingGrade: servingGrade,
             explanation: explanation,
             healthImpact: healthImpact,
             recommendation: recommendation
         )
+    }
+
+    private func getGradeForSugarAmount(_ sugar: Double) -> SugarGrade {
+        switch sugar {
+        case 0..<5:
+            return .excellent
+        case 5..<10:
+            return .veryGood
+        case 10..<20:
+            return .good
+        case 20..<30:
+            return .moderate
+        case 30..<50:
+            return .high
+        default: // 50+
+            return .veryHigh
+        }
+    }
+
+    private func getHealthImpact(for grade: SugarGrade) -> String {
+        switch grade {
+        case .excellent:
+            return "Excellent choice for blood sugar management"
+        case .veryGood:
+            return "Good choice with minimal blood sugar impact"
+        case .good:
+            return "Some blood sugar impact, suitable in moderation"
+        case .moderate:
+            return "Noticeable blood sugar impact"
+        case .high:
+            return "Significant blood sugar spike likely"
+        case .veryHigh:
+            return "Major blood sugar spike expected"
+        case .unknown:
+            return "Cannot assess sugar content without data"
+        }
+    }
+
+    private func getRecommendation(for grade: SugarGrade) -> String {
+        switch grade {
+        case .excellent:
+            return "Perfect for regular consumption"
+        case .veryGood:
+            return "Great for daily consumption"
+        case .good:
+            return "Enjoy as part of balanced meals"
+        case .moderate:
+            return "Consume in smaller portions"
+        case .high:
+            return "Limit intake, pair with protein/fiber"
+        case .veryHigh:
+            return "Consume rarely and in very small amounts"
+        case .unknown:
+            return "Check nutrition label for sugar content"
+        }
     }
 }
 

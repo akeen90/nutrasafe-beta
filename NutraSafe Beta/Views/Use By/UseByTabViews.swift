@@ -554,6 +554,7 @@ struct UseByExpiryView: View {
     @State private var showClearAlert: Bool = false
     @State private var showingAddSheet: Bool = false
     @State private var searchText: String = ""
+    @State private var hasLoadedOnce = false // PERFORMANCE: Guard flag to prevent redundant loads
 
     private var sortedItems: [UseByInventoryItem] {
         let filtered = searchText.isEmpty ? useByItems : useByItems.filter { item in
@@ -744,8 +745,17 @@ struct UseByExpiryView: View {
                 .background(Color(.systemGroupedBackground))
             }
         }
-        .onAppear { Task { await reloadUseBy() } }
+        .onAppear {
+            // PERFORMANCE: Skip if already loaded - prevents redundant Firebase calls on tab switches
+            guard !hasLoadedOnce else {
+                print("⚡️ UseByExpiryView: Skipping load - data already loaded (count: \(useByItems.count))")
+                return
+            }
+            hasLoadedOnce = true
+            Task { await reloadUseBy() }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .useByInventoryUpdated)) { _ in
+            hasLoadedOnce = false // Force reload when inventory changes
             Task { await reloadUseBy() }
         }
         .alert("Clear all Use By items?", isPresented: $showClearAlert) {

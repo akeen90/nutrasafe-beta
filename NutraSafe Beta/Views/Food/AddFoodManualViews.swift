@@ -33,6 +33,7 @@ struct IngredientFinderResponse: Codable {
     let serving_size: String?
     let ingredients_text: String?
     let nutrition_per_100g: NutritionPer100g?
+    let image_url: String?
     let source_url: String?
 }
 
@@ -66,6 +67,7 @@ class IngredientFinderService: ObservableObject {
                 serving_size: nil,  // Cache doesn't store serving size yet
                 ingredients_text: cached.ingredients_text,
                 nutrition_per_100g: nil,  // Cache doesn't store nutrition yet
+                image_url: nil,  // Cache doesn't store image URL yet
                 source_url: cached.source_url
             )
         }

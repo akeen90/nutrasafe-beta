@@ -142,6 +142,7 @@ struct SegmentedControlView<Tab: Hashable & CaseIterable & RawRepresentable>: Vi
 // MARK: - Food Sub Views
 struct FoodReactionsView: View {
     @ObservedObject private var reactionManager = ReactionManager.shared
+    @State private var hasLoadedOnce = false // PERFORMANCE: Guard flag to prevent redundant loads
 
     var body: some View {
         ScrollView {
@@ -193,10 +194,16 @@ struct FoodReactionsView: View {
             }
         }
         .onAppear {
-            print("🔵 FoodReactionsView appeared - checking reactions data")
+            // PERFORMANCE: Skip if already loaded - prevents redundant Firebase calls on tab switches
+            guard !hasLoadedOnce else {
+                print("⚡️ FoodReactionsView: Skipping load - data already loaded (count: \(reactionManager.reactions.count))")
+                return
+            }
+            hasLoadedOnce = true
+
+            print("🔵 FoodReactionsView appeared - loading reactions data")
             print("🔵 Current reactions count: \(reactionManager.reactions.count)")
             print("🔵 Is loading: \(reactionManager.isLoading)")
-            // Trigger data load if needed
             reactionManager.reloadIfAuthenticated()
         }
         .alert("Error", isPresented: $reactionManager.showingError) {

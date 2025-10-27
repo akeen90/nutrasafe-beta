@@ -28,6 +28,26 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                willPresent notification: UNNotification,
                                withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        let userInfo = notification.request.content.userInfo
+
+        // Validate fasting notifications
+        if let type = userInfo["type"] as? String, type == "fasting" {
+            // Get current active fast session ID from AppStorage
+            let activeFastSessionId = UserDefaults.standard.string(forKey: "activeFastSessionId") ?? ""
+            let notificationSessionId = userInfo["sessionId"] as? String ?? ""
+
+            // Only show notification if it matches the current active fast session
+            if activeFastSessionId.isEmpty || notificationSessionId != activeFastSessionId {
+                print("🚫 Suppressing fasting notification - fast is no longer active")
+                print("   - Active session: \(activeFastSessionId)")
+                print("   - Notification session: \(notificationSessionId)")
+                completionHandler([]) // Don't show notification
+                return
+            }
+
+            print("✅ Showing fasting notification - session matches: \(notificationSessionId)")
+        }
+
         // Show banner even when app is in foreground
         completionHandler([.banner, .sound, .badge])
     }
@@ -37,6 +57,24 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                                didReceive response: UNNotificationResponse,
                                withCompletionHandler completionHandler: @escaping () -> Void) {
         let userInfo = response.notification.request.content.userInfo
+
+        // Check if this is a fasting notification
+        if let type = userInfo["type"] as? String, type == "fasting" {
+            // Validate session ID before acting on notification
+            let activeFastSessionId = UserDefaults.standard.string(forKey: "activeFastSessionId") ?? ""
+            let notificationSessionId = userInfo["sessionId"] as? String ?? ""
+
+            if activeFastSessionId.isEmpty || notificationSessionId != activeFastSessionId {
+                print("🚫 Ignoring tap on stale fasting notification")
+                print("   - Active session: \(activeFastSessionId)")
+                print("   - Notification session: \(notificationSessionId)")
+                completionHandler()
+                return
+            }
+
+            print("📱 User tapped valid fasting notification")
+            // Could navigate to fasting tab here if desired
+        }
 
         // Check if this is a use-by notification
         if let type = userInfo["type"] as? String, type == "useBy" {
