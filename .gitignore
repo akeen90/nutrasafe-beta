@@ -36,3 +36,7 @@ buildOut/
 # App Store Server API keys
 *.p8
 AppStoreKeys/
+
+# Backup files
+*.backup
+*_BACKUP.swift
