@@ -553,18 +553,42 @@ class FirebaseManager: ObservableObject {
 
         print("🔍 Cache MISS - fetching '\(query)' from server...")
 
-        // Search in both main database and user-added foods in parallel
+        // Search all sources in parallel for maximum performance
         async let mainResults = searchMainDatabase(query: query)
         async let userAddedResults = try searchUserAddedFoods(query: query)
+        async let aiEnhancedResults = try searchAIEnhancedFoods(query: query)
+        async let aiManualResults = try searchAIManuallyAddedFoods(query: query)
 
-        // Wait for both searches to complete
-        let (mainFoods, userFoods) = try await (mainResults, userAddedResults)
+        // Wait for all searches to complete
+        let (mainFoods, userFoods, aiEnhanced, aiManual) = try await (mainResults, userAddedResults, aiEnhancedResults, aiManualResults)
 
-        // Merge results - user-added foods first, then main database
-        var mergedResults = userFoods
-        mergedResults.append(contentsOf: mainFoods)
+        // Deduplicate and merge with priority: user-added > AI-enhanced > AI-manual > SQL
+        var foodsById: [String: FoodSearchResult] = [:]
 
-        print("🔍 Search results for '\(query)': \(userFoods.count) user-added + \(mainFoods.count) main database = \(mergedResults.count) total")
+        // 1. Add SQL database results first (lowest priority)
+        for food in mainFoods {
+            foodsById[food.id] = food
+        }
+
+        // 2. Add/overwrite with AI manually added foods (higher priority)
+        for food in aiManual {
+            foodsById[food.id] = food
+        }
+
+        // 3. Add/overwrite with AI-enhanced foods (even higher priority - replaces SQL versions)
+        for food in aiEnhanced {
+            foodsById[food.id] = food
+        }
+
+        // 4. Add/overwrite with user-added foods (highest priority - user's own data)
+        for food in userFoods {
+            foodsById[food.id] = food
+        }
+
+        // Convert back to array
+        let mergedResults = Array(foodsById.values)
+
+        print("🔍 Search results for '\(query)': \(userFoods.count) user + \(aiEnhanced.count) AI-enhanced + \(aiManual.count) AI-manual + \(mainFoods.count) SQL = \(mergedResults.count) total (after deduplication)")
 
         // Store in cache for next time (NSCache auto-manages memory)
         searchCache.setObject(
@@ -1468,6 +1492,127 @@ class FirebaseManager: ObservableObject {
             .getDocument()
 
         return document.data()
+    }
+
+    /// Search AI-enhanced foods collection (foods enhanced from detail page)
+    func searchAIEnhancedFoods(query: String) async throws -> [FoodSearchResult] {
+        let searchTerm = query.lowercased().trimmingCharacters(in: .whitespaces)
+
+        // Search in aiEnhanced collection for approved foods
+        let snapshot = try await db.collection("aiEnhanced")
+            .whereField("status", isEqualTo: "approved")
+            .limit(to: 20)
+            .getDocuments()
+
+        // Filter by name match and convert to FoodSearchResult
+        return snapshot.documents.compactMap { doc -> FoodSearchResult? in
+            let data = doc.data()
+
+            // Get original food name and match against query
+            guard let originalFoodName = data["originalFoodName"] as? String else { return nil }
+            let foodNameLower = originalFoodName.lowercased()
+
+            // Simple contains match for now
+            guard foodNameLower.contains(searchTerm) else { return nil }
+
+            let id = data["originalFoodId"] as? String ?? doc.documentID
+            let brandName = data["originalBrand"] as? String ?? data["brand"] as? String
+
+            // Use enhanced nutrition data
+            let calories = data["calories"] as? Double ?? 0
+            let protein = data["protein"] as? Double ?? 0
+            let carbs = data["carbs"] as? Double ?? 0
+            let fat = data["fat"] as? Double ?? 0
+            let fiber = data["fiber"] as? Double ?? 0
+            let sugar = data["sugar"] as? Double ?? 0
+            let salt = data["salt"] as? Double ?? 0
+            let sodium = salt * 400 // Convert salt (g) to sodium (mg)
+
+            // Use enhanced ingredients
+            let ingredientsText = data["ingredientsText"] as? String
+            let ingredients: [String]? = ingredientsText?.components(separatedBy: ",").map {
+                $0.trimmingCharacters(in: .whitespaces)
+            }
+
+            return FoodSearchResult(
+                id: id,
+                name: originalFoodName,
+                brand: brandName,
+                calories: calories,
+                protein: protein,
+                carbs: carbs,
+                fat: fat,
+                fiber: fiber,
+                sugar: sugar,
+                sodium: sodium,
+                servingDescription: "100g",
+                ingredients: ingredients,
+                confidence: nil,
+                isVerified: true, // AI-enhanced foods are verified
+                additives: nil,
+                processingScore: nil,
+                processingGrade: nil,
+                processingLabel: nil
+            )
+        }
+    }
+
+    /// Search AI manually added foods collection (from "Find with AI" feature)
+    func searchAIManuallyAddedFoods(query: String) async throws -> [FoodSearchResult] {
+        let searchTerm = query.lowercased().trimmingCharacters(in: .whitespaces)
+
+        // Search in aiManuallyAdded collection
+        let snapshot = try await db.collection("aiManuallyAdded")
+            .limit(to: 20)
+            .getDocuments()
+
+        // Filter by name match and convert to FoodSearchResult
+        return snapshot.documents.compactMap { doc -> FoodSearchResult? in
+            let data = doc.data()
+
+            guard let foodName = data["foodName"] as? String else { return nil }
+            let foodNameLower = foodName.lowercased()
+
+            // Simple contains match
+            guard foodNameLower.contains(searchTerm) else { return nil }
+
+            let id = data["id"] as? String ?? doc.documentID
+            let brandName = data["brand"] as? String
+            let calories = data["calories"] as? Double ?? 0
+            let protein = data["protein"] as? Double ?? 0
+            let carbs = data["carbs"] as? Double ?? 0
+            let fat = data["fat"] as? Double ?? 0
+            let fiber = data["fiber"] as? Double ?? 0
+            let sugar = data["sugar"] as? Double ?? 0
+            let salt = data["salt"] as? Double ?? 0
+            let sodium = salt * 400 // Convert salt (g) to sodium (mg)
+
+            let ingredientsText = data["ingredientsText"] as? String
+            let ingredients: [String]? = ingredientsText?.components(separatedBy: ",").map {
+                $0.trimmingCharacters(in: .whitespaces)
+            }
+
+            return FoodSearchResult(
+                id: id,
+                name: foodName,
+                brand: brandName,
+                calories: calories,
+                protein: protein,
+                carbs: carbs,
+                fat: fat,
+                fiber: fiber,
+                sugar: sugar,
+                sodium: sodium,
+                servingDescription: "100g",
+                ingredients: ingredients,
+                confidence: nil,
+                isVerified: true, // AI-found foods are verified
+                additives: nil,
+                processingScore: nil,
+                processingGrade: nil,
+                processingLabel: nil
+            )
+        }
     }
 
     // MARK: - AI-Improved Foods
