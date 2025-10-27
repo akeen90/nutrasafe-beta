@@ -2,8 +2,8 @@
 //  OnboardingView.swift
 //  NutraSafe Beta
 //
-//  Main onboarding container with TabView pagination
-//  Created by Claude on 2025-10-22.
+//  Updated onboarding container with 4-screen flow
+//  Created on 2025-10-27
 //
 
 import SwiftUI
@@ -11,7 +11,7 @@ import SwiftUI
 struct OnboardingView: View {
     @State private var currentPage = 0
     let onComplete: () -> Void
-
+    
     var body: some View {
         ZStack {
             Group {
@@ -19,26 +19,32 @@ struct OnboardingView: View {
                 case 0:
                     WelcomeScreen(currentPage: $currentPage)
                 case 1:
-                    DisclaimerScreen(currentPage: $currentPage)
+                    CoreFeaturesScreen(currentPage: $currentPage)
                 case 2:
-                    AddingFoodScreen(currentPage: $currentPage)
-                case 3:
-                    FoodDetailScreen(currentPage: $currentPage)
-                case 4:
-                    TrackingNutrientsScreen(currentPage: $currentPage)
-                case 5:
-                    FoodReactionsScreen(currentPage: $currentPage)
-                case 6:
-                    FastingTimerScreen(currentPage: $currentPage)
-                case 7:
-                    UseByTrackerScreen(currentPage: $currentPage)
-                case 8:
-                    SettingsFeatureScreen(currentPage: $currentPage)
+                    AdvancedFeaturesScreen(currentPage: $currentPage)
                 default:
-                    CompletionScreen(onComplete: onComplete)
+                    GetStartedScreen(currentPage: $currentPage, onComplete: onComplete)
                 }
             }
+            .animation(.easeInOut(duration: 0.3), value: currentPage)
         }
+    }
+}
 
+// MARK: - Page Indicator (Optional - can add if desired)
+
+struct PageIndicator: View {
+    let currentPage: Int
+    let totalPages: Int
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(0..<totalPages, id: \.self) { index in
+                Circle()
+                    .fill(currentPage == index ? Color.blue : Color.gray.opacity(0.3))
+                    .frame(width: currentPage == index ? 10 : 8, height: currentPage == index ? 10 : 8)
+                    .animation(.easeInOut(duration: 0.2), value: currentPage)
+            }
+        }
     }
 }

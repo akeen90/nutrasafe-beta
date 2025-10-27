@@ -9,13 +9,49 @@ import StoreKitTest
 #endif
 
 // Explicit app delegate for proper Firebase initialization and to satisfy swizzler expectations
-class AppDelegate: NSObject, UIApplicationDelegate {
+class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    // Static property to communicate selected tab to ContentView
+    static var selectedTabFromNotification: TabItem?
+
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
         if FirebaseApp.app() == nil {
             FirebaseApp.configure()
         }
+
+        // Set notification delegate to handle notification taps
+        UNUserNotificationCenter.current().delegate = self
         return true
+    }
+
+    // Handle notification when app is in foreground
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                               willPresent notification: UNNotification,
+                               withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        // Show banner even when app is in foreground
+        completionHandler([.banner, .sound, .badge])
+    }
+
+    // Handle notification tap (when user taps notification)
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                               didReceive response: UNNotificationResponse,
+                               withCompletionHandler completionHandler: @escaping () -> Void) {
+        let userInfo = response.notification.request.content.userInfo
+
+        // Check if this is a use-by notification
+        if let type = userInfo["type"] as? String, type == "useBy" {
+            print("📱 User tapped use-by notification - navigating to Use By tab")
+
+            // Set the tab to navigate to
+            AppDelegate.selectedTabFromNotification = .useBy
+
+            // Post notification to trigger navigation
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .navigateToUseBy, object: nil)
+            }
+        }
+
+        completionHandler()
     }
 }
 

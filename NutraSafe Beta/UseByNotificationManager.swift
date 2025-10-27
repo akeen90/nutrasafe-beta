@@ -113,6 +113,13 @@ class UseByNotificationManager {
         content.sound = .default
         content.badge = 1
 
+        // Add userInfo for deep linking
+        content.userInfo = [
+            "type": "useBy",
+            "itemId": itemId,
+            "itemName": itemName
+        ]
+
         // Set notification at 9 AM on the target date
         var dateComponents = Calendar.current.dateComponents([.year, .month, .day], from: date)
         dateComponents.hour = 9

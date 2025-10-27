@@ -748,10 +748,16 @@ struct ManualFoodDetailEntryView: View {
                             barcode = barcodeValue
                         }
                         // Apply serving size if found
+                        print("🔎 MANUAL ADD (onUse) - Checking serving size: \(foundIngredients?.serving_size ?? "NIL")")
                         if let servingSizeStr = foundIngredients?.serving_size, !servingSizeStr.isEmpty {
+                            print("📏 MANUAL ADD (onUse) - Updating serving size from AI: \(servingSizeStr)")
                             let parsed = parseServingSize(servingSizeStr)
+                            print("🔧 MANUAL ADD (onUse) - Parsed: amount=\(parsed.amount), unit=\(parsed.unit)")
                             servingSize = parsed.amount
                             servingUnit = parsed.unit
+                            print("✅ MANUAL ADD (onUse) - Serving size updated: servingSize=\(servingSize), servingUnit=\(servingUnit)")
+                        } else {
+                            print("⚠️ MANUAL ADD (onUse) - No serving size in result OR serving size is empty")
                         }
                         // Apply ingredients
                         if let ingredients = foundIngredients?.ingredients_text {
@@ -781,10 +787,16 @@ struct ManualFoodDetailEntryView: View {
                             barcode = barcodeValue
                         }
                         // Apply serving size if found
+                        print("🔎 MANUAL ADD (onEdit) - Checking serving size: \(foundIngredients?.serving_size ?? "NIL")")
                         if let servingSizeStr = foundIngredients?.serving_size, !servingSizeStr.isEmpty {
+                            print("📏 MANUAL ADD (onEdit) - Updating serving size from AI: \(servingSizeStr)")
                             let parsed = parseServingSize(servingSizeStr)
+                            print("🔧 MANUAL ADD (onEdit) - Parsed: amount=\(parsed.amount), unit=\(parsed.unit)")
                             servingSize = parsed.amount
                             servingUnit = parsed.unit
+                            print("✅ MANUAL ADD (onEdit) - Serving size updated: servingSize=\(servingSize), servingUnit=\(servingUnit)")
+                        } else {
+                            print("⚠️ MANUAL ADD (onEdit) - No serving size in result OR serving size is empty")
                         }
                         // Apply ingredients and nutrition for editing
                         if let ingredients = foundIngredients?.ingredients_text {
@@ -835,6 +847,15 @@ struct ManualFoodDetailEntryView: View {
                     productName: foodName,
                     brand: brand.isEmpty ? nil : brand
                 )
+
+                print("🍎 MANUAL ADD - AI Search Result:")
+                print("  - ingredients_found: \(response.ingredients_found)")
+                print("  - ingredients_text: \(response.ingredients_text?.prefix(50) ?? "nil")")
+                print("  - nutrition: \(response.nutrition_per_100g != nil ? "YES" : "NO")")
+                print("  - serving_size: \(response.serving_size ?? "NIL")")
+                print("  - product_name: \(response.product_name ?? "nil")")
+                print("  - brand: \(response.brand ?? "nil")")
+                print("  - source_url: \(response.source_url ?? "nil")")
 
                 await MainActor.run {
                     isSearchingIngredients = false

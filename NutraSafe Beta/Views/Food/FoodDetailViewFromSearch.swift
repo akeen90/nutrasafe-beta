@@ -2844,20 +2844,22 @@ struct FoodDetailViewFromSearch: View {
                 .padding(.horizontal, 16)
 
             // Tab Content - Wrapped in ScrollView to prevent overflow
-            ScrollView {
-                VStack(spacing: 0) {
-                    switch selectedWatchTab {
-                    case .additives:
-                        additivesContent
-                    case .allergies:
-                        allergensContent
-                    case .vitamins:
-                        vitaminsContent
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 0) {
+                        switch selectedWatchTab {
+                        case .additives:
+                            additivesContent
+                        case .allergies:
+                            allergensContent
+                        case .vitamins:
+                            vitaminsContent(scrollProxy: proxy)
+                        }
                     }
                 }
+                .frame(maxHeight: 400) // Limit height to prevent tab overlap
+                .background(Color(.systemBackground))
             }
-            .frame(maxHeight: 400) // Limit height to prevent tab overlap
-            .background(Color(.systemBackground))
         }
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -2923,7 +2925,7 @@ struct FoodDetailViewFromSearch: View {
     }
     
     // MARK: - Vitamins & Minerals Content (NEW SYSTEM)
-    private var vitaminsContent: some View {
+    private func vitaminsContent(scrollProxy: ScrollViewProxy) -> some View {
         let detectedNutrients = getDetectedNutrients()
         let micronutrientDB = MicronutrientDatabase.shared
 
@@ -2934,7 +2936,8 @@ struct FoodDetailViewFromSearch: View {
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(Array(detectedNutrients.enumerated()), id: \.element) { index, nutrientId in
                         if let nutrientInfo = micronutrientDB.getNutrientInfo(nutrientId) {
-                            NutrientInfoCard(nutrientInfo: nutrientInfo)
+                            NutrientInfoCard(nutrientInfo: nutrientInfo, scrollProxy: scrollProxy, cardId: nutrientId)
+                                .id(nutrientId)
                                 .onAppear {
                                     print("  🃏 Card #\(index + 1) appeared: \(nutrientInfo.name)")
                                 }
@@ -3657,14 +3660,28 @@ struct MacroRow: View {
 // MARK: - Nutrient Info Card (NEW SYSTEM)
 struct NutrientInfoCard: View {
     let nutrientInfo: NutrientInfo
+    let scrollProxy: ScrollViewProxy
+    let cardId: String
     @State private var isExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Main header - always visible
             Button(action: {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                withAnimation(.easeInOut(duration: 0.25)) {
                     isExpanded.toggle()
+                }
+
+                // Scroll to this card when expanded to ensure it's fully visible
+                if !isExpanded {
+                    // Collapsing - no scroll needed
+                } else {
+                    // Expanding - scroll after animation completes
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            scrollProxy.scrollTo(cardId, anchor: .center)
+                        }
+                    }
                 }
             }) {
                 HStack(spacing: 12) {
@@ -3736,7 +3753,7 @@ struct NutrientInfoCard: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 16)
                 }
-                .transition(.opacity.combined(with: .move(edge: .top)))
+                .transition(.opacity)
             }
         }
         .background(
