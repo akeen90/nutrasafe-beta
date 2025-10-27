@@ -96,6 +96,13 @@ struct FoodDetailViewFromSearch: View {
         self._selectedMeal = State(initialValue: diaryMealType ?? "Breakfast")
         self._isEditingMode = State(initialValue: diaryEntryId != nil)
         self._originalMealType = State(initialValue: diaryMealType ?? "")
+
+        // Debug logging
+        print("DEBUG FoodDetailViewFromSearch init:")
+        print("  - diaryEntryId: \(String(describing: diaryEntryId))")
+        print("  - diaryMealType: \(String(describing: diaryMealType))")
+        print("  - isEditingMode will be: \(diaryEntryId != nil)")
+        print("  - selectedMeal will be: \(diaryMealType ?? "Breakfast")")
     }
 
     // OPTIMIZED: Use food directly - search already returns complete data
@@ -192,20 +199,30 @@ struct FoodDetailViewFromSearch: View {
     @State private var selectedWatchTab: WatchTab = .additives
     
     private var buttonText: String {
+        print("DEBUG buttonText calculation:")
+        print("  - diaryEntryId: \(String(describing: diaryEntryId))")
+        print("  - isEditingMode: \(isEditingMode)")
+        print("  - selectedMeal: \(selectedMeal)")
+        print("  - originalMealType: \(originalMealType)")
+        print("  - destination: \(destination)")
+
         // Check if we're replacing a diary entry
         if let _ = diaryEntryId {
+            print("  -> Has diaryEntryId, returning Replace/Move")
             if selectedMeal == originalMealType {
                 return "Replace in Diary"
             } else {
                 return "Move to \(selectedMeal)"
             }
         } else if isEditingMode {
+            print("  -> isEditingMode true, returning Update/Move")
             if selectedMeal == originalMealType {
                 return "Update Portion"
             } else {
                 return "Move to \(selectedMeal)"
             }
         } else {
+            print("  -> Default case, returning Add")
             // Reflect destination selection
             return destination == .useBy ? "Add to Use By" : "Add to Diary"
         }

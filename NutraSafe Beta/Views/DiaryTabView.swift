@@ -376,7 +376,9 @@ struct DiaryTabView: View {
                 food: food.toFoodSearchResult(),
                 sourceType: .diary,
                 selectedTab: $selectedTab,
-                destination: .diary
+                destination: .diary,
+                diaryEntryId: food.id,
+                diaryMealType: food.time
             )
         }
     }
