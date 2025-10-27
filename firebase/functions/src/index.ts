@@ -31,3 +31,4 @@ export { standardizeIngredients } from './standardize-ingredients';
 export { notifyIncompleteFood } from './notify-incomplete-food';
 export { parseMicronutrientsWithAI, parseMicronutrientsWithAICached } from './parse-micronutrients-ai';
 export { parseAdditivesWithAI, parseAdditivesWithAICached } from './parse-additives-ai';
+export { findIngredients } from './find-ingredients';

@@ -1350,8 +1350,12 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Brand name contains inappropriate language. Please use appropriate terms."])
         }
 
-        // Generate unique food ID
-        let foodId = "userFood_\(UUID().uuidString)"
+        // Use sanitized food name as document ID for easier identification
+        let sanitizedName = foodName
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ".", with: "_")
+            .prefix(100)
+        let foodId = "userFood_\(sanitizedName)"
 
         // Prepare food data
         var foodData = food
@@ -1367,7 +1371,7 @@ class FirebaseManager: ObservableObject {
         // Save to global userAdded collection (accessible by all users)
         try await db.collection("userAdded")
             .document(foodId)
-            .setData(foodData)
+            .setData(foodData, merge: true)
 
         print("✅ User added food saved: \(foodId)")
         return foodId
@@ -1396,8 +1400,12 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Brand name contains inappropriate language. Please use appropriate terms."])
         }
 
-        // Generate unique food ID
-        let foodId = "aiFood_\(UUID().uuidString)"
+        // Use sanitized food name as document ID for easier identification
+        let sanitizedName = foodName
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ".", with: "_")
+            .prefix(100)
+        let foodId = "aiFood_\(sanitizedName)"
 
         // Prepare food data with AI-specific fields
         var foodData = food
@@ -1421,7 +1429,7 @@ class FirebaseManager: ObservableObject {
         // Save to global aiManuallyAdded collection (accessible by all users)
         try await db.collection("aiManuallyAdded")
             .document(foodId)
-            .setData(foodData)
+            .setData(foodData, merge: true)
 
         print("✅ AI enhanced food saved: \(foodId)")
         return foodId
@@ -1634,7 +1642,13 @@ class FirebaseManager: ObservableObject {
         }
 
         let timestamp = Timestamp(date: Date())
-        let foodId = UUID().uuidString
+
+        // Use sanitized original food name as document ID for easier identification
+        let sanitizedName = originalFood.name
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ".", with: "_")
+            .prefix(100)
+        let foodId = "aiEnhanced_\(sanitizedName)"
 
         var aiImprovedData: [String: Any] = [
             "id": foodId,
@@ -1650,7 +1664,7 @@ class FirebaseManager: ObservableObject {
         aiImprovedData.merge(enhancedData) { (_, new) in new }
 
         // Save to aiEnhanced collection (global, accessible by all users)
-        try await db.collection("aiEnhanced").document(foodId).setData(aiImprovedData)
+        try await db.collection("aiEnhanced").document(foodId).setData(aiImprovedData, merge: true)
         print("✅ AI-enhanced food saved to Firebase: \(foodId)")
 
         return foodId
@@ -1779,8 +1793,13 @@ class FirebaseManager: ObservableObject {
         }
 
         // Add to incomplete_foods collection
-        let docRef = db.collection("incomplete_foods").document()
-        try await docRef.setData(foodData)
+        // Use sanitized food name as document ID for easier identification
+        let sanitizedName = food.name
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ".", with: "_")
+            .prefix(100) // Firestore doc ID max length is 1500 chars, but keep it readable
+        let docRef = db.collection("incomplete_foods").document(String(sanitizedName))
+        try await docRef.setData(foodData, merge: true) // Use merge to avoid overwriting if name collision
 
         print("✅ Incomplete food saved to Firestore: \(food.name) (ID: \(docRef.documentID))")
     }
