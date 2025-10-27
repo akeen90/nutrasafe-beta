@@ -840,20 +840,32 @@ struct FoodEntry: Identifiable, Codable {
             return nil
         }
 
-        // Deserialize additives if available
+        // Deserialize ingredients with type safety (prevents NSIndexPath crash)
+        var ingredients: [String]? = nil
+        if let ingredientsArray = data["ingredients"] as? [String] {
+            ingredients = ingredientsArray
+        } else if data["ingredients"] != nil {
+            print("⚠️  Corrupt ingredients field detected (type: \(type(of: data["ingredients"]))) - skipping for food: \(foodName)")
+        }
+
+        // Deserialize additives if available with type safety
         var additives: [NutritionAdditiveInfo]? = nil
         if let additivesArray = data["additives"] as? [[String: Any]],
            JSONSerialization.isValidJSONObject(additivesArray),
            let additivesData = try? JSONSerialization.data(withJSONObject: additivesArray, options: []) {
             additives = try? JSONDecoder().decode([NutritionAdditiveInfo].self, from: additivesData)
+        } else if data["additives"] != nil {
+            print("⚠️  Corrupt additives field detected - skipping for food: \(foodName)")
         }
 
-        // Deserialize micronutrient profile if available
+        // Deserialize micronutrient profile if available with type safety
         var micronutrientProfile: MicronutrientProfile? = nil
         if let micronutrientsDict = data["micronutrientProfile"] as? [String: Any],
            JSONSerialization.isValidJSONObject(micronutrientsDict),
            let micronutrientsData = try? JSONSerialization.data(withJSONObject: micronutrientsDict, options: []) {
             micronutrientProfile = try? JSONDecoder().decode(MicronutrientProfile.self, from: micronutrientsData)
+        } else if data["micronutrientProfile"] != nil {
+            print("⚠️  Corrupt micronutrientProfile field detected - skipping for food: \(foodName)")
         }
 
         return FoodEntry(
@@ -871,7 +883,7 @@ struct FoodEntry: Identifiable, Codable {
             sugar: data["sugar"] as? Double,
             sodium: data["sodium"] as? Double,
             calcium: data["calcium"] as? Double,
-            ingredients: data["ingredients"] as? [String],
+            ingredients: ingredients,
             additives: additives,
             barcode: data["barcode"] as? String,
             micronutrientProfile: micronutrientProfile,
