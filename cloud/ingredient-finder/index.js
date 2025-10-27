@@ -40,12 +40,15 @@ async function searchWithGemini(productName, brand) {
     }]
   });
 
+  // Prioritize product name over brand in search
   const searchQuery = brand
-    ? `${productName} ${brand} ingredients nutrition per 100g UK`
+    ? `"${productName}" ${brand} ingredients nutrition per 100g UK`
     : `${productName} ingredients nutrition per 100g UK`;
 
   const prompt = `
 Search for the product "${searchQuery}" and extract the following information:
+
+IMPORTANT: Focus on finding information for "${productName}" specifically. The brand "${brand || 'N/A'}" is secondary - prioritize matching the exact product name.
 
 1. Complete ingredient list (all ingredients listed on the product)
 2. Nutrition information per 100g or 100ml
