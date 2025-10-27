@@ -1534,6 +1534,9 @@ class FirebaseManager: ObservableObject {
                 $0.trimmingCharacters(in: .whitespaces)
             }
 
+            // Get serving size from enhanced data, fallback to "100g"
+            let servingSize = data["servingSize"] as? String ?? "100g"
+
             return FoodSearchResult(
                 id: id,
                 name: originalFoodName,
@@ -1545,7 +1548,7 @@ class FirebaseManager: ObservableObject {
                 fiber: fiber,
                 sugar: sugar,
                 sodium: sodium,
-                servingDescription: "100g",
+                servingDescription: servingSize,
                 ingredients: ingredients,
                 confidence: nil,
                 isVerified: true, // AI-enhanced foods are verified
@@ -1592,6 +1595,11 @@ class FirebaseManager: ObservableObject {
                 $0.trimmingCharacters(in: .whitespaces)
             }
 
+            // Get serving size from data (servingSize + servingUnit), fallback to "100g"
+            let servingSizeValue = data["servingSize"] as? Double ?? 100
+            let servingUnit = data["servingUnit"] as? String ?? "g"
+            let servingDescription = "\(Int(servingSizeValue))\(servingUnit)"
+
             return FoodSearchResult(
                 id: id,
                 name: foodName,
@@ -1603,7 +1611,7 @@ class FirebaseManager: ObservableObject {
                 fiber: fiber,
                 sugar: sugar,
                 sodium: sodium,
-                servingDescription: "100g",
+                servingDescription: servingDescription,
                 ingredients: ingredients,
                 confidence: nil,
                 isVerified: true, // AI-found foods are verified

@@ -2054,6 +2054,10 @@ struct FoodDetailViewFromSearch: View {
                         enhancedData["brand"] = brand
                     }
 
+                    if let servingSize = result.serving_size {
+                        enhancedData["servingSize"] = servingSize
+                    }
+
                     if let sourceUrl = result.source_url {
                         enhancedData["sourceUrl"] = sourceUrl
                     }
