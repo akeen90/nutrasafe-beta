@@ -913,8 +913,13 @@ struct ProgressGoalsSection: View {
         let manager = firebaseManager
         Task {
             do {
+                // Save to Firebase
                 try await manager.saveWeightEntry(newEntry)
-                print("✅ Current weight saved: \(weight) kg")
+                print("✅ Current weight saved to Firebase: \(weight) kg")
+
+                // Write to Apple Health
+                try? await HealthKitManager.shared.writeBodyWeight(weightKg: weight, date: newEntry.date)
+
                 // Refresh from server to reconcile
                 await loadProgressData()
             } catch {

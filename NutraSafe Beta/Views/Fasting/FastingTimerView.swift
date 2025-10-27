@@ -938,6 +938,7 @@ struct FastingSettingsView: View {
                         PresetButton(title: "18h", subtitle: "Advanced", hours: 18, currentGoal: $customGoal)
                         PresetButton(title: "20h", subtitle: "Expert", hours: 20, currentGoal: $customGoal)
                     }
+                    .padding(.horizontal, 16)
                     .listRowInsets(EdgeInsets())
                     .padding(.vertical, 8)
                 }

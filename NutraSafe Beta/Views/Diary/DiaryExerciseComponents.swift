@@ -32,12 +32,7 @@ struct DiaryExerciseSummaryCard: View {
     private var workoutCount: Int {
         workouts.count + manualExercises.count
     }
-    
-    private var todaysSteps: Int {
-        // This will be populated by HealthKit steps data
-        healthKitManager.stepCount
-    }
-    
+
     var body: some View {
         VStack(spacing: 16) {
             HStack {
@@ -68,7 +63,6 @@ struct DiaryExerciseSummaryCard: View {
                 DiaryExerciseStat(name: "Duration", value: "\(totalDuration)", unit: "min", color: .blue)
                 DiaryExerciseStat(name: "Activities", value: "\(workoutCount)", unit: "", color: .green)
                 DiaryExerciseStat(name: "Energy", value: "\(Int(combinedTotalCalories))", unit: "kcal", color: .red)
-                DiaryExerciseStat(name: "Steps", value: "\(todaysSteps)", unit: "", color: .orange)
             }
         }
         .padding(16)

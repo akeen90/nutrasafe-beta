@@ -34,6 +34,16 @@ struct FoodDetailViewFromSearch: View {
     @State private var showingNotificationError = false
     @State private var notificationErrorMessage = ""
 
+    // AI Enhancement states
+    @State private var isEnhancing = false
+    @State private var showingEnhancementSuccess = false
+    @State private var showingEnhancementError = false
+    @State private var enhancementErrorMessage = ""
+    @State private var enhancedIngredientsText: String?
+    @State private var enhancedNutrition: NutritionPer100g?
+    @State private var enhancedProductName: String?
+    @State private var enhancedBrand: String?
+
     init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, destination: AddFoodMainView.AddDestination, onComplete: ((TabItem) -> Void)? = nil) {
         self.food = food
         self.sourceType = sourceType
@@ -78,7 +88,47 @@ struct FoodDetailViewFromSearch: View {
     }
 
     // OPTIMIZED: Use food directly - search already returns complete data
+    // Enhanced with AI nutrition and ingredients if available
     private var displayFood: FoodSearchResult {
+        // Check if we have ANY enhanced data (nutrition OR ingredients)
+        let hasEnhancedData = enhancedNutrition != nil || enhancedIngredientsText != nil
+
+        if hasEnhancedData {
+            // Convert enhanced ingredients text to array if available
+            let enhancedIngredientsArray: [String]? = {
+                if let text = enhancedIngredientsText, !text.isEmpty {
+                    return text.components(separatedBy: ",")
+                        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                        .filter { !$0.isEmpty }
+                }
+                return nil
+            }()
+
+            return FoodSearchResult(
+                id: food.id,
+                name: enhancedProductName ?? food.name,
+                brand: enhancedBrand ?? food.brand,
+                calories: enhancedNutrition?.calories ?? food.calories,
+                protein: enhancedNutrition?.protein ?? food.protein,
+                carbs: enhancedNutrition?.carbs ?? food.carbs,
+                fat: enhancedNutrition?.fat ?? food.fat,
+                fiber: enhancedNutrition?.fiber ?? food.fiber,
+                sugar: enhancedNutrition?.sugar ?? food.sugar,
+                sodium: enhancedNutrition?.salt ?? food.sodium,  // Convert salt to sodium
+                servingDescription: food.servingDescription,
+                servingSizeG: food.servingSizeG,
+                ingredients: enhancedIngredientsArray ?? food.ingredients,  // Use enhanced ingredients if available
+                confidence: food.confidence,
+                isVerified: food.isVerified,
+                additives: food.additives,
+                additivesDatabaseVersion: food.additivesDatabaseVersion,
+                processingScore: food.processingScore,
+                processingGrade: food.processingGrade,
+                processingLabel: food.processingLabel,
+                barcode: food.barcode,
+                micronutrientProfile: food.micronutrientProfile
+            )
+        }
         return food
     }
     
@@ -579,7 +629,24 @@ struct FoodDetailViewFromSearch: View {
     }
     
     private func getIngredientsList() -> [String]? {
-        // First, try to get ingredients from displayFood (uses enriched or original)
+        print("🔍 getIngredientsList() called")
+        print("  - enhancedIngredientsText: \(enhancedIngredientsText?.prefix(50) ?? "nil")")
+        print("  - displayFood.ingredients: \(displayFood.ingredients?.count ?? 0) items")
+
+        // PRIORITY 1: Check for AI-enhanced ingredients
+        if let enhancedText = enhancedIngredientsText, !enhancedText.isEmpty {
+            // Split enhanced ingredients text into array
+            let enhancedIngredients = enhancedText
+                .components(separatedBy: ",")
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+            if !enhancedIngredients.isEmpty {
+                print("✨ Using AI-enhanced ingredients (\(enhancedIngredients.count) items)")
+                return enhancedIngredients.map { standardizeToUKSpelling($0) }
+            }
+        }
+
+        // PRIORITY 2: Try to get ingredients from displayFood (uses enriched or original)
         if let ingredients = displayFood.ingredients, !ingredients.isEmpty {
             let realIngredients = ingredients.filter { ingredient in
                 !ingredient.contains("Processing ingredient image...") && !ingredient.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -991,11 +1058,11 @@ struct FoodDetailViewFromSearch: View {
                 allergenWarningBanner
             }
 
-            Text(food.name)
+            Text(displayFood.name)
                 .font(.system(size: 24, weight: .bold))
                 .multilineTextAlignment(.center)
 
-            if let brand = food.brand {
+            if let brand = displayFood.brand {
                 Text(brand)
                     .font(.system(size: 16))
                     .foregroundColor(.secondary)
@@ -1310,6 +1377,7 @@ struct FoodDetailViewFromSearch: View {
                 }
             }
         }
+        .id("\(enhancedIngredientsText ?? "")\(enhancedNutrition?.calories ?? 0)")
         .alert("Team Notified", isPresented: $showingNotificationSuccess) {
             Button("OK") { }
         } message: {
@@ -1319,6 +1387,16 @@ struct FoodDetailViewFromSearch: View {
             Button("OK") { }
         } message: {
             Text(notificationErrorMessage)
+        }
+        .alert("Enhanced with AI", isPresented: $showingEnhancementSuccess) {
+            Button("OK") { }
+        } message: {
+            Text("Successfully found enhanced ingredient information! The ingredients list and nutritional analysis have been updated with more detailed information from UK supermarket databases.")
+        }
+        .alert("Enhancement Failed", isPresented: $showingEnhancementError) {
+            Button("OK") { }
+        } message: {
+            Text(enhancementErrorMessage)
         }
         .sheet(isPresented: $showingNutritionCamera) {
             IngredientCameraView(
@@ -1805,33 +1883,59 @@ struct FoodDetailViewFromSearch: View {
                         .foregroundColor(.primary)
                 }
 
-                Text("If this food has incomplete information, help us improve our database by notifying our team.")
+                Text("Food details not quite right? Try enhancing with AI or notify our team for manual review.")
                     .font(.system(size: 14))
                     .foregroundColor(.secondary)
                     .lineLimit(nil)
                     .multilineTextAlignment(.center)
 
-                Button(action: {
-                    notifyTeamAboutIncompleteFood()
-                }) {
-                    HStack {
-                        if isNotifyingTeam {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        } else {
-                            Image(systemName: "exclamationmark.triangle")
-                            Text("Notify Team")
-                                .font(.system(size: 14, weight: .medium))
+                HStack(spacing: 12) {
+                    // AI Enhancement Button
+                    Button(action: {
+                        enhanceWithAI()
+                    }) {
+                        HStack {
+                            if isEnhancing {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            } else {
+                                Image(systemName: "sparkles")
+                                Text("Enhance with AI")
+                                    .font(.system(size: 14, weight: .medium))
+                            }
                         }
+                        .foregroundColor(.white)
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 16)
+                        .background(isEnhancing ? Color.gray : Color.blue)
+                        .cornerRadius(8)
                     }
-                    .foregroundColor(.white)
-                    .padding(.vertical, 10)
-                    .padding(.horizontal, 16)
-                    .background(isNotifyingTeam ? Color.gray : Color.orange)
-                    .cornerRadius(8)
+                    .disabled(isEnhancing)
+
+                    // Notify Team Button
+                    Button(action: {
+                        notifyTeamAboutIncompleteFood()
+                    }) {
+                        HStack {
+                            if isNotifyingTeam {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            } else {
+                                Image(systemName: "exclamationmark.triangle")
+                                Text("Notify Team")
+                                    .font(.system(size: 14, weight: .medium))
+                            }
+                        }
+                        .foregroundColor(.white)
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 16)
+                        .background(isNotifyingTeam ? Color.gray : Color.orange)
+                        .cornerRadius(8)
+                    }
+                    .disabled(isNotifyingTeam)
                 }
-                .disabled(isNotifyingTeam)
             }
             .padding(16)
             .background(Color.orange.opacity(0.05))
@@ -1900,6 +2004,174 @@ struct FoodDetailViewFromSearch: View {
                     isNotifyingTeam = false
                     notificationErrorMessage = "Unable to send notification. Please try again later."
                     showingNotificationError = true
+                }
+            }
+        }
+    }
+
+    // Enhance food data using AI ingredient finder
+    private func enhanceWithAI() {
+        isEnhancing = true
+        print("🤖 Starting AI enhancement for: \(food.name), brand: \(food.brand ?? "none")")
+
+        Task {
+            do {
+                // Call the AI ingredient finder service
+                let result = try await IngredientFinderService.shared.findIngredients(
+                    productName: food.name,
+                    brand: food.brand
+                )
+
+                print("🔍 AI Search Result:")
+                print("  - ingredients_found: \(result.ingredients_found)")
+                print("  - ingredients_text: \(result.ingredients_text?.prefix(50) ?? "nil")")
+                print("  - nutrition: \(result.nutrition_per_100g != nil ? "YES" : "NO")")
+
+                // Save to Firebase AI-improved foods collection (outside MainActor)
+                if result.ingredients_found {
+                    print("💾 Saving AI-improved food to Firebase")
+                    var enhancedData: [String: Any] = [:]
+
+                    if let ingredientsText = result.ingredients_text {
+                        enhancedData["ingredientsText"] = ingredientsText
+                    }
+
+                    if let nutrition = result.nutrition_per_100g {
+                        enhancedData["calories"] = nutrition.calories ?? 0
+                        enhancedData["protein"] = nutrition.protein ?? 0
+                        enhancedData["carbs"] = nutrition.carbs ?? 0
+                        enhancedData["fat"] = nutrition.fat ?? 0
+                        enhancedData["fiber"] = nutrition.fiber ?? 0
+                        enhancedData["sugar"] = nutrition.sugar ?? 0
+                        enhancedData["salt"] = nutrition.salt ?? 0
+                    }
+
+                    if let productName = result.product_name {
+                        enhancedData["productName"] = productName
+                    }
+
+                    if let brand = result.brand {
+                        enhancedData["brand"] = brand
+                    }
+
+                    if let sourceUrl = result.source_url {
+                        enhancedData["sourceUrl"] = sourceUrl
+                    }
+
+                    // Save to Firebase
+                    do {
+                        let savedId = try await firebaseManager.saveAIImprovedFood(
+                            originalFood: food,
+                            enhancedData: enhancedData
+                        )
+                        print("✅ AI-improved food saved with ID: \(savedId)")
+                    } catch {
+                        print("⚠️ Failed to save AI-improved food to Firebase: \(error)")
+                        // Continue anyway - the UI enhancement still works
+                    }
+                }
+
+                await MainActor.run {
+                    isEnhancing = false
+
+                    if result.ingredients_found {
+                        // Store enhanced ingredients
+                        if let ingredientsText = result.ingredients_text {
+                            print("✅ AI found enhanced ingredients: \(ingredientsText.prefix(100))...")
+                            enhancedIngredientsText = ingredientsText
+                            print("📝 enhancedIngredientsText is now: \(enhancedIngredientsText?.prefix(50) ?? "nil")")
+                        } else {
+                            print("⚠️ No ingredients_text in result")
+                        }
+
+                        // Store enhanced nutrition data
+                        if let nutrition = result.nutrition_per_100g {
+                            print("✅ AI found enhanced nutrition data:")
+                            print("  - calories: \(nutrition.calories ?? 0)")
+                            print("  - protein: \(nutrition.protein ?? 0)")
+                            print("  - carbs: \(nutrition.carbs ?? 0)")
+                            enhancedNutrition = nutrition
+                        } else {
+                            print("⚠️ No nutrition_per_100g in result")
+                        }
+
+                        // Store enhanced product details
+                        enhancedProductName = result.product_name
+                        enhancedBrand = result.brand
+                        print("📦 Product details: name=\(result.product_name ?? "nil"), brand=\(result.brand ?? "nil")")
+
+                        // Clear and repopulate cached data with enhanced information
+                        print("🗑️ Clearing all caches and repopulating with enhanced data")
+                        cachedIngredients = nil
+                        cachedAdditives = nil
+                        cachedIngredientsStatus = nil
+                        cachedNutritionScore = nil
+                        cachedNutraSafeGrade = nil
+
+                        // Immediately repopulate ingredients cache with enhanced data
+                        print("🔄 Repopulating ingredients cache")
+                        cachedIngredients = getIngredientsList()
+                        cachedIngredientsStatus = getIngredientsStatus()
+
+                        print("✅ Cache repopulated: \(cachedIngredients?.count ?? 0) ingredients")
+
+                        // Recalculate NutraSafe grade with enhanced data
+                        print("🔄 Recalculating NutraSafe grade with enhanced data")
+                        cachedNutraSafeGrade = ProcessingScorer.shared.computeNutraSafeProcessingGrade(for: displayFood)
+                        if let grade = cachedNutraSafeGrade {
+                            print("✅ NutraSafe grade recalculated: \(grade.grade)")
+                        }
+
+                        // Trigger additive analysis with new ingredients
+                        if let ingredientsArray = cachedIngredients, !ingredientsArray.isEmpty {
+                            print("🔬 Analyzing additives in enhanced ingredients")
+                            AdditiveWatchService.shared.analyzeIngredients(ingredientsArray) { result in
+                                let mapped: [DetailedAdditive] = result.detectedAdditives.map { additive in
+                                    let riskLevel: String
+                                    if additive.effectsVerdict == .avoid {
+                                        riskLevel = "High"
+                                    } else if additive.effectsVerdict == .caution {
+                                        riskLevel = "Moderate"
+                                    } else {
+                                        riskLevel = "Low"
+                                    }
+                                    let description = additive.consumerInfo ?? "No detailed information available for this additive."
+                                    return DetailedAdditive(
+                                        name: additive.name,
+                                        code: additive.eNumber,
+                                        purpose: additive.group.rawValue.capitalized,
+                                        origin: additive.origin.rawValue.capitalized,
+                                        childWarning: additive.hasChildWarning,
+                                        riskLevel: riskLevel,
+                                        description: description
+                                    )
+                                }
+                                DispatchQueue.main.async {
+                                    self.cachedAdditives = mapped
+                                    print("✅ Additives analyzed: \(mapped.count) found")
+                                }
+                            }
+                        }
+
+                        // Trigger UI refresh
+                        print("🔄 Triggering UI refresh")
+                        refreshTrigger = UUID()
+
+                        print("✨ Enhancement complete! Showing success alert")
+                        showingEnhancementSuccess = true
+                    } else {
+                        print("⚠️ AI could not find enhanced ingredients")
+                        enhancementErrorMessage = "Could not find enhanced ingredient information. The product might not be in our UK supermarket database."
+                        showingEnhancementError = true
+                    }
+                }
+
+            } catch {
+                print("❌ Error enhancing with AI: \(error)")
+                await MainActor.run {
+                    isEnhancing = false
+                    enhancementErrorMessage = "Unable to enhance with AI. Please try again later."
+                    showingEnhancementError = true
                 }
             }
         }

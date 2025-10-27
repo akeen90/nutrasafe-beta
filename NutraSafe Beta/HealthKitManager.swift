@@ -61,7 +61,6 @@ class HealthKitManager: ObservableObject {
     
     @Published var isAuthorized = false
     @Published var exerciseCalories: Double = 0
-    @Published var stepCount: Int = 0
     @Published var userWeight: Double = 70.0 // Default weight in kg
     
     private let healthStore = HKHealthStore()
@@ -73,13 +72,12 @@ class HealthKitManager: ObservableObject {
         
         let typesToRead: Set<HKObjectType> = [
             HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
-            HKObjectType.quantityType(forIdentifier: .stepCount)!,
-            HKObjectType.quantityType(forIdentifier: .bodyMass)!,
-            HKObjectType.workoutType()
+            HKObjectType.quantityType(forIdentifier: .bodyMass)!
         ]
-        
+
         let typesToWrite: Set<HKSampleType> = [
-            HKObjectType.quantityType(forIdentifier: .dietaryEnergyConsumed)!
+            HKObjectType.quantityType(forIdentifier: .dietaryEnergyConsumed)!,
+            HKObjectType.quantityType(forIdentifier: .bodyMass)!
         ]
         
         do {
@@ -257,55 +255,6 @@ class HealthKitManager: ObservableObject {
         }
     }
     
-    func fetchTodayStepCount() async throws -> Int {
-        guard isAuthorized else { return 0 }
-        
-        let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount)!
-        
-        let calendar = Calendar.current
-        let startOfDay = calendar.startOfDay(for: Date())
-        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-        
-        let predicate = HKQuery.predicateForSamples(
-            withStart: startOfDay,
-            end: endOfDay,
-            options: .strictStartDate
-        )
-        
-        return try await withCheckedThrowingContinuation { continuation in
-            let query = HKStatisticsQuery(
-                quantityType: stepType,
-                quantitySamplePredicate: predicate,
-                options: .cumulativeSum
-            ) { _, statistics, error in
-                if let error = error as NSError? {
-                    if error.domain == "com.apple.healthkit" && error.code == 11 {
-                        continuation.resume(returning: 0)
-                        return
-                    }
-                    continuation.resume(throwing: error)
-                    return
-                }
-                
-                let steps = Int(statistics?.sumQuantity()?.doubleValue(for: .count()) ?? 0)
-                continuation.resume(returning: steps)
-            }
-            
-            healthStore.execute(query)
-        }
-    }
-    
-    func updateStepCount() async {
-        do {
-            let steps = try await fetchTodayStepCount()
-            await MainActor.run {
-                self.stepCount = steps
-            }
-        } catch {
-            print("Failed to fetch step count: \(error)")
-        }
-    }
-    
     func fetchWorkouts(for date: Date) async throws -> [HKWorkout] {
         guard isAuthorized else { return [] }
         
@@ -390,22 +339,42 @@ class HealthKitManager: ObservableObject {
     }
     
     func writeDietaryEnergyConsumed(calories: Double, date: Date = Date()) async throws {
-        guard isAuthorized else { 
+        guard isAuthorized else {
             print("HealthKit not authorized for writing dietary energy")
-            return 
+            return
         }
-        
+
         let energyType = HKQuantityType.quantityType(forIdentifier: .dietaryEnergyConsumed)!
         let energyQuantity = HKQuantity(unit: .kilocalorie(), doubleValue: calories)
-        
+
         let sample = HKQuantitySample(
             type: energyType,
             quantity: energyQuantity,
             start: date,
             end: date
         )
-        
+
         try await healthStore.save(sample)
         print("Successfully wrote \(calories) kcal to Apple Health")
+    }
+
+    func writeBodyWeight(weightKg: Double, date: Date = Date()) async throws {
+        guard isAuthorized else {
+            print("HealthKit not authorized for writing body weight")
+            return
+        }
+
+        let weightType = HKQuantityType.quantityType(forIdentifier: .bodyMass)!
+        let weightQuantity = HKQuantity(unit: .gramUnit(with: .kilo), doubleValue: weightKg)
+
+        let sample = HKQuantitySample(
+            type: weightType,
+            quantity: weightQuantity,
+            start: date,
+            end: date
+        )
+
+        try await healthStore.save(sample)
+        print("✅ Successfully wrote \(weightKg) kg to Apple Health")
     }
 }

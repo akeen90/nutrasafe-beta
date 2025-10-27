@@ -722,6 +722,12 @@ struct ManualFoodDetailEntryView: View {
                         if let barcodeValue = foundIngredients?.barcode, !barcodeValue.isEmpty {
                             barcode = barcodeValue
                         }
+                        // Apply serving size if found
+                        if let servingSizeStr = foundIngredients?.serving_size, !servingSizeStr.isEmpty {
+                            let parsed = parseServingSize(servingSizeStr)
+                            servingSize = parsed.amount
+                            servingUnit = parsed.unit
+                        }
                         // Apply ingredients
                         if let ingredients = foundIngredients?.ingredients_text {
                             ingredientsText = ingredients
@@ -748,6 +754,12 @@ struct ManualFoodDetailEntryView: View {
                         }
                         if let barcodeValue = foundIngredients?.barcode, !barcodeValue.isEmpty {
                             barcode = barcodeValue
+                        }
+                        // Apply serving size if found
+                        if let servingSizeStr = foundIngredients?.serving_size, !servingSizeStr.isEmpty {
+                            let parsed = parseServingSize(servingSizeStr)
+                            servingSize = parsed.amount
+                            servingUnit = parsed.unit
                         }
                         // Apply ingredients and nutrition for editing
                         if let ingredients = foundIngredients?.ingredients_text {
@@ -1046,6 +1058,82 @@ struct ManualFoodDetailEntryView: View {
                 print("❌ Error saving to use-by: \(error)")
             }
             throw error
+        }
+    }
+
+    /// Parse serving size string like "330ml" or "1 can (330ml)" into amount and unit
+    private func parseServingSize(_ servingSizeStr: String) -> (amount: String, unit: String) {
+        // Clean the string
+        let cleaned = servingSizeStr.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        // Try to extract numbers and units from patterns like:
+        // "330ml", "250g", "1 can (330ml)", "30 g", "100 grams"
+
+        // First, try to find parentheses pattern like "1 can (330ml)"
+        if let match = cleaned.range(of: #"\((\d+(?:\.\d+)?)\s*(ml|g|oz|kg|lb|cup|tbsp|tsp|piece|slice|serving|grams|milliliters|ounces|kilograms|pounds)\)"#, options: .regularExpression) {
+            let extracted = String(cleaned[match])
+            let withoutParens = extracted.replacingOccurrences(of: "(", with: "").replacingOccurrences(of: ")", with: "")
+            return extractAmountAndUnit(from: withoutParens)
+        }
+
+        // Otherwise try direct pattern like "330ml" or "30 g"
+        return extractAmountAndUnit(from: cleaned)
+    }
+
+    /// Extract amount and unit from a string like "330ml" or "30 g"
+    private func extractAmountAndUnit(from text: String) -> (amount: String, unit: String) {
+        // Match pattern: number followed by optional space and unit
+        if let match = text.range(of: #"(\d+(?:\.\d+)?)\s*(ml|g|oz|kg|lb|cup|tbsp|tsp|piece|slice|serving|grams|milliliters|ounces|kilograms|pounds)"#, options: .regularExpression) {
+            let extracted = String(text[match])
+
+            // Split into number and unit
+            if let numMatch = extracted.range(of: #"\d+(?:\.\d+)?"#, options: .regularExpression) {
+                let amount = String(extracted[numMatch])
+                let unit = extracted.replacingOccurrences(of: amount, with: "").trimmingCharacters(in: .whitespaces)
+
+                // Normalize unit names
+                let normalizedUnit = normalizeUnit(unit)
+
+                return (amount, normalizedUnit)
+            }
+        }
+
+        // Fallback: return default
+        return ("100", "g")
+    }
+
+    /// Normalize unit names to match the app's standard units
+    private func normalizeUnit(_ unit: String) -> String {
+        let lowercase = unit.lowercased()
+
+        // Map variations to standard units
+        switch lowercase {
+        case "milliliters", "milliliter", "mls":
+            return "ml"
+        case "grams", "gram", "gr":
+            return "g"
+        case "ounces", "ounce":
+            return "oz"
+        case "kilograms", "kilogram", "kgs":
+            return "g" // Convert kg to g (will need amount conversion too)
+        case "pounds", "pound", "lbs", "lb":
+            return "oz" // Convert to oz as closest match
+        case "tablespoons", "tablespoon":
+            return "tbsp"
+        case "teaspoons", "teaspoon":
+            return "tsp"
+        case "pieces":
+            return "piece"
+        case "slices":
+            return "slice"
+        case "servings":
+            return "serving"
+        case "cups":
+            return "cup"
+        default:
+            // Return as-is if it's already a standard unit, or default to "g"
+            let validUnits = ["g", "ml", "oz", "cup", "tbsp", "tsp", "piece", "slice", "serving"]
+            return validUnits.contains(lowercase) ? lowercase : "g"
         }
     }
 }

@@ -23,6 +23,19 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
+    // AI-enhanced foods collection (foods found via "Find with AI" feature)
+    // Any authenticated user can read all AI-enhanced foods
+    // Users can create if authenticated (profanity check done server-side)
+    match /aiEnhancedFoods/{foodId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.foodName is string
+        && request.resource.data.foodName.size() > 0
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.isAIEnhanced == true;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
     // Public read access for app configuration
     match /config/{document} {
       allow read: if true;
