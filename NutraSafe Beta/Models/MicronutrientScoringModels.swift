@@ -233,23 +233,12 @@ struct FoodMicronutrientAnalysis {
 struct NutrientInsightGenerator {
 
     /// Generate insights for a collection of nutrient summaries
+    /// Focuses on areas needing attention (low nutrients only)
     static func generateInsights(for summaries: [MicronutrientSummary]) -> [String] {
         var insights: [String] = []
 
-        // Top 3 strengths (≥70%)
-        let strengths = summaries
-            .filter { $0.todayPercentage >= 70 }
-            .sorted { $0.todayPercentage > $1.todayPercentage }
-            .prefix(3)
-
-        if !strengths.isEmpty {
-            for summary in strengths {
-                let sources = summary.recentSources.prefix(2).joined(separator: ", ")
-                insights.append("🟢 \(summary.name) strong from \(sources)")
-            }
-        }
-
         // Bottom 3 trace nutrients (≤30%, but exclude 0% as they have no data)
+        // These are the ones that need attention
         let trace = summaries
             .filter { $0.todayPercentage > 0 && $0.todayPercentage <= 30 }
             .sorted { $0.todayPercentage < $1.todayPercentage }
@@ -263,7 +252,8 @@ struct NutrientInsightGenerator {
                     .joined(separator: " or ")
 
                 let finalSuggestion = suggestions.isEmpty ? "nutrient-rich foods" : suggestions
-                insights.append("🟠 \(summary.name) trace — Add \(finalSuggestion)")
+                let percentage = Int(summary.todayPercentage)
+                insights.append("\(summary.name) — \(percentage)% of target. Try \(finalSuggestion)")
             }
         }
 

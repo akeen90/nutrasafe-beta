@@ -371,9 +371,20 @@ struct MicronutrientDashboard: View {
             }
             .frame(height: 60)
 
-            // Adaptive Insight Line (clickable)
-            if let insight = generateAdaptiveInsight() {
-                insightButton(text: insight)
+            // Nutrients Needing Attention
+            if !insights.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Areas That Need Attention")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 4)
+
+                    ForEach(insights, id: \.self) { insight in
+                        insightCard(text: insight)
+                    }
+                }
+            } else if let adaptiveInsight = generateAdaptiveInsight() {
+                insightCard(text: adaptiveInsight)
             }
         }
     }
@@ -403,7 +414,7 @@ struct MicronutrientDashboard: View {
         }
     }
 
-    private func insightButton(text: String) -> some View {
+    private func insightCard(text: String) -> some View {
         Button {
             let generator = UIImpactFeedbackGenerator(style: .light)
             generator.impactOccurred()
@@ -411,25 +422,30 @@ struct MicronutrientDashboard: View {
                 showingGaps = true
             }
         } label: {
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "lightbulb.fill")
-                    .font(.system(size: 16))
-                    .foregroundColor(.yellow)
+            HStack(alignment: .top, spacing: 12) {
+                // Warning icon with prominent colour
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.orange)
 
+                // Insight text with better visibility
                 Text(text)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 15, weight: .medium))
                     .foregroundColor(.primary)
+                    .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(nil)
             }
-            .padding(14)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
             .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(Color(.secondarySystemBackground))
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.orange.opacity(0.08))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(Color.black.opacity(0.06), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.orange.opacity(0.25), lineWidth: 1.5)
             )
         }
         .buttonStyle(.plain)
