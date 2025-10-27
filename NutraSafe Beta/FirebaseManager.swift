@@ -1496,16 +1496,16 @@ class FirebaseManager: ObservableObject {
         // Merge enhanced data
         aiImprovedData.merge(enhancedData) { (_, new) in new }
 
-        // Save to aiImprovedFoods collection (global, accessible by all users)
-        try await db.collection("aiImprovedFoods").document(foodId).setData(aiImprovedData)
-        print("✅ AI-improved food saved to Firebase: \(foodId)")
+        // Save to aiEnhanced collection (global, accessible by all users)
+        try await db.collection("aiEnhanced").document(foodId).setData(aiImprovedData)
+        print("✅ AI-enhanced food saved to Firebase: \(foodId)")
 
         return foodId
     }
 
-    /// Get AI-improved version of a food by original food ID
+    /// Get AI-enhanced version of a food by original food ID
     func getAIImprovedFood(originalFoodId: String) async throws -> [String: Any]? {
-        let snapshot = try await db.collection("aiImprovedFoods")
+        let snapshot = try await db.collection("aiEnhanced")
             .whereField("originalFoodId", isEqualTo: originalFoodId)
             .whereField("status", isEqualTo: "approved")
             .limit(to: 1)
