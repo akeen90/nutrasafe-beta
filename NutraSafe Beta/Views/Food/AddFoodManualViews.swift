@@ -186,6 +186,8 @@ class IngredientFinderService: ObservableObject {
         if let brand = brand, !brand.isEmpty {
             requestBody["brand"] = brand
         }
+        // Note: We don't send skipCache to the server because the cache is client-side only
+        // The server (Firebase function) doesn't cache - only the iOS app does via getIngredientCache
 
         let jsonData = try JSONSerialization.data(withJSONObject: requestBody)
 

@@ -121,6 +121,7 @@ export const findIngredients = functions
     }
 
     const { productName, brand } = req.body;
+    // Note: skipCache parameter not needed here - caching is handled client-side only
 
     if (!productName || typeof productName !== 'string') {
       res.status(400).json({ error: 'productName is required' });
