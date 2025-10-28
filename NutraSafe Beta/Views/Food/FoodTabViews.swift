@@ -263,7 +263,7 @@ struct FoodReactionSummaryCard: View {
                 )
                 StatMiniCard(
                     value: "\(reactionManager.weeklyCount)",
-                    label: "Week",
+                    label: "This Week",
                     color: .orange
                 )
                 StatMiniCard(
