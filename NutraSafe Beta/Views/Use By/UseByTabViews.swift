@@ -2273,7 +2273,7 @@ struct UseByInlineSearchView: View {
 
             // Results
             ScrollView {
-                LazyVStack(spacing: 0) {
+                VStack(spacing: 0) {
                     ForEach(results, id: \.id) { food in
 Button {
                             selectedFood = food

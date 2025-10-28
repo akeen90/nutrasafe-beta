@@ -294,7 +294,7 @@ struct DiaryTabView: View {
             .padding(.vertical, 8)
 
             ScrollView {
-                LazyVStack(spacing: 16) {
+                VStack(spacing: 16) {
                     if diarySubTab == .overview {
                         overviewTabContent
                     } else {

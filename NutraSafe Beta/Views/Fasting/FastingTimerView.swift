@@ -65,7 +65,7 @@ struct FastingTimerView: View {
     
     var body: some View {
         ScrollView {
-            LazyVStack(spacing: 24) {
+            VStack(spacing: 24) {
                 
                 // Fasting Timer Main Card
                 VStack(spacing: 24) {
@@ -110,7 +110,8 @@ struct FastingTimerView: View {
                                 Text(formattedDuration)
                                     .font(.system(size: 32, weight: .bold, design: .monospaced))
                                     .foregroundColor(.primary)
-                                
+                                    .fixedSize()
+
                                 Text("Fasting")
                                     .font(.system(size: 16, weight: .medium))
                                     .foregroundColor(.secondary)
@@ -118,12 +119,13 @@ struct FastingTimerView: View {
                                 Image(systemName: "clock")
                                     .font(.system(size: 40))
                                     .foregroundColor(.orange)
-                                
+
                                 Text("Not Fasting")
                                     .font(.system(size: 16, weight: .medium))
                                     .foregroundColor(.secondary)
                             }
                         }
+                        .frame(minHeight: 80)
                     }
                     
                     // Progress Stats

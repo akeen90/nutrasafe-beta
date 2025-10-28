@@ -345,7 +345,7 @@ struct AddFoodSearchView: View {
             } else {
                 ScrollViewReader { scrollProxy in
                     ScrollView {
-                        LazyVStack(spacing: 8) {
+                        VStack(spacing: 8) {
                             // Show recent foods when search is empty
                             if searchText.isEmpty && !recentFoods.isEmpty {
                                 // Recent Foods Section

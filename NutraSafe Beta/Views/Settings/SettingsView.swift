@@ -28,7 +28,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                LazyVStack(spacing: 20) {
+                VStack(spacing: 20) {
 
                     // PHASE 1: Account Section
                     AccountSection(
@@ -260,10 +260,10 @@ struct AboutSection: View {
 
             SettingsRow(
                 icon: "doc.text",
-                title: "Terms & Conditions",
+                title: "Terms of Use",
                 iconColor: .blue,
                 action: {
-                    if let url = URL(string: "https://nutrasafe-705c7.web.app/terms") {
+                    if let url = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/") {
                         UIApplication.shared.open(url)
                     }
                 }

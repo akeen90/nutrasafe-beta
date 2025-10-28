@@ -5,21 +5,27 @@ const functions = require("firebase-functions");
 const axios_1 = require("axios");
 /**
  * Parse serving size string to numeric grams/ml
- * Examples: "330ml" → 330, "150g" → 150, "1 bar (51g)" → 51
+ * Examples: "330ml" → 330, "150g" → 150, "1 bar (51g)" → 51, "1 slice (30g)" → 30
+ * CRITICAL: Always extracts grams from parentheses first (e.g., "1 slice (30g)" → 30, NOT 1)
  */
 function parseServingSizeToGrams(servingSize) {
+    // PRIORITY 1: Look for grams in parentheses first (e.g., "1 slice (30g)" should extract 30, not 1)
+    // This ensures we use actual weight instead of slice/piece count
     const patterns = [
-        /(\d+(?:\.\d+)?)\s*ml/i,
-        /(\d+(?:\.\d+)?)\s*g/i,
-        /\((\d+(?:\.\d+)?)\s*g\)/i,
-        /\((\d+(?:\.\d+)?)\s*ml\)/i
+        /\((\d+(?:\.\d+)?)\s*g\)/i, // "(30g)" - HIGHEST PRIORITY for slice descriptions
+        /\((\d+(?:\.\d+)?)\s*ml\)/i, // "(330ml)"
+        /(\d+(?:\.\d+)?)\s*g\b/i, // "150g" - standalone grams
+        /(\d+(?:\.\d+)?)\s*ml\b/i, // "330ml" - standalone ml
     ];
     for (const pattern of patterns) {
         const match = servingSize.match(pattern);
         if (match && match[1]) {
-            return parseFloat(match[1]);
+            const grams = parseFloat(match[1]);
+            console.log(`✅ Extracted ${grams}g from serving size: "${servingSize}"`);
+            return grams;
         }
     }
+    console.log(`⚠️ Could not extract grams from serving size: "${servingSize}"`);
     return null;
 }
 /**
@@ -95,6 +101,8 @@ exports.findIngredients = functions
 CRITICAL REQUIREMENTS:
 1. Find nutrition information that shows "per 100g" or "per 100ml" - THIS IS PRIORITY #1
 2. Also find the serving size separately (e.g., "330ml", "150g", "1 bar (51g)")
+   - IMPORTANT: For slices/pieces, ALWAYS include the grams in parentheses (e.g., "1 slice (30g)", NOT "1 slice")
+   - NEVER return just "1 slice" without the grams - look for the weight per slice
 3. Find the ingredients list
 4. Find product name, brand, and barcode if available
 
@@ -135,9 +143,9 @@ Return JSON in this EXACT format:
     "fiber": number or null,
     "sugar": number or null,
     "salt": number or null,
-    "serving_size": "e.g. 330ml or 150g"
+    "serving_size": "e.g. 330ml, 150g, 1 slice (30g) - MUST include grams in parentheses for slices/pieces"
   } or null,
-  "serving_size": "typical serving e.g. 330ml, 150g, 1 bar (51g)",
+  "serving_size": "typical serving e.g. 330ml, 150g, 1 bar (51g), 1 slice (30g) - MUST include grams for slices",
   "source_url": "URL where data was found"
 }
 

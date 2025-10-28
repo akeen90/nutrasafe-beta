@@ -137,6 +137,30 @@ struct PaywallView: View {
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)
+
+                        // Legal Links
+                        HStack(spacing: 8) {
+                            Button("Terms of Use") {
+                                if let url = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/") {
+                                    UIApplication.shared.open(url)
+                                }
+                            }
+                            .font(.caption)
+                            .foregroundColor(.blue)
+
+                            Text("•")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+
+                            Button("Privacy Policy") {
+                                if let url = URL(string: "https://nutrasafe-705c7.web.app/privacy") {
+                                    UIApplication.shared.open(url)
+                                }
+                            }
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                        }
+                        .padding(.top, 8)
                     }
                     .padding()
                 }

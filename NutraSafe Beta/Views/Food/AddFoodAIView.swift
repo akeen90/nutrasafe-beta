@@ -455,7 +455,7 @@ struct AIFoodSelectionView: View {
     var body: some View {
         VStack(spacing: 16) {
             ScrollView {
-                LazyVStack(spacing: 12) {
+                VStack(spacing: 12) {
                     ForEach(sortedFoods, id: \.id) { food in
                         AIFoodSelectionRow(
                             food: food,
@@ -701,7 +701,7 @@ struct CombinedMealView: View {
                 
                 // Food List
                 ScrollView {
-                    LazyVStack(spacing: 12) {
+                    VStack(spacing: 12) {
                         ForEach(foods, id: \.id) { food in
                             CombinedMealFoodRow(
                                 food: food,

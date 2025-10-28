@@ -28,27 +28,31 @@ struct FastingHistoryDropdown: View {
                             .foregroundColor(.secondary)
                             .padding(.vertical, 8)
                     } else {
-                        ScrollView {
-                            LazyVStack(spacing: 8) {
-                                ForEach(history) { record in
-                                    FastingHistoryRow(record: record, onTap: {
-                                        selectedRecord = record
-                                        // Auto close dropdown on tap
-                                        isExpanded = false
-                                    }, onDelete: {
-                                        delete(record)
-                                    })
-                                     .contentShape(Rectangle())
-                                     .contextMenu {
-                                         Button(role: .destructive) { delete(record) } label: {
-                                             Label("Delete", systemImage: "trash")
-                                         }
+                        VStack(spacing: 8) {
+                            ForEach(history.prefix(10)) { record in
+                                FastingHistoryRow(record: record, onTap: {
+                                    selectedRecord = record
+                                    // Auto close dropdown on tap
+                                    isExpanded = false
+                                }, onDelete: {
+                                    delete(record)
+                                })
+                                 .contentShape(Rectangle())
+                                 .contextMenu {
+                                     Button(role: .destructive) { delete(record) } label: {
+                                         Label("Delete", systemImage: "trash")
                                      }
-                                }
+                                 }
                             }
-                            .padding(.vertical, 4)
+
+                            if history.count > 10 {
+                                Text("Showing most recent 10 fasts")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .padding(.top, 4)
+                            }
                         }
-                        .frame(maxHeight: 300)
+                        .padding(.vertical, 4)
                     }
                 }
                 .padding(.top, 8)
