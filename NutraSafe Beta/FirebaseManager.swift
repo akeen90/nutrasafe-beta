@@ -1880,6 +1880,7 @@ class FirebaseManager: ObservableObject {
 extension Notification.Name {
     static let useByInventoryUpdated = Notification.Name("useByInventoryUpdated")
     static let navigateToUseBy = Notification.Name("navigateToUseBy")
+    static let navigateToFasting = Notification.Name("navigateToFasting")
     static let restartOnboarding = Notification.Name("restartOnboarding")
     static let authStateChanged = Notification.Name("authStateChanged")
     static let foodDiaryUpdated = Notification.Name("foodDiaryUpdated")

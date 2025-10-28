@@ -1506,6 +1506,9 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .navigateToUseBy)) { _ in
             selectedTab = .useBy
         }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToFasting)) { _ in
+            selectedTab = .food
+        }
         .onReceive(NotificationCenter.default.publisher(for: .restartOnboarding)) { _ in
             showOnboarding = true
         }

@@ -72,8 +72,12 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                 return
             }
 
-            print("📱 User tapped valid fasting notification")
-            // Could navigate to fasting tab here if desired
+            print("📱 User tapped valid fasting notification - navigating to Fasting tab")
+
+            // Post notification to trigger navigation to Fasting
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .navigateToFasting, object: nil)
+            }
         }
 
         // Check if this is a use-by notification
@@ -173,6 +177,12 @@ struct MainAppView: View {
                         await MainActor.run { healthKitManager.exerciseCalories = 0 }
                     }
                     await requestNotificationPermission()
+                    await clearAppBadge()
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                Task {
+                    await clearAppBadge()
                 }
             }
             .onChange(of: healthKitRingsEnabled) { enabled in
@@ -205,6 +215,22 @@ struct MainAppView: View {
             print("📱 Notification permission requested - granted: \(granted)")
         } catch {
             print("❌ Error requesting notification permission: \(error)")
+        }
+    }
+
+    /// Clear app icon badge when app becomes active
+    private func clearAppBadge() async {
+        let center = UNUserNotificationCenter.current()
+
+        // Clear all delivered notifications from notification center
+        center.removeAllDeliveredNotifications()
+
+        // Reset badge count to 0
+        do {
+            try await center.setBadgeCount(0)
+            print("🔔 App badge cleared")
+        } catch {
+            print("❌ Error clearing badge: \(error)")
         }
     }
 }

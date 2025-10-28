@@ -79,6 +79,9 @@ struct FoodTabView: View {
             .navigationBarHidden(true)
         }
         .navigationViewStyle(StackNavigationViewStyle())
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToFasting)) { _ in
+            selectedFoodSubTab = .fasting
+        }
     }
 }
 
@@ -219,7 +222,7 @@ struct FoodReactionsView: View {
 struct RecipesView: View {
     var body: some View {
         ScrollView {
-            LazyVStack(spacing: 12) {
+            VStack(spacing: 12) {
                 // Recipe Collections
                 RecipeCollectionsCard()
                     .padding(.horizontal, 16)
@@ -1528,6 +1531,10 @@ struct LogReactionView: View {
         "Breathing difficulty", "Runny nose", "Sneezing"
     ]
 
+    var customSymptoms: [String] {
+        symptoms.filter { !availableSymptoms.contains($0) }
+    }
+
     var body: some View {
         Form {
             VStack(alignment: .leading, spacing: 20) {
@@ -1572,6 +1579,7 @@ struct LogReactionView: View {
                                 .stroke(Color(.systemGray4), lineWidth: 1)
                         )
                     }
+                    .buttonStyle(PlainButtonStyle())
                     .onChange(of: selectedFood) { newFood in
                         if let food = newFood, let ingredients = food.ingredients {
                             autoLoadIngredientsFromFood(ingredients)
@@ -1622,15 +1630,42 @@ struct LogReactionView: View {
                         }
                     }
 
+                    // Display custom symptoms
+                    if !customSymptoms.isEmpty {
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
+                            ForEach(customSymptoms, id: \.self) { symptom in
+                                HStack {
+                                    Text(symptom)
+                                        .font(.system(size: 12))
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .foregroundColor(.white)
+                                    Button(action: {
+                                        symptoms.removeAll { $0 == symptom }
+                                    }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .foregroundColor(.white.opacity(0.8))
+                                            .font(.system(size: 14))
+                                    }
+                                }
+                                .background(Color.blue)
+                                .cornerRadius(20)
+                            }
+                        }
+                        .padding(.top, 4)
+                    }
+
                     HStack {
                         TextField("Add custom symptom", text: $symptomInput)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
-                        Button("Add") {
-                            if !symptomInput.isEmpty && !symptoms.contains(symptomInput) {
-                                symptoms.append(symptomInput)
-                                symptomInput = ""
+                            .onSubmit {
+                                addCustomSymptom()
                             }
+                        Button(action: addCustomSymptom) {
+                            Text("Add")
+                                .foregroundColor(symptomInput.isEmpty ? .gray : .blue)
                         }
+                        .buttonStyle(PlainButtonStyle())
                         .disabled(symptomInput.isEmpty)
                     }
                 }
@@ -1649,6 +1684,7 @@ struct LogReactionView: View {
                             Button("Load from Food") {
                                 loadIngredientsFromFood()
                             }
+                            .buttonStyle(PlainButtonStyle())
                             .font(.system(size: 14))
                             .foregroundColor(.blue)
                         }
@@ -1679,12 +1715,14 @@ struct LogReactionView: View {
                     HStack {
                         TextField("Add suspected ingredient", text: $ingredientInput)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
-                        Button("Add") {
-                            if !ingredientInput.isEmpty && !suspectedIngredients.contains(ingredientInput) {
-                                suspectedIngredients.append(ingredientInput)
-                                ingredientInput = ""
+                            .onSubmit {
+                                addCustomIngredient()
                             }
+                        Button(action: addCustomIngredient) {
+                            Text("Add")
+                                .foregroundColor(ingredientInput.isEmpty ? .gray : .blue)
                         }
+                        .buttonStyle(PlainButtonStyle())
                         .disabled(ingredientInput.isEmpty)
                     }
                 }
@@ -1715,6 +1753,20 @@ struct LogReactionView: View {
                 FoodReactionSearchView(selectedFood: $selectedFood)
             }
         }
+    }
+
+    private func addCustomSymptom() {
+        let trimmed = symptomInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty && !symptoms.contains(trimmed) else { return }
+        symptoms.append(trimmed)
+        symptomInput = ""
+    }
+
+    private func addCustomIngredient() {
+        let trimmed = ingredientInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty && !suspectedIngredients.contains(trimmed) else { return }
+        suspectedIngredients.append(trimmed)
+        ingredientInput = ""
     }
 
     private func saveReaction() {
@@ -2064,7 +2116,7 @@ struct FoodReactionSearchView: View {
                 .padding()
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 8) {
+                    VStack(spacing: 8) {
                         ForEach(searchResults, id: \.id) { food in
                             FoodSearchResultRowForReaction(
                                 food: food,
