@@ -1596,6 +1596,42 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Brand name contains inappropriate language. Please use appropriate terms."])
         }
 
+        // DEDUPLICATION: Check if this food already exists
+        let brandName = food["brandName"] as? String
+        let barcode = food["barcode"] as? String
+
+        if let existingFood = try await findExistingFood(name: foodName, brand: brandName, barcode: barcode) {
+            let (existingDocId, existingData, existingCollection) = existingFood
+
+            print("🔄 Found duplicate AI food: \(existingDocId) in \(existingCollection)")
+
+            // Merge and keep the better-formatted entry
+            var mergedData = mergeAndKeepBest(newFood: food, existingFood: existingData)
+            mergedData["userId"] = userId
+            mergedData["timestamp"] = FirebaseFirestore.Timestamp(date: Date())
+            mergedData["source"] = "ai_ingredient_finder"
+            mergedData["isAIEnhanced"] = true
+
+            // Add AI metadata if available
+            if let sourceURL = sourceURL {
+                mergedData["source_url"] = sourceURL
+            }
+            if let aiProductName = aiProductName {
+                mergedData["ai_product_name"] = aiProductName
+            }
+
+            mergedData["foodNameLower"] = foodName.lowercased()
+
+            // Update the existing document in its original collection
+            try await db.collection(existingCollection)
+                .document(existingDocId)
+                .setData(mergedData, merge: true)
+
+            print("✅ Updated existing AI food (deduplication): \(existingDocId)")
+            return existingDocId
+        }
+
+        // NO DUPLICATE FOUND: Create new entry
         // Use sanitized food name as document ID for easier identification
         let sanitizedName = foodName
             .replacingOccurrences(of: "/", with: "-")
