@@ -114,9 +114,14 @@ UK-ONLY SEARCH PRIORITY (in order):
 
 IMPORTANT: Only use UK-based sources. Do not use international manufacturer sites (.com unless UK brand).
 
-NUTRITION TABLE PRIORITY:
-1. FIRST: Look for "Typical values per 100g" or "Per 100ml" table
-2. ONLY IF NOT FOUND: Look for "per serving" and the serving size, then I will convert it
+NUTRITION TABLE PRIORITY - VERY IMPORTANT:
+1. FIRST: Look for "Typical values per 100g" or "Per 100ml" table - USE THIS DIRECTLY
+2. ONLY IF "per 100g" NOT FOUND: Look for "per serving" table and the serving size
+   - If you find "per 500ml" or "per 330ml" or any per-serving data, you MUST:
+     a) Put those values in "per_serving_nutrition" (NOT in nutrition_per_100g)
+     b) Include the serving size (e.g., "500ml", "330ml") in the serving_size field
+     c) Set nutrition_source to "per_serving" so I can convert it
+   - DO NOT put per-serving values into nutrition_per_100g - that's wrong!
 
 Return JSON in this EXACT format:
 {
@@ -197,6 +202,34 @@ Return ONLY the JSON, no other text.`;
             // PRIORITY 1: Use per-100g data directly
             console.log('✅ Found per-100g nutrition data directly');
             finalPer100g = aiData.nutrition_per_100g;
+            // VALIDATION: Check if values seem reasonable for per-100g
+            // Per-100g calories should typically be between 20-900 kcal
+            // If serving size suggests large serving (e.g., 500ml) but calories are very high (e.g., 1600+)
+            // this might be per-serving data mislabeled as per-100g
+            if (finalPer100g) {
+                const calories = finalPer100g.calories || 0;
+                if (calories > 900) {
+                    console.log(`⚠️ WARNING: Per-100g calories seem unusually high (${calories} kcal)`);
+                    console.log(`⚠️ Serving size: ${finalServingSize}`);
+                    console.log(`⚠️ This might be per-serving data mislabeled as per-100g!`);
+                    // If we have a serving size > 100g/ml, try to convert
+                    const servingGrams = parseServingSizeToGrams(finalServingSize || '');
+                    if (servingGrams && servingGrams > 100) {
+                        console.log(`🔧 Attempting to fix: Converting suspected per-${servingGrams}g data to per-100g`);
+                        const ratio = 100 / servingGrams;
+                        finalPer100g = {
+                            calories: Math.round((finalPer100g.calories || 0) * ratio * 10) / 10,
+                            protein: Math.round((finalPer100g.protein || 0) * ratio * 10) / 10,
+                            carbs: Math.round((finalPer100g.carbs || 0) * ratio * 10) / 10,
+                            fat: Math.round((finalPer100g.fat || 0) * ratio * 10) / 10,
+                            fiber: finalPer100g.fiber ? Math.round(finalPer100g.fiber * ratio * 10) / 10 : undefined,
+                            sugar: finalPer100g.sugar ? Math.round(finalPer100g.sugar * ratio * 10) / 10 : undefined,
+                            salt: finalPer100g.salt ? Math.round(finalPer100g.salt * ratio * 10) / 10 : undefined,
+                        };
+                        console.log(`✅ Fixed nutrition to proper per-100g: ${JSON.stringify(finalPer100g)}`);
+                    }
+                }
+            }
         }
         else if (aiData.per_serving_nutrition) {
             // FALLBACK: Convert per-serving to per-100g

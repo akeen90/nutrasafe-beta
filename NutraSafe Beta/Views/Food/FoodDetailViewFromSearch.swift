@@ -282,7 +282,12 @@ struct FoodDetailViewFromSearch: View {
     private var multiplier: Double {
         currentWeight / 100
     }
-    
+
+    // Check if food has been AI-enhanced
+    private var hasAIEnhancement: Bool {
+        enhancedIngredientsText != nil || enhancedNutrition != nil
+    }
+
     // Extract the actual serving size from split serving amount and unit
     private var actualServingSize: Double {
         // Get the amount and unit
@@ -2028,8 +2033,20 @@ struct FoodDetailViewFromSearch: View {
                     .lineLimit(nil)
                     .multilineTextAlignment(.center)
 
+                // Daily limit indicator
+                let remainingRequests = IngredientFinderService.shared.getRemainingDailyRequests()
+                if remainingRequests <= 3 {
+                    Text("⚠️ \(remainingRequests) AI verifications remaining today")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(remainingRequests == 0 ? .red : .orange)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(remainingRequests == 0 ? Color.red.opacity(0.1) : Color.orange.opacity(0.1))
+                        .cornerRadius(8)
+                }
+
                 HStack(spacing: 12) {
-                    // AI Enhancement Button
+                    // AI Enhancement/Reverify Button
                     Button(action: {
                         enhanceWithAI()
                     }) {
@@ -2039,15 +2056,15 @@ struct FoodDetailViewFromSearch: View {
                                     .scaleEffect(0.8)
                                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
                             } else {
-                                Image(systemName: "sparkles")
-                                Text("Enhance with AI")
+                                Image(systemName: hasAIEnhancement ? "arrow.clockwise" : "sparkles")
+                                Text(hasAIEnhancement ? "Reverify with AI" : "Enhance with AI")
                                     .font(.system(size: 14, weight: .medium))
                             }
                         }
                         .foregroundColor(.white)
                         .padding(.vertical, 10)
                         .padding(.horizontal, 16)
-                        .background(isEnhancing ? Color.gray : Color.blue)
+                        .background(isEnhancing ? Color.gray : (hasAIEnhancement ? Color.purple : Color.blue))
                         .cornerRadius(8)
                     }
                     .disabled(isEnhancing)
@@ -2151,14 +2168,22 @@ struct FoodDetailViewFromSearch: View {
     // Enhance food data using AI ingredient finder
     private func enhanceWithAI() {
         isEnhancing = true
-        // DEBUG LOG: print("🤖 Starting AI enhancement for: \(food.name), brand: \(food.brand ?? "none")")
+        let isReverifying = hasAIEnhancement
+
+        if isReverifying {
+            print("🔄 Reverifying AI data for: \(food.name) (skipping cache)")
+        } else {
+            print("🤖 Starting AI enhancement for: \(food.name)")
+        }
 
         Task {
             do {
                 // Call the AI ingredient finder service
+                // Skip cache if we're reverifying (user wants fresh data)
                 let result = try await IngredientFinderService.shared.findIngredients(
                     productName: food.name,
-                    brand: food.brand
+                    brand: food.brand,
+                    skipCache: isReverifying
                 )
 
         // DEBUG LOG: print("🔍 AI Search Result:")

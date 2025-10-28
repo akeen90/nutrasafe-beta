@@ -49,27 +49,39 @@ class IngredientFinderService: ObservableObject {
     private let rateLimitWindow: TimeInterval = 60 // 1 minute
     private let maxSearchesPerWindow = 2
 
+    // Device-based daily rate limiting
+    private let dailyRateLimitKey = "aiVerifyDailyCount"
+    private let dailyRateLimitDateKey = "aiVerifyDailyDate"
+    private let maxDailyRequests = 10
+
     private init() {}
 
-    /// Search for ingredients using AI (checks cache first)
-    func findIngredients(productName: String, brand: String?) async throws -> IngredientFinderResponse {
+    /// Search for ingredients using AI (checks cache first unless skipCache=true)
+    func findIngredients(productName: String, brand: String?, skipCache: Bool = false) async throws -> IngredientFinderResponse {
         // Check rate limit
         try checkRateLimit()
 
-        // Check cache first
-        if let cached = try? await FirebaseManager.shared.getIngredientCache(productName: productName, brand: brand) {
-            print("✅ Found ingredients in cache for \(productName)")
-            return IngredientFinderResponse(
-                ingredients_found: cached.ingredients_found,
-                product_name: nil,  // Cache doesn't store product name yet
-                brand: nil,  // Cache doesn't store brand yet
-                barcode: nil,  // Cache doesn't store barcode yet
-                serving_size: nil,  // Cache doesn't store serving size yet
-                ingredients_text: cached.ingredients_text,
-                nutrition_per_100g: nil,  // Cache doesn't store nutrition yet
-                image_url: nil,  // Cache doesn't store image URL yet
-                source_url: cached.source_url
-            )
+        // Check daily device-based rate limit
+        try checkDailyRateLimit()
+
+        // Check cache first (unless skipCache is true for reverification)
+        if !skipCache {
+            if let cached = try? await FirebaseManager.shared.getIngredientCache(productName: productName, brand: brand) {
+                print("✅ Found ingredients in cache for \(productName)")
+                return IngredientFinderResponse(
+                    ingredients_found: cached.ingredients_found,
+                    product_name: nil,  // Cache doesn't store product name yet
+                    brand: nil,  // Cache doesn't store brand yet
+                    barcode: nil,  // Cache doesn't store barcode yet
+                    serving_size: nil,  // Cache doesn't store serving size yet
+                    ingredients_text: cached.ingredients_text,
+                    nutrition_per_100g: nil,  // Cache doesn't store nutrition yet
+                    image_url: nil,  // Cache doesn't store image URL yet
+                    source_url: cached.source_url
+                )
+            }
+        } else {
+            print("⚠️ Skipping cache for reverification of \(productName)")
         }
 
         // Call Cloud Function
@@ -77,6 +89,9 @@ class IngredientFinderService: ObservableObject {
         defer { isSearching = false }
 
         let response = try await callCloudFunction(productName: productName, brand: brand)
+
+        // Increment daily counter
+        incrementDailyCounter()
 
         // Cache the result if ingredients were found
         if response.ingredients_found, let ingredientsText = response.ingredients_text {
@@ -95,6 +110,47 @@ class IngredientFinderService: ObservableObject {
         }
 
         return response
+    }
+
+    /// Check daily device-based rate limit (10 requests per day)
+    private func checkDailyRateLimit() throws {
+        let today = Calendar.current.startOfDay(for: Date())
+        let storedDate = UserDefaults.standard.object(forKey: dailyRateLimitDateKey) as? Date
+        let currentCount = UserDefaults.standard.integer(forKey: dailyRateLimitKey)
+
+        // Check if it's a new day
+        if let storedDate = storedDate, Calendar.current.isDate(storedDate, inSameDayAs: today) {
+            // Same day - check if limit reached
+            if currentCount >= maxDailyRequests {
+                throw IngredientFinderError.dailyLimitReached
+            }
+        } else {
+            // New day - reset counter
+            UserDefaults.standard.set(0, forKey: dailyRateLimitKey)
+            UserDefaults.standard.set(today, forKey: dailyRateLimitDateKey)
+        }
+    }
+
+    /// Increment the daily counter after a successful request
+    private func incrementDailyCounter() {
+        let currentCount = UserDefaults.standard.integer(forKey: dailyRateLimitKey)
+        UserDefaults.standard.set(currentCount + 1, forKey: dailyRateLimitKey)
+        print("📊 Daily AI verification count: \(currentCount + 1)/\(maxDailyRequests)")
+    }
+
+    /// Get remaining daily requests
+    func getRemainingDailyRequests() -> Int {
+        let today = Calendar.current.startOfDay(for: Date())
+        let storedDate = UserDefaults.standard.object(forKey: dailyRateLimitDateKey) as? Date
+        let currentCount = UserDefaults.standard.integer(forKey: dailyRateLimitKey)
+
+        // Check if it's a new day
+        if let storedDate = storedDate, Calendar.current.isDate(storedDate, inSameDayAs: today) {
+            return max(0, maxDailyRequests - currentCount)
+        } else {
+            // New day - full quota available
+            return maxDailyRequests
+        }
     }
 
     private func checkRateLimit() throws {
@@ -167,6 +223,7 @@ class IngredientFinderService: ObservableObject {
 enum IngredientFinderError: LocalizedError {
     case notConfigured
     case rateLimitExceeded(waitSeconds: Int)
+    case dailyLimitReached
     case invalidResponse
     case serverError(statusCode: Int)
     case noIngredientsFound
@@ -177,6 +234,8 @@ enum IngredientFinderError: LocalizedError {
             return "Ingredient Finder is not configured. Please contact support."
         case .rateLimitExceeded(let seconds):
             return "Search limit reached. Please wait \(seconds) seconds before searching again."
+        case .dailyLimitReached:
+            return "Daily verification limit reached (10 per day). This limit resets at midnight to prevent excessive API usage. Please try again tomorrow."
         case .invalidResponse:
             return "Invalid response from server. Please try again."
         case .serverError(let code):
