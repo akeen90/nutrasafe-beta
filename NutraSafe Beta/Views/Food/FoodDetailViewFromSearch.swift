@@ -1760,7 +1760,7 @@ struct FoodDetailViewFromSearch: View {
             fiber: totalFiber,
             sugar: totalSugar,
             sodium: totalSodium,
-            servingDescription: "\(String(format: "%.0f", servingSize))g serving",
+            servingDescription: "\(String(format: "%.0f", servingSize))\(servingUnit) serving",
             quantity: quantityMultiplier,
             time: selectedMeal,
             processedScore: cachedNutraSafeGrade?.grade ?? "",
