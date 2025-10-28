@@ -561,16 +561,14 @@ struct DiaryTabView: View {
     }
 
     private func loadFoodData() {
-        Task {
+        Task { @MainActor in
             do {
                 let (breakfast, lunch, dinner, snacks) = try await diaryDataManager.getFoodDataAsync(for: selectedDate)
-                await MainActor.run {
-                    breakfastFoods = breakfast
-                    lunchFoods = lunch
-                    dinnerFoods = dinner
-                    snackFoods = snacks
-                    recalculateNutrition()
-                }
+                breakfastFoods = breakfast
+                lunchFoods = lunch
+                dinnerFoods = dinner
+                snackFoods = snacks
+                recalculateNutrition()
             } catch {
                 print("❌ Failed to load food data: \(error)")
             }
@@ -1119,6 +1117,7 @@ final class CategoricalNutrientViewModel: ObservableObject {
     }
 
     // Load last 7 days of rhythm and coverage data
+    @MainActor
     func loadLast7Days() async {
         // DEBUG LOG: print("🔄 CategoricalNutrientViewModel: Starting loadLast7Days...")
 
@@ -1173,18 +1172,14 @@ final class CategoricalNutrientViewModel: ObservableObject {
                 rows.append(CoverageRow(id: nutrient.id, name: nutrient.name, status: status, segments: segments))
             }
 
-            await MainActor.run {
-                self.rhythmDays = days
-                self.nutrientCoverageRows = rows
-                print("✅ Loaded \(days.count) rhythm days and \(rows.count) nutrient rows")
-            }
+            self.rhythmDays = days
+            self.nutrientCoverageRows = rows
+            print("✅ Loaded \(days.count) rhythm days and \(rows.count) nutrient rows")
 
         } catch {
             print("❌ Failed to load 7-day data: \(error)")
-            await MainActor.run {
-                self.rhythmDays = []
-                self.nutrientCoverageRows = []
-            }
+            self.rhythmDays = []
+            self.nutrientCoverageRows = []
         }
     }
 
@@ -1673,8 +1668,8 @@ struct NutrientDetailModal: View {
                     Button("Done") { dismiss() }
                 }
             }
-            .task {
-                await loadNutrientInfo()
+            .onAppear {
+                loadNutrientInfo()
             }
         }
     }
@@ -1862,17 +1857,16 @@ struct NutrientDetailModal: View {
         }
     }
 
-    private func loadNutrientInfo() async {
+    @MainActor
+    private func loadNutrientInfo() {
         // Map display name to database ID
         let nutrientId = row.id
             .replacingOccurrences(of: " ", with: "_")
             .replacingOccurrences(of: "(", with: "")
             .replacingOccurrences(of: ")", with: "")
 
-        let info = await MicronutrientDatabase.shared.getNutrientInfo(nutrientId)
-        await MainActor.run {
-            self.nutrientInfo = info
-        }
+        let info = MicronutrientDatabase.shared.getNutrientInfo(nutrientId)
+        self.nutrientInfo = info
     }
 
     private func parseArrayContent(_ content: String?) -> [String] {
