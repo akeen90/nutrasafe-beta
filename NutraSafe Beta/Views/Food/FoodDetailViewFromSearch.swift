@@ -57,34 +57,40 @@ struct FoodDetailViewFromSearch: View {
         self.diaryMealType = diaryMealType
         self.onComplete = onComplete
 
-        // CRITICAL FIX: Initialize serving size from food data immediately
+        // CRITICAL FIX: Initialize serving size AND unit from food data immediately
         var initialServingSize = "100"  // Default fallback
-        let initialUnit = "g"
+        var initialUnit = "g"  // Default fallback
 
-        // Priority 1: Use servingSizeG if available (most reliable)
-        if let sizeG = food.servingSizeG, sizeG > 0 {
-            initialServingSize = String(format: "%.0f", sizeG)
-        // DEBUG LOG: print("🔧 INIT: Using servingSizeG: \(sizeG)g for \(food.name)")
-        } else if let servingDesc = food.servingDescription {
-            // Priority 2: Extract from serving description
-        // DEBUG LOG: print("🔧 INIT: Parsing serving description: '\(servingDesc)' for \(food.name)")
-
-            let patterns = [
-                #"(\d+(?:\.\d+)?)\s*g\s+serving"#,  // Match "150g serving"
-                #"\((\d+(?:\.\d+)?)\s*g\)"#,         // Match "(345 g)"
-                #"^(\d+(?:\.\d+)?)\s*g$"#,           // Match "345g"
-                #"^(\d+(?:\.\d+)?)\s+g$"#            // Match "345 g"
+        // Extract serving size and unit from serving description
+        if let servingDesc = food.servingDescription {
+            // Try to extract numbers AND units from serving description
+            let patterns: [(pattern: String, unit: String)] = [
+                (#"(\d+(?:\.\d+)?)\s*ml"#, "ml"),           // Match "500ml" or "500 ml"
+                (#"(\d+(?:\.\d+)?)\s*L"#, "L"),             // Match "1L" or "1 L"
+                (#"(\d+(?:\.\d+)?)\s*fl\s*oz"#, "fl oz"),   // Match "16 fl oz"
+                (#"(\d+(?:\.\d+)?)\s*oz"#, "oz"),           // Match "16oz" or "16 oz"
+                (#"(\d+(?:\.\d+)?)\s*cup[s]?"#, "cup"),     // Match "2 cups" or "1 cup"
+                (#"(\d+(?:\.\d+)?)\s*tbsp"#, "tbsp"),       // Match "3 tbsp"
+                (#"(\d+(?:\.\d+)?)\s*tsp"#, "tsp"),         // Match "2 tsp"
+                (#"(\d+(?:\.\d+)?)\s*kg"#, "kg"),           // Match "1.5kg"
+                (#"(\d+(?:\.\d+)?)\s*mg"#, "mg"),           // Match "500mg"
+                (#"(\d+(?:\.\d+)?)\s*g"#, "g")              // Match "150g" or "150 g"
             ]
 
-            for pattern in patterns {
-                if let regex = try? NSRegularExpression(pattern: pattern, options: []),
+            for (pattern, unit) in patterns {
+                if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
                    let match = regex.firstMatch(in: servingDesc, options: [], range: NSRange(location: 0, length: servingDesc.count)),
                    let range = Range(match.range(at: 1), in: servingDesc) {
                     initialServingSize = String(servingDesc[range])
-        // DEBUG LOG: print("🔧 INIT: Extracted \(initialServingSize)g from '\(servingDesc)'")
+                    initialUnit = unit
+                    // DEBUG LOG: print("🔧 INIT: Extracted \(initialServingSize)\(unit) from '\(servingDesc)'")
                     break
                 }
             }
+        } else if let sizeG = food.servingSizeG, sizeG > 0 {
+            // Fallback: Use servingSizeG if servingDescription not available
+            initialServingSize = String(format: "%.0f", sizeG)
+            // DEBUG LOG: print("🔧 INIT: Using servingSizeG: \(sizeG)g for \(food.name)")
         }
 
         // Initialize all serving size state variables with the determined value

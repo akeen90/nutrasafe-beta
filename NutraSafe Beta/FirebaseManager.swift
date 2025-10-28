@@ -1326,6 +1326,175 @@ class FirebaseManager: ObservableObject {
         return snapshot.documents.first?.data()
     }
 
+    // MARK: - Food Deduplication Helpers
+
+    /// Calculate Levenshtein distance between two strings (fuzzy matching)
+    /// Returns the number of edits needed to transform one string into another
+    private func levenshteinDistance(_ s1: String, _ s2: String) -> Int {
+        let s1 = Array(s1.lowercased())
+        let s2 = Array(s2.lowercased())
+
+        var dist = [[Int]](repeating: [Int](repeating: 0, count: s2.count + 1), count: s1.count + 1)
+
+        for i in 0...s1.count {
+            dist[i][0] = i
+        }
+        for j in 0...s2.count {
+            dist[0][j] = j
+        }
+
+        for i in 1...s1.count {
+            for j in 1...s2.count {
+                if s1[i-1] == s2[j-1] {
+                    dist[i][j] = dist[i-1][j-1]
+                } else {
+                    dist[i][j] = min(
+                        dist[i-1][j] + 1,    // deletion
+                        dist[i][j-1] + 1,    // insertion
+                        dist[i-1][j-1] + 1   // substitution
+                    )
+                }
+            }
+        }
+
+        return dist[s1.count][s2.count]
+    }
+
+    /// Calculate quality score for a food entry (higher = better formatting)
+    /// Scoring criteria:
+    /// - Proper capitalization (not all lowercase/uppercase): +20 points
+    /// - No hyphens/underscores in name: +10 points
+    /// - Has brand name: +10 points
+    /// - Has ingredients: +10 points
+    /// - Has barcode: +5 points
+    /// - Has photo: +5 points
+    /// - Has serving size: +5 points
+    private func calculateFoodQualityScore(_ food: [String: Any]) -> Int {
+        var score = 0
+
+        // Check food name formatting
+        if let foodName = food["foodName"] as? String {
+            let hasProperCase = foodName != foodName.lowercased() && foodName != foodName.uppercased()
+            let hasNoSeparators = !foodName.contains("-") && !foodName.contains("_")
+
+            if hasProperCase { score += 20 }
+            if hasNoSeparators { score += 10 }
+        }
+
+        // Check for data completeness
+        if let brand = food["brandName"] as? String, !brand.isEmpty { score += 10 }
+        if let ingredients = food["ingredients"] as? String, !ingredients.isEmpty { score += 10 }
+        if let barcode = food["barcode"] as? String, !barcode.isEmpty { score += 5 }
+        if let photoURL = food["photoURL"] as? String, !photoURL.isEmpty { score += 5 }
+        if let servingSize = food["servingSize"] as? Double, servingSize > 0 { score += 5 }
+
+        return score
+    }
+
+    /// Find existing food in Firestore collections using barcode, exact match, or fuzzy matching
+    /// Returns tuple of (documentID, data, collection) if found, nil otherwise
+    private func findExistingFood(name: String, brand: String?, barcode: String?) async throws -> (String, [String: Any], String)? {
+        let collections = ["aiManuallyAdded", "userAdded", "aiEnhanced"]
+
+        // STEP 1: Try barcode match first (most reliable)
+        if let barcode = barcode, !barcode.isEmpty {
+            for collection in collections {
+                let snapshot = try await db.collection(collection)
+                    .whereField("barcode", isEqualTo: barcode)
+                    .limit(to: 1)
+                    .getDocuments()
+
+                if let doc = snapshot.documents.first {
+                    print("✅ Found duplicate by barcode in \(collection): \(barcode)")
+                    return (doc.documentID, doc.data(), collection)
+                }
+            }
+        }
+
+        // STEP 2: Try exact name + brand match
+        let searchName = name.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let searchBrand = brand?.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+
+        for collection in collections {
+            let snapshot = try await db.collection(collection).getDocuments()
+
+            for doc in snapshot.documents {
+                let data = doc.data()
+                guard let existingName = data["foodName"] as? String else { continue }
+
+                let existingNameNormalized = existingName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+                let existingBrand = (data["brandName"] as? String)?.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+
+                // Exact match (ignoring case and whitespace)
+                if existingNameNormalized == searchName && existingBrand == searchBrand {
+                    print("✅ Found duplicate by exact name+brand in \(collection): \(existingName)")
+                    return (doc.documentID, data, collection)
+                }
+            }
+        }
+
+        // STEP 3: Try fuzzy matching (Levenshtein distance)
+        // Maximum distance for a match: 20% of the longer string length
+        let maxDistance = max(3, searchName.count / 5)
+
+        for collection in collections {
+            let snapshot = try await db.collection(collection).getDocuments()
+
+            for doc in snapshot.documents {
+                let data = doc.data()
+                guard let existingName = data["foodName"] as? String else { continue }
+
+                let existingNameNormalized = existingName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+                let existingBrand = (data["brandName"] as? String)?.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+
+                // Check if brands match (or both are nil)
+                let brandsMatch = searchBrand == existingBrand
+
+                if brandsMatch {
+                    let distance = levenshteinDistance(searchName, existingNameNormalized)
+                    if distance <= maxDistance {
+                        print("✅ Found fuzzy match in \(collection): '\(existingName)' (distance: \(distance))")
+                        return (doc.documentID, data, collection)
+                    }
+                }
+            }
+        }
+
+        return nil
+    }
+
+    /// Merge two food entries and keep the one with better quality
+    /// Returns the merged food data (best quality + combined data)
+    private func mergeAndKeepBest(newFood: [String: Any], existingFood: [String: Any]) -> [String: Any] {
+        let newScore = calculateFoodQualityScore(newFood)
+        let existingScore = calculateFoodQualityScore(existingFood)
+
+        print("📊 Quality scores - New: \(newScore), Existing: \(existingScore)")
+
+        // Start with the better-formatted entry as the base
+        var mergedFood = newScore >= existingScore ? newFood : existingFood
+
+        // Merge in missing fields from the other entry
+        let sourceFood = newScore >= existingScore ? existingFood : newFood
+
+        for (key, value) in sourceFood {
+            // Only add if missing or empty in merged food
+            if mergedFood[key] == nil {
+                mergedFood[key] = value
+            } else if let stringValue = mergedFood[key] as? String, stringValue.isEmpty {
+                mergedFood[key] = value
+            }
+        }
+
+        // Update metadata
+        mergedFood["lastUpdated"] = FieldValue.serverTimestamp()
+
+        let winner = newScore >= existingScore ? "new" : "existing"
+        print("✅ Merged foods, keeping \(winner) entry as base")
+
+        return mergedFood
+    }
+
     // MARK: - User Added Foods (Manual Entry)
 
     /// Save a manually added food to the global userAdded collection (accessible by all users)
@@ -1350,6 +1519,33 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Brand name contains inappropriate language. Please use appropriate terms."])
         }
 
+        // DEDUPLICATION: Check if this food already exists
+        let brandName = food["brandName"] as? String
+        let barcode = food["barcode"] as? String
+
+        if let existingFood = try await findExistingFood(name: foodName, brand: brandName, barcode: barcode) {
+            let (existingDocId, existingData, existingCollection) = existingFood
+
+            print("🔄 Found duplicate food: \(existingDocId) in \(existingCollection)")
+
+            // Merge and keep the better-formatted entry
+            var mergedData = mergeAndKeepBest(newFood: food, existingFood: existingData)
+            mergedData["userId"] = userId
+            mergedData["timestamp"] = FirebaseFirestore.Timestamp(date: Date())
+            mergedData["source"] = "manual_entry"
+            mergedData["isUserAdded"] = true
+            mergedData["foodNameLower"] = foodName.lowercased()
+
+            // Update the existing document in its original collection
+            try await db.collection(existingCollection)
+                .document(existingDocId)
+                .setData(mergedData, merge: true)
+
+            print("✅ Updated existing food (deduplication): \(existingDocId)")
+            return existingDocId
+        }
+
+        // NO DUPLICATE FOUND: Create new entry
         // Use sanitized food name as document ID for easier identification
         let sanitizedName = foodName
             .replacingOccurrences(of: "/", with: "-")
