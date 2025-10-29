@@ -146,8 +146,40 @@ struct SegmentedControlView<Tab: Hashable & CaseIterable & RawRepresentable>: Vi
 struct FoodReactionsView: View {
     @ObservedObject private var reactionManager = ReactionManager.shared
     @State private var hasLoadedOnce = false // PERFORMANCE: Guard flag to prevent redundant loads
+    @State private var selectedReactionMode: ReactionMode = .foodBased
+
+    enum ReactionMode: String, CaseIterable {
+        case foodBased = "Food-Based"
+        case reactionLog = "Reaction Log"
+    }
 
     var body: some View {
+        VStack(spacing: 0) {
+            // Secondary segmented control for reaction modes
+            Picker("Reaction Mode", selection: $selectedReactionMode) {
+                ForEach(ReactionMode.allCases, id: \.self) { mode in
+                    Text(mode.rawValue).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color.adaptiveBackground)
+
+            // Content based on selected mode
+            Group {
+                switch selectedReactionMode {
+                case .foodBased:
+                    foodBasedReactionsView
+                case .reactionLog:
+                    ReactionLogView()
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private var foodBasedReactionsView: some View {
         ScrollView {
             VStack(spacing: 12) {
                 // Reaction Summary

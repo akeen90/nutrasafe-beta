@@ -425,9 +425,18 @@ struct AddFoundFoodToUseBySheet: View {
                 ToolbarItem(placement: .navigationBarLeading) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { Task { await save() } }) {
-                        if isSaving { ProgressView() } else { Text("Add").fontWeight(.semibold) }
+                        if isSaving || isUploadingPhoto {
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                Text(isUploadingPhoto ? "Uploading..." : "Saving...")
+                                    .font(.caption)
+                            }
+                        } else {
+                            Text("Add").fontWeight(.semibold)
+                        }
                     }
-                    .disabled(isUploadingPhoto)
+                    .disabled(isUploadingPhoto || isSaving)
                 }
             }
             .alert("Couldn't save item", isPresented: $showErrorAlert, actions: {
@@ -496,6 +505,11 @@ struct AddFoundFoodToUseBySheet: View {
             print("❌ Failed to upload photo: \(error)")
             await MainActor.run {
                 isUploadingPhoto = false
+                // Clear the captured image since upload failed
+                capturedImage = nil
+                // Show error to user
+                errorMessage = "Photo upload failed: \(error.localizedDescription)"
+                showErrorAlert = true
             }
         }
     }
@@ -3533,17 +3547,19 @@ struct CleanUseByRow: View {
             .padding(.vertical, 14)
             .background(Color(.systemBackground))
             .offset(x: offset)
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 12)
+            .highPriorityGesture(
+                DragGesture(minimumDistance: 20)
                     .onChanged { gesture in
                         let dx = gesture.translation.width
                         let dy = gesture.translation.height
                         // Determine if this is a horizontal drag and only capture those
+                        // Use stricter threshold to avoid interfering with vertical scrolling
                         if !isHorizontalDragging {
-                            if abs(dx) > 10 && abs(dx) > abs(dy) {
+                            if abs(dx) > 20 && abs(dx) > abs(dy) * 2 {
+                                // Must be 2x more horizontal than vertical
                                 isHorizontalDragging = true
                             } else {
-                                // Not horizontal; let ScrollView handle vertical drag
+                                // Not clearly horizontal; let ScrollView handle drag
                                 return
                             }
                         }

@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		55B790C73CA449989621A55B /* ReactionLogModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D000C42332246F4A41D879A /* ReactionLogModels.swift */; };
+		57D39094D959418DBEA2559C /* ReactionLogManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2748185AC3934123A2EE1CEC /* ReactionLogManager.swift */; };
+		FAA5308D615C46F7B48AEE78 /* ReactionLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3D9EE3D5C7748EE8D793D2B /* ReactionLogView.swift */; };
+		AB6A8F070FF14DC49BA4BC80 /* ReactionPDFExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF1C3CB3424C495E9408953D /* ReactionPDFExporter.swift */; };
 		013A7F75B09C430AB1EE40154700DAAB /* DiaryDailySummaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE1E506F81E64504BA776F466B03D0BC /* DiaryDailySummaryCard.swift */; };
 		053A05A52E60FD20C626C633 /* NutrientTrendChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24ED2B63CEA2D1DEA6011858 /* NutrientTrendChart.swift */; };
 		17DEC2E4FA075B1C522AA72E /* NutrientRingComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65D879B4011020FFD1A03C3F /* NutrientRingComponents.swift */; };
@@ -90,6 +94,10 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0D000C42332246F4A41D879A /* ReactionLogModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Models/ReactionLogModels.swift"; sourceTree = SOURCE_ROOT; };
+		2748185AC3934123A2EE1CEC /* ReactionLogManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Managers/ReactionLogManager.swift"; sourceTree = SOURCE_ROOT; };
+		E3D9EE3D5C7748EE8D793D2B /* ReactionLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/ReactionLogView.swift"; sourceTree = SOURCE_ROOT; };
+		CF1C3CB3424C495E9408953D /* ReactionPDFExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Utils/ReactionPDFExporter.swift"; sourceTree = SOURCE_ROOT; };
 		025E4F9F2ED6507377598194 /* UseByNotificationManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UseByNotificationManager.swift; sourceTree = "<group>"; };
 		034F60AA8BCB4662A86709D4 /* FastingTimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastingTimerView.swift; sourceTree = "<group>"; };
 		062BCEAA60197405CFED2ACE /* NutrientActivityDashboard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NutrientActivityDashboard.swift; sourceTree = "<group>"; };
@@ -330,7 +338,11 @@
 				RECOM456E67696E6546696C65 /* NutrientRecommendationEngine.swift */,
 				57546E11975DA5FBEF0A2680 /* MicronutrientTrackingManager.swift */,
 				3A54BFFF132CC2A8F263644F /* MicronutrientDatabase.swift */,
-			);
+			
+				0D000C42332246F4A41D879A /* ReactionLogModels.swift */,
+				2748185AC3934123A2EE1CEC /* ReactionLogManager.swift */,
+				E3D9EE3D5C7748EE8D793D2B /* ReactionLogView.swift */,
+				CF1C3CB3424C495E9408953D /* ReactionPDFExporter.swift */,);
 			path = "NutraSafe Beta";
 			sourceTree = "<group>";
 		};
@@ -537,7 +549,11 @@
 				053A05A52E60FD20C626C633 /* NutrientTrendChart.swift in Sources */,
 				2C4324C1715FB9619FA60053 /* NutrientTimelineView.swift in Sources */,
 				BDD6569256384DFA94AA3B4C /* SQLiteFoodDatabase.swift in Sources */,
-			);
+			
+				55B790C73CA449989621A55B /* ReactionLogModels.swift in Sources */,
+				57D39094D959418DBEA2559C /* ReactionLogManager.swift in Sources */,
+				FAA5308D615C46F7B48AEE78 /* ReactionLogView.swift in Sources */,
+				AB6A8F070FF14DC49BA4BC80 /* ReactionPDFExporter.swift in Sources */,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */

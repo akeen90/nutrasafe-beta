@@ -860,6 +860,28 @@ class DiaryDataManager: ObservableObject {
 
         print("✅ Micronutrient processing queued for: \(item.name)")
     }
+
+    // MARK: - Reaction Log Support
+
+    /// Fetches all meals (as FoodEntry objects) within a specific time range for reaction analysis
+    /// - Parameters:
+    ///   - from: Start of time range
+    ///   - to: End of time range
+    /// - Returns: Array of FoodEntry objects that fall within the time range
+    func getMealsInTimeRange(from startDate: Date, to endDate: Date) async throws -> [FoodEntry] {
+        guard let userId = FirebaseManager.shared.currentUser?.uid else {
+            throw NSError(domain: "DiaryDataManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "User not logged in"])
+        }
+
+        print("DiaryDataManager: Fetching meals from \(startDate) to \(endDate)")
+
+        // Use Firebase to query food entries within the date range
+        let entries = try await FirebaseManager.shared.getFoodEntriesInRange(userId: userId, startDate: startDate, endDate: endDate)
+
+        print("DiaryDataManager: Found \(entries.count) food entries in time range")
+
+        return entries
+    }
 }
 
 enum MicronutrientDataSource: String, Codable {

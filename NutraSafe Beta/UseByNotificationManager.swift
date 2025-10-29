@@ -121,18 +121,43 @@ class UseByNotificationManager {
         ]
 
         // Set notification at 9 AM on the target date
-        var dateComponents = Calendar.current.dateComponents([.year, .month, .day], from: date)
+        let calendar = Calendar.current
+        var dateComponents = calendar.dateComponents([.year, .month, .day], from: date)
         dateComponents.hour = 9
         dateComponents.minute = 0
+        dateComponents.second = 0
 
-        let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: false)
+        // Create the full trigger date
+        guard let triggerDate = calendar.date(from: dateComponents) else {
+            print("❌ Failed to create trigger date from components for \(identifier)")
+            return
+        }
+
+        // Calculate time interval from now
+        let now = Date()
+        let timeInterval = triggerDate.timeIntervalSince(now)
+
+        // Validate that the notification is in the future
+        guard timeInterval > 0 else {
+            print("⚠️ Notification time is in the past for \(identifier) - triggerDate: \(triggerDate), now: \(now)")
+            return
+        }
+
+        print("📅 Scheduling notification '\(identifier)' for \(triggerDate) (in \(Int(timeInterval/3600)) hours)")
+
+        // Use UNTimeIntervalNotificationTrigger instead of calendar trigger
+        // This matches the working fasting notification implementation
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: timeInterval, repeats: false)
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
 
         do {
             try await UNUserNotificationCenter.current().add(request)
-            print("✅ Use-by notification scheduled: '\(identifier)' for \(date)")
+            print("✅ Use-by notification scheduled: '\(identifier)' for \(triggerDate)")
+
+            // Verify it was added
+            await printPendingNotifications()
         } catch {
-            print("❌ Error scheduling use-by notification: \(error)")
+            print("❌ Error scheduling use-by notification '\(identifier)': \(error.localizedDescription)")
         }
     }
 

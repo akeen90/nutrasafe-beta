@@ -416,6 +416,70 @@ class FirebaseManager: ObservableObject {
         print("✅ Reaction saved successfully")
     }
 
+    // MARK: - Reaction Log
+
+    /// Get all reaction logs for a user
+    func getReactionLogs(userId: String) async throws -> [ReactionLogEntry] {
+        let snapshot = try await db.collection("users").document(userId)
+            .collection("reactionLogs")
+            .order(by: "reactionDate", descending: true)
+            .getDocuments()
+
+        return try snapshot.documents.compactMap { doc in
+            try doc.data(as: ReactionLogEntry.self)
+        }
+    }
+
+    /// Save a new reaction log entry
+    func saveReactionLog(_ entry: ReactionLogEntry) async throws -> ReactionLogEntry {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save reaction logs"])
+        }
+
+        // Create a new document reference to get an ID
+        let docRef = db.collection("users").document(userId)
+            .collection("reactionLogs").document()
+
+        // Create entry with the Firebase-generated ID
+        var entryWithId = entry
+        entryWithId.id = docRef.documentID
+
+        // Save to Firestore
+        try docRef.setData(from: entryWithId)
+
+        print("✅ Reaction log saved successfully with ID: \(docRef.documentID)")
+        return entryWithId
+    }
+
+    /// Delete a reaction log entry
+    func deleteReactionLog(entryId: String) async throws {
+        guard let userId = currentUser?.uid else { return }
+
+        try await db.collection("users").document(userId)
+            .collection("reactionLogs").document(entryId).delete()
+
+        print("✅ Reaction log deleted successfully")
+    }
+
+    /// Get food entries within a date range (for reaction analysis)
+    func getFoodEntriesInRange(userId: String, startDate: Date, endDate: Date) async throws -> [FoodEntry] {
+        let snapshot = try await db.collection("users").document(userId)
+            .collection("foodEntries")
+            .whereField("date", isGreaterThanOrEqualTo: FirebaseFirestore.Timestamp(date: startDate))
+            .whereField("date", isLessThanOrEqualTo: FirebaseFirestore.Timestamp(date: endDate))
+            .order(by: "date", descending: false)
+            .getDocuments()
+
+        let entries = try snapshot.documents.compactMap { doc in
+            try doc.data(as: FoodEntry.self)
+        }
+
+        print("📊 Found \(entries.count) food entries between \(startDate) and \(endDate)")
+        return entries
+    }
+
     // MARK: - Use By Inventory
 
     func addUseByItem(_ item: UseByInventoryItem) async throws {
