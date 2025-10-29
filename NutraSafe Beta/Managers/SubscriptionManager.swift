@@ -169,10 +169,56 @@ final class SubscriptionManager: ObservableObject {
     }
 
     func manageSubscriptions() async {
-        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
-            // Handle environments where this API may throw
-            // If non-throwing in current SDK, the optional try compiles away.
-            _ = try? await AppStore.showManageSubscriptions(in: scene)
+        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene else {
+            print("StoreKit: No valid window scene found for subscription management")
+            return
+        }
+
+        do {
+            // Add timeout to prevent infinite loading
+            try await withTimeout(seconds: 10) {
+                do {
+                    try await AppStore.showManageSubscriptions(in: scene)
+                    print("StoreKit: Successfully opened subscription management")
+                } catch {
+                    print("StoreKit: Error showing manage subscriptions: \(error)")
+                    // If the native sheet fails, fall back to opening subscription URL
+                    await self.openSubscriptionManagementURL()
+                }
+            }
+        } catch {
+            print("StoreKit: Timeout or error in manageSubscriptions: \(error)")
+            // Fall back to opening subscription URL directly
+            await self.openSubscriptionManagementURL()
+        }
+    }
+
+    private func openSubscriptionManagementURL() async {
+        // Open the App Store subscription management page directly
+        if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
+            await MainActor.run {
+                UIApplication.shared.open(url)
+            }
+        }
+    }
+
+    private func withTimeout<T>(seconds: TimeInterval, operation: @escaping () async throws -> T) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask {
+                try await operation()
+            }
+
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                throw TimeoutError()
+            }
+
+            guard let result = try await group.next() else {
+                throw TimeoutError()
+            }
+
+            group.cancelAll()
+            return result
         }
     }
 
@@ -214,5 +260,12 @@ extension SubscriptionManager {
         } catch {
             isPremiumOverride = false
         }
+    }
+}
+
+// MARK: - Timeout Error
+struct TimeoutError: Error {
+    var localizedDescription: String {
+        return "The operation timed out"
     }
 }
