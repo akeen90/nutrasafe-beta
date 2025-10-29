@@ -1693,7 +1693,7 @@ struct ModernExpiryRow: View {
 
     private var urgencyText: String {
         switch daysLeft {
-        case 0: return "Expires today"
+        case 0: return "Last day"
         case 1: return "Tomorrow"
         case 2...7: return "\(daysLeft) days"
         case 8...30: return "\(daysLeft) days"
@@ -3402,7 +3402,7 @@ struct CleanUseByRow: View {
     private var statusText: String {
         switch item.expiryStatus {
         case .expired: return "Expired"
-        case .expiringToday: return "Expires today"
+        case .expiringToday: return "Last day"
         case .expiringSoon: return "Expires soon"
         case .expiringThisWeek: return "This week"
         case .fresh: return "\(daysLeft) days"

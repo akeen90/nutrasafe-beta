@@ -82,7 +82,7 @@ enum ExpiryStatus {
     var title: String {
         switch self {
         case .expired: return "Expired"
-        case .expiringToday: return "Expires Today"
+        case .expiringToday: return "Last Day"
         case .expiringSoon: return "Expires Soon"
         case .expiringThisWeek: return "This Week"
         case .fresh: return "Fresh"
