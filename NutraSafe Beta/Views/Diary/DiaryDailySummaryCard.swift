@@ -2,7 +2,7 @@
 //  DiaryDailySummaryCard.swift
 //  NutraSafe Beta
 //
-//  Modern daily nutrition summary with enhanced visual design
+//  Google-inspired daily nutrition summary with premium visual design
 //
 
 import SwiftUI
@@ -31,231 +31,280 @@ struct DiaryDailySummaryCard: View {
     // MARK: - Body
     var body: some View {
         VStack(spacing: 0) {
-            // Modern header with gradient background
-            VStack(spacing: 20) {
-                // Date and calories header
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    VStack(alignment: .leading, spacing: 4) {
+            // Premium header with refined typography
+            VStack(spacing: 24) {
+                // Date header with elevated design
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 6) {
                         Text(formatDateForDaily(currentDate))
-                            .font(.system(size: 24, weight: .bold, design: .rounded))
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
                             .foregroundStyle(
                                 LinearGradient(
-                                    colors: [Color.primary, Color.primary.opacity(0.8)],
+                                    colors: [Color.primary, Color.primary.opacity(0.85)],
                                     startPoint: .leading,
                                     endPoint: .trailing
                                 )
                             )
 
                         Text("of \(Int(calorieGoal)) calories")
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .font(.system(size: 15, weight: .medium, design: .rounded))
                             .foregroundColor(.secondary)
+                            .opacity(0.8)
                     }
 
                     Spacer()
+                    
+                    // Net calories badge
+                    VStack(spacing: 4) {
+                        Text("\(Int(calorieGoal - Double(totalCalories)))")
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                            .foregroundColor(calorieGoal - Double(totalCalories) > 0 ? .green : .orange)
+                        
+                        Text("remaining")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.secondary)
+                            .textCase(.uppercase)
+                            .tracking(0.5)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(Color(.secondarySystemBackground))
+                    )
                 }
 
-                // Enhanced rings layout
-                HStack(spacing: 24) {
-                    // Main calorie ring with modern design
-                    VStack(spacing: 8) {
+                // Redesigned rings - more premium layout
+                HStack(spacing: 0) {
+                    // Main calorie ring - hero element
+                    VStack(spacing: 12) {
                         ZStack {
-                            // Outer glow effect
+                            // Sophisticated outer glow
                             Circle()
                                 .fill(
                                     RadialGradient(
                                         colors: [
-                                            Color.blue.opacity(0.15),
+                                            Color.blue.opacity(0.18),
+                                            Color.blue.opacity(0.05),
                                             Color.clear
                                         ],
                                         center: .center,
-                                        startRadius: 35,
+                                        startRadius: 45,
+                                        endRadius: 65
+                                    )
+                                )
+                                .frame(width: 130, height: 130)
+                            
+                            // Background ring with premium gradient
+                            Circle()
+                                .stroke(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            Color(.systemGray6).opacity(0.6),
+                                            Color(.systemGray5).opacity(0.4)
+                                        ]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 12
+                                )
+                                .frame(width: 100, height: 100)
+                            
+                            // Progress ring with refined gradient
+                            Circle()
+                                .trim(from: 0, to: min(1.0, Double(totalCalories) / calorieGoal))
+                                .stroke(
+                                    AngularGradient(
+                                        gradient: Gradient(stops: [
+                                            .init(color: Color(hex: "#4A90E2"), location: 0),
+                                            .init(color: Color(hex: "#667EEA"), location: 0.5),
+                                            .init(color: Color(hex: "#764BA2"), location: 1.0)
+                                        ]),
+                                        center: .center,
+                                        startAngle: .degrees(0),
+                                        endAngle: .degrees(360 * min(1.0, Double(totalCalories) / calorieGoal))
+                                    ),
+                                    style: StrokeStyle(lineWidth: 12, lineCap: .round)
+                                )
+                                .frame(width: 100, height: 100)
+                                .rotationEffect(.degrees(-90))
+                                .shadow(color: Color.blue.opacity(0.35), radius: 8, x: 0, y: 4)
+                                .animation(.spring(response: 1.0, dampingFraction: 0.75), value: totalCalories)
+                            
+                            // Center value with refined typography
+                            VStack(spacing: 2) {
+                                Text("\(totalCalories)")
+                                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                                    .foregroundStyle(
+                                        LinearGradient(
+                                            colors: [Color.primary, Color.primary.opacity(0.85)],
+                                            startPoint: .top,
+                                            endPoint: .bottom
+                                        )
+                                    )
+                                    .animation(.spring(response: 0.8, dampingFraction: 0.8), value: totalCalories)
+                                
+                                Text("kcal")
+                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                    .foregroundColor(.secondary)
+                                    .opacity(0.7)
+                            }
+                        }
+                        
+                        // Label with refined styling
+                        Text("FOOD")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .tracking(1.2)
+                            .foregroundColor(.secondary)
+                            .opacity(0.7)
+                    }
+                    .frame(maxWidth: .infinity)
+                    
+                    // Visual divider
+                    Rectangle()
+                        .fill(Color(.systemGray5).opacity(0.5))
+                        .frame(width: 1, height: 100)
+                        .padding(.vertical, 20)
+                    
+                    // Exercise ring with balanced design
+                    VStack(spacing: 12) {
+                        ZStack {
+                            // Refined outer glow
+                            Circle()
+                                .fill(
+                                    RadialGradient(
+                                        colors: [
+                                            Color.green.opacity(0.18),
+                                            Color.green.opacity(0.05),
+                                            Color.clear
+                                        ],
+                                        center: .center,
+                                        startRadius: 30,
                                         endRadius: 45
                                     )
                                 )
-                                .frame(width: 90, height: 90)
+                                .frame(width: 100, height: 100)
                             
                             // Background ring
                             Circle()
                                 .stroke(
                                     LinearGradient(
                                         gradient: Gradient(colors: [
-                                            Color(.systemGray6),
-                                            Color(.systemGray5).opacity(0.8)
+                                            Color(.systemGray6).opacity(0.6),
+                                            Color(.systemGray5).opacity(0.4)
                                         ]),
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
                                     ),
                                     lineWidth: 10
                                 )
-                                .frame(width: 80, height: 80)
+                                .frame(width: 70, height: 70)
                             
-                            // Progress ring with enhanced gradient
-                            Circle()
-                                .trim(from: 0, to: min(1.0, Double(totalCalories) / calorieGoal))
-                                .stroke(
-                                    AngularGradient(
-                                        gradient: Gradient(colors: [
-                                            Color.blue,
-                                            Color.blue.opacity(0.9),
-                                            Color.purple.opacity(0.8),
-                                            Color.blue
-                                        ]),
-                                        center: .center,
-                                        startAngle: .degrees(0),
-                                        endAngle: .degrees(360 * min(1.0, Double(totalCalories) / calorieGoal))
-                                    ),
-                                    style: StrokeStyle(lineWidth: 10, lineCap: .round)
-                                )
-                                .frame(width: 80, height: 80)
-                                .rotationEffect(.degrees(-90))
-                                .shadow(color: Color.blue.opacity(0.4), radius: 6, x: 0, y: 3)
-                                .animation(.spring(response: 1.2, dampingFraction: 0.7), value: totalCalories)
-                            
-                            // Center value
-                            VStack(spacing: 2) {
-                                Text("\(totalCalories)")
-                                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                                    .foregroundStyle(
-                                        LinearGradient(
-                                            colors: [Color.primary, Color.primary.opacity(0.8)],
-                                            startPoint: .top,
-                                            endPoint: .bottom
-                                        )
-                                    )
-                                    .animation(.easeInOut(duration: 1.0), value: totalCalories)
-                                
-                                Text("kcal")
-                                    .font(.system(size: 10, weight: .semibold, design: .rounded))
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        
-                        // Label with modern styling
-                        Text("FOOD")
-                            .font(.system(size: 9, weight: .bold, design: .rounded))
-                            .tracking(1)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    // Exercise ring with enhanced design
-                    VStack(spacing: 8) {
-                        ZStack {
-                            // Outer glow
-                            Circle()
-                                .fill(
-                                    RadialGradient(
-                                        colors: [
-                                            Color.green.opacity(0.15),
-                                            Color.clear
-                                        ],
-                                        center: .center,
-                                        startRadius: 22,
-                                        endRadius: 30
-                                    )
-                                )
-                                .frame(width: 60, height: 60)
-                            
-                            // Background ring
-                            Circle()
-                                .stroke(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [
-                                            Color(.systemGray6),
-                                            Color(.systemGray5).opacity(0.8)
-                                        ]),
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
-                                    lineWidth: 7
-                                )
-                                .frame(width: 50, height: 50)
-                            
-                            // Progress ring
+                            // Progress ring with premium gradient
                             Circle()
                                 .trim(from: 0, to: min(1.0, healthKitManager.exerciseCalories / 400.0))
                                 .stroke(
                                     AngularGradient(
-                                        gradient: Gradient(colors: [
-                                            Color.green,
-                                            Color.green.opacity(0.9),
-                                            Color.mint.opacity(0.8),
-                                            Color.green
+                                        gradient: Gradient(stops: [
+                                            .init(color: Color(hex: "#11998E"), location: 0),
+                                            .init(color: Color(hex: "#38EF7D"), location: 0.7),
+                                            .init(color: Color(hex: "#11998E"), location: 1.0)
                                         ]),
                                         center: .center,
                                         startAngle: .degrees(0),
                                         endAngle: .degrees(360 * min(1.0, healthKitManager.exerciseCalories / 400.0))
                                     ),
-                                    style: StrokeStyle(lineWidth: 7, lineCap: .round)
+                                    style: StrokeStyle(lineWidth: 10, lineCap: .round)
                                 )
-                                .frame(width: 50, height: 50)
+                                .frame(width: 70, height: 70)
                                 .rotationEffect(.degrees(-90))
-                                .shadow(color: Color.green.opacity(0.3), radius: 4, x: 0, y: 2)
-                                .animation(.spring(response: 1.2, dampingFraction: 0.7), value: healthKitManager.exerciseCalories)
+                                .shadow(color: Color.green.opacity(0.3), radius: 6, x: 0, y: 3)
+                                .animation(.spring(response: 1.0, dampingFraction: 0.75), value: healthKitManager.exerciseCalories)
                             
-                            // Center value
+                            // Center value with refined typography
                             VStack(spacing: 1) {
                                 Text("\(Int(healthKitManager.exerciseCalories))")
-                                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                                    .font(.system(size: 22, weight: .bold, design: .rounded))
                                     .foregroundColor(.primary)
-                                    .animation(.easeInOut(duration: 1.0), value: healthKitManager.exerciseCalories)
+                                    .animation(.spring(response: 0.8, dampingFraction: 0.8), value: healthKitManager.exerciseCalories)
                                 
                                 Text("kcal")
-                                    .font(.system(size: 8, weight: .semibold, design: .rounded))
+                                    .font(.system(size: 10, weight: .semibold, design: .rounded))
                                     .foregroundColor(.secondary)
+                                    .opacity(0.7)
                             }
                         }
                         
                         Text("EXERCISE")
-                            .font(.system(size: 8, weight: .bold, design: .rounded))
-                            .tracking(0.8)
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .tracking(1.0)
                             .foregroundColor(.secondary)
+                            .opacity(0.7)
                     }
-
-                    Spacer()
+                    .frame(maxWidth: .infinity)
                 }
+                .padding(.vertical, 8)
                 
-                // Enhanced macro progress bars
-                VStack(spacing: 14) {
-                    ModernMacroProgressView(
-                        name: "Protein",
-                        current: totalProtein,
-                        goal: proteinGoal,
-                        unit: "g",
-                        color: Color(.systemRed)
-                    )
-                    
-                    ModernMacroProgressView(
-                        name: "Carbs",
-                        current: totalCarbs,
-                        goal: carbGoal,
-                        unit: "g",
-                        color: Color(.systemOrange)
-                    )
-                    
-                    ModernMacroProgressView(
-                        name: "Fat",
-                        current: totalFat,
-                        goal: fatGoal,
-                        unit: "g",
-                        color: Color(.systemYellow)
-                    )
-                }
-            }
-            .padding(24)
-        }
-        .background(
-            ZStack {
-                // Base card background
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(Color(.systemBackground))
-                
-                // Subtle gradient overlay
-                RoundedRectangle(cornerRadius: 20)
+                // Premium divider
+                Rectangle()
                     .fill(
                         LinearGradient(
                             colors: [
                                 Color.clear,
-                                Color(.systemGray6).opacity(0.3)
+                                Color(.systemGray5).opacity(0.5),
+                                Color.clear
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(height: 1)
+                    .padding(.horizontal, -4)
+                
+                // Refined macro progress bars with better spacing
+                VStack(spacing: 16) {
+                    PremiumMacroProgressView(
+                        name: "Protein",
+                        current: totalProtein,
+                        goal: proteinGoal,
+                        unit: "g",
+                        color: Color(hex: "#FF6B6B")
+                    )
+                    
+                    PremiumMacroProgressView(
+                        name: "Carbs",
+                        current: totalCarbs,
+                        goal: carbGoal,
+                        unit: "g",
+                        color: Color(hex: "#FFA93A")
+                    )
+                    
+                    PremiumMacroProgressView(
+                        name: "Fat",
+                        current: totalFat,
+                        goal: fatGoal,
+                        unit: "g",
+                        color: Color(hex: "#FFD93D")
+                    )
+                }
+                .padding(.top, 8)
+            }
+            .padding(28)
+        }
+        .background(
+            ZStack {
+                // Premium card background
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(Color(.systemBackground))
+                
+                // Sophisticated gradient overlay
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.clear,
+                                Color(.systemGray6).opacity(0.2),
+                                Color(.systemGray5).opacity(0.15)
                             ],
                             startPoint: .top,
                             endPoint: .bottom
@@ -264,21 +313,23 @@ struct DiaryDailySummaryCard: View {
             }
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 20)
+            RoundedRectangle(cornerRadius: 24)
                 .stroke(
                     LinearGradient(
                         colors: [
-                            Color.black.opacity(0.06),
-                            Color.black.opacity(0.03)
+                            Color.white.opacity(0.4),
+                            Color.black.opacity(0.04),
+                            Color.black.opacity(0.02)
                         ],
-                        startPoint: .top,
-                        endPoint: .bottom
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
                     ),
                     lineWidth: 1
                 )
         )
-        .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
-        .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
+        .shadow(color: Color.black.opacity(0.06), radius: 16, x: 0, y: 6)
+        .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 3)
+        .shadow(color: Color.black.opacity(0.02), radius: 2, x: 0, y: 1)
         .onAppear {
             Task {
                 await loadNutritionGoals()
@@ -358,8 +409,8 @@ struct DiaryDailySummaryCard: View {
     }
 }
 
-// MARK: - Modern Macro Progress View
-struct ModernMacroProgressView: View {
+// MARK: - Premium Macro Progress View
+struct PremiumMacroProgressView: View {
     let name: String
     let current: Double
     let goal: Double
@@ -374,121 +425,180 @@ struct ModernMacroProgressView: View {
         max(0, goal - current)
     }
     
+    private var percentage: Int {
+        Int((progress * 100).rounded())
+    }
+    
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 10) {
             HStack(alignment: .center) {
-                HStack(spacing: 8) {
-                    // Enhanced color indicator
+                HStack(spacing: 10) {
+                    // Premium color indicator with depth
                     ZStack {
                         Circle()
                             .fill(
                                 RadialGradient(
-                                    colors: [color.opacity(0.4), color.opacity(0.2)],
+                                    colors: [color.opacity(0.5), color.opacity(0.2), Color.clear],
                                     center: .center,
                                     startRadius: 0,
-                                    endRadius: 6
+                                    endRadius: 9
+                                )
+                            )
+                            .frame(width: 18, height: 18)
+                        
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [color, color.opacity(0.8)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
                                 )
                             )
                             .frame(width: 12, height: 12)
-                        
-                        Circle()
-                            .fill(color)
-                            .frame(width: 10, height: 10)
-                            .shadow(color: color.opacity(0.4), radius: 2, x: 0, y: 1)
+                            .shadow(color: color.opacity(0.5), radius: 3, x: 0, y: 1.5)
                     }
                     
                     Text(name)
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .font(.system(size: 17, weight: .semibold, design: .rounded))
                         .foregroundColor(.primary)
                 }
                 
                 Spacer()
                 
-                VStack(alignment: .trailing, spacing: 2) {
-                    HStack(spacing: 4) {
+                VStack(alignment: .trailing, spacing: 3) {
+                    HStack(spacing: 5) {
                         Text("\(Int(current.rounded()))")
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
                             .foregroundStyle(
                                 LinearGradient(
-                                    colors: [color, color.opacity(0.8)],
+                                    colors: [color, color.opacity(0.85)],
                                     startPoint: .leading,
                                     endPoint: .trailing
                                 )
                             )
                         
                         Text("/ \(Int(goal))")
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .font(.system(size: 15, weight: .medium, design: .rounded))
                             .foregroundColor(.secondary)
+                            .opacity(0.8)
                         
                         Text(unit)
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
-                            .foregroundColor(.secondary.opacity(0.8))
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .foregroundColor(.secondary)
+                            .opacity(0.6)
                     }
                     
                     if remaining > 0 {
                         Text("\(Int(remaining.rounded())) left")
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
-                            .foregroundColor(.secondary.opacity(0.7))
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundColor(.secondary)
+                            .opacity(0.7)
+                    } else {
+                        Text("\(percentage)% complete")
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundColor(color)
                     }
                 }
             }
             
-            // Enhanced progress bar
+            // Premium progress bar with sophisticated design
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
-                    // Background track with subtle gradient
-                    RoundedRectangle(cornerRadius: 8)
+                    // Background track with refined gradient
+                    RoundedRectangle(cornerRadius: 10)
                         .fill(
                             LinearGradient(
                                 gradient: Gradient(colors: [
-                                    Color(.systemGray6),
-                                    Color(.systemGray5).opacity(0.8)
+                                    Color(.systemGray6).opacity(0.6),
+                                    Color(.systemGray5).opacity(0.4)
                                 ]),
                                 startPoint: .top,
                                 endPoint: .bottom
                             )
                         )
-                        .frame(height: 10)
+                        .frame(height: 12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color.black.opacity(0.03), lineWidth: 1)
+                        )
                     
-                    // Progress fill with enhanced gradient and glow
-                    RoundedRectangle(cornerRadius: 8)
+                    // Progress fill with premium gradient and depth
+                    RoundedRectangle(cornerRadius: 10)
                         .fill(
                             LinearGradient(
                                 gradient: Gradient(stops: [
-                                    .init(color: color.opacity(0.7), location: 0),
-                                    .init(color: color, location: 0.5),
-                                    .init(color: color.opacity(0.9), location: 1.0)
+                                    .init(color: color.opacity(0.75), location: 0),
+                                    .init(color: color, location: 0.4),
+                                    .init(color: color.opacity(0.95), location: 1.0)
                                 ]),
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
                         )
                         .frame(
-                            width: max(8, geometry.size.width * progress),
-                            height: 10
+                            width: max(10, geometry.size.width * progress),
+                            height: 12
                         )
-                        .shadow(color: color.opacity(0.5), radius: 4, x: 0, y: 2)
-                        .animation(.spring(response: 0.6, dampingFraction: 0.7), value: current)
+                        .shadow(color: color.opacity(0.4), radius: 5, x: 0, y: 2)
+                        .animation(.spring(response: 0.7, dampingFraction: 0.75), value: current)
                         .overlay(
-                            // Highlight effect
-                            RoundedRectangle(cornerRadius: 8)
+                            // Refined highlight effect
+                            RoundedRectangle(cornerRadius: 10)
                                 .fill(
                                     LinearGradient(
-                                        gradient: Gradient(colors: [
-                                            Color.white.opacity(0.4),
-                                            Color.clear
+                                        gradient: Gradient(stops: [
+                                            .init(color: Color.white.opacity(0.5), location: 0),
+                                            .init(color: Color.white.opacity(0.2), location: 0.5),
+                                            .init(color: Color.clear, location: 1.0)
                                         ]),
                                         startPoint: .top,
                                         endPoint: .bottom
                                     )
                                 )
-                                .frame(height: 4)
+                                .frame(height: 5)
                                 .offset(y: -1.5),
                             alignment: .top
                         )
+                        .overlay(
+                            // Progress indicator dot for visual interest
+                            Circle()
+                                .fill(Color.white)
+                                .frame(width: 6, height: 6)
+                                .shadow(color: color.opacity(0.6), radius: 2, x: 0, y: 1)
+                                .offset(x: max(3, geometry.size.width * progress) - 3),
+                            alignment: .leading
+                        )
                 }
             }
-            .frame(height: 10)
+            .frame(height: 12)
         }
+    }
+}
+
+// MARK: - Color Extension for Hex
+extension Color {
+    init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let a, r, g, b: UInt64
+        switch hex.count {
+        case 3: // RGB (12-bit)
+            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
+        case 6: // RGB (24-bit)
+            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+        case 8: // ARGB (32-bit)
+            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+        default:
+            (a, r, g, b) = (1, 1, 1, 0)
+        }
+
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue:  Double(b) / 255,
+            opacity: Double(a) / 255
+        )
     }
 }
