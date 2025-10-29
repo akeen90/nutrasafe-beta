@@ -73,6 +73,16 @@ class UseByNotificationManager {
         let calendar = Calendar.current
         let now = Date()
 
+        // IMMEDIATE TEST NOTIFICATION - fires in 5 seconds
+        let testContent = UNMutableNotificationContent()
+        testContent.title = "✅ Test: Use By Notification"
+        testContent.body = "Test notification for \(itemName). Your notifications are working!"
+        testContent.sound = .default
+        let testTrigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
+        let testRequest = UNNotificationRequest(identifier: "test-\(item.id)", content: testContent, trigger: testTrigger)
+        try? await UNUserNotificationCenter.current().add(testRequest)
+        print("✅ Test notification scheduled for \(itemName) - fires in 5 seconds")
+
         // Calculate tomorrow notification (day before expiry)
         if let tomorrowDate = calendar.date(byAdding: .day, value: -1, to: useByDate),
            tomorrowDate > now {

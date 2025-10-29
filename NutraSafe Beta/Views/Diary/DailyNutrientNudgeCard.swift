@@ -2,7 +2,7 @@
 //  DailyNutrientNudgeCard.swift
 //  NutraSafe Beta
 //
-//  Smart daily nutrient nudge card with expandable insights
+//  Modern daily nutrient nudge card with smart insights
 //
 
 import SwiftUI
@@ -24,7 +24,9 @@ struct DailyNutrientNudgeCard: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if let summary = viewModel.dailySummary, !summary.insights.isEmpty {
+            if viewModel.userPreferences.focusNutrients.isEmpty {
+                emptyStateView
+            } else if let summary = viewModel.dailySummary, !summary.insights.isEmpty {
                 collapsedView(summary: summary)
 
                 if isExpanded {
@@ -38,12 +40,12 @@ struct DailyNutrientNudgeCard: View {
         .background(
             RoundedRectangle(cornerRadius: 16)
                 .fill(Color(.systemBackground))
-                .shadow(color: Color.orange.opacity(0.15), radius: 8, x: 0, y: 2)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.orange.opacity(0.3), lineWidth: 1.5)
+                .stroke(Color.orange.opacity(0.2), lineWidth: 1)
         )
+        .shadow(color: Color.orange.opacity(0.08), radius: 6, x: 0, y: 2)
         .task(id: date) {
             await viewModel.calculateDailyInsights(for: date)
         }
@@ -60,31 +62,49 @@ struct DailyNutrientNudgeCard: View {
     // MARK: - Collapsed View
     private func collapsedView(summary: DailyNutrientSummary) -> some View {
         Button(action: {
+            let generator = UIImpactFeedbackGenerator(style: .light)
+            generator.impactOccurred()
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 isExpanded.toggle()
             }
         }) {
-            HStack(spacing: 12) {
-                // Icon
-                Image(systemName: "lightbulb.fill")
-                    .font(.title2)
-                    .foregroundColor(.orange)
-                    .frame(width: 32, height: 32)
+            HStack(spacing: 14) {
+                // Icon with gradient
+                ZStack {
+                    Circle()
+                        .fill(Color.orange.opacity(0.15))
+                        .frame(width: 40, height: 40)
+                    
+                    Image(systemName: "lightbulb.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [Color.orange, Color.orange.opacity(0.7)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
 
-                // Text content
+                // Content
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Daily Nutrient Focus")
-                        .font(.subheadline.weight(.semibold))
+                        .font(.system(size: 15, weight: .bold))
                         .foregroundColor(.primary)
 
                     if summary.topInsightsForNudge.isEmpty {
-                        Text("All key nutrients looking good today!")
-                            .font(.caption)
-                            .foregroundColor(.green)
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 11))
+                                .foregroundColor(.green)
+                            Text("All tracked nutrients looking good")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
                     } else {
                         let nutrients = summary.topInsightsForNudge.map { $0.nutrient }.joined(separator: ", ")
                         Text("Low in \(nutrients)")
-                            .font(.caption)
+                            .font(.system(size: 13, weight: .medium))
                             .foregroundColor(.orange)
                             .lineLimit(1)
                     }
@@ -92,26 +112,27 @@ struct DailyNutrientNudgeCard: View {
 
                 Spacer()
 
-                // Expand/collapse indicator
-                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                    .font(.caption.weight(.semibold))
-                    .foregroundColor(.secondary)
+                // Chevron
+                Image(systemName: isExpanded ? "chevron.up.circle.fill" : "chevron.down.circle.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(.secondary.opacity(0.5))
             }
-            .padding()
+            .padding(16)
         }
         .buttonStyle(PlainButtonStyle())
     }
 
     // MARK: - Expanded View
     private func expandedView(summary: DailyNutrientSummary) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             Divider()
+                .padding(.horizontal, 16)
 
-            // Today's Gaps Section
-            VStack(alignment: .leading, spacing: 12) {
+            // Gaps Section
+            VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Text("Today's Nutrient Gaps")
-                        .font(.subheadline.weight(.semibold))
+                    Text("Today's Status")
+                        .font(.system(size: 14, weight: .bold))
                         .foregroundColor(.primary)
 
                     Spacer()
@@ -121,155 +142,192 @@ struct DailyNutrientNudgeCard: View {
                     }) {
                         HStack(spacing: 4) {
                             Image(systemName: "slider.horizontal.3")
+                                .font(.system(size: 12))
                             Text("Focus")
+                                .font(.system(size: 12, weight: .semibold))
                         }
-                        .font(.caption.weight(.medium))
                         .foregroundColor(.orange)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(
+                            Capsule()
+                                .fill(Color.orange.opacity(0.1))
+                        )
                     }
                 }
+                .padding(.horizontal, 16)
 
                 if summary.topInsightsForNudge.isEmpty {
-                    HStack {
-                        Image(systemName: "checkmark.circle.fill")
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 16))
                             .foregroundColor(.green)
-                        Text("No significant gaps today!")
-                            .font(.callout)
+                        Text("Great job! All tracked nutrients are on target.")
+                            .font(.system(size: 13, weight: .medium))
                             .foregroundColor(.secondary)
                     }
+                    .padding(.horizontal, 16)
                     .padding(.vertical, 8)
                 } else {
-                    ForEach(summary.topInsightsForNudge) { insight in
-                        NutrientGapRow(insight: insight)
+                    VStack(spacing: 8) {
+                        ForEach(summary.topInsightsForNudge) { insight in
+                            CompactNutrientGapRow(insight: insight)
+                        }
                     }
+                    .padding(.horizontal, 16)
                 }
             }
 
-            Divider()
-
-            // Smart Suggestions Section
+            // Suggestions Section
             if !summary.topInsightsForNudge.isEmpty {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Foods to Boost These Nutrients")
-                        .font(.subheadline.weight(.semibold))
+                Divider()
+                    .padding(.horizontal, 16)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Boost With")
+                        .font(.system(size: 14, weight: .bold))
                         .foregroundColor(.primary)
+                        .padding(.horizontal, 16)
 
                     ForEach(summary.topInsightsForNudge.prefix(2)) { insight in
                         if !insight.suggestedFoods.isEmpty {
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: 6) {
                                 Text(insight.nutrient)
-                                    .font(.caption.weight(.medium))
+                                    .font(.system(size: 12, weight: .semibold))
                                     .foregroundColor(.orange)
+                                    .padding(.horizontal, 16)
 
-                                FlowLayout(spacing: 8) {
-                                    ForEach(insight.suggestedFoods.prefix(4)) { food in
-                                        FoodSuggestionPill(food: food)
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 8) {
+                                        ForEach(insight.suggestedFoods.prefix(5)) { food in
+                                            ModernFoodSuggestionPill(food: food)
+                                        }
                                     }
+                                    .padding(.horizontal, 16)
                                 }
                             }
                         }
                     }
                 }
-
-                Divider()
             }
 
-            // Tip
+            // Info footer
             HStack(spacing: 8) {
                 Image(systemName: "info.circle.fill")
-                    .font(.caption)
-                    .foregroundColor(.blue.opacity(0.7))
+                    .font(.system(size: 12))
+                    .foregroundColor(.blue.opacity(0.6))
 
-                Text("These are suggestions based on today's intake. Consult a healthcare professional for personalised advice.")
-                    .font(.caption2)
+                Text("Suggestions based on today's intake")
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 16)
         }
-        .padding()
     }
 
     // MARK: - Loading View
     private var loadingView: some View {
-        HStack {
+        HStack(spacing: 12) {
             ProgressView()
-                .padding(.trailing, 8)
+                .scaleEffect(0.9)
 
-            Text("Analysing today's nutrition...")
-                .font(.caption)
+            Text("Analysing nutrients...")
+                .font(.system(size: 14, weight: .medium))
                 .foregroundColor(.secondary)
 
             Spacer()
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
-                .shadow(color: Color.black.opacity(0.05), radius: 8)
-        )
+        .padding(16)
     }
-}
 
-// MARK: - Nutrient Gap Row
-struct NutrientGapRow: View {
-    let insight: DailyNutrientInsight
+    // MARK: - Empty State View
+    private var emptyStateView: some View {
+        Button(action: {
+            showingPreferences = true
+        }) {
+            HStack(spacing: 14) {
+                // Icon
+                ZStack {
+                    Circle()
+                        .fill(Color.orange.opacity(0.15))
+                        .frame(width: 44, height: 44)
+                    
+                    Image(systemName: "chart.line.uptrend.xyaxis")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(.orange)
+                }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                // Nutrient name with priority indicator
-                HStack(spacing: 4) {
-                    if insight.isPriorityNutrient {
-                        Image(systemName: "star.fill")
-                            .font(.caption2)
-                            .foregroundColor(.orange)
-                    }
-                    Text(insight.nutrient)
-                        .font(.callout.weight(.medium))
+                // Text
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Track Your Nutrients")
+                        .font(.system(size: 15, weight: .bold))
                         .foregroundColor(.primary)
+
+                    Text("Get daily insights on your intake")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.secondary)
                 }
 
                 Spacer()
 
-                // Status badge
-                Text(insight.shortDescription)
-                    .font(.caption2.weight(.medium))
-                    .foregroundColor(severityColor(insight.severity))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(severityColor(insight.severity).opacity(0.15))
-                    )
+                // Arrow
+                Image(systemName: "arrow.right.circle.fill")
+                    .font(.system(size: 24))
+                    .foregroundColor(.orange)
             }
+            .padding(16)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Compact Nutrient Gap Row
+struct CompactNutrientGapRow: View {
+    let insight: DailyNutrientInsight
+
+    var body: some View {
+        HStack(spacing: 10) {
+            // Priority star
+            if insight.isPriorityNutrient {
+                Image(systemName: "star.fill")
+                    .font(.system(size: 10))
+                    .foregroundColor(.orange)
+            }
+
+            // Nutrient name
+            Text(insight.nutrient)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.primary)
+                .frame(width: 80, alignment: .leading)
 
             // Progress bar
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
-                    // Background
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.gray.opacity(0.2))
-                        .frame(height: 8)
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(Color(.systemGray6))
+                        .frame(height: 6)
 
-                    // Progress
-                    RoundedRectangle(cornerRadius: 4)
+                    RoundedRectangle(cornerRadius: 3)
                         .fill(
                             LinearGradient(
-                                colors: [severityColor(insight.severity).opacity(0.7), severityColor(insight.severity)],
+                                colors: [severityColor(insight.severity).opacity(0.8), severityColor(insight.severity)],
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
                         )
-                        .frame(width: geometry.size.width * min(insight.percentageOfTarget / 100, 1.0), height: 8)
+                        .frame(width: geometry.size.width * min(insight.percentageOfTarget / 100, 1.0), height: 6)
                 }
             }
-            .frame(height: 8)
+            .frame(height: 6)
 
-            // Level description
-            Text(levelDescription(for: insight.severity) + " (\(insight.displayPercentage))")
-                .font(.caption2)
-                .foregroundColor(.secondary)
+            // Percentage
+            Text(insight.displayPercentage)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(severityColor(insight.severity))
+                .frame(width: 45, alignment: .trailing)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
 
     private func severityColor(_ severity: InsightLevel) -> Color {
@@ -280,36 +338,29 @@ struct NutrientGapRow: View {
         case .excellent: return .blue
         }
     }
-
-    private func levelDescription(for severity: InsightLevel) -> String {
-        switch severity {
-        case .critical: return "Could use a boost today"
-        case .low: return "Room for improvement"
-        case .good: return "On track"
-        case .excellent: return "Going strong"
-        }
-    }
 }
 
-// MARK: - Food Suggestion Pill
-struct FoodSuggestionPill: View {
+// MARK: - Modern Food Suggestion Pill
+struct ModernFoodSuggestionPill: View {
     let food: FoodSuggestion
 
     var body: some View {
         Text(food.name)
-            .font(.caption.weight(.medium))
+            .font(.system(size: 12, weight: .semibold))
             .foregroundColor(.white)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(
-                LinearGradient(
-                    colors: [Color.green.opacity(0.8), Color.green],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.green.opacity(0.9), Color.green],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
             )
-            .cornerRadius(8)
-            .shadow(color: Color.green.opacity(0.2), radius: 4, x: 0, y: 2)
+            .shadow(color: Color.green.opacity(0.2), radius: 3, x: 0, y: 1)
     }
 }
 
@@ -323,7 +374,7 @@ struct NutrientFocusPreferencesView: View {
         NavigationView {
             List {
                 Section {
-                    Text("Select up to 5 nutrients to prioritise in your daily focus. These will always appear in your nudge card, helping you track specific dietary needs.")
+                    Text("Select up to 5 nutrients to track daily. These will appear in your Nutrient Focus card.")
                         .font(.callout)
                         .foregroundColor(.secondary)
                         .listRowBackground(Color.clear)
