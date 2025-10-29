@@ -112,7 +112,15 @@ struct PaywallView: View {
                         .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 8)
 
                         // Primary CTA
-                        Button(action: { Task { try? await subscriptionManager.purchase() } }) {
+                        Button(action: {
+                            Task {
+                                try? await subscriptionManager.purchase()
+                                // Auto-dismiss on successful subscription
+                                if subscriptionManager.isSubscribed {
+                                    dismiss()
+                                }
+                            }
+                        }) {
                             HStack {
                                 if subscriptionManager.isPurchasing { ProgressView().scaleEffect(0.9) }
                                 Text(ctaText)
@@ -126,7 +134,15 @@ struct PaywallView: View {
 
                         // Secondary actions
                         HStack(spacing: 12) {
-                            Button("Restore Purchases") { Task { try? await subscriptionManager.restore() } }
+                            Button("Restore Purchases") {
+                                Task {
+                                    try? await subscriptionManager.restore()
+                                    // Auto-dismiss if subscription was restored
+                                    if subscriptionManager.isSubscribed {
+                                        dismiss()
+                                    }
+                                }
+                            }
                             Button("Manage Subscription") { Task { await subscriptionManager.manageSubscriptions() } }
                         }
                         .buttonStyle(.bordered)
