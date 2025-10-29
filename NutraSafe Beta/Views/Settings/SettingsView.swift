@@ -93,7 +93,7 @@ struct SettingsView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
             }
-            .navigationTitle("Settings")
+            .navigationTitle("Settings").keyboardDismissToolbar()
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -1011,7 +1011,7 @@ struct HeightEditorView: View {
                     Button("190 cm") { tempHeight = "190" }
                 }
             }
-            .navigationTitle("Height")
+            .navigationTitle("Height").keyboardDismissToolbar()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -1077,7 +1077,7 @@ struct CurrentWeightEditorView: View {
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Current Weight")
+            .navigationTitle("Current Weight").keyboardDismissToolbar()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -1197,7 +1197,7 @@ struct GoalWeightEditorView: View {
                     }
                 }
             }
-            .navigationTitle("Goal Weight")
+            .navigationTitle("Goal Weight").keyboardDismissToolbar()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -1592,7 +1592,7 @@ struct ThemeSelectorView: View {
                     }
                 }
             }
-            .navigationTitle("Theme")
+            .navigationTitle("Theme").keyboardDismissToolbar()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -1666,7 +1666,7 @@ struct UnitsSelectorView: View {
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Units")
+            .navigationTitle("Units").keyboardDismissToolbar()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -1839,7 +1839,7 @@ struct DataPrivacyView: View {
                     .buttonStyle(PlainButtonStyle())
                 }
             }
-            .navigationTitle("Data & Privacy")
+            .navigationTitle("Data & Privacy").keyboardDismissToolbar()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -1928,7 +1928,7 @@ struct DataPrivacyView: View {
                     Spacer()
                 }
                 .padding()
-                .navigationTitle("Confirm Deletion")
+                .navigationTitle("Confirm Deletion").keyboardDismissToolbar()
                 .navigationBarTitleDisplayMode(.inline)
             }
         }
@@ -2182,7 +2182,7 @@ struct MacroEditorView: View {
                     }
                 }
             }
-            .navigationTitle("Macro Split")
+            .navigationTitle("Macro Split").keyboardDismissToolbar()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -2293,7 +2293,7 @@ struct HealthDisclaimerView: View {
                         .frame(height: 40)
                 }
             }
-            .navigationTitle("Disclaimer")
+            .navigationTitle("Disclaimer").keyboardDismissToolbar()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -2382,7 +2382,7 @@ struct AllergenManagementView: View {
                     }
                 }
             }
-            .navigationTitle("Allergen Management")
+            .navigationTitle("Allergen Management").keyboardDismissToolbar()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -2553,7 +2553,7 @@ struct FoodReactionsHistoryView: View {
                     }
                 }
             }
-            .navigationTitle("Reaction History")
+            .navigationTitle("Reaction History").keyboardDismissToolbar()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -2709,7 +2709,7 @@ struct SafetyAlertsConfigView: View {
                     }
                 }
             }
-            .navigationTitle("Safety Alerts")
+            .navigationTitle("Safety Alerts").keyboardDismissToolbar()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -2776,7 +2776,7 @@ struct MicronutrientDisplayView: View {
                     .disabled(!showMicronutrients)
                 }
             }
-            .navigationTitle("Micronutrient Display")
+            .navigationTitle("Micronutrient Display").keyboardDismissToolbar()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -2911,7 +2911,7 @@ struct NotificationSettingsView: View {
                     }
                 }
             }
-            .navigationTitle("Notifications")
+            .navigationTitle("Notifications").keyboardDismissToolbar()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -3155,7 +3155,7 @@ struct AppleHealthSettingsView: View {
                 Spacer()
             }
         }
-        .navigationTitle("Apple Health")
+        .navigationTitle("Apple Health").keyboardDismissToolbar()
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             checkConnectionStatus()

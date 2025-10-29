@@ -400,3 +400,78 @@ struct ColorSwatch: View {
     DesignSystemPreview()
 }
 #endif
+
+// MARK: - Keyboard Handling Extensions
+
+extension View {
+    /// Dismisses the keyboard programmatically
+    func dismissKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+    
+    /// Adds a tap gesture to dismiss keyboard when tapping on empty space
+    /// Apply this to root views for global tap-to-dismiss behavior
+    func dismissKeyboardOnTap() -> some View {
+        self.onTapGesture {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
+    }
+    
+    /// Adds a sleek "X" button at top-right of keyboard for number/decimal pad inputs
+    /// Apply this ONCE at the NavigationView/Sheet level
+    func keyboardDismissToolbar() -> some View {
+        self.toolbar {
+            ToolbarItem(placement: .keyboard) {
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.black.opacity(0.2))
+                                .frame(width: 28, height: 28)
+                            Image(systemName: "xmark")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.white)
+                        }
+                    }
+                    .padding(.trailing, 8)
+                    .padding(.top, 4)
+                }
+            }
+        }
+    }
+    
+    /// Applies standard keyboard handling to TextFields:
+    /// - Shows "Done" button on keyboard
+    /// - Dismisses keyboard when return/done is pressed
+    func standardKeyboardBehavior() -> some View {
+        self
+            .submitLabel(.done)
+            .onSubmit {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
+    }
+    
+    /// Applies standard keyboard handling for search fields:
+    /// - Shows "Search" button on keyboard
+    /// - Executes the provided search action when return is pressed
+    func searchKeyboardBehavior(onSearch: @escaping () -> Void) -> some View {
+        self
+            .submitLabel(.search)
+            .onSubmit {
+                onSearch()
+            }
+    }
+    
+    /// Enables keyboard dismissal when scrolling
+    /// Apply this to ScrollViews and Lists containing text input fields
+    func dismissKeyboardOnScroll() -> some View {
+        if #available(iOS 16.0, *) {
+            return AnyView(self.scrollDismissesKeyboard(.interactively))
+        } else {
+            return AnyView(self)
+        }
+    }
+}

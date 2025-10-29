@@ -421,6 +421,7 @@ struct AddFoundFoodToUseBySheet: View {
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Add to Use By")
+            .keyboardDismissToolbar()
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -3400,12 +3401,14 @@ struct CleanUseByRow: View {
     }
 
     private var statusText: String {
-        switch item.expiryStatus {
-        case .expired: return "Expired"
-        case .expiringToday: return "Expires today"
-        case .expiringSoon: return "Expires soon"
-        case .expiringThisWeek: return "This week"
-        case .fresh: return "\(daysLeft) days"
+        if daysLeft < 0 {
+            return "Expired"
+        } else if daysLeft == 0 {
+            return "Expires today"
+        } else if daysLeft == 1 {
+            return "Expires tomorrow"
+        } else {
+            return "Expires in \(daysLeft) days"
         }
     }
 

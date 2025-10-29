@@ -223,7 +223,14 @@ struct BarcodeSearchResponse: Codable {
             sodium: food.sodium,
             servingDescription: food.serving_description,
             ingredients: food.ingredients?.components(separatedBy: ", "),
-            isVerified: food.source_collection != "pendingFoods"
+            isVerified: food.source_collection != "pendingFoods",
+            additives: food.additives, // BUGFIX: Pass additives through
+            additivesDatabaseVersion: food.additivesDatabaseVersion, // BUGFIX: Pass database version
+            processingScore: food.processing_score, // BUGFIX: Pass processing score
+            processingGrade: food.processing_grade, // BUGFIX: Pass processing grade
+            processingLabel: food.processing_label, // BUGFIX: Pass processing label
+            barcode: food.barcode, // BUGFIX: Pass barcode through
+            micronutrientProfile: food.micronutrient_profile // BUGFIX: Pass micronutrient profile
         )
     }
 }
@@ -242,7 +249,15 @@ struct BarcodeFood: Codable {
     let sodium: Double
     let serving_description: String
     let ingredients: String?
+    let additives: [NutritionAdditiveInfo]? // BUGFIX: Added to prevent JSON decode failure
+    let additivesDatabaseVersion: String? // BUGFIX: Added for complete response parsing
+    let processing_score: Int? // BUGFIX: Added for complete response parsing
+    let processing_grade: String? // BUGFIX: Added for complete response parsing
+    let processing_label: String? // BUGFIX: Added for complete response parsing
+    let micronutrient_profile: MicronutrientProfile? // BUGFIX: Added for complete response parsing
     let source_collection: String?
+    let verified_by: String? // BUGFIX: Added for complete response parsing
+    let verified_at: Date? // BUGFIX: Added for complete response parsing
 }
 
 struct PendingFoodContribution: Identifiable {

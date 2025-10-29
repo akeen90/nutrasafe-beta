@@ -355,6 +355,11 @@ class FirebaseManager: ObservableObject {
         }
     }
 
+    // Convenience method alias for week-based navigation
+    func getFoodEntriesBetweenDates(startDate: Date, endDate: Date) async throws -> [FoodEntry] {
+        return try await getFoodEntriesInRange(from: startDate, to: endDate)
+    }
+
     // Delete all food entries older than today (for clearing test data)
     func deleteOldFoodEntries() async throws {
         guard let userId = currentUser?.uid else { return }
@@ -1094,6 +1099,45 @@ class FirebaseManager: ObservableObject {
         }
 
         return (height, goalWeight, caloricGoal, proteinPercent, carbsPercent, fatPercent, allergens)
+    }
+
+    // MARK: - Nutrient Focus Preferences
+
+    func saveNutrientPreferences(_ preferences: UserNutrientPreferences) async throws {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save nutrient preferences"])
+        }
+
+        let data: [String: Any] = [
+            "focusNutrients": preferences.focusNutrients,
+            "lastUpdated": Timestamp(date: preferences.lastUpdated)
+        ]
+
+        try await db.collection("users").document(userId)
+            .collection("settings").document("nutrientPreferences").setData(data, merge: true)
+        print("✅ Nutrient preferences saved successfully")
+    }
+
+    func loadNutrientPreferences() async throws -> UserNutrientPreferences? {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to load nutrient preferences"])
+        }
+
+        let document = try await db.collection("users").document(userId)
+            .collection("settings").document("nutrientPreferences").getDocument()
+
+        guard let data = document.data() else {
+            return nil
+        }
+
+        let focusNutrients = data["focusNutrients"] as? [String] ?? []
+        let lastUpdated = (data["lastUpdated"] as? Timestamp)?.dateValue() ?? Date()
+
+        return UserNutrientPreferences(focusNutrients: focusNutrients, lastUpdated: lastUpdated)
     }
 
     // MARK: - Fast Allergen Access
@@ -2154,15 +2198,178 @@ extension FirebaseManager {
 
 // MARK: - Ingredient Cache
 
+// Enhanced model for Ingredient Finder cache with full nutrition data
 struct IngredientCacheEntry: Codable {
-    let productName: String
+    let ingredients_found: Bool
+    let product_name: String?
     let brand: String?
-    let ingredientsText: String
-    let sourceUrl: String?
-    let createdAt: FirebaseFirestore.Timestamp
+    let barcode: String?
+    let serving_size: String?
+    let ingredients_text: String?
+    let nutrition_per_100g: NutritionPer100g?
+    let source_url: String?
+    let cached_at: Date
+    let cache_type: String // "standard", "refinement", "alternatives"
 }
 
 extension FirebaseManager {
+    // MARK: - Enhanced Ingredient Caching with Full Nutrition Data
+
+    /// Get cached ingredient data with full nutrition
+    /// - Parameters:
+    ///   - productName: Product name
+    ///   - brand: Optional brand name
+    ///   - refinementContext: Optional refinement context (store, package size, details)
+    ///   - cacheType: Type of cache: "standard", "refinement", or "alternatives"
+    /// - Returns: Cached entry if found and not expired (30 days)
+    func getIngredientCacheEnhanced(
+        productName: String,
+        brand: String?,
+        refinementContext: RefinementContext? = nil,
+        cacheType: String = "standard"
+    ) async throws -> IngredientCacheEntry? {
+        ensureAuthStateLoaded()
+        guard let userId = currentUser?.uid else { return nil }
+
+        let key = enhancedCacheKey(
+            productName: productName,
+            brand: brand,
+            refinementContext: refinementContext,
+            cacheType: cacheType
+        )
+
+        let doc = try await db.collection("users").document(userId)
+            .collection("ingredientCacheV2").document(key).getDocument()
+
+        guard let data = doc.data() else { return nil }
+
+        // Check cache expiry (30 days)
+        if let timestamp = data["cachedAt"] as? FirebaseFirestore.Timestamp {
+            let cacheAge = Date().timeIntervalSince(timestamp.dateValue())
+            let thirtyDaysInSeconds: TimeInterval = 30 * 24 * 60 * 60
+            if cacheAge > thirtyDaysInSeconds {
+                print("⏰ Cache expired for \(productName) (age: \(Int(cacheAge / 86400)) days)")
+                return nil
+            }
+        }
+
+        // Parse nutrition data if present
+        var nutrition: NutritionPer100g? = nil
+        if let nutritionData = data["nutritionPer100g"] as? [String: Any] {
+            nutrition = NutritionPer100g(
+                calories: nutritionData["calories"] as? Double ?? 0,
+                protein: nutritionData["protein"] as? Double ?? 0,
+                carbs: nutritionData["carbs"] as? Double ?? 0,
+                fat: nutritionData["fat"] as? Double ?? 0,
+                fiber: nutritionData["fiber"] as? Double,
+                sugar: nutritionData["sugar"] as? Double,
+                salt: nutritionData["salt"] as? Double
+            )
+        }
+
+        return IngredientCacheEntry(
+            ingredients_found: data["ingredientsFound"] as? Bool ?? false,
+            product_name: data["productName"] as? String,
+            brand: data["brand"] as? String,
+            barcode: data["barcode"] as? String,
+            serving_size: data["servingSize"] as? String,
+            ingredients_text: data["ingredientsText"] as? String,
+            nutrition_per_100g: nutrition,
+            source_url: data["sourceUrl"] as? String,
+            cached_at: (data["cachedAt"] as? FirebaseFirestore.Timestamp)?.dateValue() ?? Date(),
+            cache_type: data["cacheType"] as? String ?? "standard"
+        )
+    }
+
+    /// Set enhanced cache with full nutrition data
+    func setIngredientCacheEnhanced(
+        productName: String,
+        brand: String?,
+        ingredientsText: String?,
+        nutrition: NutritionPer100g?,
+        servingSize: String?,
+        barcode: String?,
+        sourceUrl: String?,
+        refinementContext: RefinementContext? = nil,
+        cacheType: String = "standard"
+    ) async throws {
+        ensureAuthStateLoaded()
+        guard let userId = currentUser?.uid else { return }
+
+        let key = enhancedCacheKey(
+            productName: productName,
+            brand: brand,
+            refinementContext: refinementContext,
+            cacheType: cacheType
+        )
+
+        var payload: [String: Any] = [
+            "productName": productName,
+            "brand": brand ?? "",
+            "ingredientsFound": ingredientsText != nil,
+            "ingredientsText": ingredientsText ?? "",
+            "servingSize": servingSize ?? "",
+            "barcode": barcode ?? "",
+            "sourceUrl": sourceUrl ?? "",
+            "cacheType": cacheType,
+            "cachedAt": FirebaseFirestore.Timestamp(date: Date())
+        ]
+
+        // Add nutrition data if present
+        if let nutrition = nutrition {
+            var nutritionDict: [String: Any] = [:]
+
+            if let calories = nutrition.calories { nutritionDict["calories"] = calories }
+            if let protein = nutrition.protein { nutritionDict["protein"] = protein }
+            if let carbs = nutrition.carbs { nutritionDict["carbs"] = carbs }
+            if let fat = nutrition.fat { nutritionDict["fat"] = fat }
+            if let fiber = nutrition.fiber { nutritionDict["fiber"] = fiber }
+            if let sugar = nutrition.sugar { nutritionDict["sugar"] = sugar }
+            if let salt = nutrition.salt { nutritionDict["salt"] = salt }
+
+            payload["nutritionPer100g"] = nutritionDict
+        }
+
+        try await db.collection("users").document(userId)
+            .collection("ingredientCacheV2").document(key).setData(payload, merge: true)
+
+        print("✅ Cached \(cacheType) result for \(productName)")
+    }
+
+    /// Generate enhanced cache key with refinement context and type
+    private func enhancedCacheKey(
+        productName: String,
+        brand: String?,
+        refinementContext: RefinementContext?,
+        cacheType: String
+    ) -> String {
+        let pn = productName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let br = (brand ?? "").lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let baseKey = br.isEmpty ? pn : "\(pn)__\(br)"
+
+        // Add cache type suffix
+        var key = "\(baseKey)__\(cacheType)"
+
+        // Add refinement context hash if present
+        if let refContext = refinementContext {
+            let contextString = [
+                refContext.store ?? "",
+                refContext.packageSize ?? "",
+                refContext.additionalDetails ?? ""
+            ].joined(separator: "|")
+
+            if !contextString.isEmpty {
+                // Simple hash of context
+                let hash = contextString.hash
+                key = "\(baseKey)__ref_\(abs(hash))"
+            }
+        }
+
+        return key
+    }
+
+    // MARK: - Legacy Ingredient Cache (for backward compatibility)
+
     func getIngredientCache(productName: String, brand: String?) async throws -> IngredientResult? {
         ensureAuthStateLoaded()
         guard let userId = currentUser?.uid else { return nil }
@@ -2198,7 +2405,14 @@ extension FirebaseManager {
     }
 }
 
-// Fallback model for Ingredient Finder to satisfy compilation when model file is missing from target
+// Refinement context structure for smart caching
+struct RefinementContext: Codable, Hashable {
+    let store: String?
+    let packageSize: String?
+    let additionalDetails: String?
+}
+
+// Legacy model for backward compatibility
 struct IngredientResult: Codable {
     let ingredients_found: Bool
     let ingredients_text: String?

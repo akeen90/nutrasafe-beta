@@ -61,6 +61,12 @@ struct FoodDetailViewFromSearch: View {
         var initialServingSize = "100"  // Default fallback
         var initialUnit = "g"  // Default fallback
 
+        print("🔍 SERVING SIZE DEBUG - Initializing FoodDetailViewFromSearch")
+        print("  📦 Food: \(food.name)")
+        print("  📊 Per-100g/ml calories: \(food.calories)")
+        print("  📝 Original servingDescription: '\(food.servingDescription ?? "nil")'")
+        print("  ⚖️  Original servingSizeG: \(food.servingSizeG ?? 0)")
+
         // Extract serving size and unit from serving description
         if let servingDesc = food.servingDescription {
             // Try to extract numbers AND units from serving description
@@ -83,14 +89,20 @@ struct FoodDetailViewFromSearch: View {
                    let range = Range(match.range(at: 1), in: servingDesc) {
                     initialServingSize = String(servingDesc[range])
                     initialUnit = unit
-                    // DEBUG LOG: print("🔧 INIT: Extracted \(initialServingSize)\(unit) from '\(servingDesc)'")
+                    print("  ✅ Extracted: \(initialServingSize)\(unit) from pattern: \(pattern)")
                     break
                 }
+            }
+
+            if initialServingSize == "100" && initialUnit == "g" {
+                print("  ⚠️  WARNING: No pattern matched! Using default fallback 100g")
             }
         } else if let sizeG = food.servingSizeG, sizeG > 0 {
             // Fallback: Use servingSizeG if servingDescription not available
             initialServingSize = String(format: "%.0f", sizeG)
-            // DEBUG LOG: print("🔧 INIT: Using servingSizeG: \(sizeG)g for \(food.name)")
+            print("  🔄 Using servingSizeG fallback: \(sizeG)g")
+        } else {
+            print("  ⚠️  WARNING: No servingDescription or servingSizeG available! Using default 100g")
         }
 
         // Initialize all serving size state variables with the determined value
@@ -98,13 +110,16 @@ struct FoodDetailViewFromSearch: View {
         self._gramsAmount = State(initialValue: initialServingSize)
         self._servingUnit = State(initialValue: initialUnit)
 
+        print("  🎯 Final initialization:")
+        print("     servingAmount: \(initialServingSize)")
+        print("     servingUnit: \(initialUnit)")
+
         // Initialize selected meal from diary meal type if provided
         self._selectedMeal = State(initialValue: diaryMealType ?? "Breakfast")
         self._isEditingMode = State(initialValue: diaryEntryId != nil)
         self._originalMealType = State(initialValue: diaryMealType ?? "")
 
         // Debug logging
-        // DEBUG LOG: print("DEBUG FoodDetailViewFromSearch init:")
         print("  - diaryEntryId: \(String(describing: diaryEntryId))")
         print("  - diaryMealType: \(String(describing: diaryMealType))")
         print("  - isEditingMode will be: \(diaryEntryId != nil)")
@@ -301,7 +316,14 @@ struct FoodDetailViewFromSearch: View {
         let unit = servingUnit
 
         // Convert the amount in the current unit to grams
-        return convertUnit(value: amount, from: unit, to: "g")
+        let result = convertUnit(value: amount, from: unit, to: "g")
+
+        print("💰 ACTUAL SERVING SIZE CALCULATION:")
+        print("   servingAmount: '\(servingAmount)' -> \(amount)")
+        print("   servingUnit: '\(unit)'")
+        print("   converted to grams: \(result)g")
+
+        return result
     }
 
     // Parse serving description into amount and unit
@@ -403,11 +425,19 @@ struct FoodDetailViewFromSearch: View {
     }
 
     private var perServingMultiplier: Double {
-        actualServingSize / 100
+        let multiplier = actualServingSize / 100
+        print("📐 PER SERVING MULTIPLIER: \(actualServingSize) / 100 = \(multiplier)")
+        return multiplier
     }
-    
+
     private var adjustedCalories: Double {
-        displayFood.calories * perServingMultiplier * quantityMultiplier
+        let result = displayFood.calories * perServingMultiplier * quantityMultiplier
+        print("🔢 ADJUSTED CALORIES CALCULATION:")
+        print("   displayFood.calories (per-100g/ml): \(displayFood.calories)")
+        print("   perServingMultiplier: \(perServingMultiplier)")
+        print("   quantityMultiplier: \(quantityMultiplier)")
+        print("   RESULT: \(displayFood.calories) × \(perServingMultiplier) × \(quantityMultiplier) = \(result) kcal")
+        return result
     }
 
     private var adjustedProtein: Double {
@@ -1331,7 +1361,9 @@ struct FoodDetailViewFromSearch: View {
                 }
                 .padding(.horizontal, 16)
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationBarTitleDisplayMode(.inline)
+            .keyboardDismissToolbar()
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Close") {

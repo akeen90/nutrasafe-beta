@@ -6,8 +6,12 @@ struct DiaryTabView: View {
     @EnvironmentObject var diaryDataManager: DiaryDataManager
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var subscriptionManager: SubscriptionManager
+
+    let firebaseManager: FirebaseManager = .shared // NEW: FirebaseManager reference
+
     @State private var selectedDate: Date = Date()
     @State private var showingDatePicker: Bool = false
+    @State private var showingCalendarHistory: Bool = false // NEW: For calendar navigation sheet
     @State private var refreshTrigger: Bool = false
     @State private var breakfastFoods: [DiaryFoodItem] = []
     @State private var lunchFoods: [DiaryFoodItem] = []
@@ -125,66 +129,25 @@ struct DiaryTabView: View {
         // Removed nested NavigationView to rely on root navigation
         VStack(spacing: 0) {
             VStack(spacing: 8) {
-                // Header with inline date picker
-                HStack {
+                // Header - Title, tabs, and settings
+                HStack(spacing: 16) {
                     Text("Diary")
                         .font(.system(size: 38, weight: .bold, design: .rounded))
                         .frame(height: 44, alignment: .center)
                         .foregroundColor(.primary)
 
-                    Spacer()
-
-                    // Date navigation arrows
-                    HStack(spacing: 8) {
-                        Button(action: {
-                            selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
-                        }) {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.primary)
-                                .frame(width: 32, height: 32)
-                                .background(
-                                    Circle()
-                                        .fill(.ultraThinMaterial)
-                                )
-                        }
-
-                        // Date Selector - now inline with Diary title
-                        Button(action: {
-                            showingDatePicker.toggle()
-                        }) {
-                            HStack(spacing: 6) {
-                                Text(formatDateShort(selectedDate))
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(.primary)
-                                    .fixedSize()
-                                    .lineLimit(1)
-
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(.secondary)
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(.ultraThinMaterial)
-                            )
-                        }
-
-                        Button(action: {
-                            selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
-                        }) {
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.primary)
-                                .frame(width: 32, height: 32)
-                                .background(
-                                    Circle()
-                                        .fill(.ultraThinMaterial)
-                                )
+                    // Tab picker between title and settings
+                    Picker("", selection: $diarySubTab) {
+                        ForEach(DiarySubTab.allCases, id: \.self) { tab in
+                            Text(tab.rawValue).tag(tab)
                         }
                     }
+                    .pickerStyle(.segmented)
+                    .fixedSize()
+                    .frame(height: 32, alignment: .center)
+                    .scaleEffect(0.95)
+
+                    Spacer()
 
                     Button(action: {
                         showingSettings = true
@@ -284,14 +247,48 @@ struct DiaryTabView: View {
             .padding(.horizontal, 16)
             .padding(.top, 8)
 
-            Picker("", selection: $diarySubTab) {
-                ForEach(DiarySubTab.allCases, id: \.self) { tab in
-                    Text(tab.rawValue).tag(tab)
+            // Date navigation - full width bar
+            HStack(spacing: 0) {
+                Button(action: {
+                    selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
+                }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .frame(width: 44, height: 44)
+                }
+
+                Spacer()
+
+                // Date Selector - centered
+                Button(action: {
+                    showingDatePicker.toggle()
+                }) {
+                    HStack(spacing: 6) {
+                        Text(formatDateShort(selectedDate))
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.primary)
+
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                Button(action: {
+                    selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
+                }) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .frame(width: 44, height: 44)
                 }
             }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .frame(height: 44)
+            .background(Color(.secondarySystemBackground))
+            .padding(.bottom, 8)
 
             ScrollView {
                 VStack(spacing: 16) {
@@ -374,6 +371,9 @@ struct DiaryTabView: View {
         .sheet(isPresented: $showingCopySheet) {
             copyFoodSheet
         }
+        .sheet(isPresented: $showingCalendarHistory) {
+            NutrientHistoryCalendarView(selectedDate: $selectedDate, firebaseManager: firebaseManager)
+        }
         .sheet(item: $editingFood, onDismiss: {
         // DEBUG LOG: print("📝 Edit sheet dismissed, resetting editingFood")
             editingFood = nil
@@ -404,6 +404,11 @@ struct DiaryTabView: View {
             snackFoods: snackFoods
         )
         .padding(.horizontal, 16)
+        .padding(.top, 8)
+
+        // NEW: Daily Nutrient Nudge Card (moved below totals)
+        DailyNutrientNudgeCard(date: selectedDate, firebaseManager: firebaseManager)
+            .padding(.horizontal, 16)
 
         VStack(spacing: 8) {
             DiaryMealCard(
@@ -471,7 +476,7 @@ struct DiaryTabView: View {
     @ViewBuilder
     private var nutrientsTabContent: some View {
         if #available(iOS 16.0, *) {
-            CategoricalNutrientTrackingView()
+            CategoricalNutrientTrackingView(selectedDate: selectedDate, firebaseManager: firebaseManager)
         } else {
             Text("Nutrient tracking requires iOS 16.0 or later")
                 .foregroundColor(.secondary)
@@ -612,7 +617,7 @@ struct DiaryTabView: View {
 
     private func formatDateShort(_ date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "dd/MM/yy"
+        formatter.dateFormat = "d MMMM yyyy"
         return formatter.string(from: date)
     }
 
@@ -627,6 +632,9 @@ struct DiaryTabView: View {
 
 @available(iOS 16.0, *)
 struct CategoricalNutrientTrackingView: View {
+    let selectedDate: Date // NEW: Accept selected date from parent
+    let firebaseManager: FirebaseManager // NEW: Pass to modals
+
     @EnvironmentObject var diaryDataManager: DiaryDataManager
     @StateObject private var vm = CategoricalNutrientViewModel()
     @State private var showingGaps: Bool = false
@@ -642,27 +650,32 @@ struct CategoricalNutrientTrackingView: View {
         }
         .task {
             vm.setDiaryManager(diaryDataManager)
-            await vm.loadLast7Days()
+            await vm.loadWeekContaining(date: selectedDate)
+        }
+        .onChange(of: selectedDate) { newDate in
+            Task {
+                await vm.loadWeekContaining(date: newDate)
+            }
         }
         .onChange(of: diaryDataManager.dataReloadTrigger) { _ in
             Task {
         // DEBUG LOG: print("📊 CategoricalNutrientTrackingView: Data changed, reloading...")
-                await vm.loadLast7Days()
+                await vm.loadWeekContaining(date: selectedDate)
             }
         }
         .onAppear {
             Task {
         // DEBUG LOG: print("📊 CategoricalNutrientTrackingView: View appeared, force reloading...")
-                await vm.loadLast7Days()
+                await vm.loadWeekContaining(date: selectedDate)
             }
         }
         .refreshable {
-            await vm.loadLast7Days()
+            await vm.loadWeekContaining(date: selectedDate)
         }
         .onReceive(NotificationCenter.default.publisher(for: .foodDiaryUpdated)) { _ in
             Task {
         // DEBUG LOG: print("🔄 Food diary updated, refreshing Nutrient Rhythm Bar...")
-                await vm.loadLast7Days()
+                await vm.loadWeekContaining(date: selectedDate)
             }
         }
         .sheet(isPresented: $showingGaps) {
@@ -674,7 +687,7 @@ struct CategoricalNutrientTrackingView: View {
         }
         .sheet(item: $selectedNutrientRow) { row in
             if #available(iOS 16.0, *) {
-                NutrientDetailModal(row: row)
+                NutrientDetailModal(row: row, selectedDate: selectedDate, firebaseManager: firebaseManager)
             } else {
                 Text(row.name)
             }
@@ -1109,6 +1122,7 @@ struct CategoricalNutrientTrackingView: View {
 final class CategoricalNutrientViewModel: ObservableObject {
     @Published var rhythmDays: [RhythmDay] = []
     @Published var nutrientCoverageRows: [CoverageRow] = []
+    @Published var selectedWeekStart: Date? // NEW: Track which week is being viewed
 
     weak var diaryManager: DiaryDataManager?
 
@@ -1116,7 +1130,80 @@ final class CategoricalNutrientViewModel: ObservableObject {
         self.diaryManager = manager
     }
 
-    // Load last 7 days of rhythm and coverage data
+    // NEW: Load week containing a specific date
+    @MainActor
+    func loadWeekContaining(date: Date) async {
+        let calendar = Calendar.current
+        let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date))!
+        selectedWeekStart = weekStart
+        await loadWeek(startDate: weekStart)
+    }
+
+    // NEW: Load specific week of data
+    @MainActor
+    func loadWeek(startDate: Date) async {
+        let calendar = Calendar.current
+        var days: [RhythmDay] = []
+        var rows: [CoverageRow] = []
+
+        // Generate 7 days starting from startDate
+        let dates = (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: startDate) }
+
+        do {
+            // Fetch food entries for this specific week
+            let endDate = calendar.date(byAdding: .day, value: 7, to: startDate)!
+            let entries = try await FirebaseManager.shared.getFoodEntriesBetweenDates(startDate: startDate, endDate: endDate)
+
+            let grouped = Dictionary(grouping: entries, by: { calendar.startOfDay(for: $0.date) })
+
+            // Build rhythm days
+            for date in dates {
+                let dayEntries = grouped[date] ?? []
+                let level = calculateDominantLevel(for: dayEntries)
+                days.append(RhythmDay(date: date, level: level))
+            }
+
+            // Build coverage rows
+            let nutrients = nutrientList()
+
+            for nutrient in nutrients {
+                var segments: [Segment] = []
+                var strongCount = 0
+                var loggedDays = 0
+
+                for date in dates {
+                    let dayEntries = grouped[date] ?? []
+                    if !dayEntries.isEmpty {
+                        loggedDays += 1
+                        let level = highestLevel(for: nutrient.id, entries: dayEntries)
+                        if level == .strong { strongCount += 1 }
+                        let foods = contributingFoods(for: nutrient.id, entries: dayEntries)
+                        segments.append(Segment(date: date, level: level == .none ? nil : level, foods: foods.isEmpty ? nil : foods))
+                    } else {
+                        segments.append(Segment(date: date, level: nil, foods: nil))
+                    }
+                }
+
+                // Calculate status
+                let ratioStrong = loggedDays > 0 ? Double(strongCount) / Double(loggedDays) : 0
+                let status: CoverageStatus = ratioStrong >= 0.7 ? .consistent : (ratioStrong >= 0.3 ? .occasional : .missing)
+
+                rows.append(CoverageRow(id: nutrient.id, name: nutrient.name, status: status, segments: segments))
+            }
+
+            self.rhythmDays = days
+            self.nutrientCoverageRows = rows
+            selectedWeekStart = startDate
+            print("✅ Loaded week starting \(startDate): \(days.count) rhythm days and \(rows.count) nutrient rows")
+
+        } catch {
+            print("❌ Failed to load week data: \(error)")
+            self.rhythmDays = []
+            self.nutrientCoverageRows = []
+        }
+    }
+
+    // Load last 7 days of rhythm and coverage data (legacy method, now delegates to loadWeek)
     @MainActor
     func loadLast7Days() async {
         // DEBUG LOG: print("🔄 CategoricalNutrientViewModel: Starting loadLast7Days...")
@@ -1635,13 +1722,24 @@ enum CoverageStatus: String {
 @available(iOS 16.0, *)
 struct NutrientDetailModal: View {
     let row: CoverageRow
+    let selectedDate: Date // NEW: Pass in selected date for today's view
+    let firebaseManager: FirebaseManager // NEW: For fetching today's data
+
     @Environment(\.dismiss) private var dismiss
     @State private var nutrientInfo: NutrientInfo?
+    @State private var todayInsight: DailyNutrientInsight?
+    @State private var todayFoods: [ContributingFood] = []
+    @State private var showingHistory: Bool = false
 
     var body: some View {
         NavigationView {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
+                    // NEW: Today's Intake Section (shown first)
+                    if let insight = todayInsight {
+                        todaysIntakeSection(insight: insight)
+                    }
+
                     // Status card
                     statusCard
 
@@ -1653,9 +1751,28 @@ struct NutrientDetailModal: View {
                     // 7-day breakdown
                     weekBreakdown
 
-                    // Contributing foods
+                    // Contributing foods (weekly)
                     if !allFoods.isEmpty {
                         foodsSection
+                    }
+
+                    // NEW: History button
+                    Button(action: {
+                        showingHistory = true
+                    }) {
+                        HStack {
+                            Image(systemName: "calendar")
+                            Text("View Historical Data")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                        }
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(.blue)
+                        .padding(16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color(.secondarySystemBackground))
+                        )
                     }
                 }
                 .padding(20)
@@ -1670,7 +1787,178 @@ struct NutrientDetailModal: View {
             }
             .onAppear {
                 loadNutrientInfo()
+                Task {
+                    await loadTodayData()
+                }
             }
+            .sheet(isPresented: $showingHistory) {
+                NutrientHistoryCalendarView(
+                    nutrientId: row.id,
+                    nutrientName: row.name,
+                    firebaseManager: firebaseManager
+                )
+            }
+        }
+    }
+
+    // MARK: - Today's Intake Section
+    private func todaysIntakeSection(insight: DailyNutrientInsight) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Today's Intake")
+                    .font(.system(size: 18, weight: .bold))
+
+                Spacer()
+
+                Text(fullDateLabel(selectedDate))
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+
+            VStack(spacing: 16) {
+                // Level status
+                HStack(alignment: .center, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(levelText(for: insight.severity))
+                            .font(.system(size: 32, weight: .bold))
+                            .foregroundColor(severityColor(insight.severity))
+
+                        Text(levelSubtext(for: insight.severity))
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+
+                    // Status badge
+                    VStack(spacing: 4) {
+                        Text(insight.displayPercentage)
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(severityColor(insight.severity))
+
+                        Text(insight.severity.displayText)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(
+                                Capsule()
+                                    .fill(severityColor(insight.severity))
+                            )
+                    }
+                }
+
+                // Progress bar
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(height: 12)
+
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(
+                                LinearGradient(
+                                    colors: [severityColor(insight.severity).opacity(0.7), severityColor(insight.severity)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .frame(width: geometry.size.width * min(insight.percentageOfTarget / 100, 1.0), height: 12)
+                    }
+                }
+                .frame(height: 12)
+
+                // Contributing foods for today
+                if !todayFoods.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("From these foods today:")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.secondary)
+
+                        ForEach(todayFoods) { food in
+                            HStack(spacing: 10) {
+                                Circle()
+                                    .fill(Color.green.opacity(0.2))
+                                    .frame(width: 8, height: 8)
+
+                                Text(food.name)
+                                    .font(.system(size: 15))
+                                    .foregroundColor(.primary)
+
+                                Spacer()
+
+                                Text(contributionLevel(for: food.amount))
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(.green)
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
+                }
+            }
+            .padding(18)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.secondarySystemBackground))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(severityColor(insight.severity).opacity(0.3), lineWidth: 2)
+                    )
+            )
+        }
+    }
+
+    private func severityColor(_ severity: InsightLevel) -> Color {
+        switch severity {
+        case .critical: return .red
+        case .low: return .orange
+        case .good: return .green
+        case .excellent: return .blue
+        }
+    }
+
+    private func levelText(for severity: InsightLevel) -> String {
+        switch severity {
+        case .critical: return "Very Low"
+        case .low: return "Low"
+        case .good: return "Good"
+        case .excellent: return "Excellent"
+        }
+    }
+
+    private func levelSubtext(for severity: InsightLevel) -> String {
+        switch severity {
+        case .critical: return "Could use a boost today"
+        case .low: return "Room for improvement"
+        case .good: return "On track"
+        case .excellent: return "Going strong"
+        }
+    }
+
+    private func contributionLevel(for amount: Double) -> String {
+        // Since we're using estimated values, show relative contribution
+        if amount >= 50 {
+            return "High source"
+        } else if amount >= 20 {
+            return "Moderate source"
+        } else if amount > 0 {
+            return "Low source"
+        }
+        return ""
+    }
+
+    @MainActor
+    private func loadTodayData() async {
+        // Create a view model to calculate today's insight
+        let viewModel = NutrientInsightsViewModel(firebaseManager: firebaseManager)
+        await viewModel.calculateDailyInsights(for: selectedDate)
+
+        if let summary = viewModel.dailySummary {
+            // Find the insight for this specific nutrient
+            todayInsight = summary.insights.first { $0.nutrient == row.name }
+
+            // Get contributing foods for today
+            todayFoods = viewModel.getContributingFoods(for: row.name, on: selectedDate)
         }
     }
 

@@ -89,9 +89,13 @@ struct AddFoodBarcodeView: View {
             } else {
                 // Camera scanning view
                 ZStack {
-                    ModernBarcodeScanner(onBarcodeScanned: { barcode in
-                        handleBarcodeScanned(barcode)
-                    }, isSearching: $isSearching)
+                    ModernBarcodeScanner(
+                        onBarcodeScanned: { barcode in
+                            handleBarcodeScanned(barcode)
+                        },
+                        isSearching: $isSearching,
+                        hasError: errorMessage != nil
+                    )
 
                     // Overlay UI
                     VStack {
@@ -111,14 +115,32 @@ struct AddFoodBarcodeView: View {
                                     .foregroundColor(.white)
 
                                 if let errorMessage = errorMessage {
-                                    Text(errorMessage)
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.red)
-                                        .multilineTextAlignment(.center)
-                                        .padding(.horizontal, 32)
+                                    VStack(spacing: 12) {
+                                        Text(errorMessage)
+                                            .font(.system(size: 14))
+                                            .foregroundColor(.red)
+                                            .multilineTextAlignment(.center)
+                                            .padding(.horizontal, 32)
+
+                                        Button(action: {
+                                            // Clear error and allow retry
+                                            self.errorMessage = nil
+                                        }) {
+                                            HStack(spacing: 8) {
+                                                Image(systemName: "arrow.clockwise")
+                                                Text("Try Again")
+                                            }
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundColor(.white)
+                                            .padding(.horizontal, 20)
+                                            .padding(.vertical, 10)
+                                            .background(Color.blue)
+                                            .cornerRadius(8)
+                                        }
+                                    }
                                 }
                             }
-                            .frame(height: 120)
+                            .padding(.bottom, 100) // SAFETY: Add padding to prevent hiding under tab bar
                             .frame(maxWidth: .infinity)
                             .background(Color.black.opacity(0.7))
                         }
@@ -177,21 +199,35 @@ struct AddFoodBarcodeView: View {
 
                 switch result {
                 case .success(let response):
-                    if response.success, let product = response.toFoodSearchResult() {
-                        scannedProduct = product
+                    print("✅ Barcode API response: success=\(response.success), food=\(response.food != nil), action=\(response.action ?? "nil")")
+
+                    if response.success {
+                        if let product = response.toFoodSearchResult() {
+                            print("✅ Successfully converted to FoodSearchResult: \(product.name)")
+                            scannedProduct = product
+                        } else {
+                            print("❌ Failed to convert response to FoodSearchResult")
+                            print("   Response.food: \(response.food != nil ? "exists" : "nil")")
+                            if let food = response.food {
+                                print("   Food details: name=\(food.food_name), calories=\(food.calories)")
+                            }
+                            errorMessage = "Unable to process product data. Try scanning again."
+                        }
                     } else if response.action == "user_contribution_needed",
                               let placeholderId = response.placeholder_id {
+                        print("ℹ️ Product not found, showing contribution prompt")
                         pendingContribution = PendingFoodContribution(
                             placeholderId: placeholderId,
                             barcode: barcode
                         )
                     } else {
+                        print("⚠️ Unsuccessful response: message=\(response.message ?? "nil")")
                         errorMessage = response.message ?? "Product not found. Try scanning again or search manually."
                     }
                 case .failure(let error):
+                    print("❌ Barcode search network error: \(error.localizedDescription)")
                     errorMessage = "Failed to search product. Try scanning again or search manually."
-                    print("Barcode search error: \(error)")
-                }
+}
             }
         }
     }
@@ -255,6 +291,7 @@ struct AddFoodBarcodeView: View {
 struct ModernBarcodeScanner: UIViewControllerRepresentable {
     let onBarcodeScanned: (String) -> Void
     @Binding var isSearching: Bool
+    var hasError: Bool = false // SAFETY: Track if there's an error to adjust debounce
 
     func makeUIViewController(context: Context) -> BarcodeScannerViewController {
         let scanner = BarcodeScannerViewController()
@@ -269,6 +306,11 @@ struct ModernBarcodeScanner: UIViewControllerRepresentable {
         } else {
             uiViewController.resumeScanning()
         }
+
+        // SAFETY: Mark error state to increase debounce
+        if hasError {
+            uiViewController.markScanError()
+        }
     }
 }
 
@@ -281,6 +323,7 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
     private var lastScanTime: Date?
     private var isScanningPaused = false
     private var videoCaptureDevice: AVCaptureDevice?
+    private var hasRecentError = false // SAFETY: Track if last scan had an error
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -392,6 +435,12 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
         // Reset debounce to allow new scans
         lastScannedBarcode = nil
         lastScanTime = nil
+        hasRecentError = false // SAFETY: Clear error flag on resume
+    }
+
+    // SAFETY: Call this when a scan results in an error to prevent rapid re-scanning
+    func markScanError() {
+        hasRecentError = true
     }
     
     private func showCameraError(_ message: String) {
@@ -419,18 +468,21 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
             guard let readableObject = metadataObject as? AVMetadataMachineReadableCodeObject else { return }
             guard let stringValue = readableObject.stringValue else { return }
 
-            // Debounce repeated scans - prevent duplicate scans within 2 seconds
+            // SAFETY: Prevent rapid re-scanning after errors
             let now = Date()
+            let debounceInterval: TimeInterval = hasRecentError ? 5.0 : 2.0 // 5 seconds after error, 2 seconds normally
+
             if let lastBarcode = lastScannedBarcode,
                let lastTime = lastScanTime,
-               lastBarcode == stringValue && now.timeIntervalSince(lastTime) < 2.0 {
+               lastBarcode == stringValue && now.timeIntervalSince(lastTime) < debounceInterval {
+                print("⚠️ Barcode \(stringValue) debounced (interval: \(debounceInterval)s, hasRecentError: \(hasRecentError))")
                 return
             }
 
             lastScannedBarcode = stringValue
             lastScanTime = now
 
-            print("Barcode scanned: \(stringValue)")
+            print("✅ Barcode scanned: \(stringValue)")
             // Provide haptic feedback for successful scan
             AudioServicesPlaySystemSound(SystemSoundID(kSystemSoundID_Vibrate))
             onBarcodeScanned?(stringValue)

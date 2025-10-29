@@ -297,12 +297,12 @@ struct AddFoodSearchView: View {
                         .textFieldStyle(PlainTextFieldStyle())
                         .autocorrectionDisabled(true)
                         .textInputAutocapitalization(.never)
+                        .searchKeyboardBehavior(onSearch: {
+                            performSearch()
+                        })
                         .onChange(of: searchText, perform: { newValue in
                             performLiveSearch(query: newValue)
                         })
-                        .onSubmit {
-                            performSearch()
-                        }
 
                     if !searchText.isEmpty {
                         Button(action: { searchText = "" }) {
