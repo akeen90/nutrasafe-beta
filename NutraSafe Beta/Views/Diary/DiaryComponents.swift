@@ -2,7 +2,7 @@
 //  DiaryComponents.swift
 //  NutraSafe Beta
 //
-//  Diary-related view components extracted from ContentView.swift
+//  Modern diary components with enhanced visual design
 //
 
 import SwiftUI
@@ -39,77 +39,124 @@ struct DiaryMealCard: View {
             if mealType == "Breakfast" {
                 HStack {
                     Text("ITEM")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.secondary)
+                        .tracking(0.5)
 
                     Spacer()
 
                     HStack(spacing: 0) {
                         Text("KCAL")
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.system(size: 11, weight: .semibold))
                             .foregroundColor(.secondary)
+                            .tracking(0.5)
                             .frame(width: 50, alignment: .trailing)
                         Text("PROT")
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.system(size: 11, weight: .semibold))
                             .foregroundColor(.secondary)
+                            .tracking(0.5)
                             .frame(width: 50, alignment: .trailing)
                         Text("CARB")
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.system(size: 11, weight: .semibold))
                             .foregroundColor(.secondary)
+                            .tracking(0.5)
                             .frame(width: 50, alignment: .trailing)
                         Text("FAT")
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.system(size: 11, weight: .semibold))
                             .foregroundColor(.secondary)
+                            .tracking(0.5)
                             .frame(width: 50, alignment: .trailing)
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 10)
+                .background(Color(.secondarySystemBackground).opacity(0.5))
             }
 
-            // Rounded pill-style meal header like MyFitnessPal
+            // Modern meal header with enhanced styling
             HStack {
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(color)
-                        .frame(width: 12, height: 12)
+                HStack(spacing: 10) {
+                    // Enhanced color indicator
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [color.opacity(0.8), color],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 14, height: 14)
+                            .shadow(color: color.opacity(0.3), radius: 2, x: 0, y: 1)
+                        
+                        Circle()
+                            .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                            .frame(width: 14, height: 14)
+                    }
 
                     Text(mealType.uppercased())
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundColor(.primary)
+                        .tracking(0.5)
                 }
 
                 Spacer()
 
-                // Calories and macros in header like MyFitnessPal
+                // Calories and macros with enhanced typography
                 HStack(spacing: 0) {
                     Text("\(currentCalories)")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.primary)
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [color, color.opacity(0.8)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
                         .frame(width: 50, alignment: .trailing)
 
                     Text("\(String(format: "%.1f", totalProtein))")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundColor(.secondary)
                         .frame(width: 50, alignment: .trailing)
 
                     Text("\(String(format: "%.1f", totalCarbs))")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundColor(.secondary)
                         .frame(width: 50, alignment: .trailing)
 
                     Text("\(String(format: "%.1f", totalFat))")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundColor(.secondary)
                         .frame(width: 50, alignment: .trailing)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(Color(.systemGray6))
-            .cornerRadius(8)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
+            .background(
+                LinearGradient(
+                    colors: [
+                        Color(.systemGray6),
+                        Color(.systemGray5).opacity(0.8)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .overlay(
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [color.opacity(0.3), color.opacity(0.1)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(height: 2),
+                alignment: .bottom
+            )
 
-            // Food items section - directly under header
+            // Food items section
             if !foods.isEmpty {
                 VStack(spacing: 0) {
                     ForEach(foods) { food in
@@ -119,8 +166,9 @@ struct DiaryMealCard: View {
                             isSelected: selectedFoodItems.contains(food.id.uuidString),
                             hasAnySelection: !selectedFoodItems.isEmpty,
                             onTap: {
-                                // Toggle selection instantly - no animation on state change
-                                // The circle will still animate via its .transition modifier
+                                let generator = UISelectionFeedbackGenerator()
+                                generator.selectionChanged()
+                                
                                 if selectedFoodItems.contains(food.id.uuidString) {
                                     selectedFoodItems.remove(food.id.uuidString)
                                 } else {
@@ -128,86 +176,134 @@ struct DiaryMealCard: View {
                                 }
                             },
                             onDelete: {
-                                // Delete food from list
+                                let generator = UINotificationFeedbackGenerator()
+                                generator.notificationOccurred(.success)
+                                
                                 if let index = foods.firstIndex(of: food) {
-                                    _ = withAnimation(.easeOut(duration: 0.3)) {
+                                    _ = withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
                                         foods.remove(at: index)
                                     }
-                                    // Delete from Firebase
                                     onDelete(food)
-                                    // Save after deletion
                                     onSaveNeeded()
                                 }
                             }
                         )
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 10)
+                        .background(Color(.systemBackground))
 
                         if food.id != foods.last?.id {
                             Divider()
-                                .padding(.horizontal, 16)
+                                .padding(.leading, 18)
                         }
                     }
 
-                    // Add more button
+                    // Modern add more button
                     Button(action: {
-                        // Store the selected meal type and date, then navigate to add tab
+                        let generator = UIImpactFeedbackGenerator(style: .light)
+                        generator.impactOccurred()
+                        
                         UserDefaults.standard.set(mealType, forKey: "preselectedMealType")
                         UserDefaults.standard.set(currentDate.timeIntervalSince1970, forKey: "preselectedDate")
                         selectedTab = .add
                     }) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "plus")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.blue)
+                        HStack(spacing: 10) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [.blue, .blue.opacity(0.8)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
 
                             Text("Add more")
-                                .font(.system(size: 14, weight: .medium))
+                                .font(.system(size: 15, weight: .semibold))
                                 .foregroundColor(.blue)
 
                             Spacer()
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 14)
+                        .background(Color(.systemBackground))
                     }
-                    .buttonStyle(SpringyButtonStyle())
+                    .buttonStyle(ModernCardButtonStyle())
                 }
             } else {
-                // Empty state add button
+                // Enhanced empty state
                 Button(action: {
-                    // Store the selected meal type and date, then navigate to add tab
+                    let generator = UIImpactFeedbackGenerator(style: .light)
+                    generator.impactOccurred()
+                    
                     UserDefaults.standard.set(mealType, forKey: "preselectedMealType")
                     UserDefaults.standard.set(currentDate.timeIntervalSince1970, forKey: "preselectedDate")
                     selectedTab = .add
                 }) {
-                    HStack {
-                        Image(systemName: "plus.circle")
-                            .font(.system(size: 16))
-                            .foregroundColor(.blue)
+                    HStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(color.opacity(0.15))
+                                .frame(width: 40, height: 40)
+                            
+                            Image(systemName: "plus")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(color)
+                        }
 
-                        Text("Add \(mealType.lowercased())")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(.blue)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Add \(mealType.lowercased())")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.primary)
+                            
+                            Text("Tap to start logging")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
 
                         Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.secondary.opacity(0.5))
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 16)
+                    .background(Color(.systemBackground))
                 }
-                .buttonStyle(SpringyButtonStyle())
+                .buttonStyle(ModernCardButtonStyle())
             }
         }
         .background(
-            RoundedRectangle(cornerRadius: AppRadius.medium)
-                .fill(AppColors.cardBackgroundElevated)
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemBackground))
         )
-        .cardShadow()
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            Color.black.opacity(0.08),
+                            Color.black.opacity(0.04)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    ),
+                    lineWidth: 1
+                )
+        )
+        .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 3)
+        .shadow(color: color.opacity(0.08), radius: 4, x: 0, y: 2)
     }
-    
-    private func deleteFood(at offsets: IndexSet) {
-        withAnimation(.easeOut(duration: 0.3)) {
-            foods.remove(atOffsets: offsets)
-        }
+}
+
+// MARK: - Modern Card Button Style
+struct ModernCardButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(configuration.isPressed ? Color(.systemGray6).opacity(0.5) : Color.clear)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
     }
 }
 
@@ -222,46 +318,59 @@ struct DiaryFoodRow: View {
     @State private var showingFoodDetail = false
 
     var body: some View {
-        Button(action: {
-            // Tap always toggles selection
-            onTap()
-        }) {
-            HStack(spacing: 8) {
-                // Selection circle (show when any item is selected)
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                // Modern selection circle
                 if hasAnySelection {
-                    Circle()
-                        .fill(isSelected ? Color.blue : Color.clear)
-                        .frame(width: 20, height: 20)
-                        .overlay(
-                            Circle()
-                                .stroke(Color.gray.opacity(0.3), lineWidth: 1.5)
-                        )
-                        .overlay(
+                    ZStack {
+                        Circle()
+                            .fill(isSelected ? Color.blue : Color.clear)
+                            .frame(width: 22, height: 22)
+                            .overlay(
+                                Circle()
+                                    .stroke(
+                                        LinearGradient(
+                                            colors: isSelected ? [Color.blue, Color.blue.opacity(0.8)] : [Color.gray.opacity(0.3), Color.gray.opacity(0.2)],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                        lineWidth: 2
+                                    )
+                            )
+                            .shadow(color: isSelected ? Color.blue.opacity(0.3) : Color.clear, radius: 3, x: 0, y: 1)
+
+                        if isSelected {
                             Image(systemName: "checkmark")
-                                .font(.system(size: 11, weight: .medium))
+                                .font(.system(size: 12, weight: .bold))
                                 .foregroundColor(.white)
-                                .opacity(isSelected ? 1 : 0)
-                        )
+                        }
+                    }
+                    .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
                 }
 
-                // Food name and details
-                VStack(alignment: .leading, spacing: 2) {
+                // Food info with enhanced typography
+                VStack(alignment: .leading, spacing: 4) {
                     Text(food.name)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.primary)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
 
-                    // Serving size and quantity
-                    HStack(spacing: 4) {
+                    HStack(spacing: 6) {
                         Text(food.servingDescription)
-                            .font(.system(size: 11, weight: .regular))
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.secondary)
 
                         if food.quantity > 1 {
                             Text("× \(String(format: "%.0f", food.quantity))")
-                                .font(.system(size: 11, weight: .medium))
+                                .font(.system(size: 12, weight: .bold))
                                 .foregroundColor(.blue)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.blue.opacity(0.1))
+                                )
                         }
                     }
                 }
@@ -269,46 +378,52 @@ struct DiaryFoodRow: View {
 
                 Spacer()
 
-                // Macros aligned with headers like MyFitnessPal
+                // Enhanced macros display
                 HStack(spacing: 0) {
                     Text("\(food.calories)")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundColor(.primary)
                         .frame(width: 50, alignment: .trailing)
 
                     Text("\(String(format: "%.1f", food.protein))")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundColor(.secondary)
                         .frame(width: 50, alignment: .trailing)
 
                     Text("\(String(format: "%.1f", food.carbs))")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundColor(.secondary)
                         .frame(width: 50, alignment: .trailing)
 
                     Text("\(String(format: "%.1f", food.fat))")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundColor(.secondary)
                         .frame(width: 50, alignment: .trailing)
                 }
             }
-            .animation(nil, value: hasAnySelection)  // Disable all implicit animations on layout changes
+            .animation(nil, value: hasAnySelection)
         }
         .buttonStyle(PlainButtonStyle())
         .onLongPressGesture {
-            // Long press to view food details
-        // DEBUG LOG: print("DEBUG: Opening FoodDetailViewFromSearch from diary")
-        // DEBUG LOG: print("DEBUG: DiaryFoodItem.ingredients = \(food.ingredients?.count ?? 0) items: \(food.ingredients ?? [])")
-            let searchResult = food.toFoodSearchResult()
-            _ = searchResult // Suppress unused variable warning (debug code commented out)
-        // DEBUG LOG: print("DEBUG: FoodSearchResult.ingredients = \(searchResult.ingredients?.count ?? 0) items: \(searchResult.ingredients ?? [])")
+            let generator = UIImpactFeedbackGenerator(style: .medium)
+            generator.impactOccurred()
             showingFoodDetail = true
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(action: onDelete) {
-                Label("Delete", systemImage: "trash")
+            Button(action: {
+                let generator = UINotificationFeedbackGenerator()
+                generator.notificationOccurred(.warning)
+                onDelete()
+            }) {
+                Label("Delete", systemImage: "trash.fill")
             }
-            .tint(.red)
+            .tint(
+                LinearGradient(
+                    colors: [Color.red, Color.red.opacity(0.8)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
         }
         .sheet(isPresented: $showingFoodDetail) {
             FoodDetailViewFromSearch(
@@ -319,55 +434,6 @@ struct DiaryFoodRow: View {
                 diaryEntryId: food.id,
                 diaryMealType: mealType
             )
-        }
-    }
-    
-    private func processedScoreColor(_ score: String) -> Color {
-        switch score.uppercased() {
-        case "A+", "A", "A-":
-            return Color.green
-        case "B+", "B", "B-":
-            return Color.blue
-        case "C+", "C", "C-":
-            return Color.orange
-        case "D+", "D", "D-":
-            return Color.red.opacity(0.8)
-        case "F":
-            return Color.red
-        default:
-            return Color.gray
-        }
-    }
-    
-    private func sugarLevelColor(_ level: String) -> Color {
-        switch level.lowercased() {
-        case "low":
-            return Color.green
-        case "medium", "med":
-            return Color.orange
-        case "high":
-            return Color.red
-        default:
-            return Color.gray
-        }
-    }
-
-    private func containsCommonAllergens(_ ingredients: [String]) -> Bool {
-        let commonAllergens = [
-            "milk", "dairy", "lactose", "casein", "whey",
-            "egg", "eggs", "albumin",
-            "peanut", "peanuts", "groundnut",
-            "tree nut", "almond", "walnut", "cashew", "pistachio", "pecan",
-            "soy", "soya", "soybean",
-            "wheat", "gluten", "barley", "rye", "oats",
-            "fish", "salmon", "tuna", "cod", "sardine",
-            "shellfish", "shrimp", "crab", "lobster", "clam", "oyster",
-            "sesame", "sesame seed"
-        ]
-
-        let allIngredients = ingredients.joined(separator: " ").lowercased()
-        return commonAllergens.contains { allergen in
-            allIngredients.contains(allergen)
         }
     }
 }
