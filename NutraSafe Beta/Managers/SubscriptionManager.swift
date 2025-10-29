@@ -163,9 +163,26 @@ final class SubscriptionManager: ObservableObject {
     }
 
     func restore() async throws {
-        try await AppStore.sync()
-        try await refreshStatus()
-        await refreshPremiumOverride()
+        print("StoreKit: Starting restore purchases")
+        do {
+            // Add timeout to prevent hanging on sync
+            try await withTimeout(seconds: 10) {
+                try await AppStore.sync()
+            }
+            print("StoreKit: Successfully synced with App Store")
+            try await refreshStatus()
+            await refreshPremiumOverride()
+            print("StoreKit: Restore completed successfully")
+        } catch is TimeoutError {
+            print("StoreKit: Restore timed out, but will still refresh status")
+            // Even if sync times out, try to refresh status
+            try? await refreshStatus()
+            await refreshPremiumOverride()
+            throw TimeoutError()
+        } catch {
+            print("StoreKit: Restore failed with error: \(error)")
+            throw error
+        }
     }
 
     func manageSubscriptions() async {
