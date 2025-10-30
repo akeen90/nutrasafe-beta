@@ -305,6 +305,9 @@ struct ReactionLogDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showingExportSheet = false
     @State private var showOtherIngredients = false
+    @State private var selectedFood: WeightedFoodScore?
+    @State private var selectedIngredient: WeightedIngredientScore?
+    @State private var selectedAllergenCategory: String?
 
     var body: some View {
         NavigationView {
@@ -351,6 +354,15 @@ struct ReactionLogDetailView: View {
             }
             .sheet(isPresented: $showingExportSheet) {
                 PDFExportSheet(entry: entry)
+            }
+            .sheet(item: $selectedFood) { food in
+                FoodHistoryDetailView(food: food, reactionDate: entry.reactionDate)
+            }
+            .sheet(item: $selectedIngredient) { ingredient in
+                IngredientHistoryDetailView(ingredient: ingredient, reactionDate: entry.reactionDate)
+            }
+            .sheet(item: $selectedAllergenCategory) { category in
+                AllergenCategoryDetailView(category: category, entry: entry)
             }
         }
     }
@@ -421,7 +433,12 @@ struct ReactionLogDetailView: View {
                 .font(.headline)
 
             ForEach(foods.prefix(10)) { food in
-                FoodScoreRow(score: food)
+                Button(action: {
+                    selectedFood = food
+                }) {
+                    FoodScoreRow(score: food)
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding()
@@ -448,7 +465,13 @@ struct ReactionLogDetailView: View {
                             ReactionAllergenGroup(
                                 allergenCategory: group.category,
                                 categoryScore: group.maxScore,
-                                ingredients: group.ingredients
+                                ingredients: group.ingredients,
+                                onIngredientTap: { ingredient in
+                                    selectedIngredient = ingredient
+                                },
+                                onCategoryTap: {
+                                    selectedAllergenCategory = group.category
+                                }
                             )
                         }
                     }
@@ -478,14 +501,19 @@ struct ReactionLogDetailView: View {
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundColor(.secondary)
                         }
-                        .padding(.bottom, showOtherIngredients ? 20 : 0)
+                        .padding(.bottom, 20)
                     }
                     .buttonStyle(.plain)
 
                     if showOtherIngredients {
                         VStack(alignment: .leading, spacing: 10) {
                             ForEach(ingredientData.otherIngredients) { ingredient in
-                                IngredientScoreRow(score: ingredient)
+                                Button(action: {
+                                    selectedIngredient = ingredient
+                                }) {
+                                    IngredientScoreRow(score: ingredient)
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                     }
@@ -746,79 +774,91 @@ struct ReactionAllergenGroup: View {
     let allergenCategory: String
     let categoryScore: Int
     let ingredients: [WeightedIngredientScore]
+    let onIngredientTap: (WeightedIngredientScore) -> Void
+    let onCategoryTap: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Category header with score badge
-            HStack(alignment: .center, spacing: 12) {
-                Text(allergenCategory)
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundColor(.primary)
+            // Category header with score badge - clickable
+            Button(action: {
+                onCategoryTap()
+            }) {
+                HStack(alignment: .center, spacing: 12) {
+                    Text(allergenCategory)
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundColor(.primary)
 
-                Spacer()
+                    Spacer()
 
-                // Score badge
-                Text("\(categoryScore)")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [Color.red, Color.red.opacity(0.8)],
-                            startPoint: .leading,
-                            endPoint: .trailing
+                    // Score badge
+                    Text("\(categoryScore)")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [Color.red, Color.red.opacity(0.8)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
                         )
-                    )
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(Color.red.opacity(0.12))
-                            RoundedRectangle(cornerRadius: 14)
-                                .stroke(Color.red.opacity(0.2), lineWidth: 1)
-                        }
-                    )
-                    .shadow(color: Color.red.opacity(0.15), radius: 3, x: 0, y: 2)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(Color.red.opacity(0.12))
+                                RoundedRectangle(cornerRadius: 14)
+                                    .stroke(Color.red.opacity(0.2), lineWidth: 1)
+                            }
+                        )
+                        .shadow(color: Color.red.opacity(0.15), radius: 3, x: 0, y: 2)
+                }
             }
+            .buttonStyle(.plain)
             .padding(.bottom, 14)
 
             // Ingredient list
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(ingredients) { ingredient in
-                    HStack(spacing: 12) {
-                        Circle()
-                            .fill(Color.secondary.opacity(0.3))
-                            .frame(width: 4, height: 4)
+                    Button(action: {
+                        onIngredientTap(ingredient)
+                    }) {
+                        HStack(spacing: 12) {
+                            Circle()
+                                .fill(Color.secondary.opacity(0.3))
+                                .frame(width: 4, height: 4)
 
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(ingredient.ingredientName)
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundColor(.primary)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(ingredient.ingredientName)
+                                    .font(.system(size: 15, weight: .medium))
+                                    .foregroundColor(.primary)
 
-                            HStack(spacing: 12) {
-                                Label("\(ingredient.occurrences)×", systemImage: "repeat")
+                                HStack(spacing: 12) {
+                                    Label("\(ingredient.occurrences)×", systemImage: "repeat")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+
+                                    if ingredient.symptomAssociationScore > 0 {
+                                        Label("Pattern detected", systemImage: "waveform.path.ecg")
+                                            .font(.caption)
+                                            .foregroundColor(.red)
+                                    }
+                                }
+
+                                Text("Found in: \(ingredient.contributingFoodNames.prefix(3).joined(separator: ", "))")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
-
-                                if ingredient.symptomAssociationScore > 0 {
-                                    Label("Pattern detected", systemImage: "waveform.path.ecg")
-                                        .font(.caption)
-                                        .foregroundColor(.red)
-                                }
+                                    .lineLimit(1)
                             }
 
-                            Text("Found in: \(ingredient.contributingFoodNames.prefix(3).joined(separator: ", "))")
+                            Spacer()
+
+                            Text("\(Int(ingredient.totalScore))")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
-                                .lineLimit(1)
+                                .fontWeight(.semibold)
+                                .foregroundColor(scoreColor(for: ingredient.totalScore))
                         }
-
-                        Spacer()
-
-                        Text("\(Int(ingredient.totalScore))")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundColor(scoreColor(for: ingredient.totalScore))
                     }
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -868,4 +908,130 @@ struct PDFExportSheet: View {
             .navigationBarTitleDisplayMode(.inline)
         }
     }
+}
+
+// MARK: - History Detail Views (Placeholders)
+
+struct FoodHistoryDetailView: View {
+    let food: WeightedFoodScore
+    let reactionDate: Date
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Text("History for \(food.foodName)")
+                        .font(.title2)
+                        .fontWeight(.bold)
+
+                    Text("Occurrence history and pattern analysis will be displayed here, showing all times this food was consumed before reactions.")
+                        .foregroundColor(.secondary)
+
+                    Text("Score: \(Int(food.totalScore))")
+                    Text("Occurrences: \(food.occurrences)")
+                    Text("Last seen: \(Int(food.lastSeenHoursBeforeReaction))h before reaction")
+                }
+                .padding()
+            }
+            .navigationTitle("Food History")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct IngredientHistoryDetailView: View {
+    let ingredient: WeightedIngredientScore
+    let reactionDate: Date
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Text("History for \(ingredient.ingredientName)")
+                        .font(.title2)
+                        .fontWeight(.bold)
+
+                    Text("Occurrence history and pattern analysis will be displayed here, showing all times this ingredient appeared before reactions.")
+                        .foregroundColor(.secondary)
+
+                    Text("Score: \(Int(ingredient.totalScore))")
+                    Text("Occurrences: \(ingredient.occurrences)")
+                    Text("Found in foods: \(ingredient.contributingFoodNames.joined(separator: ", "))")
+
+                    if ingredient.symptomAssociationScore > 0 {
+                        Text("Pattern detected: This ingredient has appeared before \(ingredient.appearedInSameSymptomCount) similar reactions")
+                            .foregroundColor(.red)
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Ingredient History")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct AllergenCategoryDetailView: View {
+    let category: String
+    let entry: ReactionLogEntry
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Text("\(category) History")
+                        .font(.title2)
+                        .fontWeight(.bold)
+
+                    Text("Complete history of all \(category.lowercased())-containing foods consumed before reactions will be displayed here.")
+                        .foregroundColor(.secondary)
+
+                    Text("This view will show:")
+                        .font(.headline)
+                        .padding(.top)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("• Timeline of \(category.lowercased()) consumption")
+                        Text("• Specific ingredients within this category")
+                        Text("• Cross-reaction patterns")
+                        Text("• Severity trends over time")
+                    }
+                    .foregroundColor(.secondary)
+                }
+                .padding()
+            }
+            .navigationTitle("\(category) Analysis")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - String Identifiable Extension
+
+extension String: Identifiable {
+    public var id: String { self }
 }
