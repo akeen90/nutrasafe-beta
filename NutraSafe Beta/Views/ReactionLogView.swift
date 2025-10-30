@@ -304,6 +304,7 @@ struct ReactionLogDetailView: View {
     let entry: ReactionLogEntry
     @Environment(\.dismiss) private var dismiss
     @State private var showingExportSheet = false
+    @State private var showOtherIngredients = false
 
     var body: some View {
         NavigationView {
@@ -431,19 +432,166 @@ struct ReactionLogDetailView: View {
     }
 
     private func topIngredientsSection(ingredients: [WeightedIngredientScore]) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Top Possible Trigger Ingredients")
-                .font(.headline)
+        let ingredientData = categorizeIngredients(ingredients)
 
-            ForEach(ingredients.prefix(10)) { ingredient in
-                IngredientScoreRow(score: ingredient)
+        return VStack(alignment: .leading, spacing: 20) {
+            // Recognised Allergens Section
+            if !ingredientData.allergenGroups.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Recognised Allergens")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.primary)
+                        .padding(.bottom, 20)
+
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(ingredientData.allergenGroups, id: \.category) { group in
+                            ReactionAllergenGroup(
+                                allergenCategory: group.category,
+                                categoryScore: group.maxScore,
+                                ingredients: group.ingredients
+                            )
+                        }
+                    }
+                }
+                .padding()
+                .background(Color(.systemBackground))
+                .cornerRadius(12)
+                .shadow(color: .black.opacity(0.05), radius: 5)
+            }
+
+            // Other Ingredients Section (Expandable)
+            if !ingredientData.otherIngredients.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showOtherIngredients.toggle()
+                        }
+                    }) {
+                        HStack(alignment: .center, spacing: 12) {
+                            Text("Other Ingredients")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.primary)
+
+                            Spacer()
+
+                            Image(systemName: showOtherIngredients ? "chevron.up" : "chevron.down")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.bottom, showOtherIngredients ? 20 : 0)
+                    }
+                    .buttonStyle(.plain)
+
+                    if showOtherIngredients {
+                        VStack(alignment: .leading, spacing: 10) {
+                            ForEach(ingredientData.otherIngredients) { ingredient in
+                                IngredientScoreRow(score: ingredient)
+                            }
+                        }
+                    }
+                }
+                .padding()
+                .background(Color(.systemBackground))
+                .cornerRadius(12)
+                .shadow(color: .black.opacity(0.05), radius: 5)
             }
         }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 5)
+    }
+
+    private func categorizeIngredients(_ ingredients: [WeightedIngredientScore]) -> (allergenGroups: [(category: String, maxScore: Int, ingredients: [WeightedIngredientScore])], otherIngredients: [WeightedIngredientScore]) {
+        var allergenDict: [String: [WeightedIngredientScore]] = [:]
+        var otherIngredients: [WeightedIngredientScore] = []
+
+        for ingredient in ingredients.prefix(10) {
+            if let allergenCategory = getBaseAllergen(for: ingredient.ingredientName) {
+                allergenDict[allergenCategory, default: []].append(ingredient)
+            } else {
+                otherIngredients.append(ingredient)
+            }
+        }
+
+        let allergenGroups = allergenDict.map { (category, ingredients) -> (category: String, maxScore: Int, ingredients: [WeightedIngredientScore]) in
+            let maxScore = ingredients.map { Int($0.totalScore) }.max() ?? 0
+            return (category, maxScore, ingredients.sorted { $0.totalScore > $1.totalScore })
+        }.sorted { $0.maxScore > $1.maxScore }
+
+        return (allergenGroups, otherIngredients.sorted { $0.totalScore > $1.totalScore })
+    }
+
+    private func getBaseAllergen(for ingredient: String) -> String? {
+        let lower = ingredient.lowercased()
+
+        // Milk and dairy
+        if lower.contains("milk") || lower.contains("dairy") || lower.contains("cream") ||
+           lower.contains("cheese") || lower.contains("butter") || lower.contains("yogurt") ||
+           lower.contains("whey") || lower.contains("casein") || lower.contains("lactose") {
+            return "Milk"
+        }
+
+        // Eggs
+        if lower.contains("egg") || lower.contains("albumin") || lower.contains("mayonnaise") {
+            return "Eggs"
+        }
+
+        // Peanuts
+        if lower.contains("peanut") || lower.contains("groundnut") {
+            return "Peanuts"
+        }
+
+        // Tree nuts
+        if lower.contains("almond") || lower.contains("hazelnut") || lower.contains("walnut") ||
+           lower.contains("cashew") || lower.contains("pistachio") || lower.contains("pecan") ||
+           lower.contains("brazil nut") || lower.contains("macadamia") || lower.contains("nut") {
+            return "Tree Nuts"
+        }
+
+        // Gluten
+        if lower.contains("wheat") || lower.contains("gluten") || lower.contains("barley") ||
+           lower.contains("rye") || lower.contains("oats") || lower.contains("spelt") ||
+           lower.contains("kamut") {
+            return "Gluten"
+        }
+
+        // Soya
+        if lower.contains("soy") || lower.contains("soya") || lower.contains("soybean") ||
+           lower.contains("tofu") || lower.contains("edamame") {
+            return "Soya"
+        }
+
+        // Fish
+        if lower.contains("fish") || lower.contains("salmon") || lower.contains("tuna") ||
+           lower.contains("cod") || lower.contains("haddock") || lower.contains("trout") {
+            return "Fish"
+        }
+
+        // Shellfish
+        if lower.contains("shellfish") || lower.contains("shrimp") || lower.contains("prawn") ||
+           lower.contains("crab") || lower.contains("lobster") || lower.contains("mussel") ||
+           lower.contains("oyster") || lower.contains("clam") {
+            return "Shellfish"
+        }
+
+        // Sesame
+        if lower.contains("sesame") || lower.contains("tahini") {
+            return "Sesame"
+        }
+
+        // Celery
+        if lower.contains("celery") || lower.contains("celeriac") {
+            return "Celery"
+        }
+
+        // Mustard
+        if lower.contains("mustard") {
+            return "Mustard"
+        }
+
+        // Sulphites
+        if lower.contains("sulphite") || lower.contains("sulfite") {
+            return "Sulphites"
+        }
+
+        return nil
     }
 
     private var reactionIcon: String {
@@ -585,6 +733,102 @@ struct IngredientScoreRow: View {
         if score.totalScore >= 100 {
             return .red
         } else if score.totalScore >= 50 {
+            return .orange
+        } else {
+            return .yellow
+        }
+    }
+}
+
+// MARK: - Reaction Allergen Group Component
+
+struct ReactionAllergenGroup: View {
+    let allergenCategory: String
+    let categoryScore: Int
+    let ingredients: [WeightedIngredientScore]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Category header with score badge
+            HStack(alignment: .center, spacing: 12) {
+                Text(allergenCategory)
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundColor(.primary)
+
+                Spacer()
+
+                // Score badge
+                Text("\(categoryScore)")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color.red, Color.red.opacity(0.8)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(Color.red.opacity(0.12))
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(Color.red.opacity(0.2), lineWidth: 1)
+                        }
+                    )
+                    .shadow(color: Color.red.opacity(0.15), radius: 3, x: 0, y: 2)
+            }
+            .padding(.bottom, 14)
+
+            // Ingredient list
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(ingredients) { ingredient in
+                    HStack(spacing: 12) {
+                        Circle()
+                            .fill(Color.secondary.opacity(0.3))
+                            .frame(width: 4, height: 4)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(ingredient.ingredientName)
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(.primary)
+
+                            HStack(spacing: 12) {
+                                Label("\(ingredient.occurrences)×", systemImage: "repeat")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+
+                                if ingredient.symptomAssociationScore > 0 {
+                                    Label("Pattern detected", systemImage: "waveform.path.ecg")
+                                        .font(.caption)
+                                        .foregroundColor(.red)
+                                }
+                            }
+
+                            Text("Found in: \(ingredient.contributingFoodNames.prefix(3).joined(separator: ", "))")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                        }
+
+                        Spacer()
+
+                        Text("\(Int(ingredient.totalScore))")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(scoreColor(for: ingredient.totalScore))
+                    }
+                }
+            }
+        }
+        .padding(.bottom, 28)
+    }
+
+    private func scoreColor(for score: Double) -> Color {
+        if score >= 100 {
+            return .red
+        } else if score >= 50 {
             return .orange
         } else {
             return .yellow
