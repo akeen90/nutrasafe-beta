@@ -151,7 +151,7 @@ enum ReactionType: String, CaseIterable {
         case .bloating: return "figure.stand.dress"
         case .fatigue: return "bed.double.fill"
         case .rash: return "allergens"
-        case .nausea: return "stomach"
+        case .nausea: return "cross.case.fill"
         case .stomachPain: return "figure.walk.motion"
         case .diarrhea: return "toilet.fill"
         case .constipation: return "toilet"
