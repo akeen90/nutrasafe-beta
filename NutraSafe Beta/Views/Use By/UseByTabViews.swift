@@ -421,6 +421,7 @@ struct AddFoundFoodToUseBySheet: View {
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Add to Use By")
+            .keyboardDismissToolbar()
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .navigationBarTrailing) {

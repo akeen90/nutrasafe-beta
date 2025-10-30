@@ -35,6 +35,20 @@ struct IngredientFinderResponse: Codable {
     let nutrition_per_100g: NutritionPer100g?
     let image_url: String?
     let source_url: String?
+    let matches: [ProductMatch]? // Multiple results support
+    let cached_at: Date? // Cache timestamp for age display
+}
+
+struct ProductMatch: Codable {
+    let product_name: String
+    let brand: String
+    let barcode: String?
+    let serving_size: String?
+    let ingredients_text: String
+    let nutrition_per_100g: NutritionPer100g
+    let source_url: String?
+    let confidence_score: Double?
+    let source_name: String? // e.g., "Tesco", "Sainsbury's"
 }
 
 /// Service for finding ingredients using AI
@@ -43,49 +57,154 @@ class IngredientFinderService: ObservableObject {
     static let shared = IngredientFinderService()
 
     @Published var isSearching = false
+    @Published var searchingSource: String = "" // Current source being searched (for progress indicator)
     @Published var lastSearchTime: Date?
     @Published var searchCount = 0
 
     private let rateLimitWindow: TimeInterval = 60 // 1 minute
     private let maxSearchesPerWindow = 2
 
-    private init() {}
+    // Device-based daily rate limiting
+    private let dailyRateLimitKey = "aiVerifyDailyCount"
+    private let dailyRateLimitDateKey = "aiVerifyDailyDate"
+    private let maxDailyRequests = 10
 
-    /// Search for ingredients using AI (checks cache first)
-    func findIngredients(productName: String, brand: String?) async throws -> IngredientFinderResponse {
+    // In-memory cache for last 20 searches (fast access)
+    private let memoryCache = NSCache<NSString, CachedResponse>()
+
+    private init() {
+        // Configure memory cache
+        memoryCache.countLimit = 20 // Last 20 searches
+        memoryCache.totalCostLimit = 1024 * 1024 * 5 // 5MB
+    }
+
+    // Wrapper for NSCache (NSCache requires NSObject)
+    private class CachedResponse: NSObject {
+        let response: IngredientFinderResponse
+        init(_ response: IngredientFinderResponse) {
+            self.response = response
+        }
+    }
+
+    /// Search for ingredients using AI with enhanced caching and multi-result support
+    /// - Parameters:
+    ///   - productName: Product name to search
+    ///   - brand: Optional brand name
+    ///   - skipCache: If true, bypass all caches and force fresh search
+    ///   - maxResults: Number of results to request (1-3). Default 1.
+    ///   - refinementContext: Optional refinement context for more specific search
+    /// - Returns: Response with ingredients, nutrition, and optionally multiple matches
+    func findIngredients(
+        productName: String,
+        brand: String?,
+        skipCache: Bool = false,
+        maxResults: Int = 1,
+        refinementContext: RefinementContext? = nil
+    ) async throws -> IngredientFinderResponse {
         // Check rate limit
         try checkRateLimit()
 
-        // Check cache first
-        if let cached = try? await FirebaseManager.shared.getIngredientCache(productName: productName, brand: brand) {
-            print("✅ Found ingredients in cache for \(productName)")
-            return IngredientFinderResponse(
-                ingredients_found: cached.ingredients_found,
-                product_name: nil,  // Cache doesn't store product name yet
-                brand: nil,  // Cache doesn't store brand yet
-                barcode: nil,  // Cache doesn't store barcode yet
-                serving_size: nil,  // Cache doesn't store serving size yet
-                ingredients_text: cached.ingredients_text,
-                nutrition_per_100g: nil,  // Cache doesn't store nutrition yet
-                image_url: nil,  // Cache doesn't store image URL yet
-                source_url: cached.source_url
-            )
+        // Check daily device-based rate limit
+        try checkDailyRateLimit()
+
+        // Determine cache type based on parameters
+        let cacheType = refinementContext != nil ? "refinement" : (maxResults > 1 ? "alternatives" : "standard")
+
+        // Check memory cache first (fastest - unless skipCache)
+        if !skipCache {
+            let cacheKey = memoryCacheKey(productName: productName, brand: brand, refinementContext: refinementContext, cacheType: cacheType)
+            if let cached = memoryCache.object(forKey: cacheKey as NSString) {
+                print("⚡️ Found in memory cache for \(productName)")
+                return cached.response
+            }
         }
 
-        // Call Cloud Function
+        // Check Firestore cache (unless skipCache)
+        if !skipCache {
+            if let cached = try? await FirebaseManager.shared.getIngredientCacheEnhanced(
+                productName: productName,
+                brand: brand,
+                refinementContext: refinementContext,
+                cacheType: cacheType
+            ) {
+                print("✅ Found in Firestore cache for \(productName) (age: \(cacheAge(cached.cached_at)))")
+                let response = IngredientFinderResponse(
+                    ingredients_found: cached.ingredients_found,
+                    product_name: cached.product_name,
+                    brand: cached.brand,
+                    barcode: cached.barcode,
+                    serving_size: cached.serving_size,
+                    ingredients_text: cached.ingredients_text,
+                    nutrition_per_100g: cached.nutrition_per_100g,
+                    image_url: nil,
+                    source_url: cached.source_url,
+                    matches: nil,
+                    cached_at: cached.cached_at
+                )
+
+                // Store in memory cache for next time
+                let cacheKey = memoryCacheKey(productName: productName, brand: brand, refinementContext: refinementContext, cacheType: cacheType)
+                memoryCache.setObject(CachedResponse(response), forKey: cacheKey as NSString)
+
+                return response
+            }
+        } else {
+            print("⚠️ Skipping all caches for \(skipCache ? "force refresh" : "refinement") of \(productName)")
+        }
+
+        // Call Cloud Function with progress indicator
         isSearching = true
         defer { isSearching = false }
 
-        let response = try await callCloudFunction(productName: productName, brand: brand)
+        // Start source progress animation
+        Task {
+            await animateSourceSearch()
+        }
+
+        let response = try await callCloudFunction(
+            productName: productName,
+            brand: brand,
+            maxResults: maxResults,
+            refinementContext: refinementContext
+        )
+
+        // Stop progress animation
+        searchingSource = ""
+
+        // Increment daily counter
+        incrementDailyCounter()
 
         // Cache the result if ingredients were found
-        if response.ingredients_found, let ingredientsText = response.ingredients_text {
-            try? await FirebaseManager.shared.setIngredientCache(
+        if response.ingredients_found {
+            // Store in Firestore
+            try? await FirebaseManager.shared.setIngredientCacheEnhanced(
                 productName: productName,
                 brand: brand,
-                ingredientsText: ingredientsText,
-                sourceUrl: response.source_url
+                ingredientsText: response.ingredients_text,
+                nutrition: response.nutrition_per_100g,
+                servingSize: response.serving_size,
+                barcode: response.barcode,
+                sourceUrl: response.source_url,
+                refinementContext: refinementContext,
+                cacheType: cacheType
             )
+
+            // Store in memory cache
+            let cacheKey = memoryCacheKey(productName: productName, brand: brand, refinementContext: refinementContext, cacheType: cacheType)
+            let cachedResponse = IngredientFinderResponse(
+                ingredients_found: response.ingredients_found,
+                product_name: response.product_name,
+                brand: response.brand,
+                barcode: response.barcode,
+                serving_size: response.serving_size,
+                ingredients_text: response.ingredients_text,
+                nutrition_per_100g: response.nutrition_per_100g,
+                image_url: response.image_url,
+                source_url: response.source_url,
+                matches: response.matches,
+                cached_at: Date()
+            )
+            memoryCache.setObject(CachedResponse(cachedResponse), forKey: cacheKey as NSString)
         }
 
         // Update rate limit tracking
@@ -95,6 +214,112 @@ class IngredientFinderService: ObservableObject {
         }
 
         return response
+    }
+
+    /// Animate through different UK retailer sources while searching
+    private func animateSourceSearch() async {
+        let sources = [
+            "Searching Tesco...",
+            "Searching Sainsbury's...",
+            "Searching Morrisons...",
+            "Searching Asda...",
+            "Searching Waitrose...",
+            "Searching Ocado...",
+            "Analyzing nutrition data...",
+            "Verifying ingredients..."
+        ]
+
+        var index = 0
+        while isSearching {
+            await MainActor.run {
+                searchingSource = sources[index % sources.count]
+            }
+            index += 1
+            try? await Task.sleep(nanoseconds: 1_200_000_000) // 1.2 seconds per source
+        }
+
+        await MainActor.run {
+            searchingSource = ""
+        }
+    }
+
+    /// Generate memory cache key
+    private func memoryCacheKey(
+        productName: String,
+        brand: String?,
+        refinementContext: RefinementContext?,
+        cacheType: String
+    ) -> String {
+        let pn = productName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let br = (brand ?? "").lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let baseKey = br.isEmpty ? pn : "\(pn)__\(br)"
+
+        if let refContext = refinementContext {
+            let contextString = [
+                refContext.store ?? "",
+                refContext.packageSize ?? "",
+                refContext.additionalDetails ?? ""
+            ].joined(separator: "|")
+            return "\(baseKey)__ref_\(abs(contextString.hashValue))"
+        }
+
+        return "\(baseKey)__\(cacheType)"
+    }
+
+    /// Get human-readable cache age string
+    private func cacheAge(_ date: Date) -> String {
+        let interval = Date().timeIntervalSince(date)
+        let hours = Int(interval / 3600)
+        let days = Int(interval / 86400)
+
+        if days > 0 {
+            return "\(days) day\(days == 1 ? "" : "s") ago"
+        } else if hours > 0 {
+            return "\(hours) hour\(hours == 1 ? "" : "s") ago"
+        } else {
+            return "just now"
+        }
+    }
+
+    /// Check daily device-based rate limit (10 requests per day)
+    private func checkDailyRateLimit() throws {
+        let today = Calendar.current.startOfDay(for: Date())
+        let storedDate = UserDefaults.standard.object(forKey: dailyRateLimitDateKey) as? Date
+        let currentCount = UserDefaults.standard.integer(forKey: dailyRateLimitKey)
+
+        // Check if it's a new day
+        if let storedDate = storedDate, Calendar.current.isDate(storedDate, inSameDayAs: today) {
+            // Same day - check if limit reached
+            if currentCount >= maxDailyRequests {
+                throw IngredientFinderError.dailyLimitReached
+            }
+        } else {
+            // New day - reset counter
+            UserDefaults.standard.set(0, forKey: dailyRateLimitKey)
+            UserDefaults.standard.set(today, forKey: dailyRateLimitDateKey)
+        }
+    }
+
+    /// Increment the daily counter after a successful request
+    private func incrementDailyCounter() {
+        let currentCount = UserDefaults.standard.integer(forKey: dailyRateLimitKey)
+        UserDefaults.standard.set(currentCount + 1, forKey: dailyRateLimitKey)
+        print("📊 Daily AI verification count: \(currentCount + 1)/\(maxDailyRequests)")
+    }
+
+    /// Get remaining daily requests
+    func getRemainingDailyRequests() -> Int {
+        let today = Calendar.current.startOfDay(for: Date())
+        let storedDate = UserDefaults.standard.object(forKey: dailyRateLimitDateKey) as? Date
+        let currentCount = UserDefaults.standard.integer(forKey: dailyRateLimitKey)
+
+        // Check if it's a new day
+        if let storedDate = storedDate, Calendar.current.isDate(storedDate, inSameDayAs: today) {
+            return max(0, maxDailyRequests - currentCount)
+        } else {
+            // New day - full quota available
+            return maxDailyRequests
+        }
     }
 
     private func checkRateLimit() throws {
@@ -115,10 +340,14 @@ class IngredientFinderService: ObservableObject {
         }
     }
 
-    private func callCloudFunction(productName: String, brand: String?) async throws -> IngredientFinderResponse {
+    private func callCloudFunction(
+        productName: String,
+        brand: String?,
+        maxResults: Int = 1,
+        refinementContext: RefinementContext? = nil
+    ) async throws -> IngredientFinderResponse {
         // Get endpoint URL from AppConfig
         let endpointURLString = AppConfig.Firebase.Functions.findIngredients
-        // DEBUG LOG: print("🔍 Debug: Endpoint URL from AppConfig: \(endpointURLString)")
 
         guard let url = URL(string: endpointURLString) else {
             print("❌ Debug: Invalid URL: \(endpointURLString)")
@@ -126,9 +355,25 @@ class IngredientFinderService: ObservableObject {
         }
 
         // Prepare request body
-        var requestBody: [String: Any] = ["productName": productName]
+        var requestBody: [String: Any] = [
+            "productName": productName,
+            "maxResults": maxResults
+        ]
+
         if let brand = brand, !brand.isEmpty {
             requestBody["brand"] = brand
+        }
+
+        // Add refinement context if provided
+        if let refContext = refinementContext {
+            var refinementDict: [String: Any] = [:]
+            if let store = refContext.store { refinementDict["store"] = store }
+            if let size = refContext.packageSize { refinementDict["packageSize"] = size }
+            if let details = refContext.additionalDetails { refinementDict["additionalDetails"] = details }
+
+            if !refinementDict.isEmpty {
+                requestBody["refinementContext"] = refinementDict
+            }
         }
 
         let jsonData = try JSONSerialization.data(withJSONObject: requestBody)
@@ -167,6 +412,7 @@ class IngredientFinderService: ObservableObject {
 enum IngredientFinderError: LocalizedError {
     case notConfigured
     case rateLimitExceeded(waitSeconds: Int)
+    case dailyLimitReached
     case invalidResponse
     case serverError(statusCode: Int)
     case noIngredientsFound
@@ -177,6 +423,8 @@ enum IngredientFinderError: LocalizedError {
             return "Ingredient Finder is not configured. Please contact support."
         case .rateLimitExceeded(let seconds):
             return "Search limit reached. Please wait \(seconds) seconds before searching again."
+        case .dailyLimitReached:
+            return "Daily verification limit reached (10 per day). This limit resets at midnight to prevent excessive API usage. Please try again tomorrow."
         case .invalidResponse:
             return "Invalid response from server. Please try again."
         case .serverError(let code):
@@ -292,6 +540,10 @@ struct ManualFoodDetailEntryView: View {
     @State private var foundIngredients: IngredientFinderResponse?
     @StateObject private var ingredientFinder = IngredientFinderService.shared
 
+    // AI Finder enhancements
+    @State private var showRefinementDialog = false
+    @State private var showMultiResultSheet = false
+
     // Diary-specific fields
     @State private var selectedMealTime = "Breakfast"
 
@@ -392,6 +644,7 @@ struct ManualFoodDetailEntryView: View {
                         FormField(label: "Food Name", isRequired: true) {
                             TextField("Enter food name...", text: $foodName)
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .standardKeyboardBehavior()
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 5)
                                         .stroke(shouldShowError(for: "foodName") ? Color.red : Color.clear, lineWidth: 2)
@@ -401,6 +654,7 @@ struct ManualFoodDetailEntryView: View {
                         FormField(label: "Brand Name", isRequired: destination != .diary) {
                             TextField("Enter brand name...", text: $brand)
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .standardKeyboardBehavior()
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 5)
                                         .stroke(shouldShowError(for: "brand") ? Color.red : Color.clear, lineWidth: 2)
@@ -411,7 +665,9 @@ struct ManualFoodDetailEntryView: View {
                         if destination == .diary {
                             VStack(spacing: 8) {
                                 Button(action: {
-                                    searchIngredientsWithAI()
+                                    Task {
+                                        await searchIngredientsWithAI()
+                                    }
                                 }) {
                                     HStack(spacing: 6) {
                                         if isSearchingIngredients {
@@ -601,9 +857,10 @@ struct ManualFoodDetailEntryView: View {
                                                                 .font(.system(size: 14, weight: .semibold))
                                                                 .foregroundColor(.white)
 
-                                                            Text("Searching trusted sources...")
+                                                            Text(IngredientFinderService.shared.searchingSource.isEmpty ? "Searching trusted sources..." : IngredientFinderService.shared.searchingSource)
                                                                 .font(.system(size: 12))
                                                                 .foregroundColor(.white.opacity(0.9))
+                                                                .animation(.easeInOut(duration: 0.3), value: IngredientFinderService.shared.searchingSource)
                                                         }
                                                         .padding()
                                                     }
@@ -718,8 +975,10 @@ struct ManualFoodDetailEntryView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
             }
+            .dismissKeyboardOnScroll()
             .navigationTitle(destination == .useBy ? "Add to Use By" : "Add to Diary")
             .navigationBarTitleDisplayMode(.inline)
+            .keyboardDismissToolbar()
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
@@ -765,15 +1024,56 @@ struct ManualFoodDetailEntryView: View {
                         if let ingredients = foundIngredients?.ingredients_text {
                             ingredientsText = ingredients
                         }
-                        // Apply nutrition per 100g
+                        // Apply nutrition per 100g with scaling to serving size
                         if let nutrition = foundIngredients?.nutrition_per_100g {
-                            if let cal = nutrition.calories { calories = String(format: "%.0f", cal) }
-                            if let prot = nutrition.protein { protein = String(format: "%.1f", prot) }
-                            if let carb = nutrition.carbs { carbs = String(format: "%.1f", carb) }
-                            if let f = nutrition.fat { fat = String(format: "%.1f", f) }
-                            if let fib = nutrition.fiber { fiber = String(format: "%.1f", fib) }
-                            if let sug = nutrition.sugar { sugar = String(format: "%.1f", sug) }
-                            if let saltValue = nutrition.salt { sodium = String(format: "%.1f", saltValue) }
+                            // Calculate scaling factor based on serving size
+                            // Nutrition is always per 100g, so scale it to the actual serving size
+                            let scalingFactor: Double
+
+                            // SAFETY: Validate serving size before conversion
+                            let cleanedServingSize = servingSize.trimmingCharacters(in: .whitespaces)
+                            if !cleanedServingSize.isEmpty,
+                               let servingSizeNum = Double(cleanedServingSize),
+                               servingSizeNum > 0,
+                               servingSizeNum < 10000 { // Sanity check: max 10kg
+                                // Scale based on serving size (e.g., 30g = 0.3x, 200g = 2x)
+                                scalingFactor = servingSizeNum / 100.0
+                                print("📊 MANUAL ADD - Scaling nutrition: servingSize=\(servingSizeNum)g, factor=\(scalingFactor)")
+                            } else {
+                                // No valid serving size specified, use per-100g values as-is
+                                scalingFactor = 1.0
+                                print("⚠️ MANUAL ADD - No valid serving size, using per-100g values directly")
+                            }
+
+                            // Apply scaled nutrition values with safety checks
+                            if let cal = nutrition.calories, cal.isFinite, cal >= 0 {
+                                let scaled = cal * scalingFactor
+                                calories = scaled.isFinite ? String(format: "%.0f", scaled) : "0"
+                            }
+                            if let prot = nutrition.protein, prot.isFinite, prot >= 0 {
+                                let scaled = prot * scalingFactor
+                                protein = scaled.isFinite ? String(format: "%.1f", scaled) : "0.0"
+                            }
+                            if let carb = nutrition.carbs, carb.isFinite, carb >= 0 {
+                                let scaled = carb * scalingFactor
+                                carbs = scaled.isFinite ? String(format: "%.1f", scaled) : "0.0"
+                            }
+                            if let f = nutrition.fat, f.isFinite, f >= 0 {
+                                let scaled = f * scalingFactor
+                                fat = scaled.isFinite ? String(format: "%.1f", scaled) : "0.0"
+                            }
+                            if let fib = nutrition.fiber, fib.isFinite, fib >= 0 {
+                                let scaled = fib * scalingFactor
+                                fiber = scaled.isFinite ? String(format: "%.1f", scaled) : "0.0"
+                            }
+                            if let sug = nutrition.sugar, sug.isFinite, sug >= 0 {
+                                let scaled = sug * scalingFactor
+                                sugar = scaled.isFinite ? String(format: "%.1f", scaled) : "0.0"
+                            }
+                            if let saltValue = nutrition.salt, saltValue.isFinite, saltValue >= 0 {
+                                let scaled = saltValue * scalingFactor
+                                sodium = scaled.isFinite ? String(format: "%.1f", scaled) : "0.0"
+                            }
                         }
                         showIngredientConfirmation = false
                     },
@@ -804,7 +1104,107 @@ struct ManualFoodDetailEntryView: View {
                         if let ingredients = foundIngredients?.ingredients_text {
                             ingredientsText = ingredients
                         }
+                        // Apply nutrition per 100g with scaling to serving size
                         if let nutrition = foundIngredients?.nutrition_per_100g {
+                            // Calculate scaling factor based on serving size
+                            // Nutrition is always per 100g, so scale it to the actual serving size
+                            let scalingFactor: Double
+
+                            // SAFETY: Validate serving size before conversion
+                            let cleanedServingSize = servingSize.trimmingCharacters(in: .whitespaces)
+                            if !cleanedServingSize.isEmpty,
+                               let servingSizeNum = Double(cleanedServingSize),
+                               servingSizeNum > 0,
+                               servingSizeNum < 10000 { // Sanity check: max 10kg
+                                // Scale based on serving size (e.g., 30g = 0.3x, 200g = 2x)
+                                scalingFactor = servingSizeNum / 100.0
+                                print("📊 MANUAL ADD (onEdit) - Scaling nutrition: servingSize=\(servingSizeNum)g, factor=\(scalingFactor)")
+                            } else {
+                                // No valid serving size specified, use per-100g values as-is
+                                scalingFactor = 1.0
+                                print("⚠️ MANUAL ADD (onEdit) - No valid serving size, using per-100g values directly")
+                            }
+
+                            // Apply scaled nutrition values with safety checks
+                            if let cal = nutrition.calories, cal.isFinite, cal >= 0 {
+                                let scaled = cal * scalingFactor
+                                calories = scaled.isFinite ? String(format: "%.0f", scaled) : "0"
+                            }
+                            if let prot = nutrition.protein, prot.isFinite, prot >= 0 {
+                                let scaled = prot * scalingFactor
+                                protein = scaled.isFinite ? String(format: "%.1f", scaled) : "0.0"
+                            }
+                            if let carb = nutrition.carbs, carb.isFinite, carb >= 0 {
+                                let scaled = carb * scalingFactor
+                                carbs = scaled.isFinite ? String(format: "%.1f", scaled) : "0.0"
+                            }
+                            if let f = nutrition.fat, f.isFinite, f >= 0 {
+                                let scaled = f * scalingFactor
+                                fat = scaled.isFinite ? String(format: "%.1f", scaled) : "0.0"
+                            }
+                            if let fib = nutrition.fiber, fib.isFinite, fib >= 0 {
+                                let scaled = fib * scalingFactor
+                                fiber = scaled.isFinite ? String(format: "%.1f", scaled) : "0.0"
+                            }
+                            if let sug = nutrition.sugar, sug.isFinite, sug >= 0 {
+                                let scaled = sug * scalingFactor
+                                sugar = scaled.isFinite ? String(format: "%.1f", scaled) : "0.0"
+                            }
+                            if let saltValue = nutrition.salt, saltValue.isFinite, saltValue >= 0 {
+                                let scaled = saltValue * scalingFactor
+                                sodium = scaled.isFinite ? String(format: "%.1f", scaled) : "0.0"
+                            }
+                        }
+                        showIngredientConfirmation = false
+                    },
+                    onCancel: {
+                        showIngredientConfirmation = false
+                    },
+                    onShowMoreOptions: {
+                        showIngredientConfirmation = false
+                        showMultiResultSheet = true
+                    },
+                    onNotQuiteRight: {
+                        showIngredientConfirmation = false
+                        showRefinementDialog = true
+                    },
+                    onForceRefresh: {
+                        // Trigger fresh search with skipCache=true
+                        Task {
+                            await searchIngredientsWithAI(skipCache: true)
+                        }
+                    }
+                )
+            }
+            .sheet(isPresented: $showRefinementDialog) {
+                RefinementDialogView(
+                    productName: foodName,
+                    brand: brand.isEmpty ? nil : brand,
+                    onSearch: { context in
+                        Task {
+                            await searchIngredientsWithRefinement(context)
+                        }
+                    }
+                )
+            }
+            .sheet(isPresented: $showMultiResultSheet) {
+                if let matches = foundIngredients?.matches {
+                    MultiResultSelectionView(
+                        matches: matches,
+                        onSelect: { selected in
+                            // Apply the selected match to the form
+                            foodName = selected.product_name
+                            brand = selected.brand
+                            if let barcodeValue = selected.barcode, !barcodeValue.isEmpty {
+                                barcode = barcodeValue
+                            }
+                            if let servingSizeStr = selected.serving_size, !servingSizeStr.isEmpty {
+                                let parsed = parseServingSize(servingSizeStr)
+                                servingSize = parsed.amount
+                                servingUnit = parsed.unit
+                            }
+                            ingredientsText = selected.ingredients_text
+                            let nutrition = selected.nutrition_per_100g
                             if let cal = nutrition.calories { calories = String(format: "%.0f", cal) }
                             if let prot = nutrition.protein { protein = String(format: "%.1f", prot) }
                             if let carb = nutrition.carbs { carbs = String(format: "%.1f", carb) }
@@ -813,12 +1213,8 @@ struct ManualFoodDetailEntryView: View {
                             if let sug = nutrition.sugar { sugar = String(format: "%.1f", sug) }
                             if let saltValue = nutrition.salt { sodium = String(format: "%.1f", saltValue) }
                         }
-                        showIngredientConfirmation = false
-                    },
-                    onCancel: {
-                        showIngredientConfirmation = false
-                    }
-                )
+                    )
+                }
             }
             .onAppear {
                 // Initialize barcode from prefilledBarcode if provided
@@ -833,22 +1229,26 @@ struct ManualFoodDetailEntryView: View {
         }
     }
 
-    private func searchIngredientsWithAI() {
+    private func searchIngredientsWithAI(skipCache: Bool = false) async {
         // Require food name
         guard !foodName.isEmpty else {
-            errorMessage = "Please enter a food name first"
-            showingError = true
+            await MainActor.run {
+                errorMessage = "Please enter a food name first"
+                showingError = true
+            }
             return
         }
 
-        isSearchingIngredients = true
+        await MainActor.run {
+            isSearchingIngredients = true
+        }
 
-        Task {
-            do {
-                let response = try await ingredientFinder.findIngredients(
-                    productName: foodName,
-                    brand: brand.isEmpty ? nil : brand
-                )
+        do {
+            let response = try await ingredientFinder.findIngredients(
+                productName: foodName,
+                brand: brand.isEmpty ? nil : brand,
+                skipCache: skipCache
+            )
 
         // DEBUG LOG: print("🍎 MANUAL ADD - AI Search Result:")
                 print("  - ingredients_found: \(response.ingredients_found)")
@@ -859,38 +1259,105 @@ struct ManualFoodDetailEntryView: View {
                 print("  - brand: \(response.brand ?? "nil")")
                 print("  - source_url: \(response.source_url ?? "nil")")
 
-                await MainActor.run {
-                    isSearchingIngredients = false
+            await MainActor.run {
+                isSearchingIngredients = false
 
-                    if response.ingredients_found, let _ = response.ingredients_text {
-                        // Show confirmation modal
-                        foundIngredients = response
-                        showIngredientConfirmation = true
-                    } else {
-                        // No ingredients found
-                        errorMessage = "No ingredients found from trusted sources. Try entering them manually or check the product name."
-                        showingError = true
-                    }
-                }
-            } catch let error as IngredientFinderError {
-                await MainActor.run {
-                    isSearchingIngredients = false
-                    errorMessage = error.localizedDescription
+                if response.ingredients_found, let _ = response.ingredients_text {
+                    // Show confirmation modal
+                    foundIngredients = response
+                    showIngredientConfirmation = true
+                } else {
+                    // No ingredients found
+                    errorMessage = "No ingredients found from trusted sources. Try entering them manually or check the product name."
                     showingError = true
                 }
-            } catch {
-                await MainActor.run {
-                    isSearchingIngredients = false
-                    errorMessage = "Network error. Please check your connection and try again."
+            }
+        } catch let error as IngredientFinderError {
+            await MainActor.run {
+                isSearchingIngredients = false
+                errorMessage = error.localizedDescription
+                showingError = true
+            }
+        } catch {
+            await MainActor.run {
+                isSearchingIngredients = false
+                errorMessage = "Network error. Please check your connection and try again."
+                showingError = true
+            }
+        }
+    }
+
+    private func searchIngredientsWithRefinement(_ context: RefinementContext) async {
+        // Require food name
+        guard !foodName.isEmpty else {
+            await MainActor.run {
+                errorMessage = "Please enter a food name first"
+                showingError = true
+            }
+            return
+        }
+
+        await MainActor.run {
+            isSearchingIngredients = true
+        }
+
+        do {
+            // Search with refinement context - this will bypass cache and use specific search parameters
+            let response = try await ingredientFinder.findIngredients(
+                productName: foodName,
+                brand: brand.isEmpty ? nil : brand,
+                skipCache: true, // Always skip cache for refinement
+                maxResults: 1, // Single best match with refinement
+                refinementContext: context
+            )
+
+            print("🔍 REFINEMENT SEARCH - AI Search Result:")
+            print("  - ingredients_found: \(response.ingredients_found)")
+            print("  - ingredients_text: \(response.ingredients_text?.prefix(50) ?? "nil")")
+            print("  - nutrition: \(response.nutrition_per_100g != nil ? "YES" : "NO")")
+            print("  - serving_size: \(response.serving_size ?? "NIL")")
+
+            await MainActor.run {
+                isSearchingIngredients = false
+
+                if response.ingredients_found, let _ = response.ingredients_text {
+                    // Show confirmation modal with refined results
+                    foundIngredients = response
+                    showIngredientConfirmation = true
+                } else {
+                    // No ingredients found even with refinement
+                    errorMessage = "Still couldn't find this product. Try different details or enter manually."
                     showingError = true
                 }
+            }
+        } catch let error as IngredientFinderError {
+            await MainActor.run {
+                isSearchingIngredients = false
+                errorMessage = error.localizedDescription
+                showingError = true
+            }
+        } catch {
+            await MainActor.run {
+                isSearchingIngredients = false
+                errorMessage = "Network error. Please check your connection and try again."
+                showingError = true
             }
         }
     }
 
     private func updateExpiryDate() {
-        let daysToAdd = expiryUnit == .weeks ? expiryAmount * 7 : expiryAmount
-        expiryDate = Date().addingTimeInterval(TimeInterval(daysToAdd * 24 * 60 * 60))
+        // SAFETY: Validate expiryAmount to prevent overflow
+        let validatedAmount = max(0, min(expiryAmount, 365)) // Cap at 1 year
+        let daysToAdd = expiryUnit == .weeks ? validatedAmount * 7 : validatedAmount
+
+        // SAFETY: Guard against overflow in TimeInterval calculation
+        guard let timeInterval = TimeInterval(exactly: daysToAdd * 24 * 60 * 60) else {
+            print("⚠️ updateExpiryDate: TimeInterval overflow, using 7 days default")
+            expiryDate = Date().addingTimeInterval(TimeInterval(7 * 24 * 60 * 60))
+            return
+        }
+
+        expiryDate = Date().addingTimeInterval(timeInterval)
     }
 
     private func saveFood() {
@@ -1111,17 +1578,32 @@ struct ManualFoodDetailEntryView: View {
 
     /// Parse serving size string like "330ml" or "1 can (330ml)" into amount and unit
     private func parseServingSize(_ servingSizeStr: String) -> (amount: String, unit: String) {
+        // SAFETY: Guard against empty or invalid input
+        guard !servingSizeStr.isEmpty else {
+            print("⚠️ parseServingSize: Empty input, using default 100g")
+            return ("100", "g")
+        }
+
         // Clean the string
         let cleaned = servingSizeStr.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        guard !cleaned.isEmpty else {
+            print("⚠️ parseServingSize: Cleaned string is empty, using default 100g")
+            return ("100", "g")
+        }
 
         // Try to extract numbers and units from patterns like:
         // "330ml", "250g", "1 can (330ml)", "30 g", "100 grams"
 
         // First, try to find parentheses pattern like "1 can (330ml)"
-        if let match = cleaned.range(of: #"\((\d+(?:\.\d+)?)\s*(ml|g|oz|kg|lb|cup|tbsp|tsp|piece|slice|serving|grams|milliliters|ounces|kilograms|pounds)\)"#, options: .regularExpression) {
-            let extracted = String(cleaned[match])
-            let withoutParens = extracted.replacingOccurrences(of: "(", with: "").replacingOccurrences(of: ")", with: "")
-            return extractAmountAndUnit(from: withoutParens)
+        do {
+            if let match = cleaned.range(of: #"\((\d+(?:\.\d+)?)\s*(ml|g|oz|kg|lb|cup|tbsp|tsp|piece|slice|serving|grams|milliliters|ounces|kilograms|pounds)\)"#, options: .regularExpression) {
+                let extracted = String(cleaned[match])
+                let withoutParens = extracted.replacingOccurrences(of: "(", with: "").replacingOccurrences(of: ")", with: "")
+                return extractAmountAndUnit(from: withoutParens)
+            }
+        } catch {
+            print("⚠️ parseServingSize: Regex error for parentheses pattern: \(error)")
         }
 
         // Otherwise try direct pattern like "330ml" or "30 g"
@@ -1130,23 +1612,40 @@ struct ManualFoodDetailEntryView: View {
 
     /// Extract amount and unit from a string like "330ml" or "30 g"
     private func extractAmountAndUnit(from text: String) -> (amount: String, unit: String) {
+        // SAFETY: Guard against empty input
+        guard !text.isEmpty else {
+            print("⚠️ extractAmountAndUnit: Empty input, using default 100g")
+            return ("100", "g")
+        }
+
         // Match pattern: number followed by optional space and unit
-        if let match = text.range(of: #"(\d+(?:\.\d+)?)\s*(ml|g|oz|kg|lb|cup|tbsp|tsp|piece|slice|serving|grams|milliliters|ounces|kilograms|pounds)"#, options: .regularExpression) {
-            let extracted = String(text[match])
+        do {
+            if let match = text.range(of: #"(\d+(?:\.\d+)?)\s*(ml|g|oz|kg|lb|cup|tbsp|tsp|piece|slice|serving|grams|milliliters|ounces|kilograms|pounds)"#, options: .regularExpression) {
+                let extracted = String(text[match])
 
-            // Split into number and unit
-            if let numMatch = extracted.range(of: #"\d+(?:\.\d+)?"#, options: .regularExpression) {
-                let amount = String(extracted[numMatch])
-                let unit = extracted.replacingOccurrences(of: amount, with: "").trimmingCharacters(in: .whitespaces)
+                // Split into number and unit
+                if let numMatch = extracted.range(of: #"\d+(?:\.\d+)?"#, options: .regularExpression) {
+                    let amount = String(extracted[numMatch])
+                    let unit = extracted.replacingOccurrences(of: amount, with: "").trimmingCharacters(in: .whitespaces)
 
-                // Normalize unit names
-                let normalizedUnit = normalizeUnit(unit)
+                    // SAFETY: Validate amount is a valid number
+                    guard let amountValue = Double(amount), amountValue > 0, amountValue < 10000 else {
+                        print("⚠️ extractAmountAndUnit: Invalid amount '\(amount)', using default 100g")
+                        return ("100", "g")
+                    }
 
-                return (amount, normalizedUnit)
+                    // Normalize unit names
+                    let normalizedUnit = normalizeUnit(unit)
+
+                    return (amount, normalizedUnit)
+                }
             }
+        } catch {
+            print("⚠️ extractAmountAndUnit: Regex error: \(error)")
         }
 
         // Fallback: return default
+        print("⚠️ extractAmountAndUnit: No match found for '\(text)', using default 100g")
         return ("100", "g")
     }
 
@@ -1314,6 +1813,9 @@ struct IngredientConfirmationModal: View {
     let onUse: () -> Void
     let onEdit: () -> Void
     let onCancel: () -> Void
+    let onShowMoreOptions: () -> Void
+    let onNotQuiteRight: () -> Void
+    let onForceRefresh: () -> Void
 
     var body: some View {
         NavigationView {
@@ -1342,11 +1844,55 @@ struct IngredientConfirmationModal: View {
                             .foregroundColor(.secondary)
                     }
 
+                    // Product Name and Brand
+                    VStack(spacing: 4) {
+                        if let productName = response?.product_name {
+                            Text(productName)
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundColor(.primary)
+                                .multilineTextAlignment(.center)
+                        }
+                        if let brand = response?.brand, !brand.isEmpty {
+                            Text(brand)
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+
+                    // Cache Age Display (if from cache)
+                    if let cachedAt = response?.cached_at {
+                        HStack(spacing: 8) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 12))
+                                .foregroundColor(.green)
+
+                            Text("Found \(cacheAgeString(cachedAt))")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+
+                            Button(action: onForceRefresh) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "arrow.clockwise.circle")
+                                        .font(.system(size: 12))
+                                    Text("Refresh")
+                                        .font(.system(size: 12, weight: .medium))
+                                }
+                                .foregroundColor(.blue)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(Color.blue.opacity(0.1))
+                                .cornerRadius(12)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                    }
+
                 // Serving Size (if available)
                 if let servingSize = response?.serving_size {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 6) {
-                            Image(systemName: "gauge.with.dots.needle.67percent")
+                            Image(systemName: "scalemass.fill")
                                 .font(.system(size: 14))
                                 .foregroundColor(.blue)
                             Text("Serving Size:")
@@ -1478,6 +2024,42 @@ struct IngredientConfirmationModal: View {
                         .cornerRadius(12)
                     }
 
+                    // Divider
+                    Divider()
+                        .padding(.vertical, 4)
+
+                    // Show More Options Button (if multiple matches available)
+                    if let matches = response?.matches, matches.count > 1 {
+                        Button(action: onShowMoreOptions) {
+                            HStack {
+                                Image(systemName: "list.bullet.circle")
+                                    .font(.system(size: 18))
+                                Text("Show More Options (\(matches.count))")
+                                    .font(.system(size: 16, weight: .semibold))
+                            }
+                            .foregroundColor(.purple)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Color.purple.opacity(0.1))
+                            .cornerRadius(12)
+                        }
+                    }
+
+                    // Not Quite Right Button
+                    Button(action: onNotQuiteRight) {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle")
+                                .font(.system(size: 18))
+                            Text("Not quite right?")
+                                .font(.system(size: 16, weight: .semibold))
+                        }
+                        .foregroundColor(.orange)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color.orange.opacity(0.1))
+                        .cornerRadius(12)
+                    }
+
                     // Cancel Button
                     Button(action: onCancel) {
                         Text("Cancel")
@@ -1508,6 +2090,20 @@ struct IngredientConfirmationModal: View {
         return nutrition.calories != nil || nutrition.protein != nil || nutrition.carbs != nil ||
                nutrition.fat != nil || nutrition.fiber != nil || nutrition.sugar != nil
     }
+
+    private func cacheAgeString(_ date: Date) -> String {
+        let interval = Date().timeIntervalSince(date)
+        let hours = Int(interval / 3600)
+        let days = Int(interval / 86400)
+
+        if days > 0 {
+            return "\(days) day\(days == 1 ? "" : "s") ago"
+        } else if hours > 0 {
+            return "\(hours) hour\(hours == 1 ? "" : "s") ago"
+        } else {
+            return "just now"
+        }
+    }
 }
 
 // MARK: - Nutrition Row Component
@@ -1525,6 +2121,238 @@ struct NutritionRow: View {
                 .font(.system(size: 13, weight: .medium))
                 .foregroundColor(.primary)
         }
+    }
+}
+
+// MARK: - Refinement Dialog
+struct RefinementDialogView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var store: String = ""
+    @State private var packageSize: String = ""
+    @State private var additionalDetails: String = ""
+
+    let productName: String
+    let brand: String?
+    let onSearch: (RefinementContext) -> Void
+
+    private let commonStores = ["Tesco", "Sainsbury's", "Morrisons", "Asda", "Waitrose", "Ocado", "Aldi", "Lidl"]
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Help us find the exact product")) {
+                    Text("Add more details to improve search results")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                }
+
+                Section(header: Text("Product Details")) {
+                    HStack {
+                        Text("Product:")
+                            .foregroundColor(.secondary)
+                        Text(productName)
+                            .fontWeight(.medium)
+                    }
+
+                    if let brand = brand {
+                        HStack {
+                            Text("Brand:")
+                                .foregroundColor(.secondary)
+                            Text(brand)
+                                .fontWeight(.medium)
+                        }
+                    }
+                }
+
+                Section(header: Text("Specific Store (Optional)")) {
+                    TextField("e.g., Tesco, Sainsbury's", text: $store)
+                        .autocapitalization(.words)
+                        .standardKeyboardBehavior()
+
+                    // Quick select buttons
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(commonStores, id: \.self) { storeName in
+                                Button(action: {
+                                    store = storeName
+                                }) {
+                                    Text(storeName)
+                                        .font(.system(size: 13))
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(store == storeName ? Color.blue : Color.gray.opacity(0.2))
+                                        .foregroundColor(store == storeName ? .white : .primary)
+                                        .cornerRadius(16)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+
+                Section(header: Text("Package Size (Optional)")) {
+                    TextField("e.g., 500g, 1L, 400ml", text: $packageSize)
+                        .autocapitalization(.none)
+                        .standardKeyboardBehavior()
+                }
+
+                Section(header: Text("Additional Details (Optional)")) {
+                    TextEditor(text: $additionalDetails)
+                        .frame(height: 80)
+                    Text("e.g., blue label, organic, value range, own brand")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Refine Search")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Search Again") {
+                        let context = RefinementContext(
+                            store: store.isEmpty ? nil : store,
+                            packageSize: packageSize.isEmpty ? nil : packageSize,
+                            additionalDetails: additionalDetails.isEmpty ? nil : additionalDetails
+                        )
+                        onSearch(context)
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                    .disabled(store.isEmpty && packageSize.isEmpty && additionalDetails.isEmpty)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Multi-Result Selection View
+struct MultiResultSelectionView: View {
+    @Environment(\.dismiss) private var dismiss
+    let matches: [ProductMatch]
+    let onSelect: (ProductMatch) -> Void
+
+    var body: some View {
+        NavigationView {
+            List {
+                ForEach(Array(matches.enumerated()), id: \.offset) { index, match in
+                    Button(action: {
+                        onSelect(match)
+                        dismiss()
+                    }) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            // Header with confidence and source
+                            HStack {
+                                if let confidence = match.confidence_score {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: confidence > 90 ? "checkmark.seal.fill" : "checkmark.circle.fill")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(confidence > 90 ? .green : .blue)
+                                        Text("\(Int(confidence))% match")
+                                            .font(.system(size: 12, weight: .medium))
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+
+                                Spacer()
+
+                                if let source = match.source_name {
+                                    Text(source)
+                                        .font(.system(size: 12))
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color.blue.opacity(0.1))
+                                        .foregroundColor(.blue)
+                                        .cornerRadius(8)
+                                }
+                            }
+
+                            // Product name and brand
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(match.product_name)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.primary)
+
+                                Text(match.brand)
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+
+                                if let servingSize = match.serving_size {
+                                    Text("Serving: \(servingSize)")
+                                        .font(.system(size: 13))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+
+                            // Nutrition preview
+                            let nutrition = match.nutrition_per_100g
+                            HStack(spacing: 16) {
+                                if let cal = nutrition.calories {
+                                    NutrientPill(label: "Cal", value: "\(Int(cal))")
+                                }
+                                if let prot = nutrition.protein {
+                                    NutrientPill(label: "Protein", value: String(format: "%.1fg", prot))
+                                }
+                                if let carbs = nutrition.carbs {
+                                    NutrientPill(label: "Carbs", value: String(format: "%.1fg", carbs))
+                                }
+                                if let fat = nutrition.fat {
+                                    NutrientPill(label: "Fat", value: String(format: "%.1fg", fat))
+                                }
+                            }
+
+                            // Recommended badge for top match
+                            if index == 0, let confidence = match.confidence_score, confidence > 85 {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "star.fill")
+                                        .font(.system(size: 10))
+                                    Text("Recommended")
+                                        .font(.system(size: 11, weight: .medium))
+                                }
+                                .foregroundColor(.orange)
+                            }
+                        }
+                        .padding(.vertical, 8)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+            .navigationTitle("Choose Best Match")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Small Nutrient Pill Component
+struct NutrientPill: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(value)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.primary)
+            Text(label)
+                .font(.system(size: 10))
+                .foregroundColor(.secondary)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Color(.systemGray6))
+        .cornerRadius(8)
     }
 }
 

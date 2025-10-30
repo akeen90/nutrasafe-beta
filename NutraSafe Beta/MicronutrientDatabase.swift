@@ -143,6 +143,7 @@ class MicronutrientDatabase {
         if sqlite3_prepare_v2(db, countQuery, -1, &countStmt, nil) == SQLITE_OK {
             if sqlite3_step(countStmt) == SQLITE_ROW {
                 let count = sqlite3_column_int(countStmt, 0)
+                _ = count // Suppress unused variable warning (debug code commented out)
         // DEBUG LOG: print("📊 Database contains \(count) nutrients")
             }
         }

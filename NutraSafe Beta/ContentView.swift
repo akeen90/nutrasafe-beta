@@ -764,10 +764,10 @@ class FatSecretService: ObservableObject {
             }
         }
         
-        // Debug: Print raw JSON response
-        if let jsonString = String(data: data, encoding: .utf8) {
-        // DEBUG LOG: print("🔍 Raw API response: \(jsonString.prefix(500))")
-        }
+        // Debug: Print raw JSON response (commented out for production)
+        // if let jsonString = String(data: data, encoding: .utf8) {
+        //     print("🔍 Raw API response: \(jsonString.prefix(500))")
+        // }
         
         let searchResponse: FirebaseFoodSearchResponse
         do {
@@ -2423,7 +2423,7 @@ struct ProgressWeightEntryDetailView: View {
                 }
                 .padding(.vertical, 16)
             }
-            .navigationTitle("Weight Entry")
+            .navigationTitle("Weight Entry").keyboardDismissToolbar()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -3115,7 +3115,7 @@ struct AddWeightView: View {
                     TextField("Add a note", text: $note)
                 }
             }
-            .navigationTitle("Log Weight")
+            .navigationTitle("Log Weight").keyboardDismissToolbar()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -3511,7 +3511,7 @@ struct EditWeightView: View {
                     TextField("Add a note", text: $note)
                 }
             }
-            .navigationTitle("Edit Weight")
+            .navigationTitle("Edit Weight").keyboardDismissToolbar()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -4681,7 +4681,7 @@ struct HeightSetupView: View {
 //                         
 //                         Spacer()
 //                     }
-//                     .navigationTitle("Select Date")
+//                     .navigationTitle("Select Date").keyboardDismissToolbar()
 //                     .navigationBarTitleDisplayMode(.inline)
 //                     .toolbar {
 //                         ToolbarItem(placement: .navigationBarTrailing) {
@@ -5222,7 +5222,7 @@ struct ExerciseWorkoutCard: View {
 
                     Spacer()
                 }
-                .navigationTitle("Exercise Notes")
+                .navigationTitle("Exercise Notes").keyboardDismissToolbar()
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
@@ -5517,7 +5517,7 @@ struct ExerciseEntryView: View {
                     }
                 }
             }
-            .navigationTitle("Add \(exerciseType.displayName)")
+            .navigationTitle("Add \(exerciseType.displayName)").keyboardDismissToolbar()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -6459,7 +6459,7 @@ struct AddFoodMainView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .navigationTitle("Adding Food To")
+                .navigationTitle("Adding Food To").keyboardDismissToolbar()
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
@@ -6834,7 +6834,7 @@ struct IngredientCameraView: View {
                 
                 Spacer()
             }
-            .navigationTitle("Ingredient Photo")
+            .navigationTitle("Ingredient Photo").keyboardDismissToolbar()
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarItems(
                 leading: Button("Cancel") {
@@ -6893,7 +6893,7 @@ struct PendingVerificationsView: View {
                         .padding()
                 }
             }
-            .navigationTitle("Pending Verifications")
+            .navigationTitle("Pending Verifications").keyboardDismissToolbar()
             .task {
                 await loadPendingVerifications()
             }

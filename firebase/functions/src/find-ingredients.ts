@@ -11,9 +11,22 @@ interface NutritionPer100g {
   salt?: number;
 }
 
+interface ProductMatch {
+  product_name: string;
+  brand: string;
+  barcode?: string;
+  serving_size?: string;
+  ingredients_text: string;
+  nutrition_per_100g: NutritionPer100g;
+  source_url?: string;
+  confidence_score?: number;
+  source_name?: string; // e.g., "Tesco", "Sainsbury's", "Manufacturer website"
+}
+
 interface FindIngredientsResponse {
   ingredients_found: boolean;
-  product_name?: string;
+  matches?: ProductMatch[]; // Array of 1-3 matches when maxResults > 1
+  product_name?: string; // Legacy single result fields (for backwards compatibility)
   brand?: string;
   barcode?: string;
   serving_size?: string;
@@ -21,6 +34,12 @@ interface FindIngredientsResponse {
   nutrition_per_100g?: NutritionPer100g;
   source_url?: string;
   error?: string;
+}
+
+interface RefinementContext {
+  store?: string; // e.g., "Tesco", "Sainsbury's"
+  packageSize?: string; // e.g., "500g", "1L"
+  additionalDetails?: string; // e.g., "blue label", "organic"
 }
 
 interface ServingNutrition {
@@ -120,14 +139,22 @@ export const findIngredients = functions
       return;
     }
 
-    const { productName, brand } = req.body;
+    const { productName, brand, maxResults = 1, refinementContext } = req.body;
+    // Note: skipCache parameter not needed here - caching is handled client-side only
+    // maxResults: 1 (default, fastest) or 2-3 for multiple options
+    // refinementContext: optional { store, packageSize, additionalDetails }
 
     if (!productName || typeof productName !== 'string') {
       res.status(400).json({ error: 'productName is required' });
       return;
     }
 
+    const refContext: RefinementContext | undefined = refinementContext;
     console.log(`🔍 Finding ingredients for: ${productName}${brand ? ` (${brand})` : ''}`);
+    if (refContext) {
+      console.log(`🎯 Refinement context: ${JSON.stringify(refContext)}`);
+    }
+    console.log(`📊 Requesting ${maxResults} result(s)`);
 
     try {
       // Build search query prioritizing manufacturer then UK supermarkets
@@ -143,68 +170,70 @@ export const findIngredients = functions
         throw new Error('Gemini API key not configured');
       }
 
+      // Build refinement hint for prompt
+      let refinementHint = '';
+      if (refContext) {
+        const hints: string[] = [];
+        if (refContext.store) hints.push(`from ${refContext.store}`);
+        if (refContext.packageSize) hints.push(`${refContext.packageSize} size`);
+        if (refContext.additionalDetails) hints.push(refContext.additionalDetails);
+        if (hints.length > 0) {
+          refinementHint = `\nUSER SPECIFIED: Looking specifically for ${hints.join(', ')}. Prioritize this exact variant.`;
+        }
+      }
+
       // Use Gemini AI to search and extract nutrition data
-      const prompt = `You are a UK food nutrition data extractor. Search for "${searchQuery}" and extract:
+      const multiResultInstruction = maxResults > 1
+        ? `\nFIND ${maxResults} DIFFERENT VARIANTS if available (e.g., different stores, sizes, or brands). Return array of matches with confidence scores (0-100).`
+        : '';
 
-CRITICAL REQUIREMENTS:
-1. Find nutrition information that shows "per 100g" or "per 100ml" - THIS IS PRIORITY #1
-2. Also find the serving size separately (e.g., "330ml", "150g", "1 bar (51g)")
-   - IMPORTANT: For slices/pieces, ALWAYS include the grams in parentheses (e.g., "1 slice (30g)", NOT "1 slice")
-   - NEVER return just "1 slice" without the grams - look for the weight per slice
-3. Find the ingredients list
-4. Find product name, brand, and barcode if available
+      const prompt = `UK food nutrition extractor. Search: "${searchQuery}"${refinementHint}${multiResultInstruction}
 
-UK-ONLY SEARCH PRIORITY (in order):
-1. FIRST: Search manufacturer's official UK website (.co.uk domain)
-   - Examples: huel.com, cadbury.co.uk, kelloggs.co.uk, graze.com
-2. FALLBACK: Search UK supermarket websites if manufacturer data not found
-   - Tesco, Sainsbury's, Asda, Morrisons, Waitrose, Ocado
+REQUIREMENTS:
+1. Find "per 100g/ml" nutrition (PRIORITY) or "per serving" (convert later)
+2. Serving size with grams: "1 slice (30g)" NOT "1 slice"
+3. Full ingredients list
+4. Product name, brand, barcode
 
-IMPORTANT: Only use UK-based sources. Do not use international manufacturer sites (.com unless UK brand).
+SOURCES (priority order):
+1. Manufacturer UK website (.co.uk)
+2. UK supermarkets: Tesco, Sainsbury's, Asda, Morrisons, Waitrose, Ocado
 
-NUTRITION TABLE PRIORITY:
-1. FIRST: Look for "Typical values per 100g" or "Per 100ml" table
-2. ONLY IF NOT FOUND: Look for "per serving" and the serving size, then I will convert it
+NUTRITION HANDLING:
+- "per 100g" found → use directly in nutrition_per_100g, set nutrition_source="per_100g"
+- Only "per serving" found → use per_serving_nutrition, set nutrition_source="per_serving"
+- Never mix: per-serving data must NOT go in nutrition_per_100g
 
-Return JSON in this EXACT format:
+${maxResults > 1 ? `RETURN JSON ARRAY (${maxResults} matches):
+[{
+  "confidence_score": 0-100,
+  "source_name": "Tesco/Sainsbury's/etc",
+  "found": true,
+  "product_name": "...",
+  "brand": "...",
+  "barcode": "..." or null,
+  "ingredients_text": "...",
+  "nutrition_source": "per_100g" or "per_serving",
+  "nutrition_per_100g": {...} or null,
+  "per_serving_nutrition": {...} or null,
+  "serving_size": "330ml, 1 bar (51g)",
+  "source_url": "..."
+}]` : `RETURN SINGLE JSON:
 {
   "found": true/false,
-  "product_name": "Full product name",
-  "brand": "Brand name",
-  "barcode": "barcode number or null",
-  "ingredients_text": "Complete ingredients list",
+  "product_name": "...",
+  "brand": "...",
+  "barcode": "..." or null,
+  "ingredients_text": "...",
   "nutrition_source": "per_100g" or "per_serving",
-  "nutrition_per_100g": {
-    "calories": number,
-    "protein": number,
-    "carbs": number,
-    "fat": number,
-    "fiber": number or null,
-    "sugar": number or null,
-    "salt": number or null
-  },
-  "per_serving_nutrition": {
-    "calories": number,
-    "protein": number,
-    "carbs": number,
-    "fat": number,
-    "fiber": number or null,
-    "sugar": number or null,
-    "salt": number or null,
-    "serving_size": "e.g. 330ml, 150g, 1 slice (30g) - MUST include grams in parentheses for slices/pieces"
-  } or null,
-  "serving_size": "typical serving e.g. 330ml, 150g, 1 bar (51g), 1 slice (30g) - MUST include grams for slices",
-  "source_url": "URL where data was found"
-}
+  "nutrition_per_100g": {...} or null,
+  "per_serving_nutrition": {...} or null,
+  "serving_size": "330ml, 1 bar (51g)",
+  "source_url": "..."
+}`}
 
-IMPORTANT:
-- If you find "per 100g" nutrition, use it directly for nutrition_per_100g
-- If you only find "per serving", put it in per_serving_nutrition and I'll convert it
-- Calories should be kcal (kilocalories)
-- All weights in grams, volumes in ml
-- Set found=false if you cannot find nutrition data from UK sources
-
-Return ONLY the JSON, no other text.`;
+Nutrition format: {"calories": kcal, "protein": g, "carbs": g, "fat": g, "fiber": g|null, "sugar": g|null, "salt": g|null}
+Return ONLY JSON, no other text.`;
 
       // Call Gemini API
       const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
@@ -234,6 +263,71 @@ Return ONLY the JSON, no other text.`;
 
       const aiData = JSON.parse(jsonText);
 
+      // Handle multi-result response (array)
+      if (Array.isArray(aiData)) {
+        console.log(`📦 Received ${aiData.length} matches from AI`);
+        const processedMatches: ProductMatch[] = [];
+
+        for (const match of aiData) {
+          if (!match.found) continue;
+
+          // Process nutrition for each match
+          let finalPer100g: NutritionPer100g | null = null;
+
+          if (match.nutrition_source === 'per_100g' && match.nutrition_per_100g) {
+            finalPer100g = match.nutrition_per_100g;
+          } else if (match.per_serving_nutrition) {
+            const servingNutrition: ServingNutrition = {
+              ...match.per_serving_nutrition,
+              servingSize: match.per_serving_nutrition.serving_size
+            };
+            finalPer100g = convertToPerHundredGrams(servingNutrition);
+          }
+
+          if (finalPer100g) {
+            processedMatches.push({
+              product_name: match.product_name,
+              brand: match.brand,
+              barcode: match.barcode,
+              ingredients_text: match.ingredients_text,
+              nutrition_per_100g: finalPer100g,
+              serving_size: match.serving_size,
+              source_url: match.source_url,
+              confidence_score: match.confidence_score,
+              source_name: match.source_name
+            });
+          }
+        }
+
+        if (processedMatches.length === 0) {
+          console.log('❌ No valid matches found in multi-result response');
+          res.json({
+            ingredients_found: false,
+            error: 'Could not find this product on UK supermarket websites. Please enter nutrition manually.'
+          });
+          return;
+        }
+
+        // Sort by confidence score (highest first)
+        processedMatches.sort((a, b) => (b.confidence_score || 0) - (a.confidence_score || 0));
+
+        console.log(`✅ Returning ${processedMatches.length} processed matches`);
+        res.json({
+          ingredients_found: true,
+          matches: processedMatches,
+          // Include first match as legacy single result for backwards compatibility
+          product_name: processedMatches[0].product_name,
+          brand: processedMatches[0].brand,
+          barcode: processedMatches[0].barcode,
+          ingredients_text: processedMatches[0].ingredients_text,
+          nutrition_per_100g: processedMatches[0].nutrition_per_100g,
+          serving_size: processedMatches[0].serving_size,
+          source_url: processedMatches[0].source_url
+        });
+        return;
+      }
+
+      // Handle single result response (object)
       if (!aiData.found) {
         console.log('❌ AI could not find product data');
         const response: FindIngredientsResponse = {
@@ -252,6 +346,36 @@ Return ONLY the JSON, no other text.`;
         // PRIORITY 1: Use per-100g data directly
         console.log('✅ Found per-100g nutrition data directly');
         finalPer100g = aiData.nutrition_per_100g;
+
+        // VALIDATION: Check if values seem reasonable for per-100g
+        // Per-100g calories should typically be between 20-900 kcal
+        // If serving size suggests large serving (e.g., 500ml) but calories are very high (e.g., 1600+)
+        // this might be per-serving data mislabeled as per-100g
+        if (finalPer100g) {
+          const calories = finalPer100g.calories || 0;
+          if (calories > 900) {
+            console.log(`⚠️ WARNING: Per-100g calories seem unusually high (${calories} kcal)`);
+            console.log(`⚠️ Serving size: ${finalServingSize}`);
+            console.log(`⚠️ This might be per-serving data mislabeled as per-100g!`);
+
+            // If we have a serving size > 100g/ml, try to convert
+            const servingGrams = parseServingSizeToGrams(finalServingSize || '');
+            if (servingGrams && servingGrams > 100) {
+              console.log(`🔧 Attempting to fix: Converting suspected per-${servingGrams}g data to per-100g`);
+              const ratio = 100 / servingGrams;
+              finalPer100g = {
+                calories: Math.round((finalPer100g.calories || 0) * ratio * 10) / 10,
+                protein: Math.round((finalPer100g.protein || 0) * ratio * 10) / 10,
+                carbs: Math.round((finalPer100g.carbs || 0) * ratio * 10) / 10,
+                fat: Math.round((finalPer100g.fat || 0) * ratio * 10) / 10,
+                fiber: finalPer100g.fiber ? Math.round(finalPer100g.fiber * ratio * 10) / 10 : undefined,
+                sugar: finalPer100g.sugar ? Math.round(finalPer100g.sugar * ratio * 10) / 10 : undefined,
+                salt: finalPer100g.salt ? Math.round(finalPer100g.salt * ratio * 10) / 10 : undefined,
+              };
+              console.log(`✅ Fixed nutrition to proper per-100g: ${JSON.stringify(finalPer100g)}`);
+            }
+          }
+        }
       } else if (aiData.per_serving_nutrition) {
         // FALLBACK: Convert per-serving to per-100g
         console.log('⚠️ Only found per-serving nutrition, converting to per-100g...');

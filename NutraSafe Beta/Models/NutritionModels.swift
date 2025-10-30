@@ -223,7 +223,14 @@ struct BarcodeSearchResponse: Codable {
             sodium: food.sodium,
             servingDescription: food.serving_description,
             ingredients: food.ingredients?.components(separatedBy: ", "),
-            isVerified: food.source_collection != "pendingFoods"
+            isVerified: food.source_collection != "pendingFoods",
+            additives: food.additives, // BUGFIX: Pass additives through
+            additivesDatabaseVersion: food.additivesDatabaseVersion, // BUGFIX: Pass database version
+            processingScore: food.processing_score, // BUGFIX: Pass processing score
+            processingGrade: food.processing_grade, // BUGFIX: Pass processing grade
+            processingLabel: food.processing_label, // BUGFIX: Pass processing label
+            barcode: food.barcode, // BUGFIX: Pass barcode through
+            micronutrientProfile: food.micronutrient_profile // BUGFIX: Pass micronutrient profile
         )
     }
 }
@@ -242,7 +249,15 @@ struct BarcodeFood: Codable {
     let sodium: Double
     let serving_description: String
     let ingredients: String?
+    let additives: [NutritionAdditiveInfo]? // BUGFIX: Added to prevent JSON decode failure
+    let additivesDatabaseVersion: String? // BUGFIX: Added for complete response parsing
+    let processing_score: Int? // BUGFIX: Added for complete response parsing
+    let processing_grade: String? // BUGFIX: Added for complete response parsing
+    let processing_label: String? // BUGFIX: Added for complete response parsing
+    let micronutrient_profile: MicronutrientProfile? // BUGFIX: Added for complete response parsing
     let source_collection: String?
+    let verified_by: String? // BUGFIX: Added for complete response parsing
+    let verified_at: Date? // BUGFIX: Added for complete response parsing
 }
 
 struct PendingFoodContribution: Identifiable {
@@ -1077,9 +1092,9 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
         // DEBUG LOG: print("🔄 DiaryFoodItem.additives: \(self.additives?.count ?? 0) items")
         // DEBUG LOG: print("🔄 DiaryFoodItem.barcode: \(self.barcode ?? "nil")")
 
-        // Extract serving size from servingDescription (e.g., "150g serving" -> 150)
-        let servingSize = extractServingSize(from: servingDescription)
-        // DEBUG LOG: print("🔄 Extracted servingSize: \(servingSize)g")
+        // Extract serving size AND unit from servingDescription (e.g., "500ml serving" -> (500, "ml"))
+        let (servingSize, servingUnit) = extractServingSize(from: servingDescription)
+        // DEBUG LOG: print("🔄 Extracted servingSize: \(servingSize)\(servingUnit)")
 
         // DiaryFoodItem stores total values (servingSize * quantity)
         // We need to reverse-calculate to per-100g base values
@@ -1111,7 +1126,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
             fiber: per100gFiber,
             sugar: per100gSugar,
             sodium: per100gSodium,
-            servingDescription: "\(servingSize.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(servingSize)) : String(servingSize))g",
+            servingDescription: "\(servingSize.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(servingSize)) : String(servingSize))\(servingUnit)",
             servingSizeG: servingSize,
             ingredients: self.ingredients,
             confidence: 1.0, // High confidence for saved items
@@ -1126,35 +1141,50 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
         )
     }
 
-    private func extractServingSize(from servingDesc: String?) -> Double {
-        guard let servingDesc = servingDesc else { return 100.0 }
+    private func extractServingSize(from servingDesc: String?) -> (size: Double, unit: String) {
+        guard let servingDesc = servingDesc else { return (100.0, "g") }
 
-        // Try to extract numbers from serving description like "150g serving", "39.4g", etc.
-        let patterns = [
-            #"(\d+(?:\.\d+)?)\s*g"#,  // Match "150g" or "150 g"
-            #"\((\d+(?:\.\d+)?)\s*g\)"#  // Match "(150g)" in parentheses
+        // Try to extract numbers AND units from serving description
+        // Patterns support: g, kg, mg, ml, L, oz, fl oz, cups, tbsp, tsp
+        let patterns: [(pattern: String, unit: String)] = [
+            (#"(\d+(?:\.\d+)?)\s*ml"#, "ml"),           // Match "500ml" or "500 ml"
+            (#"\((\d+(?:\.\d+)?)\s*ml\)"#, "ml"),       // Match "(500ml)" in parentheses
+            (#"(\d+(?:\.\d+)?)\s*L"#, "L"),             // Match "1L" or "1 L"
+            (#"\((\d+(?:\.\d+)?)\s*L\)"#, "L"),         // Match "(1L)" in parentheses
+            (#"(\d+(?:\.\d+)?)\s*fl\s*oz"#, "fl oz"),   // Match "16 fl oz"
+            (#"(\d+(?:\.\d+)?)\s*oz"#, "oz"),           // Match "16oz" or "16 oz"
+            (#"\((\d+(?:\.\d+)?)\s*oz\)"#, "oz"),       // Match "(16oz)" in parentheses
+            (#"(\d+(?:\.\d+)?)\s*cup[s]?"#, "cup"),     // Match "2 cups" or "1 cup"
+            (#"(\d+(?:\.\d+)?)\s*tbsp"#, "tbsp"),       // Match "3 tbsp"
+            (#"(\d+(?:\.\d+)?)\s*tsp"#, "tsp"),         // Match "2 tsp"
+            (#"(\d+(?:\.\d+)?)\s*kg"#, "kg"),           // Match "1.5kg"
+            (#"(\d+(?:\.\d+)?)\s*mg"#, "mg"),           // Match "500mg"
+            (#"(\d+(?:\.\d+)?)\s*g"#, "g"),             // Match "150g" or "150 g"
+            (#"\((\d+(?:\.\d+)?)\s*g\)"#, "g")          // Match "(150g)" in parentheses
         ]
 
-        for pattern in patterns {
-            if let regex = try? NSRegularExpression(pattern: pattern, options: []),
+        for (pattern, unit) in patterns {
+            if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
                let match = regex.firstMatch(in: servingDesc, options: [], range: NSRange(location: 0, length: servingDesc.count)),
                let range = Range(match.range(at: 1), in: servingDesc) {
-                return Double(String(servingDesc[range])) ?? 100.0
+                if let size = Double(String(servingDesc[range])) {
+                    return (size, unit)
+                }
             }
         }
 
         // If just a number, assume it's grams
         if let number = Double(servingDesc.trimmingCharacters(in: .whitespacesAndNewlines)) {
-            return number
+            return (number, "g")
         }
 
         // Default to 100g if no weight found
-        return 100.0
+        return (100.0, "g")
     }
 
     // Convert DiaryFoodItem to FoodEntry for Firebase sync
     func toFoodEntry(userId: String, mealType: MealType, date: Date) -> FoodEntry {
-        let servingSize = extractServingSize(from: servingDescription)
+        let (servingSize, servingUnit) = extractServingSize(from: servingDescription)
 
         return FoodEntry(
             id: self.id.uuidString,
@@ -1162,7 +1192,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
             foodName: self.name,
             brandName: self.brand,
             servingSize: servingSize * self.quantity,
-            servingUnit: "g",
+            servingUnit: servingUnit,
             calories: Double(self.calories),
             protein: self.protein,
             carbohydrates: self.carbs,

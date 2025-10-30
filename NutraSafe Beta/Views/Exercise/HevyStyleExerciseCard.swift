@@ -210,7 +210,7 @@ struct HevyStyleExerciseCard: View {
 
                     Spacer()
                 }
-                .navigationTitle("Exercise Notes")
+                .navigationTitle("Exercise Notes").keyboardDismissToolbar()
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {

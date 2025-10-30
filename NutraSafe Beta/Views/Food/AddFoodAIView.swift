@@ -702,7 +702,7 @@ struct CombinedMealView: View {
                     .pickerStyle(SegmentedPickerStyle())
                 }
                 .padding(.horizontal)
-                
+
                 // Food List
                 ScrollView {
                     VStack(spacing: 12) {
@@ -761,7 +761,7 @@ struct CombinedMealView: View {
                 
                 Spacer()
             }
-            .navigationTitle("Combined Meal")
+            .navigationTitle("Combined Meal").keyboardDismissToolbar()
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarItems(
                 trailing: Button("Cancel") {
@@ -923,9 +923,9 @@ struct CombinedMealFoodRow: View {
             
             // Nutrition Summary
             HStack {
-                NutrientPill(label: "P", value: food.protein * servingSize, unit: "g", color: .blue)
-                NutrientPill(label: "C", value: food.carbs * servingSize, unit: "g", color: .orange)
-                NutrientPill(label: "F", value: food.fat * servingSize, unit: "g", color: Color.blue)
+                NutrientPillAI(label: "P", value: food.protein * servingSize, unit: "g", color: .blue)
+                NutrientPillAI(label: "C", value: food.carbs * servingSize, unit: "g", color: .orange)
+                NutrientPillAI(label: "F", value: food.fat * servingSize, unit: "g", color: Color.blue)
                 Spacer()
             }
         }
@@ -978,7 +978,7 @@ struct NutrientSummaryMacros: View {
     }
 }
 
-struct NutrientPill: View {
+struct NutrientPillAI: View {
     let label: String
     let value: Double
     let unit: String

@@ -57,34 +57,52 @@ struct FoodDetailViewFromSearch: View {
         self.diaryMealType = diaryMealType
         self.onComplete = onComplete
 
-        // CRITICAL FIX: Initialize serving size from food data immediately
+        // CRITICAL FIX: Initialize serving size AND unit from food data immediately
         var initialServingSize = "100"  // Default fallback
-        let initialUnit = "g"
+        var initialUnit = "g"  // Default fallback
 
-        // Priority 1: Use servingSizeG if available (most reliable)
-        if let sizeG = food.servingSizeG, sizeG > 0 {
-            initialServingSize = String(format: "%.0f", sizeG)
-        // DEBUG LOG: print("🔧 INIT: Using servingSizeG: \(sizeG)g for \(food.name)")
-        } else if let servingDesc = food.servingDescription {
-            // Priority 2: Extract from serving description
-        // DEBUG LOG: print("🔧 INIT: Parsing serving description: '\(servingDesc)' for \(food.name)")
+        print("🔍 SERVING SIZE DEBUG - Initializing FoodDetailViewFromSearch")
+        print("  📦 Food: \(food.name)")
+        print("  📊 Per-100g/ml calories: \(food.calories)")
+        print("  📝 Original servingDescription: '\(food.servingDescription ?? "nil")'")
+        print("  ⚖️  Original servingSizeG: \(food.servingSizeG ?? 0)")
 
-            let patterns = [
-                #"(\d+(?:\.\d+)?)\s*g\s+serving"#,  // Match "150g serving"
-                #"\((\d+(?:\.\d+)?)\s*g\)"#,         // Match "(345 g)"
-                #"^(\d+(?:\.\d+)?)\s*g$"#,           // Match "345g"
-                #"^(\d+(?:\.\d+)?)\s+g$"#            // Match "345 g"
+        // Extract serving size and unit from serving description
+        if let servingDesc = food.servingDescription {
+            // Try to extract numbers AND units from serving description
+            let patterns: [(pattern: String, unit: String)] = [
+                (#"(\d+(?:\.\d+)?)\s*ml"#, "ml"),           // Match "500ml" or "500 ml"
+                (#"(\d+(?:\.\d+)?)\s*L"#, "L"),             // Match "1L" or "1 L"
+                (#"(\d+(?:\.\d+)?)\s*fl\s*oz"#, "fl oz"),   // Match "16 fl oz"
+                (#"(\d+(?:\.\d+)?)\s*oz"#, "oz"),           // Match "16oz" or "16 oz"
+                (#"(\d+(?:\.\d+)?)\s*cup[s]?"#, "cup"),     // Match "2 cups" or "1 cup"
+                (#"(\d+(?:\.\d+)?)\s*tbsp"#, "tbsp"),       // Match "3 tbsp"
+                (#"(\d+(?:\.\d+)?)\s*tsp"#, "tsp"),         // Match "2 tsp"
+                (#"(\d+(?:\.\d+)?)\s*kg"#, "kg"),           // Match "1.5kg"
+                (#"(\d+(?:\.\d+)?)\s*mg"#, "mg"),           // Match "500mg"
+                (#"(\d+(?:\.\d+)?)\s*g"#, "g")              // Match "150g" or "150 g"
             ]
 
-            for pattern in patterns {
-                if let regex = try? NSRegularExpression(pattern: pattern, options: []),
+            for (pattern, unit) in patterns {
+                if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
                    let match = regex.firstMatch(in: servingDesc, options: [], range: NSRange(location: 0, length: servingDesc.count)),
                    let range = Range(match.range(at: 1), in: servingDesc) {
                     initialServingSize = String(servingDesc[range])
-        // DEBUG LOG: print("🔧 INIT: Extracted \(initialServingSize)g from '\(servingDesc)'")
+                    initialUnit = unit
+                    print("  ✅ Extracted: \(initialServingSize)\(unit) from pattern: \(pattern)")
                     break
                 }
             }
+
+            if initialServingSize == "100" && initialUnit == "g" {
+                print("  ⚠️  WARNING: No pattern matched! Using default fallback 100g")
+            }
+        } else if let sizeG = food.servingSizeG, sizeG > 0 {
+            // Fallback: Use servingSizeG if servingDescription not available
+            initialServingSize = String(format: "%.0f", sizeG)
+            print("  🔄 Using servingSizeG fallback: \(sizeG)g")
+        } else {
+            print("  ⚠️  WARNING: No servingDescription or servingSizeG available! Using default 100g")
         }
 
         // Initialize all serving size state variables with the determined value
@@ -92,13 +110,16 @@ struct FoodDetailViewFromSearch: View {
         self._gramsAmount = State(initialValue: initialServingSize)
         self._servingUnit = State(initialValue: initialUnit)
 
+        print("  🎯 Final initialization:")
+        print("     servingAmount: \(initialServingSize)")
+        print("     servingUnit: \(initialUnit)")
+
         // Initialize selected meal from diary meal type if provided
         self._selectedMeal = State(initialValue: diaryMealType ?? "Breakfast")
         self._isEditingMode = State(initialValue: diaryEntryId != nil)
         self._originalMealType = State(initialValue: diaryMealType ?? "")
 
         // Debug logging
-        // DEBUG LOG: print("DEBUG FoodDetailViewFromSearch init:")
         print("  - diaryEntryId: \(String(describing: diaryEntryId))")
         print("  - diaryMealType: \(String(describing: diaryMealType))")
         print("  - isEditingMode will be: \(diaryEntryId != nil)")
@@ -282,7 +303,12 @@ struct FoodDetailViewFromSearch: View {
     private var multiplier: Double {
         currentWeight / 100
     }
-    
+
+    // Check if food has been AI-enhanced
+    private var hasAIEnhancement: Bool {
+        enhancedIngredientsText != nil || enhancedNutrition != nil
+    }
+
     // Extract the actual serving size from split serving amount and unit
     private var actualServingSize: Double {
         // Get the amount and unit
@@ -290,7 +316,14 @@ struct FoodDetailViewFromSearch: View {
         let unit = servingUnit
 
         // Convert the amount in the current unit to grams
-        return convertUnit(value: amount, from: unit, to: "g")
+        let result = convertUnit(value: amount, from: unit, to: "g")
+
+        print("💰 ACTUAL SERVING SIZE CALCULATION:")
+        print("   servingAmount: '\(servingAmount)' -> \(amount)")
+        print("   servingUnit: '\(unit)'")
+        print("   converted to grams: \(result)g")
+
+        return result
     }
 
     // Parse serving description into amount and unit
@@ -392,11 +425,19 @@ struct FoodDetailViewFromSearch: View {
     }
 
     private var perServingMultiplier: Double {
-        actualServingSize / 100
+        let multiplier = actualServingSize / 100
+        print("📐 PER SERVING MULTIPLIER: \(actualServingSize) / 100 = \(multiplier)")
+        return multiplier
     }
-    
+
     private var adjustedCalories: Double {
-        displayFood.calories * perServingMultiplier * quantityMultiplier
+        let result = displayFood.calories * perServingMultiplier * quantityMultiplier
+        print("🔢 ADJUSTED CALORIES CALCULATION:")
+        print("   displayFood.calories (per-100g/ml): \(displayFood.calories)")
+        print("   perServingMultiplier: \(perServingMultiplier)")
+        print("   quantityMultiplier: \(quantityMultiplier)")
+        print("   RESULT: \(displayFood.calories) × \(perServingMultiplier) × \(quantityMultiplier) = \(result) kcal")
+        return result
     }
 
     private var adjustedProtein: Double {
@@ -1320,7 +1361,9 @@ struct FoodDetailViewFromSearch: View {
                 }
                 .padding(.horizontal, 16)
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationBarTitleDisplayMode(.inline)
+            .keyboardDismissToolbar()
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Close") {
@@ -1755,7 +1798,7 @@ struct FoodDetailViewFromSearch: View {
             fiber: totalFiber,
             sugar: totalSugar,
             sodium: totalSodium,
-            servingDescription: "\(String(format: "%.0f", servingSize))g serving",
+            servingDescription: "\(String(format: "%.0f", servingSize))\(servingUnit) serving",
             quantity: quantityMultiplier,
             time: selectedMeal,
             processedScore: cachedNutraSafeGrade?.grade ?? "",
@@ -2028,8 +2071,20 @@ struct FoodDetailViewFromSearch: View {
                     .lineLimit(nil)
                     .multilineTextAlignment(.center)
 
+                // Daily limit indicator
+                let remainingRequests = IngredientFinderService.shared.getRemainingDailyRequests()
+                if remainingRequests <= 3 {
+                    Text("⚠️ \(remainingRequests) AI verifications remaining today")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(remainingRequests == 0 ? .red : .orange)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(remainingRequests == 0 ? Color.red.opacity(0.1) : Color.orange.opacity(0.1))
+                        .cornerRadius(8)
+                }
+
                 HStack(spacing: 12) {
-                    // AI Enhancement Button
+                    // AI Enhancement/Reverify Button
                     Button(action: {
                         enhanceWithAI()
                     }) {
@@ -2039,15 +2094,15 @@ struct FoodDetailViewFromSearch: View {
                                     .scaleEffect(0.8)
                                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
                             } else {
-                                Image(systemName: "sparkles")
-                                Text("Enhance with AI")
+                                Image(systemName: hasAIEnhancement ? "arrow.clockwise" : "sparkles")
+                                Text(hasAIEnhancement ? "Reverify with AI" : "Enhance with AI")
                                     .font(.system(size: 14, weight: .medium))
                             }
                         }
                         .foregroundColor(.white)
                         .padding(.vertical, 10)
                         .padding(.horizontal, 16)
-                        .background(isEnhancing ? Color.gray : Color.blue)
+                        .background(isEnhancing ? Color.gray : (hasAIEnhancement ? Color.purple : Color.blue))
                         .cornerRadius(8)
                     }
                     .disabled(isEnhancing)
@@ -2151,14 +2206,22 @@ struct FoodDetailViewFromSearch: View {
     // Enhance food data using AI ingredient finder
     private func enhanceWithAI() {
         isEnhancing = true
-        // DEBUG LOG: print("🤖 Starting AI enhancement for: \(food.name), brand: \(food.brand ?? "none")")
+        let isReverifying = hasAIEnhancement
+
+        if isReverifying {
+            print("🔄 Reverifying AI data for: \(food.name) (skipping cache)")
+        } else {
+            print("🤖 Starting AI enhancement for: \(food.name)")
+        }
 
         Task {
             do {
                 // Call the AI ingredient finder service
+                // Skip cache if we're reverifying (user wants fresh data)
                 let result = try await IngredientFinderService.shared.findIngredients(
                     productName: food.name,
-                    brand: food.brand
+                    brand: food.brand,
+                    skipCache: isReverifying
                 )
 
         // DEBUG LOG: print("🔍 AI Search Result:")
