@@ -664,9 +664,9 @@ struct FoodScoreRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            // Score indicator
+            // Frequency indicator
             Circle()
-                .fill(scoreColor)
+                .fill(frequencyColor)
                 .frame(width: 10, height: 10)
                 .padding(.top, 6)
 
@@ -694,18 +694,24 @@ struct FoodScoreRow: View {
 
             Spacer()
 
-            Text("\(Int(score.totalScore))")
+            Text("\(frequencyPercentage)%")
                 .font(.caption)
                 .fontWeight(.semibold)
-                .foregroundColor(scoreColor)
+                .foregroundColor(frequencyColor)
         }
         .padding(.vertical, 8)
     }
 
-    private var scoreColor: Color {
-        if score.totalScore >= 100 {
+    // Calculate frequency percentage based on occurrences
+    private var frequencyPercentage: Int {
+        // Convert totalScore (0-100+) to a capped percentage
+        return min(100, Int(score.totalScore))
+    }
+
+    private var frequencyColor: Color {
+        if frequencyPercentage >= 80 {
             return .red
-        } else if score.totalScore >= 50 {
+        } else if frequencyPercentage >= 40 {
             return .orange
         } else {
             return .yellow
@@ -718,9 +724,9 @@ struct IngredientScoreRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            // Score indicator
+            // Frequency indicator
             Circle()
-                .fill(scoreColor)
+                .fill(frequencyColor)
                 .frame(width: 10, height: 10)
                 .padding(.top, 6)
 
@@ -749,18 +755,24 @@ struct IngredientScoreRow: View {
 
             Spacer()
 
-            Text("\(Int(score.totalScore))")
+            Text("\(frequencyPercentage)%")
                 .font(.caption)
                 .fontWeight(.semibold)
-                .foregroundColor(scoreColor)
+                .foregroundColor(frequencyColor)
         }
         .padding(.vertical, 8)
     }
 
-    private var scoreColor: Color {
-        if score.totalScore >= 100 {
+    // Calculate frequency percentage based on occurrences
+    private var frequencyPercentage: Int {
+        // Convert totalScore (0-100+) to a capped percentage
+        return min(100, Int(score.totalScore))
+    }
+
+    private var frequencyColor: Color {
+        if frequencyPercentage >= 80 {
             return .red
-        } else if score.totalScore >= 50 {
+        } else if frequencyPercentage >= 40 {
             return .orange
         } else {
             return .yellow
@@ -790,8 +802,8 @@ struct ReactionAllergenGroup: View {
 
                     Spacer()
 
-                    // Score badge
-                    Text("\(categoryScore)")
+                    // Frequency badge
+                    Text("\(min(100, categoryScore))%")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundStyle(
                             LinearGradient(
