@@ -876,38 +876,172 @@ struct ReactionAllergenGroup: View {
     }
 }
 
-// MARK: - PDF Export Sheet Placeholder
+// MARK: - PDF Export Sheet
 
 struct PDFExportSheet: View {
     let entry: ReactionLogEntry
     @Environment(\.dismiss) private var dismiss
+    @State private var isGenerating = false
+    @State private var pdfURL: URL?
+    @State private var showShareSheet = false
+    @State private var errorMessage: String?
 
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
-                Image(systemName: "doc.text.fill")
-                    .font(.system(size: 60))
-                    .foregroundColor(.blue)
+            VStack(spacing: 30) {
+                if isGenerating {
+                    ProgressView("Generating PDF...")
+                        .font(.headline)
+                        .padding()
+                } else if let error = errorMessage {
+                    VStack(spacing: 20) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 60))
+                            .foregroundColor(.red)
 
-                Text("PDF Export")
-                    .font(.title2)
-                    .fontWeight(.semibold)
+                        Text("Export Failed")
+                            .font(.title2)
+                            .fontWeight(.semibold)
 
-                Text("PDF export functionality will be implemented in ReactionPDFExporter.swift")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding()
+                        Text(error)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
 
-                Button("Close") {
-                    dismiss()
+                        Button("Try Again") {
+                            errorMessage = nil
+                            generatePDF()
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Button("Close") {
+                            dismiss()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                } else if pdfURL != nil {
+                    VStack(spacing: 20) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 60))
+                            .foregroundColor(.green)
+
+                        Text("PDF Ready")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+
+                        Text("Your reaction analysis report has been generated successfully.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+
+                        Button(action: {
+                            showShareSheet = true
+                        }) {
+                            Label("Share Report", systemImage: "square.and.arrow.up")
+                                .font(.headline)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .padding()
+
+                        Button("Done") {
+                            dismiss()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                } else {
+                    VStack(spacing: 20) {
+                        Image(systemName: "doc.text.fill")
+                            .font(.system(size: 60))
+                            .foregroundColor(.blue)
+
+                        Text("Export Reaction Report")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+
+                        Text("Generate a detailed PDF report of this reaction analysis to share with your healthcare provider or nutritionist.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            Label("Reaction details and timeline", systemImage: "info.circle")
+                            Label("Trigger analysis results", systemImage: "chart.bar")
+                            Label("Top foods and ingredients", systemImage: "list.bullet")
+                            Label("Professional formatting", systemImage: "doc.richtext")
+                        }
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+
+                        Button(action: {
+                            generatePDF()
+                        }) {
+                            Label("Generate PDF", systemImage: "doc.badge.plus")
+                                .font(.headline)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .padding()
+
+                        Button("Cancel") {
+                            dismiss()
+                        }
+                        .buttonStyle(.bordered)
+                    }
                 }
-                .buttonStyle(.bordered)
             }
+            .padding()
             .navigationTitle("Export Report")
             .navigationBarTitleDisplayMode(.inline)
+            .sheet(isPresented: $showShareSheet) {
+                if let url = pdfURL {
+                    ShareSheet(items: [url])
+                }
+            }
+        }
+        .onDisappear {
+            // Clean up temporary file when sheet is dismissed
+            if let url = pdfURL {
+                try? FileManager.default.removeItem(at: url)
+            }
         }
     }
+
+    private func generatePDF() {
+        isGenerating = true
+        errorMessage = nil
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            if let url = ReactionPDFExporter.exportReactionReport(entry: entry) {
+                DispatchQueue.main.async {
+                    self.pdfURL = url
+                    self.isGenerating = false
+                }
+            } else {
+                DispatchQueue.main.async {
+                    self.errorMessage = "Failed to generate PDF. Please try again."
+                    self.isGenerating = false
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Share Sheet
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 // MARK: - History Detail Views (Placeholders)

@@ -21,6 +21,8 @@ struct AddFoodBarcodeView: View {
     @State private var isSearching = false
     @State private var errorMessage: String?
     @State private var showingContributionForm = false
+    @State private var scanFailed = false
+    @State private var scannerKey = UUID() // Force scanner reset
     
     var body: some View {
         VStack(spacing: 0) {
@@ -86,12 +88,53 @@ struct AddFoodBarcodeView: View {
                 }
                 .padding()
 
+            } else if scanFailed {
+                // Scan failed state - show error and retry button
+                VStack(spacing: 20) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 50))
+                        .foregroundColor(.red)
+                        .padding(.top, 40)
+
+                    Text("Product Not Found")
+                        .font(.system(size: 20, weight: .semibold))
+
+                    if let errorMessage = errorMessage {
+                        Text(errorMessage)
+                            .font(.system(size: 16))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                    }
+
+                    Button(action: {
+                        resetScanner()
+                    }) {
+                        HStack {
+                            Image(systemName: "arrow.clockwise")
+                            Text("Try Again")
+                        }
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding()
+                        .frame(maxWidth: 200)
+                        .background(Color.blue)
+                        .cornerRadius(10)
+                    }
+                    .padding(.top, 20)
+
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(UIColor.systemBackground))
+
             } else {
                 // Camera scanning view
                 ZStack {
                     ModernBarcodeScanner(onBarcodeScanned: { barcode in
                         handleBarcodeScanned(barcode)
                     }, isSearching: $isSearching)
+                        .id(scannerKey) // Force recreate scanner when key changes
 
                     // Overlay UI
                     VStack {
@@ -109,14 +152,6 @@ struct AddFoodBarcodeView: View {
                                 Text("Position barcode within the frame")
                                     .font(.system(size: 16, weight: .medium))
                                     .foregroundColor(.white)
-
-                                if let errorMessage = errorMessage {
-                                    Text(errorMessage)
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.red)
-                                        .multilineTextAlignment(.center)
-                                        .padding(.horizontal, 32)
-                                }
                             }
                             .frame(height: 120)
                             .frame(maxWidth: .infinity)
@@ -164,6 +199,17 @@ struct AddFoodBarcodeView: View {
         }
     }
     
+    // MARK: - Scanner Reset
+    private func resetScanner() {
+        // Reset all state
+        scanFailed = false
+        errorMessage = nil
+        isSearching = false
+
+        // Generate new key to force scanner recreation (clears debounce)
+        scannerKey = UUID()
+    }
+
     // MARK: - Barcode Handling
     private func handleBarcodeScanned(_ barcode: String) {
         guard !isSearching else { return }
@@ -186,10 +232,14 @@ struct AddFoodBarcodeView: View {
                             barcode: barcode
                         )
                     } else {
-                        errorMessage = response.message ?? "Product not found. Try scanning again or search manually."
+                        // Show failure state
+                        errorMessage = response.message ?? "Product not found in our database."
+                        scanFailed = true
                     }
                 case .failure(let error):
-                    errorMessage = "Failed to search product. Try scanning again or search manually."
+                    // Show failure state
+                    errorMessage = "Unable to search for this product. Please check your internet connection and try again."
+                    scanFailed = true
                     print("Barcode search error: \(error)")
                 }
             }

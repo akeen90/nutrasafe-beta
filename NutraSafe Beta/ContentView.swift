@@ -3164,6 +3164,7 @@ struct AddWeightView: View {
                 // Only use this for camera - library uses MultiImagePicker
                 if pickerType == .camera {
                     ImagePicker(selectedImage: nil, sourceType: .camera) { image in
+                        activePickerType = nil // Dismiss picker
                         if let image = image, selectedPhotos.count < 3 {
                             print("✅ AddWeightView: Photo from camera, adding to array (current count: \(selectedPhotos.count))")
                             selectedPhotos.append(IdentifiableImage(image: image, url: nil))
@@ -3592,6 +3593,7 @@ struct EditWeightView: View {
                 // Only use this for camera - library uses MultiImagePicker
                 if pickerType == .camera {
                     ImagePicker(selectedImage: nil, sourceType: .camera) { image in
+                        activePickerType = nil // Dismiss picker
                         if let image = image, selectedPhotos.count < 3 {
                             print("✅ EditWeightView: Photo from camera, adding to array (current count: \(selectedPhotos.count))")
                             selectedPhotos.append(IdentifiableImage(image: image, url: nil))
@@ -6842,6 +6844,7 @@ struct IngredientCameraView: View {
         }
         .sheet(isPresented: $showingImagePicker) {
             ImagePicker(selectedImage: $capturedImage, sourceType: .camera) { image in
+                showingImagePicker = false // Dismiss picker
                 capturedImage = image
             }
         }

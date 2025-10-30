@@ -123,6 +123,7 @@ struct AddFoodAIView: View {
         .padding(.top, 20)
         .sheet(isPresented: $showingImagePicker) {
             ImagePicker(selectedImage: $selectedImage, sourceType: .camera) { image in
+                showingImagePicker = false
                 if let image = image {
                     analyzeImage(image)
                 }
@@ -358,12 +359,15 @@ struct ImagePicker: UIViewControllerRepresentable {
                 parent.selectedImage?.wrappedValue = image
                 parent.onImageSelected(image)
             }
-            picker.dismiss(animated: true)
+            // Don't dismiss here - let parent view control dismissal via sheet binding
+            // This allows async operations (like photo upload) to complete before dismissal
+            // picker.dismiss(animated: true)
         }
 
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
             parent.onImageSelected(nil)
-            picker.dismiss(animated: true)
+            // Don't dismiss here - let parent view control dismissal via sheet binding
+            // picker.dismiss(animated: true)
         }
     }
 }
