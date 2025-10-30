@@ -201,7 +201,7 @@ class ReactionPDFExporter {
 
         "Food Name".draw(at: CGPoint(x: 70, y: currentY), withAttributes: tableHeaderAttributes)
         "Occurrences".draw(at: CGPoint(x: 300, y: currentY), withAttributes: tableHeaderAttributes)
-        "Frequency %".draw(at: CGPoint(x: 450, y: currentY), withAttributes: tableHeaderAttributes)
+        "Pattern %".draw(at: CGPoint(x: 450, y: currentY), withAttributes: tableHeaderAttributes)
         currentY += 20
 
         // Foods
@@ -218,7 +218,10 @@ class ReactionPDFExporter {
 
             food.foodName.draw(at: CGPoint(x: 70, y: currentY), withAttributes: foodAttributes)
             "\(food.occurrences)× (\(food.occurrencesWithin24h)× <24h)".draw(at: CGPoint(x: 300, y: currentY), withAttributes: foodAttributes)
-            "\(min(100, Int(food.totalScore)))%".draw(at: CGPoint(x: 450, y: currentY), withAttributes: foodAttributes)
+
+            // Only show pattern percentage if there's cross-reaction data
+            let patternText = food.crossReactionFrequency > 0 ? "\(Int(food.crossReactionFrequency))%" : "—"
+            patternText.draw(at: CGPoint(x: 450, y: currentY), withAttributes: foodAttributes)
             currentY += 18
         }
 
@@ -252,7 +255,7 @@ class ReactionPDFExporter {
 
         "Ingredient".draw(at: CGPoint(x: 70, y: currentY), withAttributes: tableHeaderAttributes)
         "Occurrences".draw(at: CGPoint(x: 300, y: currentY), withAttributes: tableHeaderAttributes)
-        "Frequency %".draw(at: CGPoint(x: 450, y: currentY), withAttributes: tableHeaderAttributes)
+        "Pattern %".draw(at: CGPoint(x: 450, y: currentY), withAttributes: tableHeaderAttributes)
         currentY += 20
 
         // Ingredients
@@ -269,7 +272,10 @@ class ReactionPDFExporter {
 
             ingredient.ingredientName.draw(at: CGPoint(x: 70, y: currentY), withAttributes: ingredientAttributes)
             "\(ingredient.occurrences)×".draw(at: CGPoint(x: 300, y: currentY), withAttributes: ingredientAttributes)
-            "\(min(100, Int(ingredient.totalScore)))%".draw(at: CGPoint(x: 450, y: currentY), withAttributes: ingredientAttributes)
+
+            // Only show pattern percentage if there's cross-reaction data
+            let patternText = ingredient.crossReactionFrequency > 0 ? "\(Int(ingredient.crossReactionFrequency))%" : "—"
+            patternText.draw(at: CGPoint(x: 450, y: currentY), withAttributes: ingredientAttributes)
             currentY += 18
         }
 

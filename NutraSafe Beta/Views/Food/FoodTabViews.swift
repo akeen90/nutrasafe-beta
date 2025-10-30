@@ -2041,62 +2041,93 @@ struct FoodReactionSearchView: View {
     @State private var searchTask: Task<Void, Never>?
     @FocusState private var isSearchFieldFocused: Bool
     @State private var showingManualEntry = false
+    @State private var selectedTab = 0
+
+    // Diary entries
+    @State private var diaryEntries: [FoodEntry] = []
+    @State private var isLoadingDiary = false
 
     var body: some View {
         VStack(spacing: 0) {
-            // Search Bar
-            VStack(spacing: 12) {
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.secondary)
-
-                    TextField("Search foods...", text: $searchText)
-                        .textFieldStyle(PlainTextFieldStyle())
-                        .autocorrectionDisabled(true)
-                        .textInputAutocapitalization(.never)
-                        .focused($isSearchFieldFocused)
-                        .onChange(of: searchText, perform: { newValue in
-                            performLiveSearch(query: newValue)
-                        })
-                        .onSubmit {
-                            performSearch()
-                        }
-
-                    if !searchText.isEmpty {
-                        Button(action: { searchText = "" }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
-
-                // Action Buttons
-                HStack(spacing: 12) {
-                    Button(action: {
-                        showingManualEntry = true
-                    }) {
-                        HStack {
-                            Image(systemName: "plus.circle")
-                            Text("Add Manually")
-                        }
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.green)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.green.opacity(0.1))
-                        .cornerRadius(20)
-                    }
-
-                    Spacer()
-                }
-                .padding(.horizontal, 16)
+            // Tab Picker
+            Picker("", selection: $selectedTab) {
+                Text("Search").tag(0)
+                Text("From Diary").tag(1)
+                Text("Add Manually").tag(2)
             }
+            .pickerStyle(SegmentedPickerStyle())
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 8)
+
+            // Content based on selected tab
+            if selectedTab == 0 {
+                searchTabContent
+            } else if selectedTab == 1 {
+                diaryTabContent
+            } else {
+                manualEntryTab
+            }
+        }
+        .navigationTitle("Select Food")
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarItems(
+            leading: Button("Cancel") {
+                dismiss()
+            }
+        )
+        .sheet(isPresented: $showingManualEntry) {
+            NavigationView {
+                ManualReactionFoodEntryView(prefilledName: searchText) { manualFood in
+                    selectedFood = manualFood
+                    DispatchQueue.main.async {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .onAppear {
+            loadRecentDiaryEntries()
+        }
+        .onDisappear {
+            searchTask?.cancel()
+        }
+    }
+
+    // MARK: - Search Tab Content
+
+    private var searchTabContent: some View {
+        VStack(spacing: 0) {
+            // Search Bar
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.secondary)
+
+                TextField("Search foods...", text: $searchText)
+                    .textFieldStyle(PlainTextFieldStyle())
+                    .autocorrectionDisabled(true)
+                    .textInputAutocapitalization(.never)
+                    .focused($isSearchFieldFocused)
+                    .onChange(of: searchText, perform: { newValue in
+                        performLiveSearch(query: newValue)
+                    })
+                    .onSubmit {
+                        performSearch()
+                    }
+
+                if !searchText.isEmpty {
+                    Button(action: { searchText = "" }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color(.systemGray6))
+            .cornerRadius(12)
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
 
             // Results
             if isSearching {
@@ -2118,7 +2149,7 @@ struct FoodReactionSearchView: View {
                             .font(.headline)
                             .foregroundColor(.secondary)
 
-                        Text("Try different keywords or add manually")
+                        Text("Try different keywords")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
@@ -2166,31 +2197,182 @@ struct FoodReactionSearchView: View {
                 }
             }
         }
-        .navigationTitle("Select Food")
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarItems(
-            leading: Button("Cancel") {
-                dismiss()
-            }
-        )
-        .sheet(isPresented: $showingManualEntry) {
-            NavigationView {
-                ManualReactionFoodEntryView(prefilledName: searchText) { manualFood in
-                    selectedFood = manualFood
-                    DispatchQueue.main.async {
-                        dismiss()
+        .onAppear {
+            isSearchFieldFocused = true
+        }
+    }
+
+    // MARK: - Diary Tab Content
+
+    private var diaryTabContent: some View {
+        VStack(spacing: 0) {
+            if isLoadingDiary {
+                VStack {
+                    Spacer()
+                    ProgressView("Loading diary entries...")
+                        .progressViewStyle(CircularProgressViewStyle())
+                    Spacer()
+                }
+            } else if diaryEntries.isEmpty {
+                VStack {
+                    Spacer()
+                    VStack(spacing: 16) {
+                        Image(systemName: "book.closed")
+                            .font(.system(size: 48))
+                            .foregroundColor(.secondary)
+
+                        Text("No recent diary entries")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+
+                        Text("Add foods to your diary to see them here")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
                     }
+                    Spacer()
+                }
+                .padding()
+            } else {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        // Group entries by date
+                        ForEach(groupedDiaryEntries(), id: \.date) { group in
+                            VStack(alignment: .leading, spacing: 8) {
+                                // Date header
+                                Text(dateFormatter.string(from: group.date))
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(.secondary)
+                                    .padding(.horizontal, 16)
+                                    .padding(.top, 12)
+                                    .padding(.bottom, 4)
+
+                                // Foods for this date
+                                ForEach(group.entries) { entry in
+                                    DiaryEntryRowForReaction(
+                                        entry: entry,
+                                        onSelect: {
+                                            selectDiaryEntry(entry)
+                                        }
+                                    )
+                                    .padding(.horizontal, 16)
+                                }
+                            }
+                        }
+                    }
+                    .padding(.top, 8)
                 }
             }
         }
-        // Live scanner removed - feature deprecated
-        .onAppear {
-            // Automatically focus the search field when the view appears
-            isSearchFieldFocused = true
+    }
+
+    // MARK: - Manual Entry Tab
+
+    private var manualEntryTab: some View {
+        VStack {
+            Spacer()
+            VStack(spacing: 24) {
+                Image(systemName: "square.and.pencil")
+                    .font(.system(size: 60))
+                    .foregroundColor(.green)
+
+                Text("Add Food Manually")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+
+                Text("Enter custom food details for foods not in our database")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+
+                Button(action: {
+                    showingManualEntry = true
+                }) {
+                    HStack {
+                        Image(systemName: "plus.circle.fill")
+                        Text("Add Manual Entry")
+                    }
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 32)
+                    .padding(.vertical, 14)
+                    .background(Color.green)
+                    .cornerRadius(12)
+                }
+            }
+            Spacer()
         }
-        .onDisappear {
-            searchTask?.cancel()
+        .padding()
+    }
+
+    // MARK: - Helper Methods
+
+    private func loadRecentDiaryEntries() {
+        isLoadingDiary = true
+
+        Task {
+            do {
+                // Fetch last 14 days of diary entries
+                let endDate = Date()
+                let startDate = Calendar.current.date(byAdding: .day, value: -14, to: endDate) ?? endDate
+
+                let entries = try await DiaryDataManager.shared.getMealsInTimeRange(from: startDate, to: endDate)
+
+                await MainActor.run {
+                    self.diaryEntries = entries.sorted { $0.date > $1.date }
+                    self.isLoadingDiary = false
+                }
+            } catch {
+                print("Error loading diary entries: \(error)")
+                await MainActor.run {
+                    self.isLoadingDiary = false
+                }
+            }
         }
+    }
+
+    private func groupedDiaryEntries() -> [(date: Date, entries: [FoodEntry])] {
+        let calendar = Calendar.current
+        let grouped = Dictionary(grouping: diaryEntries) { entry in
+            calendar.startOfDay(for: entry.date)
+        }
+
+        return grouped.map { (date: $0.key, entries: $0.value) }
+            .sorted { $0.date > $1.date }
+    }
+
+    private func selectDiaryEntry(_ entry: FoodEntry) {
+        // Convert FoodEntry to FoodSearchResult
+        let searchResult = FoodSearchResult(
+            id: entry.id,
+            name: entry.foodName,
+            brand: entry.brandName,
+            calories: entry.calories,
+            protein: entry.protein,
+            carbs: entry.carbohydrates,
+            fat: entry.fat,
+            fiber: entry.fiber ?? 0,
+            sugar: entry.sugar ?? 0,
+            sodium: entry.sodium ?? 0,
+            servingDescription: "\(entry.servingSize) \(entry.servingUnit)",
+            ingredients: entry.ingredients,
+            confidence: 1.0,
+            isVerified: true
+        )
+
+        selectedFood = searchResult
+        DispatchQueue.main.async {
+            dismiss()
+        }
+    }
+
+    private var dateFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        formatter.doesRelativeDateFormatting = true
+        return formatter
     }
 
     private func performLiveSearch(query: String) {
@@ -2253,6 +2435,92 @@ struct FoodReactionSearchView: View {
         dismiss()
     }
 
+}
+
+// MARK: - Diary Entry Row for Reactions
+struct DiaryEntryRowForReaction: View {
+    let entry: FoodEntry
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(entry.foodName)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.leading)
+
+                    if let brand = entry.brandName {
+                        Text(brand)
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
+
+                    HStack(spacing: 12) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "flame.fill")
+                                .font(.system(size: 10))
+                            Text("\(Int(entry.calories)) cal")
+                        }
+                        .font(.system(size: 12))
+                        .foregroundColor(.orange)
+
+                        Text("\(entry.servingSize.formatted()) \(entry.servingUnit)")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+
+                        if let ingredients = entry.ingredients, !ingredients.isEmpty {
+                            HStack(spacing: 4) {
+                                Image(systemName: "list.bullet")
+                                    .font(.system(size: 10))
+                                Text("\(ingredients.count)")
+                            }
+                            .font(.system(size: 12))
+                            .foregroundColor(.blue)
+                        }
+                    }
+                }
+
+                Spacer()
+
+                // Time display
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(timeFormatter.string(from: entry.date))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+
+                    Text(entry.mealType.rawValue)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(Color.blue.opacity(0.1))
+                        .cornerRadius(6)
+                }
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 16)
+            .background(Color(.systemBackground))
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color(.separator), lineWidth: 1)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    private var timeFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        formatter.dateStyle = .none
+        return formatter
+    }
 }
 
 // MARK: - Food Search Result Row for Reactions

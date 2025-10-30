@@ -539,8 +539,9 @@ struct ReactionLogDetailView: View {
         }
 
         let allergenGroups = allergenDict.map { (category, ingredients) -> (category: String, maxScore: Int, ingredients: [WeightedIngredientScore]) in
-            let maxScore = ingredients.map { Int($0.totalScore) }.max() ?? 0
-            return (category, maxScore, ingredients.sorted { $0.totalScore > $1.totalScore })
+            // Use maximum cross-reaction frequency for the category
+            let maxScore = ingredients.map { Int($0.crossReactionFrequency) }.max() ?? 0
+            return (category, maxScore, ingredients.sorted { $0.crossReactionFrequency > $1.crossReactionFrequency })
         }.sorted { $0.maxScore > $1.maxScore }
 
         return (allergenGroups, otherIngredients.sorted { $0.totalScore > $1.totalScore })
@@ -664,11 +665,13 @@ struct FoodScoreRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            // Frequency indicator
-            Circle()
-                .fill(frequencyColor)
-                .frame(width: 10, height: 10)
-                .padding(.top, 6)
+            // Frequency indicator (only show if we have cross-reaction data)
+            if score.crossReactionFrequency > 0 {
+                Circle()
+                    .fill(frequencyColor)
+                    .frame(width: 10, height: 10)
+                    .padding(.top, 6)
+            }
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(score.foodName)
@@ -694,24 +697,27 @@ struct FoodScoreRow: View {
 
             Spacer()
 
-            Text("\(frequencyPercentage)%")
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundColor(frequencyColor)
+            // Only show cross-reaction percentage if there are 2+ reactions (crossReactionFrequency > 0)
+            if score.crossReactionFrequency > 0 {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("\(Int(score.crossReactionFrequency))%")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(frequencyColor)
+                    Text("of reactions")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                }
+            }
         }
         .padding(.vertical, 8)
     }
 
-    // Calculate frequency percentage based on occurrences
-    private var frequencyPercentage: Int {
-        // Convert totalScore (0-100+) to a capped percentage
-        return min(100, Int(score.totalScore))
-    }
-
     private var frequencyColor: Color {
-        if frequencyPercentage >= 80 {
+        let percentage = Int(score.crossReactionFrequency)
+        if percentage >= 80 {
             return .red
-        } else if frequencyPercentage >= 40 {
+        } else if percentage >= 40 {
             return .orange
         } else {
             return .yellow
@@ -724,11 +730,13 @@ struct IngredientScoreRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            // Frequency indicator
-            Circle()
-                .fill(frequencyColor)
-                .frame(width: 10, height: 10)
-                .padding(.top, 6)
+            // Frequency indicator (only show if we have cross-reaction data)
+            if score.crossReactionFrequency > 0 {
+                Circle()
+                    .fill(frequencyColor)
+                    .frame(width: 10, height: 10)
+                    .padding(.top, 6)
+            }
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(score.ingredientName)
@@ -755,24 +763,27 @@ struct IngredientScoreRow: View {
 
             Spacer()
 
-            Text("\(frequencyPercentage)%")
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundColor(frequencyColor)
+            // Only show cross-reaction percentage if there are 2+ reactions (crossReactionFrequency > 0)
+            if score.crossReactionFrequency > 0 {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("\(Int(score.crossReactionFrequency))%")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(frequencyColor)
+                    Text("of reactions")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                }
+            }
         }
         .padding(.vertical, 8)
     }
 
-    // Calculate frequency percentage based on occurrences
-    private var frequencyPercentage: Int {
-        // Convert totalScore (0-100+) to a capped percentage
-        return min(100, Int(score.totalScore))
-    }
-
     private var frequencyColor: Color {
-        if frequencyPercentage >= 80 {
+        let percentage = Int(score.crossReactionFrequency)
+        if percentage >= 80 {
             return .red
-        } else if frequencyPercentage >= 40 {
+        } else if percentage >= 40 {
             return .orange
         } else {
             return .yellow
@@ -802,16 +813,22 @@ struct ReactionAllergenGroup: View {
 
                     Spacer()
 
-                    // Frequency badge
-                    Text("\(min(100, categoryScore))%")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [Color.red, Color.red.opacity(0.8)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
+                    // Frequency badge (only show if there's cross-reaction data)
+                    if categoryScore > 0 {
+                        VStack(spacing: 2) {
+                            Text("\(categoryScore)%")
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [Color.red, Color.red.opacity(0.8)],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                            Text("of reactions")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(.red.opacity(0.7))
+                        }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .background(
@@ -823,6 +840,7 @@ struct ReactionAllergenGroup: View {
                             }
                         )
                         .shadow(color: Color.red.opacity(0.15), radius: 3, x: 0, y: 2)
+                    }
                 }
             }
             .buttonStyle(.plain)

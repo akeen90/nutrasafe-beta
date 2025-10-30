@@ -66,12 +66,15 @@ struct WeightedFoodScore: Identifiable, Codable {
     let lastSeenHoursBeforeReaction: Double
     let contributingMealIds: [String]  // Diary meal IDs that contributed
 
+    // Cross-reaction analysis
+    let crossReactionFrequency: Double  // Percentage: (reactions with this food / total reactions) × 100
+
     // Breakdown by time window
     let occurrencesWithin24h: Int
     let occurrencesBetween24_48h: Int
     let occurrencesBetween48_72h: Int
 
-    init(foodName: String, totalScore: Double, recencyScore: Double, frequencyScore: Double, occurrences: Int, lastSeenHoursBeforeReaction: Double, contributingMealIds: [String], occurrencesWithin24h: Int, occurrencesBetween24_48h: Int, occurrencesBetween48_72h: Int) {
+    init(foodName: String, totalScore: Double, recencyScore: Double, frequencyScore: Double, occurrences: Int, lastSeenHoursBeforeReaction: Double, contributingMealIds: [String], crossReactionFrequency: Double, occurrencesWithin24h: Int, occurrencesBetween24_48h: Int, occurrencesBetween48_72h: Int) {
         self.id = foodName
         self.foodName = foodName
         self.totalScore = totalScore
@@ -80,6 +83,7 @@ struct WeightedFoodScore: Identifiable, Codable {
         self.occurrences = occurrences
         self.lastSeenHoursBeforeReaction = lastSeenHoursBeforeReaction
         self.contributingMealIds = contributingMealIds
+        self.crossReactionFrequency = crossReactionFrequency
         self.occurrencesWithin24h = occurrencesWithin24h
         self.occurrencesBetween24_48h = occurrencesBetween24_48h
         self.occurrencesBetween48_72h = occurrencesBetween48_72h
@@ -100,6 +104,9 @@ struct WeightedIngredientScore: Identifiable, Codable {
     let contributingFoodNames: [String]  // Which foods contained this ingredient
     let contributingMealIds: [String]
 
+    // Cross-reaction analysis
+    let crossReactionFrequency: Double  // Percentage: (reactions with this ingredient / total reactions) × 100
+
     // Breakdown by time window
     let occurrencesWithin24h: Int
     let occurrencesBetween24_48h: Int
@@ -109,7 +116,7 @@ struct WeightedIngredientScore: Identifiable, Codable {
     let appearedInReactionCount: Int  // How many total reactions this ingredient appeared before
     let appearedInSameSymptomCount: Int  // How many reactions of THIS symptom type
 
-    init(ingredientName: String, totalScore: Double, recencyScore: Double, frequencyScore: Double, symptomAssociationScore: Double, occurrences: Int, lastSeenHoursBeforeReaction: Double, contributingFoodNames: [String], contributingMealIds: [String], occurrencesWithin24h: Int, occurrencesBetween24_48h: Int, occurrencesBetween48_72h: Int, appearedInReactionCount: Int, appearedInSameSymptomCount: Int) {
+    init(ingredientName: String, totalScore: Double, recencyScore: Double, frequencyScore: Double, symptomAssociationScore: Double, occurrences: Int, lastSeenHoursBeforeReaction: Double, contributingFoodNames: [String], contributingMealIds: [String], crossReactionFrequency: Double, occurrencesWithin24h: Int, occurrencesBetween24_48h: Int, occurrencesBetween48_72h: Int, appearedInReactionCount: Int, appearedInSameSymptomCount: Int) {
         self.id = ingredientName
         self.ingredientName = ingredientName
         self.totalScore = totalScore
@@ -120,6 +127,7 @@ struct WeightedIngredientScore: Identifiable, Codable {
         self.lastSeenHoursBeforeReaction = lastSeenHoursBeforeReaction
         self.contributingFoodNames = contributingFoodNames
         self.contributingMealIds = contributingMealIds
+        self.crossReactionFrequency = crossReactionFrequency
         self.occurrencesWithin24h = occurrencesWithin24h
         self.occurrencesBetween24_48h = occurrencesBetween24_48h
         self.occurrencesBetween48_72h = occurrencesBetween48_72h

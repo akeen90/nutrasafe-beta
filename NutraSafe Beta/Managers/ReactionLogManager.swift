@@ -89,12 +89,16 @@ class ReactionLogManager: ObservableObject {
             allFoods.append((food: meal, mealId: meal.id, mealDate: meal.date))
         }
 
+            // Get total reaction count for cross-reaction frequency calculation
+        let totalReactions = reactionLogs.filter { $0.userId == userId }.count
+
         // Calculate food scores
         let foodScores = calculateWeightedFoodScores(
             foods: allFoods,
             reactionDate: reactionDate,
             userId: userId,
-            reactionType: reactionType
+            reactionType: reactionType,
+            totalReactions: totalReactions
         )
 
         // Calculate ingredient scores
@@ -102,7 +106,8 @@ class ReactionLogManager: ObservableObject {
             foods: allFoods,
             reactionDate: reactionDate,
             userId: userId,
-            reactionType: reactionType
+            reactionType: reactionType,
+            totalReactions: totalReactions
         )
 
         // Sort and take top results
@@ -125,7 +130,8 @@ class ReactionLogManager: ObservableObject {
         foods: [(food: FoodEntry, mealId: String, mealDate: Date)],
         reactionDate: Date,
         userId: String,
-        reactionType: String
+        reactionType: String,
+        totalReactions: Int
     ) -> [WeightedFoodScore] {
         var foodData: [String: (
             occurrences: Int,
@@ -163,6 +169,9 @@ class ReactionLogManager: ObservableObject {
             }
         }
 
+        // Get cross-reaction frequencies for foods
+        let foodCrossReactionCounts = getFoodCrossReactionCounts(userId: userId)
+
         // Calculate scores
         var scores: [WeightedFoodScore] = []
 
@@ -178,6 +187,10 @@ class ReactionLogManager: ObservableObject {
             // Total score
             let totalScore = recencyScore + frequencyScore
 
+            // Cross-reaction frequency: (reactions with this food / total reactions) × 100
+            let reactionsWithThisFood = foodCrossReactionCounts[foodName] ?? 0
+            let crossReactionFrequency = totalReactions > 0 ? (Double(reactionsWithThisFood) / Double(totalReactions)) * 100.0 : 0.0
+
             let score = WeightedFoodScore(
                 foodName: foodName,
                 totalScore: totalScore,
@@ -186,6 +199,7 @@ class ReactionLogManager: ObservableObject {
                 occurrences: data.occurrences,
                 lastSeenHoursBeforeReaction: data.lastSeenHours,
                 contributingMealIds: Array(Set(data.mealIds)),  // Remove duplicates
+                crossReactionFrequency: crossReactionFrequency,
                 occurrencesWithin24h: data.within24h,
                 occurrencesBetween24_48h: data.between24_48h,
                 occurrencesBetween48_72h: data.between48_72h
@@ -203,7 +217,8 @@ class ReactionLogManager: ObservableObject {
         foods: [(food: FoodEntry, mealId: String, mealDate: Date)],
         reactionDate: Date,
         userId: String,
-        reactionType: String
+        reactionType: String,
+        totalReactions: Int
     ) async -> [WeightedIngredientScore] {
         var ingredientData: [String: (
             occurrences: Int,
@@ -269,6 +284,10 @@ class ReactionLogManager: ObservableObject {
             // Total score
             let totalScore = recencyScore + frequencyScore + symptomBoost
 
+            // Cross-reaction frequency: (reactions with this ingredient / total reactions) × 100
+            let reactionsWithThisIngredient = association.total
+            let crossReactionFrequency = totalReactions > 0 ? (Double(reactionsWithThisIngredient) / Double(totalReactions)) * 100.0 : 0.0
+
             let score = WeightedIngredientScore(
                 ingredientName: ingredientName,
                 totalScore: totalScore,
@@ -279,6 +298,7 @@ class ReactionLogManager: ObservableObject {
                 lastSeenHoursBeforeReaction: data.lastSeenHours,
                 contributingFoodNames: Array(data.foodNames),
                 contributingMealIds: Array(Set(data.mealIds)),
+                crossReactionFrequency: crossReactionFrequency,
                 occurrencesWithin24h: data.within24h,
                 occurrencesBetween24_48h: data.between24_48h,
                 occurrencesBetween48_72h: data.between48_72h,
@@ -331,6 +351,26 @@ class ReactionLogManager: ObservableObject {
         }
 
         return associations
+    }
+
+    // MARK: - Helper: Get Food Cross-Reaction Counts
+
+    private func getFoodCrossReactionCounts(userId: String) -> [String: Int] {
+        // Get all past reaction logs for this user
+        let pastReactions = reactionLogs.filter { $0.userId == userId }
+
+        var counts: [String: Int] = [:]
+
+        for reaction in pastReactions {
+            guard let analysis = reaction.triggerAnalysis else { continue }
+
+            // Count food appearances
+            for food in analysis.topFoods {
+                counts[food.foodName, default: 0] += 1
+            }
+        }
+
+        return counts
     }
 
     // MARK: - Delete Reaction Log
