@@ -13,30 +13,11 @@ struct ReactionLogView: View {
     @State private var selectedEntry: ReactionLogEntry?
 
     var body: some View {
-        ZStack {
+        Group {
             if manager.reactionLogs.isEmpty {
                 emptyStateView
             } else {
                 reactionListView
-            }
-
-            // Floating Action Button
-            VStack {
-                Spacer()
-                HStack {
-                    Spacer()
-                    Button(action: { showingLogSheet = true }) {
-                        Image(systemName: "plus")
-                            .font(.title2.weight(.semibold))
-                            .foregroundColor(.white)
-                            .frame(width: 56, height: 56)
-                            .background(Color.blue)
-                            .clipShape(Circle())
-                            .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
-                    }
-                    .padding(.trailing, 20)
-                    .padding(.bottom, 20)
-                }
             }
         }
         .navigationTitle("Reaction Log")
@@ -88,6 +69,21 @@ struct ReactionLogView: View {
 
     private var reactionListView: some View {
         List {
+            // Add New Button at top
+            Button(action: { showingLogSheet = true }) {
+                HStack {
+                    Image(systemName: "plus.circle.fill")
+                        .foregroundColor(.blue)
+                        .font(.title3)
+                    Text("Add New Reaction")
+                        .foregroundColor(.blue)
+                        .fontWeight(.medium)
+                    Spacer()
+                }
+                .padding(.vertical, 4)
+            }
+            .listRowBackground(Color.blue.opacity(0.05))
+
             ForEach(manager.reactionLogs) { entry in
                 ReactionLogCard(entry: entry)
                     .contentShape(Rectangle())
