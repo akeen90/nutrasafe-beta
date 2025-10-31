@@ -14,6 +14,8 @@ final class SubscriptionManager: ObservableObject {
     @Published var status: [Product.SubscriptionInfo.Status] = []
     @Published var isPurchasing: Bool = false
     @Published var isPremiumOverride = false
+    @Published var purchaseError: String?
+    @Published var isProductLoaded: Bool = false
     private var authObserver: NSObjectProtocol?
     private var transactionTask: Task<Void, Never>?
 
@@ -67,6 +69,7 @@ final class SubscriptionManager: ObservableObject {
         if let first = products.first {
             print("StoreKit: Loaded product: \(first.id) price=\(first.displayPrice)")
             product = first
+            isProductLoaded = true
             try await refreshStatus()
             await refreshPremiumOverride()
             return
@@ -82,6 +85,7 @@ final class SubscriptionManager: ObservableObject {
             product = retryProducts.first
             if let p = product {
                 print("StoreKit: Loaded product after sync: \(p.id) price=\(p.displayPrice)")
+                isProductLoaded = true
                 try await refreshStatus()
                 await refreshPremiumOverride()
                 return
@@ -99,6 +103,7 @@ final class SubscriptionManager: ObservableObject {
         print("StoreKit: Final product fetch count: \(finalProducts.count)")
         if let p = finalProducts.first {
             product = p
+            isProductLoaded = true
             print("StoreKit: Loaded product after StoreKitTest fallback: \(p.id) price=\(p.displayPrice)")
             try await refreshStatus()
             await refreshPremiumOverride()
@@ -112,30 +117,47 @@ final class SubscriptionManager: ObservableObject {
     }
 
     func purchase() async throws {
+        purchaseError = nil
+
         guard let product = product else {
             print("StoreKit: purchase() ignored — product is nil (not loaded)")
+            purchaseError = "Unable to load subscription. Please check your internet connection and try again."
             return
         }
+
         isPurchasing = true
         defer { isPurchasing = false }
+
         print("StoreKit: Starting purchase for \(product.id)")
-        let result = try await product.purchase()
-        switch result {
-        case .success(let verification):
-            do {
-                let transaction = try checkVerified(verification)
-                print("StoreKit: Purchase verified. Finishing transaction \(transaction.id)")
-                await transaction.finish()
-                try await refreshStatus()
-            } catch {
-                print("StoreKit: Purchase verification failed: \(error)")
+
+        do {
+            let result = try await product.purchase()
+            switch result {
+            case .success(let verification):
+                do {
+                    let transaction = try checkVerified(verification)
+                    print("StoreKit: Purchase verified. Finishing transaction \(transaction.id)")
+                    await transaction.finish()
+                    try await refreshStatus()
+                    purchaseError = nil
+                } catch {
+                    print("StoreKit: Purchase verification failed: \(error)")
+                    purchaseError = "Purchase verification failed. Please try again."
+                }
+            case .userCancelled:
+                print("StoreKit: Purchase cancelled by user")
+                purchaseError = nil
+            case .pending:
+                print("StoreKit: Purchase pending")
+                purchaseError = "Purchase is pending approval. Please check back later."
+            @unknown default:
+                print("StoreKit: Purchase result: \(result)")
+                purchaseError = "Unknown purchase result. Please contact support."
             }
-        case .userCancelled:
-            print("StoreKit: Purchase cancelled by user")
-        case .pending:
-            print("StoreKit: Purchase pending")
-        default:
-            print("StoreKit: Purchase result: \(result)")
+        } catch {
+            print("StoreKit: Purchase error: \(error)")
+            purchaseError = "Purchase failed: \(error.localizedDescription)"
+            throw error
         }
     }
 

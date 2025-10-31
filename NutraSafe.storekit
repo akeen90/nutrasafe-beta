@@ -34,7 +34,11 @@
     {
       "id" : "F62FEFFC",
       "localizations" : [
-
+        {
+          "description" : "",
+          "displayName" : "NutraSafe Pro",
+          "locale" : "en_GB"
+        }
       ],
       "name" : "Pro Subscription",
       "subscriptions" : [
@@ -55,7 +59,11 @@
             "subscriptionPeriod" : "P1W"
           },
           "localizations" : [
-
+            {
+              "description" : "Access to In depth food insights and track reactions",
+              "displayName" : "NutraSafe Pro",
+              "locale" : "en_GB"
+            }
           ],
           "productID" : "com.nutrasafe.pro.monthly",
           "recurringSubscriptionPeriod" : "P1M",

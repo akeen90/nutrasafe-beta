@@ -122,15 +122,32 @@ struct PaywallView: View {
                             }
                         }) {
                             HStack {
-                                if subscriptionManager.isPurchasing { ProgressView().scaleEffect(0.9) }
-                                Text(ctaText)
-                                    .font(.system(size: 18, weight: .semibold))
+                                if subscriptionManager.isPurchasing {
+                                    ProgressView().scaleEffect(0.9)
+                                } else if !subscriptionManager.isProductLoaded {
+                                    ProgressView().scaleEffect(0.9)
+                                    Text("Loading...")
+                                        .font(.system(size: 18, weight: .semibold))
+                                } else {
+                                    Text(ctaText)
+                                        .font(.system(size: 18, weight: .semibold))
+                                }
                             }
                             .frame(maxWidth: .infinity)
                             .padding()
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.large)
+                        .disabled(!subscriptionManager.isProductLoaded || subscriptionManager.isPurchasing)
+
+                        // Error message
+                        if let error = subscriptionManager.purchaseError {
+                            Text(error)
+                                .font(.caption)
+                                .foregroundColor(.red)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+                        }
 
                         // Secondary actions
                         HStack(spacing: 12) {
