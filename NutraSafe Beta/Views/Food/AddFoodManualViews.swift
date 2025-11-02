@@ -24,17 +24,32 @@ struct NutritionPer100g: Codable {
     let salt: Double?
 }
 
-/// Response model from Cloud Function
-struct IngredientFinderResponse: Codable {
-    let ingredients_found: Bool
+/// Product variant with specific pack size
+struct ProductVariant: Codable, Identifiable {
+    var id: String { size_description }
+
+    let size_description: String
     let product_name: String?
     let brand: String?
     let barcode: String?
-    let serving_size: String?
     let ingredients_text: String?
     let nutrition_per_100g: NutritionPer100g?
-    let image_url: String?
     let source_url: String?
+}
+
+/// Response model from Cloud Function (supports multiple size variants)
+struct IngredientFinderResponse: Codable {
+    let ingredients_found: Bool
+    let variants: [ProductVariant]
+
+    // Legacy single-variant support for backward compatibility
+    var product_name: String? { variants.first?.product_name }
+    var brand: String? { variants.first?.brand }
+    var barcode: String? { variants.first?.barcode }
+    var serving_size: String? { variants.first?.size_description }
+    var ingredients_text: String? { variants.first?.ingredients_text }
+    var nutrition_per_100g: NutritionPer100g? { variants.first?.nutrition_per_100g }
+    var source_url: String? { variants.first?.source_url }
 }
 
 /// Service for finding ingredients using AI
@@ -59,16 +74,19 @@ class IngredientFinderService: ObservableObject {
         // Check cache first
         if let cached = try? await FirebaseManager.shared.getIngredientCache(productName: productName, brand: brand) {
             print("✅ Found ingredients in cache for \(productName)")
-            return IngredientFinderResponse(
-                ingredients_found: cached.ingredients_found,
+            // Create a single variant from cached data
+            let cachedVariant = ProductVariant(
+                size_description: "Standard pack",
                 product_name: nil,  // Cache doesn't store product name yet
                 brand: nil,  // Cache doesn't store brand yet
                 barcode: nil,  // Cache doesn't store barcode yet
-                serving_size: nil,  // Cache doesn't store serving size yet
                 ingredients_text: cached.ingredients_text,
                 nutrition_per_100g: nil,  // Cache doesn't store nutrition yet
-                image_url: nil,  // Cache doesn't store image URL yet
                 source_url: cached.source_url
+            )
+            return IngredientFinderResponse(
+                ingredients_found: cached.ingredients_found,
+                variants: [cachedVariant]
             )
         }
 
@@ -133,12 +151,12 @@ class IngredientFinderService: ObservableObject {
 
         let jsonData = try JSONSerialization.data(withJSONObject: requestBody)
 
-        // Create request with optimized timeout (15s for faster failures)
+        // Create request with timeout for AI search (30s to allow for multi-variant search)
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = jsonData
-        request.timeoutInterval = 15  // Reduced from 30s - optimized Cloud Function should respond in <6s
+        request.timeoutInterval = 30  // Increased to 30s - AI search with multi-size variants can take 15-25s
 
         // Execute request
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -738,35 +756,35 @@ struct ManualFoodDetailEntryView: View {
             .sheet(isPresented: $showIngredientConfirmation) {
                 IngredientConfirmationModal(
                     response: foundIngredients,
-                    onUse: {
+                    onUse: { variant in
                         // Apply product name and brand if found
-                        if let productName = foundIngredients?.product_name, !productName.isEmpty {
+                        if let productName = variant.product_name, !productName.isEmpty {
                             foodName = productName
                         }
-                        if let brandName = foundIngredients?.brand, !brandName.isEmpty {
+                        if let brandName = variant.brand, !brandName.isEmpty {
                             brand = brandName
                         }
-                        if let barcodeValue = foundIngredients?.barcode, !barcodeValue.isEmpty {
+                        if let barcodeValue = variant.barcode, !barcodeValue.isEmpty {
                             barcode = barcodeValue
                         }
-                        // Apply serving size if found
-                        print("🔎 MANUAL ADD (onUse) - Checking serving size: \(foundIngredients?.serving_size ?? "NIL")")
-                        if let servingSizeStr = foundIngredients?.serving_size, !servingSizeStr.isEmpty {
-                            print("📏 MANUAL ADD (onUse) - Updating serving size from AI: \(servingSizeStr)")
-                            let parsed = parseServingSize(servingSizeStr)
+                        // Apply size description (pack size) as serving size
+                        print("🔎 MANUAL ADD (onUse) - Checking size description: \(variant.size_description)")
+                        if !variant.size_description.isEmpty {
+                            print("📏 MANUAL ADD (onUse) - Updating serving size from AI: \(variant.size_description)")
+                            let parsed = parseServingSize(variant.size_description)
         // DEBUG LOG: print("🔧 MANUAL ADD (onUse) - Parsed: amount=\(parsed.amount), unit=\(parsed.unit)")
                             servingSize = parsed.amount
                             servingUnit = parsed.unit
                             print("✅ MANUAL ADD (onUse) - Serving size updated: servingSize=\(servingSize), servingUnit=\(servingUnit)")
                         } else {
-                            print("⚠️ MANUAL ADD (onUse) - No serving size in result OR serving size is empty")
+                            print("⚠️ MANUAL ADD (onUse) - No size description in variant")
                         }
                         // Apply ingredients
-                        if let ingredients = foundIngredients?.ingredients_text {
+                        if let ingredients = variant.ingredients_text {
                             ingredientsText = ingredients
                         }
                         // Apply nutrition per 100g
-                        if let nutrition = foundIngredients?.nutrition_per_100g {
+                        if let nutrition = variant.nutrition_per_100g {
                             if let cal = nutrition.calories { calories = String(format: "%.0f", cal) }
                             if let prot = nutrition.protein { protein = String(format: "%.1f", prot) }
                             if let carb = nutrition.carbs { carbs = String(format: "%.1f", carb) }
@@ -777,34 +795,34 @@ struct ManualFoodDetailEntryView: View {
                         }
                         showIngredientConfirmation = false
                     },
-                    onEdit: {
+                    onEdit: { variant in
                         // Apply product name and brand if found
-                        if let productName = foundIngredients?.product_name, !productName.isEmpty {
+                        if let productName = variant.product_name, !productName.isEmpty {
                             foodName = productName
                         }
-                        if let brandName = foundIngredients?.brand, !brandName.isEmpty {
+                        if let brandName = variant.brand, !brandName.isEmpty {
                             brand = brandName
                         }
-                        if let barcodeValue = foundIngredients?.barcode, !barcodeValue.isEmpty {
+                        if let barcodeValue = variant.barcode, !barcodeValue.isEmpty {
                             barcode = barcodeValue
                         }
-                        // Apply serving size if found
-                        print("🔎 MANUAL ADD (onEdit) - Checking serving size: \(foundIngredients?.serving_size ?? "NIL")")
-                        if let servingSizeStr = foundIngredients?.serving_size, !servingSizeStr.isEmpty {
-                            print("📏 MANUAL ADD (onEdit) - Updating serving size from AI: \(servingSizeStr)")
-                            let parsed = parseServingSize(servingSizeStr)
+                        // Apply size description (pack size) as serving size
+                        print("🔎 MANUAL ADD (onEdit) - Checking size description: \(variant.size_description)")
+                        if !variant.size_description.isEmpty {
+                            print("📏 MANUAL ADD (onEdit) - Updating serving size from AI: \(variant.size_description)")
+                            let parsed = parseServingSize(variant.size_description)
         // DEBUG LOG: print("🔧 MANUAL ADD (onEdit) - Parsed: amount=\(parsed.amount), unit=\(parsed.unit)")
                             servingSize = parsed.amount
                             servingUnit = parsed.unit
                             print("✅ MANUAL ADD (onEdit) - Serving size updated: servingSize=\(servingSize), servingUnit=\(servingUnit)")
                         } else {
-                            print("⚠️ MANUAL ADD (onEdit) - No serving size in result OR serving size is empty")
+                            print("⚠️ MANUAL ADD (onEdit) - No size description in variant")
                         }
                         // Apply ingredients and nutrition for editing
-                        if let ingredients = foundIngredients?.ingredients_text {
+                        if let ingredients = variant.ingredients_text {
                             ingredientsText = ingredients
                         }
-                        if let nutrition = foundIngredients?.nutrition_per_100g {
+                        if let nutrition = variant.nutrition_per_100g {
                             if let cal = nutrition.calories { calories = String(format: "%.0f", cal) }
                             if let prot = nutrition.protein { protein = String(format: "%.1f", prot) }
                             if let carb = nutrition.carbs { carbs = String(format: "%.1f", carb) }
@@ -1311,9 +1329,21 @@ struct BarcodeScannerSheetView: View {
 /// Modal to confirm AI-found ingredients
 struct IngredientConfirmationModal: View {
     let response: IngredientFinderResponse?
-    let onUse: () -> Void
-    let onEdit: () -> Void
+    let onUse: (ProductVariant) -> Void
+    let onEdit: (ProductVariant) -> Void
     let onCancel: () -> Void
+
+    @State private var selectedVariantIndex = 0
+
+    // Get currently selected variant
+    private var selectedVariant: ProductVariant? {
+        guard let response = response,
+              !response.variants.isEmpty,
+              selectedVariantIndex < response.variants.count else {
+            return nil
+        }
+        return response.variants[selectedVariantIndex]
+    }
 
     var body: some View {
         NavigationView {
@@ -1333,13 +1363,13 @@ struct IngredientConfirmationModal: View {
 
                     // Title - Show product name if available
                     VStack(spacing: 8) {
-                        if let productName = response?.product_name, !productName.isEmpty {
+                        if let productName = selectedVariant?.product_name, !productName.isEmpty {
                             Text(productName)
                                 .font(.system(size: 24, weight: .bold))
                                 .foregroundColor(.primary)
                                 .multilineTextAlignment(.center)
 
-                            if let brand = response?.brand, !brand.isEmpty {
+                            if let brand = selectedVariant?.brand, !brand.isEmpty {
                                 Text(brand)
                                     .font(.system(size: 16, weight: .medium))
                                     .foregroundColor(.secondary)
@@ -1355,19 +1385,48 @@ struct IngredientConfirmationModal: View {
                             .foregroundColor(.secondary)
                     }
 
-                // Serving Size (if available)
-                if let servingSize = response?.serving_size {
+                // Pack Size Picker (if multiple variants available)
+                if let response = response, response.variants.count > 1 {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "square.stack.3d.up.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(.orange)
+                            Text("Select Pack Size:")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.secondary)
+                        }
+
+                        Picker("Pack Size", selection: $selectedVariantIndex) {
+                            ForEach(0..<response.variants.count, id: \.self) { index in
+                                Text(response.variants[index].size_description)
+                                    .tag(index)
+                            }
+                        }
+                        .pickerStyle(MenuPickerStyle())
+                        .padding(12)
+                        .background(Color.orange.opacity(0.1))
+                        .cornerRadius(8)
+
+                        Text("\(response.variants.count) pack sizes found")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                            .italic()
+                    }
+                    .padding(.horizontal, 20)
+                } else if let sizeDescription = selectedVariant?.size_description {
+                    // Single size display
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 6) {
                             Image(systemName: "gauge.with.dots.needle.67percent")
                                 .font(.system(size: 14))
                                 .foregroundColor(.blue)
-                            Text("Serving Size:")
+                            Text("Pack Size:")
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundColor(.secondary)
                         }
 
-                        Text(servingSize)
+                        Text(sizeDescription)
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(.primary)
                             .padding(12)
@@ -1379,7 +1438,7 @@ struct IngredientConfirmationModal: View {
                 }
 
                 // Nutrition Preview (if available)
-                if let nutrition = response?.nutrition_per_100g, hasAnyNutrition(nutrition) {
+                if let nutrition = selectedVariant?.nutrition_per_100g, hasAnyNutrition(nutrition) {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 6) {
                             Image(systemName: "chart.bar.fill")
@@ -1426,7 +1485,7 @@ struct IngredientConfirmationModal: View {
                 }
 
                 // Ingredients Preview
-                if let ingredientsText = response?.ingredients_text {
+                if let ingredientsText = selectedVariant?.ingredients_text {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Found ingredients from verified sites:")
                             .font(.system(size: 14, weight: .medium))
@@ -1443,7 +1502,7 @@ struct IngredientConfirmationModal: View {
                         }
                         .frame(maxHeight: 200)
 
-                        if let sourceUrl = response?.source_url {
+                        if let sourceUrl = selectedVariant?.source_url {
                             HStack(spacing: 4) {
                                 Image(systemName: "link.circle.fill")
                                     .font(.system(size: 12))
@@ -1462,7 +1521,11 @@ struct IngredientConfirmationModal: View {
                 // Action Buttons
                 VStack(spacing: 12) {
                     // Use Button
-                    Button(action: onUse) {
+                    Button(action: {
+                        if let variant = selectedVariant {
+                            onUse(variant)
+                        }
+                    }) {
                         HStack {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.system(size: 18))
@@ -1472,12 +1535,17 @@ struct IngredientConfirmationModal: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(Color.blue)
+                        .background(selectedVariant != nil ? Color.blue : Color.gray)
                         .cornerRadius(12)
                     }
+                    .disabled(selectedVariant == nil)
 
                     // Edit Button
-                    Button(action: onEdit) {
+                    Button(action: {
+                        if let variant = selectedVariant {
+                            onEdit(variant)
+                        }
+                    }) {
                         HStack {
                             Image(systemName: "pencil.circle")
                                 .font(.system(size: 18))
@@ -1490,6 +1558,7 @@ struct IngredientConfirmationModal: View {
                         .background(Color.blue.opacity(0.1))
                         .cornerRadius(12)
                     }
+                    .disabled(selectedVariant == nil)
 
                     // Cancel Button
                     Button(action: onCancel) {
