@@ -77,9 +77,9 @@ export const findIngredients = functions
       // Initialize Google Generative AI client
       const genAI = new GoogleGenerativeAI(geminiApiKey);
 
-      // Use Gemini 2.5 Flash (latest stable model - 1.5 series has been retired)
+      // Use Gemini 2.0 Flash Experimental (faster than 2.5, optimized for speed)
       const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash'
+        model: 'gemini-2.0-flash-exp'
       });
 
       const prompt = `Find UK product "${productName}"${brand ? ` by ${brand}` : ''} from Tesco/Sainsburys/Asda.
