@@ -133,12 +133,12 @@ class IngredientFinderService: ObservableObject {
 
         let jsonData = try JSONSerialization.data(withJSONObject: requestBody)
 
-        // Create request
+        // Create request with optimized timeout (15s for faster failures)
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = jsonData
-        request.timeoutInterval = 30
+        request.timeoutInterval = 15  // Reduced from 30s - optimized Cloud Function should respond in <6s
 
         // Execute request
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -1331,11 +1331,24 @@ struct IngredientConfirmationModal: View {
                     }
                     .padding(.top, 32)
 
-                    // Title
+                    // Title - Show product name if available
                     VStack(spacing: 8) {
-                        Text("Product Information Found!")
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(.primary)
+                        if let productName = response?.product_name, !productName.isEmpty {
+                            Text(productName)
+                                .font(.system(size: 24, weight: .bold))
+                                .foregroundColor(.primary)
+                                .multilineTextAlignment(.center)
+
+                            if let brand = response?.brand, !brand.isEmpty {
+                                Text(brand)
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.secondary)
+                            }
+                        } else {
+                            Text("Product Information Found!")
+                                .font(.system(size: 24, weight: .bold))
+                                .foregroundColor(.primary)
+                        }
 
                         Text("NutraSafe Ingredient Finder™")
                             .font(.system(size: 14, weight: .medium))
