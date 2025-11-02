@@ -976,18 +976,18 @@ class ProcessingScorer {
         // Use comprehensive additive analysis if available
         if !additiveAnalysis.comprehensiveAdditives.isEmpty {
             let count = additiveAnalysis.comprehensiveAdditives.count
-            explanation += "\(count) additive(s) analyzed with health scoring. "
-            
+            explanation += "\(count) additive(s) detected. "
+
             if additiveAnalysis.totalHealthScore < 30 {
-                explanation += "Contains additives with significant health concerns. "
+                explanation += "Contains multiple food additives. "
             } else if additiveAnalysis.totalHealthScore < 50 {
-                explanation += "Contains additives with moderate health concerns. "
+                explanation += "Contains several food additives. "
             }
-            
+
             if additiveAnalysis.hasChildWarnings {
-                explanation += "⚠️ Contains additives that may affect children's behavior. "
+                explanation += "⚠️ Contains additives some studies have associated with hyperactivity in sensitive children. "
             }
-            
+
             if additiveAnalysis.hasAllergenWarnings {
                 explanation += "⚠️ Contains allergen-related additives. "
             }
@@ -996,7 +996,7 @@ class ProcessingScorer {
             if additiveAnalysis.eNumbers.count > 0 {
                 explanation += "\(additiveAnalysis.eNumbers.count) E-number(s) detected. "
             }
-            
+
             if additiveAnalysis.additives.count > 0 {
                 explanation += "\(additiveAnalysis.additives.count) additive(s) detected. "
             }
@@ -1008,13 +1008,13 @@ class ProcessingScorer {
         
         switch processingLevel {
         case .unprocessed:
-            explanation += "Excellent choice - whole, natural food."
+            explanation += "Whole, natural food with minimal processing."
         case .minimally:
-            explanation += "Good choice - lightly processed for convenience."
+            explanation += "Lightly processed for convenience or preservation."
         case .processed:
-            explanation += "Moderate choice - some processing involved."
+            explanation += "Some processing methods applied."
         case .ultraProcessed:
-            explanation += "Consider limiting - highly processed with many additives."
+            explanation += "Highly processed with multiple additives."
         }
         
         return explanation
@@ -1363,7 +1363,7 @@ class SugarContentScorer {
                 // Large serving causing high sugar despite moderate density
                 explanation = "High per-serving (\(String(format: "%.1f", perServing))g in \(String(format: "%.0f", servingSize))g serving) despite moderate density (\(String(format: "%.1f", sugar))g per 100g)"
                 healthImpact = getHealthImpact(for: servingGrade!)
-                recommendation = "⚠️ Large serving size - consider eating less. " + getRecommendation(for: servingGrade!)
+                recommendation = "Large serving size. " + getRecommendation(for: servingGrade!)
             } else if densityGrade.numericValue < servingGrade!.numericValue {
                 finalGrade = densityGrade
                 // High density even though serving might be small
@@ -1416,36 +1416,36 @@ class SugarContentScorer {
     private func getHealthImpact(for grade: SugarGrade) -> String {
         switch grade {
         case .excellent:
-            return "Excellent choice for blood sugar management"
+            return "Very low sugar content"
         case .veryGood:
-            return "Good choice with minimal blood sugar impact"
+            return "Low sugar content"
         case .good:
-            return "Some blood sugar impact, suitable in moderation"
+            return "Moderate sugar content"
         case .moderate:
-            return "Noticeable blood sugar impact"
+            return "Moderately high sugar content"
         case .high:
-            return "Significant blood sugar spike likely"
+            return "High sugar content"
         case .veryHigh:
-            return "Major blood sugar spike expected"
+            return "Very high sugar content"
         case .unknown:
-            return "Cannot assess sugar content without data"
+            return "Sugar content data not available"
         }
     }
 
     private func getRecommendation(for grade: SugarGrade) -> String {
         switch grade {
         case .excellent:
-            return "Perfect for regular consumption"
+            return "Contains minimal sugar"
         case .veryGood:
-            return "Great for daily consumption"
+            return "Contains low amounts of sugar"
         case .good:
-            return "Enjoy as part of balanced meals"
+            return "Contains moderate amounts of sugar"
         case .moderate:
-            return "Consume in smaller portions"
+            return "Sugar is a significant component"
         case .high:
-            return "Limit intake, pair with protein/fiber"
+            return "High proportion of sugar"
         case .veryHigh:
-            return "Consume rarely and in very small amounts"
+            return "Very high proportion of sugar"
         case .unknown:
             return "Check nutrition label for sugar content"
         }

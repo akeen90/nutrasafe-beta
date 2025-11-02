@@ -63,6 +63,26 @@ final class SubscriptionManager: ObservableObject {
         // Proactively ensure local StoreKit session is activated before fetching products
         ensureLocalStoreKitActivated()
         #endif
+
+        // Add timeout to prevent infinite loading
+        do {
+            try await withTimeout(seconds: 10) {
+                try await self.loadProductInternal()
+            }
+        } catch is TimeoutError {
+            print("StoreKit: Product loading timed out after 10 seconds")
+            isProductLoaded = false
+            purchaseError = "Unable to connect to App Store. The subscription may be pending approval or there may be a network issue. Please try again later."
+            await refreshPremiumOverride()
+        } catch {
+            print("StoreKit: Product loading failed with error: \(error)")
+            isProductLoaded = false
+            purchaseError = "Failed to load subscription: \(error.localizedDescription)"
+            await refreshPremiumOverride()
+        }
+    }
+
+    private func loadProductInternal() async throws {
         print("StoreKit: Loading products for id: \(productID)")
         let products = try await Product.products(for: [productID])
         print("StoreKit: Initial product fetch count: \(products.count)")
@@ -111,8 +131,10 @@ final class SubscriptionManager: ObservableObject {
         }
         #endif
 
-        // Still unavailable; proceed with override only
+        // Still unavailable; set error state and proceed with override only
         print("StoreKit: Products still unavailable after all attempts. Using premium override only.")
+        isProductLoaded = false
+        purchaseError = "Subscription is currently unavailable. This may be because it's pending Apple approval. Please check back later or contact support."
         await refreshPremiumOverride()
     }
 

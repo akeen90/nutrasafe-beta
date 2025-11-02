@@ -228,7 +228,7 @@ struct AdvancedFeaturesScreen: View {
                         features: [
                             "Visual coverage indicators (Green/Orange/Red)",
                             "7-day timeline shows which foods provide each nutrient",
-                            "Spot deficiencies before they become problems"
+                            "Track your nutrient intake over time"
                         ],
                         location: "Diary → Nutrients"
                     )
@@ -369,10 +369,12 @@ struct GetStartedScreen: View {
                     }
                     
                     VStack(alignment: .leading, spacing: 12) {
-                        DisclaimerPoint(text: "NutraSafe is an informational tool, not medical advice")
-                        DisclaimerPoint(text: "Always verify food labels yourself")
-                        DisclaimerPoint(text: "Consult healthcare professionals for medical decisions")
-                        DisclaimerPoint(text: "Results cannot be guaranteed to be 100% accurate")
+                        DisclaimerPoint(text: "This app provides nutritional information only, not medical advice")
+                        DisclaimerPoint(text: "Food scores and recommendations are informational, not health guidance")
+                        DisclaimerPoint(text: "Always verify food labels yourself—especially if you have allergies")
+                        DisclaimerPoint(text: "Consult healthcare professionals for dietary and medical decisions")
+                        DisclaimerPoint(text: "Nutrient calculations use standard reference values but individual needs vary")
+                        DisclaimerPoint(text: "Data accuracy depends on food database completeness and cannot be guaranteed 100%")
                     }
                     
                     // Acceptance Button

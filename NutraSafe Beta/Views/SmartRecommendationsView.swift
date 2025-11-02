@@ -17,11 +17,15 @@ struct SmartRecommendationsView: View {
     @State private var selectedCategory: FoodCategory? = nil
     @State private var selectedPriority: RecommendationPriority? = nil
     @State private var isRefreshing = false
+    @State private var showingSources = false
 
     var body: some View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 24) {
+                    // Disclaimer banner
+                    disclaimerBanner
+
                     // Header
                     headerSection
 
@@ -46,6 +50,9 @@ struct SmartRecommendationsView: View {
                         dismiss()
                     }
                 }
+            }
+            .sheet(isPresented: $showingSources) {
+                SourcesAndCitationsView()
             }
             .refreshable {
                 await refreshRecommendations()
@@ -107,7 +114,7 @@ struct SmartRecommendationsView: View {
                     }
 
                     // Priority filters
-                    ForEach([RecommendationPriority.critical, .high, .moderate], id: \.self) { priority in
+                    ForEach([RecommendationPriority.high, .medium, .suggested], id: \.self) { priority in
                         let count = recommendationEngine.getRecommendations(by: priority).count
 
                         if count > 0 {
@@ -241,6 +248,46 @@ struct SmartRecommendationsView: View {
         let summaries = await trackingManager.getAllNutrientSummaries()
         await recommendationEngine.generateRecommendations(for: summaries)
     }
+
+    // MARK: - Disclaimer Banner
+
+    private var disclaimerBanner: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "info.circle.fill")
+                .font(.system(size: 16))
+                .foregroundColor(.orange)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Food Suggestions Only")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.primary)
+
+                Text("These are informational suggestions based on nutrient data, not medical advice.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+
+            Button(action: {
+                showingSources = true
+            }) {
+                Image(systemName: "doc.text")
+                    .font(.system(size: 14))
+                    .foregroundColor(.orange)
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.orange.opacity(0.1))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+        )
+    }
 }
 
 // MARK: - Filter Chip
@@ -358,7 +405,7 @@ struct RecommendationCard: View {
 
             // Target nutrients
             VStack(alignment: .leading, spacing: 6) {
-                Text("Helps with:")
+                Text("Rich in:")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.secondary)
 

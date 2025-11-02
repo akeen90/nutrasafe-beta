@@ -401,7 +401,11 @@ struct DiaryTabView: View {
             breakfastFoods: breakfastFoods,
             lunchFoods: lunchFoods,
             dinnerFoods: dinnerFoods,
-            snackFoods: snackFoods
+            snackFoods: snackFoods,
+            fetchWeeklySummary: fetchWeeklySummary,
+            setSelectedDate: { date in
+                selectedDate = date
+            }
         )
         .padding(.horizontal, 16)
 
@@ -574,6 +578,103 @@ struct DiaryTabView: View {
             } catch {
                 print("❌ Failed to load food data: \(error)")
             }
+        }
+    }
+
+    // MARK: - Weekly Summary Data Fetching
+
+    private func getWeekRange(for date: Date) -> (start: Date, end: Date) {
+        let calendar = Calendar.current
+
+        // Get the day of the week (1 = Sunday, 2 = Monday, ..., 7 = Saturday)
+        let weekday = calendar.component(.weekday, from: date)
+
+        // Calculate offset to Monday (weekday 2)
+        // If Sunday (1), offset is -6; if Monday (2), offset is 0; if Tuesday (3), offset is -1, etc.
+        let daysFromMonday = (weekday == 1) ? -6 : 2 - weekday
+
+        // Get Monday of the week
+        guard let monday = calendar.date(byAdding: .day, value: daysFromMonday, to: date) else {
+            return (date, date)
+        }
+
+        // Get Sunday (6 days after Monday)
+        guard let sunday = calendar.date(byAdding: .day, value: 6, to: monday) else {
+            return (monday, monday)
+        }
+
+        // Set to start of day for Monday and end of day for Sunday
+        let startOfMonday = calendar.startOfDay(for: monday)
+        let endOfSunday = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: sunday)) ?? sunday
+
+        return (startOfMonday, endOfSunday)
+    }
+
+    func fetchWeeklySummary(calorieGoal: Double, proteinGoal: Double, carbGoal: Double, fatGoal: Double) async -> WeeklySummary? {
+        let (weekStart, weekEnd) = getWeekRange(for: selectedDate)
+
+        do {
+            // Fetch all food entries for the week
+            let calendar = Calendar.current
+            var currentDate = weekStart
+            var dailyBreakdowns: [DailyBreakdown] = []
+
+            var weekTotalCalories = 0
+            var weekTotalProtein = 0.0
+            var weekTotalCarbs = 0.0
+            var weekTotalFat = 0.0
+
+            // Iterate through each day of the week (Monday to Sunday)
+            for _ in 0..<7 {
+                let (breakfast, lunch, dinner, snacks) = try await diaryDataManager.getFoodDataAsync(for: currentDate)
+
+                // Calculate daily totals
+                let allFoods = breakfast + lunch + dinner + snacks
+                let dayCalories = allFoods.reduce(0) { $0 + $1.calories }
+                let dayProtein = allFoods.reduce(0.0) { $0 + $1.protein }
+                let dayCarbs = allFoods.reduce(0.0) { $0 + $1.carbs }
+                let dayFat = allFoods.reduce(0.0) { $0 + $1.fat }
+
+                let isLogged = !allFoods.isEmpty
+
+                // Create daily breakdown
+                let breakdown = DailyBreakdown(
+                    date: currentDate,
+                    calories: dayCalories,
+                    protein: dayProtein,
+                    carbs: dayCarbs,
+                    fat: dayFat,
+                    isLogged: isLogged
+                )
+                dailyBreakdowns.append(breakdown)
+
+                // Add to weekly totals
+                weekTotalCalories += dayCalories
+                weekTotalProtein += dayProtein
+                weekTotalCarbs += dayCarbs
+                weekTotalFat += dayFat
+
+                // Move to next day
+                guard let nextDay = calendar.date(byAdding: .day, value: 1, to: currentDate) else {
+                    break
+                }
+                currentDate = nextDay
+            }
+
+            // Create and return weekly summary
+            return WeeklySummary(
+                weekStartDate: weekStart,
+                weekEndDate: calendar.date(byAdding: .day, value: -1, to: weekEnd) ?? weekStart,
+                totalCalories: weekTotalCalories,
+                totalProtein: weekTotalProtein,
+                totalCarbs: weekTotalCarbs,
+                totalFat: weekTotalFat,
+                dailyBreakdowns: dailyBreakdowns
+            )
+
+        } catch {
+            print("❌ Failed to fetch weekly summary: \(error)")
+            return nil
         }
     }
 

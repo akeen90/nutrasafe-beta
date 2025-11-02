@@ -274,6 +274,7 @@ struct AddFoodSearchView: View {
     @Binding var selectedTab: TabItem
     @Binding var destination: AddFoodMainView.AddDestination
     var onComplete: ((TabItem) -> Void)?
+    var onSwitchToManual: (() -> Void)?
     @State private var searchText = ""
     @State private var searchResults: [FoodSearchResult] = []
     @State private var isSearching = false
@@ -330,15 +331,55 @@ struct AddFoodSearchView: View {
                 }
                 .frame(maxHeight: .infinity)
             } else if searchResults.isEmpty && !searchText.isEmpty {
-                VStack {
+                VStack(spacing: 24) {
                     Spacer()
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 48))
-                        .foregroundColor(.secondary)
-                    Text("No results found")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(.secondary)
-                        .padding(.top, 8)
+
+                    VStack(spacing: 12) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 48))
+                            .foregroundColor(.secondary)
+                        Text("No results found")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.secondary)
+                        Text("Try searching with different keywords")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                    }
+
+                    VStack(spacing: 16) {
+                        Button(action: {
+                            onSwitchToManual?()
+                        }) {
+                            HStack(spacing: 10) {
+                                Image(systemName: "sparkles")
+                                    .font(.system(size: 16, weight: .semibold))
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Add Manually with AI Product Finder")
+                                        .font(.system(size: 15, weight: .semibold))
+                                    Text("Smart nutrition lookup for unlisted products")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.white.opacity(0.9))
+                                }
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .padding(.horizontal, 20)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color.blue, Color.purple],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .cornerRadius(12)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .padding(.horizontal, 32)
+                    }
+
                     Spacer()
                 }
                 .frame(maxHeight: .infinity)

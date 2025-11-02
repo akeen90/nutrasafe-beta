@@ -3,7 +3,7 @@
 //  NutraSafe Beta
 //
 //  Created by Claude on 2025-10-21.
-//  Smart food recommendation engine based on nutrient deficiencies
+//  Smart food recommendation engine based on nutrient intake tracking
 //
 
 import Foundation
@@ -14,17 +14,17 @@ import SwiftUI
 struct FoodRecommendation: Identifiable {
     let id = UUID()
     let foodName: String
-    let targetNutrients: [String] // Nutrients this food will help with
+    let targetNutrients: [String] // Nutrients this food is a good source of
     let expectedImpact: String // e.g., "Provides 40% Vitamin C, 25% Iron"
-    let reason: String // Why this food is recommended
+    let reason: String // Why this food is suggested
     let priority: RecommendationPriority
     let category: FoodCategory
 }
 
 enum RecommendationPriority: Int, Comparable {
-    case critical = 3  // Multiple nutrients critically low
-    case high = 2      // One or more nutrients low
-    case moderate = 1  // Nutrients adequate but could improve
+    case high = 3      // Multiple nutrients tracked at lower levels
+    case medium = 2    // One or more nutrients tracked at lower levels
+    case suggested = 1 // Additional nutrient sources
 
     static func < (lhs: RecommendationPriority, rhs: RecommendationPriority) -> Bool {
         lhs.rawValue < rhs.rawValue
@@ -32,17 +32,17 @@ enum RecommendationPriority: Int, Comparable {
 
     var label: String {
         switch self {
-        case .critical: return "Critical"
-        case .high: return "High Priority"
-        case .moderate: return "Suggested"
+        case .high: return "Rich in Multiple Nutrients"
+        case .medium: return "Good Source"
+        case .suggested: return "Also Consider"
         }
     }
 
     var color: Color {
         switch self {
-        case .critical: return .red
-        case .high: return .orange
-        case .moderate: return .blue
+        case .high: return .blue
+        case .medium: return .green
+        case .suggested: return .gray
         }
     }
 }
@@ -86,36 +86,36 @@ class NutrientRecommendationEngine: ObservableObject {
 
     // MARK: - Generate Recommendations
 
-    /// Generate personalized food recommendations based on current nutrient status
+    /// Generate personalized food suggestions based on current nutrient intake tracking
     func generateRecommendations(for summaries: [MicronutrientSummary]) async {
         isAnalyzing = true
         defer { isAnalyzing = false }
 
         var newRecommendations: [FoodRecommendation] = []
 
-        // Identify low nutrients (0-30%)
-        let lowNutrients = summaries.filter { $0.todayPercentage <= 30 }
+        // Identify nutrients tracked at lower levels (0-30%)
+        let lowerTrackedNutrients = summaries.filter { $0.todayPercentage <= 30 }
 
-        // Identify adequate but could improve (31-70%)
+        // Identify moderate intake levels (31-70%)
         let moderateNutrients = summaries.filter { $0.todayPercentage > 30 && $0.todayPercentage <= 70 }
 
-        // Generate recommendations for low nutrients (high priority)
-        for nutrient in lowNutrients {
-            if let nutrientRecs = generateRecommendationsForNutrient(nutrient, priority: .high) {
+        // Generate suggestions for nutrients tracked at lower levels
+        for nutrient in lowerTrackedNutrients {
+            if let nutrientRecs = generateRecommendationsForNutrient(nutrient, priority: .medium) {
                 newRecommendations.append(contentsOf: nutrientRecs)
             }
         }
 
-        // Generate recommendations for moderate nutrients (lower priority)
+        // Generate suggestions for moderate intake nutrients
         for nutrient in moderateNutrients.prefix(3) { // Limit to top 3
-            if let nutrientRecs = generateRecommendationsForNutrient(nutrient, priority: .moderate) {
+            if let nutrientRecs = generateRecommendationsForNutrient(nutrient, priority: .suggested) {
                 newRecommendations.append(contentsOf: nutrientRecs)
             }
         }
 
-        // Check for critical combinations (multiple low nutrients)
-        let criticalCombos = findCriticalCombinations(lowNutrients)
-        for combo in criticalCombos {
+        // Check for foods rich in multiple nutrients
+        let multiNutrientCombos = findMultiNutrientCombinations(lowerTrackedNutrients)
+        for combo in multiNutrientCombos {
             if let comboRecs = generateRecommendationsForCombination(combo) {
                 newRecommendations.append(contentsOf: comboRecs)
             }
@@ -180,11 +180,11 @@ class NutrientRecommendationEngine: ObservableObject {
         _ nutrients: [MicronutrientSummary]
     ) -> [FoodRecommendation]? {
 
-        // Find foods that are good sources for multiple low nutrients
+        // Find foods that are good sources for multiple nutrients
         let nutrientNames = nutrients.map { $0.nutrient }
 
-        // Predefined multi-nutrient superfoods
-        let superfoods: [(String, [String], FoodCategory)] = [
+        // Predefined multi-nutrient rich foods
+        let nutrientRichFoods: [(String, [String], FoodCategory)] = [
             ("Spinach", ["vitamin_a", "iron", "vitamin_c", "folate"], .vegetables),
             ("Salmon", ["vitamin_d", "vitamin_b12", "omega3"], .seafood),
             ("Eggs", ["vitamin_d", "vitamin_b12", "vitamin_a"], .proteins),
@@ -199,7 +199,7 @@ class NutrientRecommendationEngine: ObservableObject {
 
         var recs: [FoodRecommendation] = []
 
-        for (food, foodNutrients, category) in superfoods {
+        for (food, foodNutrients, category) in nutrientRichFoods {
             let matches = foodNutrients.filter { nutrientNames.contains($0) }
 
             if matches.count >= 2 {
@@ -209,8 +209,8 @@ class NutrientRecommendationEngine: ObservableObject {
                     foodName: food,
                     targetNutrients: matchedNames,
                     expectedImpact: "Provides \(matchedNames.joined(separator: ", "))",
-                    reason: "Addresses \(matches.count) low nutrients at once",
-                    priority: .critical,
+                    reason: "Rich source of \(matches.count) nutrients you're tracking",
+                    priority: .high,
                     category: category
                 ))
             }
@@ -219,13 +219,13 @@ class NutrientRecommendationEngine: ObservableObject {
         return recs.isEmpty ? nil : recs
     }
 
-    private func findCriticalCombinations(_ lowNutrients: [MicronutrientSummary]) -> [[MicronutrientSummary]] {
-        // Group nutrients that are commonly deficient together
+    private func findMultiNutrientCombinations(_ lowerTrackedNutrients: [MicronutrientSummary]) -> [[MicronutrientSummary]] {
+        // Group multiple nutrients to suggest foods rich in several nutrients
         var combinations: [[MicronutrientSummary]] = []
 
-        if lowNutrients.count >= 3 {
-            // If 3+ nutrients are low, this is a critical combination
-            combinations.append(Array(lowNutrients.prefix(5)))
+        if lowerTrackedNutrients.count >= 3 {
+            // If 3+ nutrients are at lower intake levels, suggest foods rich in multiple nutrients
+            combinations.append(Array(lowerTrackedNutrients.prefix(5)))
         }
 
         return combinations

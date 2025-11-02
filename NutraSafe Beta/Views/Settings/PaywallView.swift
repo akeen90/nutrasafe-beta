@@ -78,14 +78,21 @@ struct PaywallView: View {
                             Text(benefitTitle)
                                 .font(.headline)
                             VStack(alignment: .leading, spacing: 12) {
-                                Label("Unlock deeper nutrition insights that guide better choices", systemImage: "chart.bar.doc.horizontal")
-                                Label("Spot missing nutrients and build a balanced routine", systemImage: "waveform.path.ecg")
-                                Label("Smart reminders for opened food expiry — know what's still safe to eat", systemImage: "calendar.badge.clock")
-                                Label("Track reactions and discover what really works for you", systemImage: "heart.text.square")
+                                Label("Access detailed nutrition information and data", systemImage: "chart.bar.doc.horizontal")
+                                Label("Track your nutrient intake against reference values", systemImage: "waveform.path.ecg")
+                                Label("Smart reminders for opened food expiry", systemImage: "calendar.badge.clock")
+                                Label("Log food reactions and identify patterns", systemImage: "heart.text.square")
                             }
                             .padding(16)
                             .background(.ultraThinMaterial)
                             .cornerRadius(16)
+
+                            // Disclaimer
+                            Text("For informational purposes only. Not medical advice. Consult healthcare professionals for dietary guidance.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.leading)
+                                .padding(.horizontal, 8)
 
                             // Your Subscription section
                             VStack(spacing: 12) {
@@ -140,13 +147,24 @@ struct PaywallView: View {
                         .controlSize(.large)
                         .disabled(!subscriptionManager.isProductLoaded || subscriptionManager.isPurchasing)
 
-                        // Error message
+                        // Error message with retry
                         if let error = subscriptionManager.purchaseError {
-                            Text(error)
-                                .font(.caption)
-                                .foregroundColor(.red)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal)
+                            VStack(spacing: 12) {
+                                Text(error)
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal)
+
+                                Button("Try Again") {
+                                    Task {
+                                        subscriptionManager.purchaseError = nil
+                                        try? await subscriptionManager.load()
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                            }
                         }
 
                         // Secondary actions

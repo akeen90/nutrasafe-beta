@@ -231,6 +231,7 @@ struct AccountSection: View {
 
 struct AboutSection: View {
     @State private var showingHealthDisclaimer = false
+    @State private var showingDataSources = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -287,6 +288,18 @@ struct AboutSection: View {
                 .padding(.leading, 52)
 
             SettingsRow(
+                icon: "link.circle",
+                title: "Data Sources",
+                iconColor: .blue,
+                action: {
+                    showingDataSources = true
+                }
+            )
+
+            Divider()
+                .padding(.leading, 52)
+
+            SettingsRow(
                 icon: "heart.text.square",
                 title: "Health Disclaimer",
                 iconColor: .blue,
@@ -317,6 +330,9 @@ struct AboutSection: View {
         }
         .sheet(isPresented: $showingHealthDisclaimer) {
             HealthDisclaimerView()
+        }
+        .sheet(isPresented: $showingDataSources) {
+            SourcesAndCitationsView()
         }
     }
 
@@ -3276,5 +3292,182 @@ struct AppleHealthSettingsView_Previews: PreviewProvider {
             AppleHealthSettingsView()
                 .environmentObject(HealthKitManager.shared)
         }
+    }
+}
+
+// MARK: - Data Sources & Citations
+
+struct SourcesAndCitationsView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    // Header
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Data Sources & Citations")
+                            .font(.title2)
+                            .fontWeight(.bold)
+
+                        Text("All nutrition data, daily values, and ingredient information in this app is sourced from official government databases and health organizations.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+
+                    // FDA Daily Values
+                    CitationCard(
+                        organization: "U.S. Food & Drug Administration (FDA)",
+                        title: "Daily Value on Nutrition and Supplement Facts Labels",
+                        description: "Official FDA reference for recommended daily values of nutrients, vitamins, and minerals used throughout this app.",
+                        url: "https://www.fda.gov/food/nutrition-facts-label/daily-value-nutrition-and-supplement-facts-labels",
+                        category: "Daily Values & RDAs"
+                    )
+
+                    // USDA FoodData
+                    CitationCard(
+                        organization: "U.S. Department of Agriculture (USDA)",
+                        title: "FoodData Central",
+                        description: "Primary source for comprehensive nutrition data including micronutrients, macronutrients, and serving sizes.",
+                        url: "https://fdc.nal.usda.gov/",
+                        category: "Nutrition Data"
+                    )
+
+                    // NIH DRIs
+                    CitationCard(
+                        organization: "National Institutes of Health (NIH)",
+                        title: "Dietary Reference Intakes (DRIs)",
+                        description: "Reference intakes for vitamins and minerals based on age, sex, and life stage.",
+                        url: "https://ods.od.nih.gov/HealthInformation/nutrientrecommendations.aspx",
+                        category: "Daily Values & RDAs"
+                    )
+
+                    // UK NHS Eatwell Guide
+                    CitationCard(
+                        organization: "UK National Health Service (NHS)",
+                        title: "The Eatwell Guide",
+                        description: "UK government guidance on healthy eating and balanced nutrition.",
+                        url: "https://www.nhs.uk/live-well/eat-well/food-guidelines-and-food-labels/the-eatwell-guide/",
+                        category: "General Guidelines"
+                    )
+
+                    // FDA Additives
+                    CitationCard(
+                        organization: "U.S. Food & Drug Administration (FDA)",
+                        title: "Food Additive Status List",
+                        description: "Official FDA database of approved food additives and their safety status.",
+                        url: "https://www.fda.gov/food/food-additives-petitions/food-additive-status-list",
+                        category: "Food Additives"
+                    )
+
+                    // FDA Allergens
+                    CitationCard(
+                        organization: "U.S. Food & Drug Administration (FDA)",
+                        title: "Food Allergies",
+                        description: "Official FDA guidance on major food allergens and labeling requirements.",
+                        url: "https://www.fda.gov/food/food-labeling-nutrition/food-allergies",
+                        category: "Allergen Information"
+                    )
+
+                    // Disclaimer
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Important Note")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+
+                        Text("While we source data from official databases, individual food products may vary. Always verify nutrition labels on actual food packaging, especially if you have allergies or medical dietary requirements.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.orange.opacity(0.1))
+                    )
+                    .padding(.horizontal)
+                    .padding(.bottom, 24)
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct CitationCard: View {
+    let organization: String
+    let title: String
+    let description: String
+    let url: String
+    let category: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Category
+            Text(category)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.secondary)
+                .textCase(.uppercase)
+
+            // Organization
+            Text(organization)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(.blue)
+
+            // Title
+            Text(title)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundColor(.primary)
+
+            // Description
+            Text(description)
+                .font(.system(size: 13))
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // Link button
+            Button(action: {
+                if let urlObj = URL(string: url) {
+                    UIApplication.shared.open(urlObj)
+                }
+            }) {
+                HStack(spacing: 6) {
+                    Image(systemName: "link")
+                        .font(.system(size: 12, weight: .medium))
+
+                    Text("View Source")
+                        .font(.system(size: 13, weight: .medium))
+
+                    Spacer()
+
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 11))
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.blue)
+                )
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemBackground))
+                .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
+        )
+        .padding(.horizontal)
     }
 }

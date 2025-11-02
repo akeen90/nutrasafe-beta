@@ -241,9 +241,9 @@ enum GICategory: String, CaseIterable {
     
     var description: String {
         switch self {
-        case .low: return "Slow glucose release - good for blood sugar control"
-        case .medium: return "Moderate glucose release - consume mindfully"
-        case .high: return "Rapid glucose release - limit portion size"
+        case .low: return "Slow glucose release (Low GI)"
+        case .medium: return "Moderate glucose release (Medium GI)"
+        case .high: return "Rapid glucose release (High GI)"
         case .unknown: return "GI data not available for this food"
         }
     }
@@ -952,6 +952,49 @@ enum MealType: String, CaseIterable, Codable {
         case .dinner: return .indigo
         case .snacks: return .purple
         }
+    }
+}
+
+// MARK: - Weekly Summary Models
+
+struct WeeklySummary {
+    let weekStartDate: Date  // Monday of the week
+    let weekEndDate: Date    // Sunday of the week
+    let totalCalories: Int
+    let totalProtein: Double
+    let totalCarbs: Double
+    let totalFat: Double
+    let dailyBreakdowns: [DailyBreakdown]
+
+    var averageCalories: Int {
+        let daysLogged = dailyBreakdowns.filter { $0.isLogged }.count
+        return daysLogged > 0 ? totalCalories / daysLogged : 0
+    }
+
+    var daysLogged: Int {
+        dailyBreakdowns.filter { $0.isLogged }.count
+    }
+}
+
+struct DailyBreakdown: Identifiable {
+    let id = UUID()
+    let date: Date
+    let calories: Int
+    let protein: Double
+    let carbs: Double
+    let fat: Double
+    let isLogged: Bool
+
+    var dayName: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE"
+        return formatter.string(from: date)
+    }
+
+    var shortDateString: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        return formatter.string(from: date)
     }
 }
 

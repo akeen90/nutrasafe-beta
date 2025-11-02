@@ -221,7 +221,11 @@ struct AllergenDetectionResult {
     let confidence: Double // 0.0 to 1.0
     let riskLevel: AllergenSeverity
     let warnings: [String]
-    let safeForUser: Bool
+
+    /// True if allergens were detected in the food
+    var hasAllergens: Bool {
+        return !detectedAllergens.isEmpty
+    }
 }
 
 class AllergenDetector {
@@ -270,30 +274,10 @@ class AllergenDetector {
             detectedAllergens: detectedAllergens,
             confidence: confidence,
             riskLevel: riskLevel,
-            warnings: warnings,
-            safeForUser: detectedAllergens.isEmpty
+            warnings: warnings
         )
     }
-    
-    func generateSafetyScore(for food: String, userAllergens: [Allergen]) -> Double {
-        let result = detectAllergens(in: food, userAllergens: userAllergens)
-        
-        if result.safeForUser {
-            return 1.0 // 100% safe
-        }
-        
-        // Calculate safety score based on detected allergens and their severity
-        let severityPenalty = result.detectedAllergens.reduce(0.0) { penalty, allergen in
-            switch allergen.severity {
-            case .high: return penalty + 0.4
-            case .medium: return penalty + 0.25
-            case .low: return penalty + 0.1
-            }
-        }
-        
-        return max(0.0, 1.0 - severityPenalty)
-    }
-    
+
     // Refined dairy detection: flags animal dairy terms and excludes plant milks
     func containsDairyMilk(in rawText: String) -> Bool {
         let text = rawText.lowercased()

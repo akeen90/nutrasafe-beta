@@ -3337,31 +3337,7 @@ struct NutrientCard: View {
             }
             .buttonStyle(PlainButtonStyle())
 
-            if isExpanded {
-                VStack(alignment: .leading, spacing: 12) {
-                    Divider()
-                        .padding(.horizontal, 12)
-
-                    VStack(alignment: .leading, spacing: 10) {
-                        NutrientInfoRow(
-                            icon: "info.circle.fill",
-                            title: "What does it do?",
-                            content: getNutrientFunction(),
-                            color: .blue
-                        )
-
-                        NutrientInfoRow(
-                            icon: "heart.fill",
-                            title: "Health benefits",
-                            content: getNutrientBenefits(),
-                            color: .pink
-                        )
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 12)
-                }
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
+            // Expanded details removed - nutrient information is displayed in the main section above
         }
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -3748,9 +3724,9 @@ struct NutrientInfoCard: View {
                         .padding(.horizontal, 16)
 
                     VStack(alignment: .leading, spacing: 12) {
-                        // Benefits section
+                        // Functions section
                         if let benefits = nutrientInfo.benefits, !benefits.isEmpty {
-                            benefitRow(icon: "sparkles", title: "Good for", content: formatBenefits(benefits))
+                            benefitRow(icon: "sparkles", title: "Functions in body", content: formatBenefits(benefits))
                         }
 
                         // Daily intake
@@ -3761,18 +3737,6 @@ struct NutrientInfoCard: View {
                         // Common sources
                         if let sources = nutrientInfo.commonSources, !sources.isEmpty {
                             benefitRow(icon: "leaf.fill", title: "Also found in", content: formatSources(sources))
-                        }
-
-                        // Deficiency signs
-                        if let deficiency = nutrientInfo.deficiencySigns, !deficiency.isEmpty {
-                            let formattedDeficiency = formatBenefits(deficiency)
-                            let isRareDeficiency = formattedDeficiency.lowercased().contains("rare") || formattedDeficiency.lowercased().contains("uncommon")
-
-                            if isRareDeficiency {
-                                benefitRow(icon: "info.circle.fill", title: "Deficiency", content: formattedDeficiency.capitalized, iconColor: .blue)
-                            } else {
-                                benefitRow(icon: "exclamationmark.triangle.fill", title: "Low levels may cause", content: formattedDeficiency, iconColor: .orange)
-                            }
                         }
                     }
                     .padding(.horizontal, 16)
@@ -3874,6 +3838,7 @@ struct NutraSafeGradeInfoView: View {
     let result: ProcessingScorer.NutraSafeProcessingGradeResult
     let food: FoodSearchResult
     @Environment(\.dismiss) private var dismiss
+    @State private var showingSources = false
 
     private func color(for grade: String) -> Color {
         switch grade.uppercased() {
@@ -3960,6 +3925,33 @@ struct NutraSafeGradeInfoView: View {
                             .font(.footnote)
                             .foregroundColor(.secondary)
                     }
+
+                    // Citation section
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Based on")
+                            .font(.headline)
+                        Text("NOVA Food Classification System and UK Food Standards Agency guidelines")
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+
+                        Button(action: {
+                            showingSources = true
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "doc.text.magnifyingglass")
+                                    .font(.system(size: 12))
+                                Text("View All Sources & Citations")
+                                    .font(.system(size: 13, weight: .medium))
+                            }
+                            .foregroundColor(.blue)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.blue.opacity(0.1))
+                            )
+                        }
+                    }
                 }
                 .padding(20)
             }
@@ -3968,6 +3960,9 @@ struct NutraSafeGradeInfoView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
                 }
+            }
+            .sheet(isPresented: $showingSources) {
+                SourcesAndCitationsView()
             }
         }
     }
@@ -3978,6 +3973,7 @@ struct SugarScoreInfoView: View {
     let food: FoodSearchResult
     let perServingSugar: Double
     @Environment(\.dismiss) private var dismiss
+    @State private var showingSources = false
 
     private func description(for grade: SugarGrade) -> String {
         switch grade {
@@ -4125,6 +4121,33 @@ struct SugarScoreInfoView: View {
                             .font(.footnote)
                             .foregroundColor(.secondary)
                     }
+
+                    // Citation section
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Based on")
+                            .font(.headline)
+                        Text("WHO sugar intake guidelines and UK Food Standards Agency recommendations")
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+
+                        Button(action: {
+                            showingSources = true
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "doc.text.magnifyingglass")
+                                    .font(.system(size: 12))
+                                Text("View All Sources & Citations")
+                                    .font(.system(size: 13, weight: .medium))
+                            }
+                            .foregroundColor(.blue)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.blue.opacity(0.1))
+                            )
+                        }
+                    }
                 }
                 .padding(20)
             }
@@ -4133,6 +4156,9 @@ struct SugarScoreInfoView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
                 }
+            }
+            .sheet(isPresented: $showingSources) {
+                SourcesAndCitationsView()
             }
         }
     }

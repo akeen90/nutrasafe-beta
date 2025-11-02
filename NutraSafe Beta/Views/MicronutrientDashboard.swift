@@ -17,6 +17,7 @@ struct MicronutrientDashboard: View {
     @State private var selectedNutrient: MicronutrientSummary?
     @State private var showingTimeline = false
     @State private var showingRecommendations = false
+    @State private var showingSources = false
     @State private var insights: [String] = []
     @State private var nutrientSummaries: [MicronutrientSummary] = []
     @State private var hasLoadedData = false // Performance: Track if we've already loaded data
@@ -34,6 +35,9 @@ struct MicronutrientDashboard: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
+                // Health disclaimer banner
+                healthDisclaimerBanner
+
                 // Header
                 headerSection
 
@@ -63,6 +67,9 @@ struct MicronutrientDashboard: View {
         }
         .sheet(isPresented: $showingRecommendations) {
             SmartRecommendationsView()
+        }
+        .sheet(isPresented: $showingSources) {
+            SourcesAndCitationsView()
         }
         .task {
             // PERFORMANCE: Skip if already loaded - prevents redundant Firebase calls on tab switches
@@ -97,11 +104,22 @@ struct MicronutrientDashboard: View {
         VStack(spacing: 12) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Micronutrients")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
+                    HStack(spacing: 8) {
+                        Text("Micronutrients")
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                            .foregroundColor(.primary)
 
-                    Text("Comprehensive nutrient tracking")
+                        // Info button for data sources
+                        Button(action: {
+                            showingSources = true
+                        }) {
+                            Image(systemName: "info.circle")
+                                .font(.system(size: 18))
+                                .foregroundColor(.blue)
+                        }
+                    }
+
+                    Text("Based on NHS RNI values")
                         .font(.system(size: 14))
                         .foregroundColor(.secondary)
                 }
@@ -726,6 +744,46 @@ struct MicronutrientDashboard: View {
         let mealCount = rhythmDays.filter { $0.level != .none }.count
         return min(mealCount * 2, 30) // Rough estimate: assume ~2 meals per logged day
     }
+
+    // MARK: - Health Disclaimer Banner
+
+    private var healthDisclaimerBanner: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "info.circle.fill")
+                .font(.system(size: 16))
+                .foregroundColor(.blue)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Informational Only")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.primary)
+
+                Text("This app is not medical advice. Consult healthcare professionals for dietary guidance.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+
+            Button(action: {
+                showingSources = true
+            }) {
+                Image(systemName: "doc.text")
+                    .font(.system(size: 14))
+                    .foregroundColor(.blue)
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.blue.opacity(0.1))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+        )
+    }
 }
 
 // MARK: - Micronutrient Row
@@ -867,23 +925,13 @@ struct NutrientInfoSheet: View {
                     // Food sources - MOVED TO TOP for prominence
                     foodSourcesSection
 
-                    // Benefits
+                    // Functions in the body
                     if let benefits = summary.info?.benefits {
                         infoSection(
-                            title: "Benefits",
+                            title: "Functions in the Body",
                             icon: "heart.fill",
                             color: .blue,
                             content: benefits
-                        )
-                    }
-
-                    // Deficiency signs
-                    if let deficiency = summary.info?.deficiencySigns {
-                        infoSection(
-                            title: "Deficiency Signs",
-                            icon: "exclamationmark.triangle.fill",
-                            color: .orange,
-                            content: deficiency
                         )
                     }
 

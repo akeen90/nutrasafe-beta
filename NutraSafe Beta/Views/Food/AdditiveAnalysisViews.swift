@@ -15,7 +15,8 @@ struct AdditiveWatchView: View {
     let ingredients: [String]
     @State private var isExpanded = false
     @State private var additiveResult: AdditiveDetectionResult?
-    
+    @State private var showingSources = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             // Header with expand/collapse
@@ -64,6 +65,9 @@ struct AdditiveWatchView: View {
         .padding()
         .background(Color(.systemGray6))
         .cornerRadius(12)
+        .sheet(isPresented: $showingSources) {
+            SourcesAndCitationsView()
+        }
         .onAppear {
             if additiveResult == nil {
                 analyzeAdditives()
@@ -100,14 +104,35 @@ struct AdditiveWatchView: View {
         VStack(alignment: .leading, spacing: 16) {
             // Child warning message if present
             if let warningMessage = result.childWarningMessage {
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                            .font(.system(size: 14))
+                        Text(warningMessage)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.orange)
+                            .lineLimit(nil)
+                    }
+
+                    // Citation button for child hyperactivity research
+                    Button(action: {
+                        showingSources = true
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "doc.text.magnifyingglass")
+                                .font(.system(size: 11))
+                            Text("View Research & Sources")
+                                .font(.system(size: 11, weight: .medium))
+                        }
                         .foregroundColor(.orange)
-                        .font(.system(size: 14))
-                    Text(warningMessage)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.orange)
-                        .lineLimit(nil)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(Color.orange.opacity(0.15))
+                        )
+                    }
                 }
                 .padding(12)
                 .background(Color.orange.opacity(0.1))
@@ -145,10 +170,24 @@ struct AdditiveWatchView: View {
                 .cornerRadius(8)
             }
             
-            // Educational footer
-            Text("This information is provided for educational purposes to help you understand food additives. All listed additives are approved for use in food.")
-                .font(.system(size: 11).italic())
-                .foregroundColor(.secondary)
+            // Educational footer with citation link
+            VStack(alignment: .leading, spacing: 8) {
+                Text("This information is provided for educational purposes to help you understand food additives. All listed additives are approved for use in food.")
+                    .font(.system(size: 11).italic())
+                    .foregroundColor(.secondary)
+
+                Button(action: {
+                    showingSources = true
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 10))
+                        Text("View All Sources & Citations")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundColor(.blue)
+                }
+            }
         }
     }
     
@@ -590,11 +629,11 @@ struct AdditiveCardView: View {
 
         switch additive.riskLevel {
         case "High":
-            return "Best avoided if possible. May have health concerns for sensitive individuals."
+            return "Some studies have raised questions about this additive for sensitive individuals."
         case "Moderate":
-            return "Generally safe in small amounts. Consider limiting regular consumption."
+            return "This additive has a moderate safety rating in food safety databases."
         default:
-            return "Generally recognized as safe for most people when consumed as part of food."
+            return "This additive is generally recognized as safe when used in food."
         }
     }
 }

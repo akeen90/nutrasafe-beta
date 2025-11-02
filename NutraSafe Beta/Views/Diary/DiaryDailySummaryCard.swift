@@ -19,6 +19,8 @@ struct DiaryDailySummaryCard: View {
     let lunchFoods: [DiaryFoodItem]
     let dinnerFoods: [DiaryFoodItem]
     let snackFoods: [DiaryFoodItem]
+    let fetchWeeklySummary: (Double, Double, Double, Double) async -> WeeklySummary?
+    let setSelectedDate: (Date) -> Void
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var firebaseManager: FirebaseManager
     @AppStorage("healthKitRingsEnabled") private var healthKitRingsEnabled = false
@@ -28,6 +30,9 @@ struct DiaryDailySummaryCard: View {
     @State private var proteinGoal: Double = 135
     @State private var carbGoal: Double = 225
     @State private var fatGoal: Double = 40
+
+    // MARK: - Weekly Summary Sheet
+    @State private var showWeeklySummary = false
     
     // MARK: - Body
     var body: some View {
@@ -153,12 +158,31 @@ struct DiaryDailySummaryCard: View {
                 VStack(alignment: .leading, spacing: 12) {
                     // Date header with improved typography
                     VStack(alignment: .leading, spacing: 3) {
-                        HStack(spacing: 4) {
+                        HStack(spacing: 8) {
                             Text(formatDateForDaily(currentDate))
                                 .font(.system(size: 22, weight: .bold, design: .rounded))
                                 .foregroundColor(.primary)
 
                             Spacer()
+
+                            // View Week Button
+                            Button(action: {
+                                showWeeklySummary = true
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "calendar")
+                                        .font(.system(size: 13, weight: .semibold))
+                                    Text("Week")
+                                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                }
+                                .foregroundColor(.blue)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color(.systemBlue).opacity(0.1))
+                                )
+                            }
                         }
 
                         Text("of \(Int(calorieGoal)) calories")
@@ -233,6 +257,17 @@ struct DiaryDailySummaryCard: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .nutritionGoalsUpdated)) { _ in
             Task { await loadNutritionGoals() }
+        }
+        .sheet(isPresented: $showWeeklySummary) {
+            WeeklySummarySheet(
+                initialDate: currentDate,
+                calorieGoal: calorieGoal,
+                proteinGoal: proteinGoal,
+                carbGoal: carbGoal,
+                fatGoal: fatGoal,
+                fetchWeeklySummary: fetchWeeklySummary,
+                setSelectedDate: setSelectedDate
+            )
         }
     }
 
