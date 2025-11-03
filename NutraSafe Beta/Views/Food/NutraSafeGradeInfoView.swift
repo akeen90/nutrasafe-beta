@@ -102,6 +102,64 @@ struct NutraSafeGradeInfoView: View {
                             .font(.footnote)
                             .foregroundColor(.secondary)
                     }
+
+                    // Citations section
+                    Group {
+                        Text("Research Sources")
+                            .font(.headline)
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            ForEach(CitationManager.shared.citations(for: .foodProcessing)) { citation in
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text(citation.organization)
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundColor(.blue)
+
+                                    Text(citation.title)
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(.primary)
+
+                                    Text(citation.description)
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+
+                                    Button(action: {
+                                        if let url = URL(string: citation.url) {
+                                            UIApplication.shared.open(url)
+                                        }
+                                    }) {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "link")
+                                                .font(.system(size: 11, weight: .medium))
+                                            Text("View Source")
+                                                .font(.system(size: 12, weight: .medium))
+                                            Spacer()
+                                            Image(systemName: "arrow.up.right")
+                                                .font(.system(size: 10))
+                                        }
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 6)
+                                                .fill(Color.blue)
+                                        )
+                                    }
+                                }
+                                .padding(12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color(.systemGray6))
+                                )
+                            }
+                        }
+
+                        Text("Our grading system is based on internationally recognized food processing classification standards.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 4)
+                    }
                 }
                 .padding(20)
             }

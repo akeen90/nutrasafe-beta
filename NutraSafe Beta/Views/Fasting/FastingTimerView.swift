@@ -28,6 +28,7 @@ struct FastingTimerView: View {
     @State private var showStopError = false
     @State private var stopErrorText = ""
     @State private var fastHistory: [FastRecord] = []
+    @State private var showingCitations = false
 
     // Live Activity
     @State private var currentActivity: Any? // Holds Activity<FastingActivityAttributes> on iOS 16.1+
@@ -227,10 +228,22 @@ struct FastingTimerView: View {
                 
                 // Fasting Benefits Card
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Fasting Stages")
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundColor(.primary)
-                    
+                    HStack {
+                        Text("Fasting Stages")
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundColor(.primary)
+
+                        Spacer()
+
+                        Button(action: {
+                            showingCitations = true
+                        }) {
+                            Text("View Sources")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.blue)
+                        }
+                    }
+
                     VStack(spacing: 12) {
                         FastingStageRow(
                             hours: "0-4h",
@@ -375,6 +388,9 @@ struct FastingTimerView: View {
                 onSave: saveFastingSettings
             )
             .environmentObject(firebaseManager)
+        }
+        .sheet(isPresented: $showingCitations) {
+            FastingCitationsView()
         }
     }
 

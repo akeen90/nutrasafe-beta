@@ -1651,7 +1651,6 @@ struct WeightTrackingView: View {
     @State private var editingEntry: WeightEntry?  // Changed from selectedEntry to editingEntry for clarity
     @State private var entryToDelete: WeightEntry?
     @State private var showingDeleteConfirmation = false
-    @State private var showingAllWeightHistory = false
 
     private var needsHeightSetup: Bool {
         userHeight == 0 && hasCheckedHeight // Only prompt if height is truly not set
@@ -1954,7 +1953,7 @@ struct WeightTrackingView: View {
 
                                 if weightHistory.count > 5 {
                                     Button(action: {
-                                        showingAllWeightHistory = true
+                                        // TODO: Show full history
                                     }) {
                                         Text("View all \(weightHistory.count) entries")
                                             .font(.system(size: 14, weight: .medium))
@@ -2065,21 +2064,6 @@ struct WeightTrackingView: View {
                 onSave: { loadWeightHistory() }
             )
             .environmentObject(firebaseManager)
-        }
-        .sheet(isPresented: $showingAllWeightHistory) {
-            AllWeightHistoryView(
-                weightHistory: weightHistory,
-                userHeight: userHeight,
-                onEdit: { entry in
-                    showingAllWeightHistory = false
-                    editingEntry = entry
-                },
-                onDelete: { entry in
-                    entryToDelete = entry
-                    showingDeleteConfirmation = true
-                    showingAllWeightHistory = false
-                }
-            )
         }
         .alert("Delete Weight Entry?", isPresented: $showingDeleteConfirmation) {
             Button("Cancel", role: .cancel) {
@@ -2286,122 +2270,6 @@ struct WeightEntryRow: View {
                 .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
         )
         .padding(.bottom, 8)
-    }
-}
-
-// MARK: - All Weight History View
-struct AllWeightHistoryView: View {
-    @Environment(\.dismiss) private var dismiss
-    let weightHistory: [WeightEntry]
-    let userHeight: Double
-    let onEdit: (WeightEntry) -> Void
-    let onDelete: (WeightEntry) -> Void
-
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(spacing: 0) {
-                    // Summary Header
-                    VStack(spacing: 12) {
-                        if let latest = weightHistory.first, let oldest = weightHistory.last, weightHistory.count > 1 {
-                            let totalChange = latest.weight - oldest.weight
-                            let daysBetween = Calendar.current.dateComponents([.day], from: oldest.date, to: latest.date).day ?? 0
-
-                            HStack(spacing: 24) {
-                                // Total Change
-                                VStack(spacing: 4) {
-                                    Text("Total Change")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.secondary)
-                                    HStack(spacing: 4) {
-                                        Image(systemName: totalChange < 0 ? "arrow.down" : totalChange > 0 ? "arrow.up" : "minus")
-                                            .font(.system(size: 14, weight: .bold))
-                                        Text(String(format: "%.1f kg", abs(totalChange)))
-                                            .font(.system(size: 18, weight: .bold))
-                                    }
-                                    .foregroundColor(totalChange < 0 ? .green : totalChange > 0 ? .red : .secondary)
-                                }
-
-                                Divider()
-                                    .frame(height: 40)
-
-                                // Duration
-                                VStack(spacing: 4) {
-                                    Text("Duration")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.secondary)
-                                    Text("\(daysBetween) days")
-                                        .font(.system(size: 18, weight: .bold))
-                                        .foregroundColor(.primary)
-                                }
-
-                                Divider()
-                                    .frame(height: 40)
-
-                                // Entries
-                                VStack(spacing: 4) {
-                                    Text("Entries")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.secondary)
-                                    Text("\(weightHistory.count)")
-                                        .font(.system(size: 18, weight: .bold))
-                                        .foregroundColor(.primary)
-                                }
-                            }
-                            .padding(20)
-                            .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(Color(.secondarySystemBackground))
-                            )
-                            .padding(.horizontal, 20)
-                        }
-                    }
-                    .padding(.vertical, 20)
-
-                    // All entries
-                    LazyVStack(spacing: 12) {
-                        ForEach(Array(weightHistory.enumerated()), id: \.element.id) { index, entry in
-                            WeightEntryRow(
-                                entry: entry,
-                                previousEntry: weightHistory[safe: index + 1],
-                                isLatest: index == 0
-                            )
-                            .onTapGesture {
-                                dismiss()
-                                onEdit(entry)
-                            }
-                            .contextMenu {
-                                Button {
-                                    dismiss()
-                                    onEdit(entry)
-                                } label: {
-                                    Label("Edit", systemImage: "pencil")
-                                }
-
-                                Button(role: .destructive) {
-                                    dismiss()
-                                    onDelete(entry)
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
-                            .padding(.horizontal, 20)
-                        }
-                    }
-                    .padding(.bottom, 20)
-                }
-            }
-            .background(Color.adaptiveBackground)
-            .navigationTitle("Weight History")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -6582,14 +6450,7 @@ struct AddFoodMainView: View {
                 Group {
                     switch selectedAddOption {
                     case .search:
-                        AddFoodSearchView(
-                            selectedTab: $selectedTab,
-                            destination: $destination,
-                            onComplete: onComplete,
-                            onSwitchToManual: {
-                                selectedAddOption = .manual
-                            }
-                        )
+                        AddFoodSearchView(selectedTab: $selectedTab, destination: $destination, onComplete: onComplete)
                     case .manual:
                         AddFoodManualView(selectedTab: $selectedTab, destination: $destination)
                     case .barcode:

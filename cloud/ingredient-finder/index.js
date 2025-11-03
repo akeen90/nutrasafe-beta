@@ -65,12 +65,13 @@ async function searchWithGemini(productName, brand) {
     }]
   });
 
-  // Optimized concise prompt for faster processing
+  // Optimized concise prompt - searches for multiple pack sizes
   const prompt = `Find UK product "${productName}"${brand ? ` by ${brand}` : ''} from Tesco/Sainsburys/Asda.
-Extract: ingredients list + nutrition per 100g (kcal, protein, carbs, fat, fiber, sugar, salt in g).
-Return JSON only:
-{"product_name":"...","brand":"...","barcode":"...","serving_size":"...","ingredients":"comma separated list","nutrition_per_100g":{"calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0,"salt":0},"source_url":"..."}
-Use null for missing fields. Convert sodium to salt (*2.5). Remove "Ingredients:" prefix.`;
+Find ALL available pack sizes (single item, multipack, sharing bag, large family pack, etc).
+For EACH size: ingredients list + nutrition per 100g (kcal, protein, carbs, fat, fiber, sugar, salt in g).
+Return JSON array:
+[{"size_description":"10 sweets (10g)","product_name":"...","brand":"...","barcode":"...","ingredients":"comma separated list","nutrition_per_100g":{"calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0,"salt":0},"source_url":"..."}]
+Use null for missing fields. Convert sodium to salt (*2.5). Remove "Ingredients:" prefix. Return 2-3+ sizes if available.`;
 
   try {
     const result = await model.generateContent(prompt);
@@ -79,14 +80,16 @@ Use null for missing fields. Convert sodium to salt (*2.5). Remove "Ingredients:
 
     console.log('[DEBUG] Gemini response:', text);
 
-    // Extract JSON from response (might be wrapped in markdown)
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    // Extract JSON from response (might be wrapped in markdown) - supports both array and object
+    const jsonMatch = text.match(/\[[\s\S]*\]|\{[\s\S]*\}/);
     if (!jsonMatch) {
       console.log('[WARN] No JSON found in Gemini response');
       return null;
     }
 
-    return JSON.parse(jsonMatch[0]);
+    const parsed = JSON.parse(jsonMatch[0]);
+    // Normalize to array (backward compatible with single object responses)
+    return Array.isArray(parsed) ? parsed : [parsed];
   } catch (err) {
     console.error('[ERROR] Gemini search failed:', err.message);
     return null;
@@ -115,50 +118,56 @@ const handler = async (req, res) => {
       return res.status(200).json(cached);
     }
 
-    const extracted = await searchWithGemini(productName, brand);
+    const extractedVariants = await searchWithGemini(productName, brand);
 
-    if (!extracted) {
+    if (!extractedVariants || extractedVariants.length === 0) {
       return res.status(200).json({
         ingredients_found: false,
-        ingredients_text: null,
-        nutrition_per_100g: null,
-        source_url: null
+        variants: []
       });
     }
 
-    console.log(`[DEBUG] Extracted:`, JSON.stringify(extracted, null, 2));
+    console.log(`[DEBUG] Extracted ${extractedVariants.length} variant(s):`, JSON.stringify(extractedVariants, null, 2));
 
-    // Normalize ingredients
-    const ingredients = extracted.ingredients
-      ? extracted.ingredients.replace(/^ingredients\s*:\s*/i, '').trim()
-      : null;
+    // Process each variant
+    const processedVariants = extractedVariants.map(variant => {
+      // Normalize ingredients
+      const ingredients = variant.ingredients
+        ? variant.ingredients.replace(/^ingredients\s*:\s*/i, '').trim()
+        : null;
 
-    // Validate we have at least ingredients or nutrition data
-    const hasIngredients = ingredients && ingredients.includes(',');
-    const hasNutrition = extracted.nutrition_per_100g && Object.values(extracted.nutrition_per_100g).some(v => v !== null);
+      // Validate we have at least ingredients or nutrition data
+      const hasIngredients = ingredients && ingredients.includes(',');
+      const hasNutrition = variant.nutrition_per_100g && Object.values(variant.nutrition_per_100g).some(v => v !== null);
 
-    if (!hasIngredients && !hasNutrition) {
-      console.log(`[DEBUG] Rejected: no valid ingredients or nutrition data`);
+      if (!hasIngredients && !hasNutrition) {
+        return null;  // Skip invalid variants
+      }
+
+      return {
+        size_description: variant.size_description || 'Standard pack',
+        product_name: variant.product_name || null,
+        brand: variant.brand || null,
+        barcode: variant.barcode || null,
+        ingredients_text: ingredients,
+        nutrition_per_100g: variant.nutrition_per_100g || null,
+        source_url: variant.source_url || null
+      };
+    }).filter(v => v !== null);  // Remove invalid variants
+
+    if (processedVariants.length === 0) {
+      console.log(`[DEBUG] Rejected: no valid variants found`);
       const response = {
         ingredients_found: false,
-        ingredients_text: null,
-        nutrition_per_100g: null,
-        source_url: extracted.source_url || null
+        variants: []
       };
-      // Cache negative results too to avoid repeated failed searches
       setCachedProduct(productName, brand, response);
       return res.status(200).json(response);
     }
 
     const response = {
-      ingredients_found: hasIngredients || hasNutrition,
-      product_name: extracted.product_name || null,
-      brand: extracted.brand || null,
-      barcode: extracted.barcode || null,
-      serving_size: extracted.serving_size || null,
-      ingredients_text: ingredients,
-      nutrition_per_100g: extracted.nutrition_per_100g || null,
-      source_url: extracted.source_url || null
+      ingredients_found: true,
+      variants: processedVariants
     };
 
     // Cache successful results for faster future lookups

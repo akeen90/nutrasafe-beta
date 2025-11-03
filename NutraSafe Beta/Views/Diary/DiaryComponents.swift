@@ -299,7 +299,7 @@ struct DiaryFoodRow: View {
             // Long press to view food details
         // DEBUG LOG: print("DEBUG: Opening FoodDetailViewFromSearch from diary")
         // DEBUG LOG: print("DEBUG: DiaryFoodItem.ingredients = \(food.ingredients?.count ?? 0) items: \(food.ingredients ?? [])")
-            let searchResult = food.toFoodSearchResult()
+            _ = food.toFoodSearchResult()
         // DEBUG LOG: print("DEBUG: FoodSearchResult.ingredients = \(searchResult.ingredients?.count ?? 0) items: \(searchResult.ingredients ?? [])")
             showingFoodDetail = true
         }

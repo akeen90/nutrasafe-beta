@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		85B9A8E7B9CE44E78B03AF9E /* WeeklySummarySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7688F3AF506A42F18A62BB18 /* WeeklySummarySheet.swift */; };
+		804783D4F2414E90984B7EEC /* WeeklySummarySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 382580B0102C42B88767E7A2 /* WeeklySummarySheet.swift */; };
 		013A7F75B09C430AB1EE40154700DAAB /* DiaryDailySummaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE1E506F81E64504BA776F466B03D0BC /* DiaryDailySummaryCard.swift */; };
 		053A05A52E60FD20C626C633 /* NutrientTrendChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24ED2B63CEA2D1DEA6011858 /* NutrientTrendChart.swift */; };
 		17DEC2E4FA075B1C522AA72E /* NutrientRingComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65D879B4011020FFD1A03C3F /* NutrientRingComponents.swift */; };
@@ -59,6 +59,7 @@
 		ABB0AEF82EA8CCD1009F044D /* OnboardingScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABB0AEF42EA8CCD1009F044D /* OnboardingScreens.swift */; };
 		ABB0AEFA2EAC3F14009F044D /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ABB0AEF92EAC3F13009F044D /* StoreKit.framework */; };
 		ABC1D3B02EAD665E00518F41 /* NutraSafe.storekit in Resources */ = {isa = PBXBuildFile; fileRef = ABC1D3AF2EAD665E00518F41 /* NutraSafe.storekit */; };
+		ABCDD6892EB51DEE0085890E /* WeeklySummarySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCDD6882EB51DEE0085890E /* WeeklySummarySheet.swift */; };
 		AUTH1234567890123456789001 /* AuthenticationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AUTH1234567890123456789002 /* AuthenticationView.swift */; };
 		B1234567890123456789CM02 /* CoreModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1234567890123456789CM01 /* CoreModels.swift */; };
 		B1234567890123456789EM02 /* ExerciseModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1234567890123456789EM01 /* ExerciseModels.swift */; };
@@ -92,10 +93,11 @@
 		RECOM456E67696E65426C64 /* NutrientRecommendationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = RECOM456E67696E6546696C65 /* NutrientRecommendationEngine.swift */; };
 		RECOM566965774275696C64 /* SmartRecommendationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = RECOM5669657746696C65 /* SmartRecommendationsView.swift */; };
 		SUBS0001BUILD /* Managers/SubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = SUBS0001FILE /* Managers/SubscriptionManager.swift */; };
+        CITMGR0001BUILD /* CitationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CITMGR0001FILE /* CitationManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		7688F3AF506A42F18A62BB18 /* WeeklySummarySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklySummarySheet.swift; sourceTree = "<group>"; };
+		382580B0102C42B88767E7A2 /* WeeklySummarySheet.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WeeklySummarySheet.swift; sourceTree = "<group>"; };
 		025E4F9F2ED6507377598194 /* UseByNotificationManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UseByNotificationManager.swift; sourceTree = "<group>"; };
 		034F60AA8BCB4662A86709D4 /* FastingTimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastingTimerView.swift; sourceTree = "<group>"; };
 		062BCEAA60197405CFED2ACE /* NutrientActivityDashboard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NutrientActivityDashboard.swift; sourceTree = "<group>"; };
@@ -141,6 +143,7 @@
 		ABB0AEF92EAC3F13009F044D /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		ABB0AEFB2EAC4FA5009F044D /* NutraSafe Beta.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "NutraSafe Beta.entitlements"; sourceTree = "<group>"; };
 		ABC1D3AF2EAD665E00518F41 /* NutraSafe.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = NutraSafe.storekit; sourceTree = "<group>"; };
+		ABCDD6882EB51DEE0085890E /* WeeklySummarySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklySummarySheet.swift; sourceTree = "<group>"; };
 		AFD9F648F59C4B7EA1CE6A9850464D04 /* ProfessionalSummaryViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfessionalSummaryViews.swift; sourceTree = "<group>"; };
 		AUTH1234567890123456789002 /* AuthenticationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationView.swift; sourceTree = "<group>"; };
 		B1234567890123456789CM01 /* CoreModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CoreModels.swift; path = "NutraSafe Beta/Models/CoreModels.swift"; sourceTree = "<group>"; };
@@ -178,6 +181,7 @@
 		RECOM456E67696E6546696C65 /* NutrientRecommendationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutrientRecommendationEngine.swift; sourceTree = "<group>"; };
 		RECOM5669657746696C65 /* SmartRecommendationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartRecommendationsView.swift; sourceTree = "<group>"; };
 		SUBS0001FILE /* Managers/SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/SubscriptionManager.swift; sourceTree = "<group>"; };
+        CITMGR0001FILE /* CitationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CitationManager.swift; path = "NutraSafe Beta/Models/CitationManager.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -185,7 +189,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AB4B75A92E72DEFC0058DCD3 /* FirebaseCore in Frameworks */,
+								804783D4F2414E90984B7EEC /* WeeklySummarySheet.swift in Sources */,
+AB4B75A92E72DEFC0058DCD3 /* FirebaseCore in Frameworks */,
 				AB4B75A72E72DEF60058DCD3 /* FirebaseAuth in Frameworks */,
 				ABB0AEFA2EAC3F14009F044D /* StoreKit.framework in Frameworks */,
 				AB13BC1C2EAE253100C7B892 /* FirebaseFunctions in Frameworks */,
@@ -260,7 +265,9 @@
 		48F7E2851A9B4BD8AF47A1BEE4B27F68 /* Diary */ = {
 			isa = PBXGroup;
 			children = (
+				ABCDD6882EB51DEE0085890E /* WeeklySummarySheet.swift */,
 				EE1E506F81E64504BA776F466B03D0BC /* DiaryDailySummaryCard.swift */,
+				382580B0102C42B88767E7A2 /* WeeklySummarySheet.swift */,
 				21E673F6B8D947F9B6F2005EFFAE8B5B /* DiaryHydrationView.swift */,
 				AFD9F648F59C4B7EA1CE6A9850464D04 /* ProfessionalSummaryViews.swift */,
 			);
@@ -359,6 +366,7 @@
 				B1234567890123456789HM01 /* HealthKitModels.swift */,
 				B1234567890123456789UM01 /* UserModels.swift */,
 				B1234567890123456789SE01 /* SearchModels.swift */,
+                CITMGR0001FILE /* CitationManager.swift */,
 				FA2F7F8ABA91448198A8CB77 /* NutraSafe Beta/Views/Diary/DiaryComponents.swift */,
 				C9BF68D365EE4EFCAC81C56F /* NutraSafe Beta/Views/Diary/DiaryExerciseComponents.swift */,
 				B45D6F2FD4A7496BA9C12D66 /* NutraSafe Beta/Views/Components/NutritionScoreViews.swift */,
@@ -366,7 +374,7 @@
 				45915D62F0F14714AC688437 /* NutraSafe Beta/Views/Components/MacroViews.swift */,
 				493422FA56E54C918E7155AD /* NutraSafe Beta/Views/Components/CustomTabBar.swift */,
 				22C6BF8B3C55423CB194379A /* NutraSafe Beta/Configuration/AppConfig.swift */,
-			);
+					);
 			name = "Recovered References";
 			sourceTree = "<group>";
 		};
@@ -484,8 +492,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				85B9A8E7B9CE44E78B03AF9E /* WeeklySummarySheet.swift in Sources */,
-				C83CC72A7D464E1685D1143F /* SettingsView.swift in Sources */,
+						C83CC72A7D464E1685D1143F /* SettingsView.swift in Sources */,
 				PAYWALL0001BUILD /* PaywallView.swift in Sources */,
 				AUTH1234567890123456789001 /* AuthenticationView.swift in Sources */,
 				A1234567890123456789012302 /* ContentView.swift in Sources */,
@@ -521,6 +528,7 @@
 				B1234567890123456789EM02 /* ExerciseModels.swift in Sources */,
 				B1234567890123456789FS02 /* FoodSafetyModels.swift in Sources */,
 				B1234567890123456789NM02 /* NutritionModels.swift in Sources */,
+				ABCDD6892EB51DEE0085890E /* WeeklySummarySheet.swift in Sources */,
 				B1234567890123456789SM02 /* ScoringModels.swift in Sources */,
 				B1234567890123456789HM02 /* HealthKitModels.swift in Sources */,
 				B1234567890123456789UM02 /* UserModels.swift in Sources */,
@@ -552,6 +560,7 @@
 				053A05A52E60FD20C626C633 /* NutrientTrendChart.swift in Sources */,
 				2C4324C1715FB9619FA60053 /* NutrientTimelineView.swift in Sources */,
 				BDD6569256384DFA94AA3B4C /* SQLiteFoodDatabase.swift in Sources */,
+                CITMGR0001BUILD /* CitationManager.swift in Sources */,
 				55B790C73CA449989621A55B /* NutraSafe Beta/Models/ReactionLogModels.swift in Sources */,
 				57D39094D959418DBEA2559C /* NutraSafe Beta/Managers/ReactionLogManager.swift in Sources */,
 				FAA5308D615C46F7B48AEE78 /* NutraSafe Beta/Views/ReactionLogView.swift in Sources */,

@@ -3838,7 +3838,6 @@ struct NutraSafeGradeInfoView: View {
     let result: ProcessingScorer.NutraSafeProcessingGradeResult
     let food: FoodSearchResult
     @Environment(\.dismiss) private var dismiss
-    @State private var showingSources = false
 
     private func color(for grade: String) -> Color {
         switch grade.uppercased() {
@@ -3925,33 +3924,6 @@ struct NutraSafeGradeInfoView: View {
                             .font(.footnote)
                             .foregroundColor(.secondary)
                     }
-
-                    // Citation section
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Based on")
-                            .font(.headline)
-                        Text("NOVA Food Classification System and UK Food Standards Agency guidelines")
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
-
-                        Button(action: {
-                            showingSources = true
-                        }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "doc.text.magnifyingglass")
-                                    .font(.system(size: 12))
-                                Text("View All Sources & Citations")
-                                    .font(.system(size: 13, weight: .medium))
-                            }
-                            .foregroundColor(.blue)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color.blue.opacity(0.1))
-                            )
-                        }
-                    }
                 }
                 .padding(20)
             }
@@ -3960,9 +3932,6 @@ struct NutraSafeGradeInfoView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
                 }
-            }
-            .sheet(isPresented: $showingSources) {
-                SourcesAndCitationsView()
             }
         }
     }
@@ -3973,7 +3942,6 @@ struct SugarScoreInfoView: View {
     let food: FoodSearchResult
     let perServingSugar: Double
     @Environment(\.dismiss) private var dismiss
-    @State private var showingSources = false
 
     private func description(for grade: SugarGrade) -> String {
         switch grade {
@@ -4122,31 +4090,62 @@ struct SugarScoreInfoView: View {
                             .foregroundColor(.secondary)
                     }
 
-                    // Citation section
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Based on")
+                    // Citations section
+                    Group {
+                        Text("Research Sources")
                             .font(.headline)
-                        Text("WHO sugar intake guidelines and UK Food Standards Agency recommendations")
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
 
-                        Button(action: {
-                            showingSources = true
-                        }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "doc.text.magnifyingglass")
-                                    .font(.system(size: 12))
-                                Text("View All Sources & Citations")
-                                    .font(.system(size: 13, weight: .medium))
+                        VStack(alignment: .leading, spacing: 12) {
+                            ForEach(CitationManager.shared.citations(for: .sugarSalt)) { citation in
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text(citation.organization)
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundColor(.blue)
+
+                                    Text(citation.title)
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(.primary)
+
+                                    Text(citation.description)
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+
+                                    Button(action: {
+                                        if let url = URL(string: citation.url) {
+                                            UIApplication.shared.open(url)
+                                        }
+                                    }) {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "link")
+                                                .font(.system(size: 11, weight: .medium))
+                                            Text("View Source")
+                                                .font(.system(size: 12, weight: .medium))
+                                            Spacer()
+                                            Image(systemName: "arrow.up.right")
+                                                .font(.system(size: 10))
+                                        }
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 6)
+                                                .fill(Color.blue)
+                                        )
+                                    }
+                                }
+                                .padding(12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color(.systemGray6))
+                                )
                             }
-                            .foregroundColor(.blue)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color.blue.opacity(0.1))
-                            )
                         }
+
+                        Text("Our sugar scoring is based on WHO and NHS dietary guidelines for sugar intake.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 4)
                     }
                 }
                 .padding(20)
@@ -4156,9 +4155,6 @@ struct SugarScoreInfoView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
                 }
-            }
-            .sheet(isPresented: $showingSources) {
-                SourcesAndCitationsView()
             }
         }
     }

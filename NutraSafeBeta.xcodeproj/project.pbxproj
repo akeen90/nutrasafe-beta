@@ -84,6 +84,8 @@
 		F274CF78968B4290ADA3C260F96936CE /* UseByTabViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4841D8FB19F4A7091A7DD0A429B645E /* UseByTabViews.swift */; };
 		F2A1EA64DE5874696AC72D24 /* PrivacyPolicyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55FA70B49C3C721A45AA1C88 /* PrivacyPolicyView.swift */; };
 		F71736FEB2E843E18F674753 /* FastingTimerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 034F60AA8BCB4662A86709D4 /* FastingTimerView.swift */; };
+		9E5CB88F-07E2-4BD1-9C28- /* FastingCitationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 800A45E9-3EDE-4391-B526- /* FastingCitationsView.swift */; };
+		800A45E9-3EDE-4391-B526- /* FastingCitationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastingCitationsView.swift; sourceTree = "<group>"; };
 		FAA5308D615C46F7B48AEE78 /* NutraSafe Beta/Views/ReactionLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3D9EE3D5C7748EE8D793D2B /* NutraSafe Beta/Views/ReactionLogView.swift */; };
 		FASTHIST0001BUILD /* FastingHistoryDropdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = FASTHIST0001FILE /* FastingHistoryDropdown.swift */; };
 		FASTMGR0001BUILD /* Managers/FastingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FASTMGR0001FILE /* Managers/FastingManager.swift */; };
@@ -93,6 +95,7 @@
 		RECOM456E67696E65426C64 /* NutrientRecommendationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = RECOM456E67696E6546696C65 /* NutrientRecommendationEngine.swift */; };
 		RECOM566965774275696C64 /* SmartRecommendationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = RECOM5669657746696C65 /* SmartRecommendationsView.swift */; };
 		SUBS0001BUILD /* Managers/SubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = SUBS0001FILE /* Managers/SubscriptionManager.swift */; };
+		4F8520E48696407F923B1DDE /* CitationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA25CC3104894F129803B0E8 /* CitationManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -180,6 +183,7 @@
 		RECOM456E67696E6546696C65 /* NutrientRecommendationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutrientRecommendationEngine.swift; sourceTree = "<group>"; };
 		RECOM5669657746696C65 /* SmartRecommendationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartRecommendationsView.swift; sourceTree = "<group>"; };
 		SUBS0001FILE /* Managers/SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/SubscriptionManager.swift; sourceTree = "<group>"; };
+		BA25CC3104894F129803B0E8 /* CitationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CitationManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -256,6 +260,7 @@ AB4B75A92E72DEFC0058DCD3 /* FirebaseCore in Frameworks */,
 			children = (
 				034F60AA8BCB4662A86709D4 /* FastingTimerView.swift */,
 				FASTHIST0001FILE /* FastingHistoryDropdown.swift */,
+				800A45E9-3EDE-4391-B526- /* FastingCitationsView.swift */,
 			);
 			path = Fasting;
 			sourceTree = "<group>";
@@ -278,6 +283,7 @@ AB4B75A92E72DEFC0058DCD3 /* FirebaseCore in Frameworks */,
 				40A9E8C4089D4E1EF9BCBAD1 /* NutrientTrackingModels.swift */,
 				B1234567890123456789FA01 /* FastingModels.swift */,
 				B4C4FD21E58EE1B4FF761877 /* MicronutrientScoringModels.swift */,
+				BA25CC3104894F129803B0E8 /* CitationManager.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -561,6 +567,8 @@ AB4B75A92E72DEFC0058DCD3 /* FirebaseCore in Frameworks */,
 				57D39094D959418DBEA2559C /* NutraSafe Beta/Managers/ReactionLogManager.swift in Sources */,
 				FAA5308D615C46F7B48AEE78 /* NutraSafe Beta/Views/ReactionLogView.swift in Sources */,
 				AB6A8F070FF14DC49BA4BC80 /* NutraSafe Beta/Utils/ReactionPDFExporter.swift in Sources */,
+				9E5CB88F-07E2-4BD1-9C28- /* FastingCitationsView.swift in Sources */,
+				4F8520E48696407F923B1DDE /* CitationManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

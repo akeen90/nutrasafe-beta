@@ -34,6 +34,7 @@ class CitationManager {
         case foodProcessing = "Food Processing & Classification"
         case scientificStudies = "Scientific Studies"
         case sugarSalt = "Sugar & Salt Guidelines"
+        case fasting = "Intermittent Fasting"
         case general = "General Guidelines"
 
         var icon: String {
@@ -45,6 +46,7 @@ class CitationManager {
             case .foodProcessing: return "leaf.fill"
             case .scientificStudies: return "doc.text.magnifyingglass"
             case .sugarSalt: return "cube.fill"
+            case .fasting: return "info.circle.fill"
             case .general: return "info.circle.fill"
             }
         }
@@ -244,6 +246,55 @@ class CitationManager {
                 url: "https://www.nhs.uk/live-well/healthy-weight/managing-your-weight/ten-tips-to-support-weight-loss/intermittent-fasting/",
                 description: "NHS information on intermittent fasting, including safety guidance and medical considerations.",
                 category: .general
+            ),
+
+            // MARK: - Intermittent Fasting & Autophagy
+            Citation(
+                title: "Intermittent Fasting: What is it, and how does it work?",
+                organization: "Johns Hopkins Medicine",
+                url: "https://www.hopkinsmedicine.org/health/wellness-and-prevention/intermittent-fasting-what-is-it-and-how-does-it-work",
+                description: "Johns Hopkins Medicine explains the science of intermittent fasting including metabolic switching, cellular repair processes, and evidence-based health benefits supported by peer-reviewed research.",
+                category: .fasting
+            ),
+
+            Citation(
+                title: "Metabolic Effects of Intermittent Fasting",
+                organization: "Annual Review of Nutrition (Peer-reviewed)",
+                url: "https://www.annualreviews.org/content/journals/10.1146/annurev-nutr-052020-041327",
+                description: "Comprehensive scientific review of intermittent fasting's metabolic effects including glycogen depletion (6-12h), ketogenesis (12-18h), and autophagy activation (18-24h+), published in Annual Review of Nutrition 2021.",
+                category: .fasting
+            ),
+
+            Citation(
+                title: "The Beneficial and Adverse Effects of Autophagic Response to Caloric Restriction and Fasting",
+                organization: "National Center for Biotechnology Information (NCBI)",
+                url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10509423/",
+                description: "Peer-reviewed research on autophagy activation during fasting, showing autophagy begins after 18-24 hours of fasting in humans with peak activity at 48-72 hours.",
+                category: .fasting
+            ),
+
+            Citation(
+                title: "Long-Term Fasting-Induced Ketosis in 1610 Subjects: Metabolic Regulation and Safety",
+                organization: "National Center for Biotechnology Information (NCBI)",
+                url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC11206495/",
+                description: "2024 study on ketosis during fasting, demonstrating ketone production increases significantly after 16-18 hours of fasting with metabolic benefits for brain function and energy.",
+                category: .fasting
+            ),
+
+            Citation(
+                title: "Intermittent Fasting: Benefits and Medical Considerations",
+                organization: "UK National Health Service (NHS)",
+                url: "https://www.nhs.uk/live-well/healthy-weight/managing-your-weight/ten-tips-to-support-weight-loss/intermittent-fasting/",
+                description: "NHS guidance on intermittent fasting including metabolic changes during fasting periods, safety considerations, and evidence-based benefits.",
+                category: .fasting
+            ),
+
+            Citation(
+                title: "Fasting: How Long Do You Need to Fast for Autophagy?",
+                organization: "MedicineNet / WebMD",
+                url: "https://www.medicinenet.com/how_long_do_you_need_to_fast_for_autophagy/article.htm",
+                description: "Medical review of autophagy activation timeline showing cellular repair processes begin at 16-24 hours of fasting and reach maximum activity during extended fasting periods.",
+                category: .fasting
             )
         ]
     }
@@ -304,6 +355,8 @@ class CitationManager {
             return "Based on peer-reviewed scientific research"
         case .sugarSalt:
             return "Guidelines based on WHO and UK FSA recommendations"
+        case .fasting:
+            return "Fasting information based on NHS, NIH, and peer-reviewed research"
         case .general:
             return "Guidelines based on NHS and UK government recommendations"
         }
