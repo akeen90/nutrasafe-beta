@@ -77,21 +77,29 @@ export const findIngredients = functions
       // Initialize Google Generative AI client
       const genAI = new GoogleGenerativeAI(geminiApiKey);
 
-      // Use Gemini 2.0 Flash Experimental (faster than 2.5, optimized for speed)
+      // Use Gemini 2.0 Flash Experimental - fast and accurate with improved prompt
       const model = genAI.getGenerativeModel({
         model: 'gemini-2.0-flash-exp'
       });
 
-      const prompt = `Find UK product "${productName}"${brand ? ` by ${brand}` : ''} from Tesco/Sainsburys/Asda.
+      const prompt = `IMPORTANT: Search the actual UK supermarket websites (Tesco.com, Sainsburys.co.uk, Asda.com) for this EXACT product: "${productName}"${brand ? ` by ${brand}` : ''}.
 
-Find ALL available pack sizes (single item, multipack, sharing bag, large family pack, etc).
+CRITICAL: Only return data you can VERIFY from real supermarket websites. DO NOT make up or guess any data.
 
-For EACH size: ingredients list + nutrition per 100g (kcal, protein, carbs, fat, fiber, sugar, salt in g).
+If you find the product on a supermarket website:
+1. Extract ALL available pack sizes (e.g., single bar, multipack, sharing bag)
+2. For EACH size found, get: ingredients list + nutrition per 100g (energy in kcal, protein, carbs, fat, fiber, sugar, salt - all in grams)
+3. Include the source URL you used
 
-Return JSON array:
-[{"size_description":"10 sweets (10g)","product_name":"...","brand":"...","barcode":"...","ingredients_text":"comma separated list","nutrition_per_100g":{"calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0,"salt":0},"source_url":"..."}]
+Return ONLY valid JSON (no explanatory text):
+[{"size_description":"100g bar","product_name":"...","brand":"...","barcode":"...","ingredients_text":"milk, sugar, cocoa butter, ...","nutrition_per_100g":{"calories":530,"protein":7.3,"carbs":57,"fat":30,"fiber":2.1,"sugar":56,"salt":0.24},"source_url":"https://..."}]
 
-Use null for missing fields. Convert sodium to salt (*2.5). Remove "Ingredients:" prefix. Return 2-3+ sizes if available.`;
+Rules:
+- Use null for any missing fields
+- Convert sodium to salt (multiply by 2.5)
+- Remove "Ingredients:" prefix from ingredients text
+- Return 2-3+ sizes if multiple are available on the website
+- If you cannot find REAL data from UK supermarkets, return an empty array []`;
 
       // Generate content with Google Search grounding
       const result = await model.generateContent(prompt);
