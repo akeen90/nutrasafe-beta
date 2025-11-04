@@ -59,18 +59,18 @@ class CitationManager {
         return [
             // MARK: - UK Daily Values & Reference Intakes (PRIMARY)
             Citation(
-                title: "Nutrient Requirements (RNI)",
+                title: "The Eatwell Guide - Nutrient Requirements",
                 organization: "UK National Health Service (NHS)",
-                url: "https://www.nhs.uk/live-well/eat-well/food-guidelines-and-food-labels/reference-intakes-on-food-labels/",
-                description: "UK Reference Nutrient Intake (RNI) values used for calculating daily nutrient percentages throughout this app.",
+                url: "https://www.nhs.uk/live-well/eat-well/food-guidelines-and-food-labels/the-eatwell-guide/",
+                description: "UK government guidance on healthy eating and balanced nutrition, including Reference Nutrient Intake (RNI) values used for calculating daily nutrient percentages throughout this app.",
                 category: .dailyValues
             ),
 
             Citation(
-                title: "Dietary Reference Values for Food Energy and Nutrients for the United Kingdom",
+                title: "SACN Reports and Position Statements",
                 organization: "UK Scientific Advisory Committee on Nutrition (SACN)",
-                url: "https://www.gov.uk/government/organisations/scientific-advisory-committee-on-nutrition",
-                description: "Official UK government dietary reference values (DRVs) for vitamins, minerals, and nutrients.",
+                url: "https://www.gov.uk/government/collections/sacn-reports-and-position-statements",
+                description: "Official UK government dietary reference values (DRVs) for vitamins, minerals, and nutrients, including comprehensive reports on nutrition standards.",
                 category: .dailyValues
             ),
 
@@ -109,9 +109,9 @@ class CitationManager {
 
             // MARK: - Food Processing & Classification
             Citation(
-                title: "NOVA Food Classification System",
-                organization: "University of São Paulo / World Public Health Nutrition Association",
-                url: "https://www.fao.org/nutrition/education/food-dietary-guidelines/background/faowhoconference/nova-classification/en/",
+                title: "Ultra-processed foods, diet quality, and health using the NOVA classification system",
+                organization: "Food and Agriculture Organization of the United Nations (FAO)",
+                url: "https://www.fao.org/fsnforum/resources/trainings-tools-and-databases/ultra-processed-foods-diet-quality-and-health-using-nova",
                 description: "International food classification system based on the extent and purpose of food processing. Used for food scoring and processing level analysis.",
                 category: .foodProcessing
             ),
@@ -134,10 +134,10 @@ class CitationManager {
             ),
 
             Citation(
-                title: "Salt reduction targets and reformulation",
-                organization: "UK Food Standards Agency (FSA)",
-                url: "https://www.food.gov.uk/business-guidance/salt-reduction-targets",
-                description: "UK government targets for salt reduction in food products.",
+                title: "Salt reduction targets for 2024",
+                organization: "Public Health England / UK Government",
+                url: "https://www.gov.uk/government/publications/salt-reduction-targets-for-2024",
+                description: "UK government targets for salt reduction in food products, with voluntary targets for 2024 published by Public Health England.",
                 category: .sugarSalt
             ),
 
@@ -151,18 +151,18 @@ class CitationManager {
 
             // MARK: - Food Additives (CRITICAL for child hyperactivity claims)
             Citation(
-                title: "Food colours and hyperactivity in children",
-                organization: "UK Food Standards Agency (FSA)",
-                url: "https://www.food.gov.uk/safety-hygiene/food-colours-and-hyperactivity",
-                description: "FSA review of evidence linking certain food colours to hyperactivity in children, based on the Southampton Study (2007).",
+                title: "Food colours and hyperactivity in children - Southampton Study",
+                organization: "University of Southampton",
+                url: "https://www.southampton.ac.uk/news/2007/09/hyperactivity-in-children-and-food-additives.page",
+                description: "Major study funded by the Food Standards Agency finding that mixtures of certain food colours and benzoate preservative can adversely influence the behaviour of children (McCann et al., 2007).",
                 category: .additives
             ),
 
             Citation(
                 title: "Food additives and behaviour in 3-year-old and 8/9-year-old children (Southampton Study)",
-                organization: "The Lancet / University of Southampton",
-                url: "https://www.thelancet.com/journals/lancet/article/PIIS0140-6736(07)61306-3/fulltext",
-                description: "Peer-reviewed study finding a link between artificial food colours/preservatives and increased hyperactivity in children. McCann et al., 2007.",
+                organization: "The Lancet / PubMed",
+                url: "https://pubmed.ncbi.nlm.nih.gov/17825405/",
+                description: "Peer-reviewed randomised, double-blinded, placebo-controlled trial finding that artificial colours or sodium benzoate preservative in the diet result in increased hyperactivity in children. McCann et al., Lancet 2007.",
                 category: .scientificStudies
             ),
 
@@ -233,18 +233,18 @@ class CitationManager {
             ),
 
             Citation(
-                title: "Nutrition guidelines and resources",
+                title: "Food Facts - Nutrition Guidelines",
                 organization: "British Dietetic Association (BDA)",
-                url: "https://www.bda.uk.com/resource/food-facts.html",
-                description: "Professional nutrition guidance from the UK's professional association for dietitians.",
+                url: "https://www.bda.uk.com/food-health/food-facts.html",
+                description: "Professional nutrition guidance and food fact sheets from the UK's professional association for dietitians, certified by the Patient Information Forum (PIF) TICK.",
                 category: .general
             ),
 
             Citation(
-                title: "Intermittent fasting (fasting diets)",
-                organization: "UK National Health Service (NHS)",
-                url: "https://www.nhs.uk/live-well/healthy-weight/managing-your-weight/ten-tips-to-support-weight-loss/intermittent-fasting/",
-                description: "NHS information on intermittent fasting, including safety guidance and medical considerations.",
+                title: "Intermittent fasting for weight management",
+                organization: "UK National Health Service (NHS) - MyHealth London",
+                url: "https://www.myhealthlondon.nhs.uk/be-healthier/lose-weight/which-diet-is-right-for-me/intermittent-fasting/",
+                description: "NHS information on intermittent fasting including the 5:2 diet approach, safety guidance, medical considerations, and research on time-restricted feeding.",
                 category: .general
             ),
 
@@ -283,17 +283,17 @@ class CitationManager {
 
             Citation(
                 title: "Intermittent Fasting: Benefits and Medical Considerations",
-                organization: "UK National Health Service (NHS)",
-                url: "https://www.nhs.uk/live-well/healthy-weight/managing-your-weight/ten-tips-to-support-weight-loss/intermittent-fasting/",
-                description: "NHS guidance on intermittent fasting including metabolic changes during fasting periods, safety considerations, and evidence-based benefits.",
+                organization: "UK National Health Service (NHS) - MyHealth London",
+                url: "https://www.myhealthlondon.nhs.uk/be-healthier/lose-weight/which-diet-is-right-for-me/intermittent-fasting/",
+                description: "NHS guidance on intermittent fasting including metabolic changes during fasting periods, safety considerations, and evidence-based benefits from research on insulin sensitivity and blood pressure.",
                 category: .fasting
             ),
 
             Citation(
-                title: "Fasting: How Long Do You Need to Fast for Autophagy?",
-                organization: "MedicineNet / WebMD",
-                url: "https://www.medicinenet.com/how_long_do_you_need_to_fast_for_autophagy/article.htm",
-                description: "Medical review of autophagy activation timeline showing cellular repair processes begin at 16-24 hours of fasting and reach maximum activity during extended fasting periods.",
+                title: "The cyclic metabolic switching theory of intermittent fasting",
+                organization: "Johns Hopkins University / Nature Metabolism",
+                url: "https://pubmed.ncbi.nlm.nih.gov/40087409/",
+                description: "2025 paper establishing the cyclic metabolic switching (CMS) theory of intermittent fasting, showing benefits result from alternating between adaptive cellular stress response pathways during fasting and cell growth pathways during feeding.",
                 category: .fasting
             )
         ]
