@@ -472,6 +472,7 @@ enum AdditiveVerdict: String, Codable {
 struct AdditiveSource: Codable {
     let title: String
     let url: String
+    let covers: String?  // Optional field from CSV sources
 }
 
 struct AdditiveDetectionResult {
@@ -481,7 +482,8 @@ struct AdditiveDetectionResult {
     let analysisConfidence: Double
     let processingScore: ProcessingAnalysisResult?
     let comprehensiveWarnings: AdditiveWarningsResult?
-    
+    let ultraProcessedIngredients: [UltraProcessedIngredientDisplay]  // NEW
+
     var childWarningMessage: String? {
         if hasChildConcernAdditives {
             let count = childWarnings.count
@@ -490,6 +492,42 @@ struct AdditiveDetectionResult {
         }
         return nil
     }
+}
+
+// NEW: Source citation model for ingredients
+struct IngredientSource: Codable {
+    let title: String
+    let url: String
+    let covers: String
+}
+
+// NEW: Display model for ultra-processed ingredients
+struct UltraProcessedIngredientDisplay: Identifiable {
+    let id = UUID()
+    let name: String
+    let category: String
+    let concerns: String
+    let processingPenalty: Int
+    let novaGroup: Int
+    let sources: [IngredientSource]  // RESTORED: Sources for citations
+    let whatItIs: String?
+    let whyItsUsed: String?
+    let whereItComesFrom: String?
+    let eNumber: String?  // NEW: For E-number display if it has one
+}
+
+// NEW: Internal data model for ultra-processed ingredients
+struct UltraProcessedIngredientData {
+    let name: String
+    let synonyms: [String]
+    let processingPenalty: Int
+    let category: String
+    let concerns: String
+    let novaGroup: Int
+    let sources: [IngredientSource]  // RESTORED: Sources for citations
+    let what_it_is: String?
+    let why_its_used: String?
+    let where_it_comes_from: String?
 }
 
 struct ProcessingAnalysisResult {
@@ -516,9 +554,24 @@ struct AdditiveWarningsResult {
     }
     
     var totalWarningCount: Int {
-        return childWarnings.count + pkuWarnings.count + sulphiteWarnings.count + 
+        return childWarnings.count + pkuWarnings.count + sulphiteWarnings.count +
                polyolWarnings.count + regulatoryWarnings.count + (hasRedFlags ? 1 : 0)
     }
+}
+
+// MARK: - Unified Additive Database Models
+
+struct UnifiedAdditiveDatabase: Codable {
+    let metadata: DatabaseMetadata
+    let additives: [AdditiveInfo]
+}
+
+struct DatabaseMetadata: Codable {
+    let version: String
+    let total_additives: Int
+    let last_updated: String
+    let description: String
+    let source: String
 }
 
 class AdditiveWatchService {
@@ -531,23 +584,34 @@ class AdditiveWatchService {
     }
     
     private func loadAdditiveDatabase() {
-        guard let url = Bundle.main.url(forResource: "additives_full_described_with_sources_2025", withExtension: "csv") else {
-            print("❌ Could not find additive database CSV file")
+        guard let url = Bundle.main.url(forResource: "additives_unified", withExtension: "json") else {
+            print("❌ Could not find unified additive database JSON file")
             return
         }
-        
+
         do {
-            let content = try String(contentsOf: url)
-        // DEBUG LOG: print("📄 CSV content length: \(content.count) characters")
-            additiveDatabase = parseCSV(content)
+            let data = try Data(contentsOf: url)
+            let decoder = JSONDecoder()
+            let unified = try decoder.decode(UnifiedAdditiveDatabase.self, from: data)
+
+            additiveDatabase = unified.additives
             isLoaded = true
-            print("✅✅✅ ADDITIVE DATABASE LOADED: \(additiveDatabase.count) additives ✅✅✅")
+
+            print("✅✅✅ UNIFIED ADDITIVE DATABASE LOADED: \(additiveDatabase.count) additives ✅✅✅")
+            print("📦 Database version: \(unified.metadata.version)")
+
+            // Count additives with sources
+            let withSources = additiveDatabase.filter { !$0.sources.isEmpty }.count
+            let totalSources = additiveDatabase.reduce(0) { $0 + $1.sources.count }
+            print("📚 Additives with sources: \(withSources)")
+            print("📖 Total source citations: \(totalSources)")
+
             // Print first few additives for verification
             for (i, additive) in additiveDatabase.prefix(3).enumerated() {
-                print("  \(i+1). \(additive.eNumber) - \(additive.name)")
+                print("  \(i+1). \(additive.eNumber) - \(additive.name) (\(additive.sources.count) sources)")
             }
         } catch {
-            print("❌❌❌ ERROR LOADING ADDITIVE DATABASE: \(error) ❌❌❌")
+            print("❌❌❌ ERROR LOADING UNIFIED ADDITIVE DATABASE: \(error) ❌❌❌")
         }
     }
     
@@ -577,6 +641,9 @@ class AdditiveWatchService {
         let ingredientsText = ingredients.joined(separator: ", ")
         // DEBUG LOG: print("🔬 [AdditiveWatchService] Joined ingredients text: '\(ingredientsText)'")
 
+        // Normalize ingredients text for matching (used by both additive and ultra-processed detection)
+        let normalized = normalizeIngredientTextLocal(ingredientsText)
+
         // Use ProcessingScorer's exposed additive analysis method
         let primaryDetected = ProcessingScorer.shared.analyzeAdditives(in: ingredientsText)
         var finalDetected = primaryDetected
@@ -587,7 +654,6 @@ class AdditiveWatchService {
         // Fallback: scan CSV database with boundary-aware matching if primary found nothing
         if primaryDetected.isEmpty && isLoaded {
             print("🔁 [AdditiveWatchService] Performing CSV fallback scan")
-            let normalized = normalizeIngredientTextLocal(ingredientsText)
             var csvMatches: [AdditiveInfo] = []
             var seenCodes = Set<String>()
             for additive in additiveDatabase {
@@ -619,6 +685,10 @@ class AdditiveWatchService {
         let childWarnings = finalDetected.filter { $0.hasChildWarning }
         print("✅ [AdditiveWatchService] Child warnings: \(childWarnings.count)")
 
+        // NEW: Detect ultra-processed ingredients
+        let ultraProcessedIngredients = detectUltraProcessedIngredients(from: ingredientsText, normalized: normalized)
+        print("🏭 [AdditiveWatchService] Ultra-processed ingredients: \(ultraProcessedIngredients.count)")
+
         // Build result
         let result = AdditiveDetectionResult(
             detectedAdditives: finalDetected,
@@ -626,7 +696,8 @@ class AdditiveWatchService {
             hasChildConcernAdditives: !childWarnings.isEmpty,
             analysisConfidence: finalDetected.isEmpty ? 0.0 : (primaryDetected.isEmpty ? 0.85 : 0.95),
             processingScore: nil,
-            comprehensiveWarnings: nil
+            comprehensiveWarnings: nil,
+            ultraProcessedIngredients: ultraProcessedIngredients
         )
 
         // Log detected additives for debugging
@@ -642,6 +713,107 @@ class AdditiveWatchService {
         DispatchQueue.main.async {
             completion(result)
         }
+    }
+
+    // Method to retrieve additive info from CSV database by E-number
+    func getAdditiveInfo(eNumber: String) -> AdditiveInfo? {
+        return additiveDatabase.first(where: { $0.eNumber == eNumber || $0.id == eNumber })
+    }
+
+    // MARK: - Ultra-Processed Ingredients Detection
+
+    private lazy var ultraProcessedDatabase: [String: UltraProcessedIngredientData] = {
+        guard let url = Bundle.main.url(forResource: "ultra_processed_ingredients", withExtension: "json") else {
+            print("⚠️ Could not find ultra_processed_ingredients.json")
+            return [:]
+        }
+
+        do {
+            let data = try Data(contentsOf: url)
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let ingredients = json["ultra_processed_ingredients"] as? [String: Any] else {
+                print("❌ Could not parse ultra_processed_ingredients.json")
+                return [:]
+            }
+
+            var database: [String: UltraProcessedIngredientData] = [:]
+
+            for (_, categoryData) in ingredients {
+                if let categoryDict = categoryData as? [String: Any] {
+                    for (_, ingredientData) in categoryDict {
+                        if let ingredientDict = ingredientData as? [String: Any],
+                           let name = ingredientDict["name"] as? String,
+                           let synonyms = ingredientDict["synonyms"] as? [String],
+                           let penalty = ingredientDict["processing_penalty"] as? Int,
+                           let category = ingredientDict["category"] as? String,
+                           let concerns = ingredientDict["concerns"] as? String,
+                           let novaGroup = ingredientDict["nova_group"] as? Int {
+
+                            let sources = (ingredientDict["sources"] as? [[String: String]] ?? []).compactMap { sourceDict -> IngredientSource? in
+                                guard let title = sourceDict["title"],
+                                      let url = sourceDict["url"],
+                                      let covers = sourceDict["covers"] else { return nil }
+                                return IngredientSource(title: title, url: url, covers: covers)
+                            }
+
+                            let ingredient = UltraProcessedIngredientData(
+                                name: name,
+                                synonyms: synonyms,
+                                processingPenalty: penalty,
+                                category: category,
+                                concerns: concerns,
+                                novaGroup: novaGroup,
+                                sources: sources,
+                                what_it_is: ingredientDict["what_it_is"] as? String,
+                                why_its_used: ingredientDict["why_its_used"] as? String,
+                                where_it_comes_from: ingredientDict["where_it_comes_from"] as? String
+                            )
+
+                            database[name.lowercased()] = ingredient
+                            for synonym in synonyms {
+                                database[synonym.lowercased()] = ingredient
+                            }
+                        }
+                    }
+                }
+            }
+
+            print("✅ Loaded ultra-processed ingredients database: \(database.count) entries")
+            return database
+        } catch {
+            print("❌ Error loading ultra-processed ingredients: \(error)")
+            return [:]
+        }
+    }()
+
+    private func detectUltraProcessedIngredients(from ingredientsText: String, normalized: String) -> [UltraProcessedIngredientDisplay] {
+        var detected: [UltraProcessedIngredientDisplay] = []
+        var seenNames = Set<String>()
+
+        for (key, ingredient) in ultraProcessedDatabase {
+            if matchesWithWordBoundaryLocal(text: normalized, pattern: key) {
+                if !seenNames.contains(ingredient.name) {
+                    // Check if ingredient has an E-number in its synonyms
+                    let eNumber = ingredient.synonyms.first(where: { $0.hasPrefix("E") && $0.count <= 5 })
+
+                    detected.append(UltraProcessedIngredientDisplay(
+                        name: ingredient.name,
+                        category: ingredient.category,
+                        concerns: ingredient.concerns,
+                        processingPenalty: ingredient.processingPenalty,
+                        novaGroup: ingredient.novaGroup,
+                        sources: ingredient.sources,
+                        whatItIs: ingredient.what_it_is,
+                        whyItsUsed: ingredient.why_its_used,
+                        whereItComesFrom: ingredient.where_it_comes_from,
+                        eNumber: eNumber
+                    ))
+                    seenNames.insert(ingredient.name)
+                }
+            }
+        }
+
+        return detected
     }
 
     private func parseProcessingScore(_ processing: [String: Any]?) -> ProcessingAnalysisResult? {
@@ -756,13 +928,34 @@ class AdditiveWatchService {
             print("❌ CSV line has \(components.count) components, need at least 16. Line: \(line.prefix(100))")
             return nil
         }
+
+        // Debug logging for E451 specifically
+        if components[0] == "E451" {
+            print("🔍 [CSV Parser] E451 has \(components.count) components")
+            if components.count > 19 {
+                print("🔍 [CSV Parser] Component 19 (sources field): \(components[19].prefix(200))")
+            } else {
+                print("❌ [CSV Parser] E451 doesn't have component 19! Only \(components.count) components")
+            }
+        }
+
         let rawSynonyms = components.count > 16 ? components[16].split(separator: ";").map { $0.trimmingCharacters(in: .whitespaces) } : []
         let synonyms = cleanSynonyms(rawSynonyms, eNumber: components[0])
+
+        // Parse sources from column 19 (index 19) if available
+        let sources = components.count > 19 ? parseSources(components[19]) : []
+
+        if sources.isEmpty && components.count > 19 {
+            print("⚠️ [AdditiveDB] No sources found for \(components[0]) - \(components[1])")
+        } else if !sources.isEmpty && components[0] == "E451" {
+            print("✅ [CSV Parser] E451 parsed \(sources.count) sources successfully!")
+        }
+
         return AdditiveInfo(
             id: components[0],
             eNumber: components[0],
             name: components[1],
-            group: AdditiveGroup(rawValue: components[2]) ?? .other,
+            group: AdditiveGroup(rawValue: components[2].lowercased()) ?? .other,
             isPermittedGB: components[3] == "TRUE",
             isPermittedNI: components[4] == "TRUE",
             isPermittedEU: components[5] == "TRUE",
@@ -771,17 +964,58 @@ class AdditiveWatchService {
             hasPKUWarning: components[8] == "TRUE",
             hasPolyolsWarning: components[9] == "TRUE",
             hasSulphitesAllergenLabel: components[10] == "TRUE",
-            category: AdditiveCategory(rawValue: components[2]) ?? .other,
-            origin: parseOrigin(components[11]),
+            category: AdditiveCategory(rawValue: components[2].lowercased()) ?? .other,
+            origin: AdditiveOrigin(rawValue: components[11].lowercased()) ?? .synthetic,
             overview: components[12],
             typicalUses: components[13],
             effectsSummary: components[14],
-            effectsVerdict: AdditiveVerdict(rawValue: components[15]) ?? .neutral,
+            effectsVerdict: AdditiveVerdict(rawValue: components[15].lowercased()) ?? .neutral,
             synonyms: synonyms,
             insNumber: components.count > 18 && !components[18].isEmpty ? components[18] : nil,
-            sources: [],
+            sources: sources,
             consumerInfo: nil
         )
+    }
+
+    private func parseSources(_ jsonString: String) -> [AdditiveSource] {
+        // Remove surrounding quotes and unescape if needed
+        var cleanedJSON = jsonString.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        print("🔍 [AdditiveDB] Parsing sources from: \(jsonString.prefix(100))")
+
+        if cleanedJSON.hasPrefix("\"") && cleanedJSON.hasSuffix("\"") {
+            cleanedJSON = String(cleanedJSON.dropFirst().dropLast())
+        }
+
+        // Replace escaped quotes
+        cleanedJSON = cleanedJSON.replacingOccurrences(of: "\"\"", with: "\"")
+
+        print("🔍 [AdditiveDB] Cleaned JSON: \(cleanedJSON.prefix(100))")
+
+        guard !cleanedJSON.isEmpty,
+              let jsonData = cleanedJSON.data(using: .utf8) else {
+            print("⚠️ [AdditiveDB] Empty or invalid JSON string")
+            return []
+        }
+
+        do {
+            // Parse as array of dictionaries
+            if let sourcesArray = try JSONSerialization.jsonObject(with: jsonData) as? [[String: String]] {
+                let sources = sourcesArray.compactMap { (dict: [String: String]) -> AdditiveSource? in
+                    guard let title = dict["title"], let url = dict["url"] else { return nil }
+                    let covers = dict["covers"]  // Optional covers field
+                    return AdditiveSource(title: title, url: url, covers: covers)
+                }
+                print("✅ [AdditiveDB] Parsed \(sources.count) sources successfully")
+                return sources
+            } else {
+                print("⚠️ [AdditiveDB] JSON is not an array of dictionaries")
+            }
+        } catch {
+            print("❌ [AdditiveDB] JSON parsing error: \(error.localizedDescription)")
+        }
+
+        return []
     }
     
     private func cleanSynonyms(_ rawSynonyms: [String], eNumber: String) -> [String] {
@@ -813,17 +1047,46 @@ class AdditiveWatchService {
         var current = ""
         var inQuotes = false
         var i = line.startIndex
+
         while i < line.endIndex {
             let char = line[i]
-            if char == "\"" { inQuotes.toggle() }
-            else if char == "," && !inQuotes {
-                components.append(current.trimmingCharacters(in: .whitespacesAndNewlines))
-                current = ""
+
+            if inQuotes {
+                // We're inside a quoted field
+                if char == "\"" {
+                    // Check if next char is also a quote (escaped quote)
+                    let nextIndex = line.index(after: i)
+                    if nextIndex < line.endIndex && line[nextIndex] == "\"" {
+                        // This is an escaped quote (""), add one quote to current
+                        current.append("\"")
+                        i = nextIndex // Skip the second quote
+                    } else {
+                        // This is the closing quote of the field
+                        inQuotes = false
+                    }
+                } else {
+                    // Regular character inside quoted field
+                    current.append(char)
+                }
             } else {
-                current.append(char)
+                // We're outside a quoted field
+                if char == "\"" {
+                    // Start of a quoted field
+                    inQuotes = true
+                } else if char == "," {
+                    // Field separator
+                    components.append(current.trimmingCharacters(in: .whitespacesAndNewlines))
+                    current = ""
+                } else {
+                    // Regular character
+                    current.append(char)
+                }
             }
+
             i = line.index(after: i)
         }
+
+        // Add the last field
         components.append(current.trimmingCharacters(in: .whitespacesAndNewlines))
         return components
     }

@@ -8,62 +8,26 @@
 
 import SwiftUI
 import Foundation
+import UIKit
 
 // MARK: - Additive Analysis Component
 
 struct AdditiveWatchView: View {
     let ingredients: [String]
-    @State private var isExpanded = false
     @State private var additiveResult: AdditiveDetectionResult?
     @State private var showingSources = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Header with expand/collapse
-            Button(action: {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    isExpanded.toggle()
-                }
-                if additiveResult == nil {
-                    analyzeAdditives()
-                }
-            }) {
-                HStack {
-                    HStack(spacing: 8) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.blue)
-                        
-                        Text("Additive Analysis")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.primary)
-                    }
-                    
-                    Spacer()
-                    
-                    // Child warning badge if present
-                    if let result = additiveResult, result.hasChildConcernAdditives {
-                        childWarningBadge(result.childWarnings.count)
-                    }
-                    
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
-                }
-            }
-            .buttonStyle(PlainButtonStyle())
-            
-            // Expanded content
-            if isExpanded {
-                if let result = additiveResult {
-                    additiveContent(result: result)
-                } else {
-                    loadingContent
-                }
+            // Show content directly without collapsible header
+            if let result = additiveResult {
+                additiveContent(result: result)
+            } else {
+                loadingContent
             }
         }
         .padding()
-        .background(Color(.systemGray6))
+        .background(Color.white)
         .cornerRadius(12)
         .sheet(isPresented: $showingSources) {
             SourcesAndCitationsView()
@@ -139,15 +103,19 @@ struct AdditiveWatchView: View {
                 .cornerRadius(8)
             }
             
-            // Detected additives
-            if !result.detectedAdditives.isEmpty {
+            // Detected additives and ultra-processed ingredients combined
+            let totalIssues = result.detectedAdditives.count + result.ultraProcessedIngredients.count
+
+            if totalIssues > 0 {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Identified Additives (\(result.detectedAdditives.count))")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.primary)
-                    
+                    // Regular additives (E-numbers)
                     ForEach(result.detectedAdditives, id: \.eNumber) { additive in
                         AdditiveCard(additive: additive)
+                    }
+
+                    // Ultra-processed ingredients
+                    ForEach(result.ultraProcessedIngredients) { ingredient in
+                        UltraProcessedIngredientCard(ingredient: ingredient)
                     }
                 }
             } else {
@@ -160,7 +128,7 @@ struct AdditiveWatchView: View {
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.green)
                     }
-                    
+
                     Text("This food appears to contain only natural ingredients.")
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
@@ -169,7 +137,7 @@ struct AdditiveWatchView: View {
                 .background(Color.green.opacity(0.1))
                 .cornerRadius(8)
             }
-            
+
             // Educational footer with citation link
             VStack(alignment: .leading, spacing: 8) {
                 Text("This information is provided for educational purposes to help you understand food additives. All listed additives are approved for use in food.")
@@ -208,6 +176,17 @@ struct AdditiveWatchView: View {
             } else {
                 print("🧪 [AdditiveWatchView] ⚠️ NO ADDITIVES DETECTED")
             }
+
+            print("🏭 [AdditiveWatchView] Ultra-processed ingredients count: \(result.ultraProcessedIngredients.count)")
+            if !result.ultraProcessedIngredients.isEmpty {
+                print("🏭 [AdditiveWatchView] Detected ultra-processed ingredients:")
+                for ingredient in result.ultraProcessedIngredients {
+                    print("   - \(ingredient.name) (penalty: \(ingredient.processingPenalty))")
+                }
+            } else {
+                print("🏭 [AdditiveWatchView] ⚠️ NO ULTRA-PROCESSED INGREDIENTS DETECTED")
+            }
+
             self.additiveResult = result
         }
     }
@@ -218,7 +197,8 @@ struct AdditiveWatchView: View {
 struct AdditiveCard: View {
     let additive: AdditiveInfo
     @State private var isExpanded = false
-    
+    @State private var showingSources = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Additive header
@@ -230,9 +210,6 @@ struct AdditiveCard: View {
                 HStack(alignment: .top, spacing: 8) {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 6) {
-                            Text("⚗️")
-                                .font(.system(size: 14))
-
                             Text(additive.name)
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundColor(.primary)
@@ -243,20 +220,17 @@ struct AdditiveCard: View {
                                     .font(.system(size: 10))
                             }
                         }
-                        
+
                         Text(additive.group.displayName)
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                     }
-                    
+
                     Spacer()
-                    
-                    // Safety indicator
-                    safetyIndicator(verdict: additive.effectsVerdict)
-                    
+
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 12))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.purple)
                 }
             }
             .buttonStyle(PlainButtonStyle())
@@ -307,17 +281,17 @@ struct AdditiveCard: View {
                         VStack(alignment: .leading, spacing: 6) {
                             // Origin
                             HStack(spacing: 6) {
-                                Text(additive.origin.icon)
+                                Text(originIcon(for: additive.origin.rawValue))
                                     .font(.system(size: 11))
-                                Text("Origin: \(additive.origin.displayName)")
+                                Text("Origin: \(originDisplayName(for: additive.origin.rawValue))")
                                     .font(.system(size: 11))
                                     .foregroundColor(.secondary)
                             }
-                            
+
                             // Safety message
                             HStack(alignment: .top, spacing: 6) {
-                                Image(systemName: safetyIcon(verdict: additive.effectsVerdict))
-                                    .foregroundColor(additive.effectsVerdict.color)
+                                Image(systemName: safetyIcon(verdict: additive.effectsVerdict.rawValue))
+                                    .foregroundColor(verdictColor(for: additive.effectsVerdict.rawValue))
                                     .font(.system(size: 11))
                                 Text(additive.effectsSummary)
                                     .font(.system(size: 11))
@@ -326,31 +300,124 @@ struct AdditiveCard: View {
                             }
                         }
                     }
+
+                    // Sources section
+                    if !additive.sources.isEmpty {
+                        Divider()
+                            .padding(.vertical, 8)
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Button(action: {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    showingSources.toggle()
+                                }
+                            }) {
+                                HStack {
+                                    Image(systemName: "doc.text.magnifyingglass")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.blue)
+                                    Text("Sources (\(additive.sources.count))")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                    Image(systemName: showingSources ? "chevron.up" : "chevron.down")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+
+                            if showingSources {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    ForEach(Array(additive.sources.enumerated()), id: \.offset) { index, source in
+                                        Button(action: {
+                                            if let url = URL(string: source.url) {
+                                                UIApplication.shared.open(url)
+                                            }
+                                        }) {
+                                            VStack(alignment: .leading, spacing: 4) {
+                                                Text(source.title)
+                                                    .font(.system(size: 11, weight: .medium))
+                                                    .foregroundColor(.blue)
+                                                    .lineLimit(2)
+
+                                                Text(source.url)
+                                                    .font(.system(size: 9))
+                                                    .foregroundColor(.secondary)
+                                                    .lineLimit(1)
+                                            }
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .padding(8)
+                                            .background(Color(.systemGray6))
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 6)
+                                                    .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                                            )
+                                            .cornerRadius(6)
+                                        }
+                                    }
+                                }
+                                .padding(.top, 4)
+                            }
+                        }
+                    }
                 }
                 .padding(.top, 8)
             }
         }
         .padding(12)
-        .background(Color(.systemGray6))
+        .background(Color.purple.opacity(0.08))
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                .stroke(Color.purple.opacity(0.2), lineWidth: 1)
         )
         .cornerRadius(8)
     }
-    
-    private func safetyIndicator(verdict: AdditiveVerdict) -> some View {
-        Circle()
-            .fill(verdict.color)
+
+    private func safetyIndicator(verdict: String) -> some View {
+        let color: Color = {
+            switch verdict.lowercased() {
+            case "avoid": return .red
+            case "caution": return .orange
+            case "neutral": return .green
+            default: return .gray
+            }
+        }()
+
+        return Circle()
+            .fill(color)
             .frame(width: 8, height: 8)
     }
     
-    private func safetyIcon(verdict: AdditiveVerdict) -> String {
-        switch verdict {
-        case .neutral: return "checkmark.circle"
-        case .caution: return "exclamationmark.triangle"
-        case .avoid: return "xmark.circle"
+    private func safetyIcon(verdict: String) -> String {
+        switch verdict.lowercased() {
+        case "neutral": return "checkmark.circle"
+        case "caution": return "exclamationmark.triangle"
+        case "avoid": return "xmark.circle"
+        default: return "questionmark.circle"
         }
+    }
+
+    private func verdictColor(for verdict: String) -> Color {
+        switch verdict.lowercased() {
+        case "avoid": return .red
+        case "caution": return .orange
+        case "neutral": return .green
+        default: return .gray
+        }
+    }
+
+    private func originIcon(for origin: String) -> String {
+        switch origin.lowercased() {
+        case "natural": return "🌿"
+        case "plant": return "🌱"
+        case "synthetic": return "🧪"
+        case "semi-synthetic": return "⚗️"
+        default: return "❓"
+        }
+    }
+
+    private func originDisplayName(for origin: String) -> String {
+        return origin.capitalized
     }
 }
 
@@ -364,11 +431,13 @@ struct DetailedAdditive {
     let childWarning: Bool
     let riskLevel: String
     let description: String
+    let sources: [AdditiveSource]
 }
 
 struct AdditiveCardView: View {
     let additive: DetailedAdditive
     @State private var isExpanded = false
+    @State private var showingSources = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -450,6 +519,67 @@ struct AdditiveCardView: View {
                     }
                     .padding(.horizontal, 14)
                     .padding(.bottom, 14)
+
+                    // Sources section (collapsible)
+                    if !additive.sources.isEmpty {
+                        Divider()
+                            .padding(.horizontal, 14)
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Button(action: {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    showingSources.toggle()
+                                }
+                            }) {
+                                HStack {
+                                    Image(systemName: "doc.text.magnifyingglass")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.blue)
+                                    Text("Sources (\(additive.sources.count))")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                    Image(systemName: showingSources ? "chevron.up" : "chevron.down")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+
+                            if showingSources {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    ForEach(Array(additive.sources.enumerated()), id: \.offset) { _, source in
+                                        Button(action: {
+                                            if let url = URL(string: source.url) {
+                                                UIApplication.shared.open(url)
+                                            }
+                                        }) {
+                                            VStack(alignment: .leading, spacing: 4) {
+                                                Text(source.title)
+                                                    .font(.system(size: 11, weight: .medium))
+                                                    .foregroundColor(.blue)
+                                                    .lineLimit(2)
+
+                                                Text(source.url)
+                                                    .font(.system(size: 9))
+                                                    .foregroundColor(.secondary)
+                                                    .lineLimit(1)
+                                            }
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .padding(8)
+                                            .background(Color(.systemGray6))
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 6)
+                                                    .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                                            )
+                                            .cornerRadius(6)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.bottom, 14)
+                    }
                 }
             }
         }
@@ -791,4 +921,207 @@ struct AdditiveSection {
     let id: UUID
     var header: String
     var content: String
+}
+// MARK: - Ultra-Processed Ingredient Card Component
+
+struct UltraProcessedIngredientCard: View {
+    let ingredient: UltraProcessedIngredientDisplay
+    @State private var isExpanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Ingredient header
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isExpanded.toggle()
+                }
+            }) {
+                HStack(alignment: .top, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(ingredient.name)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.primary)
+
+                        Text(ingredient.category.capitalized)
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+
+                    HStack(spacing: 6) {
+                        if let eNumber = ingredient.eNumber {
+                            Text(eNumber)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+
+                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.purple)
+                    }
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            // Expanded content
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 12) {
+                    Divider()
+
+                    // What it is
+                    if let whatItIs = ingredient.whatItIs {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "magnifyingglass.circle")
+                                    .foregroundColor(.blue)
+                                    .font(.system(size: 12))
+                                Text("What it is")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.primary)
+                            }
+
+                            Text(whatItIs)
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                                .lineLimit(nil)
+                        }
+                    }
+
+                    // Why it's used
+                    if let whyItsUsed = ingredient.whyItsUsed {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "cube.box")
+                                    .foregroundColor(.blue)
+                                    .font(.system(size: 12))
+                                Text("Why it's used")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.primary)
+                            }
+
+                            Text(whyItsUsed)
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                                .lineLimit(nil)
+                        }
+                    }
+
+                    // Where it comes from
+                    if let whereItComesFrom = ingredient.whereItComesFrom {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "leaf")
+                                    .foregroundColor(.blue)
+                                    .font(.system(size: 12))
+                                Text("Where it comes from")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.primary)
+                            }
+
+                            Text(whereItComesFrom)
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                                .lineLimit(nil)
+                        }
+                    }
+
+                    // Concerns section
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "info.circle")
+                                .foregroundColor(.blue)
+                                .font(.system(size: 12))
+                            Text("Why it matters")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.primary)
+                        }
+
+                        Text(ingredient.concerns)
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .lineLimit(nil)
+                    }
+
+                    // NOVA classification
+                    HStack(spacing: 6) {
+                        Image(systemName: "chart.bar.fill")
+                            .foregroundColor(.blue)
+                            .font(.system(size: 12))
+                        Text("NOVA Group \(ingredient.novaGroup)")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Text(novaGroupLabel(ingredient.novaGroup))
+                            .font(.system(size: 10))
+                            .foregroundColor(.blue)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.blue.opacity(0.15))
+                            .cornerRadius(4)
+                    }
+
+                    // Sources section
+                    if !ingredient.sources.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "doc.text.magnifyingglass")
+                                    .foregroundColor(.blue)
+                                    .font(.system(size: 12))
+                                Text("Scientific Sources (\(ingredient.sources.count))")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.primary)
+                            }
+
+                            ForEach(ingredient.sources, id: \.url) { source in
+                                Button(action: {
+                                    if let url = URL(string: source.url) {
+                                        UIApplication.shared.open(url)
+                                    }
+                                }) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(source.title)
+                                            .font(.system(size: 11, weight: .medium))
+                                            .foregroundColor(.blue)
+                                            .lineLimit(2)
+
+                                        Text(source.covers)
+                                            .font(.system(size: 9))
+                                            .foregroundColor(.secondary)
+                                            .lineLimit(2)
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(8)
+                                    .background(Color(.systemGray6))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                                    )
+                                    .cornerRadius(6)
+                                }
+                            }
+                        }
+                        .padding(.top, 4)
+                    }
+                }
+                .padding(.top, 8)
+            }
+        }
+        .padding(12)
+        .background(Color.purple.opacity(0.08))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.purple.opacity(0.2), lineWidth: 1)
+        )
+        .cornerRadius(8)
+    }
+
+    private func novaGroupLabel(_ group: Int) -> String {
+        switch group {
+        case 1: return "Unprocessed"
+        case 2: return "Minimally Processed"
+        case 3: return "Processed"
+        case 4: return "Ultra-Processed"
+        default: return "Unknown"
+        }
+    }
 }

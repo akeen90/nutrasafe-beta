@@ -1,0 +1,456 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "last_updated": "2025-11-04",
+    "description": "Ultra-processed ingredients that signal industrial processing (NOVA Group 4)",
+    "purpose": "These ingredients are added for processing reasons, not nutritional value, and should increase NutraSafe Processing Grade penalty"
+  },
+  "ultra_processed_ingredients": {
+    "industrial_sweeteners": {
+      "glucose_syrup": {
+        "name": "Glucose syrup",
+        "synonyms": ["corn syrup", "glucose-fructose syrup"],
+        "processing_penalty": 15,
+        "category": "sweetener",
+        "concerns": "Highly refined industrial sweetener with high glycemic index",
+        "nova_group": 4,
+        "what_it_is": "A highly processed liquid sweetener made by breaking down cornstarch into glucose molecules through industrial enzymatic hydrolysis",
+        "why_its_used": "Adds sweetness, prevents crystallization, and retains moisture in processed foods while being cheaper than sugar",
+        "where_it_comes_from": "Industrially processed from corn (maize) starch using enzymes and chemical processing",
+        "sources": [
+          {
+            "title": "WHO: Guideline on sugars intake for adults and children",
+            "url": "https://www.who.int/publications/i/item/9789241549028",
+            "covers": "Health impacts of free sugars including glucose syrup"
+          },
+          {
+            "title": "NHS: Sugar - the facts",
+            "url": "https://www.nhs.uk/live-well/eat-well/food-types/how-does-sugar-in-our-diet-affect-our-health/",
+            "covers": "Effects of added sugars and refined sweeteners"
+          }
+        ]
+      },
+      "high_fructose_corn_syrup": {
+        "name": "High-fructose corn syrup",
+        "synonyms": ["HFCS", "glucose-fructose syrup", "fructose-glucose syrup"],
+        "processing_penalty": 20,
+        "category": "sweetener",
+        "concerns": "Linked to obesity and metabolic disorders",
+        "nova_group": 4,
+        "sources": [
+          {
+            "title": "WHO: Sugars and dental caries",
+            "url": "https://www.who.int/news-room/fact-sheets/detail/sugars-and-dental-caries",
+            "covers": "Health impacts of HFCS and other sweeteners"
+          },
+          {
+            "title": "NHS: The truth about sweeteners",
+            "url": "https://www.nhs.uk/live-well/eat-well/food-types/are-sweeteners-safe/",
+            "covers": "Safety and health effects of various sweeteners"
+          }
+        ]
+      },
+      "maltodextrin": {
+        "name": "Maltodextrin",
+        "synonyms": [],
+        "processing_penalty": 12,
+        "category": "sweetener",
+        "concerns": "Highly processed starch with very high glycemic index",
+        "nova_group": 4
+      },
+      "invert_sugar": {
+        "name": "Invert sugar",
+        "synonyms": ["inverted sugar", "invert syrup"],
+        "processing_penalty": 10,
+        "category": "sweetener",
+        "concerns": "Industrially processed sugar",
+        "nova_group": 4
+      },
+      "dextrose": {
+        "name": "Dextrose",
+        "synonyms": [],
+        "processing_penalty": 8,
+        "category": "sweetener",
+        "concerns": "Pure glucose, very high glycemic index",
+        "nova_group": 4
+      }
+    },
+    "industrial_fats": {
+      "hydrogenated_oil": {
+        "name": "Hydrogenated oil",
+        "synonyms": ["partially hydrogenated oil", "hydrogenated fat"],
+        "processing_penalty": 25,
+        "category": "fat",
+        "concerns": "Contains trans fats, linked to heart disease",
+        "nova_group": 4,
+        "sources": [
+          {
+            "title": "WHO: Eliminating trans fats",
+            "url": "https://www.who.int/news-room/fact-sheets/detail/trans-fat",
+            "covers": "Health risks of industrially-produced trans fats in hydrogenated oils"
+          },
+          {
+            "title": "NHS: Different fats - the facts",
+            "url": "https://www.nhs.uk/live-well/eat-well/food-types/different-fats-nutrition/",
+            "covers": "Trans fats and saturated fats health impacts"
+          }
+        ]
+      },
+      "palm_fat": {
+        "name": "Palm fat",
+        "synonyms": ["palm oil", "refined palm oil"],
+        "processing_penalty": 10,
+        "category": "fat",
+        "concerns": "Highly refined, high in saturated fat, environmental concerns",
+        "nova_group": 4,
+        "what_it_is": "An industrially refined fat extracted from palm fruit pulp, heavily processed to remove colour, odour and extend shelf life",
+        "why_its_used": "Provides smooth texture, prevents separation, and stays solid at room temperature - ideal for confectionery and baked goods",
+        "where_it_comes_from": "Extracted from oil palm fruit, then refined, bleached and deodorised through industrial processing",
+        "sources": [
+          {
+            "title": "NHS: Saturated fats",
+            "url": "https://www.nhs.uk/live-well/eat-well/food-types/different-fats-nutrition/",
+            "covers": "Health effects of saturated fats including palm oil"
+          },
+          {
+            "title": "WHO: Healthy diet fact sheet",
+            "url": "https://www.who.int/news-room/fact-sheets/detail/healthy-diet",
+            "covers": "Recommendations on limiting saturated fat intake"
+          }
+        ]
+      },
+      "palm_kernel_oil": {
+        "name": "Palm kernel oil",
+        "synonyms": ["PKO"],
+        "processing_penalty": 10,
+        "category": "fat",
+        "concerns": "Very high in saturated fat",
+        "nova_group": 4
+      },
+      "interesterified_fat": {
+        "name": "Interesterified fat",
+        "synonyms": [],
+        "processing_penalty": 15,
+        "category": "fat",
+        "concerns": "Chemically modified fat",
+        "nova_group": 4
+      }
+    },
+    "modified_starches": {
+      "modified_starch": {
+        "name": "Modified starch",
+        "synonyms": ["modified food starch", "modified corn starch", "modified tapioca starch"],
+        "processing_penalty": 12,
+        "category": "thickener",
+        "concerns": "Chemically or enzymatically modified starch",
+        "nova_group": 4
+      },
+      "modified_maize_starch": {
+        "name": "Modified maize starch",
+        "synonyms": [],
+        "processing_penalty": 12,
+        "category": "thickener",
+        "concerns": "Chemically modified",
+        "nova_group": 4
+      },
+      "modified_potato_starch": {
+        "name": "Modified potato starch",
+        "synonyms": [],
+        "processing_penalty": 12,
+        "category": "thickener",
+        "concerns": "Chemically modified",
+        "nova_group": 4
+      }
+    },
+    "protein_isolates": {
+      "soy_protein_isolate": {
+        "name": "Soy protein isolate",
+        "synonyms": ["isolated soy protein"],
+        "processing_penalty": 15,
+        "category": "protein",
+        "concerns": "Highly processed protein extract",
+        "nova_group": 4
+      },
+      "whey_protein_isolate": {
+        "name": "Whey protein isolate",
+        "synonyms": [],
+        "processing_penalty": 12,
+        "category": "protein",
+        "concerns": "Highly refined dairy protein",
+        "nova_group": 4
+      },
+      "hydrolysed_protein": {
+        "name": "Hydrolysed protein",
+        "synonyms": ["hydrolyzed protein", "protein hydrolysate"],
+        "processing_penalty": 15,
+        "category": "protein",
+        "concerns": "Chemically broken down protein",
+        "nova_group": 4
+      },
+      "textured_vegetable_protein": {
+        "name": "Textured vegetable protein",
+        "synonyms": ["TVP", "textured soy protein"],
+        "processing_penalty": 12,
+        "category": "protein",
+        "concerns": "Highly processed protein product",
+        "nova_group": 4
+      }
+    },
+    "malt_extracts": {
+      "barley_malt_extract": {
+        "name": "Barley malt extract",
+        "synonyms": ["malt extract"],
+        "processing_penalty": 8,
+        "category": "sweetener",
+        "concerns": "Processed sweetener, contains gluten",
+        "nova_group": 3,
+        "what_it_is": "A concentrated syrup made from germinated barley grains that have been mashed, filtered and evaporated to create a thick, sweet extract",
+        "why_its_used": "Adds malty flavour, sweetness and colour to foods while helping with browning and texture in baked goods",
+        "where_it_comes_from": "Produced by germinating barley, extracting sugars through mashing, then concentrating the liquid through evaporation",
+        "sources": [
+          {
+            "title": "NHS: Sugar - the facts",
+            "url": "https://www.nhs.uk/live-well/eat-well/food-types/how-does-sugar-in-our-diet-affect-our-health/",
+            "covers": "Health effects of added sweeteners and processed sugars"
+          }
+        ]
+      },
+      "malt_syrup": {
+        "name": "Malt syrup",
+        "synonyms": ["barley malt syrup"],
+        "processing_penalty": 8,
+        "category": "sweetener",
+        "concerns": "Processed sweetener",
+        "nova_group": 3
+      }
+    },
+    "flavor_enhancers": {
+      "monosodium_glutamate": {
+        "name": "Monosodium glutamate",
+        "synonyms": ["MSG", "E621"],
+        "processing_penalty": 15,
+        "category": "flavor_enhancer",
+        "concerns": "Controversial flavor enhancer",
+        "nova_group": 4
+      },
+      "yeast_extract": {
+        "name": "Yeast extract",
+        "synonyms": ["autolyzed yeast"],
+        "processing_penalty": 10,
+        "category": "flavor_enhancer",
+        "concerns": "High in glutamate",
+        "nova_group": 4
+      },
+      "hydrolysed_vegetable_protein": {
+        "name": "Hydrolysed vegetable protein",
+        "synonyms": ["HVP", "hydrolyzed vegetable protein"],
+        "processing_penalty": 12,
+        "category": "flavor_enhancer",
+        "concerns": "High in glutamate",
+        "nova_group": 4
+      }
+    },
+    "emulsifiers": {
+      "lecithins": {
+        "name": "Lecithins",
+        "synonyms": ["lecithin", "E322"],
+        "processing_penalty": 5,
+        "category": "emulsifier",
+        "concerns": "Processed emulsifier derived from sources like soy or sunflower",
+        "nova_group": 3
+      },
+      "mono_and_diglycerides": {
+        "name": "Mono- and diglycerides of fatty acids",
+        "synonyms": ["mono and diglycerides", "E471"],
+        "processing_penalty": 10,
+        "category": "emulsifier",
+        "concerns": "Synthetic emulsifier",
+        "nova_group": 4
+      },
+      "polyglycerol_polyricinoleate": {
+        "name": "Polyglycerol polyricinoleate",
+        "synonyms": ["PGPR", "E476"],
+        "processing_penalty": 12,
+        "category": "emulsifier",
+        "concerns": "Synthetic emulsifier used to reduce chocolate costs",
+        "nova_group": 4
+      },
+      "sunflower_lecithin": {
+        "name": "Sunflower lecithin",
+        "synonyms": ["E322"],
+        "processing_penalty": 5,
+        "category": "emulsifier",
+        "concerns": "Processed emulsifier",
+        "nova_group": 3
+      }
+    },
+    "thickeners_stabilizers": {
+      "carrageenan": {
+        "name": "Carrageenan",
+        "synonyms": ["E407"],
+        "processing_penalty": 12,
+        "category": "thickener",
+        "concerns": "Controversial thickener, digestive concerns",
+        "nova_group": 4
+      },
+      "xanthan_gum": {
+        "name": "Xanthan gum",
+        "synonyms": ["E415"],
+        "processing_penalty": 8,
+        "category": "thickener",
+        "concerns": "Industrial thickener",
+        "nova_group": 4
+      },
+      "guar_gum": {
+        "name": "Guar gum",
+        "synonyms": ["E412"],
+        "processing_penalty": 6,
+        "category": "thickener",
+        "concerns": "Processed fiber",
+        "nova_group": 3
+      },
+      "locust_bean_gum": {
+        "name": "Locust bean gum",
+        "synonyms": ["carob bean gum", "E410"],
+        "processing_penalty": 6,
+        "category": "thickener",
+        "concerns": "Processed thickener",
+        "nova_group": 3
+      },
+      "cellulose_gum": {
+        "name": "Cellulose gum",
+        "synonyms": ["carboxymethylcellulose", "CMC", "E466"],
+        "processing_penalty": 10,
+        "category": "thickener",
+        "concerns": "Chemically modified cellulose",
+        "nova_group": 4
+      },
+      "microcrystalline_cellulose": {
+        "name": "Microcrystalline cellulose",
+        "synonyms": ["E460"],
+        "processing_penalty": 8,
+        "category": "bulking_agent",
+        "concerns": "Processed filler",
+        "nova_group": 4
+      }
+    },
+    "artificial_sweeteners": {
+      "aspartame": {
+        "name": "Aspartame",
+        "synonyms": ["E951"],
+        "processing_penalty": 15,
+        "category": "sweetener",
+        "concerns": "Synthetic sweetener, PKU warning",
+        "nova_group": 4
+      },
+      "sucralose": {
+        "name": "Sucralose",
+        "synonyms": ["E955"],
+        "processing_penalty": 15,
+        "category": "sweetener",
+        "concerns": "Synthetic chlorinated sugar",
+        "nova_group": 4
+      },
+      "acesulfame_k": {
+        "name": "Acesulfame K",
+        "synonyms": ["acesulfame potassium", "E950"],
+        "processing_penalty": 15,
+        "category": "sweetener",
+        "concerns": "Synthetic sweetener",
+        "nova_group": 4
+      },
+      "saccharin": {
+        "name": "Saccharin",
+        "synonyms": ["E954"],
+        "processing_penalty": 15,
+        "category": "sweetener",
+        "concerns": "Oldest synthetic sweetener",
+        "nova_group": 4
+      }
+    },
+    "preservatives": {
+      "sodium_benzoate": {
+        "name": "Sodium benzoate",
+        "synonyms": ["E211"],
+        "processing_penalty": 12,
+        "category": "preservative",
+        "concerns": "Synthetic preservative, can form benzene",
+        "nova_group": 4
+      },
+      "potassium_sorbate": {
+        "name": "Potassium sorbate",
+        "synonyms": ["E202"],
+        "processing_penalty": 10,
+        "category": "preservative",
+        "concerns": "Synthetic preservative",
+        "nova_group": 4
+      },
+      "sodium_nitrite": {
+        "name": "Sodium nitrite",
+        "synonyms": ["E250"],
+        "processing_penalty": 18,
+        "category": "preservative",
+        "concerns": "Can form carcinogenic nitrosamines",
+        "nova_group": 4
+      },
+      "sodium_nitrate": {
+        "name": "Sodium nitrate",
+        "synonyms": ["E251"],
+        "processing_penalty": 18,
+        "category": "preservative",
+        "concerns": "Converts to nitrite, nitrosamine risk",
+        "nova_group": 4
+      },
+      "bha": {
+        "name": "Butylated hydroxyanisole",
+        "synonyms": ["BHA", "E320"],
+        "processing_penalty": 20,
+        "category": "antioxidant",
+        "concerns": "Possible carcinogen",
+        "nova_group": 4
+      },
+      "bht": {
+        "name": "Butylated hydroxytoluene",
+        "synonyms": ["BHT", "E321"],
+        "processing_penalty": 20,
+        "category": "antioxidant",
+        "concerns": "Controversial antioxidant",
+        "nova_group": 4
+      }
+    },
+    "bulking_agents": {
+      "polydextrose": {
+        "name": "Polydextrose",
+        "synonyms": ["E1200"],
+        "processing_penalty": 10,
+        "category": "bulking_agent",
+        "concerns": "Synthetic bulking fiber",
+        "nova_group": 4
+      },
+      "maltitol": {
+        "name": "Maltitol",
+        "synonyms": ["E965"],
+        "processing_penalty": 8,
+        "category": "sweetener",
+        "concerns": "Sugar alcohol, digestive issues",
+        "nova_group": 4
+      },
+      "sorbitol": {
+        "name": "Sorbitol",
+        "synonyms": ["E420"],
+        "processing_penalty": 8,
+        "category": "sweetener",
+        "concerns": "Sugar alcohol, laxative effect",
+        "nova_group": 4
+      },
+      "isomalt": {
+        "name": "Isomalt",
+        "synonyms": ["E953"],
+        "processing_penalty": 8,
+        "category": "sweetener",
+        "concerns": "Sugar alcohol",
+        "nova_group": 4
+      }
+    }
+  }
+}

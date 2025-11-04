@@ -88,12 +88,14 @@ class ProcessingScorer {
         let lowerText = analysisText.lowercased()
 
         // Additive count (prefer provided additives; fallback to analysis)
+        // CRITICAL FIX: Include ultra-processed ingredients as additives in the count
+        let fullAnalysis = analyseAdditives(in: analysisText)
         let additiveCount: Int = {
             if let additives = food.additives {
-                return additives.count
+                // Even if we have provided additives, add ultra-processed ingredients count
+                return additives.count + fullAnalysis.ultraProcessedIngredients.count
             } else {
-                let detected = analyzeAdditives(in: analysisText)
-                return detected.count
+                return fullAnalysis.comprehensiveAdditives.count + fullAnalysis.ultraProcessedIngredients.count
             }
         }()
 
@@ -113,14 +115,35 @@ class ProcessingScorer {
         // Additive weight
         let additiveWeight: Double = additiveCount > 5 ? 1.5 : (additiveCount >= 3 ? 1.0 : (additiveCount >= 1 ? 0.5 : 0.0))
 
-        // Processing Intensity: clamp(1 + additive_weight + ingredient_complexity_weight + industrial_process_weight, 1, 5)
-        let processingIntensity = clamp(1.0 + additiveWeight + ingredientComplexityWeight + industrialProcessWeight, min: 1.0, max: 5.0)
+        // CRITICAL FIX: Extreme sugar penalty for candy/confectionery (>50g sugar = essentially pure sugar)
+        let extremeSugarWeight: Double = {
+            let sugar = food.sugar
+            if sugar >= 70 { return 2.0 }      // Pure sugar products (candy, sweets)
+            else if sugar >= 50 { return 1.5 } // Very high sugar (candy bars, etc.)
+            else if sugar >= 30 { return 0.5 } // High sugar (sweetened products)
+            else { return 0.0 }
+        }()
+
+        // Processing Intensity: clamp(1 + additive_weight + ingredient_complexity_weight + industrial_process_weight + extreme_sugar_weight, 1, 5)
+        let processingIntensity = clamp(1.0 + additiveWeight + ingredientComplexityWeight + industrialProcessWeight + extremeSugarWeight, min: 1.0, max: 5.0)
+
+        // CRITICAL FIX: Detect whole, unprocessed foods (fruits, vegetables, etc.)
+        let isWholeUnprocessedFood = (additiveCount == 0 && ingredientCount <= 1 && industrialProcessWeight == 0.0)
 
         // Nutrient Integrity
         let base: Double = 2.0
         let macroBalance: Double = (food.protein > 10 && food.fiber > 2 && food.sugar < 10) ? 1.0 : 0.0
         let fortifiedCount = countFortifiedMicronutrients(food.micronutrientProfile)
-        let fortificationBonus: Double = fortifiedCount >= 10 ? 1.0 : 0.0
+
+        // FIX: Don't penalize natural foods for not being fortified - give them equivalent credit for being whole foods
+        let fortificationBonus: Double
+        if isWholeUnprocessedFood {
+            // Whole foods get natural nutrient bonus instead of fortification bonus
+            fortificationBonus = 2.0  // Higher than fortified foods to reward natural nutrition
+        } else {
+            fortificationBonus = fortifiedCount >= 10 ? 1.0 : 0.0
+        }
+
         let sugarPenalty: Double = (food.sugar > 15) ? 1.0 : 0.0
         let fibreBonus: Double = (food.fiber > 3) ? 0.5 : 0.0
 
@@ -155,7 +178,9 @@ class ProcessingScorer {
             sugarPer100g: food.sugar,
             fiberPer100g: food.fiber,
             proteinPer100g: food.protein,
-            industrialProcessApplied: industrialProcessWeight > 0
+            industrialProcessApplied: industrialProcessWeight > 0,
+            isWholeUnprocessedFood: isWholeUnprocessedFood,
+            extremeSugarApplied: extremeSugarWeight > 0
         )
 
         return NutraSafeProcessingGradeResult(
@@ -191,16 +216,40 @@ class ProcessingScorer {
         sugarPer100g: Double,
         fiberPer100g: Double,
         proteinPer100g: Double,
-        industrialProcessApplied: Bool
+        industrialProcessApplied: Bool,
+        isWholeUnprocessedFood: Bool,
+        extremeSugarApplied: Bool
     ) -> String {
         var parts: [String] = []
         parts.append("NutraSafe Processing Grade™ for '\(foodName)': \(grade).")
-        parts.append("Processing intensity \(String(format: "%.1f", processingIntensity)) driven by \(additiveCount) additive(s)\(industrialProcessApplied ? ", industrial processing indicators" : "") and \(ingredientCount) ingredient(s).")
+
+        if isWholeUnprocessedFood {
+            parts.append("This is a whole, unprocessed food with no additives.")
+        } else {
+            var processingFactors: [String] = []
+            processingFactors.append("\(additiveCount) additive(s)")
+            if industrialProcessApplied {
+                processingFactors.append("industrial processing indicators")
+            }
+            if extremeSugarApplied {
+                processingFactors.append("extreme sugar content")
+            }
+            processingFactors.append("\(ingredientCount) ingredient(s)")
+
+            parts.append("Processing intensity \(String(format: "%.1f", processingIntensity)) driven by \(processingFactors.joined(separator: ", ")).")
+        }
+
         var nutritionBits: [String] = []
         nutritionBits.append("protein \(String(format: "%.0f", proteinPer100g))g")
         nutritionBits.append("fiber \(String(format: "%.1f", fiberPer100g))g")
         nutritionBits.append("sugar \(String(format: "%.0f", sugarPer100g))g")
-        parts.append("Nutrient integrity \(String(format: "%.1f", nutrientIntegrity)) considering balanced macros (\(nutritionBits.joined(separator: ", "))) and \(fortifiedCount >= 10 ? "broad fortification (\(fortifiedCount) micronutrients)" : "limited micronutrient coverage").")
+
+        if isWholeUnprocessedFood {
+            parts.append("Nutrient integrity \(String(format: "%.1f", nutrientIntegrity)) from naturally occurring vitamins and minerals (\(nutritionBits.joined(separator: ", "))).")
+        } else {
+            parts.append("Nutrient integrity \(String(format: "%.1f", nutrientIntegrity)) considering balanced macros (\(nutritionBits.joined(separator: ", "))) and \(fortifiedCount >= 10 ? "broad fortification (\(fortifiedCount) micronutrients)" : "limited micronutrient coverage").")
+        }
+
         parts.append("Overall index \(String(format: "%.1f", finalIndex)).")
         let summary: String = {
             switch grade {
@@ -320,19 +369,22 @@ class ProcessingScorer {
         // Calculate base score from processing level
         var totalScore = processingLevel.score
         
+        // NEW: Apply ultra-processed ingredients penalty
+        totalScore -= additiveAnalysis.ultraProcessedPenalty
+
         // Apply comprehensive additive penalties based on health scores
         if !additiveAnalysis.comprehensiveAdditives.isEmpty {
             // Use comprehensive health scoring (0-100 scale, lower is worse)
             let avgHealthScore = additiveAnalysis.totalHealthScore
             let healthPenalty = max(0, 50 - avgHealthScore) // Penalty when health score is below 50
             totalScore -= healthPenalty
-            
+
             // Additional penalties for specific warning categories
             if additiveAnalysis.hasChildWarnings {
                 totalScore -= 15  // Extra penalty for child warnings
             }
             if additiveAnalysis.hasAllergenWarnings {
-                totalScore -= 10  // Extra penalty for allergen warnings  
+                totalScore -= 10  // Extra penalty for allergen warnings
             }
             if additiveAnalysis.worstVerdict == "caution" {
                 totalScore -= 10  // Extra penalty for caution verdict
@@ -509,19 +561,88 @@ class ProcessingScorer {
         let worstVerdict: String
         let hasChildWarnings: Bool
         let hasAllergenWarnings: Bool
+        let ultraProcessedIngredients: [UltraProcessedIngredient]  // NEW: Ultra-processed ingredients detected
+        let ultraProcessedPenalty: Int  // NEW: Total penalty from ultra-processed ingredients
     }
     
-    private lazy var comprehensiveAdditives: [String: AdditiveInfo]? = {
-        // DEBUG LOG: print("🔍 Attempting to load master additives database...")
+    // MARK: - Ultra-Processed Ingredients Database
 
-        guard let path = Bundle.main.path(forResource: "additives_master_database", ofType: "json") else {
-            print("❌ ERROR: additives_master_database.json not found in bundle!")
-            print("📦 Bundle path: \(Bundle.main.bundlePath)")
-            print("📁 Looking for: additives_master_database.json")
+    struct UltraProcessedIngredient: Codable {
+        let name: String
+        let synonyms: [String]
+        let processing_penalty: Int
+        let category: String
+        let concerns: String
+        let nova_group: Int
+        let what_it_is: String?
+        let why_its_used: String?
+        let where_it_comes_from: String?
+    }
+
+    private lazy var ultraProcessedDatabase: [String: UltraProcessedIngredient]? = {
+        guard let path = Bundle.main.path(forResource: "ultra_processed_ingredients", ofType: "json") else {
+            print("⚠️ WARNING: ultra_processed_ingredients.json not found in bundle!")
             return nil
         }
 
-        print("✅ Found database file at: \(path)")
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let ingredients = json["ultra_processed_ingredients"] as? [String: Any] else {
+            print("❌ ERROR: Could not parse ultra_processed_ingredients.json")
+            return nil
+        }
+
+        var database: [String: UltraProcessedIngredient] = [:]
+
+        // Parse each category
+        for (_, categoryData) in ingredients {
+            if let categoryDict = categoryData as? [String: Any] {
+                for (key, ingredientData) in categoryDict {
+                    if let ingredientDict = ingredientData as? [String: Any],
+                       let name = ingredientDict["name"] as? String,
+                       let synonyms = ingredientDict["synonyms"] as? [String],
+                       let penalty = ingredientDict["processing_penalty"] as? Int,
+                       let category = ingredientDict["category"] as? String,
+                       let concerns = ingredientDict["concerns"] as? String,
+                       let novaGroup = ingredientDict["nova_group"] as? Int {
+
+                        let ingredient = UltraProcessedIngredient(
+                            name: name,
+                            synonyms: synonyms,
+                            processing_penalty: penalty,
+                            category: category,
+                            concerns: concerns,
+                            nova_group: novaGroup,
+                            what_it_is: ingredientDict["what_it_is"] as? String,
+                            why_its_used: ingredientDict["why_its_used"] as? String,
+                            where_it_comes_from: ingredientDict["where_it_comes_from"] as? String
+                        )
+
+                        // Store by lowercase name and synonyms
+                        database[name.lowercased()] = ingredient
+                        for synonym in synonyms {
+                            database[synonym.lowercased()] = ingredient
+                        }
+                    }
+                }
+            }
+        }
+
+        print("✅ Loaded \(database.count) ultra-processed ingredient entries")
+        return database
+    }()
+
+    private lazy var comprehensiveAdditives: [String: AdditiveInfo]? = {
+        // DEBUG LOG: print("🔍 Attempting to load master additives database...")
+
+        guard let path = Bundle.main.path(forResource: "additives_unified", ofType: "json") else {
+            print("❌ ERROR: additives_unified.json not found in bundle!")
+            print("📦 Bundle path: \(Bundle.main.bundlePath)")
+            print("📁 Looking for: additives_unified.json")
+            return nil
+        }
+
+        print("✅ Found unified database file at: \(path)")
 
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
             print("❌ ERROR: Could not read data from \(path)")
@@ -530,16 +651,43 @@ class ProcessingScorer {
 
         print("✅ Loaded \(data.count) bytes of data")
 
+        // Try to decode as unified database format first
+        let decoder = JSONDecoder()
+        if let unified = try? decoder.decode(UnifiedAdditiveDatabase.self, from: data) {
+            print("✅ Successfully decoded unified database format")
+            print("   - Version: \(unified.metadata.version)")
+            print("   - Total additives: \(unified.metadata.total_additives)")
+            print("   - Last updated: \(unified.metadata.last_updated)")
+
+            // Store the version
+            ProcessingScorer.shared.databaseVersion = unified.metadata.version
+
+            // Convert array to dictionary keyed by eNumber
+            var additives: [String: AdditiveInfo] = [:]
+            for additive in unified.additives {
+                additives[additive.eNumber] = additive
+            }
+
+            // Count additives with sources
+            let withSources = additives.values.filter { !$0.sources.isEmpty }.count
+            let totalSources = additives.values.reduce(0) { $0 + $1.sources.count }
+            print("✅ Loaded \(additives.count) additives from unified database")
+            print("📚 Additives with sources: \(withSources)")
+            print("📖 Total source citations: \(totalSources)")
+
+            return additives
+        }
+
+        // Fallback: Try old nested format for backward compatibility
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             print("❌ ERROR: Could not parse JSON from data")
             return nil
         }
 
-        print("✅ Parsed JSON successfully")
+        print("⚠️ Using legacy database format parser")
 
         // Check metadata and extract version
         if let metadata = json["metadata"] as? [String: Any] {
-        // DEBUG LOG: print("📊 Database metadata:")
             let version = metadata["version"] as? String ?? "2025.1"
             print("   - Version: \(version)")
             print("   - Total additives: \(metadata["total_additives"] as? Int ?? 0)")
@@ -551,18 +699,15 @@ class ProcessingScorer {
 
         var additives: [String: AdditiveInfo] = [:]
 
-        // Parse the nested category structure
-        // Structure: categories -> ranges -> additives (3 levels, not 4!)
+        // Parse the nested category structure (legacy format)
         if let categories = json["categories"] as? [String: Any] {
             print("✅ Found \(categories.count) categories in database")
             for (categoryName, categoryData) in categories {
                 if let categoryDict = categoryData as? [String: Any] {
                     print("   📂 Category: \(categoryName)")
-                    // Level 2: Iterate through E-number ranges (e.g., "E100-E199")
                     for (rangeName, rangeData) in categoryDict {
                         if let rangeDict = rangeData as? [String: Any] {
                             print("      📊 Range: \(rangeName) with \(rangeDict.count) additives")
-                            // Level 3: Iterate through individual additives (directly, no groups level!)
                             for (code, additiveData) in rangeDict {
                                 if let additiveDict = additiveData as? [String: Any],
                                    let name = additiveDict["name"] as? String {
@@ -573,7 +718,6 @@ class ProcessingScorer {
                                     let originString = additiveDict["origin"] as? String ?? "unknown"
                                     let uses = additiveDict["uses"] as? String ?? ""
 
-                                    // Map safety to verdict
                                     let verdict: AdditiveVerdict
                                     switch safety.lowercased() {
                                     case "positive": verdict = .neutral
@@ -582,7 +726,6 @@ class ProcessingScorer {
                                     default: verdict = .neutral
                                     }
 
-                                    // Determine category from the categoryName (top level)
                                     let additiveCategory: AdditiveCategory
                                     if categoryName.contains("color") || categoryName.contains("colour") {
                                         additiveCategory = .colour
@@ -592,14 +735,10 @@ class ProcessingScorer {
                                         additiveCategory = .other
                                     }
 
-                                    // Map origin string to AdditiveOrigin enum
                                     let origin = Self.mapOrigin(originString)
-
-                                    // Check for warnings in concerns
                                     let hasChildWarning = concerns.lowercased().contains("child") || concerns.lowercased().contains("hyperactivity")
                                     let hasSulphitesWarning = concerns.lowercased().contains("sulphite") || concerns.lowercased().contains("sulfite")
 
-                                    // Build informative overview
                                     let overview: String
                                     if !uses.isEmpty && !originString.isEmpty {
                                         overview = "\(name) is a \(categoryName) additive from \(originString) origin. Typically used in \(uses)."
@@ -630,7 +769,7 @@ class ProcessingScorer {
                                         effectsVerdict: verdict,
                                         synonyms: synonyms,
                                         insNumber: nil,
-                                        sources: [],
+                                        sources: [],  // Legacy format has no sources
                                         consumerInfo: nil
                                     )
 
@@ -643,7 +782,7 @@ class ProcessingScorer {
             }
         }
 
-        print("✅ Loaded \(additives.count) additives from master database")
+        print("✅ Loaded \(additives.count) additives from legacy database")
         return additives
     }()
 
@@ -889,12 +1028,42 @@ class ProcessingScorer {
         goodAdditives = beneficialAdditives.filter { foodLower.contains($0) }
         
         // Calculate comprehensive health metrics
-        let totalHealthScore = detectedAdditives.isEmpty ? 50 : 
+        let totalHealthScore = detectedAdditives.isEmpty ? 50 :
             detectedAdditives.reduce(into: 0) { $0 += getHealthScore(for: $1) } / detectedAdditives.count
-        
+
         let worstVerdict = detectedAdditives.contains { $0.effectsVerdict == .caution } ? "caution" : "neutral"
         let hasChildWarnings = detectedAdditives.contains { $0.hasChildWarning }
         let hasAllergenWarnings = detectedAdditives.contains { $0.hasSulphitesAllergenLabel }
+
+        // NEW: Detect ultra-processed ingredients
+        var ultraProcessedIngredients: [UltraProcessedIngredient] = []
+        var ultraProcessedPenalty = 0
+
+        if let ultraDB = ultraProcessedDatabase {
+            // Split ingredients by common delimiters
+            let words = normalizedFood.components(separatedBy: CharacterSet(charactersIn: ",;()[] "))
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+
+            // Check for multi-word ingredients (e.g., "glucose syrup", "palm oil")
+            for (key, ingredient) in ultraDB {
+                if matchesWithWordBoundary(text: normalizedFood, pattern: key) {
+                    // Avoid duplicates
+                    if !ultraProcessedIngredients.contains(where: { $0.name == ingredient.name }) {
+                        ultraProcessedIngredients.append(ingredient)
+                        ultraProcessedPenalty += ingredient.processing_penalty
+                    }
+                }
+            }
+
+            if !ultraProcessedIngredients.isEmpty {
+                print("🏭 [ProcessingScorer] Detected \(ultraProcessedIngredients.count) ultra-processed ingredients:")
+                for ing in ultraProcessedIngredients {
+                    print("   - \(ing.name) (penalty: \(ing.processing_penalty))")
+                }
+                print("   Total ultra-processed penalty: \(ultraProcessedPenalty)")
+            }
+        }
 
         let result = AdditiveAnalysis(
             eNumbers: eNumbers,
@@ -905,7 +1074,9 @@ class ProcessingScorer {
             totalHealthScore: totalHealthScore,
             worstVerdict: worstVerdict,
             hasChildWarnings: hasChildWarnings,
-            hasAllergenWarnings: hasAllergenWarnings
+            hasAllergenWarnings: hasAllergenWarnings,
+            ultraProcessedIngredients: ultraProcessedIngredients,
+            ultraProcessedPenalty: ultraProcessedPenalty
         )
 
         // PERFORMANCE: Cache the result
@@ -917,7 +1088,7 @@ class ProcessingScorer {
     }
     
     private func getHealthScore(for additive: AdditiveInfo) -> Int {
-        // Convert AdditiveVerdict to health score
+        // Convert AdditiveVerdict enum to health score
         switch additive.effectsVerdict {
         case .neutral: return 70
         case .caution: return 40
@@ -973,6 +1144,12 @@ class ProcessingScorer {
                                 totalScore: Int) -> String {
         var explanation = "Processing Level: \(processingLevel.rawValue). "
         
+        // NEW: Ultra-processed ingredients mention
+        if !additiveAnalysis.ultraProcessedIngredients.isEmpty {
+            let count = additiveAnalysis.ultraProcessedIngredients.count
+            explanation += "\(count) ultra-processed ingredient(s) detected. "
+        }
+
         // Use comprehensive additive analysis if available
         if !additiveAnalysis.comprehensiveAdditives.isEmpty {
             let count = additiveAnalysis.comprehensiveAdditives.count
@@ -1020,13 +1197,28 @@ class ProcessingScorer {
         return explanation
     }
     
-    private func buildFactors(processingLevel: ProcessingLevel, 
-                            additiveAnalysis: AdditiveAnalysis, 
+    private func buildFactors(processingLevel: ProcessingLevel,
+                            additiveAnalysis: AdditiveAnalysis,
                             naturalScore: Int) -> [String] {
         var factors: [String] = []
-        
+
         factors.append("Processing: \(processingLevel.rawValue)")
-        
+
+        // NEW: Show ultra-processed ingredients
+        if !additiveAnalysis.ultraProcessedIngredients.isEmpty {
+            let count = additiveAnalysis.ultraProcessedIngredients.count
+            let penalty = additiveAnalysis.ultraProcessedPenalty
+            factors.append("🏭 \(count) ultra-processed ingredient(s) (-\(penalty) points)")
+
+            // Show specific high-penalty ingredients
+            let highPenalty = additiveAnalysis.ultraProcessedIngredients
+                .filter { $0.processing_penalty >= 15 }
+                .prefix(3)
+            for ing in highPenalty {
+                factors.append("   • \(ing.name)")
+            }
+        }
+
         // Use comprehensive additive analysis if available
         if !additiveAnalysis.comprehensiveAdditives.isEmpty {
             let count = additiveAnalysis.comprehensiveAdditives.count
