@@ -83,7 +83,11 @@ final class SubscriptionManager: ObservableObject {
     }
 
     private func loadProductInternal() async throws {
-        // Always sync with App Store first to ensure fresh pricing data
+        #if DEBUG
+        // In DEBUG builds, skip sync - local StoreKit doesn't need it and it triggers auth prompts
+        print("StoreKit: Skipping sync in DEBUG build (using local StoreKitTest)")
+        #else
+        // Production: sync with App Store first to ensure fresh pricing data
         print("StoreKit: Syncing with App Store before loading products")
         do {
             try await AppStore.sync()
@@ -93,6 +97,7 @@ final class SubscriptionManager: ObservableObject {
         } catch {
             print("StoreKit: Sync failed: \(error), will try to load products anyway")
         }
+        #endif
 
         print("StoreKit: Loading products for id: \(productID)")
         let products = try await Product.products(for: [productID])
