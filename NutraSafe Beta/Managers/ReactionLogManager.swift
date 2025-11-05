@@ -250,10 +250,11 @@ class ReactionLogManager: ObservableObject {
             lastSeenHours: Double,
             within24h: Int,
             between24_48h: Int,
-            between48_72h: Int
+            between48_72h: Int,
+            displayName: String
         )] = [:]
 
-        // Aggregate ingredient occurrences from all foods
+        // Aggregate ingredient occurrences from all foods (case-insensitive)
         for item in foods {
             let hoursBeforeReaction = reactionDate.timeIntervalSince(item.mealDate) / 3600
 
@@ -261,26 +262,29 @@ class ReactionLogManager: ObservableObject {
             let ingredients = extractIngredients(from: item.food)
 
             for ingredient in ingredients {
-                if ingredientData[ingredient] == nil {
-                    ingredientData[ingredient] = (0, [], [], hoursBeforeReaction, 0, 0, 0)
+                // Normalize ingredient name (lowercase, trimmed) for matching
+                let normalizedIngredient = ingredient.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+
+                if ingredientData[normalizedIngredient] == nil {
+                    ingredientData[normalizedIngredient] = (0, [], [], hoursBeforeReaction, 0, 0, 0, ingredient)
                 }
 
-                ingredientData[ingredient]!.occurrences += 1
-                ingredientData[ingredient]!.foodNames.insert(item.food.foodName)
-                ingredientData[ingredient]!.mealIds.append(item.mealId)
+                ingredientData[normalizedIngredient]!.occurrences += 1
+                ingredientData[normalizedIngredient]!.foodNames.insert(item.food.foodName)
+                ingredientData[normalizedIngredient]!.mealIds.append(item.mealId)
 
                 // Update last seen
-                if hoursBeforeReaction < ingredientData[ingredient]!.lastSeenHours {
-                    ingredientData[ingredient]!.lastSeenHours = hoursBeforeReaction
+                if hoursBeforeReaction < ingredientData[normalizedIngredient]!.lastSeenHours {
+                    ingredientData[normalizedIngredient]!.lastSeenHours = hoursBeforeReaction
                 }
 
                 // Count by time window
                 if hoursBeforeReaction < 24 {
-                    ingredientData[ingredient]!.within24h += 1
+                    ingredientData[normalizedIngredient]!.within24h += 1
                 } else if hoursBeforeReaction < 48 {
-                    ingredientData[ingredient]!.between24_48h += 1
+                    ingredientData[normalizedIngredient]!.between24_48h += 1
                 } else {
-                    ingredientData[ingredient]!.between48_72h += 1
+                    ingredientData[normalizedIngredient]!.between48_72h += 1
                 }
             }
         }
@@ -291,7 +295,7 @@ class ReactionLogManager: ObservableObject {
         // Calculate scores
         var scores: [WeightedIngredientScore] = []
 
-        for (ingredientName, data) in ingredientData {
+        for (normalizedName, data) in ingredientData {
             // Recency score: 70% for <24h, 20% for 24-48h, 10% for 48-72h
             let recencyScore = Double(data.within24h) * 70.0 +
                                Double(data.between24_48h) * 20.0 +
@@ -300,8 +304,8 @@ class ReactionLogManager: ObservableObject {
             // Frequency score
             let frequencyScore = Double(data.occurrences) * 10.0
 
-            // Symptom association score
-            let association = symptomAssociations[ingredientName] ?? (total: 0, sameSymptom: 0)
+            // Symptom association score (use normalized name for lookup)
+            let association = symptomAssociations[normalizedName] ?? (total: 0, sameSymptom: 0)
             let symptomBoost = association.sameSymptom >= 2 ? 25.0 : 0.0  // Boost if appears in 2+ reactions of same type
 
             // Total score
@@ -312,7 +316,7 @@ class ReactionLogManager: ObservableObject {
             let crossReactionFrequency = totalReactions > 0 ? (Double(reactionsWithThisIngredient) / Double(totalReactions)) * 100.0 : 0.0
 
             let score = WeightedIngredientScore(
-                ingredientName: ingredientName,
+                ingredientName: data.displayName,  // Use original display name
                 totalScore: totalScore,
                 recencyScore: recencyScore,
                 frequencyScore: frequencyScore,
@@ -359,16 +363,18 @@ class ReactionLogManager: ObservableObject {
 
             let isSameSymptom = reaction.reactionType == reactionType
 
-            // Count ingredient appearances
+            // Count ingredient appearances (case-insensitive)
             for ingredient in analysis.topIngredients {
-                if associations[ingredient.ingredientName] == nil {
-                    associations[ingredient.ingredientName] = (0, 0)
+                let normalizedName = ingredient.ingredientName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+
+                if associations[normalizedName] == nil {
+                    associations[normalizedName] = (0, 0)
                 }
 
-                associations[ingredient.ingredientName]!.total += 1
+                associations[normalizedName]!.total += 1
 
                 if isSameSymptom {
-                    associations[ingredient.ingredientName]!.sameSymptom += 1
+                    associations[normalizedName]!.sameSymptom += 1
                 }
             }
         }

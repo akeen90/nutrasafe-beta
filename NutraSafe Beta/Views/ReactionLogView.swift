@@ -209,22 +209,28 @@ struct ReactionLogView: View {
 
     // MARK: - Calculate Common Ingredients
     private func calculateCommonIngredients() -> [(name: String, frequency: Int, percentage: Double)] {
-        var ingredientCounts: [String: Int] = [:]
+        var ingredientCounts: [String: (count: Int, displayName: String)] = [:]
 
-        // Count ingredients across all reactions
+        // Count ingredients across all reactions (case-insensitive)
         for entry in manager.reactionLogs {
             guard let analysis = entry.triggerAnalysis else { continue }
 
             for ingredient in analysis.topIngredients {
-                ingredientCounts[ingredient.ingredientName, default: 0] += 1
+                let normalizedName = ingredient.ingredientName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+
+                if ingredientCounts[normalizedName] == nil {
+                    ingredientCounts[normalizedName] = (count: 1, displayName: ingredient.ingredientName)
+                } else {
+                    ingredientCounts[normalizedName]?.count += 1
+                }
             }
         }
 
         // Filter to ingredients appearing in 2+ reactions and calculate percentages
         let totalReactions = manager.reactionLogs.count
         return ingredientCounts
-            .filter { $0.value >= 2 }
-            .map { (name: $0.key, frequency: $0.value, percentage: (Double($0.value) / Double(totalReactions)) * 100.0) }
+            .filter { $0.value.count >= 2 }
+            .map { (name: $0.value.displayName, frequency: $0.value.count, percentage: (Double($0.value.count) / Double(totalReactions)) * 100.0) }
             .sorted { $0.frequency > $1.frequency }
     }
 }
