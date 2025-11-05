@@ -3835,6 +3835,7 @@ struct NutrientInfoCard: View {
     let scrollProxy: ScrollViewProxy
     let cardId: String
     @State private var isExpanded = false
+    @State private var showingCitations = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -3910,18 +3911,25 @@ struct NutrientInfoCard: View {
                             benefitRow(icon: "leaf.fill", title: "Also found in", content: formatSources(sources))
                         }
 
-                        // Citation note for health benefits
+                        // Citation note for health benefits - Clickable button
                         Divider()
                             .padding(.vertical, 4)
 
-                        HStack(spacing: 4) {
-                            Image(systemName: "info.circle.fill")
-                                .font(.system(size: 10))
-                                .foregroundColor(.blue.opacity(0.7))
-                            Text("Health benefits based on EFSA-approved claims and NHS guidance")
-                                .font(.system(size: 10))
-                                .foregroundColor(.secondary)
-                                .lineLimit(2)
+                        Button(action: {
+                            showingCitations = true
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "info.circle.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.blue)
+                                Text("Health benefits based on EFSA-approved claims and NHS guidance")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.blue)
+                                    .lineLimit(2)
+                                Image(systemName: "arrow.up.right.square")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(.blue)
+                            }
                         }
                     }
                     .padding(.horizontal, 16)
@@ -3938,6 +3946,59 @@ struct NutrientInfoCard: View {
                         .strokeBorder(Color.green.opacity(0.3), lineWidth: 1.5)
                 )
         )
+        .sheet(isPresented: $showingCitations) {
+            NavigationView {
+                List {
+                    Section(header: Text("Vitamin & Mineral Health Claims")) {
+                        Text("Health benefits shown are based on official EFSA-approved health claims and NHS nutritional guidance.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    ForEach(CitationManager.shared.citations(for: .dailyValues).filter {
+                        $0.title.contains("Vitamin") || $0.title.contains("Iron") || $0.title.contains("Calcium") || $0.title.contains("Magnesium") || $0.title.contains("Zinc")
+                    }) { citation in
+                        Button(action: {
+                            if let url = URL(string: citation.url) {
+                                UIApplication.shared.open(url)
+                            }
+                        }) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Image(systemName: "doc.text.fill")
+                                        .foregroundColor(.blue)
+                                        .font(.system(size: 14))
+                                    Text(citation.organization)
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                    Image(systemName: "arrow.up.right.square")
+                                        .font(.caption)
+                                        .foregroundColor(.blue)
+                                }
+                                Text(citation.title)
+                                    .font(.caption)
+                                    .foregroundColor(.blue)
+                                Text(citation.description)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(5)
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                }
+                .navigationTitle("Official Sources")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Done") {
+                            showingCitations = false
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // Helper view for each benefit row
