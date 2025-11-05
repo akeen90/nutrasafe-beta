@@ -821,18 +821,23 @@ struct CategoricalNutrientTrackingView: View {
             }
         }
         .onDisappear {
-            // Cancel any in-flight tasks
+            // Cancel any in-flight tasks FIRST
             vm.cancelLoading()
 
             // Clear large data structures to free memory
+            // Note: We clear arrays immediately, but cache cleanup is async
             vm.rhythmDays = []
             vm.nutrientCoverageRows = []
-            vm.clearCache()
+
+            // Clear cache asynchronously (safe because it's actor-isolated)
+            Task {
+                await vm.clearCache()
+            }
 
             // Reset flag for next appearance
             hasInitiallyLoaded = false
 
-            print("🧹 Nutrients tab cleanup: cleared data and cache")
+            print("🧹 Nutrients tab cleanup: cancelled tasks, cleared data and scheduled cache cleanup")
         }
         .sheet(isPresented: $showingGaps) {
             if #available(iOS 16.0, *) {
@@ -1476,7 +1481,8 @@ final class CategoricalNutrientViewModel: ObservableObject {
     @Published var isLoading: Bool = false
 
     private var loadTask: Task<Void, Never>?
-    private var profileCache: [String: MicronutrientProfile] = [:]
+    private let profileCache = NutrientCacheActor()
+    private var currentLoadingDate: Date?
     weak var diaryManager: DiaryDataManager?
 
     func setDiaryManager(_ manager: DiaryDataManager) {
@@ -1486,11 +1492,12 @@ final class CategoricalNutrientViewModel: ObservableObject {
     func cancelLoading() {
         loadTask?.cancel()
         loadTask = nil
+        currentLoadingDate = nil
         isLoading = false
     }
 
-    func clearCache() {
-        profileCache.removeAll()
+    func clearCache() async {
+        await profileCache.clear()
     }
 
     // Load last 7 days of rhythm and coverage data
@@ -1501,151 +1508,180 @@ final class CategoricalNutrientViewModel: ObservableObject {
 
     // Load specific week's data starting from the given Monday
     func loadWeekData(for weekStartDate: Date) async {
-        // Cancel any existing load task
-        loadTask?.cancel()
+        let calendar = Calendar.current
 
-        // Guard against duplicate loads
+        // Calculate the Monday of the week to normalize date comparison
+        let weekday = calendar.component(.weekday, from: weekStartDate)
+        let daysFromMonday = (weekday == 1) ? -6 : 2 - weekday
+        guard let monday = calendar.date(byAdding: .day, value: daysFromMonday, to: weekStartDate) else {
+            print("❌ Failed to calculate Monday")
+            return
+        }
+        let mondayStart = calendar.startOfDay(for: monday)
+
+        // Prevent duplicate loads for the same week
+        if let currentDate = currentLoadingDate, calendar.isDate(currentDate, equalTo: mondayStart, toGranularity: .day) {
+            print("⚠️ Already loading data for this week, skipping duplicate request")
+            return
+        }
+
+        // Cancel any existing load task and wait for it to complete
+        loadTask?.cancel()
+        loadTask = nil
+
+        // Guard against concurrent loads
         guard !isLoading else {
             print("⚠️ Already loading data, skipping duplicate request")
             return
         }
 
-        isLoading = true
-        defer { isLoading = false }
-
-        print("🔄 CategoricalNutrientViewModel: Starting loadWeekData for \(weekStartDate)...")
-
+        // Capture strong reference to manager to prevent deallocation during task
         guard let manager = diaryManager else {
             print("❌ DiaryManager not set")
-            await MainActor.run {
-                self.rhythmDays = []
-                self.nutrientCoverageRows = []
-            }
+            self.rhythmDays = []
+            self.nutrientCoverageRows = []
             return
         }
 
-        // Move heavy processing to background thread
-        let result = await Task.detached(priority: .userInitiated) { [weak self] () -> (days: [RhythmDay], rows: [CoverageRow])? in
-            guard let self = self else { return nil }
+        isLoading = true
+        currentLoadingDate = mondayStart
 
-            let calendar = Calendar.current
+        print("🔄 CategoricalNutrientViewModel: Starting loadWeekData for \(mondayStart)...")
 
-            // Calculate the Monday and Sunday of the week containing weekStartDate
-            let weekday = calendar.component(.weekday, from: weekStartDate)
-            let daysFromMonday = (weekday == 1) ? -6 : 2 - weekday
-            guard let monday = calendar.date(byAdding: .day, value: daysFromMonday, to: weekStartDate) else {
-                print("❌ Failed to calculate Monday")
-                return nil
+        // Create properly cancellable task (NOT detached)
+        loadTask = Task { @MainActor in
+            defer {
+                self.isLoading = false
+                self.currentLoadingDate = nil
             }
-            let mondayStart = calendar.startOfDay(for: monday)
-            print("📅 Loading week starting: \(mondayStart)")
 
-            // Generate 7 days starting from Monday
-            let dates = (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: mondayStart) }
+            // Perform heavy processing on background thread but maintain cancellation context
+            let result: (days: [RhythmDay], rows: [CoverageRow])? = await Task {
+                // Generate 7 days starting from Monday
+                let dates = (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: mondayStart) }
 
-            do {
-                // Fetch food entries for each day of the week
-                var allEntries: [FoodEntry] = []
+                do {
+                    // Fetch food entries for each day of the week
+                    var allEntries: [FoodEntry] = []
 
-                for date in dates {
-                    // Check for task cancellation
+                    for date in dates {
+                        // Check for task cancellation
+                        if Task.isCancelled {
+                            print("⚠️ Task cancelled during data fetch")
+                            return nil
+                        }
+
+                        do {
+                            let (breakfast, lunch, dinner, snacks) = try await manager.getFoodDataAsync(for: date)
+
+                            // Convert each meal type to FoodEntries
+                            for food in breakfast {
+                                allEntries.append(food.toFoodEntry(userId: "", mealType: .breakfast, date: date))
+                            }
+                            for food in lunch {
+                                allEntries.append(food.toFoodEntry(userId: "", mealType: .lunch, date: date))
+                            }
+                            for food in dinner {
+                                allEntries.append(food.toFoodEntry(userId: "", mealType: .dinner, date: date))
+                            }
+                            for food in snacks {
+                                allEntries.append(food.toFoodEntry(userId: "", mealType: .snacks, date: date))
+                            }
+                        } catch {
+                            print("⚠️ Error fetching data for \(date): \(error)")
+                            // Continue with other days even if one fails
+                        }
+                    }
+
+                    print("📥 Total entries fetched: \(allEntries.count) for week starting \(mondayStart)")
+
+                    let entries = allEntries
+                    let grouped = Dictionary(grouping: entries, by: { calendar.startOfDay(for: $0.date) })
+
+                    // Get all food IDs that need profiles
+                    let allFoodIds = entries.map { $0.foodName }
+
+                    // Fetch cached profiles from actor
+                    let cachedProfiles = await self.profileCache.getProfiles(forFoodIds: allFoodIds)
+
+                    // Track new profiles to cache
+                    var newProfiles: [String: MicronutrientProfile] = [:]
+
+                    // Build rhythm days
+                    var days: [RhythmDay] = []
+                    for date in dates {
+                        if Task.isCancelled { return nil }
+
+                        let dayEntries = grouped[date] ?? []
+                        let level = await self.calculateDominantLevel(for: dayEntries, existingCache: cachedProfiles, newCache: &newProfiles)
+                        days.append(RhythmDay(date: date, level: level))
+                    }
+
+                    // Check for cancellation before expensive nutrient processing
                     if Task.isCancelled {
-                        print("⚠️ Task cancelled during data fetch")
+                        print("⚠️ Task cancelled before nutrient processing")
                         return nil
                     }
 
-                    do {
-                        let (breakfast, lunch, dinner, snacks) = try await manager.getFoodDataAsync(for: date)
-                        print("📥 Fetched data for \(date): B=\(breakfast.count), L=\(lunch.count), D=\(dinner.count), S=\(snacks.count)")
+                    // Build coverage rows
+                    let nutrients = self.nutrientList()
+                    var rows: [CoverageRow] = []
 
-                        // Convert each meal type to FoodEntries
-                        for food in breakfast {
-                            allEntries.append(food.toFoodEntry(userId: "", mealType: .breakfast, date: date))
+                    for nutrient in nutrients {
+                        if Task.isCancelled { return nil }
+
+                        var segments: [Segment] = []
+                        var strongCount = 0
+                        var loggedDays = 0
+
+                        for date in dates {
+                            let dayEntries = grouped[date] ?? []
+                            if !dayEntries.isEmpty {
+                                loggedDays += 1
+                                let level = await self.highestLevel(for: nutrient.id, entries: dayEntries, existingCache: cachedProfiles, newCache: &newProfiles)
+                                if level == .strong { strongCount += 1 }
+                                let foods = await self.contributingFoods(for: nutrient.id, entries: dayEntries, existingCache: cachedProfiles, newCache: &newProfiles)
+                                segments.append(Segment(date: date, level: level == .none ? nil : level, foods: foods.isEmpty ? nil : foods))
+                            } else {
+                                segments.append(Segment(date: date, level: nil, foods: nil))
+                            }
                         }
-                        for food in lunch {
-                            allEntries.append(food.toFoodEntry(userId: "", mealType: .lunch, date: date))
-                        }
-                        for food in dinner {
-                            allEntries.append(food.toFoodEntry(userId: "", mealType: .dinner, date: date))
-                        }
-                        for food in snacks {
-                            allEntries.append(food.toFoodEntry(userId: "", mealType: .snacks, date: date))
-                        }
-                    } catch {
-                        print("⚠️ Error fetching data for \(date): \(error)")
-                        // Continue with other days even if one fails
+
+                        // Calculate status
+                        let ratioStrong = loggedDays > 0 ? Double(strongCount) / Double(loggedDays) : 0
+                        let status: CoverageStatus = ratioStrong >= 0.7 ? .consistent : (ratioStrong >= 0.3 ? .occasional : .missing)
+
+                        rows.append(CoverageRow(id: nutrient.id, name: nutrient.name, status: status, segments: segments))
                     }
-                }
 
-                print("📥 Total entries fetched: \(allEntries.count) for week starting \(mondayStart)")
+                    // Save new profiles to cache
+                    if !newProfiles.isEmpty {
+                        await self.profileCache.setProfiles(newProfiles)
+                        print("💾 Cached \(newProfiles.count) new profiles (total cache size: \(await self.profileCache.size()))")
+                    }
 
-                let entries = allEntries
-                let grouped = Dictionary(grouping: entries, by: { calendar.startOfDay(for: $0.date) })
+                    return (days, rows)
 
-                // Create local cache for micronutrient profiles
-                var profileCache: [String: MicronutrientProfile] = [:]
-
-                // Build rhythm days
-                var days: [RhythmDay] = []
-                for date in dates {
-                    let dayEntries = grouped[date] ?? []
-                    let level = self.calculateDominantLevel(for: dayEntries, cache: &profileCache)
-                    days.append(RhythmDay(date: date, level: level))
-                }
-
-                // Check for cancellation before expensive nutrient processing
-                if Task.isCancelled {
-                    print("⚠️ Task cancelled before nutrient processing")
+                } catch {
+                    print("❌ Failed to load 7-day data: \(error)")
                     return nil
                 }
+            }.value
 
-                // Build coverage rows
-                let nutrients = self.nutrientList()
-                var rows: [CoverageRow] = []
-
-                for nutrient in nutrients {
-                    var segments: [Segment] = []
-                    var strongCount = 0
-                    var loggedDays = 0
-
-                    for date in dates {
-                        let dayEntries = grouped[date] ?? []
-                        if !dayEntries.isEmpty {
-                            loggedDays += 1
-                            let level = self.highestLevel(for: nutrient.id, entries: dayEntries, cache: &profileCache)
-                            if level == .strong { strongCount += 1 }
-                            let foods = self.contributingFoods(for: nutrient.id, entries: dayEntries, cache: &profileCache)
-                            segments.append(Segment(date: date, level: level == .none ? nil : level, foods: foods.isEmpty ? nil : foods))
-                        } else {
-                            segments.append(Segment(date: date, level: nil, foods: nil))
-                        }
-                    }
-
-                    // Calculate status
-                    let ratioStrong = loggedDays > 0 ? Double(strongCount) / Double(loggedDays) : 0
-                    let status: CoverageStatus = ratioStrong >= 0.7 ? .consistent : (ratioStrong >= 0.3 ? .occasional : .missing)
-
-                    rows.append(CoverageRow(id: nutrient.id, name: nutrient.name, status: status, segments: segments))
-                }
-
-                print("💾 Cache stats: \(profileCache.count) profiles cached")
-
-                return (days, rows)
-
-            } catch {
-                print("❌ Failed to load 7-day data: \(error)")
-                return nil
+            // Update UI on main thread (we're already on MainActor due to @MainActor annotation)
+            if Task.isCancelled {
+                print("⚠️ Task cancelled before UI update")
+                return
             }
-        }.value
 
-        // Update UI on main thread
-        if let result = result {
-            self.rhythmDays = result.days
-            self.nutrientCoverageRows = result.rows
-            print("✅ Loaded \(result.days.count) rhythm days and \(result.rows.count) nutrient rows")
-        } else {
-            self.rhythmDays = []
-            self.nutrientCoverageRows = []
+            if let result = result {
+                self.rhythmDays = result.days
+                self.nutrientCoverageRows = result.rows
+                print("✅ Loaded \(result.days.count) rhythm days and \(result.rows.count) nutrient rows")
+            } else {
+                self.rhythmDays = []
+                self.nutrientCoverageRows = []
+            }
         }
     }
 
@@ -1776,7 +1812,7 @@ final class CategoricalNutrientViewModel: ObservableObject {
         return formatter.string(from: date)
     }
 
-    nonisolated private func calculateDominantLevel(for entries: [FoodEntry], cache: inout [String: MicronutrientProfile]) -> SourceLevel {
+    nonisolated private func calculateDominantLevel(for entries: [FoodEntry], existingCache: [String: MicronutrientProfile], newCache: inout [String: MicronutrientProfile]) -> SourceLevel {
         guard !entries.isEmpty else { return .none }
 
         var strongCount = 0
@@ -1785,7 +1821,7 @@ final class CategoricalNutrientViewModel: ObservableObject {
 
         let nutrients = nutrientList()
         for nutrient in nutrients {
-            let level = highestLevel(for: nutrient.id, entries: entries, cache: &cache)
+            let level = highestLevel(for: nutrient.id, entries: entries, existingCache: existingCache, newCache: &newCache)
             switch level {
             case .strong: strongCount += 1
             case .moderate: moderateCount += 1
@@ -1805,7 +1841,7 @@ final class CategoricalNutrientViewModel: ObservableObject {
         return .none
     }
 
-    nonisolated private func highestLevel(for nutrientId: String, entries: [FoodEntry], cache: inout [String: MicronutrientProfile]) -> SourceLevel {
+    nonisolated private func highestLevel(for nutrientId: String, entries: [FoodEntry], existingCache: [String: MicronutrientProfile], newCache: inout [String: MicronutrientProfile]) -> SourceLevel {
         var best: SourceLevel = .none
         // Convert nutrient ID to MicronutrientProfile key format
         let profileKey = nutrientIdToProfileKey(nutrientId)
@@ -1816,7 +1852,7 @@ final class CategoricalNutrientViewModel: ObservableObject {
         for entry in entries {
             // IMPORTANT: Recalculate micronutrient profile with improved estimation
             // This ensures old entries get the new, more accurate multipliers
-            let freshProfile = recalculateMicronutrientProfile(for: entry, cache: &cache)
+            let freshProfile = recalculateMicronutrientProfile(for: entry, existingCache: existingCache, newCache: &newCache)
 
             // Try to find the nutrient in vitamins or minerals using the converted key
             if let amt = freshProfile.vitamins[profileKey] ?? freshProfile.minerals[profileKey] {
@@ -1841,14 +1877,14 @@ final class CategoricalNutrientViewModel: ObservableObject {
         return best
     }
 
-    nonisolated private func contributingFoods(for nutrientId: String, entries: [FoodEntry], cache: inout [String: MicronutrientProfile]) -> [String] {
+    nonisolated private func contributingFoods(for nutrientId: String, entries: [FoodEntry], existingCache: [String: MicronutrientProfile], newCache: inout [String: MicronutrientProfile]) -> [String] {
         var names: [String] = []
         // Convert nutrient ID to MicronutrientProfile key format
         let profileKey = nutrientIdToProfileKey(nutrientId)
 
         for entry in entries {
             // IMPORTANT: Recalculate micronutrient profile with improved estimation
-            let freshProfile = recalculateMicronutrientProfile(for: entry, cache: &cache)
+            let freshProfile = recalculateMicronutrientProfile(for: entry, existingCache: existingCache, newCache: &newCache)
 
             // Try to find the nutrient in vitamins or minerals using the converted key
             if let amt = freshProfile.vitamins[profileKey] ?? freshProfile.minerals[profileKey],
@@ -1964,12 +2000,18 @@ final class CategoricalNutrientViewModel: ObservableObject {
 
     /// Recalculates micronutrient profile for an entry using improved estimation
     /// This fixes old entries that were saved with inaccurate estimates
-    nonisolated private func recalculateMicronutrientProfile(for entry: FoodEntry, cache: inout [String: MicronutrientProfile]) -> MicronutrientProfile {
-        // Check cache first
+    nonisolated private func recalculateMicronutrientProfile(for entry: FoodEntry, existingCache: [String: MicronutrientProfile], newCache: inout [String: MicronutrientProfile]) -> MicronutrientProfile {
+        // Check cache first (existing cache from actor, then new cache from this session)
         let cacheKey = "\(entry.id)_\(entry.servingSize)"
-        if let cached = cache[cacheKey] {
+
+        if let cached = existingCache[cacheKey] {
             return cached
         }
+
+        if let cached = newCache[cacheKey] {
+            return cached
+        }
+
         // FoodEntry stores TOTAL values for the serving, but FoodSearchResult expects per-100g values
         // Need to convert back to per-100g baseline
         let servingSize = entry.servingSize
@@ -2006,8 +2048,8 @@ final class CategoricalNutrientViewModel: ObservableObject {
         // Now apply the quantity multiplier to get the actual nutrients consumed
         let profile = MicronutrientManager.shared.getMicronutrientProfile(for: foodSearchResult, quantity: multiplier)
 
-        // Cache the result
-        cache[cacheKey] = profile
+        // Cache the result in new cache (will be merged to actor later)
+        newCache[cacheKey] = profile
         return profile
     }
 }

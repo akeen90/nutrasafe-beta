@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2E8B1C5675E64AE0B624520841DC4102 /* additives_unified.json in Resources */ = {isa = PBXBuildFile; fileRef = ED24D7DC4CA54819A95C7D71C8EC119A /* additives_unified.json */; };
+		42B4CA708B0E403EAFFD2EED /* NutrientCacheActor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CD400E363874479B2EC2A32 /* NutrientCacheActor.swift */; };
 		6FD7402BCD964514A0EFBAC97296E211 /* ingredients_consolidated.json in Resources */ = {isa = PBXBuildFile; fileRef = 9EA48F8E27E84D79BCB731AA447430AB /* ingredients_consolidated.json */; };
 		71B4756E80AC49019B62DD26BC7FC2D9 /* ultra_processed_ingredients.json in Resources */ = {isa = PBXBuildFile; fileRef = D0FEC9B4AA084ED5BF9A4E53858FE767 /* ultra_processed_ingredients.json */; };		804783D4F2414E90984B7EEC /* WeeklySummarySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 382580B0102C42B88767E7A2 /* WeeklySummarySheet.swift */; };
 		013A7F75B09C430AB1EE40154700DAAB /* DiaryDailySummaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE1E506F81E64504BA776F466B03D0BC /* DiaryDailySummaryCard.swift */; };
@@ -101,6 +103,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		ED24D7DC4CA54819A95C7D71C8EC119A /* additives_unified.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "additives_unified.json"; sourceTree = "<group>"; };
 		9EA48F8E27E84D79BCB731AA447430AB /* ingredients_consolidated.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "ingredients_consolidated.json"; sourceTree = "<group>"; };
 		
 		
@@ -190,6 +193,7 @@
 		RECOM5669657746696C65 /* SmartRecommendationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartRecommendationsView.swift; sourceTree = "<group>"; };
 		SUBS0001FILE /* Managers/SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/SubscriptionManager.swift; sourceTree = "<group>"; };
 		BA25CC3104894F129803B0E8 /* CitationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CitationManager.swift; sourceTree = "<group>"; };
+		0CD400E363874479B2EC2A32 /* NutrientCacheActor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutrientCacheActor.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -286,6 +290,7 @@ AB4B75A92E72DEFC0058DCD3 /* FirebaseCore in Frameworks */,
 		63A53684D54AC54FDAF5A1F3 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				0CD400E363874479B2EC2A32 /* NutrientCacheActor.swift */,
 				40A9E8C4089D4E1EF9BCBAD1 /* NutrientTrackingModels.swift */,
 				B1234567890123456789FA01 /* FastingModels.swift */,
 				B4C4FD21E58EE1B4FF761877 /* MicronutrientScoringModels.swift */,
@@ -361,7 +366,8 @@ AB4B75A92E72DEFC0058DCD3 /* FirebaseCore in Frameworks */,
 				0D000C42332246F4A41D879A /* NutraSafe Beta/Models/ReactionLogModels.swift */,
 				2748185AC3934123A2EE1CEC /* NutraSafe Beta/Managers/ReactionLogManager.swift */,
 				E3D9EE3D5C7748EE8D793D2B /* NutraSafe Beta/Views/ReactionLogView.swift */,
-				CF1C3CB3424C495E9408953D /* NutraSafe Beta/Utils/ReactionPDFExporter.swift */,				9EA48F8E27E84D79BCB731AA447430AB /* ingredients_consolidated.json */,);
+				CF1C3CB3424C495E9408953D /* NutraSafe Beta/Utils/ReactionPDFExporter.swift */,				9EA48F8E27E84D79BCB731AA447430AB /* ingredients_consolidated.json */,
+				ED24D7DC4CA54819A95C7D71C8EC119A /* additives_unified.json */,);
 			path = "NutraSafe Beta";
 			sourceTree = "<group>";
 		};
@@ -490,7 +496,8 @@ AB4B75A92E72DEFC0058DCD3 /* FirebaseCore in Frameworks */,
 				97956798E37686D9DE1CDCE4 /* additives_master_database.json in Resources */,
 				ABC1D3B02EAD665E00518F41 /* NutraSafe.storekit in Resources */,
 				41A03AB7C02C3A4AA790DE89 /* micronutrients_ingredients_v6.db in Resources */,
-				493BF5FE7CF24BB686A616EE /* nutrasafe_foods.db in Resources */,				6FD7402BCD964514A0EFBAC97296E211 /* ingredients_consolidated.json in Resources */,);
+				493BF5FE7CF24BB686A616EE /* nutrasafe_foods.db in Resources */,				6FD7402BCD964514A0EFBAC97296E211 /* ingredients_consolidated.json in Resources */,
+				2E8B1C5675E64AE0B624520841DC4102 /* additives_unified.json in Resources */,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
@@ -500,6 +507,7 @@ AB4B75A92E72DEFC0058DCD3 /* FirebaseCore in Frameworks */,
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				42B4CA708B0E403EAFFD2EED /* NutrientCacheActor.swift in Sources */,
 						C83CC72A7D464E1685D1143F /* SettingsView.swift in Sources */,
 				PAYWALL0001BUILD /* PaywallView.swift in Sources */,
 				AUTH1234567890123456789001 /* AuthenticationView.swift in Sources */,
