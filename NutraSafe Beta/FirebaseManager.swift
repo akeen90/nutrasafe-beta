@@ -375,6 +375,62 @@ class FirebaseManager: ObservableObject {
             NotificationCenter.default.post(name: .foodDiaryUpdated, object: nil)
         }
     }
+
+    /// Scan all food entries and delete corrupt ones that can't be decoded
+    /// Returns the count of deleted corrupt entries
+    func cleanupCorruptFoodEntries() async throws -> Int {
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to cleanup entries"])
+        }
+
+        print("🔍 Scanning all food entries for corrupt data...")
+
+        // Get ALL food entries (no date filter)
+        let snapshot = try await db.collection("users").document(userId)
+            .collection("foodEntries")
+            .getDocuments()
+
+        print("📄 Found \(snapshot.documents.count) total food entries")
+
+        var corruptEntries: [String] = []
+
+        // Test each entry to see if it can be decoded
+        for doc in snapshot.documents {
+            do {
+                _ = try doc.data(as: FoodEntry.self)
+                // Successfully decoded - this entry is fine
+            } catch {
+                // Failed to decode - this entry is corrupt
+                print("❌ Corrupt entry found: \(doc.documentID)")
+                print("   Error: \(error.localizedDescription)")
+                corruptEntries.append(doc.documentID)
+            }
+        }
+
+        if corruptEntries.isEmpty {
+            print("✅ No corrupt entries found!")
+            return 0
+        }
+
+        print("🗑️ Deleting \(corruptEntries.count) corrupt entries...")
+
+        // Delete all corrupt entries
+        for docId in corruptEntries {
+            try await db.collection("users").document(userId)
+                .collection("foodEntries").document(docId).delete()
+            print("   ✓ Deleted: \(docId)")
+        }
+
+        // Clear caches and notify UI
+        foodEntriesCache.removeAll()
+        periodCache.removeAll()
+        await MainActor.run {
+            NotificationCenter.default.post(name: .foodDiaryUpdated, object: nil)
+        }
+
+        print("✅ Cleanup complete! Deleted \(corruptEntries.count) corrupt entries")
+        return corruptEntries.count
+    }
     
     // MARK: - Food Reactions
 

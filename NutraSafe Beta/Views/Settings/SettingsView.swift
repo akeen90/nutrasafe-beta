@@ -1714,6 +1714,9 @@ struct DataPrivacyView: View {
     @State private var showingDeleteAccountConfirmation = false
     @State private var showingReauthPrompt = false
     @State private var reauthPassword = ""
+    @State private var showingCleanupConfirmation = false
+    @State private var isCleaning = false
+    @State private var cleanupCount = 0
 
     var body: some View {
         NavigationView {
@@ -1751,6 +1754,39 @@ struct DataPrivacyView: View {
                         .padding(.vertical, 4)
                     }
                     .buttonStyle(PlainButtonStyle())
+
+                    Button(action: { showingCleanupConfirmation = true }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 16))
+                                .foregroundColor(.orange)
+                                .frame(width: 24)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Clean Up Corrupt Entries")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.primary)
+
+                                Text("Remove damaged food entries")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Spacer()
+
+                            if isCleaning {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                            } else {
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .disabled(isCleaning)
 
                     Button(action: { showingDeleteDataConfirmation = true }) {
                         HStack(spacing: 12) {
@@ -1899,6 +1935,14 @@ struct DataPrivacyView: View {
         } message: {
             Text(successMessage)
         }
+        .alert("Clean Up Corrupt Entries", isPresented: $showingCleanupConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Clean Up") {
+                cleanupCorruptEntries()
+            }
+        } message: {
+            Text("This will scan all your food entries and delete any that are corrupted. Valid entries will remain untouched.")
+        }
         .sheet(isPresented: $showingReauthPrompt) {
             NavigationView {
                 VStack(spacing: 16) {
@@ -1954,6 +1998,33 @@ struct DataPrivacyView: View {
         // TODO: Implement data export
         errorMessage = "Data export feature is coming soon!"
         showingError = true
+    }
+
+    private func cleanupCorruptEntries() {
+        isCleaning = true
+        Task {
+            do {
+                let count = try await firebaseManager.cleanupCorruptFoodEntries()
+                await MainActor.run {
+                    cleanupCount = count
+                    if count == 0 {
+                        successMessage = "No corrupt entries found. Your data is healthy!"
+                    } else if count == 1 {
+                        successMessage = "Successfully deleted 1 corrupt entry."
+                    } else {
+                        successMessage = "Successfully deleted \(count) corrupt entries."
+                    }
+                    showingSuccess = true
+                    isCleaning = false
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Failed to cleanup entries: \(error.localizedDescription)"
+                    showingError = true
+                    isCleaning = false
+                }
+            }
+        }
     }
 
     private func deleteAllUserData() {
