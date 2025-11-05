@@ -243,28 +243,10 @@ class FirebaseManager: ObservableObject {
     func getFoodEntries(for date: Date) async throws -> [FoodEntry] {
         guard let userId = currentUser?.uid else { return [] }
 
-        // Create cache key from user ID and date
+        // DISABLED: Cache checking disabled due to threading crashes
+        // Fetch directly from Firestore (still fast with Firestore's internal caching)
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        let dateKey = "\(userId)_\(dateFormatter.string(from: startOfDay))"
-
-        // Check cache first - instant results!
-        if let cached = foodEntriesCache[dateKey] {
-            let age = Date().timeIntervalSince(cached.timestamp)
-            if age < foodEntriesCacheExpirationSeconds {
-        // DEBUG LOG: print("⚡️ Food Entries Cache HIT - instant load for \(dateFormatter.string(from: startOfDay)) (cached \(Int(age))s ago)")
-                return cached.entries
-            } else {
-                // Cache expired, remove it
-                foodEntriesCache.removeValue(forKey: dateKey)
-        // DEBUG LOG: print("🔄 Food Entries Cache EXPIRED - refreshing for \(dateFormatter.string(from: startOfDay))")
-            }
-        }
-
-        // DEBUG LOG: print("🔍 Food Entries Cache MISS - fetching from Firestore for \(dateFormatter.string(from: startOfDay))")
-
         let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
 
         let snapshot = try await db.collection("users").document(userId)
@@ -273,21 +255,19 @@ class FirebaseManager: ObservableObject {
             .whereField("date", isLessThan: FirebaseFirestore.Timestamp(date: endOfDay))
             .getDocuments()
 
-        let entries = snapshot.documents.compactMap { doc in
-            FoodEntry.fromDictionary(doc.data())
+        let entries = snapshot.documents.compactMap { doc -> FoodEntry? in
+            // Use Firestore's native Codable decoder for safe, crash-proof parsing
+            do {
+                return try doc.data(as: FoodEntry.self)
+            } catch {
+                print("⚠️ Skipping corrupt entry \(doc.documentID): \(error.localizedDescription)")
+                return nil
+            }
         }
 
-        // Store in cache for next time with error handling
-        do {
-            foodEntriesCache[dateKey] = FoodEntriesCacheEntry(
-                entries: entries,
-                timestamp: Date()
-            )
-            // DEBUG LOG: print("💾 Cached \(entries.count) food entries for \(dateFormatter.string(from: startOfDay))")
-        } catch {
-            print("⚠️ Failed to cache food entries for \(dateKey): \(error)")
-            // Continue without caching - non-critical error
-        }
+        // DISABLED: Caching causes crashes with async/threading issues
+        // TODO: Re-enable with proper actor-based thread safety
+        // foodEntriesCache[dateKey] = FoodEntriesCacheEntry(entries: entries, timestamp: Date())
 
         return entries
     }
@@ -296,30 +276,12 @@ class FirebaseManager: ObservableObject {
     private var periodCache: [Int: (entries: [FoodEntry], timestamp: Date)] = [:]
     private let periodCacheExpirationSeconds: TimeInterval = 300 // 5 minutes
 
-    // Get food entries for the past N days for nutritional analysis (OPTIMIZED with caching)
+    // Get food entries for the past N days for nutritional analysis
     func getFoodEntriesForPeriod(days: Int) async throws -> [FoodEntry] {
         guard let userId = currentUser?.uid else { return [] }
 
-        // Check cache first (thread-safe)
-        let cachedResult = await MainActor.run {
-            periodCache[days]
-        }
-
-        if let cached = cachedResult {
-            let age = Date().timeIntervalSince(cached.timestamp)
-            if age < periodCacheExpirationSeconds {
-        // DEBUG LOG: print("⚡️ Period Cache HIT - instant load for \(days) days (cached \(Int(age))s ago)")
-                return cached.entries
-            } else {
-                _ = await MainActor.run {
-                    periodCache.removeValue(forKey: days)
-                }
-        // DEBUG LOG: print("🔄 Period Cache EXPIRED - refreshing \(days) days")
-            }
-        }
-
-        // DEBUG LOG: print("🔍 Period Cache MISS - fetching \(days) days from Firestore (ONE query)")
-
+        // DISABLED: Cache disabled due to threading crashes
+        // Fetch directly from Firestore (still fast with Firestore's internal caching)
         let calendar = Calendar.current
         let endDate = Date()
         guard let startDate = calendar.date(byAdding: .day, value: -days, to: endDate) else { return [] }
@@ -331,20 +293,19 @@ class FirebaseManager: ObservableObject {
             .order(by: "date", descending: true)
             .getDocuments()
 
-        let entries = snapshot.documents.compactMap { doc in
-            FoodEntry.fromDictionary(doc.data())
+        let entries = snapshot.documents.compactMap { doc -> FoodEntry? in
+            // Use Firestore's native Codable decoder for safe, crash-proof parsing
+            do {
+                return try doc.data(as: FoodEntry.self)
+            } catch {
+                print("⚠️ Skipping corrupt entry \(doc.documentID): \(error.localizedDescription)")
+                return nil
+            }
         }
 
-        // Cache the result (thread-safe) with error handling
-        do {
-            await MainActor.run {
-                periodCache[days] = (entries, Date())
-            }
-            // DEBUG LOG: print("💾 Cached \(entries.count) food entries for \(days)-day period")
-        } catch {
-            print("⚠️ Failed to cache period entries for \(days) days: \(error)")
-            // Continue without caching - non-critical error
-        }
+        // DISABLED: Caching causes crashes with async/threading issues
+        // TODO: Re-enable with proper actor-based thread safety
+        // periodCache[days] = (entries, Date())
 
         return entries
     }
@@ -360,8 +321,14 @@ class FirebaseManager: ObservableObject {
             .order(by: "date", descending: false)
             .getDocuments()
 
-        return snapshot.documents.compactMap { doc in
-            FoodEntry.fromDictionary(doc.data())
+        return snapshot.documents.compactMap { doc -> FoodEntry? in
+            // Use Firestore's native Codable decoder for safe, crash-proof parsing
+            do {
+                return try doc.data(as: FoodEntry.self)
+            } catch {
+                print("⚠️ Skipping corrupt entry \(doc.documentID): \(error.localizedDescription)")
+                return nil
+            }
         }
     }
 

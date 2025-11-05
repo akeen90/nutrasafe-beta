@@ -867,9 +867,23 @@ struct FoodEntry: Identifiable, Codable {
         // Deserialize micronutrient profile if available with type safety
         var micronutrientProfile: MicronutrientProfile? = nil
         if let micronutrientsDict = data["micronutrientProfile"] as? [String: Any],
-           JSONSerialization.isValidJSONObject(micronutrientsDict),
-           let micronutrientsData = try? JSONSerialization.data(withJSONObject: micronutrientsDict, options: []) {
-            micronutrientProfile = try? JSONDecoder().decode(MicronutrientProfile.self, from: micronutrientsData)
+           JSONSerialization.isValidJSONObject(micronutrientsDict) {
+            // Additional validation: ensure required fields are dictionaries, not numbers or other types
+            let vitaminsValid = micronutrientsDict["vitamins"] == nil || micronutrientsDict["vitamins"] is [String: Any]
+            let mineralsValid = micronutrientsDict["minerals"] == nil || micronutrientsDict["minerals"] is [String: Any]
+            let recommendedIntakesValid = micronutrientsDict["recommendedIntakes"] == nil || micronutrientsDict["recommendedIntakes"] is [String: Any]
+
+            if vitaminsValid && mineralsValid && recommendedIntakesValid,
+               let micronutrientsData = try? JSONSerialization.data(withJSONObject: micronutrientsDict, options: []) {
+                micronutrientProfile = try? JSONDecoder().decode(MicronutrientProfile.self, from: micronutrientsData)
+            } else {
+                print("⚠️ MALFORMED DATA: micronutrientProfile has invalid structure for food: \(foodName) (ID: \(id))")
+                print("   vitamins type: \(type(of: micronutrientsDict["vitamins"] as Any))")
+                print("   minerals type: \(type(of: micronutrientsDict["minerals"] as Any))")
+                print("   Skipping micronutrient data but keeping entry")
+                // Don't reject the entire entry, just skip the micronutrient data
+                micronutrientProfile = nil
+            }
         } else if data["micronutrientProfile"] != nil {
             // CRITICAL: Reject entire entry if micronutrientProfile field contains invalid type
             print("❌ CORRUPT DATA: micronutrientProfile field has invalid type \(type(of: data["micronutrientProfile"]!)) for food: \(foodName) (ID: \(id))")
