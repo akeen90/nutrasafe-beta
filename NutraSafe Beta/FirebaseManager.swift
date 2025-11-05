@@ -277,12 +277,17 @@ class FirebaseManager: ObservableObject {
             FoodEntry.fromDictionary(doc.data())
         }
 
-        // Store in cache for next time
-        foodEntriesCache[dateKey] = FoodEntriesCacheEntry(
-            entries: entries,
-            timestamp: Date()
-        )
-        // DEBUG LOG: print("💾 Cached \(entries.count) food entries for \(dateFormatter.string(from: startOfDay))")
+        // Store in cache for next time with error handling
+        do {
+            foodEntriesCache[dateKey] = FoodEntriesCacheEntry(
+                entries: entries,
+                timestamp: Date()
+            )
+            // DEBUG LOG: print("💾 Cached \(entries.count) food entries for \(dateFormatter.string(from: startOfDay))")
+        } catch {
+            print("⚠️ Failed to cache food entries for \(dateKey): \(error)")
+            // Continue without caching - non-critical error
+        }
 
         return entries
     }
@@ -330,11 +335,16 @@ class FirebaseManager: ObservableObject {
             FoodEntry.fromDictionary(doc.data())
         }
 
-        // Cache the result (thread-safe)
-        await MainActor.run {
-            periodCache[days] = (entries, Date())
+        // Cache the result (thread-safe) with error handling
+        do {
+            await MainActor.run {
+                periodCache[days] = (entries, Date())
+            }
+            // DEBUG LOG: print("💾 Cached \(entries.count) food entries for \(days)-day period")
+        } catch {
+            print("⚠️ Failed to cache period entries for \(days) days: \(error)")
+            // Continue without caching - non-critical error
         }
-        // DEBUG LOG: print("💾 Cached \(entries.count) food entries for \(days)-day period")
 
         return entries
     }
