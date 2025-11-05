@@ -161,6 +161,20 @@ class ProcessingScorer {
     }
 
     func computeNutraSafeProcessingGrade(for food: FoodSearchResult) -> NutraSafeProcessingGradeResult {
+        // CRITICAL: Cannot grade products without ingredient information
+        let hasIngredients = food.ingredients != nil && !(food.ingredients?.isEmpty ?? true)
+
+        if !hasIngredients {
+            return NutraSafeProcessingGradeResult(
+                processing_intensity: 0.0,
+                nutrient_integrity: 0.0,
+                final_index: 0.0,
+                grade: "?",
+                label: "Unable to grade",
+                explanation: "Insufficient data: No ingredient information available to assess processing level. Add ingredients to get a NutraSafe Processing Grade™."
+            )
+        }
+
         // Aggregate text for additive/industrial detection
         let ingredientsText = (food.ingredients?.joined(separator: ", ") ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let analysisText = (ingredientsText.isEmpty ? food.name : "\(food.name) \(ingredientsText)")
