@@ -113,7 +113,7 @@ struct ReactionLogView: View {
     // MARK: - Recent Reactions Section
     private var recentReactionsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Recent Reactions")
+            Text("Recent Meals")
                 .font(.system(size: 22, weight: .bold))
                 .foregroundColor(.primary)
 
