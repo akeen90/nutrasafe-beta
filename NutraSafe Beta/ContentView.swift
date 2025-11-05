@@ -764,10 +764,10 @@ class FatSecretService: ObservableObject {
             }
         }
         
-        // Debug: Print raw JSON response
-        if let jsonString = String(data: data, encoding: .utf8) {
-        // DEBUG LOG: print("🔍 Raw API response: \(jsonString.prefix(500))")
-        }
+        // Debug: Print raw JSON response (commented out for production)
+        // if let jsonString = String(data: data, encoding: .utf8) {
+        //     print("🔍 Raw API response: \(jsonString.prefix(500))")
+        // }
         
         let searchResponse: FirebaseFoodSearchResponse
         do {

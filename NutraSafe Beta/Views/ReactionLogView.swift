@@ -2593,7 +2593,9 @@ struct MultiReactionPDFExportSheet: View {
 }
 
 // MARK: - String Identifiable Extension
-
+// Note: Required for .sheet(item:) modifier with String? types (line 767)
+// Warning is expected but acceptable - if Apple adds this conformance in future,
+// we can remove this extension without breaking changes
 extension String: Identifiable {
     public var id: String { self }
 }
