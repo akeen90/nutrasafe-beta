@@ -146,37 +146,10 @@ struct SegmentedControlView<Tab: Hashable & CaseIterable & RawRepresentable>: Vi
 struct FoodReactionsView: View {
     @ObservedObject private var reactionManager = ReactionManager.shared
     @State private var hasLoadedOnce = false // PERFORMANCE: Guard flag to prevent redundant loads
-    @State private var selectedReactionMode: ReactionMode = .foodBased
-
-    enum ReactionMode: String, CaseIterable {
-        case foodBased = "Food-Based"
-        case reactionLog = "Reaction Log"
-    }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Secondary segmented control for reaction modes
-            Picker("Reaction Mode", selection: $selectedReactionMode) {
-                ForEach(ReactionMode.allCases, id: \.self) { mode in
-                    Text(mode.rawValue).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(Color.adaptiveBackground)
-
-            // Content based on selected mode
-            Group {
-                switch selectedReactionMode {
-                case .foodBased:
-                    foodBasedReactionsView
-                case .reactionLog:
-                    ReactionLogView()
-                }
-            }
+        foodBasedReactionsView
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
     }
 
     private var foodBasedReactionsView: some View {
@@ -988,6 +961,7 @@ struct PatternRow: View {
 struct ReactionDetailView: View {
     let reaction: FoodReaction
     @Environment(\.dismiss) private var dismiss
+    @State private var showingExportSheet = false
 
     var body: some View {
         NavigationView {
@@ -1203,10 +1177,16 @@ struct ReactionDetailView: View {
             .navigationTitle("Reaction Details")
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarItems(
+                leading: Button(action: { showingExportSheet = true }) {
+                    Label("Export", systemImage: "square.and.arrow.up")
+                },
                 trailing: Button("Done") {
                     dismiss()
                 }
             )
+            .sheet(isPresented: $showingExportSheet) {
+                FoodReactionPDFExportSheet(reaction: reaction)
+            }
         }
     }
 
@@ -2666,5 +2646,154 @@ struct ManualReactionFoodEntryView: View {
             }
             .disabled(foodName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         )
+    }
+}
+
+// MARK: - Food Reaction PDF Export Sheet
+struct FoodReactionPDFExportSheet: View {
+    let reaction: FoodReaction
+    @Environment(\.dismiss) private var dismiss
+    @State private var pdfURL: URL?
+    @State private var isGenerating = false
+    @State private var errorMessage: String?
+    @State private var showingShareSheet = false
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                if isGenerating {
+                    ProgressView("Generating PDF...")
+                        .padding()
+                } else if let errorMessage = errorMessage {
+                    VStack(spacing: 16) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.system(size: 48))
+                            .foregroundColor(.red)
+
+                        Text("Export Failed")
+                            .font(.headline)
+
+                        Text(errorMessage)
+                            .font(.callout)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+
+                        Button("Try Again") {
+                            generatePDF()
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .padding()
+                } else if pdfURL != nil {
+                    VStack(spacing: 16) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 48))
+                            .foregroundColor(.green)
+
+                        Text("PDF Generated")
+                            .font(.headline)
+
+                        Text("Your reaction report is ready to share")
+                            .font(.callout)
+                            .foregroundColor(.secondary)
+
+                        Button(action: { showingShareSheet = true }) {
+                            Label("Share PDF", systemImage: "square.and.arrow.up")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .padding(.horizontal)
+                    }
+                    .padding()
+                } else {
+                    VStack(alignment: .leading, spacing: 20) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Export Reaction Report")
+                                .font(.title2)
+                                .fontWeight(.bold)
+
+                            Text("Generate a detailed PDF report of this food reaction for your records or to share with your doctor or nutritionist.")
+                                .font(.callout)
+                                .foregroundColor(.secondary)
+                        }
+
+                        Divider()
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Report Includes")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+
+                            VStack(alignment: .leading, spacing: 10) {
+                                Label("Food name and brand", systemImage: "fork.knife")
+                                Label("Reaction date and severity", systemImage: "calendar")
+                                Label("Symptoms experienced", systemImage: "heart.text.square")
+                                Label("Suspected ingredients", systemImage: "list.bullet")
+                                Label("7-day meal history with ingredients", systemImage: "calendar.badge.clock")
+                            }
+                            .font(.callout)
+                            .foregroundColor(.secondary)
+                        }
+
+                        Spacer()
+
+                        Button(action: generatePDF) {
+                            Label("Generate PDF", systemImage: "doc.fill")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                    }
+                    .padding()
+                }
+            }
+            .navigationTitle("Export Report")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarItems(trailing: Button("Done") { dismiss() })
+            .sheet(isPresented: $showingShareSheet) {
+                if let url = pdfURL {
+                    ShareSheet(items: [url])
+                }
+            }
+        }
+    }
+
+    private func generatePDF() {
+        isGenerating = true
+        errorMessage = nil
+
+        Task {
+            do {
+                // Calculate date range for meal history (7 days prior to reaction)
+                let reactionDate = reaction.timestamp.dateValue()
+                let startDate = reactionDate.addingTimeInterval(-7 * 24 * 3600)  // 7 days before
+
+                // Fetch meals in the 7-day period
+                let meals = try await DiaryDataManager.shared.getMealsInTimeRange(from: startDate, to: reactionDate)
+
+                // Generate PDF on background thread
+                let url = await Task.detached(priority: .userInitiated) {
+                    return ReactionPDFExporter.exportFoodReactionReport(reaction: reaction, mealHistory: meals)
+                }.value
+
+                if let url = url {
+                    await MainActor.run {
+                        self.pdfURL = url
+                        self.isGenerating = false
+                    }
+                } else {
+                    await MainActor.run {
+                        self.errorMessage = "Failed to generate PDF. Please try again."
+                        self.isGenerating = false
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = "Failed to fetch meal history: \(error.localizedDescription)"
+                    self.isGenerating = false
+                }
+            }
+        }
     }
 }

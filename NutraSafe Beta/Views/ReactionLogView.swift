@@ -32,9 +32,6 @@ struct ReactionLogView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                // Overview Section
-                overviewSection
-
                 // Log Reaction Button
                 logReactionButton
 
@@ -60,32 +57,6 @@ struct ReactionLogView: View {
         }
     }
 
-    // MARK: - Overview Section
-    private var overviewSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Overview")
-                .font(.system(size: 22, weight: .bold))
-                .foregroundColor(.primary)
-
-            HStack(spacing: 12) {
-                StatCard(
-                    count: reactionsThisMonth,
-                    label: "MONTH",
-                    color: .red
-                )
-                StatCard(
-                    count: reactionsThisWeek,
-                    label: "WEEK",
-                    color: .orange
-                )
-                StatCard(
-                    count: manager.reactionLogs.count,
-                    label: "TOTAL",
-                    color: .green
-                )
-            }
-        }
-    }
 
     // MARK: - Log Reaction Button
     private var logReactionButton: some View {
@@ -268,22 +239,6 @@ struct ReactionLogView: View {
         }
     }
 
-    // MARK: - Computed Properties
-    private var reactionsThisMonth: Int {
-        let calendar = Calendar.current
-        let now = Date()
-        let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: now))!
-
-        return manager.reactionLogs.filter { $0.reactionDate >= startOfMonth }.count
-    }
-
-    private var reactionsThisWeek: Int {
-        let calendar = Calendar.current
-        let now = Date()
-        let startOfWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now))!
-
-        return manager.reactionLogs.filter { $0.reactionDate >= startOfWeek }.count
-    }
 
     // MARK: - Calculate Common Ingredients
     private func calculateCommonIngredients() -> [(name: String, frequency: Int, percentage: Double)] {
@@ -1482,6 +1437,7 @@ struct PDFExportSheet: View {
                                     Label("Ingredient frequency patterns", systemImage: "chart.bar")
                                     Label("Common allergen observations", systemImage: "list.bullet")
                                     Label("Meal timing context", systemImage: "clock")
+                                    Label("7-day meal history with ingredients", systemImage: "calendar.badge.clock")
                                 }
                                 .font(.callout)
                                 .foregroundColor(.secondary)
@@ -1536,15 +1492,34 @@ struct PDFExportSheet: View {
         isGenerating = true
         errorMessage = nil
 
-        DispatchQueue.global(qos: .userInitiated).async {
-            if let url = ReactionPDFExporter.exportReactionReport(entry: entry) {
-                DispatchQueue.main.async {
-                    self.pdfURL = url
-                    self.isGenerating = false
+        Task {
+            do {
+                // Calculate date range for meal history (7 days prior to reaction)
+                let reactionDate = entry.reactionDate
+                let startDate = reactionDate.addingTimeInterval(-7 * 24 * 3600)  // 7 days before
+
+                // Fetch meals in the 7-day period
+                let meals = try await DiaryDataManager.shared.getMealsInTimeRange(from: startDate, to: reactionDate)
+
+                // Generate PDF on background thread
+                let url = await Task.detached(priority: .userInitiated) {
+                    return ReactionPDFExporter.exportReactionReport(entry: entry, mealHistory: meals)
+                }.value
+
+                if let url = url {
+                    await MainActor.run {
+                        self.pdfURL = url
+                        self.isGenerating = false
+                    }
+                } else {
+                    await MainActor.run {
+                        self.errorMessage = "Failed to generate PDF. Please try again."
+                        self.isGenerating = false
+                    }
                 }
-            } else {
-                DispatchQueue.main.async {
-                    self.errorMessage = "Failed to generate PDF. Please try again."
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = "Failed to fetch meal history: \(error.localizedDescription)"
                     self.isGenerating = false
                 }
             }
