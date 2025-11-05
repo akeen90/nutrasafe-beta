@@ -91,6 +91,7 @@
 		FASTHIST0001BUILD /* FastingHistoryDropdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = FASTHIST0001FILE /* FastingHistoryDropdown.swift */; };
 		FASTMGR0001BUILD /* Managers/FastingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FASTMGR0001FILE /* Managers/FastingManager.swift */; };
 		FC60C4299246265536D0CF46 /* NutrientTrackingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92A9EF78D75CD70F28F3810E /* NutrientTrackingManager.swift */; };
+		IMGCACHE001BUILD /* Managers/ImageCacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = IMGCACHE001FILE /* Managers/ImageCacheManager.swift */; };
 		FDACD6EE052840C79A707950 /* AddTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0B6A2D7294D44D9A25481CE /* AddTabView.swift */; };
 		PAYWALL0001BUILD /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PAYWALL0001FILE /* PaywallView.swift */; };
 		RECOM456E67696E65426C64 /* NutrientRecommendationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = RECOM456E67696E6546696C65 /* NutrientRecommendationEngine.swift */; };
@@ -182,6 +183,7 @@
 		FASTHIST0001FILE /* FastingHistoryDropdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastingHistoryDropdown.swift; sourceTree = "<group>"; };
 		FASTMGR0001FILE /* Managers/FastingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/FastingManager.swift; sourceTree = "<group>"; };
 		FEAB7CC556B14207BD435571 /* AddFoodAIView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFoodAIView.swift; sourceTree = "<group>"; };
+		IMGCACHE001FILE /* Managers/ImageCacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/ImageCacheManager.swift; sourceTree = "<group>"; };
 		FF612B9BEC774EC78502B67C /* FoodDetailViewFromSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodDetailViewFromSearch.swift; sourceTree = "<group>"; };
 		PAYWALL0001FILE /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
 		RECOM456E67696E6546696C65 /* NutrientRecommendationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutrientRecommendationEngine.swift; sourceTree = "<group>"; };
@@ -342,6 +344,7 @@ AB4B75A92E72DEFC0058DCD3 /* FirebaseCore in Frameworks */,
 				SUBS0001FILE /* Managers/SubscriptionManager.swift */,
 				FASTMGR0001FILE /* Managers/FastingManager.swift */,
 				A1234567890123456789012003 /* Assets.xcassets */,
+				IMGCACHE001FILE /* Managers/ImageCacheManager.swift */,
 				A1234567890123456789012012 /* GoogleService-Info.plist */,
 				96AFEAFFFC70426C97B3CF2E /* additives_full_described_with_sources_2025.csv */,
 				DF454595E60D9E7D1B2ACBE3 /* additives_master_database.json */,
@@ -509,6 +512,7 @@ AB4B75A92E72DEFC0058DCD3 /* FirebaseCore in Frameworks */,
 				SUBS0001BUILD /* Managers/SubscriptionManager.swift in Sources */,
 				FASTMGR0001BUILD /* Managers/FastingManager.swift in Sources */,
 				ABB0AEF32EA8CCA3009F044D /* OnboardingManager.swift in Sources */,
+				IMGCACHE001BUILD /* Managers/ImageCacheManager.swift in Sources */,
 				26E954E4A2634655AB0F1224 /* FoodDetailViewFromSearch.swift in Sources */,
 				99C873C9DCA241B8B3F6C5CA /* FoodSearchViews.swift in Sources */,
 				5499F48301DC4732BB15091B /* FoodManagementViews.swift in Sources */,

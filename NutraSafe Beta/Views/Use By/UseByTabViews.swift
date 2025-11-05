@@ -492,41 +492,49 @@ struct AddFoundFoodToUseBySheet: View {
     }
 
     private func uploadPhoto(_ image: UIImage) async {
-        await MainActor.run { isUploadingPhoto = true }
-        print("📸 Starting photo upload...")
-        do {
-            let url = try await FirebaseManager.shared.uploadUseByItemPhoto(image)
-            print("📸 Photo uploaded successfully: \(url)")
-            await MainActor.run {
-                uploadedImageURL = url
-                isUploadingPhoto = false
-            }
-        } catch {
-            print("❌ Failed to upload photo: \(error)")
-            await MainActor.run {
-                isUploadingPhoto = false
-                // Clear the captured image since upload failed
-                capturedImage = nil
-                // Show error to user
-                errorMessage = "Photo upload failed: \(error.localizedDescription)"
-                showErrorAlert = true
-            }
-        }
+        // No longer upload immediately - just store locally
+        // Upload will happen when saving the item
+        await MainActor.run { isUploadingPhoto = false }
+        print("📸 Image captured, will cache when saving...")
     }
 
     private func save() async {
         guard !isSaving else { return }
         await MainActor.run { self.isSaving = true }
 
-        print("📸 Saving useBy item with imageURL: \(uploadedImageURL ?? "nil")")
+        // Generate ID for new item
+        let itemId = UUID().uuidString
+
+        // Save image locally first if we have one
+        var firebaseURL: String? = nil
+        if let image = capturedImage {
+            do {
+                try await ImageCacheManager.shared.saveUseByImage(image, for: itemId)
+                print("✅ Image cached locally for item: \(itemId)")
+            } catch {
+                print("⚠️ Failed to cache image locally: \(error)")
+            }
+
+            // Upload to Firebase in background for backup/sync
+            do {
+                let url = try await FirebaseManager.shared.uploadUseByItemPhoto(image)
+                print("☁️ Image uploaded to Firebase: \(url)")
+                firebaseURL = url
+            } catch {
+                print("⚠️ Firebase upload failed (using local cache): \(error)")
+            }
+        }
+
+        print("📸 Saving useBy item (ID: \(itemId))")
 
         let item = UseByInventoryItem(
+            id: itemId,
             name: food.name,
             brand: food.brand,
             quantity: "1",
             expiryDate: expiryDate,
             addedDate: Date(),
-            imageURL: uploadedImageURL
+            imageURL: firebaseURL
         )
         do {
             try await FirebaseManager.shared.addUseByItem(item)
@@ -3021,17 +3029,37 @@ struct UseByItemDetailView: View {
     }
 
     private func loadExistingPhoto(from urlString: String) async {
+        // First, try to load from local cache using item ID
+        if let item = item {
+            if let cachedImage = await ImageCacheManager.shared.loadUseByImage(for: item.id) {
+                await MainActor.run {
+                    capturedImage = cachedImage
+                    print("⚡️ Loaded image from local cache for item: \(item.id)")
+                }
+                return
+            }
+        }
+
+        // Fallback to Firebase URL if not in local cache
         guard let url = URL(string: urlString) else { return }
-        print("📸 Loading existing photo from: \(urlString)")
+        print("📸 Loading existing photo from Firebase: \(urlString)")
 
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
-            // Performance: Use image cache to avoid re-decoding same images
-            let wasCached = SimpleImageCache.shared.isCached(key: urlString)
-            if let image = SimpleImageCache.shared.image(from: data, key: urlString) {
+            if let image = UIImage(data: data) {
                 await MainActor.run {
                     capturedImage = image
-                    print("📸 Existing photo loaded successfully (cached: \(wasCached))")
+                    print("📸 Photo loaded from Firebase successfully")
+                }
+
+                // Cache it locally for next time
+                if let item = item {
+                    do {
+                        try await ImageCacheManager.shared.saveUseByImage(image, for: item.id)
+                        print("💾 Cached downloaded image locally for item: \(item.id)")
+                    } catch {
+                        print("⚠️ Failed to cache downloaded image: \(error)")
+                    }
                 }
             }
         } catch {
@@ -3040,21 +3068,10 @@ struct UseByItemDetailView: View {
     }
 
     private func uploadPhoto(_ image: UIImage) async {
-        isUploadingPhoto = true
-        print("📸 Starting photo upload...")
-        do {
-            let url = try await FirebaseManager.shared.uploadUseByItemPhoto(image)
-            print("📸 Photo uploaded successfully: \(url)")
-            await MainActor.run {
-                uploadedImageURL = url
-                isUploadingPhoto = false
-            }
-        } catch {
-            print("❌ Failed to upload photo: \(error)")
-            await MainActor.run {
-                isUploadingPhoto = false
-            }
-        }
+        // No longer upload immediately - just store the image
+        // Upload will happen when saving
+        isUploadingPhoto = false
+        print("📸 Image captured, will cache when saving...")
     }
 
     private func updateExpiryDate() {
@@ -3080,7 +3097,32 @@ struct UseByItemDetailView: View {
             print("UseByItemDetailView: Quantity: \(editedQuantity)")
             print("UseByItemDetailView: Expiry: \(editedExpiryDate)")
 
+            // Generate ID for new item
+            let itemId = UUID().uuidString
+
+            // Handle image caching and upload
+            var firebaseURL: String? = uploadedImageURL
+            if let image = capturedImage, uploadedImageURL == nil {
+                // Save to local cache
+                do {
+                    try await ImageCacheManager.shared.saveUseByImage(image, for: itemId)
+                    print("✅ Image cached locally for new item: \(itemId)")
+                } catch {
+                    print("⚠️ Failed to cache image locally: \(error)")
+                }
+
+                // Upload to Firebase for backup/sync
+                do {
+                    let url = try await FirebaseManager.shared.uploadUseByItemPhoto(image)
+                    print("☁️ Image uploaded to Firebase: \(url)")
+                    firebaseURL = url
+                } catch {
+                    print("⚠️ Firebase upload failed (using local cache): \(error)")
+                }
+            }
+
             let newItem = UseByInventoryItem(
+                id: itemId,
                 name: editedName,
                 brand: editedBrand.isEmpty ? nil : editedBrand,
                 quantity: editedQuantity.isEmpty ? "1" : editedQuantity,
@@ -3088,7 +3130,7 @@ struct UseByItemDetailView: View {
                 addedDate: Date(),
                 barcode: nil,
                 category: nil,
-                imageURL: uploadedImageURL,
+                imageURL: firebaseURL,
                 notes: notes.isEmpty ? nil : notes
             )
 
@@ -3127,6 +3169,34 @@ struct UseByItemDetailView: View {
             print("UseByItemDetailView: Edited quantity: \(editedQuantity)")
             print("UseByItemDetailView: Edited expiry: \(editedExpiryDate)")
 
+            // Handle image caching and upload
+            var firebaseURL: String? = uploadedImageURL ?? item.imageURL
+            if let image = capturedImage {
+                // Check if this is a new image (not previously cached)
+                let hasExistingCache = ImageCacheManager.shared.hasUseByImage(for: item.id)
+                let isNewImage = !hasExistingCache || uploadedImageURL == nil
+
+                if isNewImage {
+                    // Save to local cache
+                    do {
+                        try await ImageCacheManager.shared.saveUseByImage(image, for: item.id)
+                        print("✅ Image cached locally for item: \(item.id)")
+                    } catch {
+                        print("⚠️ Failed to cache image locally: \(error)")
+                    }
+
+                    // Upload to Firebase for backup/sync
+                    if uploadedImageURL == nil {
+                        do {
+                            let url = try await FirebaseManager.shared.uploadUseByItemPhoto(image)
+                            print("☁️ Image uploaded to Firebase: \(url)")
+                            firebaseURL = url
+                        } catch {
+                            print("⚠️ Firebase upload failed (using local cache): \(error)")
+                        }
+                    }
+                }
+            }
 
             // Create updated item with edits
             let updatedItem = UseByInventoryItem(
@@ -3138,11 +3208,9 @@ struct UseByItemDetailView: View {
                 addedDate: item.addedDate,
                 barcode: item.barcode,
                 category: item.category,
-                imageURL: uploadedImageURL ?? item.imageURL,
+                imageURL: firebaseURL,
                 notes: notes.isEmpty ? nil : notes
             )
-
-
 
             // Save to Firebase
             do {
@@ -3184,8 +3252,12 @@ struct UseByItemDetailView: View {
     }
 
     private func deletePhotoOnly() async {
-        // Only update photo in Firebase without dismissing
+        // Delete photo from both local cache and Firebase
         guard let item = item else { return }
+
+        // Delete from local cache
+        ImageCacheManager.shared.deleteUseByImage(for: item.id)
+        print("🗑️ Deleted image from local cache for item: \(item.id)")
 
         let updatedItem = UseByInventoryItem(
             id: item.id,
@@ -3203,9 +3275,9 @@ struct UseByItemDetailView: View {
         do {
             try await FirebaseManager.shared.updateUseByItem(updatedItem)
             NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
-            print("✅ Photo deleted successfully")
+            print("✅ Photo deleted successfully from Firebase")
         } catch {
-            print("❌ Failed to delete photo: \(error)")
+            print("❌ Failed to delete photo from Firebase: \(error)")
         }
     }
 }
@@ -3484,25 +3556,16 @@ struct CleanUseByRow: View {
 
             // Main content - Modern card design with product image
             HStack(spacing: 12) {
-                // Product image or placeholder
+                // Product image or placeholder - using cached image for instant loading
                 Group {
-                    if let imageURL = item.imageURL, let url = URL(string: imageURL) {
-                        AsyncImage(url: url) { phase in
-                            switch phase {
-                            case .empty:
-                                PlaceholderImageView()
-                            case .success(let image):
-                                image
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                                    .frame(width: 56, height: 56)
-                                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                            case .failure(_):
-                                PlaceholderImageView()
-                            @unknown default:
-                                PlaceholderImageView()
-                            }
-                        }
+                    if item.imageURL != nil {
+                        CachedUseByImage(
+                            itemId: item.id,
+                            imageURL: item.imageURL,
+                            width: 56,
+                            height: 56,
+                            cornerRadius: 10
+                        )
                     } else {
                         PlaceholderImageView()
                     }
@@ -3846,5 +3909,92 @@ struct PhotoLibraryPicker: UIViewControllerRepresentable {
                 parent.onImageSelected(nil)
             }
         }
+    }
+}
+
+// MARK: - Cached Image Component
+
+/// Cached async image view for UseBy items - checks local cache first
+struct CachedUseByImage: View {
+    let itemId: String
+    let imageURL: String?
+    let width: CGFloat
+    let height: CGFloat
+    let cornerRadius: CGFloat
+
+    @State private var loadedImage: UIImage?
+    @State private var isLoading = false
+
+    var body: some View {
+        Group {
+            if let image = loadedImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: width, height: height)
+                    .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+            } else {
+                // Placeholder while loading
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .fill(Color(.systemGray5))
+                    .frame(width: width, height: height)
+                    .overlay(
+                        Group {
+                            if isLoading {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .gray))
+                            } else {
+                                Image(systemName: "photo")
+                                    .font(.system(size: width * 0.4))
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                    )
+            }
+        }
+        .task {
+            await loadImage()
+        }
+    }
+
+    @MainActor
+    private func loadImage() async {
+        // Check if already loaded
+        guard loadedImage == nil else { return }
+
+        isLoading = true
+
+        // 1. Try local cache first (instant!)
+        if let cachedImage = await ImageCacheManager.shared.loadUseByImage(for: itemId) {
+            loadedImage = cachedImage
+            isLoading = false
+            print("⚡️ Loaded UseBy thumbnail from cache: \(itemId)")
+            return
+        }
+
+        // 2. Load from Firebase URL if not cached
+        guard let imageURL = imageURL, let url = URL(string: imageURL) else {
+            isLoading = false
+            return
+        }
+
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            if let image = UIImage(data: data) {
+                loadedImage = image
+
+                // Cache for next time
+                do {
+                    try await ImageCacheManager.shared.saveUseByImage(image, for: itemId)
+                    print("💾 Cached downloaded UseBy thumbnail: \(itemId)")
+                } catch {
+                    print("⚠️ Failed to cache thumbnail: \(error)")
+                }
+            }
+        } catch {
+            print("❌ Failed to load image from URL: \(error)")
+        }
+
+        isLoading = false
     }
 }

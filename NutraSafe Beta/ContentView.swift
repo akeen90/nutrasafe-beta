@@ -3216,9 +3216,31 @@ struct AddWeightView: View {
         // Save to Firebase
         Task {
             do {
-                // Upload all photos in parallel (extract UIImages from IdentifiableImage)
+                // Generate ID for new entry
+                let entryId = UUID()
+
+                // Extract images from selected photos
                 let images = selectedPhotos.map { $0.image }
-                let photoURLs = images.isEmpty ? [] : try await firebaseManager.uploadWeightPhotos(images)
+
+                // Save images to local cache first
+                var photoURLs: [String] = []
+                if !images.isEmpty {
+                    // Save all images locally
+                    do {
+                        try await ImageCacheManager.shared.saveWeightImages(images, for: entryId.uuidString)
+                        print("✅ Saved \(images.count) weight images to local cache for entry: \(entryId)")
+                    } catch {
+                        print("⚠️ Failed to cache weight images locally: \(error)")
+                    }
+
+                    // Upload to Firebase for backup/sync
+                    do {
+                        photoURLs = try await firebaseManager.uploadWeightPhotos(images)
+                        print("☁️ Uploaded \(photoURLs.count) weight images to Firebase")
+                    } catch {
+                        print("⚠️ Firebase upload failed (using local cache): \(error)")
+                    }
+                }
 
                 // Parse measurements
                 let waist = waistSize.isEmpty ? nil : Double(waistSize)
@@ -3226,6 +3248,7 @@ struct AddWeightView: View {
 
                 // Create entry with all fields
                 let entry = WeightEntry(
+                    id: entryId,
                     weight: weightKg,
                     date: date,
                     bmi: calculatedBMI,
@@ -3755,13 +3778,36 @@ struct EditWeightView: View {
         isLoadingPhotos = true
         Task {
             var loadedImages: [IdentifiableImage] = []
-            for url in urls {
-                do {
-                    let image = try await firebaseManager.downloadWeightPhoto(from: url)
-                    loadedImages.append(IdentifiableImage(image: image, url: url))
-                } catch {
-                    print("Error loading photo from \(url): \(error)")
+
+            // Try loading from local cache first
+            let cachedImages = ImageCacheManager.shared.loadWeightImages(for: entry.id.uuidString, count: urls.count)
+
+            if !cachedImages.isEmpty && cachedImages.count == urls.count {
+                // All images found in cache
+                for (index, image) in cachedImages.enumerated() {
+                    loadedImages.append(IdentifiableImage(image: image, url: urls[index]))
                 }
+                print("⚡️ Loaded \(cachedImages.count) weight images from local cache")
+            } else {
+                // Load from Firebase and cache locally
+                for (index, url) in urls.enumerated() {
+                    do {
+                        let image = try await firebaseManager.downloadWeightPhoto(from: url)
+                        loadedImages.append(IdentifiableImage(image: image, url: url))
+
+                        // Cache the downloaded image locally for next time
+                        let imageId = "\(entry.id.uuidString)_\(index)"
+                        do {
+                            try ImageCacheManager.shared.saveWeightImage(image, for: imageId)
+                            print("💾 Cached downloaded weight image: \(imageId)")
+                        } catch {
+                            print("⚠️ Failed to cache downloaded image: \(error)")
+                        }
+                    } catch {
+                        print("Error loading photo from \(url): \(error)")
+                    }
+                }
+                print("📸 Loaded \(loadedImages.count) weight images from Firebase")
             }
 
             await MainActor.run {
@@ -3793,10 +3839,28 @@ struct EditWeightView: View {
                     }
                 }
 
-                // Upload new photos if any
+                // Save new photos to local cache
                 if !newPhotosToUpload.isEmpty {
-                    let newURLs = try await firebaseManager.uploadWeightPhotos(newPhotosToUpload)
-                    photoURLs.append(contentsOf: newURLs)
+                    do {
+                        // Save all new images locally
+                        let currentPhotoCount = selectedPhotos.count - newPhotosToUpload.count
+                        for (index, image) in newPhotosToUpload.enumerated() {
+                            let imageId = "\(entry.id.uuidString)_\(currentPhotoCount + index)"
+                            try ImageCacheManager.shared.saveWeightImage(image, for: imageId)
+                        }
+                        print("✅ Saved \(newPhotosToUpload.count) new weight images to local cache")
+                    } catch {
+                        print("⚠️ Failed to cache new weight images locally: \(error)")
+                    }
+
+                    // Upload new photos to Firebase for backup/sync
+                    do {
+                        let newURLs = try await firebaseManager.uploadWeightPhotos(newPhotosToUpload)
+                        photoURLs.append(contentsOf: newURLs)
+                        print("☁️ Uploaded \(newURLs.count) new weight images to Firebase")
+                    } catch {
+                        print("⚠️ Firebase upload failed (using local cache): \(error)")
+                    }
                 }
 
                 // Parse measurements
