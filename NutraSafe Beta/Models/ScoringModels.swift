@@ -81,6 +81,85 @@ class ProcessingScorer {
         let explanation: String
     }
 
+    // MARK: - Beverage Detection & Sugar Analysis Helper Functions
+
+    /// Detect if a product is a beverage based on name, nutritional profile, and serving description
+    private func isBeverage(food: FoodSearchResult) -> Bool {
+        let lowerName = food.name.lowercased()
+        let lowerServing = (food.servingDescription ?? "").lowercased()
+
+        // Check for beverage keywords in name or serving description
+        let beverageKeywords = [
+            "drink", "cola", "coke", "pepsi", "sprite", "fanta", "soda", "pop",
+            "juice", "smoothie", "shake", "tea", "coffee", "latte", "cappuccino",
+            "energy drink", "red bull", "monster", "sports drink", "gatorade", "powerade",
+            "lemonade", "squash", "cordial", "fizzy", "carbonated", "soft drink",
+            "frappuccino", "milkshake", "iced tea", "iced coffee", "bubble tea"
+        ]
+
+        let containsBeverageKeyword = beverageKeywords.contains(where: { lowerName.contains($0) || lowerServing.contains($0) })
+
+        // Check for liquid serving units (ml, fl oz)
+        let liquidServingUnits = lowerServing.contains("ml") || lowerServing.contains("fl oz") || lowerServing.contains("fluid")
+
+        // Check nutritional profile: very low protein, fat, and fiber (typical of beverages)
+        let isLowNutrientDensity = (food.protein < 2.0 && food.fat < 2.0 && food.fiber < 1.0)
+
+        // Combine heuristics: keyword match OR (liquid units AND low nutrient density)
+        return containsBeverageKeyword || (liquidServingUnits && isLowNutrientDensity)
+    }
+
+    /// Extract serving size in grams from serving description (e.g., "330ml", "1 can (330ml)")
+    private func extractServingSize(from servingDescription: String?) -> Double {
+        guard let serving = servingDescription else { return 100.0 }
+
+        // Try to extract grams first (direct match)
+        let gramPatterns = [
+            #"(\d+(?:\.\d+)?)\s*g"#,          // Match "330g" or "330 g"
+            #"\((\d+(?:\.\d+)?)\s*g\)"#        // Match "(330g)" in parentheses
+        ]
+
+        for pattern in gramPatterns {
+            if let regex = try? NSRegularExpression(pattern: pattern, options: []),
+               let match = regex.firstMatch(in: serving, options: [], range: NSRange(location: 0, length: serving.count)),
+               let range = Range(match.range(at: 1), in: serving) {
+                return Double(String(serving[range])) ?? 100.0
+            }
+        }
+
+        // Try to extract ml and treat as grams (water density ~1g/ml)
+        let mlPatterns = [
+            #"(\d+(?:\.\d+)?)\s*ml"#,          // Match "330ml" or "330 ml"
+            #"\((\d+(?:\.\d+)?)\s*ml\)"#        // Match "(330ml)" in parentheses
+        ]
+
+        for pattern in mlPatterns {
+            if let regex = try? NSRegularExpression(pattern: pattern, options: []),
+               let match = regex.firstMatch(in: serving, options: [], range: NSRange(location: 0, length: serving.count)),
+               let range = Range(match.range(at: 1), in: serving) {
+                return Double(String(serving[range])) ?? 100.0
+            }
+        }
+
+        // Fallback: use provided servingSizeG if available
+        // Default to 100g if no parseable serving size found
+        return 100.0
+    }
+
+    /// Calculate sugar per serving for proper beverage analysis
+    private func calculateSugarPerServing(food: FoodSearchResult) -> Double {
+        // Use provided servingSizeG if available, otherwise parse from description
+        let servingSize = food.servingSizeG ?? extractServingSize(from: food.servingDescription)
+
+        // Sugar is per 100g, scale to actual serving size
+        return food.sugar * (servingSize / 100.0)
+    }
+
+    /// Detect "empty calorie" products: zero nutrition, high sugar
+    private func isEmptyCalorie(food: FoodSearchResult) -> Bool {
+        return food.protein < 0.5 && food.fat < 0.5 && food.fiber < 0.5 && food.sugar > 5.0
+    }
+
     func computeNutraSafeProcessingGrade(for food: FoodSearchResult) -> NutraSafeProcessingGradeResult {
         // Aggregate text for additive/industrial detection
         let ingredientsText = (food.ingredients?.joined(separator: ", ") ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -115,17 +194,34 @@ class ProcessingScorer {
         // Additive weight
         let additiveWeight: Double = additiveCount > 5 ? 1.5 : (additiveCount >= 3 ? 1.0 : (additiveCount >= 1 ? 0.5 : 0.0))
 
-        // CRITICAL FIX: Extreme sugar penalty for candy/confectionery (>50g sugar = essentially pure sugar)
+        // CRITICAL FIX: Detect beverages and apply per-serving sugar analysis
+        let isBeverageProduct = isBeverage(food: food)
+
+        // CRITICAL FIX: Extreme sugar penalty - use per-serving for beverages, per-100g for solids
         let extremeSugarWeight: Double = {
-            let sugar = food.sugar
-            if sugar >= 70 { return 2.0 }      // Pure sugar products (candy, sweets)
-            else if sugar >= 50 { return 1.5 } // Very high sugar (candy bars, etc.)
-            else if sugar >= 30 { return 0.5 } // High sugar (sweetened products)
-            else { return 0.0 }
+            if isBeverageProduct {
+                // For beverages, use per-serving sugar analysis to catch diluted products like Coke
+                let sugarPerServing = calculateSugarPerServing(food: food)
+                if sugarPerServing >= 30 { return 2.0 }      // Very high sugar per serving (most sodas)
+                else if sugarPerServing >= 20 { return 1.5 } // High sugar per serving (sweetened teas, juices)
+                else if sugarPerServing >= 10 { return 1.0 } // Moderate sugar per serving (flavored waters)
+                else if sugarPerServing >= 5 { return 0.5 }  // Light sugar per serving
+                else { return 0.0 }
+            } else {
+                // For solid foods, use traditional per-100g analysis
+                let sugar = food.sugar
+                if sugar >= 70 { return 2.0 }      // Pure sugar products (candy, sweets)
+                else if sugar >= 50 { return 1.5 } // Very high sugar (candy bars, etc.)
+                else if sugar >= 30 { return 0.5 } // High sugar (sweetened products)
+                else { return 0.0 }
+            }
         }()
 
-        // Processing Intensity: clamp(1 + additive_weight + ingredient_complexity_weight + industrial_process_weight + extreme_sugar_weight, 1, 5)
-        let processingIntensity = clamp(1.0 + additiveWeight + ingredientComplexityWeight + industrialProcessWeight + extremeSugarWeight, min: 1.0, max: 5.0)
+        // CRITICAL FIX: Empty calorie penalty for nutritionally void products (like Coke)
+        let emptyCalorieWeight: Double = isEmptyCalorie(food: food) ? 1.5 : 0.0
+
+        // Processing Intensity: clamp(1 + additive_weight + ingredient_complexity_weight + industrial_process_weight + extreme_sugar_weight + empty_calorie_weight, 1, 5)
+        let processingIntensity = clamp(1.0 + additiveWeight + ingredientComplexityWeight + industrialProcessWeight + extremeSugarWeight + emptyCalorieWeight, min: 1.0, max: 5.0)
 
         // CRITICAL FIX: Detect whole, unprocessed foods (fruits, vegetables, etc.)
         let isWholeUnprocessedFood = (additiveCount == 0 && ingredientCount <= 1 && industrialProcessWeight == 0.0)
@@ -180,7 +276,9 @@ class ProcessingScorer {
             proteinPer100g: food.protein,
             industrialProcessApplied: industrialProcessWeight > 0,
             isWholeUnprocessedFood: isWholeUnprocessedFood,
-            extremeSugarApplied: extremeSugarWeight > 0
+            extremeSugarApplied: extremeSugarWeight > 0,
+            isBeverageProduct: isBeverageProduct,
+            emptyCalorieApplied: emptyCalorieWeight > 0
         )
 
         return NutraSafeProcessingGradeResult(
@@ -218,7 +316,9 @@ class ProcessingScorer {
         proteinPer100g: Double,
         industrialProcessApplied: Bool,
         isWholeUnprocessedFood: Bool,
-        extremeSugarApplied: Bool
+        extremeSugarApplied: Bool,
+        isBeverageProduct: Bool,
+        emptyCalorieApplied: Bool
     ) -> String {
         var parts: [String] = []
         parts.append("NutraSafe Processing Grade™ for '\(foodName)': \(grade).")
@@ -232,7 +332,14 @@ class ProcessingScorer {
                 processingFactors.append("industrial processing indicators")
             }
             if extremeSugarApplied {
-                processingFactors.append("extreme sugar content")
+                if isBeverageProduct {
+                    processingFactors.append("high sugar per serving (beverage)")
+                } else {
+                    processingFactors.append("extreme sugar content")
+                }
+            }
+            if emptyCalorieApplied {
+                processingFactors.append("empty calories (zero nutrition)")
             }
             processingFactors.append("\(ingredientCount) ingredient(s)")
 
