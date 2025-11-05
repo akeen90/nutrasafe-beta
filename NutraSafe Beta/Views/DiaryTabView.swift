@@ -475,7 +475,7 @@ struct DiaryTabView: View {
     @ViewBuilder
     private var nutrientsTabContent: some View {
         if #available(iOS 16.0, *) {
-            CategoricalNutrientTrackingView()
+            CategoricalNutrientTrackingView(selectedDate: $selectedDate)
         } else {
             Text("Nutrient tracking requires iOS 16.0 or later")
                 .foregroundColor(.secondary)
@@ -735,8 +735,18 @@ struct CategoricalNutrientTrackingView: View {
     @State private var showingGaps: Bool = false
     @State private var selectedNutrientRow: CoverageRow?
 
+    @Binding var selectedDate: Date
+
+    // Week navigation state
+    @State private var weekOffset: Int = 0 // 0 = current week, -1 = last week, etc.
+    @State private var selectedWeekStart: Date = Date()
+    @State private var showCalendar: Bool = false
+
     var body: some View {
         VStack(spacing: 20) {
+            // Week Navigation Header
+            weekNavigationHeader
+
             // Nutrient Rhythm Bar + Insight Line
             rhythmSection
 
@@ -744,24 +754,59 @@ struct CategoricalNutrientTrackingView: View {
             coverageMapSection
         }
         .task {
+            print("🎬 CategoricalNutrientTrackingView: Starting task...")
             vm.setDiaryManager(diaryDataManager)
-            await vm.loadLast7Days()
+
+            // Initialize with the week containing selectedDate
+            do {
+                let (weekStart, _) = getWeekRange(for: selectedDate)
+                selectedWeekStart = weekStart
+
+                // Calculate week offset from today
+                let (currentWeekStart, _) = getWeekRange(for: Date())
+                let calendar = Calendar.current
+                let components = calendar.dateComponents([.weekOfYear], from: currentWeekStart, to: weekStart)
+                weekOffset = components.weekOfYear ?? 0
+
+                print("📍 Initial week: \(weekStart), offset: \(weekOffset)")
+                await vm.loadWeekData(for: weekStart)
+            } catch {
+                print("❌ Error in task initialization: \(error)")
+            }
         }
         .onChange(of: diaryDataManager.dataReloadTrigger) { _ in
             Task {
         // DEBUG LOG: print("📊 CategoricalNutrientTrackingView: Data changed, reloading...")
-                await vm.loadLast7Days()
+                await vm.loadWeekData(for: selectedWeekStart)
             }
         }
         .onAppear {
             Task {
         // DEBUG LOG: print("📊 CategoricalNutrientTrackingView: View appeared, force reloading...")
-                await vm.loadLast7Days()
+                await vm.loadWeekData(for: selectedWeekStart)
             }
         }
         .refreshable {
-            await vm.loadLast7Days()
+            await vm.loadWeekData(for: selectedWeekStart)
         }
+        .gesture(
+            DragGesture(minimumDistance: 50)
+                .onEnded { gesture in
+                    let horizontalMovement = gesture.translation.width
+                    if abs(horizontalMovement) > abs(gesture.translation.height) {
+                        // Horizontal swipe detected
+                        if horizontalMovement < 0 {
+                            // Swipe left - next week
+                            weekOffset += 1
+                            loadWeekData()
+                        } else {
+                            // Swipe right - previous week
+                            weekOffset -= 1
+                            loadWeekData()
+                        }
+                    }
+                }
+        )
         .onReceive(NotificationCenter.default.publisher(for: .foodDiaryUpdated)) { _ in
             Task {
         // DEBUG LOG: print("🔄 Food diary updated, refreshing Nutrient Rhythm Bar...")
@@ -782,6 +827,117 @@ struct CategoricalNutrientTrackingView: View {
                 Text(row.name)
             }
         }
+    }
+
+    // MARK: - Week Navigation Header
+
+    @ViewBuilder
+    private var weekNavigationHeader: some View {
+        VStack(spacing: 12) {
+            // Week range display - stretched across the top
+            Button(action: {
+                showCalendar.toggle()
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 16, weight: .medium))
+                    Text(formatWeekRange())
+                        .font(.system(size: 17, weight: .semibold))
+                }
+                .foregroundColor(.primary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(Color(.systemGray6))
+                .cornerRadius(10)
+            }
+            .padding(.horizontal, 20)
+
+            // Calendar picker (when expanded)
+            if showCalendar {
+                DatePicker(
+                    "Select Date",
+                    selection: Binding(
+                        get: { selectedWeekStart },
+                        set: { newDate in
+                            selectedWeekStart = newDate
+                            selectedDate = newDate // Update main diary date
+                            updateWeekOffsetFromDate(newDate)
+                            showCalendar = false
+                            loadWeekData()
+                        }
+                    ),
+                    displayedComponents: .date
+                )
+                .datePickerStyle(GraphicalDatePickerStyle())
+                .labelsHidden()
+                .padding(.horizontal, 20)
+                .transition(.opacity)
+            }
+
+            // Week navigation buttons
+            HStack(spacing: 12) {
+                // Previous week button
+                Button(action: {
+                    weekOffset -= 1
+                    loadWeekData()
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text("Previous")
+                            .font(.system(size: 14, weight: .medium))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color(hex: "#5856D6"))
+                    .cornerRadius(10)
+                }
+
+                // This week button (only show if not on current week)
+                if weekOffset != 0 {
+                    Button(action: {
+                        weekOffset = 0
+                        loadWeekData()
+                    }) {
+                        Text("This Week")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color(hex: "#3FD17C"), Color(hex: "#57A5FF")],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .cornerRadius(10)
+                    }
+                }
+
+                // Next week button
+                Button(action: {
+                    weekOffset += 1
+                    loadWeekData()
+                }) {
+                    HStack(spacing: 4) {
+                        Text("Next")
+                            .font(.system(size: 14, weight: .medium))
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .semibold))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color(hex: "#5856D6"))
+                    .cornerRadius(10)
+                }
+            }
+            .padding(.horizontal, 20)
+        }
+        .padding(.top, 8)
+        .padding(.bottom, 4)
     }
 
     // MARK: - Rhythm Section
@@ -1203,6 +1359,79 @@ struct CategoricalNutrientTrackingView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)
     }
+
+    // MARK: - Helper Functions
+
+    private func loadWeekData() {
+        Task {
+            let calendar = Calendar.current
+            // Calculate the target date based on week offset
+            let targetDate = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: Date()) ?? Date()
+
+            // Get the Monday of that week
+            let (weekStart, _) = getWeekRange(for: targetDate)
+            selectedWeekStart = weekStart
+            selectedDate = weekStart // Update main diary date
+
+            // Load data for that week
+            await vm.loadWeekData(for: weekStart)
+        }
+    }
+
+    private func formatWeekRange() -> String {
+        let calendar = Calendar.current
+        let (weekStart, weekEnd) = getWeekRange(for: selectedWeekStart)
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        let startStr = formatter.string(from: weekStart)
+
+        let startMonth = calendar.component(.month, from: weekStart)
+        let endMonth = calendar.component(.month, from: weekEnd)
+
+        if startMonth == endMonth {
+            let dayFormatter = DateFormatter()
+            dayFormatter.dateFormat = "d"
+            return "\(startStr) - \(dayFormatter.string(from: weekEnd))"
+        } else {
+            let endStr = formatter.string(from: weekEnd)
+            return "\(startStr) - \(endStr)"
+        }
+    }
+
+    private func updateWeekOffsetFromDate(_ date: Date) {
+        let calendar = Calendar.current
+        let today = Date()
+
+        let (currentWeekStart, _) = getWeekRange(for: today)
+        let (selectedWeek, _) = getWeekRange(for: date)
+
+        // Calculate weeks difference
+        let components = calendar.dateComponents([.weekOfYear], from: currentWeekStart, to: selectedWeek)
+        weekOffset = components.weekOfYear ?? 0
+    }
+
+    private func getWeekRange(for date: Date) -> (start: Date, end: Date) {
+        let calendar = Calendar.current
+
+        // Get the day of the week (1 = Sunday, 2 = Monday, ..., 7 = Saturday)
+        let weekday = calendar.component(.weekday, from: date)
+
+        // Calculate offset to Monday (weekday 2)
+        let daysFromMonday = (weekday == 1) ? -6 : 2 - weekday
+
+        // Get Monday of the week
+        guard let monday = calendar.date(byAdding: .day, value: daysFromMonday, to: date) else {
+            return (date, date)
+        }
+
+        // Get Sunday (6 days after Monday)
+        guard let sunday = calendar.date(byAdding: .day, value: 6, to: monday) else {
+            return (monday, monday)
+        }
+
+        return (calendar.startOfDay(for: monday), calendar.startOfDay(for: sunday))
+    }
 }
 
 // MARK: - View Model
@@ -1221,20 +1450,71 @@ final class CategoricalNutrientViewModel: ObservableObject {
 
     // Load last 7 days of rhythm and coverage data
     func loadLast7Days() async {
-        // DEBUG LOG: print("🔄 CategoricalNutrientViewModel: Starting loadLast7Days...")
+        // Calls the new loadWeekData with today's date for backward compatibility
+        await loadWeekData(for: Date())
+    }
+
+    // Load specific week's data starting from the given Monday
+    func loadWeekData(for weekStartDate: Date) async {
+        print("🔄 CategoricalNutrientViewModel: Starting loadWeekData for \(weekStartDate)...")
+
+        guard let manager = diaryManager else {
+            print("❌ DiaryManager not set")
+            await MainActor.run {
+                self.rhythmDays = []
+                self.nutrientCoverageRows = []
+            }
+            return
+        }
 
         let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
         var days: [RhythmDay] = []
         var rows: [CoverageRow] = []
 
-        // Generate last 7 days
-        let dates = (0..<7).compactMap { calendar.date(byAdding: .day, value: -$0, to: today) }.reversed()
+        // Calculate the Monday and Sunday of the week containing weekStartDate
+        let weekday = calendar.component(.weekday, from: weekStartDate)
+        let daysFromMonday = (weekday == 1) ? -6 : 2 - weekday
+        guard let monday = calendar.date(byAdding: .day, value: daysFromMonday, to: weekStartDate) else {
+            print("❌ Failed to calculate Monday")
+            return
+        }
+        let mondayStart = calendar.startOfDay(for: monday)
+        print("📅 Loading week starting: \(mondayStart)")
+
+        // Generate 7 days starting from Monday
+        let dates = (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: mondayStart) }
 
         do {
-            // Fetch food entries for last 7 days
-            let entries = try await FirebaseManager.shared.getFoodEntriesForPeriod(days: 7)
-        // DEBUG LOG: print("📥 Fetched \(entries.count) food entries for last 7 days")
+            // Fetch food entries for each day of the week
+            var allEntries: [FoodEntry] = []
+
+            for date in dates {
+                do {
+                    let (breakfast, lunch, dinner, snacks) = try await manager.getFoodDataAsync(for: date)
+                    print("📥 Fetched data for \(date): B=\(breakfast.count), L=\(lunch.count), D=\(dinner.count), S=\(snacks.count)")
+
+                    // Convert each meal type to FoodEntries
+                    for food in breakfast {
+                        allEntries.append(food.toFoodEntry(userId: "", mealType: .breakfast, date: date))
+                    }
+                    for food in lunch {
+                        allEntries.append(food.toFoodEntry(userId: "", mealType: .lunch, date: date))
+                    }
+                    for food in dinner {
+                        allEntries.append(food.toFoodEntry(userId: "", mealType: .dinner, date: date))
+                    }
+                    for food in snacks {
+                        allEntries.append(food.toFoodEntry(userId: "", mealType: .snacks, date: date))
+                    }
+                } catch {
+                    print("⚠️ Error fetching data for \(date): \(error)")
+                    // Continue with other days even if one fails
+                }
+            }
+
+            print("📥 Total entries fetched: \(allEntries.count) for week starting \(mondayStart)")
+
+            let entries = allEntries
 
             let grouped = Dictionary(grouping: entries, by: { calendar.startOfDay(for: $0.date) })
 
