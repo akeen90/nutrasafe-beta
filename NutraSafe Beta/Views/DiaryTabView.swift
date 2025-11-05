@@ -2112,6 +2112,7 @@ struct NutrientDetailModal: View {
     let row: CoverageRow
     @Environment(\.dismiss) private var dismiss
     @State private var nutrientInfo: NutrientInfo?
+    @State private var showingCitations = false
 
     var body: some View {
         NavigationView {
@@ -2145,6 +2146,72 @@ struct NutrientDetailModal: View {
             }
             .task {
                 await loadNutrientInfo()
+            }
+            .sheet(isPresented: $showingCitations) {
+                NavigationView {
+                    List {
+                        Section(header: Text("Food Sources Data")) {
+                            Text("Food sources listed in this app are based on official nutrition databases.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+
+                        ForEach([
+                            CitationManager.Citation(
+                                title: "FoodData Central",
+                                organization: "U.S. Department of Agriculture (USDA)",
+                                url: "https://fdc.nal.usda.gov/",
+                                description: "Official USDA nutrient database providing comprehensive food composition data including vitamins, minerals, and other nutrients.",
+                                category: .nutritionData
+                            ),
+                            CitationManager.Citation(
+                                title: "UK Composition of Foods Integrated Dataset (CoFID)",
+                                organization: "UK Food Standards Agency & Public Health England",
+                                url: "https://www.gov.uk/government/publications/composition-of-foods-integrated-dataset-cofid",
+                                description: "UK's official database of nutrient content in foods, providing comprehensive nutrition data for British food products.",
+                                category: .nutritionData
+                            )
+                        ]) { citation in
+                            Button(action: {
+                                if let url = URL(string: citation.url) {
+                                    UIApplication.shared.open(url)
+                                }
+                            }) {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    HStack {
+                                        Image(systemName: "doc.text.fill")
+                                            .foregroundColor(.blue)
+                                            .font(.system(size: 14))
+                                        Text(citation.organization)
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundColor(.primary)
+                                        Spacer()
+                                        Image(systemName: "arrow.up.right.square")
+                                            .font(.caption)
+                                            .foregroundColor(.blue)
+                                    }
+                                    Text(citation.title)
+                                        .font(.caption)
+                                        .foregroundColor(.blue)
+                                    Text(citation.description)
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                        .lineLimit(3)
+                                }
+                                .padding(.vertical, 4)
+                            }
+                        }
+                    }
+                    .navigationTitle("Official Sources")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("Done") {
+                                showingCitations = false
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -2328,6 +2395,25 @@ struct NutrientDetailModal: View {
                     RoundedRectangle(cornerRadius: 16)
                         .fill(Color(.secondarySystemBackground))
                 )
+
+                // Citations for food sources - Clickable button
+                Button(action: {
+                    showingCitations = true
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "info.circle.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(.blue)
+                        Text("Food sources from USDA FoodData Central and UK CoFID database")
+                            .font(.system(size: 11))
+                            .foregroundColor(.blue)
+                            .lineLimit(2)
+                        Image(systemName: "arrow.up.right.square")
+                            .font(.system(size: 10))
+                            .foregroundColor(.blue)
+                    }
+                }
+                .padding(.top, 8)
             }
         }
     }

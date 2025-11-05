@@ -3909,6 +3909,20 @@ struct NutrientInfoCard: View {
                         if let sources = nutrientInfo.commonSources, !sources.isEmpty {
                             benefitRow(icon: "leaf.fill", title: "Also found in", content: formatSources(sources))
                         }
+
+                        // Citation note for health benefits
+                        Divider()
+                            .padding(.vertical, 4)
+
+                        HStack(spacing: 4) {
+                            Image(systemName: "info.circle.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(.blue.opacity(0.7))
+                            Text("Health benefits based on EFSA-approved claims and NHS guidance")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                                .lineLimit(2)
+                        }
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 16)
