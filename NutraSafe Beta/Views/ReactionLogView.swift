@@ -12,6 +12,7 @@ struct ReactionLogView: View {
     @State private var showingLogSheet = false
     @State private var selectedEntry: ReactionLogEntry?
     @State private var selectedDayRange: DayRange = .threeDays
+    @State private var selectedTab: AnalysisTab = .potentialTriggers
 
     enum DayRange: Int, CaseIterable {
         case threeDays = 3
@@ -23,6 +24,11 @@ struct ReactionLogView: View {
         }
     }
 
+    enum AnalysisTab: String, CaseIterable {
+        case potentialTriggers = "Potential Triggers"
+        case reactionTimeline = "Reaction Timeline"
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
@@ -32,11 +38,11 @@ struct ReactionLogView: View {
                 // Log Reaction Button
                 logReactionButton
 
-                // Recent Reactions Section
-                recentReactionsSection
+                // Analysis Tabs
+                analysisTabPicker
 
-                // Patterns Section
-                patternsSection
+                // Tab Content
+                tabContent
             }
             .padding(.horizontal, 16)
             .padding(.top, 16)
@@ -110,46 +116,120 @@ struct ReactionLogView: View {
         }
     }
 
-    // MARK: - Recent Meals Section
-    private var recentReactionsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Recent Meals")
-                .font(.system(size: 22, weight: .bold))
-                .foregroundColor(.primary)
+    // MARK: - Analysis Tab Picker
+    private var analysisTabPicker: some View {
+        HStack(spacing: 0) {
+            ForEach(AnalysisTab.allCases, id: \.self) { tab in
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedTab = tab
+                    }
+                }) {
+                    VStack(spacing: 8) {
+                        Text(tab.rawValue)
+                            .font(.system(size: 15, weight: selectedTab == tab ? .semibold : .medium))
+                            .foregroundColor(selectedTab == tab ? .white : .secondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(
+                                selectedTab == tab ?
+                                    LinearGradient(
+                                        colors: [
+                                            Color(red: 0.3, green: 0.5, blue: 1.0),
+                                            Color(red: 0.5, green: 0.3, blue: 0.9)
+                                        ],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                    : LinearGradient(
+                                        colors: [Color.clear],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                            )
+                            .cornerRadius(10)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(4)
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+    }
 
-            RecentMealsListView()
+    // MARK: - Tab Content
+    @ViewBuilder
+    private var tabContent: some View {
+        switch selectedTab {
+        case .potentialTriggers:
+            potentialTriggersView
+        case .reactionTimeline:
+            reactionTimelineView
         }
     }
 
-    // MARK: - Patterns Section
-    private var patternsSection: some View {
+    // MARK: - Potential Triggers View
+    private var potentialTriggersView: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Patterns")
-                .font(.system(size: 22, weight: .bold))
-                .foregroundColor(.primary)
-
-            if manager.reactionLogs.count < 2 {
-                Text("Log at least 2 reactions to see patterns")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 40)
+            if manager.reactionLogs.isEmpty {
+                emptyStateView(
+                    icon: "chart.bar.doc.horizontal",
+                    title: "No reactions logged yet",
+                    message: "Log your first reaction to start identifying potential food triggers"
+                )
+            } else if manager.reactionLogs.count < 2 {
+                emptyStateView(
+                    icon: "chart.line.uptrend.xyaxis",
+                    title: "Building your pattern analysis",
+                    message: "Log at least 2 reactions to identify potential triggers and patterns"
+                )
             } else {
+                // Common ingredients patterns
                 commonIngredientsView
             }
         }
     }
 
-    // MARK: - Empty State
-    private var emptyReactionsView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 60))
-                .foregroundColor(.green)
+    // MARK: - Reaction Timeline View
+    private var reactionTimelineView: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            if manager.reactionLogs.isEmpty {
+                emptyStateView(
+                    icon: "clock.badge.questionmark",
+                    title: "No reactions logged yet",
+                    message: "Start logging reactions to see your timeline and meal history"
+                )
+            } else {
+                // Reaction history list
+                ForEach(manager.reactionLogs) { entry in
+                    Button(action: {
+                        selectedEntry = entry
+                    }) {
+                        ReactionLogCard(entry: entry)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
 
-            Text("No reactions logged")
+    // MARK: - Empty State
+    private func emptyStateView(icon: String, title: String, message: String) -> some View {
+        VStack(spacing: 16) {
+            Image(systemName: icon)
+                .font(.system(size: 60))
+                .foregroundColor(.gray.opacity(0.5))
+
+            Text(title)
+                .font(.headline)
+                .foregroundColor(.primary)
+
+            Text(message)
                 .font(.subheadline)
                 .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)
@@ -159,9 +239,19 @@ struct ReactionLogView: View {
     private var commonIngredientsView: some View {
         let commonIngredients = calculateCommonIngredients()
 
-        return VStack(spacing: 12) {
+        return VStack(alignment: .leading, spacing: 16) {
+            Text("Ingredient Patterns")
+                .font(.headline)
+                .foregroundColor(.primary)
+
+            Text("These ingredients appear frequently in foods consumed before your reactions. This information may help you spot potential connections to discuss with your healthcare provider.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.bottom, 4)
+
             if commonIngredients.isEmpty {
-                Text("Not enough data to identify patterns")
+                Text("Not enough observations yet to identify ingredient patterns")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -346,13 +436,13 @@ struct ReactionLogCard: View {
 
             if let analysis = entry.triggerAnalysis {
                 HStack(spacing: 16) {
-                    Label("\(analysis.mealCount) meals", systemImage: "fork.knife")
+                    Label("\(analysis.mealCount) meals analyzed", systemImage: "fork.knife")
                         .font(.caption)
                         .foregroundColor(.secondary)
 
-                    Label("\(analysis.topFoods.count) triggers", systemImage: "exclamationmark.triangle")
+                    Label("\(analysis.topFoods.count) foods identified", systemImage: "list.bullet")
                         .font(.caption)
-                        .foregroundColor(.orange)
+                        .foregroundColor(.blue)
                 }
             }
         }
@@ -386,6 +476,11 @@ struct LogReactionSheet: View {
     @State private var showError: Bool = false
     @State private var errorMessage: String = ""
     @State private var dayRange: ReactionLogView.DayRange
+    @State private var foodLoggedInDiary: Bool? = nil  // nil = not selected, true = yes, false = no
+    @State private var selectedFoodId: String? = nil
+    @State private var manualFoodName: String = ""
+    @State private var recentMeals: [FoodEntry] = []
+    @State private var isLoadingMeals = false
 
     init(selectedDayRange: ReactionLogView.DayRange) {
         self.selectedDayRange = selectedDayRange
@@ -414,6 +509,21 @@ struct LogReactionSheet: View {
                     DatePicker("Date & Time", selection: $reactionDate, displayedComponents: [.date, .hourAndMinute])
                 }
 
+                Section(header: Text("Food Connection (Optional)")) {
+                    Text("Have you logged this food in your food diary?")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    foodDiaryButtons
+
+                    foodDiaryContent
+
+                    Text("Linking a specific food is optional. The app will automatically analyze your entire food diary from the last \(dayRange.rawValue) days to identify potential patterns.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
                 Section(header: Text("Analysis Window")) {
                     Picker("Look back", selection: $dayRange) {
                         ForEach(ReactionLogView.DayRange.allCases, id: \.self) { range in
@@ -422,7 +532,7 @@ struct LogReactionSheet: View {
                     }
                     .pickerStyle(.segmented)
 
-                    Text("The system will analyze your food diary from the last \(dayRange.rawValue) days before this reaction.")
+                    Text("The system will analyze your food diary from the last \(dayRange.rawValue) days to identify potential triggers.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -432,7 +542,7 @@ struct LogReactionSheet: View {
                         .frame(height: 100)
                 }
             }
-            .navigationTitle("Log Reaction")
+            .navigationTitle("Log a Reaction")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -465,7 +575,7 @@ struct LogReactionSheet: View {
                             ProgressView()
                                 .scaleEffect(1.5)
 
-                            Text("Analyzing food triggers...")
+                            Text("Analyzing potential triggers...")
                                 .font(.subheadline)
                                 .foregroundColor(.white)
                         }
@@ -476,6 +586,93 @@ struct LogReactionSheet: View {
                     }
                 }
             }
+        }
+    }
+
+    private func loadRecentMeals() {
+        isLoadingMeals = true
+        Task {
+            let endDate = reactionDate
+            let startDate = Calendar.current.date(byAdding: .day, value: -7, to: endDate) ?? endDate
+
+            do {
+                let meals = try await DiaryDataManager.shared.getMealsInTimeRange(from: startDate, to: endDate)
+                await MainActor.run {
+                    self.recentMeals = meals.sorted { $0.date > $1.date }
+                    self.isLoadingMeals = false
+                }
+            } catch {
+                await MainActor.run {
+                    self.recentMeals = []
+                    self.isLoadingMeals = false
+                }
+            }
+        }
+    }
+
+    private var foodDiaryButtons: some View {
+        HStack(spacing: 12) {
+            // Yes button
+            Button(action: {
+                foodLoggedInDiary = true
+                loadRecentMeals()
+            }) {
+                foodDiaryButtonContent(isSelected: foodLoggedInDiary == true, title: "Yes")
+            }
+            .buttonStyle(.plain)
+
+            // No button
+            Button(action: {
+                foodLoggedInDiary = false
+                selectedFoodId = nil
+            }) {
+                foodDiaryButtonContent(isSelected: foodLoggedInDiary == false, title: "No")
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func foodDiaryButtonContent(isSelected: Bool, title: String) -> some View {
+        HStack {
+            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                .foregroundColor(isSelected ? .blue : .gray)
+            Text(title)
+                .foregroundColor(.primary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(isSelected ? Color.blue.opacity(0.1) : Color(.systemGray6))
+        .cornerRadius(8)
+    }
+
+    @ViewBuilder
+    private var foodDiaryContent: some View {
+        if foodLoggedInDiary == true {
+            if isLoadingMeals {
+                HStack {
+                    ProgressView()
+                        .padding(.trailing, 8)
+                    Text("Loading recent meals...")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 8)
+            } else if recentMeals.isEmpty {
+                Text("No recent meals found in your diary")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.vertical, 8)
+            } else {
+                Picker("Select Food", selection: $selectedFoodId) {
+                    Text("Choose from recent meals").tag(nil as String?)
+                    ForEach(recentMeals) { meal in
+                        Text(meal.foodName).tag(meal.id as String?)
+                    }
+                }
+            }
+        } else if foodLoggedInDiary == false {
+            TextField("Food name (optional)", text: $manualFoodName)
+                .textInputAutocapitalization(.words)
         }
     }
 
@@ -642,8 +839,13 @@ struct ReactionLogDetailView: View {
 
     private func topFoodsSection(foods: [WeightedFoodScore]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Top Possible Trigger Foods")
+            Text("Foods Appearing Alongside Reactions")
                 .font(.headline)
+
+            Text("These foods were consumed in the days before this reaction. Patterns may help you identify connections.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .padding(.bottom, 4)
 
             ForEach(foods.prefix(10)) { food in
                 Button(action: {
@@ -1128,6 +1330,9 @@ struct PDFExportSheet: View {
     @State private var pdfURL: URL?
     @State private var showShareSheet = false
     @State private var errorMessage: String?
+    @State private var selectedDayRange: Int = 7
+
+    let dayRangeOptions = [3, 7, 14, 30]
 
     var body: some View {
         NavigationView {
@@ -1173,7 +1378,7 @@ struct PDFExportSheet: View {
                             .font(.title2)
                             .fontWeight(.semibold)
 
-                        Text("Your reaction analysis report has been generated successfully.")
+                        Text("Your observation report has been generated and is ready to share with your nutritionist or healthcare provider.")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
@@ -1194,46 +1399,119 @@ struct PDFExportSheet: View {
                         .buttonStyle(.bordered)
                     }
                 } else {
-                    VStack(spacing: 20) {
-                        Image(systemName: "doc.text.fill")
-                            .font(.system(size: 60))
-                            .foregroundColor(.blue)
+                    ScrollView {
+                        VStack(spacing: 24) {
+                            Image(systemName: "doc.text.fill")
+                                .font(.system(size: 60))
+                                .foregroundColor(.blue)
 
-                        Text("Export Reaction Report")
-                            .font(.title2)
-                            .fontWeight(.semibold)
+                            Text("Export Observation Report")
+                                .font(.title2)
+                                .fontWeight(.semibold)
 
-                        Text("Generate a detailed PDF report of this reaction analysis to share with your healthcare provider or nutritionist.")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
+                            Text("Create a detailed PDF report of your food patterns and reactions to share with your nutritionist or healthcare provider.")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+
+                            // Date Range Selector
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Select Time Period")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+
+                                HStack(spacing: 12) {
+                                    ForEach(dayRangeOptions, id: \.self) { days in
+                                        Button(action: {
+                                            selectedDayRange = days
+                                        }) {
+                                            VStack(spacing: 4) {
+                                                Text("\(days)")
+                                                    .font(.title3)
+                                                    .fontWeight(.bold)
+                                                Text("days")
+                                                    .font(.caption2)
+                                            }
+                                            .foregroundColor(selectedDayRange == days ? .white : .blue)
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 12)
+                                            .background(
+                                                selectedDayRange == days ?
+                                                    LinearGradient(
+                                                        colors: [
+                                                            Color(red: 0.3, green: 0.5, blue: 1.0),
+                                                            Color(red: 0.5, green: 0.3, blue: 0.9)
+                                                        ],
+                                                        startPoint: .leading,
+                                                        endPoint: .trailing
+                                                    )
+                                                    : LinearGradient(
+                                                        colors: [Color.blue.opacity(0.1)],
+                                                        startPoint: .leading,
+                                                        endPoint: .trailing
+                                                    )
+                                            )
+                                            .cornerRadius(10)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 10)
+                                                    .stroke(selectedDayRange == days ? Color.clear : Color.blue.opacity(0.3), lineWidth: 1)
+                                            )
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+
+                                Text("Report will include all reactions and food patterns from the last \(selectedDayRange) days")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .padding(.top, 4)
+                            }
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Report Includes")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+
+                                VStack(alignment: .leading, spacing: 10) {
+                                    Label("Reaction details and timeline", systemImage: "info.circle")
+                                    Label("Foods appearing alongside reactions", systemImage: "fork.knife")
+                                    Label("Ingredient frequency patterns", systemImage: "chart.bar")
+                                    Label("Common allergen observations", systemImage: "list.bullet")
+                                    Label("Meal timing context", systemImage: "clock")
+                                }
+                                .font(.callout)
+                                .foregroundColor(.secondary)
+                            }
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+
+                            Text("This report is for informational purposes only and represents your personal food observations. Please share with a qualified healthcare provider or nutritionist for professional guidance.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+
+                            Button(action: {
+                                generatePDF()
+                            }) {
+                                Label("Generate PDF Report", systemImage: "doc.badge.plus")
+                                    .font(.headline)
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
                             .padding(.horizontal)
 
-                        VStack(alignment: .leading, spacing: 12) {
-                            Label("Reaction details and timeline", systemImage: "info.circle")
-                            Label("Trigger analysis results", systemImage: "chart.bar")
-                            Label("Top foods and ingredients", systemImage: "list.bullet")
-                            Label("Professional formatting", systemImage: "doc.richtext")
+                            Button("Cancel") {
+                                dismiss()
+                            }
+                            .buttonStyle(.bordered)
                         }
-                        .font(.caption)
-                        .foregroundColor(.secondary)
                         .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
-
-                        Button(action: {
-                            generatePDF()
-                        }) {
-                            Label("Generate PDF", systemImage: "doc.badge.plus")
-                                .font(.headline)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .padding()
-
-                        Button("Cancel") {
-                            dismiss()
-                        }
-                        .buttonStyle(.bordered)
                     }
                 }
             }
