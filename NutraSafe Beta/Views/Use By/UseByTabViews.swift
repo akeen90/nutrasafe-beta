@@ -2790,13 +2790,24 @@ struct UseByItemDetailView: View {
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(.secondary)
 
-                        TextField("Add notes about this item...", text: $notes)
-                            .font(.system(size: 14))
-                            .padding()
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color(.tertiarySystemBackground))
-                            )
+                        ZStack(alignment: .topLeading) {
+                            TextEditor(text: $notes)
+                                .font(.system(size: 14))
+                                .frame(minHeight: 80)
+                                .padding(4)
+                                .scrollContentBackground(.hidden)
+                                .background(Color(.tertiarySystemBackground))
+                                .cornerRadius(12)
+
+                            if notes.isEmpty {
+                                Text("Add notes about this item...")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 12)
+                                    .allowsHitTesting(false)
+                            }
+                        }
                     }
                     .padding(20)
                     .background(
