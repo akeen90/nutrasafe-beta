@@ -694,7 +694,7 @@ struct UseByExpiryView: View {
                             )
 
                             UseByStatCard(
-                                title: "Expiring Soon",
+                                title: "≤3 Days Left",
                                 value: "\(expiringSoonCount)",
                                 icon: "clock.badge.exclamationmark",
                                 color: expiringSoonCount > 0 ? Color.orange : Color.green,
@@ -820,7 +820,7 @@ struct UseByExpiryAlertsCard: View {
 
     enum ExpiryFilter: String, CaseIterable {
         case all = "All Items"
-        case expiring = "Expiring Soon"
+        case expiring = "Days Left"
         case expired = "Expired"
 
         var color: Color {
@@ -838,6 +838,18 @@ struct UseByExpiryAlertsCard: View {
 
     private var weekCount: Int {
         items.filter { $0.expiryStatus == .expiringSoon || $0.expiryStatus == .expiringThisWeek }.count
+    }
+
+    private var daysLeftTitle: String {
+        let weekItems = items.filter { $0.expiryStatus == .expiringSoon || $0.expiryStatus == .expiringThisWeek }
+        guard !weekItems.isEmpty else { return "7 Days Left" }
+        let minDays = weekItems.map { $0.daysUntilExpiry }.min() ?? 7
+        let maxDays = weekItems.map { $0.daysUntilExpiry }.max() ?? 7
+        if minDays == maxDays {
+            return "\(minDays) \(minDays == 1 ? "Day" : "Days") Left"
+        } else {
+            return "\(minDays)-\(maxDays) Days Left"
+        }
     }
 
     private var freshCount: Int {
@@ -916,7 +928,7 @@ struct UseByExpiryAlertsCard: View {
                 )
 
                 StatusCard(
-                    title: "This Week",
+                    title: daysLeftTitle,
                     count: weekCount,
                     icon: "clock.fill",
                     color: .orange,
@@ -1363,7 +1375,7 @@ struct UseByWeeklyExpiryCard: View {
                             .symbolRenderingMode(.hierarchical)
                     }
 
-                    Text("This Week")
+                    Text("Days Left")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.primary)
                 }
@@ -3417,9 +3429,9 @@ struct CleanUseByRow: View {
         switch item.expiryStatus {
         case .expired: return "Expired"
         case .expiringToday: return "Last day"
-        case .expiringSoon: return "Expires soon"
-        case .expiringThisWeek: return "This week"
-        case .fresh: return "\(daysLeft) days"
+        case .expiringSoon: return "\(daysLeft) \(daysLeft == 1 ? "day" : "days") left"
+        case .expiringThisWeek: return "\(daysLeft) \(daysLeft == 1 ? "day" : "days") left"
+        case .fresh: return "\(daysLeft) days left"
         }
     }
 

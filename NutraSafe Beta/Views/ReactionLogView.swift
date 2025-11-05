@@ -13,6 +13,7 @@ struct ReactionLogView: View {
     @State private var selectedEntry: ReactionLogEntry?
     @State private var selectedDayRange: DayRange = .threeDays
     @State private var selectedTab: AnalysisTab = .potentialTriggers
+    @State private var showingPDFExportSheet = false
 
     enum DayRange: Int, CaseIterable {
         case threeDays = 3
@@ -35,6 +36,11 @@ struct ReactionLogView: View {
                 // Log Reaction Button
                 logReactionButton
 
+                // Export PDF Button (only show if there are reactions)
+                if !manager.reactionLogs.isEmpty {
+                    exportPDFButton
+                }
+
                 // Analysis Tabs
                 analysisTabPicker
 
@@ -51,6 +57,9 @@ struct ReactionLogView: View {
         }
         .sheet(item: $selectedEntry) { entry in
             ReactionLogDetailView(entry: entry, selectedDayRange: selectedDayRange)
+        }
+        .sheet(isPresented: $showingPDFExportSheet) {
+            MultiReactionPDFExportSheet()
         }
         .task {
             await manager.loadReactionLogs()
@@ -84,6 +93,35 @@ struct ReactionLogView: View {
             )
             .cornerRadius(14)
             .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 4)
+        }
+    }
+
+    // MARK: - Export PDF Button
+    private var exportPDFButton: some View {
+        Button(action: { showingPDFExportSheet = true }) {
+            HStack(spacing: 12) {
+                Image(systemName: "doc.text.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(.white)
+
+                Text("Export PDF Report")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(
+                LinearGradient(
+                    colors: [
+                        Color.green.opacity(0.8),
+                        Color.blue.opacity(0.6)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .cornerRadius(12)
+            .shadow(color: .green.opacity(0.2), radius: 6, x: 0, y: 3)
         }
     }
 
@@ -1499,11 +1537,64 @@ struct PDFExportSheet: View {
                 let startDate = reactionDate.addingTimeInterval(-7 * 24 * 3600)  // 7 days before
 
                 // Fetch meals in the 7-day period
-                let meals = try await DiaryDataManager.shared.getMealsInTimeRange(from: startDate, to: reactionDate)
+                var meals = try await DiaryDataManager.shared.getMealsInTimeRange(from: startDate, to: reactionDate)
+
+                // Fetch food reactions in the same 7-day period
+                let allFoodReactions = try await FirebaseManager.shared.getReactions()
+                let reactionDates = allFoodReactions.filter { reaction in
+                    let date = reaction.timestamp.dateValue()
+                    return date >= startDate && date <= reactionDate
+                }
+
+                // Convert FoodReactions to FoodEntry format
+                let reactionEntries = reactionDates.compactMap { reaction -> FoodEntry? in
+                    guard let userId = FirebaseManager.shared.currentUser?.uid else { return nil }
+                    let date = reaction.timestamp.dateValue()
+
+                    return FoodEntry(
+                        id: reaction.id.uuidString,
+                        userId: userId,
+                        foodName: reaction.foodName,
+                        brandName: reaction.foodBrand,
+                        servingSize: 100,
+                        servingUnit: "g",
+                        calories: 0,
+                        protein: 0,
+                        carbohydrates: 0,
+                        fat: 0,
+                        ingredients: reaction.suspectedIngredients,
+                        mealType: .snacks,
+                        date: date,
+                        dateLogged: date
+                    )
+                }
+
+                // Merge reaction entries with diary meals, deduplicating by food name + same day
+                for reactionEntry in reactionEntries {
+                    let calendar = Calendar.current
+                    let reactionDay = calendar.startOfDay(for: reactionEntry.date)
+
+                    // Check if this food (by name) is already in diary for the same day
+                    let alreadyExists = meals.contains { meal in
+                        let mealDay = calendar.startOfDay(for: meal.date)
+                        return mealDay == reactionDay && meal.foodName.lowercased() == reactionEntry.foodName.lowercased()
+                    }
+
+                    // Only add if not already in diary
+                    if !alreadyExists {
+                        meals.append(reactionEntry)
+                    }
+                }
+
+                // Sort meals by date
+                meals.sort { $0.date < $1.date }
+
+                // Get all reactions for cross-reaction analysis
+                let allReactions = ReactionLogManager.shared.reactionLogs
 
                 // Generate PDF on background thread
                 let url = await Task.detached(priority: .userInitiated) {
-                    return ReactionPDFExporter.exportReactionReport(entry: entry, mealHistory: meals)
+                    return ReactionPDFExporter.exportReactionReport(entry: entry, mealHistory: meals, allReactions: allReactions)
                 }.value
 
                 if let url = url {
@@ -2239,6 +2330,264 @@ struct DayMealsSection: View {
         case .lunch: return "Lunch"
         case .dinner: return "Dinner"
         case .snacks: return "Snack"
+        }
+    }
+}
+
+// MARK: - Multi-Reaction PDF Export Sheet
+
+struct MultiReactionPDFExportSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var manager = ReactionLogManager.shared
+    @State private var isGenerating = false
+    @State private var pdfURL: URL?
+    @State private var showShareSheet = false
+    @State private var errorMessage: String?
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 30) {
+                if isGenerating {
+                    ProgressView("Generating PDF...")
+                        .font(.headline)
+                        .padding()
+                } else if let error = errorMessage {
+                    VStack(spacing: 20) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 60))
+                            .foregroundColor(.red)
+
+                        Text("Export Failed")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+
+                        Text(error)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+
+                        Button("Try Again") {
+                            errorMessage = nil
+                            generatePDF()
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Button("Close") {
+                            dismiss()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                } else if pdfURL != nil {
+                    VStack(spacing: 20) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 60))
+                            .foregroundColor(.green)
+
+                        Text("PDF Ready")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+
+                        Text("Your comprehensive reaction report is ready to share.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+
+                        Button(action: {
+                            showShareSheet = true
+                        }) {
+                            Label("Share Report", systemImage: "square.and.arrow.up")
+                                .font(.headline)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .padding()
+
+                        Button("Done") {
+                            dismiss()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                } else {
+                    ScrollView {
+                        VStack(spacing: 24) {
+                            Image(systemName: "doc.text.fill")
+                                .font(.system(size: 60))
+                                .foregroundColor(.blue)
+
+                            Text("Export Comprehensive Report")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+
+                            Text("Generate a PDF report of your last \(min(manager.reactionLogs.count, 5)) reactions with complete pattern analysis.")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Report Includes")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+
+                                VStack(alignment: .leading, spacing: 10) {
+                                    Label("Most recent reaction details", systemImage: "info.circle")
+                                    Label("7-day meal history", systemImage: "calendar.badge.clock")
+                                    Label("Previous reactions timeline", systemImage: "list.bullet")
+                                    Label("Pattern analysis for allergens", systemImage: "chart.bar")
+                                    Label("Other ingredient patterns", systemImage: "list.bullet")
+                                }
+                                .font(.callout)
+                                .foregroundColor(.secondary)
+                            }
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+
+                            Text("This report is for informational purposes only. Please share with a qualified healthcare provider or nutritionist for professional guidance.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+
+                            Button(action: {
+                                generatePDF()
+                            }) {
+                                Label("Generate PDF Report", systemImage: "doc.badge.plus")
+                                    .font(.headline)
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .padding(.horizontal)
+
+                            Button("Cancel") {
+                                dismiss()
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                        .padding()
+                    }
+                }
+            }
+            .padding()
+            .navigationTitle("Export Report")
+            .navigationBarTitleDisplayMode(.inline)
+            .sheet(isPresented: $showShareSheet) {
+                if let url = pdfURL {
+                    ShareSheet(items: [url])
+                }
+            }
+        }
+        .onDisappear {
+            // Clean up temporary file when sheet is dismissed
+            if let url = pdfURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+    }
+
+    private func generatePDF() {
+        isGenerating = true
+        errorMessage = nil
+
+        Task {
+            do {
+                // Get last 5 reactions (or fewer if less than 5 exist)
+                let reactions = Array(manager.reactionLogs.prefix(5))
+
+                guard !reactions.isEmpty else {
+                    await MainActor.run {
+                        self.errorMessage = "No reactions found to export."
+                        self.isGenerating = false
+                    }
+                    return
+                }
+
+                // Get the most recent reaction for meal history
+                let mostRecentReaction = reactions[0]
+                let reactionDate = mostRecentReaction.reactionDate
+                let startDate = reactionDate.addingTimeInterval(-7 * 24 * 3600)  // 7 days before
+
+                // Fetch meals in the 7-day period
+                var meals = try await DiaryDataManager.shared.getMealsInTimeRange(from: startDate, to: reactionDate)
+
+                // Fetch food reactions in the same 7-day period and merge
+                let allFoodReactions = try await FirebaseManager.shared.getReactions()
+                let reactionDates = allFoodReactions.filter { reaction in
+                    let date = reaction.timestamp.dateValue()
+                    return date >= startDate && date <= reactionDate
+                }
+
+                // Convert FoodReactions to FoodEntry format
+                let reactionEntries = reactionDates.compactMap { reaction -> FoodEntry? in
+                    guard let userId = FirebaseManager.shared.currentUser?.uid else { return nil }
+                    let date = reaction.timestamp.dateValue()
+
+                    return FoodEntry(
+                        id: reaction.id.uuidString,
+                        userId: userId,
+                        foodName: reaction.foodName,
+                        brandName: reaction.foodBrand,
+                        servingSize: 100,
+                        servingUnit: "g",
+                        calories: 0,
+                        protein: 0,
+                        carbohydrates: 0,
+                        fat: 0,
+                        ingredients: reaction.suspectedIngredients,
+                        mealType: .snacks,
+                        date: date,
+                        dateLogged: date
+                    )
+                }
+
+                // Merge reaction entries with diary meals (deduplicate)
+                for reactionEntry in reactionEntries {
+                    let calendar = Calendar.current
+                    let reactionDay = calendar.startOfDay(for: reactionEntry.date)
+
+                    let alreadyExists = meals.contains { meal in
+                        let mealDay = calendar.startOfDay(for: meal.date)
+                        return mealDay == reactionDay && meal.foodName.lowercased() == reactionEntry.foodName.lowercased()
+                    }
+
+                    if !alreadyExists {
+                        meals.append(reactionEntry)
+                    }
+                }
+
+                // Sort meals by date
+                meals.sort { $0.date < $1.date }
+
+                // Get all reactions for pattern analysis
+                let allReactions = manager.reactionLogs
+
+                // Generate PDF on background thread
+                let url = await Task.detached(priority: .userInitiated) {
+                    return ReactionPDFExporter.exportMultipleReactionsReport(
+                        reactions: reactions,
+                        mealHistory: meals,
+                        allReactions: allReactions
+                    )
+                }.value
+
+                if let url = url {
+                    await MainActor.run {
+                        self.pdfURL = url
+                        self.isGenerating = false
+                    }
+                } else {
+                    await MainActor.run {
+                        self.errorMessage = "Failed to generate PDF. Please try again."
+                        self.isGenerating = false
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = "Failed to fetch data: \(error.localizedDescription)"
+                    self.isGenerating = false
+                }
+            }
         }
     }
 }

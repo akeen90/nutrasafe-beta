@@ -1651,6 +1651,7 @@ struct WeightTrackingView: View {
     @State private var editingEntry: WeightEntry?  // Changed from selectedEntry to editingEntry for clarity
     @State private var entryToDelete: WeightEntry?
     @State private var showingDeleteConfirmation = false
+    @State private var showAllWeightEntries = false
 
     private var needsHeightSetup: Bool {
         userHeight == 0 && hasCheckedHeight // Only prompt if height is truly not set
@@ -1914,7 +1915,7 @@ struct WeightTrackingView: View {
 
                             // Weight entries list
                             List {
-                                ForEach(Array(weightHistory.prefix(5).enumerated()), id: \.element.id) { index, entry in
+                                ForEach(Array(weightHistory.prefix(showAllWeightEntries ? weightHistory.count : 5).enumerated()), id: \.element.id) { index, entry in
                                     WeightEntryRow(
                                         entry: entry,
                                         previousEntry: weightHistory[safe: index + 1],
@@ -1953,9 +1954,11 @@ struct WeightTrackingView: View {
 
                                 if weightHistory.count > 5 {
                                     Button(action: {
-                                        // TODO: Show full history
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            showAllWeightEntries.toggle()
+                                        }
                                     }) {
-                                        Text("View all \(weightHistory.count) entries")
+                                        Text(showAllWeightEntries ? "Show less" : "View all \(weightHistory.count) entries")
                                             .font(.system(size: 14, weight: .medium))
                                             .foregroundColor(.blue)
                                             .frame(maxWidth: .infinity)
@@ -1967,7 +1970,7 @@ struct WeightTrackingView: View {
                                 }
                             }
                             .listStyle(.plain)
-                            .frame(height: CGFloat(min(weightHistory.count, 5) * 85 + (weightHistory.count > 5 ? 50 : 0)))
+                            .frame(height: CGFloat((showAllWeightEntries ? weightHistory.count : min(weightHistory.count, 5)) * 85 + (weightHistory.count > 5 ? 50 : 0)))
                             .padding(.horizontal, 20)
                         }
                         .padding(.top, 12)
