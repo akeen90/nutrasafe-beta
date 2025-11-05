@@ -779,19 +779,15 @@ struct CategoricalNutrientTrackingView: View {
             weekOffset = components.weekOfYear ?? 0
 
             print("📍 Initial week: \(weekStart), offset: \(weekOffset)")
-            await vm.loadWeekData(for: weekStart)
+            requestDataLoad(for: weekStart, reason: "initial-load")
         }
         .onChange(of: diaryDataManager.dataReloadTrigger) { _ in
             // Only reload if we've already done initial load
             guard hasInitiallyLoaded else { return }
-
-            Task {
-        // DEBUG LOG: print("📊 CategoricalNutrientTrackingView: Data changed, reloading...")
-                await vm.loadWeekData(for: selectedWeekStart)
-            }
+            requestDataLoad(for: selectedWeekStart, reason: "data-change")
         }
         .refreshable {
-            await vm.loadWeekData(for: selectedWeekStart)
+            requestDataLoad(for: selectedWeekStart, reason: "pull-to-refresh")
         }
         .gesture(
             DragGesture(minimumDistance: 50)
@@ -802,11 +798,11 @@ struct CategoricalNutrientTrackingView: View {
                         if horizontalMovement < 0 {
                             // Swipe left - next week
                             weekOffset += 1
-                            loadWeekData()
+                            requestDataLoad(reason: "swipe-left")
                         } else {
                             // Swipe right - previous week
                             weekOffset -= 1
-                            loadWeekData()
+                            requestDataLoad(reason: "swipe-right")
                         }
                     }
                 }
@@ -814,11 +810,7 @@ struct CategoricalNutrientTrackingView: View {
         .onReceive(NotificationCenter.default.publisher(for: .foodDiaryUpdated)) { _ in
             // Only reload if we've already done initial load
             guard hasInitiallyLoaded else { return }
-
-            Task {
-        // DEBUG LOG: print("🔄 Food diary updated, refreshing Nutrient Rhythm Bar...")
-                await vm.loadWeekData(for: selectedWeekStart)
-            }
+            requestDataLoad(for: selectedWeekStart, reason: "diary-updated-notification")
         }
         .onDisappear {
             // Cancel any in-flight tasks FIRST
@@ -889,7 +881,7 @@ struct CategoricalNutrientTrackingView: View {
                             selectedDate = newDate // Update main diary date
                             updateWeekOffsetFromDate(newDate)
                             showCalendar = false
-                            loadWeekData()
+                            requestDataLoad(for: newDate, reason: "calendar-selection")
                         }
                     ),
                     displayedComponents: .date
@@ -1399,20 +1391,36 @@ struct CategoricalNutrientTrackingView: View {
 
     // MARK: - Helper Functions
 
-    private func loadWeekData() {
+    /// Single entry point for all data load requests
+    /// Consolidates all triggers to prevent duplicate loads and provide unified logging
+    private func requestDataLoad(for targetDate: Date? = nil, reason: String) {
         Task {
             let calendar = Calendar.current
-            // Calculate the target date based on week offset
-            let targetDate = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: Date()) ?? Date()
+
+            // If no target date provided, use week offset to calculate it
+            let dateToLoad: Date
+            if let targetDate = targetDate {
+                dateToLoad = targetDate
+            } else {
+                // Calculate based on week offset
+                dateToLoad = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: Date()) ?? Date()
+            }
 
             // Get the Monday of that week
-            let (weekStart, _) = getWeekRange(for: targetDate)
+            let (weekStart, _) = getWeekRange(for: dateToLoad)
             selectedWeekStart = weekStart
             selectedDate = weekStart // Update main diary date
+
+            print("🔄 requestDataLoad - reason: \(reason), weekStart: \(weekStart)")
 
             // Load data for that week
             await vm.loadWeekData(for: weekStart)
         }
+    }
+
+    /// Legacy wrapper for backward compatibility
+    private func loadWeekData() {
+        requestDataLoad(reason: "offset-based-navigation")
     }
 
     private func formatWeekRange() -> String {
