@@ -110,26 +110,14 @@ struct ReactionLogView: View {
         }
     }
 
-    // MARK: - Recent Reactions Section
+    // MARK: - Recent Meals Section
     private var recentReactionsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Recent Meals")
                 .font(.system(size: 22, weight: .bold))
                 .foregroundColor(.primary)
 
-            if manager.reactionLogs.isEmpty {
-                emptyReactionsView
-            } else {
-                VStack(spacing: 12) {
-                    ForEach(manager.reactionLogs.prefix(5)) { entry in
-                        ReactionLogCard(entry: entry)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                selectedEntry = entry
-                            }
-                    }
-                }
-            }
+            RecentMealsListView()
         }
     }
 
@@ -1688,6 +1676,316 @@ struct AllergenCategoryDetailView: View {
                     }
                 }
             }
+        }
+    }
+}
+
+// MARK: - Recent Meals List View
+
+struct RecentMealsListView: View {
+    @State private var mealsByDay: [(date: Date, meals: [FoodEntry])] = []
+    @State private var isLoading = true
+    @State private var allIngredients: [String] = []
+    @State private var allergens: [String: [String]] = [:]
+    @State private var otherIngredients: [String] = []
+    @State private var mealFrequencies: [(name: String, count: Int)] = []
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            if isLoading {
+                ProgressView("Loading recent meals...")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 40)
+            } else if mealsByDay.isEmpty {
+                VStack(spacing: 16) {
+                    Image(systemName: "fork.knife.circle")
+                        .font(.system(size: 60))
+                        .foregroundColor(.gray.opacity(0.5))
+
+                    Text("No meals logged recently")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+            } else {
+                VStack(alignment: .leading, spacing: 24) {
+                    // Meals by Day
+                    ForEach(mealsByDay, id: \.date) { dayData in
+                        DayMealsSection(date: dayData.date, meals: dayData.meals)
+                    }
+
+                    Divider()
+                        .padding(.vertical, 8)
+
+                    // Pattern Frequencies
+                    if !mealFrequencies.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Meal Pattern Frequencies")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+
+                            ForEach(mealFrequencies.prefix(10), id: \.name) { item in
+                                HStack {
+                                    Circle()
+                                        .fill(Color.blue)
+                                        .frame(width: 8, height: 8)
+
+                                    Text(item.name)
+                                        .font(.subheadline)
+                                        .foregroundColor(.primary)
+
+                                    Spacer()
+
+                                    Text("\(item.count)×")
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                        }
+                        .padding(.bottom, 8)
+                    }
+
+                    // Recognised Allergens
+                    if !allergens.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Recognised Allergens")
+                                .font(.headline)
+                                .foregroundColor(.red)
+
+                            ForEach(allergens.sorted(by: { $0.key < $1.key }), id: \.key) { category, ingredients in
+                                AllergenCategoryCard(category: category, ingredients: ingredients)
+                            }
+                        }
+                        .padding(.bottom, 8)
+                    }
+
+                    // Other Ingredients
+                    if !otherIngredients.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Other Ingredients")
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+
+                            ForEach(otherIngredients.prefix(20), id: \.self) { ingredient in
+                                HStack(spacing: 8) {
+                                    Circle()
+                                        .fill(Color.secondary.opacity(0.3))
+                                        .frame(width: 4, height: 4)
+
+                                    Text(ingredient)
+                                        .font(.caption)
+                                        .foregroundColor(.primary)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .task {
+            await loadRecentMeals()
+        }
+    }
+
+    private func loadRecentMeals() async {
+        isLoading = true
+        defer { isLoading = false }
+
+        // Fetch meals from the last 7 days
+        let endDate = Date()
+        let startDate = Calendar.current.date(byAdding: .day, value: -7, to: endDate)!
+
+        do {
+            let meals = try await DiaryDataManager.shared.getMealsInTimeRange(from: startDate, to: endDate)
+
+            // Group by day (reverse chronological)
+            let calendar = Calendar.current
+            var grouped: [Date: [FoodEntry]] = [:]
+
+            for meal in meals {
+                let dayStart = calendar.startOfDay(for: meal.date)
+                grouped[dayStart, default: []].append(meal)
+            }
+
+            // Sort by date (most recent first)
+            mealsByDay = grouped.map { (date: $0.key, meals: $0.value) }
+                .sorted { $0.date > $1.date }
+
+            // Calculate meal frequencies
+            var foodCounts: [String: Int] = [:]
+            for meal in meals {
+                let normalizedName = meal.foodName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+                foodCounts[normalizedName, default: 0] += 1
+            }
+            mealFrequencies = foodCounts
+                .map { (name: $0.key.capitalized, count: $0.value) }
+                .sorted { $0.count > $1.count }
+
+            // Extract all ingredients
+            var allIngredientsList: [String] = []
+            for meal in meals {
+                if let ingredients = meal.ingredients {
+                    allIngredientsList.append(contentsOf: ingredients)
+                }
+            }
+
+            // Categorize ingredients
+            categorizeIngredients(allIngredientsList)
+
+        } catch {
+            print("Error loading recent meals: \(error)")
+        }
+    }
+
+    private func categorizeIngredients(_ ingredients: [String]) {
+        var allergenDict: [String: Set<String>] = [:]
+        var otherSet: Set<String> = []
+
+        for ingredient in ingredients {
+            if let allergenCategory = getBaseAllergen(for: ingredient) {
+                allergenDict[allergenCategory, default: []].insert(ingredient)
+            } else {
+                otherSet.insert(ingredient)
+            }
+        }
+
+        allergens = allergenDict.mapValues { Array($0).sorted() }
+        otherIngredients = Array(otherSet).sorted()
+    }
+
+    private func getBaseAllergen(for ingredient: String) -> String? {
+        let lower = ingredient.lowercased()
+
+        if lower.contains("milk") || lower.contains("dairy") || lower.contains("cream") ||
+           lower.contains("cheese") || lower.contains("butter") || lower.contains("yogurt") ||
+           lower.contains("whey") || lower.contains("casein") || lower.contains("lactose") {
+            return "Milk"
+        }
+        if lower.contains("egg") || lower.contains("albumin") || lower.contains("mayonnaise") {
+            return "Eggs"
+        }
+        if lower.contains("peanut") || lower.contains("groundnut") {
+            return "Peanuts"
+        }
+        if lower.contains("almond") || lower.contains("hazelnut") || lower.contains("walnut") ||
+           lower.contains("cashew") || lower.contains("pistachio") || lower.contains("pecan") ||
+           lower.contains("brazil nut") || lower.contains("macadamia") || lower.contains("nut") {
+            return "Tree Nuts"
+        }
+        if lower.contains("wheat") || lower.contains("gluten") || lower.contains("barley") ||
+           lower.contains("rye") || lower.contains("oats") || lower.contains("spelt") ||
+           lower.contains("kamut") {
+            return "Gluten"
+        }
+        if lower.contains("soy") || lower.contains("soya") || lower.contains("soybean") ||
+           lower.contains("tofu") || lower.contains("edamame") {
+            return "Soya"
+        }
+        if lower.contains("fish") || lower.contains("salmon") || lower.contains("tuna") ||
+           lower.contains("cod") || lower.contains("haddock") || lower.contains("trout") {
+            return "Fish"
+        }
+        if lower.contains("shellfish") || lower.contains("shrimp") || lower.contains("prawn") ||
+           lower.contains("crab") || lower.contains("lobster") || lower.contains("mussel") ||
+           lower.contains("oyster") || lower.contains("clam") {
+            return "Shellfish"
+        }
+        if lower.contains("sesame") || lower.contains("tahini") {
+            return "Sesame"
+        }
+        if lower.contains("celery") || lower.contains("celeriac") {
+            return "Celery"
+        }
+        if lower.contains("mustard") {
+            return "Mustard"
+        }
+        if lower.contains("sulphite") || lower.contains("sulfite") {
+            return "Sulphites"
+        }
+
+        return nil
+    }
+}
+
+// MARK: - Day Meals Section
+
+struct DayMealsSection: View {
+    let date: Date
+    let meals: [FoodEntry]
+
+    private var dayName: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE" // Full day name
+        return formatter.string(from: date)
+    }
+
+    private var dateText: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter.string(from: date)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Day header
+            VStack(alignment: .leading, spacing: 4) {
+                Text(dayName)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(.primary)
+
+                Text(dateText)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            // Meals for this day
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(meals) { meal in
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(mealTypeColor(meal.mealType))
+                            .frame(width: 8, height: 8)
+
+                        Text(meal.foodName)
+                            .font(.subheadline)
+                            .foregroundColor(.primary)
+
+                        Spacer()
+
+                        Text(mealTypeLabel(meal.mealType))
+                            .font(.caption2)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(mealTypeColor(meal.mealType).opacity(0.2))
+                            .cornerRadius(4)
+                    }
+                }
+            }
+            .padding(.leading, 8)
+        }
+        .padding(12)
+        .background(Color(.systemBackground))
+        .cornerRadius(10)
+        .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 2)
+    }
+
+    private func mealTypeColor(_ mealType: MealType) -> Color {
+        switch mealType {
+        case .breakfast: return .orange
+        case .lunch: return .blue
+        case .dinner: return .purple
+        case .snacks: return .green
+        }
+    }
+
+    private func mealTypeLabel(_ mealType: MealType) -> String {
+        switch mealType {
+        case .breakfast: return "Breakfast"
+        case .lunch: return "Lunch"
+        case .dinner: return "Dinner"
+        case .snacks: return "Snack"
         }
     }
 }
