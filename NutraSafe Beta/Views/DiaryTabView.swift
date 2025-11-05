@@ -1621,7 +1621,7 @@ final class CategoricalNutrientViewModel: ObservableObject {
                         if Task.isCancelled { return nil }
 
                         let dayEntries = grouped[date] ?? []
-                        let level = await self.calculateDominantLevel(for: dayEntries, existingCache: cachedProfiles, newCache: &newProfiles)
+                        let level = self.calculateDominantLevel(for: dayEntries, existingCache: cachedProfiles, newCache: &newProfiles)
                         days.append(RhythmDay(date: date, level: level))
                     }
 
@@ -1646,9 +1646,9 @@ final class CategoricalNutrientViewModel: ObservableObject {
                             let dayEntries = grouped[date] ?? []
                             if !dayEntries.isEmpty {
                                 loggedDays += 1
-                                let level = await self.highestLevel(for: nutrient.id, entries: dayEntries, existingCache: cachedProfiles, newCache: &newProfiles)
+                                let level = self.highestLevel(for: nutrient.id, entries: dayEntries, existingCache: cachedProfiles, newCache: &newProfiles)
                                 if level == .strong { strongCount += 1 }
-                                let foods = await self.contributingFoods(for: nutrient.id, entries: dayEntries, existingCache: cachedProfiles, newCache: &newProfiles)
+                                let foods = self.contributingFoods(for: nutrient.id, entries: dayEntries, existingCache: cachedProfiles, newCache: &newProfiles)
                                 segments.append(Segment(date: date, level: level == .none ? nil : level, foods: foods.isEmpty ? nil : foods))
                             } else {
                                 segments.append(Segment(date: date, level: nil, foods: nil))

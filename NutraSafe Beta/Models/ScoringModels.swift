@@ -1082,8 +1082,8 @@ class ProcessingScorer {
         var ultraProcessedPenalty = 0
 
         if let ultraDB = ultraProcessedDatabase {
-            // Split ingredients by common delimiters
-            let words = normalizedFood.components(separatedBy: CharacterSet(charactersIn: ",;()[] "))
+            // Split ingredients by common delimiters (for future use)
+            _ = normalizedFood.components(separatedBy: CharacterSet(charactersIn: ",;()[] "))
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }
 

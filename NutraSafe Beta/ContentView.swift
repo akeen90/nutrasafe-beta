@@ -3227,7 +3227,7 @@ struct AddWeightView: View {
                 if !images.isEmpty {
                     // Save all images locally
                     do {
-                        try await ImageCacheManager.shared.saveWeightImages(images, for: entryId.uuidString)
+                        try ImageCacheManager.shared.saveWeightImages(images, for: entryId.uuidString)
                         print("✅ Saved \(images.count) weight images to local cache for entry: \(entryId)")
                     } catch {
                         print("⚠️ Failed to cache weight images locally: \(error)")

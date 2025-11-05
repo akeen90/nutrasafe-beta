@@ -509,7 +509,7 @@ struct AddFoundFoodToUseBySheet: View {
         var firebaseURL: String? = nil
         if let image = capturedImage {
             do {
-                try await ImageCacheManager.shared.saveUseByImage(image, for: itemId)
+                try ImageCacheManager.shared.saveUseByImage(image, for: itemId)
                 print("✅ Image cached locally for item: \(itemId)")
             } catch {
                 print("⚠️ Failed to cache image locally: \(error)")
@@ -3042,7 +3042,7 @@ struct UseByItemDetailView: View {
     private func loadExistingPhoto(from urlString: String) async {
         // First, try to load from local cache using item ID
         if let item = item {
-            if let cachedImage = await ImageCacheManager.shared.loadUseByImage(for: item.id) {
+            if let cachedImage = ImageCacheManager.shared.loadUseByImage(for: item.id) {
                 await MainActor.run {
                     capturedImage = cachedImage
                     print("⚡️ Loaded image from local cache for item: \(item.id)")
@@ -3066,7 +3066,7 @@ struct UseByItemDetailView: View {
                 // Cache it locally for next time
                 if let item = item {
                     do {
-                        try await ImageCacheManager.shared.saveUseByImage(image, for: item.id)
+                        try ImageCacheManager.shared.saveUseByImage(image, for: item.id)
                         print("💾 Cached downloaded image locally for item: \(item.id)")
                     } catch {
                         print("⚠️ Failed to cache downloaded image: \(error)")
@@ -3116,7 +3116,7 @@ struct UseByItemDetailView: View {
             if let image = capturedImage, uploadedImageURL == nil {
                 // Save to local cache
                 do {
-                    try await ImageCacheManager.shared.saveUseByImage(image, for: itemId)
+                    try ImageCacheManager.shared.saveUseByImage(image, for: itemId)
                     print("✅ Image cached locally for new item: \(itemId)")
                 } catch {
                     print("⚠️ Failed to cache image locally: \(error)")
@@ -3190,7 +3190,7 @@ struct UseByItemDetailView: View {
                 if isNewImage {
                     // Save to local cache
                     do {
-                        try await ImageCacheManager.shared.saveUseByImage(image, for: item.id)
+                        try ImageCacheManager.shared.saveUseByImage(image, for: item.id)
                         print("✅ Image cached locally for item: \(item.id)")
                     } catch {
                         print("⚠️ Failed to cache image locally: \(error)")
@@ -3976,7 +3976,7 @@ struct CachedUseByImage: View {
         isLoading = true
 
         // 1. Try local cache first (instant!)
-        if let cachedImage = await ImageCacheManager.shared.loadUseByImage(for: itemId) {
+        if let cachedImage = ImageCacheManager.shared.loadUseByImage(for: itemId) {
             loadedImage = cachedImage
             isLoading = false
             print("⚡️ Loaded UseBy thumbnail from cache: \(itemId)")
@@ -3996,7 +3996,7 @@ struct CachedUseByImage: View {
 
                 // Cache for next time
                 do {
-                    try await ImageCacheManager.shared.saveUseByImage(image, for: itemId)
+                    try ImageCacheManager.shared.saveUseByImage(image, for: itemId)
                     print("💾 Cached downloaded UseBy thumbnail: \(itemId)")
                 } catch {
                     print("⚠️ Failed to cache thumbnail: \(error)")
