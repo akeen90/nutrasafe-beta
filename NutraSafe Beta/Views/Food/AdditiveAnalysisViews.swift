@@ -468,7 +468,7 @@ struct AdditiveCardView: View {
                         // Name and code
                         HStack(spacing: 6) {
                             Text(additive.name)
-                                .font(.system(size: 15, weight: .semibold))
+                                .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(.primary)
 
                             if let code = additive.code {
@@ -489,7 +489,7 @@ struct AdditiveCardView: View {
                                     .font(.system(size: 10))
                                     .foregroundColor(getOriginColor(additive.origin))
                                 Text(getOriginLabel(additive.origin))
-                                    .font(.system(size: 11, weight: .medium))
+                                    .font(.system(size: 12, weight: .medium))
                                     .foregroundColor(.secondary)
                             }
 

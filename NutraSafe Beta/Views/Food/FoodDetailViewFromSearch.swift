@@ -3861,7 +3861,7 @@ struct NutrientInfoCard: View {
                     // Nutrient name and category
                     VStack(alignment: .leading, spacing: 4) {
                         Text(nutrientInfo.name)
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.primary)
 
                         // Show formatted category
