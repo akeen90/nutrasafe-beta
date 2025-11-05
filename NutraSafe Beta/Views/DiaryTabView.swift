@@ -1168,6 +1168,17 @@ struct CategoricalNutrientTrackingView: View {
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                         .lineLimit(nil)
+
+                    // Citation note
+                    HStack(spacing: 4) {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                        Text("Based on NHS/EFSA nutrient guidelines")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.top, 4)
                 }
 
                 Spacer()
@@ -2321,6 +2332,45 @@ struct NutrientGapsView: View {
                         .foregroundColor(.secondary)
                         .padding(.vertical, 8)
                         .listRowSeparator(.hidden)
+                }
+
+                // Citations Section
+                Section(header: Text("Research Sources").font(.system(size: 14, weight: .semibold))) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Nutrient recommendations and health benefits based on:")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.bottom, 4)
+
+                        ForEach(CitationManager.shared.citations(for: .dailyValues).prefix(3)) { citation in
+                            Button(action: {
+                                if let url = URL(string: citation.url) {
+                                    UIApplication.shared.open(url)
+                                }
+                            }) {
+                                HStack(alignment: .top, spacing: 8) {
+                                    Image(systemName: "doc.text.fill")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.blue)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(citation.organization)
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundColor(.primary)
+                                        Text(citation.title)
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.secondary)
+                                            .lineLimit(2)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "arrow.up.right.square")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                    .padding(.vertical, 4)
                 }
             }
             .listStyle(.insetGrouped)

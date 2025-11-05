@@ -197,7 +197,9 @@ struct FoodDetailViewFromSearch: View {
 
     // Watch tabs (Additive Analysis, Allergy Watch, Vitamins & Minerals)
     @State private var selectedWatchTab: WatchTab = .additives
-    
+    @State private var showingVitaminCitations = false
+    @State private var showingAllergenCitations = false
+
     private var buttonText: String {
         // DEBUG LOG: print("DEBUG buttonText calculation:")
         print("  - diaryEntryId: \(String(describing: diaryEntryId))")
@@ -1577,8 +1579,114 @@ struct FoodDetailViewFromSearch: View {
                 perServingSugar: displayFood.sugar * perServingMultiplier * quantityMultiplier
             )
         }
+        .sheet(isPresented: $showingVitaminCitations) {
+            NavigationView {
+                List {
+                    Section(header: Text("Vitamin & Mineral Health Claims")) {
+                        Text("Health benefits shown are based on official EFSA-approved health claims and NHS nutritional guidance.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.vertical, 4)
+                    }
+
+                    ForEach(CitationManager.shared.citations(for: .dailyValues).filter {
+                        $0.title.contains("Vitamin") || $0.title.contains("Iron") || $0.title.contains("Calcium")
+                    }) { citation in
+                        Button(action: {
+                            if let url = URL(string: citation.url) {
+                                UIApplication.shared.open(url)
+                            }
+                        }) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Image(systemName: "doc.text.fill")
+                                        .foregroundColor(.blue)
+                                    Text(citation.organization)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                    Image(systemName: "arrow.up.right.square")
+                                        .font(.caption)
+                                        .foregroundColor(.blue)
+                                }
+                                Text(citation.title)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(2)
+                                Text(citation.description)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(3)
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                }
+                .navigationTitle("Official Sources")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Done") {
+                            showingVitaminCitations = false
+                        }
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showingAllergenCitations) {
+            NavigationView {
+                List {
+                    Section(header: Text("Allergen Detection")) {
+                        Text("Allergen warnings are based on UK FSA and EU food safety regulations.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.vertical, 4)
+                    }
+
+                    ForEach(CitationManager.shared.citations(for: .allergens)) { citation in
+                        Button(action: {
+                            if let url = URL(string: citation.url) {
+                                UIApplication.shared.open(url)
+                            }
+                        }) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Image(systemName: "doc.text.fill")
+                                        .foregroundColor(.blue)
+                                    Text(citation.organization)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                    Image(systemName: "arrow.up.right.square")
+                                        .font(.caption)
+                                        .foregroundColor(.blue)
+                                }
+                                Text(citation.title)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(2)
+                                Text(citation.description)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(3)
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                }
+                .navigationTitle("Allergen Sources")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Done") {
+                            showingAllergenCitations = false
+                        }
+                    }
+                }
+            }
+        }
     }
-    
+
     
     private var nutritionFactsSection: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -2952,10 +3060,32 @@ struct FoodDetailViewFromSearch: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 32)
             }
+
+            // Citations for allergen detection
+            if !potentialAllergens.isEmpty {
+                Divider()
+                    .padding(.vertical, 8)
+
+                HStack(spacing: 4) {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    Text("Based on UK FSA and EU food safety regulations")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    Button(action: {
+                        showingAllergenCitations = true
+                    }) {
+                        Text("Sources")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.blue)
+                    }
+                }
+            }
         }
         .padding(16)
     }
-    
+
     // MARK: - Vitamins & Minerals Content (NEW SYSTEM)
     private func vitaminsContent(scrollProxy: ScrollViewProxy) -> some View {
         let detectedNutrients = getDetectedNutrients()
@@ -2997,10 +3127,44 @@ struct FoodDetailViewFromSearch: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 32)
             }
+
+            // Citations Section
+            Divider()
+                .padding(.vertical, 8)
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: "info.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(.blue)
+                    Text("Health Benefits Based On")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.primary)
+                }
+
+                Text("EFSA-approved health claims and NHS nutritional guidance")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.bottom, 4)
+
+                Button(action: {
+                    // Show full citations in a sheet
+                    showingVitaminCitations = true
+                }) {
+                    HStack {
+                        Text("View Official Sources")
+                            .font(.system(size: 13, weight: .medium))
+                        Image(systemName: "arrow.up.right.square")
+                            .font(.system(size: 12))
+                    }
+                    .foregroundColor(.blue)
+                }
+            }
+            .padding(.top, 8)
         }
         .padding(16)
     }
-    
+
     // NEW: Detect nutrients from ingredients using NutrientDetector and MicronutrientDatabase
     private func getDetectedNutrients() -> [String] {
         // DEBUG LOG: print("🔬 getDetectedNutrients() called for food: \(food.name)")
@@ -3930,6 +4094,49 @@ struct NutraSafeGradeInfoView: View {
                         Text(result.explanation)
                             .font(.footnote)
                             .foregroundColor(.secondary)
+                    }
+
+                    // Citations Section
+                    Group {
+                        Text("Research Sources")
+                            .font(.headline)
+                            .padding(.top, 8)
+
+                        Text("Food processing classification based on the NOVA system and nutritional science research:")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.bottom, 8)
+
+                        ForEach(CitationManager.shared.citations(for: .foodProcessing)) { citation in
+                            Button(action: {
+                                if let url = URL(string: citation.url) {
+                                    UIApplication.shared.open(url)
+                                }
+                            }) {
+                                HStack(alignment: .top, spacing: 8) {
+                                    Image(systemName: "doc.text.fill")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.blue)
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(citation.organization)
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundColor(.primary)
+                                        Text(citation.title)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                            .lineLimit(2)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "arrow.up.right.square")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.blue)
+                                }
+                                .padding(.vertical, 8)
+                                .padding(.horizontal, 12)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(10)
+                            }
+                        }
                     }
                 }
                 .padding(20)

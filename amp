@@ -1,0 +1,5 @@
+Command line invocation:
+    /Users/aaronkeen/Downloads/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project NutraSafeBeta.xcodeproj -scheme "NutraSafe Beta" -destination "platform=iOS Simulator,name=iPhone 16 Pro,OS=18.6" build 2
+
+2025-11-05 12:50:57.028 xcodebuild[62783:11140233] Writing error result bundle to /var/folders/wq/2n5mcsxd3_7bh0trw1tyvtym0000gn/T/ResultBundle_2025-05-11_12-50-0057.xcresult
+xcodebuild: error: Unknown build action '2'.

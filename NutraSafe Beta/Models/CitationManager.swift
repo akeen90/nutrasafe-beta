@@ -83,10 +83,92 @@ class CitationManager {
             ),
 
             Citation(
-                title: "Dietary Reference Intakes (DRIs)",
-                organization: "National Institutes of Health (NIH)",
-                url: "https://ods.od.nih.gov/HealthInformation/nutrientrecommendations.aspx",
-                description: "Reference intakes for vitamins and minerals based on age, sex, and life stage.",
+                title: "SUMMARY TABLES: Dietary Reference Intakes",
+                organization: "National Institutes of Health (NIH) / National Academies",
+                url: "https://www.ncbi.nlm.nih.gov/books/NBK222881/",
+                description: "Comprehensive DRI tables presenting Estimated Average Requirements (EARs) and Recommended Dietary Allowances (RDAs) for vitamins and minerals across all life stages.",
+                category: .dailyValues
+            ),
+
+            // MARK: - Vitamin & Mineral Health Benefits (EFSA Approved Claims)
+
+            Citation(
+                title: "Vitamin A related health claims",
+                organization: "European Food Safety Authority (EFSA)",
+                url: "https://www.efsa.europa.eu/en/efsajournal/pub/1221",
+                description: "EFSA-approved health claims: Vitamin A contributes to normal iron metabolism, maintenance of normal mucous membranes, normal skin, normal vision, normal function of immune system, and process of cell specialisation.",
+                category: .dailyValues
+            ),
+
+            Citation(
+                title: "Vitamin C related health claims",
+                organization: "European Food Safety Authority (EFSA)",
+                url: "https://www.efsa.europa.eu/en/efsajournal/pub/1226",
+                description: "EFSA-approved claims: Vitamin C contributes to normal collagen formation for bones, cartilage, skin, gums, and teeth. It also increases iron absorption and contributes to normal function of immune system.",
+                category: .dailyValues
+            ),
+
+            Citation(
+                title: "Vitamin D related health claims",
+                organization: "European Food Safety Authority (EFSA)",
+                url: "https://www.efsa.europa.eu/en/efsajournal/pub/1227",
+                description: "EFSA-approved claims: Vitamin D contributes to normal absorption/utilisation of calcium and phosphorus, normal blood calcium concentrations, maintenance of normal bones and teeth, normal muscle function, and normal function of immune system.",
+                category: .dailyValues
+            ),
+
+            Citation(
+                title: "Iron related health claims",
+                organization: "European Food Safety Authority (EFSA)",
+                url: "https://www.efsa.europa.eu/en/efsajournal/pub/1740",
+                description: "EFSA-approved claims: Iron contributes to normal formation of red blood cells and haemoglobin, normal oxygen transport, normal function of immune system, reduction of tiredness and fatigue, and normal cognitive function.",
+                category: .dailyValues
+            ),
+
+            Citation(
+                title: "Calcium and Vitamin D related health claims",
+                organization: "European Food Safety Authority (EFSA)",
+                url: "https://www.efsa.europa.eu/en/efsajournal/pub/1272",
+                description: "EFSA-approved claims: Calcium is needed for maintenance of normal bones and teeth, contributes to normal blood clotting, normal muscle function, and normal nerve transmission.",
+                category: .dailyValues
+            ),
+
+            Citation(
+                title: "Vitamins and minerals - Vitamin A",
+                organization: "UK National Health Service (NHS)",
+                url: "https://www.nhs.uk/conditions/vitamins-and-minerals/vitamin-a/",
+                description: "NHS guidance: Vitamin A helps immune system work properly, helps vision in dim light, and keeps skin and mucous membranes healthy.",
+                category: .dailyValues
+            ),
+
+            Citation(
+                title: "Vitamins and minerals - Vitamin C",
+                organization: "UK National Health Service (NHS)",
+                url: "https://www.nhs.uk/conditions/vitamins-and-minerals/vitamin-c/",
+                description: "NHS guidance: Vitamin C helps protect cells, maintain healthy skin, blood vessels, bones and cartilage, and helps with wound healing.",
+                category: .dailyValues
+            ),
+
+            Citation(
+                title: "Vitamins and minerals - Vitamin D",
+                organization: "UK National Health Service (NHS)",
+                url: "https://www.nhs.uk/conditions/vitamins-and-minerals/vitamin-d/",
+                description: "NHS guidance: Vitamin D helps regulate calcium and phosphate, keeping bones, teeth and muscles healthy.",
+                category: .dailyValues
+            ),
+
+            Citation(
+                title: "Vitamins and minerals - Iron",
+                organization: "UK National Health Service (NHS)",
+                url: "https://www.nhs.uk/conditions/vitamins-and-minerals/iron/",
+                description: "NHS guidance: Iron helps make red blood cells, which carry oxygen around the body. Lack of iron can lead to iron deficiency anaemia.",
+                category: .dailyValues
+            ),
+
+            Citation(
+                title: "EU Register of Nutrition and Health Claims",
+                organization: "European Commission",
+                url: "https://food.ec.europa.eu/food-safety/labelling-and-nutrition/nutrition-and-health-claims/eu-register-health-claims_en",
+                description: "Official EU register of authorized and rejected nutrition and health claims on foods, providing searchable database of all permitted health claims under Regulation (EC) No 1924/2006.",
                 category: .dailyValues
             ),
 
@@ -258,10 +340,10 @@ class CitationManager {
             ),
 
             Citation(
-                title: "Metabolic Effects of Intermittent Fasting",
-                organization: "Annual Review of Nutrition (Peer-reviewed)",
-                url: "https://www.annualreviews.org/content/journals/10.1146/annurev-nutr-052020-041327",
-                description: "Comprehensive scientific review of intermittent fasting's metabolic effects including glycogen depletion (6-12h), ketogenesis (12-18h), and autophagy activation (18-24h+), published in Annual Review of Nutrition 2021.",
+                title: "Intermittent Fasting and Metabolic Health",
+                organization: "National Center for Biotechnology Information (NCBI) / Nutrients Journal",
+                url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC8839325/",
+                description: "Peer-reviewed 2022 study on metabolic effects of intermittent fasting including glycogen depletion, ketogenesis, and autophagy activation. Published in Nutrients, demonstrating metabolic switching and cellular stress response pathways.",
                 category: .fasting
             ),
 

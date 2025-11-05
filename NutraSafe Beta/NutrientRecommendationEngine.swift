@@ -184,6 +184,8 @@ class NutrientRecommendationEngine: ObservableObject {
         let nutrientNames = nutrients.map { $0.nutrient }
 
         // Predefined multi-nutrient rich foods
+        // Data based on USDA FoodData Central nutrient composition
+        // Source: https://fdc.nal.usda.gov/
         let nutrientRichFoods: [(String, [String], FoodCategory)] = [
             ("Spinach", ["vitamin_a", "iron", "vitamin_c", "folate"], .vegetables),
             ("Salmon", ["vitamin_d", "vitamin_b12", "omega3"], .seafood),

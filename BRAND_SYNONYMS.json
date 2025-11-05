@@ -1,0 +1,144 @@
+{
+  "brand_synonyms": {
+    "M&S": [
+      "Marks and Spencer",
+      "Marks & Spencer",
+      "Marks Spencer",
+      "M and S",
+      "MS",
+      "M&S Food",
+      "Marks",
+      "Spencer"
+    ],
+    "Sainsbury's": [
+      "Sainsburys",
+      "Sainsbury",
+      "J Sainsbury",
+      "By Sainsbury's",
+      "Sainsbury's Taste The Difference",
+      "Taste The Difference"
+    ],
+    "Tesco": [
+      "Tesco Finest",
+      "Tesco Value",
+      "Tesco Extra",
+      "Tesco Express"
+    ],
+    "Asda": [
+      "ASDA",
+      "Asda Smart Price",
+      "Asda Extra Special"
+    ],
+    "Morrisons": [
+      "Morrison",
+      "Morrisons Savers",
+      "Morrisons The Best"
+    ],
+    "Waitrose": [
+      "Waitrose & Partners",
+      "Waitrose Essential",
+      "Essential Waitrose",
+      "Waitrose Duchy Organic"
+    ],
+    "Aldi": [
+      "ALDI",
+      "Aldi Specially Selected"
+    ],
+    "Lidl": [
+      "LIDL",
+      "Lidl Deluxe"
+    ],
+    "Co-op": [
+      "Coop",
+      "Co-operative",
+      "Cooperative",
+      "Co op",
+      "The Co-op"
+    ],
+    "Iceland": [
+      "Iceland Foods",
+      "Iceland Frozen Foods"
+    ],
+    "Kellogg's": [
+      "Kelloggs",
+      "Kellogg"
+    ],
+    "Cadbury": [
+      "Cadburys",
+      "Cadbury's"
+    ],
+    "McVitie's": [
+      "McVities",
+      "McVitie"
+    ],
+    "Heinz": [
+      "HJ Heinz",
+      "H.J. Heinz"
+    ],
+    "Nestlé": [
+      "Nestle",
+      "Nestles"
+    ],
+    "Coca-Cola": [
+      "Coke",
+      "Coca Cola",
+      "CocaCola"
+    ],
+    "Pepsi": [
+      "Pepsi-Cola",
+      "PepsiCo"
+    ],
+    "Walkers": [
+      "Walkers Crisps"
+    ],
+    "Quorn": [
+      "Quorn Foods"
+    ],
+    "Hovis": [
+      "Hovis Bread"
+    ],
+    "Warburtons": [
+      "Warburton",
+      "Warburton's"
+    ],
+    "Birds Eye": [
+      "Bird's Eye",
+      "Birdseye",
+      "Birds-Eye"
+    ],
+    "Ben's Original": [
+      "Uncle Ben's",
+      "Uncle Bens",
+      "Bens Original"
+    ],
+    "Müller": [
+      "Muller",
+      "Mueller"
+    ],
+    "Philadelphia": [
+      "Philly"
+    ],
+    "Anchor": [
+      "Anchor Butter",
+      "Anchor Dairy"
+    ],
+    "Flora": [
+      "Flora Buttery"
+    ],
+    "Branston": [
+      "Branston Pickle"
+    ],
+    "Colman's": [
+      "Colmans",
+      "Colman",
+      "Colemans"
+    ],
+    "Bisto": [
+      "Bisto Gravy"
+    ],
+    "Weetabix": [
+      "Weetabix Cereal"
+    ]
+  },
+  "search_instructions": "When a user searches for a brand, check this synonym list. If they search for any synonym, map it to the canonical brand name in the database. This allows searching for 'Marks and Spencer' to find products with brand 'M&S'."
+}

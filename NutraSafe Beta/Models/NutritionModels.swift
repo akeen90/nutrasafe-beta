@@ -1255,14 +1255,23 @@ struct RecommendedIntakes: Codable, Equatable {
     let gender: Gender
     let dailyValues: [String: Double]
 
+    /// Returns daily recommended value for a nutrient
+    /// - Parameter nutrient: Nutrient name (e.g., "vitaminA", "calcium")
+    /// - Returns: Daily value in appropriate unit (mg, mcg, g)
+    ///
+    /// **Sources:**
+    /// - FDA Daily Values: https://www.fda.gov/food/nutrition-facts-label/daily-value-nutrition-and-supplement-facts-labels
+    /// - UK SACN Dietary Reference Values: https://www.gov.uk/government/collections/sacn-reports-and-position-statements
+    /// - NIH/National Academies DRI Tables: https://www.ncbi.nlm.nih.gov/books/NBK222881/
+    /// - EFSA Health Claims: https://www.efsa.europa.eu/en/topics/topic/health-claims
     func getDailyValue(for nutrient: String) -> Double {
         // First check if it exists in the provided daily values
         if let value = dailyValues[nutrient], value > 0 {
             return value
         }
 
-        // Fall back to standard recommended daily values for adults
-        // Based on USDA/FDA daily values
+        // Fall back to standard recommended daily values for adults (age 19-50)
+        // Values based on FDA Daily Values (2016) and UK Reference Nutrient Intakes
         let standardDailyValues: [String: Double] = [
             // Vitamins
             "vitaminA": 900.0,        // mcg RAE
@@ -1344,6 +1353,22 @@ class MicronutrientManager: ObservableObject {
 
     @Published var currentProfile: MicronutrientProfile?
 
+    /// Estimates micronutrient content based on macronutrient composition and food category
+    ///
+    /// **IMPORTANT**: These are ESTIMATED values based on typical food composition patterns.
+    /// Actual micronutrient content may vary significantly. Where possible, verified nutritional
+    /// data from databases should be preferred.
+    ///
+    /// **Methodology**: Food category multipliers applied to macronutrient base values
+    ///
+    /// **Data Sources** (for typical food composition patterns):
+    /// - USDA FoodData Central: https://fdc.nal.usda.gov/
+    /// - UK CoFID Database: https://www.gov.uk/government/publications/composition-of-foods-integrated-dataset-cofid
+    ///
+    /// - Parameters:
+    ///   - food: Food item to estimate nutrients for
+    ///   - quantity: Serving quantity multiplier
+    /// - Returns: Estimated micronutrient profile with confidence score
     func getMicronutrientProfile(for food: FoodSearchResult, quantity: Double = 1.0) -> MicronutrientProfile {
         // Detect food type for more accurate estimates
         let foodName = food.name.lowercased()
