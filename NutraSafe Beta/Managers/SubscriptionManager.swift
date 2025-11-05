@@ -83,9 +83,21 @@ final class SubscriptionManager: ObservableObject {
     }
 
     private func loadProductInternal() async throws {
+        // Always sync with App Store first to ensure fresh pricing data
+        print("StoreKit: Syncing with App Store before loading products")
+        do {
+            try await AppStore.sync()
+            // Give StoreKit a brief moment to update local state
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            print("StoreKit: Sync completed successfully")
+        } catch {
+            print("StoreKit: Sync failed: \(error), will try to load products anyway")
+        }
+
         print("StoreKit: Loading products for id: \(productID)")
         let products = try await Product.products(for: [productID])
-        print("StoreKit: Initial product fetch count: \(products.count)")
+        print("StoreKit: Product fetch count: \(products.count)")
+
         if let first = products.first {
             print("StoreKit: Loaded product: \(first.id) price=\(first.displayPrice)")
             product = first
@@ -95,27 +107,8 @@ final class SubscriptionManager: ObservableObject {
             return
         }
 
-        do {
-            print("StoreKit: No products found; attempting AppStore.sync()")
-            try await AppStore.sync()
-            // Give StoreKit a brief moment to update local state
-            try? await Task.sleep(nanoseconds: 300_000_000)
-            let retryProducts = try await Product.products(for: [productID])
-            print("StoreKit: Retry product fetch count: \(retryProducts.count)")
-            product = retryProducts.first
-            if let p = product {
-                print("StoreKit: Loaded product after sync: \(p.id) price=\(p.displayPrice)")
-                isProductLoaded = true
-                try await refreshStatus()
-                await refreshPremiumOverride()
-                return
-            }
-        } catch {
-            print("StoreKit: Failed to sync or load products: \(error)")
-        }
-
         #if DEBUG && canImport(StoreKitTest)
-        // As a final fallback, re-activate test session and try one more time
+        // As a final fallback in DEBUG, re-activate test session and try one more time
         print("StoreKit: Products still unavailable; re-activating StoreKitTest and retrying")
         ensureLocalStoreKitActivated()
         try? await Task.sleep(nanoseconds: 300_000_000)
