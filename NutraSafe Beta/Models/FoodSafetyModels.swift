@@ -330,8 +330,10 @@ struct AdditiveInfo: Codable, Identifiable {
     let consumerInfo: String?
     let eNumbers: [String]  // Array of all E-numbers for this ingredient (consolidated database)
     let whereItComesFrom: String?  // Descriptive origin text for ultra-processed ingredients
+    let processingPenalty: Int  // Processing penalty score for ultra-processed ingredients
+    let novaGroup: Int  // NOVA classification group (1-4)
 
-    init(id: String, eNumber: String, name: String, group: AdditiveGroup, isPermittedGB: Bool = true, isPermittedNI: Bool = true, isPermittedEU: Bool = true, statusNotes: String? = nil, hasChildWarning: Bool = false, hasPKUWarning: Bool = false, hasPolyolsWarning: Bool = false, hasSulphitesAllergenLabel: Bool = false, category: AdditiveCategory = .other, origin: AdditiveOrigin = .synthetic, overview: String = "", typicalUses: String = "", effectsSummary: String = "", effectsVerdict: AdditiveVerdict = .neutral, synonyms: [String] = [], insNumber: String? = nil, sources: [AdditiveSource] = [], consumerInfo: String? = nil, eNumbers: [String] = [], whereItComesFrom: String? = nil) {
+    init(id: String, eNumber: String, name: String, group: AdditiveGroup, isPermittedGB: Bool = true, isPermittedNI: Bool = true, isPermittedEU: Bool = true, statusNotes: String? = nil, hasChildWarning: Bool = false, hasPKUWarning: Bool = false, hasPolyolsWarning: Bool = false, hasSulphitesAllergenLabel: Bool = false, category: AdditiveCategory = .other, origin: AdditiveOrigin = .synthetic, overview: String = "", typicalUses: String = "", effectsSummary: String = "", effectsVerdict: AdditiveVerdict = .neutral, synonyms: [String] = [], insNumber: String? = nil, sources: [AdditiveSource] = [], consumerInfo: String? = nil, eNumbers: [String] = [], whereItComesFrom: String? = nil, processingPenalty: Int = 0, novaGroup: Int = 0) {
         self.id = id
         self.eNumber = eNumber
         self.name = name
@@ -356,6 +358,8 @@ struct AdditiveInfo: Codable, Identifiable {
         self.consumerInfo = consumerInfo
         self.eNumbers = eNumbers
         self.whereItComesFrom = whereItComesFrom
+        self.processingPenalty = processingPenalty
+        self.novaGroup = novaGroup
     }
 }
 
@@ -571,12 +575,23 @@ struct UnifiedAdditiveDatabase: Codable {
     let additives: [AdditiveInfo]
 }
 
+struct ConsolidatedIngredientsDatabase: Codable {
+    let metadata: DatabaseMetadata
+    let ingredients: [AdditiveInfo]
+}
+
 struct DatabaseMetadata: Codable {
     let version: String
-    let total_additives: Int
+    let total_additives: Int?  // Optional for backward compatibility
+    let total_ingredients: Int?  // New field for consolidated database
     let last_updated: String
     let description: String
-    let source: String
+    let source: String?  // Optional as consolidated DB uses "sources" array
+    let sources: [String]?  // Array of source files for consolidated database
+
+    var totalCount: Int {
+        return total_ingredients ?? total_additives ?? 0
+    }
 }
 
 class AdditiveWatchService {

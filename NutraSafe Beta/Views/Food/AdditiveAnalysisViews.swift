@@ -229,9 +229,10 @@ struct AdditiveCard: View {
                     Spacer()
 
                     HStack(spacing: 6) {
-                        // Display all E-numbers in purple boxes (consolidated database)
-                        if !additive.eNumbers.isEmpty {
-                            ForEach(additive.eNumbers, id: \.self) { eNumber in
+                        // Display only actual E-numbers in purple boxes (consolidated database)
+                        let actualENumbers = additive.eNumbers.filter { $0.hasPrefix("E") }
+                        if !actualENumbers.isEmpty {
+                            ForEach(actualENumbers, id: \.self) { eNumber in
                                 Text(eNumber)
                                     .font(.system(size: 11, weight: .medium))
                                     .foregroundColor(.white)
@@ -778,7 +779,7 @@ struct AdditiveCardView: View {
         case "Moderate":
             return "This additive has a moderate safety rating in food safety databases."
         default:
-            return "This additive is generally recognized as safe when used in food."
+            return "This additive is generally recognised as safe when used in food."
         }
     }
 }
@@ -965,9 +966,10 @@ struct UltraProcessedIngredientCard: View {
                     Spacer()
 
                     HStack(spacing: 6) {
-                        // Display all E-numbers in purple boxes
-                        if !ingredient.eNumbers.isEmpty {
-                            ForEach(ingredient.eNumbers, id: \.self) { eNumber in
+                        // Display only actual E-numbers in purple boxes
+                        let actualENumbers = ingredient.eNumbers.filter { $0.hasPrefix("E") }
+                        if !actualENumbers.isEmpty {
+                            ForEach(actualENumbers, id: \.self) { eNumber in
                                 Text(eNumber)
                                     .font(.system(size: 11, weight: .medium))
                                     .foregroundColor(.white)

@@ -1009,7 +1009,8 @@ struct FoodDetailViewFromSearch: View {
                     origin: additive.origin.rawValue.capitalized,
                     childWarning: additive.hasChildWarning,
                     riskLevel: riskLevel,
-                    description: description
+                    description: description,
+                    sources: additive.sources
                 )
             }
         }
@@ -1037,7 +1038,8 @@ struct FoodDetailViewFromSearch: View {
                     origin: additive.origin ?? "Unknown",
                     childWarning: additive.childWarning,
                     riskLevel: riskLevel,
-                    description: description
+                    description: description,
+                    sources: []
                 )
             }
         }
@@ -1092,7 +1094,8 @@ struct FoodDetailViewFromSearch: View {
                     origin: origin,
                     childWarning: childWarning,
                     riskLevel: riskLevel,
-                    description: description
+                    description: description,
+                    sources: []
                 ))
             }
         }
@@ -1367,7 +1370,8 @@ struct FoodDetailViewFromSearch: View {
                             origin: additive.origin ?? "Unknown",
                             childWarning: additive.childWarning,
                             riskLevel: riskLevel,
-                            description: description
+                            description: description,
+                            sources: []
                         )
                     }
                 } else {
@@ -1393,7 +1397,8 @@ struct FoodDetailViewFromSearch: View {
                                 origin: additive.origin.rawValue.capitalized,
                                 childWarning: additive.hasChildWarning,
                                 riskLevel: riskLevel,
-                                description: description
+                                description: description,
+                                sources: additive.sources
                             )
                         }
                         DispatchQueue.main.async {
@@ -1651,7 +1656,7 @@ struct FoodDetailViewFromSearch: View {
                     nutritionRowModern("Protein", perServing: adjustedProtein, per100g: displayFood.protein, unit: "g")
                     nutritionRowModern("Carbs", perServing: adjustedCarbs, per100g: displayFood.carbs, unit: "g")
                     nutritionRowModern("Fat", perServing: adjustedFat, per100g: displayFood.fat, unit: "g")
-                    nutritionRowModern("Fiber", perServing: adjustedFiber, per100g: displayFood.fiber, unit: "g")
+                    nutritionRowModern("Fibre", perServing: adjustedFiber, per100g: displayFood.fiber, unit: "g")
                     nutritionRowModern("Sugar", perServing: adjustedSugar, per100g: displayFood.sugar, unit: "g")
                     nutritionRowModern("Salt", perServing: adjustedSalt, per100g: saltPer100g, unit: "g")
                 }
@@ -2304,7 +2309,8 @@ struct FoodDetailViewFromSearch: View {
                                         origin: additive.origin.rawValue.capitalized,
                                         childWarning: additive.hasChildWarning,
                                         riskLevel: riskLevel,
-                                        description: description
+                                        description: description,
+                                        sources: additive.sources
                                     )
                                 }
                                 DispatchQueue.main.async {
@@ -2844,13 +2850,14 @@ struct FoodDetailViewFromSearch: View {
                             }
 
                             Text(tab.rawValue)
-                                .font(.system(size: 11, weight: selectedWatchTab == tab ? .semibold : .medium))
+                                .font(.system(size: 11, weight: .semibold))
                                 .foregroundColor(selectedWatchTab == tab ? tab.color : .secondary)
                                 .multilineTextAlignment(.center)
                                 .lineLimit(2)
                                 .fixedSize(horizontal: false, vertical: true)
+                                .frame(height: 28)
                         }
-                        .frame(maxWidth: .infinity)
+                        .frame(maxWidth: .infinity, minHeight: 98)
                         .padding(.vertical, 12)
                         .background(
                             RoundedRectangle(cornerRadius: 12)

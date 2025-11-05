@@ -275,7 +275,7 @@ struct AddFoodAIView: View {
                 fiber: 0, // Not provided by AI recognition
                 sugar: 0, // Not provided by AI recognition  
                 sodium: 0, // Not provided by AI recognition
-                servingDescription: "AI recognized portion",
+                servingDescription: "AI recognised portion",
                 ingredients: nil, // Not provided by AI recognition
                 confidence: foodItem.confidence
             )

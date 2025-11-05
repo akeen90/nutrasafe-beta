@@ -129,7 +129,7 @@ struct NutritionScoreDetailView: View {
                             .font(.system(size: 18, weight: .bold))
                             .foregroundColor(.primary)
                         
-                        Text("Our nutrition grading system evaluates foods based on multiple factors including caloric density, macronutrient balance, sugar content, sodium levels, and fiber content. Foods with better nutritional profiles receive higher grades.")
+                        Text("Our nutrition grading system evaluates foods based on multiple factors including caloric density, macronutrient balance, sugar content, sodium levels, and fibre content. Foods with better nutritional profiles receive higher grades.")
                             .font(.system(size: 14))
                             .foregroundColor(.secondary)
                             .lineSpacing(4)
@@ -180,9 +180,9 @@ struct NutritionScoreDetailView: View {
         let sodiumStatus = food.sodium < 140 ? "good" : food.sodium < 400 ? "moderate" : "poor"
         factors.append(("Sodium Level", String(format: "%.0fmg", food.sodium), sodiumStatus, "Salt content"))
         
-        // Fiber Content
+        // Fibre Content
         let fiberStatus = food.fiber > 3 ? "good" : food.fiber > 1 ? "moderate" : "poor"
-        factors.append(("Fiber Content", String(format: "%.1fg", food.fiber), fiberStatus, "Dietary fiber"))
+        factors.append(("Fibre Content", String(format: "%.1fg", food.fiber), fiberStatus, "Dietary fibre"))
         
         // Protein Quality
         let proteinStatus = food.protein > 10 ? "good" : food.protein > 3 ? "moderate" : "poor"

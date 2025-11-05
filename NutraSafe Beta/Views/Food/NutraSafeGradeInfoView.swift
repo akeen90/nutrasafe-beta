@@ -155,7 +155,7 @@ struct NutraSafeGradeInfoView: View {
                             }
                         }
 
-                        Text("Our grading system is based on internationally recognized food processing classification standards.")
+                        Text("Our grading system is based on internationally recognised food processing classification standards.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .padding(.top, 4)

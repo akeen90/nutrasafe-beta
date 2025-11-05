@@ -241,7 +241,7 @@ class ProcessingScorer {
 
         var nutritionBits: [String] = []
         nutritionBits.append("protein \(String(format: "%.0f", proteinPer100g))g")
-        nutritionBits.append("fiber \(String(format: "%.1f", fiberPer100g))g")
+        nutritionBits.append("fibre \(String(format: "%.1f", fiberPer100g))g")
         nutritionBits.append("sugar \(String(format: "%.0f", sugarPer100g))g")
 
         if isWholeUnprocessedFood {
@@ -633,16 +633,16 @@ class ProcessingScorer {
     }()
 
     private lazy var comprehensiveAdditives: [String: AdditiveInfo]? = {
-        // DEBUG LOG: print("🔍 Attempting to load master additives database...")
+        // DEBUG LOG: print("🔍 Attempting to load consolidated ingredients database...")
 
-        guard let path = Bundle.main.path(forResource: "additives_unified", ofType: "json") else {
-            print("❌ ERROR: additives_unified.json not found in bundle!")
+        guard let path = Bundle.main.path(forResource: "ingredients_consolidated", ofType: "json") else {
+            print("❌ ERROR: ingredients_consolidated.json not found in bundle!")
             print("📦 Bundle path: \(Bundle.main.bundlePath)")
-            print("📁 Looking for: additives_unified.json")
+            print("📁 Looking for: ingredients_consolidated.json")
             return nil
         }
 
-        print("✅ Found unified database file at: \(path)")
+        print("✅ Found consolidated database file at: \(path)")
 
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
             print("❌ ERROR: Could not read data from \(path)")
@@ -651,28 +651,49 @@ class ProcessingScorer {
 
         print("✅ Loaded \(data.count) bytes of data")
 
-        // Try to decode as unified database format first
+        // Try to decode as consolidated ingredients database format
         let decoder = JSONDecoder()
-        if let unified = try? decoder.decode(UnifiedAdditiveDatabase.self, from: data) {
-            print("✅ Successfully decoded unified database format")
-            print("   - Version: \(unified.metadata.version)")
-            print("   - Total additives: \(unified.metadata.total_additives)")
-            print("   - Last updated: \(unified.metadata.last_updated)")
+        if let consolidated = try? decoder.decode(ConsolidatedIngredientsDatabase.self, from: data) {
+            print("✅ Successfully decoded consolidated database format")
+            print("   - Version: \(consolidated.metadata.version)")
+            print("   - Total ingredients: \(consolidated.metadata.totalCount)")
+            print("   - Last updated: \(consolidated.metadata.last_updated)")
 
             // Store the version
-            ProcessingScorer.shared.databaseVersion = unified.metadata.version
+            ProcessingScorer.shared.databaseVersion = consolidated.metadata.version
 
-            // Convert array to dictionary keyed by eNumber
+            // Convert array to dictionary keyed by eNumber, name, AND synonyms (for better matching)
             var additives: [String: AdditiveInfo] = [:]
-            for additive in unified.additives {
-                additives[additive.eNumber] = additive
+            var uniqueENumbers = Set<String>() // Track unique E-numbers across all ingredients
+
+            for ingredient in consolidated.ingredients {
+                // Index by ALL E-numbers for this ingredient (not just first one)
+                for eNumber in ingredient.eNumbers {
+                    if !eNumber.isEmpty {
+                        additives[eNumber.lowercased()] = ingredient
+                        uniqueENumbers.insert(eNumber)
+                    }
+                }
+
+                // Index by name (e.g., "sodium nitrate", "Sodium Nitrate")
+                if !ingredient.name.isEmpty {
+                    additives[ingredient.name.lowercased()] = ingredient
+                }
+
+                // Index by synonyms (e.g., "MSG", "monosodium glutamate")
+                for synonym in ingredient.synonyms {
+                    if !synonym.isEmpty {
+                        additives[synonym.lowercased()] = ingredient
+                    }
+                }
             }
 
-            // Count additives with sources
-            let withSources = additives.values.filter { !$0.sources.isEmpty }.count
-            let totalSources = additives.values.reduce(0) { $0 + $1.sources.count }
-            print("✅ Loaded \(additives.count) additives from unified database")
-            print("📚 Additives with sources: \(withSources)")
+            // Count ingredients with sources
+            let withSources = consolidated.ingredients.filter { !$0.sources.isEmpty }.count
+            let totalSources = consolidated.ingredients.reduce(0) { $0 + $1.sources.count }
+            print("✅ Loaded \(uniqueENumbers.count) unique E-numbers from \(consolidated.ingredients.count) ingredients")
+            print("📊 Total database entries (including names/synonyms): \(additives.count)")
+            print("📚 Ingredients with sources: \(withSources)")
             print("📖 Total source citations: \(totalSources)")
 
             return additives
@@ -765,7 +786,7 @@ class ProcessingScorer {
                                         origin: origin,
                                         overview: overview,
                                         typicalUses: uses,
-                                        effectsSummary: concerns.isEmpty ? "Generally recognized as safe when used as directed." : concerns,
+                                        effectsSummary: concerns.isEmpty ? "Generally recognised as safe when used as directed." : concerns,
                                         effectsVerdict: verdict,
                                         synonyms: synonyms,
                                         insNumber: nil,
@@ -915,6 +936,27 @@ class ProcessingScorer {
 
     // PERFORMANCE: Internal cache for AdditiveAnalysis results
     private var analysisCache: [String: AdditiveAnalysis] = [:]
+
+    // Helper function to check if an ingredient is a common cooking ingredient (should NOT be flagged as additive)
+    private func isCommonCookingIngredient(_ name: String) -> Bool {
+        let nameLower = name.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Very basic ingredients that should NEVER be flagged as additives
+        // ONLY exact matches to avoid false positives
+        let basicIngredients = [
+            "salt", "sea salt", "table salt",
+            "sugar", "cane sugar", "brown sugar",
+            "water", "flour", "wheat flour",
+            "butter", "milk", "cream", "egg", "eggs",
+            "oil", "olive oil", "vegetable oil", "sunflower oil", "rapeseed oil",
+            "vanilla extract", "baking powder", "baking soda",
+            "yeast", "pepper", "black pepper"
+        ]
+
+        // Only exclude if it's an EXACT match - no substring matching
+        // This prevents excluding "Citric Acid (E330)" when "citric acid" is in the list
+        return basicIngredients.contains(nameLower)
+    }
 
     private func analyseAdditives(in food: String) -> AdditiveAnalysis {
         // PERFORMANCE: Check cache first
@@ -1464,9 +1506,9 @@ class NutritionScorer {
         breakdown += "Protein: +\(String(format: "%.1f", proteinScore)) "
 
         // Fiber scoring (positive factor)
-        let fiberScore = min(fiber * 3, 15) // Up to 15 points for fiber
+        let fiberScore = min(fiber * 3, 15) // Up to 15 points for fibre
         score += fiberScore
-        breakdown += "Fiber: +\(String(format: "%.1f", fiberScore)) "
+        breakdown += "Fibre: +\(String(format: "%.1f", fiberScore)) "
 
         // Sugar penalty (negative factor)
         let sugarPenalty = min(sugar * 1.5, 30) // Up to 30 point penalty

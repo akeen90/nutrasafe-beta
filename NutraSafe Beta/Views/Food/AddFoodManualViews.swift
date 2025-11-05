@@ -1428,7 +1428,7 @@ struct IngredientConfirmationModal: View {
                                 NutritionRow(label: "Fat", value: String(format: "%.1fg", fat))
                             }
                             if let fiber = nutrition.fiber {
-                                NutritionRow(label: "Fiber", value: String(format: "%.1fg", fiber))
+                                NutritionRow(label: "Fibre", value: String(format: "%.1fg", fiber))
                             }
                             if let sugar = nutrition.sugar {
                                 NutritionRow(label: "Sugar", value: String(format: "%.1fg", sugar))
