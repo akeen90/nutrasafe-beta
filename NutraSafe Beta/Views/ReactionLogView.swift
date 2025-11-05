@@ -11,97 +11,295 @@ struct ReactionLogView: View {
     @StateObject private var manager = ReactionLogManager.shared
     @State private var showingLogSheet = false
     @State private var selectedEntry: ReactionLogEntry?
+    @State private var selectedDayRange: DayRange = .threeDays
+
+    enum DayRange: Int, CaseIterable {
+        case threeDays = 3
+        case fiveDays = 5
+        case sevenDays = 7
+
+        var displayText: String {
+            "\(rawValue) days"
+        }
+    }
 
     var body: some View {
-        Group {
-            if manager.reactionLogs.isEmpty {
-                emptyStateView
-            } else {
-                reactionListView
+        ScrollView {
+            VStack(spacing: 20) {
+                // Overview Section
+                overviewSection
+
+                // Log Reaction Button
+                logReactionButton
+
+                // Recent Reactions Section
+                recentReactionsSection
+
+                // Patterns Section
+                patternsSection
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 32)
         }
-        .navigationTitle("Reaction Log")
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: { showingLogSheet = true }) {
-                    Label("Log Reaction", systemImage: "plus.circle.fill")
-                }
-            }
-        }
+        .background(Color.adaptiveBackground)
         .sheet(isPresented: $showingLogSheet) {
-            LogReactionSheet()
+            LogReactionSheet(selectedDayRange: selectedDayRange)
         }
         .sheet(item: $selectedEntry) { entry in
-            ReactionLogDetailView(entry: entry)
+            ReactionLogDetailView(entry: entry, selectedDayRange: selectedDayRange)
         }
         .task {
             await manager.loadReactionLogs()
         }
     }
 
-    private var emptyStateView: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "clipboard.fill")
-                .font(.system(size: 60))
-                .foregroundColor(.gray.opacity(0.5))
+    // MARK: - Overview Section
+    private var overviewSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Overview")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundColor(.primary)
 
-            Text("No Reactions Logged")
-                .font(.title2)
-                .fontWeight(.semibold)
-
-            Text("Start tracking reactions to identify possible food triggers")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-
-            Button(action: { showingLogSheet = true }) {
-                Label("Log Your First Reaction", systemImage: "plus.circle.fill")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .padding()
-                    .background(Color.blue)
-                    .cornerRadius(12)
+            HStack(spacing: 12) {
+                StatCard(
+                    count: reactionsThisMonth,
+                    label: "MONTH",
+                    color: .red
+                )
+                StatCard(
+                    count: reactionsThisWeek,
+                    label: "WEEK",
+                    color: .orange
+                )
+                StatCard(
+                    count: manager.reactionLogs.count,
+                    label: "TOTAL",
+                    color: .green
+                )
             }
-            .padding(.top)
         }
     }
 
-    private var reactionListView: some View {
-        List {
-            // Add New Button at top
-            Button(action: { showingLogSheet = true }) {
-                HStack {
-                    Image(systemName: "plus.circle.fill")
-                        .foregroundColor(.blue)
-                        .font(.title3)
-                    Text("Add New Reaction")
-                        .foregroundColor(.blue)
-                        .fontWeight(.medium)
-                    Spacer()
-                }
-                .padding(.vertical, 4)
-            }
-            .listRowBackground(Color.blue.opacity(0.05))
+    // MARK: - Log Reaction Button
+    private var logReactionButton: some View {
+        Button(action: { showingLogSheet = true }) {
+            HStack(spacing: 12) {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundColor(.white)
 
-            ForEach(manager.reactionLogs) { entry in
-                ReactionLogCard(entry: entry)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        selectedEntry = entry
-                    }
-                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        Button(role: .destructive) {
-                            Task {
-                                try? await manager.deleteReactionLog(entry)
+                Text("Log Reaction")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(.white)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 18)
+            .background(
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.3, green: 0.5, blue: 1.0),
+                        Color(red: 0.5, green: 0.3, blue: 0.9)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .cornerRadius(14)
+            .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 4)
+        }
+    }
+
+    // MARK: - Recent Reactions Section
+    private var recentReactionsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Recent Reactions")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundColor(.primary)
+
+            if manager.reactionLogs.isEmpty {
+                emptyReactionsView
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(manager.reactionLogs.prefix(5)) { entry in
+                        ReactionLogCard(entry: entry)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                selectedEntry = entry
                             }
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
                     }
+                }
             }
         }
-        .listStyle(.insetGrouped)
+    }
+
+    // MARK: - Patterns Section
+    private var patternsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Patterns")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundColor(.primary)
+
+            if manager.reactionLogs.count < 2 {
+                Text("Log at least 2 reactions to see patterns")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 40)
+            } else {
+                commonIngredientsView
+            }
+        }
+    }
+
+    // MARK: - Empty State
+    private var emptyReactionsView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 60))
+                .foregroundColor(.green)
+
+            Text("No reactions logged")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+    }
+
+    // MARK: - Common Ingredients View
+    private var commonIngredientsView: some View {
+        let commonIngredients = calculateCommonIngredients()
+
+        return VStack(spacing: 12) {
+            if commonIngredients.isEmpty {
+                Text("Not enough data to identify patterns")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 40)
+            } else {
+                ForEach(commonIngredients.prefix(10), id: \.name) { ingredient in
+                    CommonIngredientRow(
+                        name: ingredient.name,
+                        frequency: ingredient.frequency,
+                        percentage: ingredient.percentage
+                    )
+                }
+            }
+        }
+    }
+
+    // MARK: - Computed Properties
+    private var reactionsThisMonth: Int {
+        let calendar = Calendar.current
+        let now = Date()
+        let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: now))!
+
+        return manager.reactionLogs.filter { $0.reactionDate >= startOfMonth }.count
+    }
+
+    private var reactionsThisWeek: Int {
+        let calendar = Calendar.current
+        let now = Date()
+        let startOfWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now))!
+
+        return manager.reactionLogs.filter { $0.reactionDate >= startOfWeek }.count
+    }
+
+    // MARK: - Calculate Common Ingredients
+    private func calculateCommonIngredients() -> [(name: String, frequency: Int, percentage: Double)] {
+        var ingredientCounts: [String: Int] = [:]
+
+        // Count ingredients across all reactions
+        for entry in manager.reactionLogs {
+            guard let analysis = entry.triggerAnalysis else { continue }
+
+            for ingredient in analysis.topIngredients {
+                ingredientCounts[ingredient.ingredientName, default: 0] += 1
+            }
+        }
+
+        // Filter to ingredients appearing in 2+ reactions and calculate percentages
+        let totalReactions = manager.reactionLogs.count
+        return ingredientCounts
+            .filter { $0.value >= 2 }
+            .map { (name: $0.key, frequency: $0.value, percentage: (Double($0.value) / Double(totalReactions)) * 100.0) }
+            .sorted { $0.frequency > $1.frequency }
+    }
+}
+
+// MARK: - Stat Card
+struct StatCard: View {
+    let count: Int
+    let label: String
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Text("\(count)")
+                .font(.system(size: 32, weight: .bold))
+                .foregroundColor(color)
+
+            Text(label)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 20)
+        .background(color.opacity(0.1))
+        .cornerRadius(12)
+    }
+}
+
+// MARK: - Common Ingredient Row
+struct CommonIngredientRow: View {
+    let name: String
+    let frequency: Int
+    let percentage: Double
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(frequencyColor)
+                .frame(width: 10, height: 10)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(name)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.primary)
+
+                Text("Appears in \(frequency) reaction\(frequency == 1 ? "" : "s")")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("\(Int(percentage))%")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(frequencyColor)
+
+                Text("frequency")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(12)
+        .background(Color(.systemBackground))
+        .cornerRadius(10)
+        .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 2)
+    }
+
+    private var frequencyColor: Color {
+        if percentage >= 80 {
+            return .red
+        } else if percentage >= 50 {
+            return .orange
+        } else {
+            return .yellow
+        }
     }
 }
 
@@ -164,7 +362,10 @@ struct ReactionLogCard: View {
                 }
             }
         }
-        .padding(.vertical, 4)
+        .padding(12)
+        .background(Color(.systemBackground))
+        .cornerRadius(10)
+        .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 2)
     }
 
     private var reactionIcon: String {
@@ -181,6 +382,8 @@ struct LogReactionSheet: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var manager = ReactionLogManager.shared
 
+    let selectedDayRange: ReactionLogView.DayRange
+
     @State private var selectedType: ReactionType = .headache
     @State private var customType: String = ""
     @State private var reactionDate: Date = Date()
@@ -188,6 +391,12 @@ struct LogReactionSheet: View {
     @State private var isSaving: Bool = false
     @State private var showError: Bool = false
     @State private var errorMessage: String = ""
+    @State private var dayRange: ReactionLogView.DayRange
+
+    init(selectedDayRange: ReactionLogView.DayRange) {
+        self.selectedDayRange = selectedDayRange
+        self._dayRange = State(initialValue: selectedDayRange)
+    }
 
     var body: some View {
         NavigationView {
@@ -211,15 +420,22 @@ struct LogReactionSheet: View {
                     DatePicker("Date & Time", selection: $reactionDate, displayedComponents: [.date, .hourAndMinute])
                 }
 
+                Section(header: Text("Analysis Window")) {
+                    Picker("Look back", selection: $dayRange) {
+                        ForEach(ReactionLogView.DayRange.allCases, id: \.self) { range in
+                            Text(range.displayText).tag(range)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
+                    Text("The system will analyze your food diary from the last \(dayRange.rawValue) days before this reaction.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
                 Section(header: Text("Notes (Optional)")) {
                     TextEditor(text: $notes)
                         .frame(height: 100)
-                }
-
-                Section {
-                    Text("The system will automatically analyze your food diary from the 72 hours before this reaction.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
                 }
             }
             .navigationTitle("Log Reaction")
@@ -287,7 +503,8 @@ struct LogReactionSheet: View {
             _ = try await manager.saveReactionLog(
                 reactionType: reactionType,
                 reactionDate: reactionDate,
-                notes: notesText.isEmpty ? nil : notesText
+                notes: notesText.isEmpty ? nil : notesText,
+                dayRange: dayRange.rawValue
             )
 
             dismiss()
@@ -302,6 +519,8 @@ struct LogReactionSheet: View {
 
 struct ReactionLogDetailView: View {
     let entry: ReactionLogEntry
+    let selectedDayRange: ReactionLogView.DayRange
+
     @Environment(\.dismiss) private var dismiss
     @State private var showingExportSheet = false
     @State private var showOtherIngredients = false
@@ -408,7 +627,7 @@ struct ReactionLogDetailView: View {
                 StatBox(value: "\(analysis.totalFoodsAnalyzed)", label: "Foods Reviewed", icon: "list.bullet")
             }
 
-            Text("72-Hour Window")
+            Text("\(analysis.dayRange)-Day Window")
                 .font(.caption)
                 .foregroundColor(.secondary)
             +
@@ -1080,25 +1299,77 @@ struct FoodHistoryDetailView: View {
     let food: WeightedFoodScore
     let reactionDate: Date
     @Environment(\.dismiss) private var dismiss
+    @State private var foodEntry: FoodEntry?
+    @State private var isLoading = true
 
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    Text("History for \(food.foodName)")
-                        .font(.title2)
-                        .fontWeight(.bold)
+                VStack(alignment: .leading, spacing: 24) {
+                    // Header
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text(food.foodName)
+                            .font(.title2)
+                            .fontWeight(.bold)
 
-                    Text("Occurrence history and pattern analysis will be displayed here, showing all times this food was consumed before reactions.")
-                        .foregroundColor(.secondary)
+                        HStack(spacing: 16) {
+                            Label("\(food.occurrences)× consumed", systemImage: "repeat")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
 
-                    Text("Score: \(Int(food.totalScore))")
-                    Text("Occurrences: \(food.occurrences)")
-                    Text("Last seen: \(Int(food.lastSeenHoursBeforeReaction))h before reaction")
+                            Label("Last: \(Int(food.lastSeenHoursBeforeReaction))h before", systemImage: "clock")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+
+                        // Cross-reaction frequency
+                        if food.crossReactionFrequency > 0 {
+                            HStack(spacing: 8) {
+                                Circle()
+                                    .fill(frequencyColor)
+                                    .frame(width: 10, height: 10)
+
+                                Text("Appears in \(Int(food.crossReactionFrequency))% of reactions")
+                                    .font(.caption)
+                                    .foregroundColor(frequencyColor)
+                                    .fontWeight(.semibold)
+                            }
+                        }
+                    }
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+
+                    // Ingredients Section
+                    if isLoading {
+                        ProgressView("Loading ingredients...")
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 40)
+                    } else if let ingredients = foodEntry?.ingredients, !ingredients.isEmpty {
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Ingredients")
+                                .font(.headline)
+
+                            ingredientsBreakdownView(ingredients: ingredients)
+                        }
+                        .padding()
+                        .background(Color(.systemBackground))
+                        .cornerRadius(12)
+                        .shadow(color: .black.opacity(0.05), radius: 3)
+                    } else {
+                        Text("No ingredient information available")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 40)
+                    }
+
+                    // Time Window Breakdown
+                    timeWindowBreakdown
                 }
                 .padding()
             }
-            .navigationTitle("Food History")
+            .navigationTitle("Food Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -1107,7 +1378,228 @@ struct FoodHistoryDetailView: View {
                     }
                 }
             }
+            .task {
+                await loadFoodEntry()
+            }
         }
+    }
+
+    private var frequencyColor: Color {
+        let percentage = Int(food.crossReactionFrequency)
+        if percentage >= 80 {
+            return .red
+        } else if percentage >= 40 {
+            return .orange
+        } else {
+            return .yellow
+        }
+    }
+
+    private var timeWindowBreakdown: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Time Window Breakdown")
+                .font(.headline)
+
+            VStack(spacing: 8) {
+                TimeWindowRow(label: "Within 24 hours", count: food.occurrencesWithin24h, color: .red)
+                TimeWindowRow(label: "24-48 hours before", count: food.occurrencesBetween24_48h, color: .orange)
+                TimeWindowRow(label: "48-72 hours before", count: food.occurrencesBetween48_72h, color: .yellow)
+            }
+        }
+        .padding()
+        .background(Color(.systemBackground))
+        .cornerRadius(12)
+        .shadow(color: .black.opacity(0.05), radius: 3)
+    }
+
+    private func ingredientsBreakdownView(ingredients: [String]) -> some View {
+        let categorized = categorizeIngredients(ingredients)
+
+        return VStack(alignment: .leading, spacing: 20) {
+            // Recognised Allergens
+            if !categorized.allergenGroups.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Recognised Allergens")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.red)
+
+                    ForEach(categorized.allergenGroups, id: \.category) { group in
+                        AllergenCategoryCard(category: group.category, ingredients: group.ingredients)
+                    }
+                }
+            }
+
+            // Other Ingredients
+            if !categorized.otherIngredients.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Other Ingredients")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.secondary)
+
+                    ForEach(categorized.otherIngredients, id: \.self) { ingredient in
+                        HStack(spacing: 8) {
+                            Circle()
+                                .fill(Color.secondary.opacity(0.3))
+                                .frame(width: 4, height: 4)
+
+                            Text(ingredient)
+                                .font(.caption)
+                                .foregroundColor(.primary)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func categorizeIngredients(_ ingredients: [String]) -> (allergenGroups: [(category: String, ingredients: [String])], otherIngredients: [String]) {
+        var allergenDict: [String: [String]] = [:]
+        var otherIngredients: [String] = []
+
+        for ingredient in ingredients {
+            if let allergenCategory = getBaseAllergen(for: ingredient) {
+                allergenDict[allergenCategory, default: []].append(ingredient)
+            } else {
+                otherIngredients.append(ingredient)
+            }
+        }
+
+        let allergenGroups = allergenDict.map { (category: $0.key, ingredients: $0.value) }
+            .sorted { $0.category < $1.category }
+
+        return (allergenGroups, otherIngredients)
+    }
+
+    private func getBaseAllergen(for ingredient: String) -> String? {
+        let lower = ingredient.lowercased()
+
+        if lower.contains("milk") || lower.contains("dairy") || lower.contains("cream") ||
+           lower.contains("cheese") || lower.contains("butter") || lower.contains("yogurt") ||
+           lower.contains("whey") || lower.contains("casein") || lower.contains("lactose") {
+            return "Milk"
+        }
+        if lower.contains("egg") || lower.contains("albumin") || lower.contains("mayonnaise") {
+            return "Eggs"
+        }
+        if lower.contains("peanut") || lower.contains("groundnut") {
+            return "Peanuts"
+        }
+        if lower.contains("almond") || lower.contains("hazelnut") || lower.contains("walnut") ||
+           lower.contains("cashew") || lower.contains("pistachio") || lower.contains("pecan") ||
+           lower.contains("brazil nut") || lower.contains("macadamia") || lower.contains("nut") {
+            return "Tree Nuts"
+        }
+        if lower.contains("wheat") || lower.contains("gluten") || lower.contains("barley") ||
+           lower.contains("rye") || lower.contains("oats") || lower.contains("spelt") ||
+           lower.contains("kamut") {
+            return "Gluten"
+        }
+        if lower.contains("soy") || lower.contains("soya") || lower.contains("soybean") ||
+           lower.contains("tofu") || lower.contains("edamame") {
+            return "Soya"
+        }
+        if lower.contains("fish") || lower.contains("salmon") || lower.contains("tuna") ||
+           lower.contains("cod") || lower.contains("haddock") || lower.contains("trout") {
+            return "Fish"
+        }
+        if lower.contains("shellfish") || lower.contains("shrimp") || lower.contains("prawn") ||
+           lower.contains("crab") || lower.contains("lobster") || lower.contains("mussel") ||
+           lower.contains("oyster") || lower.contains("clam") {
+            return "Shellfish"
+        }
+        if lower.contains("sesame") || lower.contains("tahini") {
+            return "Sesame"
+        }
+        if lower.contains("celery") || lower.contains("celeriac") {
+            return "Celery"
+        }
+        if lower.contains("mustard") {
+            return "Mustard"
+        }
+        if lower.contains("sulphite") || lower.contains("sulfite") {
+            return "Sulphites"
+        }
+
+        return nil
+    }
+
+    private func loadFoodEntry() async {
+        isLoading = true
+        defer { isLoading = false }
+
+        // Try to fetch the food entry from the reaction date
+        // We'll fetch all meals around the reaction time to find this specific food
+        let startTime = reactionDate.addingTimeInterval(-7 * 24 * 3600) // 7 days before
+        let endTime = reactionDate
+
+        do {
+            let meals = try await DiaryDataManager.shared.getMealsInTimeRange(from: startTime, to: endTime)
+
+            // Find the food entry that matches our meal ID
+            if let firstMealId = food.contributingMealIds.first {
+                foodEntry = meals.first { $0.id == firstMealId }
+            }
+        } catch {
+            print("Error loading food entry: \(error)")
+        }
+    }
+}
+
+// MARK: - Time Window Row
+struct TimeWindowRow: View {
+    let label: String
+    let count: Int
+    let color: Color
+
+    var body: some View {
+        HStack {
+            Circle()
+                .fill(color)
+                .frame(width: 8, height: 8)
+
+            Text(label)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+
+            Spacer()
+
+            Text("\(count)×")
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundColor(color)
+        }
+    }
+}
+
+// MARK: - Allergen Category Card
+struct AllergenCategoryCard: View {
+    let category: String
+    let ingredients: [String]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(category)
+                .font(.caption)
+                .fontWeight(.bold)
+                .foregroundColor(.red)
+
+            ForEach(ingredients, id: \.self) { ingredient in
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(Color.red.opacity(0.3))
+                        .frame(width: 4, height: 4)
+
+                    Text(ingredient)
+                        .font(.caption)
+                        .foregroundColor(.primary)
+                }
+            }
+        }
+        .padding(12)
+        .background(Color.red.opacity(0.05))
+        .cornerRadius(8)
     }
 }
 

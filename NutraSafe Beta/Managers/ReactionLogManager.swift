@@ -34,7 +34,7 @@ class ReactionLogManager: ObservableObject {
 
     // MARK: - Save New Reaction Log
 
-    func saveReactionLog(reactionType: String, reactionDate: Date, notes: String?) async throws -> ReactionLogEntry {
+    func saveReactionLog(reactionType: String, reactionDate: Date, notes: String?, dayRange: Int = 3) async throws -> ReactionLogEntry {
         guard let userId = FirebaseManager.shared.currentUser?.uid else {
             throw NSError(domain: "ReactionLog", code: 1, userInfo: [NSLocalizedDescriptionKey: "User not logged in"])
         }
@@ -47,8 +47,13 @@ class ReactionLogManager: ObservableObject {
             notes: notes
         )
 
-        // Perform analysis
-        let analysis = try await analyzeReactionTriggers(reactionDate: reactionDate, reactionType: reactionType, userId: userId)
+        // Perform analysis with configurable day range
+        let analysis = try await analyzeReactionTriggers(
+            reactionDate: reactionDate,
+            reactionType: reactionType,
+            userId: userId,
+            dayRange: dayRange
+        )
         entry.triggerAnalysis = analysis
 
         // Save to Firebase
@@ -63,10 +68,10 @@ class ReactionLogManager: ObservableObject {
 
     // MARK: - Weighted Trigger Analysis
 
-    func analyzeReactionTriggers(reactionDate: Date, reactionType: String, userId: String) async throws -> TriggerAnalysis {
-        // Define 72-hour window
+    func analyzeReactionTriggers(reactionDate: Date, reactionType: String, userId: String, dayRange: Int = 3) async throws -> TriggerAnalysis {
+        // Define configurable day window
         let timeRangeEnd = reactionDate
-        let timeRangeStart = reactionDate.addingTimeInterval(-72 * 3600)  // 72 hours before
+        let timeRangeStart = reactionDate.addingTimeInterval(-Double(dayRange * 24 * 3600))  // dayRange days before
 
         // Fetch diary meals in this window
         let meals = try await DiaryDataManager.shared.getMealsInTimeRange(from: timeRangeStart, to: timeRangeEnd)
@@ -83,13 +88,31 @@ class ReactionLogManager: ObservableObject {
             )
         }
 
-        // Use meals directly (FoodEntry objects already have dates and IDs)
+        // Get meal IDs that were already analyzed in previous reactions (duplicate prevention)
+        let previouslyAnalyzedMealIds = getPreviouslyAnalyzedMealIds(userId: userId, beforeDate: reactionDate)
+
+        // Filter out meals that were already analyzed in previous reactions
+        let newMeals = meals.filter { !previouslyAnalyzedMealIds.contains($0.id) }
+
+        // Use new meals only (not previously analyzed)
         var allFoods: [(food: FoodEntry, mealId: String, mealDate: Date)] = []
-        for meal in meals {
+        for meal in newMeals {
             allFoods.append((food: meal, mealId: meal.id, mealDate: meal.date))
         }
 
-            // Get total reaction count for cross-reaction frequency calculation
+        // If all meals were already analyzed, still return basic info but mark it
+        guard !allFoods.isEmpty else {
+            return TriggerAnalysis(
+                timeRangeStart: timeRangeStart,
+                timeRangeEnd: timeRangeEnd,
+                topFoods: [],
+                topIngredients: [],
+                mealCount: newMeals.count,
+                totalFoodsAnalyzed: 0
+            )
+        }
+
+        // Get total reaction count for cross-reaction frequency calculation
         let totalReactions = reactionLogs.filter { $0.userId == userId }.count
 
         // Calculate food scores
@@ -371,6 +394,31 @@ class ReactionLogManager: ObservableObject {
         }
 
         return counts
+    }
+
+    // MARK: - Helper: Get Previously Analyzed Meal IDs (Duplicate Prevention)
+
+    private func getPreviouslyAnalyzedMealIds(userId: String, beforeDate: Date) -> Set<String> {
+        // Get all past reaction logs for this user that occurred before this date
+        let pastReactions = reactionLogs.filter { $0.userId == userId && $0.reactionDate < beforeDate }
+
+        var mealIds: Set<String> = []
+
+        for reaction in pastReactions {
+            guard let analysis = reaction.triggerAnalysis else { continue }
+
+            // Collect all meal IDs from all foods analyzed in this reaction
+            for food in analysis.topFoods {
+                mealIds.formUnion(food.contributingMealIds)
+            }
+
+            // Also collect from ingredients (they have meal IDs too)
+            for ingredient in analysis.topIngredients {
+                mealIds.formUnion(ingredient.contributingMealIds)
+            }
+        }
+
+        return mealIds
     }
 
     // MARK: - Delete Reaction Log

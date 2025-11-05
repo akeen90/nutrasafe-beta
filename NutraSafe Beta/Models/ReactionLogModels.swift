@@ -35,13 +35,19 @@ struct ReactionLogEntry: Identifiable, Codable {
 
 struct TriggerAnalysis: Codable {
     let analysisDate: Date
-    let timeRangeStart: Date  // 72 hours before reaction
+    let timeRangeStart: Date  // Start of analysis window (X days before reaction)
     let timeRangeEnd: Date    // Reaction time
 
     let topFoods: [WeightedFoodScore]
     let topIngredients: [WeightedIngredientScore]
     let mealCount: Int
     let totalFoodsAnalyzed: Int
+
+    // Computed property to get the day range used for this analysis
+    var dayRange: Int {
+        let hours = timeRangeEnd.timeIntervalSince(timeRangeStart) / 3600
+        return Int(hours / 24)
+    }
 
     init(timeRangeStart: Date, timeRangeEnd: Date, topFoods: [WeightedFoodScore], topIngredients: [WeightedIngredientScore], mealCount: Int, totalFoodsAnalyzed: Int) {
         self.analysisDate = Date()
