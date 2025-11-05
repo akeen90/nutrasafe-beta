@@ -228,9 +228,24 @@ struct AdditiveCard: View {
 
                     Spacer()
 
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 12))
-                        .foregroundColor(.purple)
+                    HStack(spacing: 6) {
+                        // Display all E-numbers in purple boxes (consolidated database)
+                        if !additive.eNumbers.isEmpty {
+                            ForEach(additive.eNumbers, id: \.self) { eNumber in
+                                Text(eNumber)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 3)
+                                    .background(Color.purple)
+                                    .cornerRadius(4)
+                            }
+                        }
+
+                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.purple)
+                    }
                 }
             }
             .buttonStyle(PlainButtonStyle())
@@ -950,10 +965,17 @@ struct UltraProcessedIngredientCard: View {
                     Spacer()
 
                     HStack(spacing: 6) {
-                        if let eNumber = ingredient.eNumber {
-                            Text(eNumber)
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(.secondary)
+                        // Display all E-numbers in purple boxes
+                        if !ingredient.eNumbers.isEmpty {
+                            ForEach(ingredient.eNumbers, id: \.self) { eNumber in
+                                Text(eNumber)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 3)
+                                    .background(Color.purple)
+                                    .cornerRadius(4)
+                            }
                         }
 
                         Image(systemName: isExpanded ? "chevron.up" : "chevron.down")

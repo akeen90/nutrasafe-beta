@@ -328,8 +328,10 @@ struct AdditiveInfo: Codable, Identifiable {
     let insNumber: String?
     let sources: [AdditiveSource]
     let consumerInfo: String?
+    let eNumbers: [String]  // Array of all E-numbers for this ingredient (consolidated database)
+    let whereItComesFrom: String?  // Descriptive origin text for ultra-processed ingredients
 
-    init(id: String, eNumber: String, name: String, group: AdditiveGroup, isPermittedGB: Bool = true, isPermittedNI: Bool = true, isPermittedEU: Bool = true, statusNotes: String? = nil, hasChildWarning: Bool = false, hasPKUWarning: Bool = false, hasPolyolsWarning: Bool = false, hasSulphitesAllergenLabel: Bool = false, category: AdditiveCategory = .other, origin: AdditiveOrigin = .synthetic, overview: String = "", typicalUses: String = "", effectsSummary: String = "", effectsVerdict: AdditiveVerdict = .neutral, synonyms: [String] = [], insNumber: String? = nil, sources: [AdditiveSource] = [], consumerInfo: String? = nil) {
+    init(id: String, eNumber: String, name: String, group: AdditiveGroup, isPermittedGB: Bool = true, isPermittedNI: Bool = true, isPermittedEU: Bool = true, statusNotes: String? = nil, hasChildWarning: Bool = false, hasPKUWarning: Bool = false, hasPolyolsWarning: Bool = false, hasSulphitesAllergenLabel: Bool = false, category: AdditiveCategory = .other, origin: AdditiveOrigin = .synthetic, overview: String = "", typicalUses: String = "", effectsSummary: String = "", effectsVerdict: AdditiveVerdict = .neutral, synonyms: [String] = [], insNumber: String? = nil, sources: [AdditiveSource] = [], consumerInfo: String? = nil, eNumbers: [String] = [], whereItComesFrom: String? = nil) {
         self.id = id
         self.eNumber = eNumber
         self.name = name
@@ -352,6 +354,8 @@ struct AdditiveInfo: Codable, Identifiable {
         self.insNumber = insNumber
         self.sources = sources
         self.consumerInfo = consumerInfo
+        self.eNumbers = eNumbers
+        self.whereItComesFrom = whereItComesFrom
     }
 }
 
@@ -513,13 +517,14 @@ struct UltraProcessedIngredientDisplay: Identifiable {
     let whatItIs: String?
     let whyItsUsed: String?
     let whereItComesFrom: String?
-    let eNumber: String?  // NEW: For E-number display if it has one
+    let eNumbers: [String]  // NEW: For E-number display (supports multiple E-numbers)
 }
 
 // NEW: Internal data model for ultra-processed ingredients
 struct UltraProcessedIngredientData {
     let name: String
     let synonyms: [String]
+    let eNumbers: [String]  // E-numbers array from consolidated database
     let processingPenalty: Int
     let category: String
     let concerns: String
@@ -584,21 +589,91 @@ class AdditiveWatchService {
     }
     
     private func loadAdditiveDatabase() {
-        guard let url = Bundle.main.url(forResource: "additives_unified", withExtension: "json") else {
-            print("❌ Could not find unified additive database JSON file")
+        guard let url = Bundle.main.url(forResource: "ingredients_consolidated", withExtension: "json") else {
+            print("❌ Could not find ingredients_consolidated.json")
             return
         }
 
         do {
             let data = try Data(contentsOf: url)
-            let decoder = JSONDecoder()
-            let unified = try decoder.decode(UnifiedAdditiveDatabase.self, from: data)
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let ingredients = json["ingredients"] as? [[String: Any]] else {
+                print("❌ Could not parse ingredients_consolidated.json")
+                return
+            }
 
-            additiveDatabase = unified.additives
+            // Convert consolidated ingredients to AdditiveInfo format
+            // For ingredients with multiple E-numbers, create separate AdditiveInfo entries
+            var tempDatabase: [AdditiveInfo] = []
+
+            for ingredientDict in ingredients {
+                guard let name = ingredientDict["name"] as? String,
+                      let category = ingredientDict["category"] as? String else { continue }
+
+                let eNumbers = ingredientDict["eNumbers"] as? [String] ?? []
+                let sourcesArray = ingredientDict["sources"] as? [[String: String]] ?? []
+                var sources: [AdditiveSource] = []
+                for sourceDict in sourcesArray {
+                    if let title = sourceDict["title"],
+                       let url = sourceDict["url"],
+                       let covers = sourceDict["covers"] {
+                        sources.append(AdditiveSource(title: title, url: url, covers: covers))
+                    }
+                }
+
+                // Extract other fields
+                let permittedGB = ingredientDict["isPermittedGB"] as? Bool ?? true
+                let permittedNI = ingredientDict["isPermittedNI"] as? Bool ?? true
+                let permittedEU = ingredientDict["isPermittedEU"] as? Bool ?? true
+                let childWarning = ingredientDict["hasChildWarning"] as? Bool ?? false
+                let pkuWarning = ingredientDict["hasPKUWarning"] as? Bool ?? false
+                let polyolsWarning = ingredientDict["hasPolyolsWarning"] as? Bool ?? false
+                let sulphitesLabel = ingredientDict["hasSulphitesAllergenLabel"] as? Bool ?? false
+
+                let overviewText = ingredientDict["what_it_is"] as? String ?? ingredientDict["overview"] as? String ?? ""
+                let usesText = ingredientDict["why_its_used"] as? String ?? ingredientDict["typicalUses"] as? String ?? ""
+                let concernsText = ingredientDict["concerns"] as? String ?? ingredientDict["effectsSummary"] as? String ?? ""
+                let verdictString = ingredientDict["effectsVerdict"] as? String ?? "neutral"
+                let verdict = AdditiveVerdict(rawValue: verdictString) ?? .neutral
+
+                let originString = ingredientDict["origin"] as? String ?? "synthetic"
+                let origin = AdditiveOrigin(rawValue: originString) ?? .synthetic
+                let group = AdditiveGroup(rawValue: category) ?? .other
+                let categ = AdditiveCategory(rawValue: category) ?? .other
+                let whereFrom = ingredientDict["where_it_comes_from"] as? String
+
+                // Create ONE entry per ingredient with all E-numbers in the array
+                let primaryENumber = eNumbers.first ?? name  // Use first E-number or name as ID
+                let additiveInfo = AdditiveInfo(
+                    id: primaryENumber,
+                    eNumber: primaryENumber,
+                    name: name,
+                    group: group,
+                    isPermittedGB: permittedGB,
+                    isPermittedNI: permittedNI,
+                    isPermittedEU: permittedEU,
+                    statusNotes: nil,
+                    hasChildWarning: childWarning,
+                    hasPKUWarning: pkuWarning,
+                    hasPolyolsWarning: polyolsWarning,
+                    hasSulphitesAllergenLabel: sulphitesLabel,
+                    category: categ,
+                    origin: origin,
+                    overview: overviewText,
+                    typicalUses: usesText,
+                    effectsSummary: concernsText,
+                    effectsVerdict: verdict,
+                    sources: sources,
+                    eNumbers: eNumbers,  // Full array of E-numbers
+                    whereItComesFrom: whereFrom
+                )
+                tempDatabase.append(additiveInfo)
+            }
+
+            additiveDatabase = tempDatabase
             isLoaded = true
 
-            print("✅✅✅ UNIFIED ADDITIVE DATABASE LOADED: \(additiveDatabase.count) additives ✅✅✅")
-            print("📦 Database version: \(unified.metadata.version)")
+            print("✅✅✅ CONSOLIDATED INGREDIENTS DATABASE LOADED: \(additiveDatabase.count) additive entries ✅✅✅")
 
             // Count additives with sources
             let withSources = additiveDatabase.filter { !$0.sources.isEmpty }.count
@@ -611,7 +686,7 @@ class AdditiveWatchService {
                 print("  \(i+1). \(additive.eNumber) - \(additive.name) (\(additive.sources.count) sources)")
             }
         } catch {
-            print("❌❌❌ ERROR LOADING UNIFIED ADDITIVE DATABASE: \(error) ❌❌❌")
+            print("❌❌❌ ERROR LOADING CONSOLIDATED INGREDIENTS DATABASE: \(error) ❌❌❌")
         }
     }
     
@@ -685,11 +760,7 @@ class AdditiveWatchService {
         let childWarnings = finalDetected.filter { $0.hasChildWarning }
         print("✅ [AdditiveWatchService] Child warnings: \(childWarnings.count)")
 
-        // NEW: Detect ultra-processed ingredients
-        let ultraProcessedIngredients = detectUltraProcessedIngredients(from: ingredientsText, normalized: normalized)
-        print("🏭 [AdditiveWatchService] Ultra-processed ingredients: \(ultraProcessedIngredients.count)")
-
-        // Build result
+        // Build result (ultraProcessedIngredients removed - all ingredients now in detectedAdditives)
         let result = AdditiveDetectionResult(
             detectedAdditives: finalDetected,
             childWarnings: childWarnings,
@@ -697,7 +768,7 @@ class AdditiveWatchService {
             analysisConfidence: finalDetected.isEmpty ? 0.0 : (primaryDetected.isEmpty ? 0.85 : 0.95),
             processingScore: nil,
             comprehensiveWarnings: nil,
-            ultraProcessedIngredients: ultraProcessedIngredients
+            ultraProcessedIngredients: []  // Empty - using consolidated database only
         )
 
         // Log detected additives for debugging
@@ -723,94 +794,108 @@ class AdditiveWatchService {
     // MARK: - Ultra-Processed Ingredients Detection
 
     private lazy var ultraProcessedDatabase: [String: UltraProcessedIngredientData] = {
-        guard let url = Bundle.main.url(forResource: "ultra_processed_ingredients", withExtension: "json") else {
-            print("⚠️ Could not find ultra_processed_ingredients.json")
+        guard let url = Bundle.main.url(forResource: "ingredients_consolidated", withExtension: "json") else {
+            print("⚠️ Could not find ingredients_consolidated.json")
             return [:]
         }
 
         do {
             let data = try Data(contentsOf: url)
             guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let ingredients = json["ultra_processed_ingredients"] as? [String: Any] else {
-                print("❌ Could not parse ultra_processed_ingredients.json")
+                  let ingredients = json["ingredients"] as? [[String: Any]] else {
+                print("❌ Could not parse ingredients_consolidated.json")
                 return [:]
             }
 
             var database: [String: UltraProcessedIngredientData] = [:]
 
-            for (_, categoryData) in ingredients {
-                if let categoryDict = categoryData as? [String: Any] {
-                    for (_, ingredientData) in categoryDict {
-                        if let ingredientDict = ingredientData as? [String: Any],
-                           let name = ingredientDict["name"] as? String,
-                           let synonyms = ingredientDict["synonyms"] as? [String],
-                           let penalty = ingredientDict["processing_penalty"] as? Int,
-                           let category = ingredientDict["category"] as? String,
-                           let concerns = ingredientDict["concerns"] as? String,
-                           let novaGroup = ingredientDict["nova_group"] as? Int {
+            // Parse flat list of ingredients
+            for ingredientDict in ingredients {
+                guard let name = ingredientDict["name"] as? String,
+                      let synonyms = ingredientDict["synonyms"] as? [String],
+                      let category = ingredientDict["category"] as? String,
+                      let concerns = ingredientDict["concerns"] as? String else { continue }
 
-                            let sources = (ingredientDict["sources"] as? [[String: String]] ?? []).compactMap { sourceDict -> IngredientSource? in
-                                guard let title = sourceDict["title"],
-                                      let url = sourceDict["url"],
-                                      let covers = sourceDict["covers"] else { return nil }
-                                return IngredientSource(title: title, url: url, covers: covers)
-                            }
+                let sources = (ingredientDict["sources"] as? [[String: String]] ?? []).compactMap { sourceDict -> IngredientSource? in
+                    guard let title = sourceDict["title"],
+                          let url = sourceDict["url"],
+                          let covers = sourceDict["covers"] else { return nil }
+                    return IngredientSource(title: title, url: url, covers: covers)
+                }
 
-                            let ingredient = UltraProcessedIngredientData(
-                                name: name,
-                                synonyms: synonyms,
-                                processingPenalty: penalty,
-                                category: category,
-                                concerns: concerns,
-                                novaGroup: novaGroup,
-                                sources: sources,
-                                what_it_is: ingredientDict["what_it_is"] as? String,
-                                why_its_used: ingredientDict["why_its_used"] as? String,
-                                where_it_comes_from: ingredientDict["where_it_comes_from"] as? String
-                            )
+                let eNumbers = ingredientDict["eNumbers"] as? [String] ?? []
 
-                            database[name.lowercased()] = ingredient
-                            for synonym in synonyms {
-                                database[synonym.lowercased()] = ingredient
-                            }
-                        }
-                    }
+                let ingredient = UltraProcessedIngredientData(
+                    name: name,
+                    synonyms: synonyms,
+                    eNumbers: eNumbers,
+                    processingPenalty: ingredientDict["processingPenalty"] as? Int ?? 0,
+                    category: category,
+                    concerns: concerns,
+                    novaGroup: ingredientDict["novaGroup"] as? Int ?? 0,
+                    sources: sources,
+                    what_it_is: ingredientDict["what_it_is"] as? String,
+                    why_its_used: ingredientDict["why_its_used"] as? String,
+                    where_it_comes_from: ingredientDict["where_it_comes_from"] as? String
+                )
+
+                // Store by name
+                database[name.lowercased()] = ingredient
+
+                // Store by all synonyms
+                for synonym in synonyms {
+                    database[synonym.lowercased()] = ingredient
                 }
             }
 
-            print("✅ Loaded ultra-processed ingredients database: \(database.count) entries")
+            print("✅ Loaded consolidated ingredients database: \(database.count) entries")
             return database
         } catch {
-            print("❌ Error loading ultra-processed ingredients: \(error)")
+            print("❌ Error loading consolidated ingredients: \(error)")
             return [:]
         }
     }()
 
     private func detectUltraProcessedIngredients(from ingredientsText: String, normalized: String) -> [UltraProcessedIngredientDisplay] {
-        var detected: [UltraProcessedIngredientDisplay] = []
-        var seenNames = Set<String>()
+        // Use a dictionary to consolidate duplicates by ingredient name
+        var consolidatedIngredients: [String: (ingredient: UltraProcessedIngredientData, eNumbers: Set<String>)] = [:]
 
+        // First pass: detect all matching ingredients and collect their E-numbers
         for (key, ingredient) in ultraProcessedDatabase {
             if matchesWithWordBoundaryLocal(text: normalized, pattern: key) {
-                if !seenNames.contains(ingredient.name) {
-                    // Check if ingredient has an E-number in its synonyms
-                    let eNumber = ingredient.synonyms.first(where: { $0.hasPrefix("E") && $0.count <= 5 })
+                // Extract all E-numbers from synonyms
+                let eNumbers = ingredient.synonyms.filter { $0.hasPrefix("E") && $0.count <= 5 }
 
-                    detected.append(UltraProcessedIngredientDisplay(
-                        name: ingredient.name,
-                        category: ingredient.category,
-                        concerns: ingredient.concerns,
-                        processingPenalty: ingredient.processingPenalty,
-                        novaGroup: ingredient.novaGroup,
-                        sources: ingredient.sources,
-                        whatItIs: ingredient.what_it_is,
-                        whyItsUsed: ingredient.why_its_used,
-                        whereItComesFrom: ingredient.where_it_comes_from,
-                        eNumber: eNumber
-                    ))
-                    seenNames.insert(ingredient.name)
+                if let existing = consolidatedIngredients[ingredient.name] {
+                    // Merge E-numbers if we've already seen this ingredient
+                    consolidatedIngredients[ingredient.name] = (
+                        ingredient: existing.ingredient,
+                        eNumbers: existing.eNumbers.union(eNumbers)
+                    )
+                } else {
+                    // First time seeing this ingredient
+                    consolidatedIngredients[ingredient.name] = (
+                        ingredient: ingredient,
+                        eNumbers: Set(eNumbers)
+                    )
                 }
             }
+        }
+
+        // Second pass: create display models with consolidated data
+        let detected = consolidatedIngredients.map { (name, data) in
+            UltraProcessedIngredientDisplay(
+                name: data.ingredient.name,
+                category: data.ingredient.category,
+                concerns: data.ingredient.concerns,
+                processingPenalty: data.ingredient.processingPenalty,
+                novaGroup: data.ingredient.novaGroup,
+                sources: data.ingredient.sources,
+                whatItIs: data.ingredient.what_it_is,
+                whyItsUsed: data.ingredient.why_its_used,
+                whereItComesFrom: data.ingredient.where_it_comes_from,
+                eNumbers: Array(data.eNumbers).sorted()  // Sort E-numbers for consistent display
+            )
         }
 
         return detected
