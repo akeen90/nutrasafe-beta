@@ -586,8 +586,63 @@ struct UseByExpiryView: View {
         return filtered.sorted { $0.expiryDate < $1.expiryDate }
     }
 
-    private var expiringSoonCount: Int {
+    // Adaptive expiry card - shows most relevant information
+    private var urgentCount: Int {
         useByItems.filter { $0.daysUntilExpiry <= 3 }.count
+    }
+
+    private var thisWeekCount: Int {
+        useByItems.filter { (4...7).contains($0.daysUntilExpiry) }.count
+    }
+
+    private var adaptiveTitle: String {
+        if urgentCount > 0 {
+            return "Urgent"
+        } else if thisWeekCount > 0 {
+            return "This Week"
+        } else {
+            return "All Good"
+        }
+    }
+
+    private var adaptiveValue: String {
+        if urgentCount > 0 {
+            return "\(urgentCount)"
+        } else if thisWeekCount > 0 {
+            return "\(thisWeekCount)"
+        } else {
+            return "0"
+        }
+    }
+
+    private var adaptiveIcon: String {
+        if urgentCount > 0 {
+            return "exclamationmark.triangle.fill"
+        } else if thisWeekCount > 0 {
+            return "clock.fill"
+        } else {
+            return "checkmark.circle.fill"
+        }
+    }
+
+    private var adaptiveColor: Color {
+        if urgentCount > 0 {
+            return .red
+        } else if thisWeekCount > 0 {
+            return .orange
+        } else {
+            return .green
+        }
+    }
+
+    private var adaptiveSubtitle: String {
+        if urgentCount > 0 {
+            return urgentCount == 1 ? "Use today" : "Need attention"
+        } else if thisWeekCount > 0 {
+            return "Plan to use soon"
+        } else {
+            return "Nothing expiring soon"
+        }
     }
 
     var body: some View {
@@ -702,11 +757,11 @@ struct UseByExpiryView: View {
                             )
 
                             UseByStatCard(
-                                title: "≤3 Days Left",
-                                value: "\(expiringSoonCount)",
-                                icon: "clock.badge.exclamationmark",
-                                color: expiringSoonCount > 0 ? Color.orange : Color.green,
-                                subtitle: expiringSoonCount == 0 ? "All items fresh" : expiringSoonCount == 1 ? "Use it today" : "Within 3 days"
+                                title: adaptiveTitle,
+                                value: adaptiveValue,
+                                icon: adaptiveIcon,
+                                color: adaptiveColor,
+                                subtitle: adaptiveSubtitle
                             )
                         }
                         .padding(.horizontal, 16)
