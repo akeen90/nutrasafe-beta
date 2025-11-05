@@ -1,0 +1,73 @@
+#!/usr/bin/env python3
+"""
+Batch 78: Clean ingredients for 25 products
+Progress: 1336 -> 1361 products cleaned
+"""
+
+import sqlite3
+from datetime import datetime
+
+def update_batch78(db_path: str):
+    """Update batch 78 of products with cleaned ingredients"""
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # Clean product data
+    clean_data = [
+        {'id': 'AlFyW4cjpagf9Vw7mS3o', 'name': 'High Protein Granola Bites: Chocolate Coconut', 'brand': 'Bulk', 'serving_size_g': 50.0, 'ingredients': 'Oat Flakes (32%), Soya Crisp (21%) (Isolated Soy Proteins, Tapioca Starch, Salt, Stabiliser (Calcium Carbonate), Fruit Extract (Carob, Apple)), Chocolate (6%) (Sweetener (Maltitol), Cocoa Mass, Emulsifier (Soya Lecithin), Reduced Fat Cocoa Powder, Natural Vanilla Flavour), Canola Oil, Wheat Flour, Rice-Wheat Crispies (Rice Flour, Wheat Flour, Corn Flour, Wheat Bran, Barley Malt Extract), Sunflower Seeds (3%), Coconut Shreds (3%), Cocoa, Natural Flavouring.'},
+        {'id': 'AljgWKM8EhgZrQ2zS3dj', 'name': 'Cannelloni', 'brand': 'Gino D\'acampo', 'serving_size_g': 100.0, 'ingredients': 'Ricotta and Spinach Filled Cannelloni (40%) (Ricotta Cheese (39%) (Ricotta Cheese (Milk), Salt, Acidity Regulator (Citric Acid)), Durum Wheat Semolina, Water, Spinach (10%), Edam Cheese (Milk), Egg, Rocket (2%), Sunflower Oil, Pecorino Cheese (Ewe\'s Milk), Breadcrumbs (Wheat Flour, Water, Salt, Yeast), Salt, Onion, Sugar, Nutmeg), Tomato Sauce (39%) (Tomato Pulp, Dried Skimmed Milk, Sunflower Oil, Onion, Wheat Flour, Cream (Milk), Water, Carrot, Celery, Salt, Basil, Black Pepper), Bechamel Sauce (16%) (Water, Dried Skimmed Milk, Sunflower Oil, Wheat Flour, Cream (Milk), Salt, Corn Starch, Nutmeg), Mozzarella Cheese (Milk), Pecorino Cheese (Ewe\'s Milk), Parsley.'},
+        {'id': 'AnCCizJJq1U4lDz3y8vd', 'name': 'Ready To Roll Pizza Dough', 'brand': 'Pizza Express', 'serving_size_g': 200.0, 'ingredients': 'Wheat Flour (Wheat Flour, Calcium Carbonate, Iron, Niacin, Thiamin), Water, Ethanol, Extra Virgin Olive Oil (2%), Raising Agents (Calcium Phosphates, Sodium Hydrogen Carbonate, Diphosphates), Sugar, Salt, Deactivated Yeast, Preservative (Potassium Sorbate).'},
+        {'id': 'AniqMbNpq6WoSXXqAAEU', 'name': 'Crownfield Swiss Style No Added Sugar Muesli', 'brand': 'Crownfield', 'serving_size_g': 100.0, 'ingredients': '43% Malted Toasted Wholegrain Wheat Flakes (Wholegrain Wheat, Barley Malt Extract), 37% Wholegrain Oat Flakes, 15% Raisins (Raisins, Sunflower Oil), 2% Mixed Nuts (Hazelnut Halves, Flaked Almonds), Dried Skimmed Milk, Dried Whey (Milk).'},
+        {'id': 'ApF1RxHzZew4cWIGJ6Pg', 'name': 'Roast Potatoes', 'brand': 'Aunt Bessie\'s', 'serving_size_g': 100.0, 'ingredients': 'Potatoes (96%), Sunflower Oil, Rice Flour, Dextrin, Potato Starch, Salt, Dextrose, Colour (Caramel), Natural Flavouring.'},
+        {'id': 'Aq3ACJs72hMsMn0POzEd', 'name': 'Ham Hock & Chunky Egg', 'brand': 'Simply Lunch', 'serving_size_g': 225.0, 'ingredients': 'White Bread (40%) (Wheat Flour (Wheat Flour, Calcium Carbonate, Iron, Niacin, Thiamin), Water, Salt, Yeast, Emulsifiers (Mono and Diglycerides of Fatty Acids, Mono and Diacetyltartaric Acid Esters of Mono and Diglycerides of Fatty Acids), Spirit Vinegar, Wheat Protein, Rapeseed Oil, Flour Treatment Agent (Ascorbic Acid)), Wheat Flour, Egg Mayonnaise (27%) (Boiled Egg (Free Range Eggs, Preserving Solution (Water, Citric Acid, Tri-Sodium Citrate)), Thick Mayonnaise (Rapeseed Oil, Water, Spirit Vinegar, Pasteurised Egg Yolk, Sugar, Thickener (Modified Starch), Salt, Acidity Regulator (Acetic Acid), Stabilisers (Xanthan Gum, Guar Gum), Preservatives (Potassium Sorbate, Sodium Benzoate), Flavourings, Colour (Beta Carotene), Antioxidant (Calcium Disodium EDTA)), Black Pepper, Salt (Salt, Anti-Caking Agent (Sodium Ferrocyanide))), Ham Hock (22%) (Pork, Salt, Dextrose, Stabilisers (Diphosphates, Triphosphates), Antioxidant (Sodium Ascorbate), Preservative (Sodium Nitrite)), English Mustard Mayonnaise (7%) (Thick & Creamy Mayonnaise, Water, Rapeseed Oil, Thickener (Modified Starch), Sugar, Salt, Pasteurised Egg Yolk, Acidity Regulator (Acetic Acid), Stabilisers (Xanthan Gum, Guar Gum), Preservatives (Potassium Sorbate, Sodium Benzoate), Flavouring, Colour (Beta Carotene), English Mustard (Water, Mustard Flour (20%), Glucose-Fructose Syrup, Salt, Mustard Bran (4%), Acidity Regulator (Acetic Acid), Turmeric, Stabiliser (Xanthan Gum))), Spinach (4%).'},
+        {'id': 'ArMJChDF6tGqZHo5ennr', 'name': 'Brioche Rolls', 'brand': 'Asda', 'serving_size_g': 49.5, 'ingredients': 'Fortified Wheat Flour (Wheat Flour, Calcium Carbonate, Iron, Niacin, Thiamin), Water, Sugar, Unsalted Butter (Milk) (6%), Skimmed Milk Powder, Free Range Whole Egg Powder (1%), Yeast, Spirit Vinegar, Salt, Pea Protein, Soya Flour, Emulsifiers (Mono and Diacetyl Tartaric Acid Esters of Mono and Diglycerides of Fatty Acids, Sodium Stearoyl-2-Lactylate, Mono and Diglycerides of Fatty Acids), Palm Fat, Sunflower Oil, Preservative (Calcium Propionate), Rapeseed Oil, Flavouring, Flour Treatment Agent (Ascorbic Acid), Maltodextrin, Dextrose, Maize Starch, Colour (Carotenes).'},
+        {'id': 'AsAyF3yDvN0e4m4Nwtyy', 'name': '12 Mini Snowballs', 'brand': 'Generic', 'serving_size_g': 100.0, 'ingredients': 'Mallow (56%) (Glucose Syrup (Sulphites), Sugar, Reconstituted Egg White, Rice Flour, Stabiliser (Propylene Glycol Alginate)), Desiccated Coconut (15%), Sugar, Vegetable Fats (Palm Kernel, Palm, Shea), Whey Powder (Milk), Fat Reduced Cocoa Powder, Emulsifiers (Soya Lecithin, Polyglycerol Polyricinoleate), Flavouring.'},
+        {'id': 'Asfpe3BVr8g4Ny0hYtPa', 'name': 'Sliced Brioche Loaf Imp', 'brand': 'St. Pierre', 'serving_size_g': 34.0, 'ingredients': 'Wheat Flour, Water, Sugar, Egg, Palm Fat, Invert Sugar Syrup, Rapeseed Oil, Salt, Flavourings, Yeast, Emulsifiers (Mono and Diglycerides of Fatty Acids, Sodium Stearoyl-2-Lactylate), Dried Skimmed Milk, Wheat Gluten, Preservative (Calcium Propionate), Milk Proteins, Deactivated Yeast, Colour (Beta Carotene).'},
+        {'id': 'At6uTzsGkyxl4ktBUYUh', 'name': 'Gluten Free Multi Seeded Farmhouse', 'brand': 'Genius', 'serving_size_g': 70.0, 'ingredients': 'Water, Starches (Tapioca, Maize, Potato), Rice Flour, Seeds (11%) (Sunflower, Linseed, Poppy), Bamboo Fibre, Rapeseed Oil, Yeast, Dried Egg White, Psyllium Husk, Humectant (Vegetable Glycerol), Caster Sugar, Salt, Stabiliser (Hydroxypropyl Methyl Cellulose, Xanthan Gum), Preservatives (Calcium Propionate, Potassium Sorbate), Apple Extract.'},
+        {'id': 'AtE418N0AGdWXOK6spET', 'name': 'The Doormen Baked Nut Mix', 'brand': 'Dormen Food Ltd', 'serving_size_g': 100.0, 'ingredients': 'Cashews (40%), Almonds (30%), Brazil Nuts (10%), Hazelnuts (10%), Pecan Nuts (10%).'},
+        {'id': 'AtkGOh3ga0srjgYAREub', 'name': 'Tikka Masala', 'brand': 'Aldi', 'serving_size_g': 100.0, 'ingredients': 'Water, Tomato (16%), Single Cream (13%), Yogurt (Milk), Onion (10%), Tomato Paste (10%), Spice Cap Seasoning (3%) (Rice Flour, Paprika Powder, Cumin Powder, Sugar, Coriander Powder, Cardamom Powder, Cinnamon Powder, Anti-Caking Agents (Calcium Phosphates, Silicon Dioxide), Fenugreek Powder, Clove Powder, Paprika Extract, Flavouring), Rapeseed Oil, Ginger Purée, Sugar, Garlic Purée, Modified Maize Starch, Salt, Coriander Leaf, Concentrated Lemon Juice, Paprika Powder, Acidity Regulator (Lactic Acid), Turmeric Powder, Chilli Powder, Cumin Powder, Paprika Extract.'},
+        {'id': 'Atv5sY4HXIK8DByGv2od', 'name': 'Yogurt & Fruit Bars', 'brand': 'Harvest Morn', 'serving_size_g': 100.0, 'ingredients': 'Wheat Flour, Strawberry Flavoured Filling with Raisins and Currants (31%) (Raisins (63%), Currants (20%), Strawberry Preparation (17%) (Glucose-Fructose Syrup, Sugar, Humectant (Glycerol), Strawberry Purée (10%), Wheat Bran, Dextrose, Oatmeal, Gelling Agent (Pectin), Strawberry Concentrate (1%), Flavourings, Acid (Citric Acid), Acidity Regulators (Calcium Citrate, Sodium Citrate)), Rice Flour), Yogurt Flavoured Coating (20%) (Sugar, Vegetable Fats (Palm Kernel Fat, Palm Fat, Coconut Fat), Skimmed Yogurt Powder (Milk) (10%), Whey Powder (Milk), Acid (Citric Acid), Emulsifier (Lecithins (Soya)), Flavouring), Sugar, Oat Flour, Vegetable Oils (Rapeseed Oil, Palm Oil), Glucose Syrup, Fructo-Oligosaccharides, Skimmed Milk Powder, Wheat Starch, Raising Agents (Sodium Carbonates, Diphosphates, Ammonium Carbonates), Salt, Emulsifier (Lecithins (Rapeseed)), Pasteurised Liquid Egg, Acid (Citric Acid), Flavouring.'},
+        {'id': 'Au9EQECqO3bczJi3Hclt', 'name': 'Sliced Mushrooms', 'brand': 'Morrisons', 'serving_size_g': 100.0, 'ingredients': 'Water, Mushroom.'},
+        {'id': 'AuKl8BM7i934ehBRPPik', 'name': 'Garlic Chicken Kievs', 'brand': 'Tesco', 'serving_size_g': 100.0, 'ingredients': 'Chicken (44%), Water, Wheat Flour (Wheat Flour, Calcium Carbonate, Iron, Niacin, Thiamin), Rapeseed Oil, Palm Oil, Pea Fibre, Garlic Purée, Salt, Yeast, Parsley, Paprika, Dextrose, Concentrated Lemon Juice, Dried Skimmed Milk, Black Pepper, Garlic Oil, Sunflower Oil, Rosemary Extract, Colour (Beta-Carotene).'},
+        {'id': 'AumXZisX7pS7v90PpoxK', 'name': 'High Protein Kefir', 'brand': 'Millions', 'serving_size_g': 339.0, 'ingredients': 'Semi-Skimmed Milk, Milk Protein, Live Cultures (Lactococcus Lactis, Lactococcus Cremoris, Leuconostoc Mesenteroides, Streptococcus Thermophilus, Lactobacillus Acidophilus, Lactobacillus Bulgaricus, Bifidobacterium Lactis).'},
+        {'id': 'Ausc9wuKT2Xx3AqNc7Vn', 'name': 'La Mia Pinsa Rucola, Tomatoes, Mozzarella And Pecorino', 'brand': 'Dr. Oetker', 'serving_size_g': 100.0, 'ingredients': '39% Wheat Flour, Water, 9.2% Cherry Tomatoes, 8.4% Tomato Concentrate, 8.0% Sieved Tomatoes, 5.8% Mozzarella Cheese, 2.9% Arugula, 2.9% Pecorino Hard Cheese, Extra Virgin Olive Oil, 1.9% Spelt Flour (Wheat), Salt, Wheat Malted Flour, Yeast, Sugar, Garlic, Thyme, Basil, Onions, Pepper, Roasted Onions, Chilli Powder.'},
+        {'id': 'AuyYi4MPkPF4fp6vKeVN', 'name': 'Simply Breaded Fish Fillet', 'brand': 'Young\'s', 'serving_size_g': 100.0, 'ingredients': 'Alaska Pollock Fillet (54%), Wheat Flour (Wheat Flour, Calcium Carbonate, Iron, Niacin, Thiamin), Water, Sunflower Oil, Wheat Starch, Rapeseed Oil, Palm Oil, Sea Salt, Mustard Flour, Raising Agents (Diphosphates, Sodium Bicarbonate), Yeast Extract, Yeast, Salt.'},
+        {'id': 'AvJVnI2AKv5kptsNrg6S', 'name': 'Mediterranean Chunks', 'brand': 'Heura', 'serving_size_g': 100.0, 'ingredients': 'Water, Soy Protein Concentrate (27%), Extra Virgin Olive Oil (6%), Salt, Flavouring, Dextrose, Spices, Vitamin B12.'},
+        {'id': 'Ax7DjjFTvLCat39oXfte', 'name': 'Snackrite 6 Pack Salt And Vinegar Potato Crisps', 'brand': 'Snackrite', 'serving_size_g': 100.0, 'ingredients': 'Potato (61%), High Oleic Sunflower Oil (32%), Salt and Vinegar Seasoning (Maltodextrin, Flavouring, Salt, Sugar, Acid (Citric Acid), Rice Flour, Potassium Chloride, Yeast Extract Powder).'},
+        {'id': 'AxQTl14yTHfxW3jsHAWy', 'name': 'Robinsons Summer Fruits', 'brand': 'Robinsons', 'serving_size_g': 100.0, 'ingredients': 'Water, Fruit Juices from Concentrate (20%) (Apple (18%), Strawberry (0.8%), Plum, Blackcurrant, Cherry (0.36%)), Acids (Citric Acid), Acidity Regulator (Sodium Citrate), Sweeteners (Sucralose, Acesulfame K), Natural Flavourings, Concentrates (Carrot, Safflower, Blueberry, Lemon), Preservatives (Potassium Sorbate, Sodium Metabisulphite), Stabiliser (Cellulose Gum).'},
+        {'id': 'AxpqZ5TX19UojRoX7OKi', 'name': 'Tuna In Brine', 'brand': 'Aldi', 'serving_size_g': 110.0, 'ingredients': 'Skipjack Tuna, Water, Salt.'},
+        {'id': 'AxqWF5fGB8LHILVGEKoe', 'name': 'Raspberry & White Chocolate Bar V3.1', 'brand': 'Huel', 'serving_size_g': 50.0, 'ingredients': 'Pea Protein, Brown Rice Syrup, Soluble Gluco Fibre, Concentrated Grape Juice, Rice Starch, Brown Rice Protein, Gluten-Free Oat Flakes, Gluten-Free Oat Flour, Organic White Chocolate (4%) (Organic Cocoa Butter, Organic Rice Powder (Rice Syrup, Rice Starch, Rice Flour), Organic Raw Sugar, Organic Natural Flavoring), Sunflower Oil, Emulsifier (Sunflower Lecithin), Flaxseed, Rice Bran, Micronutrient Blend (Potassium Citrate, Potassium Chloride, Calcium Carbonate, Maltodextrin, Vitamin C, Magnesium Oxide, Niacin, Vitamin E, Pantothenic Acid, Zinc Oxide, Riboflavin, Vitamin B6, Vitamin B1, Potassium Iodide, Vitamin K2, Folate, Vitamin A, Vitamin D2, Vitamin B12), Medium-Chain Triglyceride Oil (from Coconut), Tapioca Starch, Raspberries, Natural Flavoring.'},
+        {'id': 'Axu8FWJiBcRI8bk66lzl', 'name': 'Fruit Stars', 'brand': 'Fruit Works', 'serving_size_g': 100.0, 'ingredients': 'Fruit Juices from Concentrates (Apple (52%), Strawberry (3%), Orange (2%)), Sugar, Glucose Syrup, Gelling Agents (Tapioca Starch, Pectin), Acidity Regulator (Citric Acid), Natural Flavourings, Natural Colours (Spirulina, Radish, Blackcurrant, Anthocyanins, Paprika, Curcumin), Coconut Oil, Glazing Agent (Carnauba Wax).'},
+        {'id': 'AxypOC9zwru0dSMdX1HH', 'name': 'Gingerbread Of Sibiu / Turta Dulce De Sibiu', 'brand': 'Boromir', 'serving_size_g': 100.0, 'ingredients': 'Wheat Flour, Glucose-Fructose Syrup, Sugar, Humectant (Sorbitol), Non-Hydrogenated Vegetable Oil of Sunflower, Raising Agent (Sodium Bicarbonate), Spices, Dextrin, Potato Starch, Caramel Syrup, Iodized Salt, Flavors, Acid (Citric Acid).'}
+    ]
+
+    current_timestamp = int(datetime.now().timestamp())
+
+    for product in clean_data:
+        cursor.execute("""
+            UPDATE foods
+            SET ingredients = ?, serving_size_g = ?, updated_at = ?
+            WHERE id = ?
+        """, (product['ingredients'], product['serving_size_g'], current_timestamp, product['id']))
+        print(f"✅ {product['brand']} - {product['name']}")
+        print(f"   Serving: {product['serving_size_g']}g\n")
+
+    conn.commit()
+    conn.close()
+    return len(clean_data)
+
+if __name__ == "__main__":
+    db_path = "NutraSafe Beta/Database/nutrasafe_foods.db"
+    print("🧹 CLEANING INGREDIENTS - BATCH 78\n")
+    cleaned_count = update_batch78(db_path)
+    previous_total = 1336
+    total_cleaned = previous_total + cleaned_count
+    print(f"✨ BATCH 78 COMPLETE: {cleaned_count} products cleaned")
+    print(f"📊 TOTAL PROGRESS: {total_cleaned} products cleaned")
+    if total_cleaned >= 1350 and previous_total < 1350:
+        print(f"\n🎉🎉 1350 MILESTONE ACHIEVED! 🎉🎉")
+        print(f"🎯 {total_cleaned} products cleaned!")
+        print(f"💪 Over 21.0% progress through the messy ingredients!")
+    remaining = 6448 - total_cleaned
+    print(f"🎯 Approximately {remaining} products with messy ingredients remaining")
