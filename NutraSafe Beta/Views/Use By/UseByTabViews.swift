@@ -588,11 +588,11 @@ struct UseByExpiryView: View {
 
     // Adaptive expiry card - shows most relevant information
     private var urgentCount: Int {
-        useByItems.filter { $0.daysUntilExpiry <= 3 }.count
+        useByItems.filter { $0.daysUntilExpiry <= 2 }.count
     }
 
     private var thisWeekCount: Int {
-        useByItems.filter { (4...7).contains($0.daysUntilExpiry) }.count
+        useByItems.filter { (3...7).contains($0.daysUntilExpiry) }.count
     }
 
     private var adaptiveTitle: String {
@@ -638,11 +638,11 @@ struct UseByExpiryView: View {
     private var adaptiveSubtitle: String {
         if urgentCount > 0 {
             // Check the minimum days in urgent items for more accurate messaging
-            let minDays = useByItems.filter { $0.daysUntilExpiry <= 3 }.map { $0.daysUntilExpiry }.min() ?? 0
+            let minDays = useByItems.filter { $0.daysUntilExpiry <= 2 }.map { $0.daysUntilExpiry }.min() ?? 0
             if minDays <= 1 {
                 return urgentCount == 1 ? "Use today" : "Use very soon"
             } else {
-                return "Within 3 days"
+                return "Within 2 days"
             }
         } else if thisWeekCount > 0 {
             return "Plan to use soon"
