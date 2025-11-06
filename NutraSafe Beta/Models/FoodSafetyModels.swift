@@ -438,7 +438,29 @@ enum AdditiveOrigin: String, Codable {
     case animal = "animal"
     case mineral = "mineral"
     case syntheticPlantMineral = "synthetic/plant/mineral (varies by specification)"
-    
+    case unknown = "unknown"  // For empty or unrecognized origin strings
+
+    // Custom decoder to handle empty strings and invalid values
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = try container.decode(String.self)
+
+        // Handle empty string or whitespace-only strings
+        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            self = .unknown
+            return
+        }
+
+        // Try to match existing cases
+        if let origin = AdditiveOrigin(rawValue: trimmed) {
+            self = origin
+        } else {
+            // Default to unknown for unrecognized values
+            self = .unknown
+        }
+    }
+
     var displayName: String {
         switch self {
         case .synthetic: return "Synthetic"
@@ -446,9 +468,10 @@ enum AdditiveOrigin: String, Codable {
         case .animal: return "Animal-based"
         case .mineral: return "Mineral"
         case .syntheticPlantMineral: return "Various sources"
+        case .unknown: return "Unknown origin"
         }
     }
-    
+
     var icon: String {
         switch self {
         case .synthetic: return "⚗️"
@@ -456,6 +479,7 @@ enum AdditiveOrigin: String, Codable {
         case .animal: return "🐄"
         case .mineral: return "⛰️"
         case .syntheticPlantMineral: return "🔄"
+        case .unknown: return "❓"
         }
     }
 }
