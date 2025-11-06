@@ -590,6 +590,11 @@ struct NutritionGoalsSection: View {
                     fat: fatPercent
                 )
                 print("✅ Macro percentages updated: P\(proteinPercent)% C\(carbsPercent)% F\(fatPercent)%")
+
+                // Notify diary view to update immediately
+                await MainActor.run {
+                    NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
+                }
             } catch {
                 await MainActor.run {
                     errorMessage = "Failed to save macro percentages: \(error.localizedDescription)"
