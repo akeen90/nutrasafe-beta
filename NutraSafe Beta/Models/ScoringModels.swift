@@ -398,19 +398,19 @@ class ProcessingScorer {
         }
         cacheLock.unlock()
 
-        // DEBUG LOG: print("⚗️ [ProcessingScorer] analyzeAdditives() called")
-        // DEBUG LOG: print("⚗️ [ProcessingScorer] Input text: '\(ingredientsText)'")
-        // DEBUG LOG: print("⚗️ [ProcessingScorer] Text length: \(ingredientsText.count) characters")
-        // DEBUG LOG: print("⚗️ [ProcessingScorer] Database status: \(comprehensiveAdditives != nil ? "LOADED (\(comprehensiveAdditives!.count) additives)" : "NOT LOADED")")
-        // DEBUG LOG: print("⚗️ [ProcessingScorer] Database version: \(databaseVersion)")
+        print("⚗️ [ProcessingScorer] analyzeAdditives() called")
+        print("⚗️ [ProcessingScorer] Input text: '\(ingredientsText.prefix(150))...'")
+        print("⚗️ [ProcessingScorer] Text length: \(ingredientsText.count) characters")
+        print("⚗️ [ProcessingScorer] Database status: \(comprehensiveAdditives != nil ? "LOADED (\(comprehensiveAdditives!.count) additives)" : "NOT LOADED")")
+        print("⚗️ [ProcessingScorer] Database version: \(databaseVersion)")
 
         let analysis = analyseAdditives(in: ingredientsText)
 
-        // DEBUG LOG: print("⚗️ [ProcessingScorer] Analysis complete")
-        // DEBUG LOG: print("⚗️ [ProcessingScorer] Comprehensive additives found: \(analysis.comprehensiveAdditives.count)")
+        print("⚗️ [ProcessingScorer] Analysis complete")
+        print("⚗️ [ProcessingScorer] Comprehensive additives found: \(analysis.comprehensiveAdditives.count)")
 
         if !analysis.comprehensiveAdditives.isEmpty {
-        // DEBUG LOG: print("⚗️ [ProcessingScorer] Detected:")
+            print("⚗️ [ProcessingScorer] Detected:")
             for additive in analysis.comprehensiveAdditives {
                 print("   - \(additive.eNumber): \(additive.name)")
             }
@@ -774,7 +774,8 @@ class ProcessingScorer {
 
         // Try to decode as consolidated ingredients database format
         let decoder = JSONDecoder()
-        if let consolidated = try? decoder.decode(ConsolidatedIngredientsDatabase.self, from: data) {
+        do {
+            let consolidated = try decoder.decode(ConsolidatedIngredientsDatabase.self, from: data)
             print("✅ Successfully decoded consolidated database format")
             print("   - Version: \(consolidated.metadata.version)")
             print("   - Total ingredients: \(consolidated.metadata.totalCount)")
@@ -818,6 +819,22 @@ class ProcessingScorer {
             print("📖 Total source citations: \(totalSources)")
 
             return additives
+        } catch {
+            print("❌ ERROR: Failed to decode consolidated database format: \(error)")
+            if let decodingError = error as? DecodingError {
+                switch decodingError {
+                case .keyNotFound(let key, let context):
+                    print("   Missing key '\(key.stringValue)' - \(context.debugDescription)")
+                case .typeMismatch(let type, let context):
+                    print("   Type mismatch for type '\(type)' - \(context.debugDescription)")
+                case .valueNotFound(let type, let context):
+                    print("   Value not found for type '\(type)' - \(context.debugDescription)")
+                case .dataCorrupted(let context):
+                    print("   Data corrupted - \(context.debugDescription)")
+                @unknown default:
+                    print("   Unknown decoding error")
+                }
+            }
         }
 
         // Fallback: Try old nested format for backward compatibility
@@ -891,8 +908,7 @@ class ProcessingScorer {
                                     }
 
                                     let additiveInfo = AdditiveInfo(
-                                        id: code,
-                                        eNumber: code,
+                                        eNumbers: [code],
                                         name: name,
                                         group: Self.mapCategoryToGroup(categoryName),
                                         isPermittedGB: true,
@@ -1105,8 +1121,9 @@ class ProcessingScorer {
 
         // Use comprehensive database if available
         if let comprehensiveDB = comprehensiveAdditives {
-        // DEBUG LOG: print("🔬 [analyseAdditives] Database available with \(comprehensiveDB.count) additives")
-        // DEBUG LOG: print("🔬 [analyseAdditives] Starting matching loop...")
+            print("🔬 [analyseAdditives] Database available with \(comprehensiveDB.count) additives")
+            print("🔬 [analyseAdditives] Starting matching loop...")
+            print("🔬 [analyseAdditives] Text to analyze: \(normalizedFood.prefix(200))...")
 
             var matchCount = 0
             // Check for E-numbers and additive names with word boundary detection
@@ -1117,7 +1134,7 @@ class ProcessingScorer {
                 // Only include matches with confidence >= 60%
                 if confidence >= 0.6 {
                     matchCount += 1
-        // DEBUG LOG: print("🔬 [analyseAdditives] MATCH #\(matchCount): \(code) - \(additiveInfo.name) (confidence: \(confidence))")
+                    print("🔬 [analyseAdditives] MATCH #\(matchCount): \(code) - \(additiveInfo.name) (confidence: \(confidence))")
 
                     // Check if already detected (avoid duplicates)
                     if !detectedAdditives.contains(where: { $0.eNumber == additiveInfo.eNumber }) {
@@ -1138,8 +1155,8 @@ class ProcessingScorer {
                 }
             }
 
-        // DEBUG LOG: print("🔬 [analyseAdditives] Matching loop complete. Total matches: \(matchCount)")
-        // DEBUG LOG: print("🔬 [analyseAdditives] Detected additives: \(detectedAdditives.count)")
+            print("🔬 [analyseAdditives] Matching loop complete. Total matches: \(matchCount)")
+            print("🔬 [analyseAdditives] Detected additives: \(detectedAdditives.count)")
         } else {
             print("⚠️ [analyseAdditives] Database NOT available! Using fallback analysis")
         }

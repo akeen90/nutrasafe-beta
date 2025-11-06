@@ -784,6 +784,10 @@ struct CategoricalNutrientTrackingView: View {
         .onChange(of: diaryDataManager.dataReloadTrigger) { _ in
             // Only reload if we've already done initial load
             guard hasInitiallyLoaded else { return }
+            // CACHE INVALIDATION: Clear cache for changed date
+            Task {
+                await vm.invalidateCache(for: selectedDate)
+            }
             requestDataLoad(for: selectedWeekStart, reason: "data-change")
         }
         .refreshable {
@@ -810,6 +814,10 @@ struct CategoricalNutrientTrackingView: View {
         .onReceive(NotificationCenter.default.publisher(for: .foodDiaryUpdated)) { _ in
             // Only reload if we've already done initial load
             guard hasInitiallyLoaded else { return }
+            // CACHE INVALIDATION: Clear cache for changed date
+            Task {
+                await vm.invalidateCache(for: selectedDate)
+            }
             requestDataLoad(for: selectedWeekStart, reason: "diary-updated-notification")
         }
         .onDisappear {
@@ -1490,6 +1498,8 @@ final class CategoricalNutrientViewModel: ObservableObject {
 
     private var loadTask: Task<Void, Never>?
     private let profileCache = NutrientCacheActor()
+    private let diaryCache = DiaryCacheActor() // NEW: Cache for diary food data per day
+    private let weekCache = WeekDataCache() // NEW: Cache for processed week data
     private var currentLoadingDate: Date?
     weak var diaryManager: DiaryDataManager?
 
@@ -1506,6 +1516,86 @@ final class CategoricalNutrientViewModel: ObservableObject {
 
     func clearCache() async {
         await profileCache.clear()
+        await diaryCache.clear()
+        await weekCache.clear()
+    }
+
+    // NEW: Invalidate cache for a specific date
+    func invalidateCache(for date: Date) async {
+        await diaryCache.invalidate(date: date)
+        await weekCache.invalidate(containingDate: date)
+        print("🗑️ Invalidated cache for date: \(date)")
+    }
+
+    // MARK: - Cache Conversion Helpers
+
+    private func convertToCache(_ level: SourceLevel) -> CachedSourceLevel {
+        switch level {
+        case .none: return .none
+        case .trace: return .trace
+        case .moderate: return .moderate
+        case .strong: return .strong
+        }
+    }
+
+    private func convertFromCache(_ level: CachedSourceLevel) -> SourceLevel {
+        switch level {
+        case .none: return .none
+        case .trace: return .trace
+        case .moderate: return .moderate
+        case .strong: return .strong
+        }
+    }
+
+    private func convertToCache(rhythmDays: [RhythmDay]) -> [CachedRhythmDay] {
+        rhythmDays.map { CachedRhythmDay(date: $0.date, level: convertToCache($0.level)) }
+    }
+
+    private func convertFromCache(rhythmDays: [CachedRhythmDay]) -> [RhythmDay] {
+        rhythmDays.map { RhythmDay(date: $0.date, level: convertFromCache($0.level)) }
+    }
+
+    private func convertToCache(coverageRows: [CoverageRow]) -> [CachedCoverageRow] {
+        coverageRows.map { row in
+            let cachedSegments = row.segments.map { segment in
+                CachedSegment(
+                    date: segment.date,
+                    level: segment.level.map { convertToCache($0) },
+                    foods: segment.foods
+                )
+            }
+            return CachedCoverageRow(
+                id: row.id,
+                name: row.name,
+                status: String(describing: row.status),
+                segments: cachedSegments
+            )
+        }
+    }
+
+    private func convertFromCache(coverageRows: [CachedCoverageRow]) -> [CoverageRow] {
+        coverageRows.map { cachedRow in
+            let segments = cachedRow.segments.map { cachedSegment in
+                Segment(
+                    date: cachedSegment.date,
+                    level: cachedSegment.level.map { convertFromCache($0) },
+                    foods: cachedSegment.foods
+                )
+            }
+            let status: CoverageStatus = {
+                switch cachedRow.status {
+                case "consistent": return .consistent
+                case "occasional": return .occasional
+                default: return .missing
+                }
+            }()
+            return CoverageRow(
+                id: cachedRow.id,
+                name: cachedRow.name,
+                status: status,
+                segments: segments
+            )
+        }
     }
 
     // Load last 7 days of rhythm and coverage data
@@ -1563,6 +1653,15 @@ final class CategoricalNutrientViewModel: ObservableObject {
                 self.currentLoadingDate = nil
             }
 
+            // CACHE CHECK: Try week cache first
+            if let cachedWeekData = await self.weekCache.getData(for: mondayStart) {
+                print("✅ [WeekCache] HIT - Using cached week data")
+                self.rhythmDays = self.convertFromCache(rhythmDays: cachedWeekData.rhythmDays)
+                self.nutrientCoverageRows = self.convertFromCache(coverageRows: cachedWeekData.coverageRows)
+                return
+            }
+            print("⚠️ [WeekCache] MISS - Fetching fresh data")
+
             // Perform heavy processing on background thread but maintain cancellation context
             let result: (days: [RhythmDay], rows: [CoverageRow])? = await Task {
                 // Generate 7 days starting from Monday
@@ -1578,25 +1677,57 @@ final class CategoricalNutrientViewModel: ObservableObject {
                         return nil
                     }
 
-                    do {
-                        let (breakfast, lunch, dinner, snacks) = try await manager.getFoodDataAsync(for: date)
+                    // CACHE CHECK: Try diary cache first for this date
+                    var breakfast: [DiaryFoodItem]
+                    var lunch: [DiaryFoodItem]
+                    var dinner: [DiaryFoodItem]
+                    var snacks: [DiaryFoodItem]
 
-                        // Convert each meal type to FoodEntries
-                        for food in breakfast {
-                            allEntries.append(food.toFoodEntry(userId: "", mealType: .breakfast, date: date))
+                    if let cachedDayData = await self.diaryCache.getData(for: date) {
+                        print("✅ [DiaryCache] HIT - Using cached data for \(date)")
+                        breakfast = cachedDayData.breakfast
+                        lunch = cachedDayData.lunch
+                        dinner = cachedDayData.dinner
+                        snacks = cachedDayData.snacks
+                    } else {
+                        print("⚠️ [DiaryCache] MISS - Fetching from Firebase for \(date)")
+                        do {
+                            let fetchedData = try await manager.getFoodDataAsync(for: date)
+                            breakfast = fetchedData.0
+                            lunch = fetchedData.1
+                            dinner = fetchedData.2
+                            snacks = fetchedData.3
+
+                            // Store in diary cache for future use
+                            await self.diaryCache.setData(
+                                breakfast: breakfast,
+                                lunch: lunch,
+                                dinner: dinner,
+                                snacks: snacks,
+                                for: date
+                            )
+                        } catch {
+                            print("⚠️ Error fetching data for \(date): \(error)")
+                            // Use empty arrays if fetch fails
+                            breakfast = []
+                            lunch = []
+                            dinner = []
+                            snacks = []
                         }
-                        for food in lunch {
-                            allEntries.append(food.toFoodEntry(userId: "", mealType: .lunch, date: date))
-                        }
-                        for food in dinner {
-                            allEntries.append(food.toFoodEntry(userId: "", mealType: .dinner, date: date))
-                        }
-                        for food in snacks {
-                            allEntries.append(food.toFoodEntry(userId: "", mealType: .snacks, date: date))
-                        }
-                    } catch {
-                        print("⚠️ Error fetching data for \(date): \(error)")
-                        // Continue with other days even if one fails
+                    }
+
+                    // Convert each meal type to FoodEntries
+                    for food in breakfast {
+                        allEntries.append(food.toFoodEntry(userId: "", mealType: .breakfast, date: date))
+                    }
+                    for food in lunch {
+                        allEntries.append(food.toFoodEntry(userId: "", mealType: .lunch, date: date))
+                    }
+                    for food in dinner {
+                        allEntries.append(food.toFoodEntry(userId: "", mealType: .dinner, date: date))
+                    }
+                    for food in snacks {
+                        allEntries.append(food.toFoodEntry(userId: "", mealType: .snacks, date: date))
                     }
                 }
 
@@ -1680,6 +1811,13 @@ final class CategoricalNutrientViewModel: ObservableObject {
                 self.rhythmDays = result.days
                 self.nutrientCoverageRows = result.rows
                 print("✅ Loaded \(result.days.count) rhythm days and \(result.rows.count) nutrient rows")
+
+                // CACHE STORE: Save processed week data to cache for future loads
+                await self.weekCache.setData(
+                    rhythmDays: self.convertToCache(rhythmDays: result.days),
+                    coverageRows: self.convertToCache(coverageRows: result.rows),
+                    for: mondayStart
+                )
             } else {
                 self.rhythmDays = []
                 self.nutrientCoverageRows = []

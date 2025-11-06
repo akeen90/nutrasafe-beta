@@ -1070,7 +1070,7 @@ enum MacroType: String, CaseIterable, Codable {
 
     // Available extra macros (user picks one of these)
     static var extraMacros: [MacroType] {
-        return [.fiber, .sugar, .salt, .saturatedFat]
+        return [.fiber, .sugar, .salt]
     }
 }
 

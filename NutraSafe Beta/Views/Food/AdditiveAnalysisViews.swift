@@ -229,8 +229,12 @@ struct AdditiveCard: View {
                     Spacer()
 
                     HStack(spacing: 6) {
-                        // Display only actual E-numbers in purple boxes (consolidated database)
-                        let actualENumbers = additive.eNumbers.filter { $0.hasPrefix("E") }
+                        // Display only actual E-numbers in purple boxes (E followed by digits)
+                        let actualENumbers = additive.eNumbers.filter { eNumber in
+                            // Strict check: E followed by digits, optionally with subcategory letters or roman numerals
+                            let pattern = "^E[0-9]+(([a-z]+)|([\\(][ivxIVX]+[\\)]))?$"
+                            return eNumber.range(of: pattern, options: .regularExpression) != nil
+                        }
                         if !actualENumbers.isEmpty {
                             ForEach(actualENumbers, id: \.self) { eNumber in
                                 Text(eNumber)
@@ -471,14 +475,18 @@ struct AdditiveCardView: View {
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(.primary)
 
+                            // Only show purple tag for actual E-numbers (E followed by digits)
                             if let code = additive.code {
-                                Text(code)
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 3)
-                                    .background(Color.purple.opacity(0.7))
-                                    .cornerRadius(6)
+                                let pattern = "^E[0-9]+(([a-z]+)|([\\(][ivxIVX]+[\\)]))?$"
+                                if code.range(of: pattern, options: .regularExpression) != nil {
+                                    Text(code)
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 3)
+                                        .background(Color.purple.opacity(0.7))
+                                        .cornerRadius(6)
+                                }
                             }
                         }
 
@@ -966,8 +974,12 @@ struct UltraProcessedIngredientCard: View {
                     Spacer()
 
                     HStack(spacing: 6) {
-                        // Display only actual E-numbers in purple boxes
-                        let actualENumbers = ingredient.eNumbers.filter { $0.hasPrefix("E") }
+                        // Display only actual E-numbers in purple boxes (E followed by digits)
+                        let actualENumbers = ingredient.eNumbers.filter { eNumber in
+                            // Strict check: E followed by digits, optionally with subcategory letters or roman numerals
+                            let pattern = "^E[0-9]+(([a-z]+)|([\\(][ivxIVX]+[\\)]))?$"
+                            return eNumber.range(of: pattern, options: .regularExpression) != nil
+                        }
                         if !actualENumbers.isEmpty {
                             ForEach(actualENumbers, id: \.self) { eNumber in
                                 Text(eNumber)

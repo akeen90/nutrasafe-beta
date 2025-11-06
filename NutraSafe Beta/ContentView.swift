@@ -1636,6 +1636,7 @@ struct WeightTrackingView: View {
     @Binding var showingSettings: Bool
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var firebaseManager: FirebaseManager
+    @AppStorage("unitSystem") private var unitSystem: UnitSystem = .metric
 
     @State private var currentWeight: Double = 0
     @State private var goalWeight: Double = 0
@@ -1682,6 +1683,26 @@ struct WeightTrackingView: View {
         let totalToLose = startWeight - goalWeight
         let lostSoFar = startWeight - currentWeight
         return totalToLose != 0 ? (lostSoFar / totalToLose) * 100 : 0
+    }
+
+    // Helper methods for unit conversion
+    private func formatWeight(_ kg: Double) -> String {
+        switch unitSystem {
+        case .metric:
+            return String(format: "%.1f", kg)
+        case .imperial:
+            let lbs = kg * 2.20462
+            return String(format: "%.1f", lbs)
+        }
+    }
+
+    private var weightUnit: String {
+        switch unitSystem {
+        case .metric:
+            return "kg"
+        case .imperial:
+            return "lbs"
+        }
     }
 
     var body: some View {
@@ -1756,7 +1777,7 @@ struct WeightTrackingView: View {
                                     .font(.system(size: 13, weight: .medium))
                                     .foregroundColor(.secondary)
                                 HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                    Text(String(format: "%.1f", currentWeight))
+                                    Text(formatWeight(currentWeight))
                                         .font(.system(size: 32, weight: .bold))
                                         .foregroundStyle(
                                             LinearGradient(
@@ -1768,7 +1789,7 @@ struct WeightTrackingView: View {
                                                 endPoint: .trailing
                                             )
                                         )
-                                    Text("kg")
+                                    Text(weightUnit)
                                         .font(.system(size: 16, weight: .medium))
                                         .foregroundColor(.secondary)
                                 }
@@ -1787,10 +1808,10 @@ struct WeightTrackingView: View {
                                     .font(.system(size: 13, weight: .medium))
                                     .foregroundColor(.secondary)
                                 HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                    Text(goalWeight > 0 ? String(format: "%.1f", goalWeight) : "--")
+                                    Text(goalWeight > 0 ? formatWeight(goalWeight) : "--")
                                         .font(.system(size: 32, weight: .bold))
                                         .foregroundColor(.green)
-                                    Text("kg")
+                                    Text(weightUnit)
                                         .font(.system(size: 16, weight: .medium))
                                         .foregroundColor(.secondary)
                                 }
@@ -1814,10 +1835,10 @@ struct WeightTrackingView: View {
                                 let startWeight = weightHistory.last?.weight ?? currentWeight
                                 let lost = max(startWeight - currentWeight, 0)
                                 HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                    Text(String(format: "%.1f", lost))
+                                    Text(formatWeight(lost))
                                         .font(.system(size: 28, weight: .bold))
                                         .foregroundColor(.green)
-                                    Text("kg")
+                                    Text(weightUnit)
                                         .font(.system(size: 14, weight: .medium))
                                         .foregroundColor(.secondary)
                                 }
@@ -1837,10 +1858,10 @@ struct WeightTrackingView: View {
                                     .foregroundColor(.secondary)
                                 let remaining = goalWeight > 0 ? max(currentWeight - goalWeight, 0) : 0
                                 HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                    Text(String(format: "%.1f", remaining))
+                                    Text(formatWeight(remaining))
                                         .font(.system(size: 28, weight: .bold))
                                         .foregroundColor(.orange)
-                                    Text("kg")
+                                    Text(weightUnit)
                                         .font(.system(size: 14, weight: .medium))
                                         .foregroundColor(.secondary)
                                 }
@@ -1899,7 +1920,7 @@ struct WeightTrackingView: View {
                                     HStack(spacing: 4) {
                                         Image(systemName: change < 0 ? "arrow.down.right" : change > 0 ? "arrow.up.right" : "arrow.right")
                                             .font(.system(size: 14, weight: .semibold))
-                                        Text(String(format: "%.1f kg", abs(change)))
+                                        Text("\(formatWeight(abs(change))) \(weightUnit)")
                                             .font(.system(size: 14, weight: .semibold))
                                     }
                                     .foregroundColor(change < 0 ? .green : change > 0 ? .red : .secondary)
@@ -2200,10 +2221,30 @@ struct WeightEntryRow: View {
     let entry: WeightEntry
     let previousEntry: WeightEntry?
     let isLatest: Bool
+    @AppStorage("unitSystem") private var unitSystem: UnitSystem = .metric
 
     private var weightChange: Double? {
         guard let previous = previousEntry else { return nil }
         return entry.weight - previous.weight
+    }
+
+    private func formatWeight(_ kg: Double) -> String {
+        switch unitSystem {
+        case .metric:
+            return String(format: "%.1f", kg)
+        case .imperial:
+            let lbs = kg * 2.20462
+            return String(format: "%.1f", lbs)
+        }
+    }
+
+    private var weightUnit: String {
+        switch unitSystem {
+        case .metric:
+            return "kg"
+        case .imperial:
+            return "lbs"
+        }
     }
 
     var body: some View {
@@ -2222,10 +2263,10 @@ struct WeightEntryRow: View {
             // Weight
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(String(format: "%.1f", entry.weight))
+                    Text(formatWeight(entry.weight))
                         .font(.system(size: 22, weight: .bold))
                         .foregroundColor(.primary)
-                    Text("kg")
+                    Text(weightUnit)
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.secondary)
                 }
@@ -2244,7 +2285,7 @@ struct WeightEntryRow: View {
                 HStack(spacing: 4) {
                     Image(systemName: change < 0 ? "arrow.down" : "arrow.up")
                         .font(.system(size: 12, weight: .bold))
-                    Text(String(format: "%.1f kg", abs(change)))
+                    Text("\(formatWeight(abs(change))) \(weightUnit)")
                         .font(.system(size: 14, weight: .bold))
                 }
                 .foregroundColor(change < 0 ? .green : .red)

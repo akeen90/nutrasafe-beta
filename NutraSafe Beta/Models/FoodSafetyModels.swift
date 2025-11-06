@@ -306,8 +306,15 @@ class AllergenDetector {
 }
 
 struct AdditiveInfo: Codable, Identifiable {
-    let id: String
-    let eNumber: String
+    var id: String {
+        // Generate ID from first E-number if not provided in JSON
+        return eNumbers.first ?? name
+    }
+    var eNumber: String {
+        // For backward compatibility - return first E-number from array
+        return eNumbers.first ?? ""
+    }
+    let eNumbers: [String]  // Array of all E-numbers for this ingredient (consolidated database)
     let name: String
     let group: AdditiveGroup
     let isPermittedGB: Bool
@@ -328,14 +335,12 @@ struct AdditiveInfo: Codable, Identifiable {
     let insNumber: String?
     let sources: [AdditiveSource]
     let consumerInfo: String?
-    let eNumbers: [String]  // Array of all E-numbers for this ingredient (consolidated database)
     let whereItComesFrom: String?  // Descriptive origin text for ultra-processed ingredients
     let processingPenalty: Int  // Processing penalty score for ultra-processed ingredients
     let novaGroup: Int  // NOVA classification group (1-4)
 
-    init(id: String, eNumber: String, name: String, group: AdditiveGroup, isPermittedGB: Bool = true, isPermittedNI: Bool = true, isPermittedEU: Bool = true, statusNotes: String? = nil, hasChildWarning: Bool = false, hasPKUWarning: Bool = false, hasPolyolsWarning: Bool = false, hasSulphitesAllergenLabel: Bool = false, category: AdditiveCategory = .other, origin: AdditiveOrigin = .synthetic, overview: String = "", typicalUses: String = "", effectsSummary: String = "", effectsVerdict: AdditiveVerdict = .neutral, synonyms: [String] = [], insNumber: String? = nil, sources: [AdditiveSource] = [], consumerInfo: String? = nil, eNumbers: [String] = [], whereItComesFrom: String? = nil, processingPenalty: Int = 0, novaGroup: Int = 0) {
-        self.id = id
-        self.eNumber = eNumber
+    init(eNumbers: [String] = [], name: String, group: AdditiveGroup, isPermittedGB: Bool = true, isPermittedNI: Bool = true, isPermittedEU: Bool = true, statusNotes: String? = nil, hasChildWarning: Bool = false, hasPKUWarning: Bool = false, hasPolyolsWarning: Bool = false, hasSulphitesAllergenLabel: Bool = false, category: AdditiveCategory = .other, origin: AdditiveOrigin = .synthetic, overview: String = "", typicalUses: String = "", effectsSummary: String = "", effectsVerdict: AdditiveVerdict = .neutral, synonyms: [String] = [], insNumber: String? = nil, sources: [AdditiveSource] = [], consumerInfo: String? = nil, whereItComesFrom: String? = nil, processingPenalty: Int = 0, novaGroup: Int = 0) {
+        self.eNumbers = eNumbers
         self.name = name
         self.group = group
         self.isPermittedGB = isPermittedGB
@@ -356,7 +361,6 @@ struct AdditiveInfo: Codable, Identifiable {
         self.insNumber = insNumber
         self.sources = sources
         self.consumerInfo = consumerInfo
-        self.eNumbers = eNumbers
         self.whereItComesFrom = whereItComesFrom
         self.processingPenalty = processingPenalty
         self.novaGroup = novaGroup
@@ -424,6 +428,7 @@ enum AdditiveGroup: String, Codable, CaseIterable {
 enum AdditiveCategory: String, Codable {
     case colour = "colour"
     case preservative = "preservative"
+    case sweetener = "sweetener"
     case other = "other"
 }
 
@@ -658,10 +663,8 @@ class AdditiveWatchService {
                 let whereFrom = ingredientDict["where_it_comes_from"] as? String
 
                 // Create ONE entry per ingredient with all E-numbers in the array
-                let primaryENumber = eNumbers.first ?? name  // Use first E-number or name as ID
                 let additiveInfo = AdditiveInfo(
-                    id: primaryENumber,
-                    eNumber: primaryENumber,
+                    eNumbers: eNumbers,  // Full array of E-numbers
                     name: name,
                     group: group,
                     isPermittedGB: permittedGB,
@@ -679,7 +682,6 @@ class AdditiveWatchService {
                     effectsSummary: concernsText,
                     effectsVerdict: verdict,
                     sources: sources,
-                    eNumbers: eNumbers,  // Full array of E-numbers
                     whereItComesFrom: whereFrom
                 )
                 tempDatabase.append(additiveInfo)
@@ -978,8 +980,7 @@ class AdditiveWatchService {
                 let isPermittedEU = data["isPermittedEU"] as? Bool ?? true
                 
                 let additive = AdditiveInfo(
-                    id: code,
-                    eNumber: code,
+                    eNumbers: [code],
                     name: name,
                     group: group,
                     isPermittedGB: isPermittedGB,
@@ -1052,8 +1053,7 @@ class AdditiveWatchService {
         }
 
         return AdditiveInfo(
-            id: components[0],
-            eNumber: components[0],
+            eNumbers: [components[0]],
             name: components[1],
             group: AdditiveGroup(rawValue: components[2].lowercased()) ?? .other,
             isPermittedGB: components[3] == "TRUE",
