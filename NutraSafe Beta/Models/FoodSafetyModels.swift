@@ -391,7 +391,29 @@ enum AdditiveGroup: String, Codable, CaseIterable {
     case acidRegulator = "acid_regulator"
     case anticaking = "anticaking"
     case other = "other"
-    
+
+    // Custom decoder to handle unrecognized group values
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = try container.decode(String.self)
+
+        // Map American spellings and unrecognized values
+        switch rawValue {
+        case "flavor_enhancer":  // American spelling
+            self = .flavourEnhancer
+        case "bulking_agent", "fat", "protein":  // Missing values -> map to other
+            self = .other
+        default:
+            // Try exact match
+            if let group = AdditiveGroup(rawValue: rawValue) {
+                self = group
+            } else {
+                // Default to other for any unrecognized value
+                self = .other
+            }
+        }
+    }
+
     var displayName: String {
         switch self {
         case .colour: return "Colour"
