@@ -430,6 +430,21 @@ enum AdditiveCategory: String, Codable {
     case preservative = "preservative"
     case sweetener = "sweetener"
     case other = "other"
+
+    // Custom decoder to handle unrecognized category values (antioxidant, emulsifier, etc.)
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = try container.decode(String.self)
+
+        // Try to match existing cases
+        if let category = AdditiveCategory(rawValue: rawValue) {
+            self = category
+        } else {
+            // Default to "other" for unrecognized categories
+            // (e.g., antioxidant, bulking_agent, emulsifier, fat, flavor_enhancer, protein, thickener)
+            self = .other
+        }
+    }
 }
 
 enum AdditiveOrigin: String, Codable {
