@@ -2458,6 +2458,45 @@ struct NutrientDetailModal: View {
                     }
                 }
                 .padding(.top, 8)
+
+                // Official Health Claims Section (EFSA/NHS Verbatim)
+                if let officialClaims = getOfficialHealthClaims(for: row.name) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "checkmark.seal.fill")
+                                .font(.system(size: 16))
+                                .foregroundColor(.blue)
+                            Text("Official Health Claims")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.primary)
+                        }
+                        .padding(.top, 24)
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            ForEach(Array(officialClaims.enumerated()), id: \.offset) { index, claim in
+                                HStack(alignment: .top, spacing: 10) {
+                                    Text("•")
+                                        .font(.system(size: 15))
+                                        .foregroundColor(.secondary)
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(claim.text)
+                                            .font(.system(size: 15))
+                                            .foregroundColor(.primary)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                        Text(claim.source)
+                                            .font(.system(size: 12, weight: .medium))
+                                            .foregroundColor(.blue)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.blue.opacity(0.05))
+                        )
+                    }
+                }
             }
         }
     }
@@ -2493,6 +2532,199 @@ struct NutrientDetailModal: View {
 
         // Return as single item if not parseable and not empty
         return trimmed.isEmpty ? [] : [trimmed]
+    }
+
+    /// Get official health claims (EFSA/NHS verbatim wording) for a nutrient
+    private func getOfficialHealthClaims(for nutrientName: String) -> [HealthClaim]? {
+        let name = nutrientName.lowercased()
+
+        if name.contains("vitamin c") || name.contains("ascorbic acid") {
+            return [
+                HealthClaim(text: "Vitamin C contributes to normal collagen formation for the normal function of blood vessels, bones, cartilage, gums, skin and teeth", source: "EFSA"),
+                HealthClaim(text: "Vitamin C contributes to normal function of the immune system", source: "EFSA"),
+                HealthClaim(text: "Vitamin C increases iron absorption", source: "EFSA"),
+                HealthClaim(text: "Helps protect cells and keep them healthy", source: "NHS")
+            ]
+        }
+
+        if name.contains("vitamin a") || name.contains("retinol") {
+            return [
+                HealthClaim(text: "Vitamin A contributes to the maintenance of normal vision", source: "EFSA"),
+                HealthClaim(text: "Vitamin A contributes to normal function of the immune system", source: "EFSA"),
+                HealthClaim(text: "Vitamin A contributes to the maintenance of normal skin", source: "EFSA"),
+                HealthClaim(text: "Important for healthy skin and eyes", source: "NHS")
+            ]
+        }
+
+        if name.contains("vitamin d") || name.contains("cholecalciferol") {
+            return [
+                HealthClaim(text: "Vitamin D contributes to normal absorption/utilisation of calcium and phosphorus", source: "EFSA"),
+                HealthClaim(text: "Vitamin D contributes to the maintenance of normal bones and teeth", source: "EFSA"),
+                HealthClaim(text: "Vitamin D contributes to normal function of the immune system", source: "EFSA"),
+                HealthClaim(text: "Helps regulate calcium and phosphate in the body", source: "NHS")
+            ]
+        }
+
+        if name.contains("vitamin e") || name.contains("tocopherol") {
+            return [
+                HealthClaim(text: "Vitamin E contributes to the protection of cells from oxidative stress", source: "EFSA"),
+                HealthClaim(text: "Helps protect cell membranes", source: "NHS")
+            ]
+        }
+
+        if name.contains("vitamin k") || name.contains("phylloquinone") {
+            return [
+                HealthClaim(text: "Vitamin K contributes to normal blood clotting", source: "EFSA"),
+                HealthClaim(text: "Vitamin K contributes to the maintenance of normal bones", source: "EFSA"),
+                HealthClaim(text: "Needed for blood clotting and wound healing", source: "NHS")
+            ]
+        }
+
+        if name.contains("vitamin b1") || name.contains("thiamin") {
+            return [
+                HealthClaim(text: "Thiamin contributes to normal energy-yielding metabolism", source: "EFSA"),
+                HealthClaim(text: "Thiamin contributes to normal function of the nervous system", source: "EFSA"),
+                HealthClaim(text: "Thiamin contributes to normal psychological function", source: "EFSA"),
+                HealthClaim(text: "Helps the body break down and release energy from food", source: "NHS")
+            ]
+        }
+
+        if name.contains("vitamin b2") || name.contains("riboflavin") {
+            return [
+                HealthClaim(text: "Riboflavin contributes to normal energy-yielding metabolism", source: "EFSA"),
+                HealthClaim(text: "Riboflavin contributes to the maintenance of normal vision", source: "EFSA"),
+                HealthClaim(text: "Riboflavin contributes to the reduction of tiredness and fatigue", source: "EFSA"),
+                HealthClaim(text: "Helps keep skin, eyes and the nervous system healthy", source: "NHS")
+            ]
+        }
+
+        if name.contains("vitamin b3") || name.contains("niacin") {
+            return [
+                HealthClaim(text: "Niacin contributes to normal energy-yielding metabolism", source: "EFSA"),
+                HealthClaim(text: "Niacin contributes to normal function of the nervous system", source: "EFSA"),
+                HealthClaim(text: "Niacin contributes to the reduction of tiredness and fatigue", source: "EFSA"),
+                HealthClaim(text: "Helps the body release energy from food", source: "NHS")
+            ]
+        }
+
+        if name.contains("vitamin b6") || name.contains("pyridoxine") {
+            return [
+                HealthClaim(text: "Vitamin B6 contributes to normal protein and glycogen metabolism", source: "EFSA"),
+                HealthClaim(text: "Vitamin B6 contributes to normal function of the immune system", source: "EFSA"),
+                HealthClaim(text: "Vitamin B6 contributes to the reduction of tiredness and fatigue", source: "EFSA"),
+                HealthClaim(text: "Helps the body use and store energy from food", source: "NHS")
+            ]
+        }
+
+        if name.contains("vitamin b12") || name.contains("cobalamin") {
+            return [
+                HealthClaim(text: "Vitamin B12 contributes to normal energy-yielding metabolism", source: "EFSA"),
+                HealthClaim(text: "Vitamin B12 contributes to normal function of the immune system", source: "EFSA"),
+                HealthClaim(text: "Vitamin B12 contributes to the reduction of tiredness and fatigue", source: "EFSA"),
+                HealthClaim(text: "Helps make red blood cells and keeps the nervous system healthy", source: "NHS")
+            ]
+        }
+
+        if name.contains("folate") || name.contains("folic acid") || name.contains("vitamin b9") {
+            return [
+                HealthClaim(text: "Folate contributes to normal blood formation", source: "EFSA"),
+                HealthClaim(text: "Folate contributes to normal function of the immune system", source: "EFSA"),
+                HealthClaim(text: "Folate contributes to the reduction of tiredness and fatigue", source: "EFSA"),
+                HealthClaim(text: "Helps the body form healthy red blood cells", source: "NHS")
+            ]
+        }
+
+        if name.contains("calcium") {
+            return [
+                HealthClaim(text: "Calcium is needed for the maintenance of normal bones and teeth", source: "EFSA"),
+                HealthClaim(text: "Calcium contributes to normal blood clotting", source: "EFSA"),
+                HealthClaim(text: "Calcium contributes to normal muscle function", source: "EFSA"),
+                HealthClaim(text: "Needed for normal growth and development of bone in children", source: "NHS")
+            ]
+        }
+
+        if name.contains("iron") {
+            return [
+                HealthClaim(text: "Iron contributes to normal formation of red blood cells and haemoglobin", source: "EFSA"),
+                HealthClaim(text: "Iron contributes to normal oxygen transport in the body", source: "EFSA"),
+                HealthClaim(text: "Iron contributes to the reduction of tiredness and fatigue", source: "EFSA"),
+                HealthClaim(text: "Essential for making red blood cells which carry oxygen around the body", source: "NHS")
+            ]
+        }
+
+        if name.contains("magnesium") {
+            return [
+                HealthClaim(text: "Magnesium contributes to normal muscle function", source: "EFSA"),
+                HealthClaim(text: "Magnesium contributes to the maintenance of normal bones and teeth", source: "EFSA"),
+                HealthClaim(text: "Magnesium contributes to the reduction of tiredness and fatigue", source: "EFSA"),
+                HealthClaim(text: "Helps turn food into energy and supports normal muscle function", source: "NHS")
+            ]
+        }
+
+        if name.contains("zinc") {
+            return [
+                HealthClaim(text: "Zinc contributes to normal function of the immune system", source: "EFSA"),
+                HealthClaim(text: "Zinc contributes to the maintenance of normal skin, hair and nails", source: "EFSA"),
+                HealthClaim(text: "Zinc contributes to the protection of cells from oxidative stress", source: "EFSA"),
+                HealthClaim(text: "Helps with wound healing and supports the immune system", source: "NHS")
+            ]
+        }
+
+        if name.contains("potassium") {
+            return [
+                HealthClaim(text: "Potassium contributes to normal functioning of the nervous system", source: "EFSA"),
+                HealthClaim(text: "Potassium contributes to normal muscle function", source: "EFSA"),
+                HealthClaim(text: "Potassium contributes to the maintenance of normal blood pressure", source: "EFSA"),
+                HealthClaim(text: "Helps control the balance of fluids in the body", source: "NHS")
+            ]
+        }
+
+        if name.contains("selenium") {
+            return [
+                HealthClaim(text: "Selenium contributes to normal function of the immune system", source: "EFSA"),
+                HealthClaim(text: "Selenium contributes to the protection of cells from oxidative stress", source: "EFSA"),
+                HealthClaim(text: "Selenium contributes to the maintenance of normal hair and nails", source: "EFSA"),
+                HealthClaim(text: "Helps the immune system work properly", source: "NHS")
+            ]
+        }
+
+        if name.contains("iodine") {
+            return [
+                HealthClaim(text: "Iodine contributes to normal production of thyroid hormones and normal thyroid function", source: "EFSA"),
+                HealthClaim(text: "Iodine contributes to normal cognitive function", source: "EFSA"),
+                HealthClaim(text: "Iodine contributes to normal energy-yielding metabolism", source: "EFSA"),
+                HealthClaim(text: "Helps make thyroid hormones which keep cells and metabolic rate healthy", source: "NHS")
+            ]
+        }
+
+        if name.contains("phosphorus") {
+            return [
+                HealthClaim(text: "Phosphorus contributes to normal energy-yielding metabolism", source: "EFSA"),
+                HealthClaim(text: "Phosphorus contributes to the maintenance of normal bones and teeth", source: "EFSA"),
+                HealthClaim(text: "Phosphorus contributes to normal function of cell membranes", source: "EFSA"),
+                HealthClaim(text: "Helps build strong bones and teeth", source: "NHS")
+            ]
+        }
+
+        if name.contains("copper") {
+            return [
+                HealthClaim(text: "Copper contributes to normal function of the immune system", source: "EFSA"),
+                HealthClaim(text: "Copper contributes to the protection of cells from oxidative stress", source: "EFSA"),
+                HealthClaim(text: "Copper contributes to normal energy-yielding metabolism", source: "EFSA"),
+                HealthClaim(text: "Helps produce red and white blood cells", source: "NHS")
+            ]
+        }
+
+        if name.contains("manganese") {
+            return [
+                HealthClaim(text: "Manganese contributes to normal energy-yielding metabolism", source: "EFSA"),
+                HealthClaim(text: "Manganese contributes to the maintenance of normal bones", source: "EFSA"),
+                HealthClaim(text: "Manganese contributes to the protection of cells from oxidative stress", source: "EFSA"),
+                HealthClaim(text: "Helps make and activate some enzymes in the body", source: "NHS")
+            ]
+        }
+
+        return nil
     }
 }
 
