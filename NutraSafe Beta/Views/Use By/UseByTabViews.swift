@@ -637,7 +637,13 @@ struct UseByExpiryView: View {
 
     private var adaptiveSubtitle: String {
         if urgentCount > 0 {
-            return urgentCount == 1 ? "Use today" : "Need attention"
+            // Check the minimum days in urgent items for more accurate messaging
+            let minDays = useByItems.filter { $0.daysUntilExpiry <= 3 }.map { $0.daysUntilExpiry }.min() ?? 0
+            if minDays <= 1 {
+                return urgentCount == 1 ? "Use today" : "Use very soon"
+            } else {
+                return "Within 3 days"
+            }
         } else if thisWeekCount > 0 {
             return "Plan to use soon"
         } else {
