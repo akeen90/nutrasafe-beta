@@ -10,9 +10,7 @@ import SwiftUI
 struct WeeklySummarySheet: View {
     let initialDate: Date
     let calorieGoal: Double
-    let proteinGoal: Double
-    let carbGoal: Double
-    let fatGoal: Double
+    let macroGoals: [MacroGoal]
     let fetchWeeklySummary: (Double, Double, Double, Double) async -> WeeklySummary?
     let setSelectedDate: (Date) -> Void
 
@@ -21,6 +19,28 @@ struct WeeklySummarySheet: View {
     @State private var weeklySummary: WeeklySummary?
     @State private var isLoading = false
     @State private var expandedDays: Set<String> = [] // Track which days are expanded
+
+    // Computed properties for backwards compatibility with existing UI
+    private var proteinGoal: Double {
+        if let proteinMacro = macroGoals.first(where: { $0.macroType == .protein }) {
+            return proteinMacro.calculateGramGoal(from: calorieGoal)
+        }
+        return 0
+    }
+
+    private var carbGoal: Double {
+        if let carbMacro = macroGoals.first(where: { $0.macroType == .carbs }) {
+            return carbMacro.calculateGramGoal(from: calorieGoal)
+        }
+        return 0
+    }
+
+    private var fatGoal: Double {
+        if let fatMacro = macroGoals.first(where: { $0.macroType == .fat }) {
+            return fatMacro.calculateGramGoal(from: calorieGoal)
+        }
+        return 0
+    }
 
     var body: some View {
         NavigationView {

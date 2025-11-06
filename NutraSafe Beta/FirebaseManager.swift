@@ -1234,6 +1234,111 @@ class FirebaseManager: ObservableObject {
         print("✅ Macro percentages saved successfully")
     }
 
+    // MARK: - Macro Management (Customizable Macros)
+
+    func saveMacroGoals(_ macroGoals: [MacroGoal]) async throws {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save macro goals"])
+        }
+
+        // Convert MacroGoal array to dictionary for Firebase
+        let macroGoalsData = macroGoals.map { goal -> [String: Any] in
+            var data: [String: Any] = ["macroType": goal.macroType.rawValue]
+
+            if let percentage = goal.percentage {
+                data["percentage"] = percentage
+            }
+            if let directTarget = goal.directTarget {
+                data["directTarget"] = directTarget
+            }
+
+            return data
+        }
+
+        let data: [String: Any] = [
+            "macroGoals": macroGoalsData
+        ]
+
+        try await db.collection("users").document(userId)
+            .collection("settings").document("preferences").setData(data, merge: true)
+
+        let descriptions = macroGoals.map { goal in
+            if let percentage = goal.percentage {
+                return "\(goal.macroType.displayName): \(percentage)%"
+            } else if let directTarget = goal.directTarget {
+                return "\(goal.macroType.displayName): \(Int(directTarget))g"
+            } else {
+                return "\(goal.macroType.displayName)"
+            }
+        }
+        print("✅ Macro goals saved successfully: \(descriptions)")
+    }
+
+    func getMacroGoals() async throws -> [MacroGoal] {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view macro goals"])
+        }
+
+        let document = try await db.collection("users").document(userId)
+            .collection("settings").document("preferences").getDocument()
+
+        guard let data = document.data() else {
+            // No settings found, return defaults
+            print("ℹ️ No macro goals found, returning defaults (P 30%, C 40%, F 30%, Fibre 30g)")
+            return MacroGoal.defaultMacros
+        }
+
+        // Try to load new macro goals structure
+        if let macroGoalsData = data["macroGoals"] as? [[String: Any]] {
+            let macroGoals = macroGoalsData.compactMap { goalData -> MacroGoal? in
+                guard let macroTypeString = goalData["macroType"] as? String,
+                      let macroType = MacroType(rawValue: macroTypeString) else {
+                    return nil
+                }
+
+                // Check if it has a percentage (core macro) or direct target (extra macro)
+                if let percentage = goalData["percentage"] as? Int {
+                    return MacroGoal(macroType: macroType, percentage: percentage)
+                } else if let directTarget = goalData["directTarget"] as? Double {
+                    return MacroGoal(macroType: macroType, directTarget: directTarget)
+                }
+
+                return nil
+            }
+
+            if !macroGoals.isEmpty {
+                print("ℹ️ Loaded \(macroGoals.count) macro goals from Firebase")
+                return macroGoals
+            }
+        }
+
+        // Backwards compatibility: Try to load old protein/carbs/fat percentages only
+        if let proteinPercent = data["proteinPercent"] as? Int,
+           let carbsPercent = data["carbsPercent"] as? Int,
+           let fatPercent = data["fatPercent"] as? Int {
+            print("ℹ️ Migrating old macro percentages to new 4-macro structure (P:\(proteinPercent)%, C:\(carbsPercent)%, F:\(fatPercent)% + Fibre 30g)")
+            let migratedMacros = [
+                MacroGoal(macroType: .protein, percentage: proteinPercent),
+                MacroGoal(macroType: .carbs, percentage: carbsPercent),
+                MacroGoal(macroType: .fat, percentage: fatPercent),
+                MacroGoal(macroType: .fiber, directTarget: 30.0) // Add default fibre
+            ]
+
+            // Automatically migrate to new structure
+            try? await saveMacroGoals(migratedMacros)
+
+            return migratedMacros
+        }
+
+        // No data found at all, return defaults
+        print("ℹ️ No macro data found, returning defaults (P 30%, C 40%, F 30%, Fibre 30g)")
+        return MacroGoal.defaultMacros
+    }
+
     func saveAllergens(_ allergens: [Allergen]) async throws {
         ensureAuthStateLoaded()
 

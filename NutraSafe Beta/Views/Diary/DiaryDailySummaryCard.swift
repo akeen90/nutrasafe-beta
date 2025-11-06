@@ -27,9 +27,7 @@ struct DiaryDailySummaryCard: View {
 
     // MARK: - Daily Goals
     @State private var calorieGoal: Double = 1800
-    @State private var proteinGoal: Double = 135
-    @State private var carbGoal: Double = 225
-    @State private var fatGoal: Double = 40
+    @State private var macroGoals: [MacroGoal] = MacroGoal.defaultMacros
 
     // MARK: - Weekly Summary Sheet
     @State private var showWeeklySummary = false
@@ -190,34 +188,17 @@ struct DiaryDailySummaryCard: View {
                             .foregroundColor(.secondary.opacity(0.9))
                     }
                     
-                    // Enhanced Macro progress bars
+                    // Dynamic Macro progress bars based on user selection
                     VStack(spacing: 10) {
-                        // Protein
-                        PremiumMacroProgressView(
-                            name: "Protein",
-                            current: totalProtein,
-                            goal: proteinGoal,
-                            unit: "g",
-                            color: Color(.systemRed)
-                        )
-                        
-                        // Carbs  
-                        PremiumMacroProgressView(
-                            name: "Carbs",
-                            current: totalCarbs,
-                            goal: carbGoal,
-                            unit: "g",
-                            color: Color(.systemOrange)
-                        )
-                        
-                        // Fat
-                        PremiumMacroProgressView(
-                            name: "Fat",
-                            current: totalFat,
-                            goal: fatGoal,
-                            unit: "g",
-                            color: Color(.systemYellow)
-                        )
+                        ForEach(macroGoals, id: \.macroType) { macroGoal in
+                            PremiumMacroProgressView(
+                                name: macroGoal.macroType.displayName,
+                                current: calculateMacroTotal(for: macroGoal.macroType),
+                                goal: macroGoal.calculateGramGoal(from: calorieGoal),
+                                unit: macroGoal.macroType.unit,
+                                color: macroGoal.macroType.color
+                            )
+                        }
                     }
                 }
             }
@@ -262,9 +243,7 @@ struct DiaryDailySummaryCard: View {
             WeeklySummarySheet(
                 initialDate: currentDate,
                 calorieGoal: calorieGoal,
-                proteinGoal: proteinGoal,
-                carbGoal: carbGoal,
-                fatGoal: fatGoal,
+                macroGoals: macroGoals,
                 fetchWeeklySummary: fetchWeeklySummary,
                 setSelectedDate: setSelectedDate
             )
@@ -275,25 +254,27 @@ struct DiaryDailySummaryCard: View {
     private func loadNutritionGoals() async {
         do {
             let settings = try await firebaseManager.getUserSettings()
+            let loadedMacroGoals = try await firebaseManager.getMacroGoals()
 
             await MainActor.run {
                 // Update calorie goal
                 calorieGoal = Double(settings.caloricGoal ?? 2000)
 
-                // Calculate macro goals based on percentages
-                let proteinPercent = Double(settings.proteinPercent ?? 30) / 100.0
-                let carbsPercent = Double(settings.carbsPercent ?? 40) / 100.0
-                let fatPercent = Double(settings.fatPercent ?? 30) / 100.0
-
-                // Convert calorie percentages to grams
-                // Protein: 4 cal/g, Carbs: 4 cal/g, Fat: 9 cal/g
-                proteinGoal = (calorieGoal * proteinPercent) / 4.0
-                carbGoal = (calorieGoal * carbsPercent) / 4.0
-                fatGoal = (calorieGoal * fatPercent) / 9.0
+                // Update macro goals from Firebase
+                macroGoals = loadedMacroGoals
+                print("✅ Loaded \(macroGoals.count) macro goals for diary display")
             }
         } catch {
             print("⚠️ Failed to load nutrition goals: \(error.localizedDescription)")
             // Keep default values if loading fails
+        }
+    }
+
+    // Calculate total for a specific macro type from all food items
+    private func calculateMacroTotal(for macroType: MacroType) -> Double {
+        let allFoods = breakfastFoods + lunchFoods + dinnerFoods + snackFoods
+        return allFoods.reduce(0.0) { total, food in
+            total + macroType.getValue(from: food)
         }
     }
     

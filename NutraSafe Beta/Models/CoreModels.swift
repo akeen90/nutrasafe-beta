@@ -998,3 +998,127 @@ struct DailyBreakdown: Identifiable {
     }
 }
 
+// MARK: - Macro Management Models
+
+enum MacroType: String, CaseIterable, Codable {
+    case protein = "protein"
+    case carbs = "carbs"
+    case fat = "fat"
+    case fiber = "fiber"
+    case sugar = "sugar"
+    case salt = "salt"
+    case saturatedFat = "saturatedFat"
+
+    var displayName: String {
+        switch self {
+        case .protein: return "Protein"
+        case .carbs: return "Carbs"
+        case .fat: return "Fat"
+        case .fiber: return "Fibre"
+        case .sugar: return "Sugar"
+        case .salt: return "Salt"
+        case .saturatedFat: return "Saturated Fat"
+        }
+    }
+
+    var unit: String {
+        return "g" // All macros in grams now
+    }
+
+    var color: Color {
+        switch self {
+        case .protein: return Color(.systemRed)
+        case .carbs: return Color(.systemOrange)
+        case .fat: return Color(.systemYellow)
+        case .fiber: return Color(.systemGreen)
+        case .sugar: return Color(.systemPink)
+        case .salt: return Color(.systemBlue)
+        case .saturatedFat: return Color(.systemPurple)
+        }
+    }
+
+    var caloriesPerGram: Double {
+        switch self {
+        case .protein: return 4.0
+        case .carbs: return 4.0
+        case .fat: return 9.0
+        case .saturatedFat: return 9.0
+        case .fiber, .sugar, .salt: return 0.0 // Non-caloric macros
+        }
+    }
+
+    var isCaloric: Bool {
+        return caloriesPerGram > 0
+    }
+
+    var isCoreMacro: Bool {
+        return self == .protein || self == .carbs || self == .fat
+    }
+
+    // Get value from DiaryFoodItem
+    func getValue(from item: DiaryFoodItem) -> Double {
+        switch self {
+        case .protein: return item.protein
+        case .carbs: return item.carbs
+        case .fat: return item.fat
+        case .fiber: return item.fiber
+        case .sugar: return item.sugar
+        case .salt: return item.sodium / 1000.0 // Convert mg to g
+        case .saturatedFat: return 0.0 // Not currently tracked in DiaryFoodItem
+        }
+    }
+
+    // Available extra macros (user picks one of these)
+    static var extraMacros: [MacroType] {
+        return [.fiber, .sugar, .salt, .saturatedFat]
+    }
+}
+
+struct MacroGoal: Codable, Identifiable {
+    var id: String { macroType.rawValue }
+    let macroType: MacroType
+    let percentage: Int?       // For core macros (P/C/F) - percentage of calories
+    let directTarget: Double?  // For extra macro - direct gram target
+
+    // Init for core macros (percentage-based)
+    init(macroType: MacroType, percentage: Int) {
+        self.macroType = macroType
+        self.percentage = percentage
+        self.directTarget = nil
+    }
+
+    // Init for extra macro (direct target in grams)
+    init(macroType: MacroType, directTarget: Double) {
+        self.macroType = macroType
+        self.percentage = nil
+        self.directTarget = directTarget
+    }
+
+    // Calculate gram goal based on calorie goal
+    func calculateGramGoal(from calorieGoal: Double) -> Double {
+        // Core macros (P/C/F): calculate from percentage of calories
+        if let percentage = percentage, macroType.isCoreMacro {
+            let caloriesForMacro = calorieGoal * (Double(percentage) / 100.0)
+            return caloriesForMacro / macroType.caloriesPerGram
+        }
+
+        // Extra macro: return direct target
+        if let directTarget = directTarget {
+            return directTarget
+        }
+
+        // Fallback (shouldn't reach here)
+        return 0
+    }
+}
+
+// Default macro configuration (protein/carbs/fat + fiber)
+extension MacroGoal {
+    static let defaultMacros: [MacroGoal] = [
+        MacroGoal(macroType: .protein, percentage: 30),
+        MacroGoal(macroType: .carbs, percentage: 40),
+        MacroGoal(macroType: .fat, percentage: 30),
+        MacroGoal(macroType: .fiber, directTarget: 30.0) // UK recommended daily fiber intake
+    ]
+}
+

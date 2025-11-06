@@ -434,14 +434,12 @@ struct NutritionGoalsSection: View {
     @EnvironmentObject var firebaseManager: FirebaseManager
 
     @State private var caloricGoal: Int = 2000
-    @State private var proteinPercent: Int = 30
-    @State private var carbsPercent: Int = 40
-    @State private var fatPercent: Int = 30
+    @State private var macroGoals: [MacroGoal] = MacroGoal.defaultMacros
 
     @State private var isLoading = true
     @State private var showingError = false
     @State private var errorMessage = ""
-    @State private var showingMacroEditor = false
+    @State private var showingMacroManagement = false
 
     var body: some View {
         SettingsSection(title: "Nutrition Goals") {
@@ -490,23 +488,24 @@ struct NutritionGoalsSection: View {
                     Divider()
                         .padding(.leading, 52)
 
-                    // Macro Split
-                    Button(action: { showingMacroEditor = true }) {
+                    // Macro Management
+                    Button(action: { showingMacroManagement = true }) {
                         HStack(spacing: 12) {
-                            Image(systemName: "chart.pie.fill")
+                            Image(systemName: "chart.bar.fill")
                                 .font(.system(size: 16))
                                 .foregroundColor(.blue)
                                 .frame(width: 24)
 
-                            Text("Macro Split")
+                            Text("Macro Management")
                                 .font(.system(size: 16))
                                 .foregroundColor(.primary)
 
                             Spacer()
 
-                            Text("\(proteinPercent)% • \(carbsPercent)% • \(fatPercent)%")
+                            Text(macroGoals.map { $0.macroType.displayName }.joined(separator: " • "))
                                 .font(.system(size: 14))
                                 .foregroundColor(.secondary)
+                                .lineLimit(1)
 
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 12))
@@ -524,12 +523,10 @@ struct NutritionGoalsSection: View {
                 await loadNutritionGoals()
             }
         }
-        .sheet(isPresented: $showingMacroEditor) {
-            MacroEditorView(
-                proteinPercent: $proteinPercent,
-                carbsPercent: $carbsPercent,
-                fatPercent: $fatPercent,
-                onSave: saveMacroPercentages
+        .sheet(isPresented: $showingMacroManagement) {
+            MacroManagementView(
+                macroGoals: $macroGoals,
+                onSave: saveMacroGoals
             )
         }
         .alert("Error", isPresented: $showingError) {
@@ -543,13 +540,13 @@ struct NutritionGoalsSection: View {
         do {
             // Load user settings
             let settings = try await firebaseManager.getUserSettings()
+            let loadedMacroGoals = try await firebaseManager.getMacroGoals()
 
             await MainActor.run {
                 caloricGoal = settings.caloricGoal ?? 2000
-                proteinPercent = settings.proteinPercent ?? 30
-                carbsPercent = settings.carbsPercent ?? 40
-                fatPercent = settings.fatPercent ?? 30
+                macroGoals = loadedMacroGoals
                 isLoading = false
+                print("✅ Loaded \(macroGoals.count) macro goals for settings display")
             }
         } catch {
             await MainActor.run {
@@ -581,15 +578,11 @@ struct NutritionGoalsSection: View {
         }
     }
 
-    private func saveMacroPercentages() {
+    private func saveMacroGoals() {
         Task {
             do {
-                try await firebaseManager.saveMacroPercentages(
-                    protein: proteinPercent,
-                    carbs: carbsPercent,
-                    fat: fatPercent
-                )
-                print("✅ Macro percentages updated: P\(proteinPercent)% C\(carbsPercent)% F\(fatPercent)%")
+                try await firebaseManager.saveMacroGoals(macroGoals)
+                print("✅ Macro goals updated: \(macroGoals.map { "\($0.macroType.displayName): \($0.percentage)%" })")
 
                 // Notify diary view to update immediately
                 await MainActor.run {
@@ -597,7 +590,7 @@ struct NutritionGoalsSection: View {
                 }
             } catch {
                 await MainActor.run {
-                    errorMessage = "Failed to save macro percentages: \(error.localizedDescription)"
+                    errorMessage = "Failed to save macro goals: \(error.localizedDescription)"
                     showingError = true
                 }
             }
@@ -2144,104 +2137,127 @@ struct DataPrivacyView: View {
     }
 }
 
-// MARK: - Macro Editor View
+// MARK: - Macro Management View
 
-struct MacroEditorView: View {
+struct MacroManagementView: View {
     @Environment(\.dismiss) private var dismiss
 
-    @Binding var proteinPercent: Int
-    @Binding var carbsPercent: Int
-    @Binding var fatPercent: Int
-
-    @State private var tempProtein: Double
-    @State private var tempCarbs: Double
-    @State private var tempFat: Double
-
+    @Binding var macroGoals: [MacroGoal]
     let onSave: () -> Void
 
-    init(proteinPercent: Binding<Int>, carbsPercent: Binding<Int>, fatPercent: Binding<Int>, onSave: @escaping () -> Void) {
-        self._proteinPercent = proteinPercent
-        self._carbsPercent = carbsPercent
-        self._fatPercent = fatPercent
-        self._tempProtein = State(initialValue: Double(proteinPercent.wrappedValue))
-        self._tempCarbs = State(initialValue: Double(carbsPercent.wrappedValue))
-        self._tempFat = State(initialValue: Double(fatPercent.wrappedValue))
+    // Core macro percentages (always present)
+    @State private var proteinPercent: Int
+    @State private var carbsPercent: Int
+    @State private var fatPercent: Int
+
+    // Extra macro selection and target
+    @State private var selectedExtraMacro: MacroType
+    @State private var extraMacroTarget: String // Use string for TextField
+
+    init(macroGoals: Binding<[MacroGoal]>, onSave: @escaping () -> Void) {
+        self._macroGoals = macroGoals
         self.onSave = onSave
+
+        // Initialize core macros from binding
+        let goals = macroGoals.wrappedValue
+        let proteinGoal = goals.first(where: { $0.macroType == .protein })
+        let carbsGoal = goals.first(where: { $0.macroType == .carbs })
+        let fatGoal = goals.first(where: { $0.macroType == .fat })
+
+        self._proteinPercent = State(initialValue: proteinGoal?.percentage ?? 30)
+        self._carbsPercent = State(initialValue: carbsGoal?.percentage ?? 40)
+        self._fatPercent = State(initialValue: fatGoal?.percentage ?? 30)
+
+        // Initialize extra macro
+        let extraGoal = goals.first(where: { !$0.macroType.isCoreMacro })
+        self._selectedExtraMacro = State(initialValue: extraGoal?.macroType ?? .fiber)
+        self._extraMacroTarget = State(initialValue: String(Int(extraGoal?.directTarget ?? 30)))
     }
 
     private var totalPercent: Int {
-        Int(tempProtein + tempCarbs + tempFat)
+        proteinPercent + carbsPercent + fatPercent
     }
 
     private var isValid: Bool {
-        totalPercent == 100
+        guard totalPercent == 100 else { return false }
+        guard let target = Int(extraMacroTarget), target > 0 else { return false }
+        return true
     }
 
     var body: some View {
         NavigationView {
             Form {
+                // Status Section
                 Section {
-                    VStack(spacing: 8) {
-                        HStack {
-                            Text("Total:")
-                                .font(.system(size: 16, weight: .semibold))
-                            Spacer()
-                            Text("\(totalPercent)%")
-                                .font(.system(size: 24, weight: .bold))
-                                .foregroundColor(isValid ? .green : .red)
-                        }
-
-                        if !isValid {
-                            Text("Percentages must total 100%")
-                                .font(.system(size: 14))
-                                .foregroundColor(.red)
-                        }
+                    HStack {
+                        Text("Core Macros Total:")
+                            .font(.system(size: 16, weight: .semibold))
+                        Spacer()
+                        Text("\(totalPercent)%")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(totalPercent == 100 ? .green : .red)
                     }
                     .padding(.vertical, 8)
-                }
 
-                Section(header: Text("Protein")) {
-                    HStack {
-                        Text("\(Int(tempProtein))%")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.orange)
-                            .frame(width: 60, alignment: .trailing)
-
-                        Slider(value: $tempProtein, in: 10...50, step: 1)
-                            .tint(.orange)
+                    if totalPercent != 100 {
+                        Text("Percentages must total 100%")
+                            .font(.system(size: 14))
+                            .foregroundColor(.red)
                     }
                 }
 
-                Section(header: Text("Carbohydrates")) {
-                    HStack {
-                        Text("\(Int(tempCarbs))%")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.blue)
-                            .frame(width: 60, alignment: .trailing)
+                // Core Macros Section (Always visible)
+                Section(header: Text("Core Macros (% of Calories)")) {
+                    MacroPercentageRow(
+                        macroType: .protein,
+                        percentage: $proteinPercent
+                    )
 
-                        Slider(value: $tempCarbs, in: 20...60, step: 1)
-                            .tint(.blue)
+                    MacroPercentageRow(
+                        macroType: .carbs,
+                        percentage: $carbsPercent
+                    )
+
+                    MacroPercentageRow(
+                        macroType: .fat,
+                        percentage: $fatPercent
+                    )
+                }
+
+                // Extra Macro Section
+                Section(header: Text("Extra Macro Tracking")) {
+                    Picker("Track", selection: $selectedExtraMacro) {
+                        ForEach(MacroType.extraMacros, id: \.self) { macro in
+                            HStack {
+                                Circle()
+                                    .fill(macro.color)
+                                    .frame(width: 12, height: 12)
+                                Text(macro.displayName)
+                            }
+                            .tag(macro)
+                        }
+                    }
+                    .pickerStyle(.menu)
+
+                    HStack {
+                        Text("Daily Target")
+                        Spacer()
+                        TextField("grams", text: $extraMacroTarget)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 60)
+                        Text("g")
+                            .foregroundColor(.secondary)
                     }
                 }
 
-                Section(header: Text("Fat")) {
-                    HStack {
-                        Text("\(Int(tempFat))%")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.purple)
-                            .frame(width: 60, alignment: .trailing)
-
-                        Slider(value: $tempFat, in: 15...45, step: 1)
-                            .tint(.purple)
-                    }
-                }
-
-                Section(header: Text("Common Presets")) {
+                // Quick Presets
+                Section(header: Text("Quick Presets")) {
                     Button(action: { applyPreset(protein: 30, carbs: 40, fat: 30) }) {
                         HStack {
                             Text("Balanced")
                             Spacer()
-                            Text("30% • 40% • 30%")
+                            Text("P30 • C40 • F30")
                                 .foregroundColor(.secondary)
                         }
                     }
@@ -2250,16 +2266,7 @@ struct MacroEditorView: View {
                         HStack {
                             Text("High Protein")
                             Spacer()
-                            Text("40% • 30% • 30%")
-                                .foregroundColor(.secondary)
-                        }
-                    }
-
-                    Button(action: { applyPreset(protein: 20, carbs: 50, fat: 30) }) {
-                        HStack {
-                            Text("High Carb")
-                            Spacer()
-                            Text("20% • 50% • 30%")
+                            Text("P40 • C30 • F30")
                                 .foregroundColor(.secondary)
                         }
                     }
@@ -2268,13 +2275,13 @@ struct MacroEditorView: View {
                         HStack {
                             Text("Keto")
                             Spacer()
-                            Text("25% • 20% • 55%")
+                            Text("P25 • C20 • F55")
                                 .foregroundColor(.secondary)
                         }
                     }
                 }
             }
-            .navigationTitle("Macro Split")
+            .navigationTitle("Macro Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -2293,23 +2300,64 @@ struct MacroEditorView: View {
     }
 
     private func applyPreset(protein: Int, carbs: Int, fat: Int) {
-        tempProtein = Double(protein)
-        tempCarbs = Double(carbs)
-        tempFat = Double(fat)
+        proteinPercent = protein
+        carbsPercent = carbs
+        fatPercent = fat
 
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
         impactFeedback.impactOccurred()
     }
 
     private func saveChanges() {
-        proteinPercent = Int(tempProtein)
-        carbsPercent = Int(tempCarbs)
-        fatPercent = Int(tempFat)
+        guard let extraTarget = Double(extraMacroTarget) else { return }
+
+        // Create all 4 macro goals
+        let newMacroGoals = [
+            MacroGoal(macroType: .protein, percentage: proteinPercent),
+            MacroGoal(macroType: .carbs, percentage: carbsPercent),
+            MacroGoal(macroType: .fat, percentage: fatPercent),
+            MacroGoal(macroType: selectedExtraMacro, directTarget: extraTarget)
+        ]
+
+        macroGoals = newMacroGoals
         onSave()
         dismiss()
 
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
+    }
+}
+
+// Helper view for macro percentage rows
+struct MacroPercentageRow: View {
+    let macroType: MacroType
+    @Binding var percentage: Int
+
+    var body: some View {
+        VStack(spacing: 4) {
+            HStack {
+                Circle()
+                    .fill(macroType.color)
+                    .frame(width: 12, height: 12)
+
+                Text(macroType.displayName)
+                    .font(.system(size: 16, weight: .medium))
+
+                Spacer()
+
+                Text("\(percentage)%")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(macroType.color)
+                    .frame(width: 60, alignment: .trailing)
+            }
+
+            Slider(value: Binding(
+                get: { Double(percentage) },
+                set: { percentage = Int($0) }
+            ), in: 10...60, step: 1)
+                .tint(macroType.color)
+        }
+        .padding(.vertical, 4)
     }
 }
 
