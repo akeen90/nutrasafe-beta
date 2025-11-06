@@ -1,8 +1,5 @@
 import Foundation
 import StoreKit
-#if DEBUG && canImport(StoreKitTest)
-import StoreKitTest
-#endif
 import SwiftUI
 import UIKit
 
@@ -36,34 +33,8 @@ final class SubscriptionManager: ObservableObject {
         }
     }
 
-    #if DEBUG && canImport(StoreKitTest)
-    private func ensureLocalStoreKitActivated() {
-        if #available(iOS 15.0, *) {
-            // If StoreKitTest is available but no default session, try to initialize from bundle
-            if SKTestSession.default == nil {
-                if let url = Bundle.main.url(forResource: "NutraSafe", withExtension: "storekit") {
-                    do {
-                        let session = try SKTestSession(configurationFileURL: url)
-                        session.resetToDefaultState()
-                        SKTestSession.default = session
-                        print("StoreKitTest: Activated session in SubscriptionManager from \(url)")
-                    } catch {
-                        print("StoreKitTest: Failed to activate session in SubscriptionManager: \(error)")
-                    }
-                } else {
-                    print("StoreKitTest: NutraSafe.storekit not found in bundle (SubscriptionManager)")
-                }
-            }
-        }
-    }
-    #endif
 
     func load() async throws {
-        #if DEBUG && canImport(StoreKitTest)
-        // Proactively ensure local StoreKit session is activated before fetching products
-        ensureLocalStoreKitActivated()
-        #endif
-
         // Add timeout to prevent infinite loading
         do {
             try await withTimeout(seconds: 10) {
@@ -83,22 +54,9 @@ final class SubscriptionManager: ObservableObject {
     }
 
     private func loadProductInternal() async throws {
-        #if DEBUG
-        // In DEBUG builds, skip sync - local StoreKit doesn't need it and it triggers auth prompts
-        print("StoreKit: Skipping sync in DEBUG build (using local StoreKitTest)")
-        #else
-        // Production: sync with App Store first to ensure fresh pricing data
-        print("StoreKit: Syncing with App Store before loading products")
-        do {
-            try await AppStore.sync()
-            // Give StoreKit a brief moment to update local state
-            try? await Task.sleep(nanoseconds: 300_000_000)
-            print("StoreKit: Sync completed successfully")
-        } catch {
-            print("StoreKit: Sync failed: \(error), will try to load products anyway")
-        }
-        #endif
-
+        // Don't sync on load to avoid triggering authentication popup
+        // Products will load from local StoreKit data first
+        // Sync only happens during purchase/restore when user explicitly takes action
         print("StoreKit: Loading products for id: \(productID)")
         let products = try await Product.products(for: [productID])
         print("StoreKit: Product fetch count: \(products.count)")
@@ -112,23 +70,6 @@ final class SubscriptionManager: ObservableObject {
             return
         }
 
-        #if DEBUG && canImport(StoreKitTest)
-        // As a final fallback in DEBUG, re-activate test session and try one more time
-        print("StoreKit: Products still unavailable; re-activating StoreKitTest and retrying")
-        ensureLocalStoreKitActivated()
-        try? await Task.sleep(nanoseconds: 300_000_000)
-        let finalProducts = try await Product.products(for: [productID])
-        print("StoreKit: Final product fetch count: \(finalProducts.count)")
-        if let p = finalProducts.first {
-            product = p
-            isProductLoaded = true
-            print("StoreKit: Loaded product after StoreKitTest fallback: \(p.id) price=\(p.displayPrice)")
-            try await refreshStatus()
-            await refreshPremiumOverride()
-            return
-        }
-        #endif
-
         // Still unavailable; set error state and proceed with override only
         print("StoreKit: Products still unavailable after all attempts. Using premium override only.")
         isProductLoaded = false
@@ -139,7 +80,7 @@ final class SubscriptionManager: ObservableObject {
     func purchase() async throws {
         purchaseError = nil
 
-        guard let product = product else {
+        guard let initialProduct = product else {
             print("StoreKit: purchase() ignored — product is nil (not loaded)")
             purchaseError = "Unable to load subscription. Please check your internet connection and try again."
             return
@@ -148,10 +89,26 @@ final class SubscriptionManager: ObservableObject {
         isPurchasing = true
         defer { isPurchasing = false }
 
-        print("StoreKit: Starting purchase for \(product.id)")
+        // Sync with App Store before purchase to ensure pricing matches user's Apple ID region
+        print("StoreKit: Syncing with App Store before purchase")
+        var productToPurchase = initialProduct
+        do {
+            try await AppStore.sync()
+            // Reload products after sync to get pricing for authenticated account
+            let products = try await Product.products(for: [productID])
+            if let updatedProduct = products.first {
+                self.product = updatedProduct
+                productToPurchase = updatedProduct
+                print("StoreKit: Updated product pricing: \(updatedProduct.displayPrice)")
+            }
+        } catch {
+            print("StoreKit: Pre-purchase sync failed: \(error), continuing with existing product")
+        }
+
+        print("StoreKit: Starting purchase for \(productToPurchase.id) at \(productToPurchase.displayPrice)")
 
         do {
-            let result = try await product.purchase()
+            let result = try await productToPurchase.purchase()
             switch result {
             case .success(let verification):
                 do {
@@ -182,7 +139,7 @@ final class SubscriptionManager: ObservableObject {
     }
 
     func refreshStatus() async throws {
-        guard let product = product, let subscription = product.subscription else { return }
+        guard let subscription = product?.subscription else { return }
         let currentStatus = try await subscription.status
         status = currentStatus
 
@@ -212,6 +169,16 @@ final class SubscriptionManager: ObservableObject {
                 try await AppStore.sync()
             }
             print("StoreKit: Successfully synced with App Store")
+
+            // Refresh subscription status and product pricing after sync
+            if self.product != nil {
+                let products = try await Product.products(for: [productID])
+                if let first = products.first {
+                    self.product = first
+                    print("StoreKit: Updated product pricing after restore: \(first.displayPrice)")
+                }
+            }
+
             try await refreshStatus()
             await refreshPremiumOverride()
             print("StoreKit: Restore completed successfully")

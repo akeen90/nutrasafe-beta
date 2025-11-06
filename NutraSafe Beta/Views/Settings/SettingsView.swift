@@ -582,7 +582,7 @@ struct NutritionGoalsSection: View {
         Task {
             do {
                 try await firebaseManager.saveMacroGoals(macroGoals)
-                print("✅ Macro goals updated: \(macroGoals.map { "\($0.macroType.displayName): \($0.percentage)%" })")
+                print("✅ Macro goals updated: \(macroGoals.map { "\($0.macroType.displayName): \(String(describing: $0.percentage))%" })")
 
                 // Notify diary view to update immediately
                 await MainActor.run {
@@ -1058,6 +1058,7 @@ struct CurrentWeightEditorView: View {
     @EnvironmentObject var firebaseManager: FirebaseManager
     @Binding var currentWeight: Double?
     let onSave: () -> Void
+    @AppStorage("unitSystem") private var unitSystem: UnitSystem = .metric
 
     @State private var tempWeight: String
     @State private var isSaving = false
@@ -1065,13 +1066,51 @@ struct CurrentWeightEditorView: View {
     init(currentWeight: Binding<Double?>, onSave: @escaping () -> Void) {
         self._currentWeight = currentWeight
         self.onSave = onSave
-        self._tempWeight = State(initialValue: currentWeight.wrappedValue.map { String(format: "%.1f", $0) } ?? "")
+        // Initialize tempWeight with an empty string; we'll set it in onAppear based on unitSystem
+        self._tempWeight = State(initialValue: "")
+    }
+
+    private func formatWeight(_ kg: Double) -> String {
+        switch unitSystem {
+        case .metric:
+            return String(format: "%.1f kg", kg)
+        case .imperial:
+            let lbs = kg * 2.20462
+            return String(format: "%.1f lbs", lbs)
+        }
+    }
+
+    private func convertToDisplay(_ kg: Double) -> Double {
+        switch unitSystem {
+        case .metric:
+            return kg
+        case .imperial:
+            return kg * 2.20462
+        }
+    }
+
+    private func convertToKg(_ displayValue: Double) -> Double {
+        switch unitSystem {
+        case .metric:
+            return displayValue
+        case .imperial:
+            return displayValue / 2.20462
+        }
+    }
+
+    private var weightUnitLabel: String {
+        switch unitSystem {
+        case .metric:
+            return "kg"
+        case .imperial:
+            return "lbs"
+        }
     }
 
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Current Weight (kg)")) {
+                Section(header: Text("Current Weight (\(weightUnitLabel))")) {
                     TextField("Enter weight", text: $tempWeight)
                         .keyboardType(.decimalPad)
                         .font(.system(size: 18))
@@ -1079,8 +1118,8 @@ struct CurrentWeightEditorView: View {
 
                 Section(header: Text("Quick Entry")) {
                     if let current = currentWeight {
-                        Button("Keep Current: \(String(format: "%.1f kg", current))") {
-                            tempWeight = String(format: "%.1f", current)
+                        Button("Keep Current: \(formatWeight(current))") {
+                            tempWeight = String(format: "%.1f", convertToDisplay(current))
                         }
                     }
                 }
@@ -1110,17 +1149,27 @@ struct CurrentWeightEditorView: View {
                     }
                 }
             }
+            .onAppear {
+                // Set initial value in the correct units when view appears
+                if let weight = currentWeight, tempWeight.isEmpty {
+                    tempWeight = String(format: "%.1f", convertToDisplay(weight))
+                }
+            }
         }
     }
 
     private func saveWeight() {
         let sanitized = tempWeight.replacingOccurrences(of: ",", with: ".")
-        if let value = Double(sanitized), value > 0, value < 500 {
-            isSaving = true
-            currentWeight = value
-            onSave()
-            // Dismiss immediately; parent will refresh and reconcile asynchronously
-            dismiss()
+        if let displayValue = Double(sanitized), displayValue > 0 {
+            let kgValue = convertToKg(displayValue)
+            // Validate kg value is in reasonable range
+            if kgValue > 0 && kgValue < 500 {
+                isSaving = true
+                currentWeight = kgValue
+                onSave()
+                // Dismiss immediately; parent will refresh and reconcile asynchronously
+                dismiss()
+            }
         }
     }
 }
@@ -1132,6 +1181,7 @@ struct GoalWeightEditorView: View {
     let currentWeight: Double?
     @Binding var goalWeight: Double?
     let onSave: () -> Void
+    @AppStorage("unitSystem") private var unitSystem: UnitSystem = .metric
 
     @State private var tempWeight: String
     @State private var isSaving = false
@@ -1140,14 +1190,64 @@ struct GoalWeightEditorView: View {
         self.currentWeight = currentWeight
         self._goalWeight = goalWeight
         self.onSave = onSave
+        // Initialize with empty string; we'll set it in onAppear based on unitSystem
+        self._tempWeight = State(initialValue: "")
+    }
 
-        // Initialize with goal weight if set, otherwise use current weight
-        if let goal = goalWeight.wrappedValue {
-            self._tempWeight = State(initialValue: String(format: "%.1f", goal))
-        } else if let current = currentWeight {
-            self._tempWeight = State(initialValue: String(format: "%.1f", current))
-        } else {
-            self._tempWeight = State(initialValue: "")
+    private func formatWeight(_ kg: Double) -> String {
+        switch unitSystem {
+        case .metric:
+            return String(format: "%.1f kg", kg)
+        case .imperial:
+            let lbs = kg * 2.20462
+            return String(format: "%.1f lbs", lbs)
+        }
+    }
+
+    private func convertToDisplay(_ kg: Double) -> Double {
+        switch unitSystem {
+        case .metric:
+            return kg
+        case .imperial:
+            return kg * 2.20462
+        }
+    }
+
+    private func convertToKg(_ displayValue: Double) -> Double {
+        switch unitSystem {
+        case .metric:
+            return displayValue
+        case .imperial:
+            return displayValue / 2.20462
+        }
+    }
+
+    private var weightUnitLabel: String {
+        switch unitSystem {
+        case .metric:
+            return "kg"
+        case .imperial:
+            return "lbs"
+        }
+    }
+
+    private var quickAdjustment: Double {
+        // Use 5 kg or ~10 lbs as the quick adjustment
+        switch unitSystem {
+        case .metric:
+            return 5
+        case .imperial:
+            return 11 // ~5kg in lbs
+        }
+    }
+
+    private var largeAdjustment: Double {
+        // Use 10 kg or ~20 lbs as the large adjustment
+        switch unitSystem {
+        case .metric:
+            return 10
+        case .imperial:
+            return 22 // ~10kg in lbs
         }
     }
 
@@ -1161,50 +1261,51 @@ struct GoalWeightEditorView: View {
                             Text("Current Weight")
                                 .foregroundColor(.secondary)
                             Spacer()
-                            Text(String(format: "%.1f kg", current))
+                            Text(formatWeight(current))
                                 .fontWeight(.semibold)
                         }
                     }
                 }
 
-                Section(header: Text("Goal Weight (kg)")) {
-                    TextField(currentWeight != nil ? String(format: "%.1f", currentWeight!) : "Enter goal weight", text: $tempWeight)
+                Section(header: Text("Goal Weight (\(weightUnitLabel))")) {
+                    TextField(currentWeight != nil ? String(format: "%.1f", convertToDisplay(currentWeight!)) : "Enter goal weight", text: $tempWeight)
                         .keyboardType(.decimalPad)
                         .font(.system(size: 18))
                 }
 
                 // Smart Quick Adjustments based on current weight
                 if let current = currentWeight {
+                    let currentDisplay = convertToDisplay(current)
                     Section(header: Text("From Current Weight")) {
                         Button {
-                            tempWeight = String(format: "%.1f", current - 5)
+                            tempWeight = String(format: "%.1f", currentDisplay - quickAdjustment)
                         } label: {
                             HStack {
-                                Text("Lose 5 kg")
+                                Text("Lose \(String(format: "%.0f", quickAdjustment)) \(weightUnitLabel)")
                                 Spacer()
-                                Text(String(format: "%.1f kg", current - 5))
+                                Text(String(format: "%.1f \(weightUnitLabel)", currentDisplay - quickAdjustment))
                                     .foregroundColor(.secondary)
                             }
                         }
 
                         Button {
-                            tempWeight = String(format: "%.1f", current - 10)
+                            tempWeight = String(format: "%.1f", currentDisplay - largeAdjustment)
                         } label: {
                             HStack {
-                                Text("Lose 10 kg")
+                                Text("Lose \(String(format: "%.0f", largeAdjustment)) \(weightUnitLabel)")
                                 Spacer()
-                                Text(String(format: "%.1f kg", current - 10))
+                                Text(String(format: "%.1f \(weightUnitLabel)", currentDisplay - largeAdjustment))
                                     .foregroundColor(.secondary)
                             }
                         }
 
                         Button {
-                            tempWeight = String(format: "%.1f", current + 5)
+                            tempWeight = String(format: "%.1f", currentDisplay + quickAdjustment)
                         } label: {
                             HStack {
-                                Text("Gain 5 kg")
+                                Text("Gain \(String(format: "%.0f", quickAdjustment)) \(weightUnitLabel)")
                                 Spacer()
-                                Text(String(format: "%.1f kg", current + 5))
+                                Text(String(format: "%.1f \(weightUnitLabel)", currentDisplay + quickAdjustment))
                                     .foregroundColor(.secondary)
                             }
                         }
@@ -1230,17 +1331,31 @@ struct GoalWeightEditorView: View {
                     }
                 }
             }
+            .onAppear {
+                // Set initial value in the correct units when view appears
+                if tempWeight.isEmpty {
+                    if let goal = goalWeight {
+                        tempWeight = String(format: "%.1f", convertToDisplay(goal))
+                    } else if let current = currentWeight {
+                        tempWeight = String(format: "%.1f", convertToDisplay(current))
+                    }
+                }
+            }
         }
     }
 
     private func saveWeight() {
         let sanitized = tempWeight.replacingOccurrences(of: ",", with: ".")
-        if let value = Double(sanitized), value > 0, value < 500 {
-            isSaving = true
-            goalWeight = value
-            onSave()
-            // Dismiss immediately; parent will refresh and reconcile asynchronously
-            dismiss()
+        if let displayValue = Double(sanitized), displayValue > 0 {
+            let kgValue = convertToKg(displayValue)
+            // Validate kg value is in reasonable range
+            if kgValue > 0 && kgValue < 500 {
+                isSaving = true
+                goalWeight = kgValue
+                onSave()
+                // Dismiss immediately; parent will refresh and reconcile asynchronously
+                dismiss()
+            }
         }
     }
 }
