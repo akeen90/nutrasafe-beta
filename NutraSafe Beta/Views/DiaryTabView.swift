@@ -318,6 +318,12 @@ struct DiaryTabView: View {
             hasLoadedOnce = true
             loadFoodData()
         }
+        .onChange(of: selectedTab) { newTab in
+            // Reset to overview when leaving and returning to diary tab
+            if newTab == .diary {
+                diarySubTab = .overview
+            }
+        }
         .onChange(of: diarySubTab) { newTab in
             if newTab == .nutrients && !(subscriptionManager.isSubscribed || subscriptionManager.isInTrial || subscriptionManager.isPremiumOverride) {
                 diarySubTab = .overview
@@ -925,6 +931,7 @@ struct CategoricalNutrientTrackingView: View {
                     Button(action: {
                         weekOffset = 0
                         loadWeekData()
+                        selectedDate = Date()  // Set calendar to today AFTER loading week data
                     }) {
                         Text("This Week")
                             .font(.system(size: 14, weight: .semibold))
