@@ -2343,13 +2343,8 @@ struct MacroManagementView: View {
                 Section(header: Text("Extra Macro Tracking")) {
                     Picker("Track", selection: $selectedExtraMacro) {
                         ForEach(MacroType.extraMacros, id: \.self) { macro in
-                            HStack {
-                                Circle()
-                                    .fill(macro.color)
-                                    .frame(width: 12, height: 12)
-                                Text(macro.displayName)
-                            }
-                            .tag(macro)
+                            Text(macro.displayName)
+                                .tag(macro)
                         }
                     }
                     .pickerStyle(.menu)
