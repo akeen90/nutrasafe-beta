@@ -567,28 +567,95 @@ class MicronutrientDatabase {
     private func analyzeFoodItemWithWeighting(name: String, ingredients: [String], useAI: Bool) -> [String: NutrientStrength.Strength] {
         var nutrientContributions: [String: Double] = [:]
 
-        // 1. Check for tokens in food name (these are always "strong")
+        // 1. Check for tokens in food name (these are categorized as "high strength")
+        //
+        // SCIENTIFIC RATIONALE:
+        // Token-matched foods (e.g., "orange juice", "spinach salad") are typically primary ingredient products
+        // where the named ingredient constitutes the majority of the product. However, bioavailability research
+        // shows that even primary natural sources don't provide perfect nutrient absorption.
+        //
+        // Contribution capped at 0.7 (rather than 1.0) to account for:
+        // - Natural variability in nutrient content (season, ripeness, storage)
+        // - Food matrix effects on bioavailability (fiber, fat content, processing)
+        // - Individual absorption differences (gut health, genetics, dietary context)
+        //
+        // References:
+        // - PMC7393990: "Bioavailability of Micronutrients From Nutrient-Dense Whole Foods" (Frontiers in Nutrition, 2020)
+        //   https://pmc.ncbi.nlm.nih.gov/articles/PMC7393990/
         let tokenMatches = matchTokens(in: name)
         for nutrient in tokenMatches {
-            nutrientContributions[nutrient] = 1.0 // Maximum contribution
+            nutrientContributions[nutrient] = 0.7 // High contribution from primary whole food ingredient
         }
 
         // 2. PATTERN-BASED FORTIFICATION DETECTION (Phase 1 of hybrid approach)
         // This catches vitamins/minerals in complex ingredient phrases like:
         // "vitamin C (as l-ascorbic acid)", "calcium carbonate", etc.
+        //
+        // BIOAVAILABILITY RESEARCH FINDINGS:
+        // Scientific evidence shows MIXED results for fortified vs natural nutrients:
+        //
+        // ✅ FORTIFICATION ADVANTAGE:
+        // • Folic Acid: Synthetic form has SUPERIOR absorption vs natural food folate
+        //   - Dietary Folate Equivalents (DFE): 1 μg DFE = 0.6 μg synthetic folic acid = 1 μg food folate
+        //   - Fortification is more bioavailable for this specific nutrient
+        //
+        // ⚠️ NATURAL SOURCE ADVANTAGE:
+        // • Vitamin B12: Natural dairy sources show HIGHER bioavailability (~65%) vs synthetic (<50%, sometimes <5%)
+        // • Vitamin A (Retinol): Non-fortified whole milk shows highest plasma response; fortification doesn't improve absorption (~15% regardless)
+        //
+        // 🔄 HIGHLY VARIABLE:
+        // • Beta-Carotene: Bioefficacy varies dramatically by food matrix:
+        //   - Synthetic supplements in oil: 26-48% bioefficacy
+        //   - Fruits: 8.3%
+        //   - Cooked vegetables: 1-3.5%
+        //   - Raw vegetables: 0.01-7.7% (chloroplast storage reduces availability)
+        //
+        // ⚠️ IMPORTANT: "Fortified nutrients don't automatically equal superior nutrition"
+        // Food matrix effects, synergistic nutrients, and individual absorption vary significantly.
+        //
+        // CLASSIFICATION APPROACH:
+        // Fortified nutrients receive 0.7 contribution (high, but not maximum) to:
+        // - Acknowledge their regulatory "significant source" status
+        // - Avoid over-valuing processed fortified foods vs nutrient-dense whole foods
+        // - Reflect mixed bioavailability evidence
+        // - Support whole-food dietary patterns (aligned with NutraSafe philosophy)
+        //
+        // References:
+        // - PMC7393990: "Bioavailability of Micronutrients From Nutrient-Dense Whole Foods" (Frontiers in Nutrition, 2020)
+        //   https://pmc.ncbi.nlm.nih.gov/articles/PMC7393990/
+        // - Institute of Medicine Dietary Reference Intakes (DRI) - Dietary Folate Equivalents methodology
+        //   https://www.ncbi.nlm.nih.gov/books/NBK222871/
         let detectedFortifications = IngredientMicronutrientParser.shared.parseIngredientsArray(ingredients)
 
         // DEBUG LOG: print("🔬 Pattern parser detected \(detectedFortifications.count) fortified nutrients")
 
         for detected in detectedFortifications {
-            // Fortified nutrients are ALWAYS strong sources (1.0 contribution)
-            nutrientContributions[detected.nutrient] = 1.0
+            // Fortified nutrients are categorized as high sources (0.7 contribution)
+            // See bioavailability research above for scientific rationale
+            nutrientContributions[detected.nutrient] = 0.7
             print("   ✅ \(detected.nutrient) (fortified) - from: \(detected.rawText)")
         }
 
         // 3. Calculate dish complexity penalty
+        //
+        // RATIONALE FOR REDUCED PENALTY:
+        // Previous penalty (25-30%) was too aggressive and created perverse incentives:
+        // - Penalized healthy complex meals (stir-fries, salads with 10+ vegetables)
+        // - Favored simple processed foods (3-ingredient fortified bars)
+        // - Contradicted whole-food dietary guidance
+        //
+        // NEW APPROACH (10-15% penalty):
+        // - Acknowledges slight nutrient dilution in complex dishes
+        // - Avoids over-penalizing nutrient-dense multi-ingredient meals
+        // - Aligns with NutraSafe's whole-food philosophy
+        // - Example: Salmon poke bowl (12 ingredients) now retains more nutrient credit
+        //
+        // The penalty accounts for:
+        // - Slightly lower concentration per ingredient in complex dishes
+        // - Potential for processing/blending reducing some nutrient bioavailability
+        // - But NOT to the extent that discourages dietary variety
         let ingredientCount = ingredients.count
-        let complexityPenalty: Double = ingredientCount > 8 ? 0.25 : 0.30 // 25-30% reduction for complex dishes
+        let complexityPenalty: Double = ingredientCount > 8 ? 0.10 : 0.15 // 10-15% reduction for complex dishes
 
         // 4. Process each ingredient with weighted contribution (NATURAL SOURCES)
         for (index, ingredient) in ingredients.enumerated() {
@@ -616,6 +683,24 @@ class MicronutrientDatabase {
     }
 
     /// Calculate ingredient weight based on its position in the ingredient list
+    ///
+    /// REGULATORY BASIS:
+    /// FDA regulations (21 CFR 101.4) require ingredients to be listed in descending order
+    /// of predominance by weight. This legal requirement allows us to infer relative
+    /// nutrient contributions based on ingredient position.
+    ///
+    /// WEIGHTING METHODOLOGY:
+    /// - First 3 ingredients: Major contributors (20-35% each, varies by complexity)
+    /// - Next 2 ingredients: Medium contributors (8-15%)
+    /// - Remaining: Minor contributors (split remaining 10% equally)
+    ///
+    /// This is an ESTIMATION method. Actual nutrient content requires laboratory analysis
+    /// or validated nutritional database lookup.
+    ///
+    /// References:
+    /// - FDA ingredient order requirements: 21 CFR 101.4
+    /// - Food labeling guidance: https://www.fda.gov/food/food-labeling-nutrition
+    ///
     /// First 3-5 ingredients get boosted weights (assumed to be main components)
     private func calculateIngredientWeight(position: Int, totalCount: Int) -> Double {
         if totalCount <= 3 {
@@ -638,21 +723,66 @@ class MicronutrientDatabase {
     }
 
     /// Convert weighted nutrient contributions to strength classifications
-    /// Uses realistic thresholds: Strong ≥0.25, Moderate 0.10-0.24, Trace <0.10
+    ///
+    /// REGULATORY STANDARDS (UK/EU-ALIGNED):
+    /// NutraSafe uses UK/EU nutrient claim thresholds, appropriate for the UK target market.
+    ///
+    /// UK/EU FRAMEWORK (Retained EU Regulation EC 1924/2006):
+    /// • "High In" / "Rich In" claim: Requires ≥30% NRV (Nutrient Reference Value) per 100g/100ml
+    /// • "Source Of" claim: Requires ≥15% NRV per 100g/100ml
+    /// • Beverages: "Source Of" requires ≥7.5% NRV per 100ml (half the solid food threshold)
+    ///
+    /// The 15% threshold is defined in Directive 90/496/EEC as a "significant amount."
+    /// The 30% threshold is exactly twice the "source of" threshold, per EC 1924/2006 Annex.
+    ///
+    /// COMPARISON WITH US FDA STANDARDS (21 CFR 101.54):
+    /// • "Excellent Source": ≥20% DV (Daily Value) per RACC (Reference Amount Customarily Consumed)
+    /// • "Good Source": 10-19% DV per RACC
+    ///
+    /// NutraSafe chose UK/EU standards (30%/15%) because:
+    /// 1. Target market is UK users
+    /// 2. More conservative thresholds prevent overstating nutritional benefits
+    /// 3. Aligns with retained post-Brexit UK law
+    /// 4. Consistent with UK Food Standards Agency guidance
+    ///
+    /// IMPORTANT DISTINCTION - Contribution vs Daily Value:
+    /// These thresholds apply to INGREDIENT CONTRIBUTION (position-weighted estimate),
+    /// NOT direct daily value percentages. Actual daily value tracking occurs separately
+    /// in MicronutrientScoringModels.swift with different thresholds.
+    ///
+    /// Ingredient contribution is an estimation method based on:
+    /// - Ingredient list position (FDA 21 CFR 101.4 - descending order by weight)
+    /// - Complexity penalty for multi-ingredient dishes
+    /// - Intrinsic nutrient strength from database lookup
+    ///
+    /// References:
+    /// - UK/EU: Retained EU Regulation (EC) No 1924/2006 on nutrition and health claims
+    ///   https://www.legislation.gov.uk/eur/2006/1924/annex
+    /// - UK Technical Guidance on Nutrition Labeling
+    ///   https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/595961/Nutrition_Technical_Guidance.pdf
+    /// - FDA (comparison): 21 CFR 101.54 - Nutrient content claims
+    ///   https://www.ecfr.gov/current/title-21/section-101.54
+    /// - Institute of Medicine Dietary Reference Intakes (DRI)
+    ///   https://www.ncbi.nlm.nih.gov/books/NBK222871/
+    ///
+    /// Uses UK/EU-aligned thresholds: Strong ≥0.30, Moderate 0.15-0.29, Trace <0.15
     private func convertWeightedContributionsToStrengths(_ contributions: [String: Double]) -> [String: NutrientStrength.Strength] {
         var result: [String: NutrientStrength.Strength] = [:]
 
         for (nutrient, contribution) in contributions {
             let strength: NutrientStrength.Strength
 
-            if contribution >= 0.25 {
-                // Strong: Major source (≥25% contribution)
+            if contribution >= 0.30 {
+                // Strong: Major source (≥30% contribution)
+                // Aligned with UK/EU "High In" / "Rich In" claim threshold (30% NRV)
                 strength = .strong
-            } else if contribution >= 0.10 {
-                // Moderate: Medium source or frequent appearance (10-24%)
+            } else if contribution >= 0.15 {
+                // Moderate: Medium source (15-29% contribution)
+                // Aligned with UK/EU "Source Of" claim threshold (15% NRV)
                 strength = .moderate
             } else if contribution >= 0.01 {
-                // Trace: Minor contribution (1-9%)
+                // Trace: Minor contribution (1-14% contribution)
+                // Below UK/EU "significant amount" threshold but still detectable
                 strength = .trace
             } else {
                 // Too small to register - skip
