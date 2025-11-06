@@ -124,9 +124,11 @@ struct DiaryTabView: View {
     var body: some View {
         // Removed nested NavigationView to rely on root navigation
         VStack(spacing: 0) {
-            VStack(spacing: 8) {
-                // Header with inline date picker
-                HStack {
+            // Only show calendar in Overview tab - Nutrients has its own week navigation
+            if diarySubTab == .overview {
+                VStack(spacing: 8) {
+                    // Header with inline date picker
+                    HStack {
                     Text("Diary")
                         .font(.system(size: 38, weight: .bold, design: .rounded))
                         .frame(height: 44, alignment: .center)
@@ -283,6 +285,7 @@ struct DiaryTabView: View {
             }
             .padding(.horizontal, 16)
             .padding(.top, 8)
+            }
 
             Picker("", selection: $diarySubTab) {
                 ForEach(DiarySubTab.allCases, id: \.self) { tab in
@@ -1424,7 +1427,7 @@ struct CategoricalNutrientTrackingView: View {
             // Get the Monday of that week
             let (weekStart, _) = getWeekRange(for: dateToLoad)
             selectedWeekStart = weekStart
-            selectedDate = weekStart // Update main diary date
+            // DON'T modify parent selectedDate - let user control calendar independently
 
             print("🔄 requestDataLoad - reason: \(reason), weekStart: \(weekStart)")
 
