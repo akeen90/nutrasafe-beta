@@ -1593,10 +1593,10 @@ enum TabItem: String, CaseIterable {
     var icon: String {
         switch self {
         case .diary: return "heart.circle"
-        case .weight: return "figure.walk.motion"
+        case .weight: return "figure.run.treadmill.circle"
         case .add: return "plus"
         case .food: return "fork.knife.circle"
-        case .useBy: return "calendar.badge.clock"
+        case .useBy: return "calendar.circle"
         }
     }
 }
