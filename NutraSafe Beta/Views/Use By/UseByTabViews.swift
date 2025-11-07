@@ -2316,11 +2316,6 @@ struct AddUseByItemSheet: View {
             .toolbar { }
         }
         .navigationViewStyle(StackNavigationViewStyle())
-        .onReceive(NotificationCenter.default.publisher(for: .useByInventoryUpdated)) { _ in
-            Task { @MainActor in
-                dismiss()
-            }
-        }
     }
 }
 
