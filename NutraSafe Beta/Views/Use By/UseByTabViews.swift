@@ -1822,7 +1822,7 @@ struct ModernExpiryRow: View {
 
     private var urgencyText: String {
         switch daysLeft {
-        case 0: return "Last day"
+        case ...0: return "Expired"
         case 1: return "Tomorrow"
         case 2...7: return "\(daysLeft) days"
         case 8...30: return "\(daysLeft) days"
