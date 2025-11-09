@@ -1371,6 +1371,10 @@ struct ContentView: View {
     @State private var showOnboarding = !OnboardingManager.shared.hasCompletedOnboarding
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @State private var showingPaywall = false
+    @State private var showingAddMenu = false
+    @State private var showingDiaryAdd = false
+    @State private var showingUseByAdd = false
+    @State private var showingReactionLog = false
 
     // PERFORMANCE: Track which tabs have been visited for lazy initialization
     @State private var visitedTabs: Set<TabItem> = [.diary] // Diary loads on startup
@@ -1459,9 +1463,26 @@ struct ContentView: View {
             if !workoutManager.isInWorkoutView {
                 VStack {
                     Spacer()
-                    CustomTabBar(selectedTab: $selectedTab, workoutManager: workoutManager, onBlockedTabAttempt: { showingPaywall = true })
+                    CustomTabBar(selectedTab: $selectedTab, workoutManager: workoutManager, onBlockedTabAttempt: { showingPaywall = true }, showingAddMenu: $showingAddMenu)
                         .offset(y: 34) // Lower the tab bar to bottom edge
                 }
+            }
+
+            // Add Action Menu - appears above everything when shown
+            if showingAddMenu {
+                AddActionMenu(
+                    isPresented: $showingAddMenu,
+                    onSelectDiary: {
+                        showingDiaryAdd = true
+                    },
+                    onSelectUseBy: {
+                        showingUseByAdd = true
+                    },
+                    onSelectReaction: {
+                        showingReactionLog = true
+                    }
+                )
+                .zIndex(1000)
             }
             
             // Persistent bottom menu when food items are selected - properly overlays tab bar
@@ -1502,6 +1523,46 @@ struct ContentView: View {
                 showOnboarding = false
                 showingPaywall = true
             })
+        }
+        .fullScreenCover(isPresented: $showingDiaryAdd) {
+            AddFoodMainView(
+                selectedTab: $selectedTab,
+                sourceDestination: .diary,
+                onDismiss: {
+                    showingDiaryAdd = false
+                },
+                onComplete: { tab in
+                    showingDiaryAdd = false
+                    selectedTab = tab
+                }
+            )
+            .environmentObject(diaryDataManager)
+        }
+        .fullScreenCover(isPresented: $showingUseByAdd) {
+            AddFoodMainView(
+                selectedTab: $selectedTab,
+                sourceDestination: .useBy,
+                onDismiss: {
+                    showingUseByAdd = false
+                },
+                onComplete: { tab in
+                    showingUseByAdd = false
+                    selectedTab = tab
+                }
+            )
+            .environmentObject(diaryDataManager)
+        }
+        .fullScreenCover(isPresented: $showingReactionLog) {
+            NavigationView {
+                LogReactionSheet(selectedDayRange: .threeDays)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button("Close") {
+                                showingReactionLog = false
+                            }
+                        }
+                    }
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToUseBy)) { _ in
             print("[Nav] Received navigateToUseBy")

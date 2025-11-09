@@ -12,24 +12,16 @@ struct CustomTabBar: View {
     @ObservedObject var workoutManager: WorkoutManager
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     var onBlockedTabAttempt: (() -> Void)? = nil
+    @Binding var showingAddMenu: Bool
 
     var body: some View {
         HStack(spacing: 0) {
             ForEach(TabItem.allCases, id: \.self) { tab in
                 if tab == .add {
-                    // Special Add button with circular design
+                    // Special Add button with circular design - shows menu instead of switching tabs
                     Button(action: {
-                        // Add tab is free for everyone
-                        // When tapping the main plus, default destination based on current tab
-                        // If currently on Use By, preselect destination to Use By
-                        if selectedTab == .useBy {
-                            UserDefaults.standard.set("Use By", forKey: "preselectedDestination")
-                        } else {
-                            // Clear any previous preselection to ensure Diary is default elsewhere
-                            UserDefaults.standard.removeObject(forKey: "preselectedDestination")
-                        }
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            selectedTab = tab
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            showingAddMenu = true
                         }
                         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
                         impactFeedback.impactOccurred()
@@ -47,8 +39,8 @@ struct CustomTabBar: View {
                             Image(systemName: tab.icon)
                                 .font(.system(size: 28, weight: .semibold))
                                 .foregroundColor(.white)
-                                .rotationEffect(.degrees(selectedTab == tab ? 90 : 0))
-                                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selectedTab)
+                                .rotationEffect(.degrees(showingAddMenu ? 45 : 0))
+                                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: showingAddMenu)
                         }
                     }
                     .frame(maxWidth: .infinity)

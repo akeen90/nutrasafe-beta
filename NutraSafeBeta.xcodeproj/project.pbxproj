@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7B541C601DBA40B089B6FB04 /* AddActionMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98B68ABA9D7B4CBCB6E31FC7 /* AddActionMenu.swift */; };
 		2E8B1C5675E64AE0B624520841DC4102 /* additives_unified.json in Resources */ = {isa = PBXBuildFile; fileRef = ED24D7DC4CA54819A95C7D71C8EC119A /* additives_unified.json */; };
 		42B4CA708B0E403EAFFD2EED /* NutrientCacheActor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CD400E363874479B2EC2A32 /* NutrientCacheActor.swift */; };
 		DB01DIARY000CACHE000ACTOR /* DiaryCacheActor.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC01DIARY000CACHE000ACTOR /* DiaryCacheActor.swift */; };
@@ -105,6 +106,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		98B68ABA9D7B4CBCB6E31FC7 /* AddActionMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Components/AddActionMenu.swift"; sourceTree = "<group>"; };
 		ED24D7DC4CA54819A95C7D71C8EC119A /* additives_unified.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "additives_unified.json"; sourceTree = "<group>"; };
 		9EA48F8E27E84D79BCB731AA447430AB /* ingredients_consolidated.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "ingredients_consolidated.json"; sourceTree = "<group>"; };
 		D0FEC9B4AA084ED5BF9A4E53858FE767 /* ultra_processed_ingredients.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "NutraSafe Beta/ultra_processed_ingredients.json"; sourceTree = SOURCE_ROOT; };
@@ -395,6 +397,7 @@ AB4B75A92E72DEFC0058DCD3 /* FirebaseCore in Frameworks */,
 				C0D23EEA8C59479AB6188B94 /* NutraSafe Beta/Views/Components/ActionButtons.swift */,
 				45915D62F0F14714AC688437 /* NutraSafe Beta/Views/Components/MacroViews.swift */,
 				493422FA56E54C918E7155AD /* NutraSafe Beta/Views/Components/CustomTabBar.swift */,
+				98B68ABA9D7B4CBCB6E31FC7 /* AddActionMenu.swift */,
 				22C6BF8B3C55423CB194379A /* NutraSafe Beta/Configuration/AppConfig.swift */,
 					);
 			name = "Recovered References";
@@ -570,6 +573,7 @@ AB4B75A92E72DEFC0058DCD3 /* FirebaseCore in Frameworks */,
 				ABB0AEF82EA8CCD1009F044D /* OnboardingScreens.swift in Sources */,
 				75337286195F467FA2A082D1 /* NutraSafe Beta/Views/Components/MacroViews.swift in Sources */,
 				5ACAC92CF0C24FA7A04AEB4F /* NutraSafe Beta/Views/Components/CustomTabBar.swift in Sources */,
+				7B541C601DBA40B089B6FB04 /* AddActionMenu.swift in Sources */,
 				A4F3F73658E143099BDCA612 /* NutraSafe Beta/Configuration/AppConfig.swift in Sources */,
 				5DD311A374D74AC2BADCADC2 /* DiaryTabView.swift in Sources */,
 				FDACD6EE052840C79A707950 /* AddTabView.swift in Sources */,
