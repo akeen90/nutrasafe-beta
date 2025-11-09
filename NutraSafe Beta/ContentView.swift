@@ -6655,7 +6655,7 @@ struct AddFoodMainView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .navigationTitle("Adding Food To")
+                .navigationTitle(destination.rawValue)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
