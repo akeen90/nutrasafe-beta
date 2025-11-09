@@ -19,7 +19,7 @@ struct DiaryDailySummaryCard: View {
     let lunchFoods: [DiaryFoodItem]
     let dinnerFoods: [DiaryFoodItem]
     let snackFoods: [DiaryFoodItem]
-    let fetchWeeklySummary: (Double, Double, Double, Double) async -> WeeklySummary?
+    let fetchWeeklySummary: (Date, Double, Double, Double, Double) async -> WeeklySummary?
     let setSelectedDate: (Date) -> Void
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var firebaseManager: FirebaseManager

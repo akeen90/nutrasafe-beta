@@ -11,14 +11,23 @@ struct WeeklySummarySheet: View {
     let initialDate: Date
     let calorieGoal: Double
     let macroGoals: [MacroGoal]
-    let fetchWeeklySummary: (Double, Double, Double, Double) async -> WeeklySummary?
+    let fetchWeeklySummary: (Date, Double, Double, Double, Double) async -> WeeklySummary?
     let setSelectedDate: (Date) -> Void
 
     @Environment(\.dismiss) var dismiss
-    @State private var currentWeekOffset: Int = 0 // 0 = current week, -1 = last week, 1 = next week
+    @State private var currentDisplayDate: Date // The date for the currently displayed week
     @State private var weeklySummary: WeeklySummary?
     @State private var isLoading = false
     @State private var expandedDays: Set<String> = [] // Track which days are expanded
+
+    init(initialDate: Date, calorieGoal: Double, macroGoals: [MacroGoal], fetchWeeklySummary: @escaping (Date, Double, Double, Double, Double) async -> WeeklySummary?, setSelectedDate: @escaping (Date) -> Void) {
+        self.initialDate = initialDate
+        self.calorieGoal = calorieGoal
+        self.macroGoals = macroGoals
+        self.fetchWeeklySummary = fetchWeeklySummary
+        self.setSelectedDate = setSelectedDate
+        self._currentDisplayDate = State(initialValue: initialDate)
+    }
 
     // Computed properties for backwards compatibility with existing UI
     private var proteinGoal: Double {
@@ -52,8 +61,7 @@ struct WeeklySummarySheet: View {
                             HStack(spacing: 12) {
                                 // Previous (arrow-only pill)
                                 Button(action: {
-                                    currentWeekOffset -= 1
-                                    loadWeek()
+                                    navigateToPreviousWeek()
                                 }) {
                                     Image(systemName: "chevron.left")
                                         .font(.system(size: 16, weight: .semibold))
@@ -70,8 +78,7 @@ struct WeeklySummarySheet: View {
 
                                 // This Week (filled pill)
                                 Button(action: {
-                                    currentWeekOffset = 0
-                                    loadWeek()
+                                    navigateToThisWeek()
                                 }) {
                                     Text("This Week")
                                         .font(.system(size: 15, weight: .semibold))
@@ -85,8 +92,7 @@ struct WeeklySummarySheet: View {
 
                                 // Next (arrow-only pill)
                                 Button(action: {
-                                    currentWeekOffset += 1
-                                    loadWeek()
+                                    navigateToNextWeek()
                                 }) {
                                     Image(systemName: "chevron.right")
                                         .font(.system(size: 16, weight: .semibold))
@@ -210,17 +216,34 @@ struct WeeklySummarySheet: View {
         }
     }
 
+    private func navigateToPreviousWeek() {
+        let calendar = Calendar.current
+        if let newDate = calendar.date(byAdding: .weekOfYear, value: -1, to: currentDisplayDate) {
+            currentDisplayDate = newDate
+            loadWeek()
+        }
+    }
+
+    private func navigateToNextWeek() {
+        let calendar = Calendar.current
+        if let newDate = calendar.date(byAdding: .weekOfYear, value: 1, to: currentDisplayDate) {
+            currentDisplayDate = newDate
+            loadWeek()
+        }
+    }
+
+    private func navigateToThisWeek() {
+        currentDisplayDate = Date() // Always jump to today's date
+        loadWeek()
+    }
+
     private func loadWeek() {
         isLoading = true
         Task {
-            // Calculate the date for the offset week
-            let calendar = Calendar.current
-            let targetDate = calendar.date(byAdding: .weekOfYear, value: currentWeekOffset, to: initialDate) ?? initialDate
+            // Update parent-selected date
+            setSelectedDate(currentDisplayDate)
 
-            // Update parent-selected date so fetchWeeklySummary uses correct week
-            setSelectedDate(targetDate)
-
-            if let summary = await fetchWeeklySummary(calorieGoal, proteinGoal, carbGoal, fatGoal) {
+            if let summary = await fetchWeeklySummary(currentDisplayDate, calorieGoal, proteinGoal, carbGoal, fatGoal) {
                 await MainActor.run {
                     weeklySummary = summary
                     isLoading = false

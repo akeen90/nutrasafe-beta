@@ -619,8 +619,8 @@ struct DiaryTabView: View {
         return (startOfMonday, endOfSunday)
     }
 
-    func fetchWeeklySummary(calorieGoal: Double, proteinGoal: Double, carbGoal: Double, fatGoal: Double) async -> WeeklySummary? {
-        let (weekStart, weekEnd) = getWeekRange(for: selectedDate)
+    func fetchWeeklySummary(_ date: Date, _ calorieGoal: Double, _ proteinGoal: Double, _ carbGoal: Double, _ fatGoal: Double) async -> WeeklySummary? {
+        let (weekStart, weekEnd) = getWeekRange(for: date)
 
         do {
             // Fetch all food entries for the week
