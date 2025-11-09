@@ -33,13 +33,21 @@ struct AddTabView: View {
     }
 
     private func determineDestination() -> AddFoodMainView.AddDestination? {
-        // Prefer explicit preselection
+        // Prioritize explicit sourceDestination over UserDefaults
+        // sourceDestination is used when adding directly from diary or use by tabs
+        // UserDefaults is only used when coming from the floating action menu
+        if let explicit = sourceDestination {
+            return explicit
+        }
+
+        // Check UserDefaults only when no explicit source
         if let preselected = UserDefaults.standard.string(forKey: "preselectedDestination") {
             if preselected == "Use By" {
                 return .useBy
             }
         }
-        // If no preselection, default based on origin: Use Diary for all non-Use By pages
-        return sourceDestination ?? .diary
+
+        // Default to diary
+        return .diary
     }
 }
