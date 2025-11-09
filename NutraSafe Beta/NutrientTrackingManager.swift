@@ -24,6 +24,11 @@ class NutrientTrackingManager: ObservableObject {
     private let db = Firestore.firestore()
     private var listeners: [ListenerRegistration] = []
 
+    // Cache keys for UserDefaults
+    private let cacheKeyDayActivities = "nutrient_day_activities_cache"
+    private let cacheKeyFrequencies = "nutrient_frequencies_cache"
+    private let cacheKeyLastUpdated = "nutrient_cache_last_updated"
+
     private init() {
         // Initialize with all tracked nutrients
         for nutrient in NutrientDatabase.allNutrients {
@@ -32,6 +37,9 @@ class NutrientTrackingManager: ObservableObject {
                 nutrientName: nutrient.displayName
             )
         }
+
+        // Load cached data immediately for instant display
+        loadCachedData()
     }
 
     // MARK: - User Session
@@ -92,6 +100,9 @@ class NutrientTrackingManager: ObservableObject {
             }
 
             lastUpdated = Date()
+
+            // Save to cache for quick loading next time
+            saveCachedData()
 
         } catch {
             print("❌ Error loading nutrient tracking data: \(error)")
@@ -417,6 +428,9 @@ class NutrientTrackingManager: ObservableObject {
         await updateMonthlySnapshots(userId: userId)
 
         lastUpdated = Date()
+
+        // Save to cache
+        saveCachedData()
     }
 
     private func updateMonthlySnapshots(userId: String) async {
@@ -692,5 +706,69 @@ class NutrientTrackingManager: ObservableObject {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter.string(from: date)
+    }
+
+    // MARK: - Caching
+
+    private func loadCachedData() {
+        let defaults = UserDefaults.standard
+
+        // Load cached last updated date
+        if let lastUpdatedTimestamp = defaults.object(forKey: cacheKeyLastUpdated) as? TimeInterval {
+            lastUpdated = Date(timeIntervalSince1970: lastUpdatedTimestamp)
+        }
+
+        // Load cached day activities
+        if let activitiesData = defaults.data(forKey: cacheKeyDayActivities) {
+            do {
+                let decoder = JSONDecoder()
+                decoder.dateDecodingStrategy = .iso8601
+                let activities = try decoder.decode([String: DayNutrientActivity].self, from: activitiesData)
+                dayActivities = activities
+                print("✅ Loaded \(activities.count) day activities from cache")
+            } catch {
+                print("⚠️ Error loading cached day activities: \(error)")
+            }
+        }
+
+        // Load cached frequencies
+        if let frequenciesData = defaults.data(forKey: cacheKeyFrequencies) {
+            do {
+                let decoder = JSONDecoder()
+                decoder.dateDecodingStrategy = .iso8601
+                let frequencies = try decoder.decode([String: NutrientFrequency].self, from: frequenciesData)
+                nutrientFrequencies = frequencies
+                print("✅ Loaded \(frequencies.count) nutrient frequencies from cache")
+            } catch {
+                print("⚠️ Error loading cached frequencies: \(error)")
+            }
+        }
+    }
+
+    private func saveCachedData() {
+        let defaults = UserDefaults.standard
+
+        do {
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+
+            // Save day activities
+            let activitiesData = try encoder.encode(dayActivities)
+            defaults.set(activitiesData, forKey: cacheKeyDayActivities)
+
+            // Save frequencies
+            let frequenciesData = try encoder.encode(nutrientFrequencies)
+            defaults.set(frequenciesData, forKey: cacheKeyFrequencies)
+
+            // Save last updated timestamp
+            if let lastUpdated = lastUpdated {
+                defaults.set(lastUpdated.timeIntervalSince1970, forKey: cacheKeyLastUpdated)
+            }
+
+            defaults.synchronize()
+            print("✅ Saved nutrient data to cache")
+        } catch {
+            print("⚠️ Error saving cache: \(error)")
+        }
     }
 }
