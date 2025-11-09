@@ -41,36 +41,44 @@ struct AddActionMenu: View {
                         .offset(y: isPresented ? 0 : 10)
                         .animation(.spring(response: 0.45, dampingFraction: 0.8).delay(0.1), value: isPresented)
 
-                    // Horizontal row of buttons
-                    HStack(spacing: 40) {
-                        ModernFloatingButton(
-                            icon: "fork.knife",
-                            label: "Diary",
-                            color: .blue,
-                            delay: 0.0,
-                            isPresented: isPresented
-                        ) {
-                            dismissAndExecute(onSelectDiary)
+                    // Triangle formation of buttons
+                    VStack(spacing: 20) {
+                        // Top button (Reaction - center)
+                        HStack {
+                            Spacer()
+                            ModernFloatingButton(
+                                icon: "exclamationmark.triangle.fill",
+                                label: "Reaction",
+                                color: .red,
+                                delay: 0.0,
+                                isPresented: isPresented
+                            ) {
+                                dismissAndExecute(onSelectReaction)
+                            }
+                            Spacer()
                         }
 
-                        ModernFloatingButton(
-                            icon: "calendar.badge.clock",
-                            label: "Use By",
-                            color: .orange,
-                            delay: 0.05,
-                            isPresented: isPresented
-                        ) {
-                            dismissAndExecute(onSelectUseBy)
-                        }
+                        // Bottom row (Diary left, Use By right)
+                        HStack(spacing: 70) {
+                            ModernFloatingButton(
+                                icon: "fork.knife",
+                                label: "Diary",
+                                color: .blue,
+                                delay: 0.05,
+                                isPresented: isPresented
+                            ) {
+                                dismissAndExecute(onSelectDiary)
+                            }
 
-                        ModernFloatingButton(
-                            icon: "exclamationmark.triangle.fill",
-                            label: "Reaction",
-                            color: .red,
-                            delay: 0.1,
-                            isPresented: isPresented
-                        ) {
-                            dismissAndExecute(onSelectReaction)
+                            ModernFloatingButton(
+                                icon: "calendar.badge.clock",
+                                label: "Use By",
+                                color: .orange,
+                                delay: 0.1,
+                                isPresented: isPresented
+                            ) {
+                                dismissAndExecute(onSelectUseBy)
+                            }
                         }
                     }
                     .padding(.horizontal, 32)
