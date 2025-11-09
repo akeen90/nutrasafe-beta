@@ -17,15 +17,18 @@ struct AddActionMenu: View {
     var body: some View {
         ZStack {
             // Blur dimmed background with fade-in
-            Color.black.opacity(0.4)
-                .ignoresSafeArea()
-                .opacity(isPresented ? 1 : 0)
-                .animation(.easeOut(duration: 0.25), value: isPresented)
-                .onTapGesture {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                        isPresented = false
-                    }
+            ZStack {
+                Color.black.opacity(0.3)
+                    .background(.ultraThinMaterial)
+            }
+            .ignoresSafeArea()
+            .opacity(isPresented ? 1 : 0)
+            .animation(.easeOut(duration: 0.25), value: isPresented)
+            .onTapGesture {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    isPresented = false
                 }
+            }
 
             VStack {
                 Spacer()
