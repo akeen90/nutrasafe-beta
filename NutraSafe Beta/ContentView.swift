@@ -6641,7 +6641,9 @@ struct AddFoodMainView: View {
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button(action: {
-                            // Call onDismiss to close the fullScreenCover
+                            // Call dismiss from environment to close the fullScreenCover
+                            dismiss()
+                            // Also call onDismiss callback for cleanup
                             onDismiss?()
                         }) {
                             Image(systemName: "xmark")
