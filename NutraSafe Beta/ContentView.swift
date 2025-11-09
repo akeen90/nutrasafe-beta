@@ -1668,17 +1668,17 @@ enum TabItem: String, CaseIterable {
         case .diary: return "Diary"
         case .weight: return "Progress"
         case .add: return ""
-        case .food: return "Food"
+        case .food: return "Health"
         case .useBy: return "Use By"
         }
     }
 
     var icon: String {
         switch self {
-        case .diary: return "heart.circle"
+        case .diary: return "fork.knife.circle"
         case .weight: return "figure.run.treadmill.circle"
         case .add: return "plus"
-        case .food: return "fork.knife.circle"
+        case .food: return "heart.circle"
         case .useBy: return "calendar.circle"
         }
     }

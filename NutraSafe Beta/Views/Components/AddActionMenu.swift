@@ -83,7 +83,7 @@ struct AddActionMenu: View {
                     }
                     .padding(.horizontal, 32)
                 }
-                .padding(.bottom, 140) // Position above the + button and tab bar
+                .padding(.bottom, 80) // Position above the + button and tab bar
                 .offset(y: isPresented ? 0 : 300) // Slide up from bottom
                 .animation(.spring(response: 0.45, dampingFraction: 0.82), value: isPresented)
             }
