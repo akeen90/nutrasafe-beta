@@ -47,8 +47,8 @@ struct AddActionMenu: View {
                         HStack {
                             Spacer()
                             ModernFloatingButton(
-                                icon: "exclamationmark.triangle.fill",
-                                label: "Reaction",
+                                icon: "heart.fill",
+                                label: "",
                                 color: .red,
                                 delay: 0.0,
                                 isPresented: isPresented
@@ -83,7 +83,7 @@ struct AddActionMenu: View {
                     }
                     .padding(.horizontal, 32)
                 }
-                .padding(.bottom, 80) // Position above the + button and tab bar
+                .padding(.bottom, 50) // Position above the + button and tab bar
                 .offset(y: isPresented ? 0 : 300) // Slide up from bottom
                 .animation(.spring(response: 0.45, dampingFraction: 0.82), value: isPresented)
             }
@@ -154,16 +154,18 @@ struct ModernFloatingButton: View {
                     value: isPresented
                 )
 
-                // Label
-                Text(label)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.white.opacity(0.9))
-                    .opacity(isPresented ? 1 : 0)
-                    .offset(y: isPresented ? 0 : 5)
-                    .animation(
-                        .spring(response: 0.5, dampingFraction: 0.75).delay(delay + 0.05),
-                        value: isPresented
-                    )
+                // Label (only show if not empty)
+                if !label.isEmpty {
+                    Text(label)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.white.opacity(0.9))
+                        .opacity(isPresented ? 1 : 0)
+                        .offset(y: isPresented ? 0 : 5)
+                        .animation(
+                            .spring(response: 0.5, dampingFraction: 0.75).delay(delay + 0.05),
+                            value: isPresented
+                        )
+                }
             }
         }
         .buttonStyle(ScaleButtonStyle())
