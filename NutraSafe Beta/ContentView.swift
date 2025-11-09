@@ -1375,6 +1375,7 @@ struct ContentView: View {
     @State private var showingDiaryAdd = false
     @State private var showingUseByAdd = false
     @State private var showingReactionLog = false
+    @State private var previousTabBeforeAdd: TabItem = .diary
 
     // PERFORMANCE: Track which tabs have been visited for lazy initialization
     @State private var visitedTabs: Set<TabItem> = [.diary] // Diary loads on startup
@@ -1410,7 +1411,7 @@ struct ContentView: View {
                     selectedTab: $selectedTab,
                     isPresented: Binding(
                         get: { selectedTab == .add },
-                        set: { if !$0 { selectedTab = .diary } }
+                        set: { if !$0 { selectedTab = previousTabBeforeAdd } }
                     )
                 )
                     .environmentObject(diaryDataManager)
@@ -1479,12 +1480,15 @@ struct ContentView: View {
                 AddActionMenu(
                     isPresented: $showingAddMenu,
                     onSelectDiary: {
+                        previousTabBeforeAdd = selectedTab
                         showingDiaryAdd = true
                     },
                     onSelectUseBy: {
+                        previousTabBeforeAdd = selectedTab
                         showingUseByAdd = true
                     },
                     onSelectReaction: {
+                        previousTabBeforeAdd = selectedTab
                         showingReactionLog = true
                     }
                 )
