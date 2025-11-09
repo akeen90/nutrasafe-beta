@@ -6504,7 +6504,6 @@ struct ModernMacroItem: View {
 
 struct AddFoodMainView: View {
     @Binding var selectedTab: TabItem
-    @Environment(\.dismiss) private var dismiss
     @State private var selectedAddOption: AddOption = .search
     @State private var destination: AddDestination
     @State private var selectedFoodForUseBy: FoodSearchResult? = nil
@@ -6637,9 +6636,8 @@ struct AddFoodMainView: View {
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button(action: {
-                            // Call dismiss from environment to close the fullScreenCover
-                            dismiss()
-                            // Also call onDismiss callback for cleanup
+                            // Call onDismiss callback to dismiss the fullScreenCover
+                            // (Environment dismiss doesn't work inside NavigationView with fullScreenCover)
                             onDismiss?()
                         }) {
                             Image(systemName: "xmark")
