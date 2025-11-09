@@ -6580,12 +6580,7 @@ struct AddFoodMainView: View {
                 VStack(spacing: 0) {
                     // Header
                     VStack(spacing: 12) {
-                        // Destination selector - Native Segmented Control
-                        DestinationSelector(selectedDestination: $destination)
-                            .padding(.horizontal, 16)
-                            .padding(.top, 8)
-
-                    // Option selector - evenly distributed like Diary/Use By above
+                    // Option selector
                     HStack(spacing: 0) {
                         OptionSelectorButton(title: "Search", icon: "magnifyingglass", isSelected: selectedAddOption == .search) {
                             selectedAddOption = .search
@@ -6598,6 +6593,7 @@ struct AddFoodMainView: View {
                         }
                     }
                     .padding(.horizontal, 16)
+                    .padding(.top, 8)
                 }
                 .background(Color(.systemBackground))
 
