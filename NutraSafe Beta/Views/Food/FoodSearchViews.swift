@@ -92,17 +92,18 @@ struct FoodSearchResultRowEnhanced: View {
     @Binding var selectedTab: TabItem
     @Binding var destination: AddFoodMainView.AddDestination
     var onComplete: ((TabItem) -> Void)?
+    var onTapUseBy: ((FoodSearchResult) -> Void)?
     @State private var showingFoodDetail = false
-    @State private var showingUseBySheet = false
     @State private var isPressed = false
     @EnvironmentObject var diaryDataManager: DiaryDataManager
 
-    init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, destination: Binding<AddFoodMainView.AddDestination>, onComplete: ((TabItem) -> Void)? = nil) {
+    init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, destination: Binding<AddFoodMainView.AddDestination>, onComplete: ((TabItem) -> Void)? = nil, onTapUseBy: ((FoodSearchResult) -> Void)? = nil) {
         self.food = food
         self.sourceType = sourceType
         self._selectedTab = selectedTab
         self._destination = destination
         self.onComplete = onComplete
+        self.onTapUseBy = onTapUseBy
     }
     
     private var nutritionScore: ProcessingGrade {
@@ -156,11 +157,8 @@ struct FoodSearchResultRowEnhanced: View {
     
     var body: some View {
         Button(action: {
-            if destination == .useBy {
-                showingUseBySheet = true
-            } else {
-                showingFoodDetail = true
-            }
+            print("[UseByTap:Button] tapped; destination=\(String(describing: destination)) foodId=\(food.id)")
+            handleTap()
         }) {
             HStack(spacing: 12) {
                 // Product name and brand
@@ -200,36 +198,45 @@ struct FoodSearchResultRowEnhanced: View {
         .contentShape(Rectangle())
         .scaleEffect(isPressed ? 0.98 : 1.0)
         .animation(.easeInOut(duration: 0.1), value: isPressed)
-        .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
-            isPressed = pressing
-        }, perform: {
-            if destination == .useBy {
-                showingUseBySheet = true
-            } else {
-                showingFoodDetail = true
-            }
-        })
-        .simultaneousGesture(
-            TapGesture()
-                .onEnded { _ in
-                    if destination == .useBy {
-                        showingUseBySheet = true
-                    } else {
-                        showingFoodDetail = true
-                    }
-                }
-        )
         .buttonStyle(PlainButtonStyle())
+        .highPriorityGesture(
+            TapGesture().onEnded {
+                print("[UseByTap:HighPriority] row tap ended; destination=\(String(describing: destination)) foodId=\(food.id)")
+                handleTap()
+            }
+        )
         .sheet(isPresented: $showingFoodDetail) {
             FoodDetailViewFromSearch(food: food, sourceType: sourceType, selectedTab: $selectedTab, destination: destination) { tab in
                 onComplete?(tab)
             }
-                .environmentObject(diaryDataManager)
+            .onAppear { print("[FoodDetail] sheet appear for foodId=\(food.id)") }
+            .onDisappear { print("[FoodDetail] sheet disappear for foodId=\(food.id)") }
+            .environmentObject(diaryDataManager)
         }
-        .sheet(isPresented: $showingUseBySheet) {
-            AddFoundFoodToUseBySheet(food: food) { tab in
-                onComplete?(tab)
-            }
+        .onAppear {
+            print("[AddDest] Row appear; destination=\(String(describing: destination)) foodId=\(food.id)")
+        }
+        .onChange(of: destination) { newDest in
+            print("[AddDest] Row destination changed -> \(String(describing: newDest)) foodId=\(food.id)")
+        }
+    }
+
+    @State private var lastTapTimestamp: TimeInterval = 0
+
+    private func handleTap() {
+        let now = CFAbsoluteTimeGetCurrent()
+        if now - lastTapTimestamp < 0.2 {
+            print("[UseByTap] Skipping duplicate tap within debounce window")
+            return
+        }
+        lastTapTimestamp = now
+
+        if destination == .useBy {
+            print("[UseByTap] Forwarding to onTapUseBy for foodId=\(food.id)")
+            onTapUseBy?(food)
+        } else {
+            print("[UseByTap] Opening FoodDetail; destination=\(String(describing: destination)) foodId=\(food.id)")
+            showingFoodDetail = true
         }
     }
 }
@@ -274,6 +281,7 @@ struct AddFoodSearchView: View {
     @Binding var selectedTab: TabItem
     @Binding var destination: AddFoodMainView.AddDestination
     var onComplete: ((TabItem) -> Void)?
+    var onSelectUseBy: ((FoodSearchResult) -> Void)? = nil
     @State private var searchText = ""
     @State private var searchResults: [FoodSearchResult] = []
     @State private var isSearching = false
@@ -284,6 +292,7 @@ struct AddFoodSearchView: View {
     @State private var isEditingMode = false
     @State private var editingFoodName = ""
     @State private var originalMealType = ""
+    // Use By sheet presentation moved to parent; emit selection via callback
     
     var body: some View {
         VStack(spacing: 0) {
@@ -364,7 +373,9 @@ struct AddFoodSearchView: View {
 
                                     ForEach(recentFoods, id: \.id) { recentFood in
                                         let searchResult = convertToSearchResult(recentFood)
-                                        FoodSearchResultRowEnhanced(food: searchResult, selectedTab: $selectedTab, destination: $destination, onComplete: onComplete)
+                                        FoodSearchResultRowEnhanced(food: searchResult, selectedTab: $selectedTab, destination: $destination, onComplete: onComplete, onTapUseBy: { selected in
+                                            onSelectUseBy?(selected)
+                                        })
                                             .padding(.horizontal, 16)
                                     }
                                 }
@@ -372,7 +383,9 @@ struct AddFoodSearchView: View {
 
                             // Show search results when searching
                             ForEach(Array(searchResults.enumerated()), id: \.element.id) { index, food in
-                                FoodSearchResultRowEnhanced(food: food, selectedTab: $selectedTab, destination: $destination, onComplete: onComplete)
+                                FoodSearchResultRowEnhanced(food: food, selectedTab: $selectedTab, destination: $destination, onComplete: onComplete, onTapUseBy: { selected in
+                                    onSelectUseBy?(selected)
+                                })
                                     .id("result_\(index)")
                             }
 

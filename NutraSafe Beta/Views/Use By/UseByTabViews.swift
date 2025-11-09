@@ -90,6 +90,7 @@ struct UseByTabView: View {
     @State private var showingScanner = false
     @State private var showingCamera = false
     @State private var showingAddSheet = false
+    @State private var selectedFoodForUseBy: FoodSearchResult? // Hoisted to avoid nested presentations
 
     // Temporary header counter until data is lifted to parent scope
     private var expiringSoonCount: Int { 0 }
@@ -204,7 +205,10 @@ struct UseByTabView: View {
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .fullScreenCover(isPresented: $showingAddSheet) {
-            AddUseByItemSheet()
+            AddUseByItemSheet(selectedFood: $selectedFoodForUseBy)
+        }
+        .sheet(item: $selectedFoodForUseBy) { food in
+            AddFoundFoodToUseBySheet(food: food)
         }
         .sheet(isPresented: $showingScanner) {
             // Barcode scanner will be implemented
@@ -310,7 +314,47 @@ struct AddFoundFoodToUseBySheet: View {
     enum ExpiryUnit: String, CaseIterable { case days = "Days", weeks = "Weeks" }
 
     var body: some View {
-        NavigationView {
+        VStack(spacing: 0) {
+            // Custom header
+            HStack {
+                // Lifecycle tracing attached to a visible node
+                EmptyView()
+                    .onAppear { print("[UseBy] AddFoundFoodToUseBySheet onAppear for \(food.id) \(food.name)") }
+                    .onDisappear { print("[UseBy] AddFoundFoodToUseBySheet onDisappear for \(food.id) \(food.name)") }
+                Button("Cancel") { dismiss() }
+                    .font(.system(size: 17))
+                    .foregroundColor(.blue)
+
+                Spacer()
+
+                Text("Add to Use By")
+                    .font(.system(size: 17, weight: .semibold))
+
+                Spacer()
+
+                Button(action: { Task { await save() } }) {
+                    if isSaving || isUploadingPhoto {
+                        HStack(spacing: 4) {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                            Text(isUploadingPhoto ? "Uploading..." : "Saving...")
+                                .font(.system(size: 13))
+                        }
+                    } else {
+                        Text("Add")
+                            .fontWeight(.semibold)
+                            .font(.system(size: 17))
+                    }
+                }
+                .foregroundColor(.blue)
+                .disabled(isUploadingPhoto || isSaving)
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 12)
+            .background(Color(.systemBackground))
+
+            Divider()
+
             ScrollView {
                 VStack(spacing: 16) {
                     SectionCard(title: "ITEM") {
@@ -420,25 +464,6 @@ struct AddFoundFoodToUseBySheet: View {
             }
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("Add to Use By")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { Task { await save() } }) {
-                        if isSaving || isUploadingPhoto {
-                            HStack(spacing: 8) {
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                                Text(isUploadingPhoto ? "Uploading..." : "Saving...")
-                                    .font(.caption)
-                            }
-                        } else {
-                            Text("Add").fontWeight(.semibold)
-                        }
-                    }
-                    .disabled(isUploadingPhoto || isSaving)
-                }
-            }
             .alert("Couldn't save item", isPresented: $showErrorAlert, actions: {
                 Button("OK", role: .cancel) {}
             }, message: {
@@ -540,6 +565,7 @@ struct AddFoundFoodToUseBySheet: View {
             try await FirebaseManager.shared.addUseByItem(item)
             NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
             await MainActor.run {
+                print("[UseBy] Save succeeded, dismissing sheet and completing to Use By")
                 dismiss()
                 onComplete?(.useBy)
             }
@@ -553,6 +579,7 @@ struct AddFoundFoodToUseBySheet: View {
                     // Missing permissions - post notifications and dismiss without error
                     NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
                     NotificationCenter.default.post(name: .navigateToUseBy, object: nil)
+                    print("[UseBy] Permission error (code 7), navigating to Use By and dismissing sheet")
                     dismiss()
                     onComplete?(.useBy)
                 } else {
@@ -575,6 +602,7 @@ struct UseByExpiryView: View {
     @State private var isRefreshing: Bool = false
     @State private var showClearAlert: Bool = false
     @State private var showingAddSheet: Bool = false
+    @State private var selectedFoodForUseBy: FoodSearchResult? // Hoisted to avoid nested presentations
     @State private var searchText: String = ""
     @State private var hasLoadedOnce = false // PERFORMANCE: Guard flag to prevent redundant loads
 
@@ -853,7 +881,10 @@ struct UseByExpiryView: View {
             Text("This will remove all items from your useBy inventory.")
         }
         .fullScreenCover(isPresented: $showingAddSheet) {
-            AddUseByItemSheet()
+            AddUseByItemSheet(selectedFood: $selectedFoodForUseBy)
+        }
+        .sheet(item: $selectedFoodForUseBy) { food in
+            AddFoundFoodToUseBySheet(food: food)
         }
     } // End of var body: some View
 
@@ -884,6 +915,7 @@ struct UseByExpiryAlertsCard: View {
     let items: [UseByInventoryItem]
     @State private var selectedFilter: ExpiryFilter = .all
     @State private var showingAddSheet = false
+    @State private var selectedFoodForUseBy: FoodSearchResult? // Hoisted to avoid nested presentations
     @Binding var selectedTab: TabItem
     var onClearAll: () -> Void
 
@@ -1027,9 +1059,11 @@ struct UseByExpiryAlertsCard: View {
         .background(Color(.systemGray6))
         .cornerRadius(12)
         .fullScreenCover(isPresented: $showingAddSheet) {
-            AddUseByItemSheet()
+            AddUseByItemSheet(selectedFood: $selectedFoodForUseBy)
         }
-        .onDisappear { showingAddSheet = false }
+        .sheet(item: $selectedFoodForUseBy) { food in
+            AddFoundFoodToUseBySheet(food: food)
+        }
     }
 }
 
@@ -2055,6 +2089,7 @@ struct UseByQuickAddCard: View {
     @Binding var showingScanner: Bool
     @Binding var showingCamera: Bool
     @State private var showingAddSheet = false
+    @State private var selectedFoodForUseBy: FoodSearchResult? // Hoisted to avoid nested presentations
 
     var body: some View {
         VStack(spacing: 16) {
@@ -2102,7 +2137,10 @@ struct UseByQuickAddCard: View {
                 .fill(Color(.systemGray6))
         )
         .fullScreenCover(isPresented: $showingAddSheet) {
-            AddUseByItemSheet()
+            AddUseByItemSheet(selectedFood: $selectedFoodForUseBy)
+        }
+        .sheet(item: $selectedFoodForUseBy) { food in
+            AddFoundFoodToUseBySheet(food: food)
         }
     }
 }
@@ -2271,60 +2309,64 @@ struct UseByBarcodeScanSheet: View {
 
 struct AddUseByItemSheet: View {
     @Environment(\.dismiss) var dismiss
+    @Binding var selectedFood: FoodSearchResult? // Binding to parent state
     @State private var showingManualAdd = false
     @State private var showingSearch = false
     @State private var showingBarcodeScan = false
     @State private var selectedOption: AddFoodMainView.AddOption = .search
+    @State private var isReady = false // Prevent interaction until presentation is stable
 
     var body: some View {
-        NavigationView {
-            VStack(spacing: 0) {
-                // Header
-                VStack(spacing: 16) {
-                    HStack {
-                        Text("Add to Use By")
-                            .font(.system(size: 28, weight: .bold))
-                            .foregroundColor(.primary)
-                        Spacer()
-                        Button("Close") { dismiss() }
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.blue)
-                    }
+        VStack(spacing: 0) {
+            // Header
+            VStack(spacing: 16) {
+                HStack {
+                    Text("Add to Use By")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundColor(.primary)
+                    Spacer()
+                    Button("Close") { dismiss() }
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.blue)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+
+                // Use the same 2x2 option grid as Add Food
+                AddOptionSelector(selectedOption: $selectedOption)
                     .padding(.horizontal, 16)
-                    .padding(.top, 16)
-
-                    // Use the same 2x2 option grid as Add Food
-                    AddOptionSelector(selectedOption: $selectedOption)
-                        .padding(.horizontal, 16)
-                }
-                .background(Color(.systemBackground))
-
-                // When the user taps a tile, open the corresponding flow
-                Group {
-                    switch selectedOption {
-                    case .search:
-                        UseByInlineSearchView()
-                    case .manual:
-                        UseByItemDetailView(item: nil)
-                    case .barcode:
-                        UseByBarcodeScanSheet()
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-.navigationBarHidden(true)
-            .toolbar { }
+            .background(Color(.systemBackground))
+
+            // When the user taps a tile, open the corresponding flow
+            Group {
+                switch selectedOption {
+                case .search:
+                    UseByInlineSearchView(selectedFood: $selectedFood, isInteractionEnabled: isReady)
+                case .manual:
+                    UseByItemDetailView(item: nil)
+                case .barcode:
+                    UseByBarcodeScanSheet()
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .navigationViewStyle(StackNavigationViewStyle())
+        .onAppear {
+            // Small delay to ensure fullScreenCover is stable before allowing interactions
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isReady = true
+            }
+        }
     }
 }
 
 // Inline search content for Add-to-UseBy sheet, without its own navigation bar
 struct UseByInlineSearchView: View {
+    @Binding var selectedFood: FoodSearchResult? // Accept binding from parent
+    var isInteractionEnabled: Bool = true // Control when taps are allowed
     @State private var query: String = ""
     @State private var isSearching = false
     @State private var results: [FoodSearchResult] = []
-    @State private var selectedFood: FoodSearchResult?
     @State private var searchTask: Task<Void, Never>? = nil
 
     var body: some View {
@@ -2366,7 +2408,9 @@ struct UseByInlineSearchView: View {
                 VStack(spacing: 0) {
                     ForEach(results, id: \.id) { food in
 Button {
-                            selectedFood = food
+                            if isInteractionEnabled {
+                                selectedFood = food
+                            }
                         } label: {
                             HStack(alignment: .center, spacing: 12) {
                                 VStack(alignment: .leading, spacing: 2) {
@@ -2389,14 +2433,11 @@ Text(food.name)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 12)
                         }
+                        .disabled(!isInteractionEnabled)
                         Divider().padding(.leading, 16)
                     }
                 }
             }
-        }
-        .sheet(item: $selectedFood) { food in
-            // For UseBy flow, open the expiry-tracking add form directly
-            AddFoundFoodToUseBySheet(food: food)
         }
     }
 

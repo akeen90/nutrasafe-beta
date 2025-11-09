@@ -107,6 +107,7 @@
 /* Begin PBXFileReference section */
 		ED24D7DC4CA54819A95C7D71C8EC119A /* additives_unified.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "additives_unified.json"; sourceTree = "<group>"; };
 		9EA48F8E27E84D79BCB731AA447430AB /* ingredients_consolidated.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "ingredients_consolidated.json"; sourceTree = "<group>"; };
+		D0FEC9B4AA084ED5BF9A4E53858FE767 /* ultra_processed_ingredients.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "NutraSafe Beta/ultra_processed_ingredients.json"; sourceTree = SOURCE_ROOT; };
 		
 		
 		382580B0102C42B88767E7A2 /* WeeklySummarySheet.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WeeklySummarySheet.swift; sourceTree = "<group>"; };
@@ -502,8 +503,11 @@ AB4B75A92E72DEFC0058DCD3 /* FirebaseCore in Frameworks */,
 				97956798E37686D9DE1CDCE4 /* additives_master_database.json in Resources */,
 				ABC1D3B02EAD665E00518F41 /* NutraSafe.storekit in Resources */,
 				41A03AB7C02C3A4AA790DE89 /* micronutrients_ingredients_v6.db in Resources */,
-				493BF5FE7CF24BB686A616EE /* nutrasafe_foods.db in Resources */,				6FD7402BCD964514A0EFBAC97296E211 /* ingredients_consolidated.json in Resources */,
-				2E8B1C5675E64AE0B624520841DC4102 /* additives_unified.json in Resources */,);
+				493BF5FE7CF24BB686A616EE /* nutrasafe_foods.db in Resources */,
+				6FD7402BCD964514A0EFBAC97296E211 /* ingredients_consolidated.json in Resources */,
+				2E8B1C5675E64AE0B624520841DC4102 /* additives_unified.json in Resources */,
+				71B4756E80AC49019B62DD26BC7FC2D9 /* ultra_processed_ingredients.json in Resources */,
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */

@@ -1504,9 +1504,11 @@ struct ContentView: View {
             })
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToUseBy)) { _ in
+            print("[Nav] Received navigateToUseBy")
             selectedTab = .useBy
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToFasting)) { _ in
+            print("[Nav] Received navigateToFasting -> switching to Food tab")
             selectedTab = .food
         }
         .onReceive(NotificationCenter.default.publisher(for: .restartOnboarding)) { _ in
@@ -1516,6 +1518,7 @@ struct ContentView: View {
         .onChange(of: selectedTab) { newTab in
             // PERFORMANCE: Mark tab as visited for lazy initialization
             visitedTabs.insert(newTab)
+            print("[Tab] selectedTab changed -> \(newTab)")
         // DEBUG LOG: print("⚡️ Tab switched to \(newTab) - Total visited: \(visitedTabs.count)/5")
 
             // Enforce subscription gating for programmatic tab changes
@@ -6446,6 +6449,9 @@ struct AddFoodMainView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selectedAddOption: AddOption = .search
     @State private var destination: AddDestination
+    @State private var selectedFoodForUseBy: FoodSearchResult? = nil
+    @State private var lastUseBySelection: FoodSearchResult? = nil
+    @State private var showingUseBySheet: Bool = false
     var onDismiss: (() -> Void)?
     var onComplete: ((TabItem) -> Void)?
 
@@ -6476,6 +6482,33 @@ struct AddFoodMainView: View {
         }
     }
 
+    // Lightweight button component to simplify option selector and reduce type-checking complexity
+    private struct OptionSelectorButton: View {
+        let title: String
+        let icon: String
+        let isSelected: Bool
+        let onTap: () -> Void
+
+        var body: some View {
+            Button(action: { onTap() }) {
+                HStack(spacing: 6) {
+                    Image(systemName: icon)
+                        .font(.system(size: 14, weight: .medium))
+                    Text(title)
+                        .font(.system(size: 14, weight: .medium))
+                }
+                .foregroundColor(isSelected ? .white : .primary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(isSelected ? Color.blue : Color(.systemGray6))
+                )
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+    }
+
     init(selectedTab: Binding<TabItem>, sourceDestination: AddDestination? = nil, onDismiss: (() -> Void)? = nil, onComplete: ((TabItem) -> Void)? = nil) {
         self._selectedTab = selectedTab
         self._destination = State(initialValue: sourceDestination ?? .diary)
@@ -6496,59 +6529,15 @@ struct AddFoodMainView: View {
 
                     // Option selector - evenly distributed like Diary/Use By above
                     HStack(spacing: 0) {
-                        // Search button
-                        Button(action: { selectedAddOption = .search }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "magnifyingglass")
-                                    .font(.system(size: 14, weight: .medium))
-                                Text("Search")
-                                    .font(.system(size: 14, weight: .medium))
-                            }
-                            .foregroundColor(selectedAddOption == .search ? .white : .primary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(selectedAddOption == .search ? Color.blue : Color(.systemGray6))
-                            )
+                        OptionSelectorButton(title: "Search", icon: "magnifyingglass", isSelected: selectedAddOption == .search) {
+                            selectedAddOption = .search
                         }
-                        .buttonStyle(PlainButtonStyle())
-
-                        // Manual button
-                        Button(action: { selectedAddOption = .manual }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "square.and.pencil")
-                                    .font(.system(size: 14, weight: .medium))
-                                Text("Manual")
-                                    .font(.system(size: 14, weight: .medium))
-                            }
-                            .foregroundColor(selectedAddOption == .manual ? .white : .primary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(selectedAddOption == .manual ? Color.blue : Color(.systemGray6))
-                            )
+                        OptionSelectorButton(title: "Manual", icon: "square.and.pencil", isSelected: selectedAddOption == .manual) {
+                            selectedAddOption = .manual
                         }
-                        .buttonStyle(PlainButtonStyle())
-
-                        // Barcode button
-                        Button(action: { selectedAddOption = .barcode }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "barcode.viewfinder")
-                                    .font(.system(size: 14, weight: .medium))
-                                Text("Barcode")
-                                    .font(.system(size: 14, weight: .medium))
-                            }
-                            .foregroundColor(selectedAddOption == .barcode ? .white : .primary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(selectedAddOption == .barcode ? Color.blue : Color(.systemGray6))
-                            )
+                        OptionSelectorButton(title: "Barcode", icon: "barcode.viewfinder", isSelected: selectedAddOption == .barcode) {
+                            selectedAddOption = .barcode
                         }
-                        .buttonStyle(PlainButtonStyle())
                     }
                     .padding(.horizontal, 16)
                 }
@@ -6558,11 +6547,33 @@ struct AddFoodMainView: View {
                 Group {
                     switch selectedAddOption {
                     case .search:
-                        AddFoodSearchView(selectedTab: $selectedTab, destination: $destination, onComplete: onComplete)
+                        AnyView(
+                            AddFoodSearchView(
+                                selectedTab: $selectedTab,
+                                destination: $destination,
+                                onComplete: onComplete,
+                                onSelectUseBy: { selected in
+                                    // Keep this closure simple to help the type-checker
+                                    // Guard against re-selecting the same item to avoid churn
+                                    if lastUseBySelection?.id != selected.id {
+                                        lastUseBySelection = selected
+                                    }
+                                    selectedFoodForUseBy = selected
+                                    DispatchQueue.main.async {
+                                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                                    }
+                                    // Sheet presentation is driven by item binding
+                                }
+                            )
+                        )
                     case .manual:
-                        AddFoodManualView(selectedTab: $selectedTab, destination: $destination)
+                        AnyView(
+                            AddFoodManualView(selectedTab: $selectedTab, destination: $destination)
+                        )
                     case .barcode:
-                        AddFoodBarcodeView(selectedTab: $selectedTab, destination: $destination)
+                        AnyView(
+                            AddFoodBarcodeView(selectedTab: $selectedTab, destination: $destination)
+                        )
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -6584,6 +6595,38 @@ struct AddFoodMainView: View {
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
+        // Removed first-time full-screen cover; using sheet for all opens
+        .sheet(item: $lastUseBySelection, onDismiss: {
+            print("[UseBy] sheet dismissed")
+            selectedFoodForUseBy = nil
+        }) { stableSelection in
+            let sheetView = AddFoundFoodToUseBySheet(food: stableSelection) { tab in
+                onComplete?(tab)
+            }
+            Group {
+                sheetView
+            }
+            .onAppear { print("[UseBy] sheet wrapper appear for id=\(stableSelection.id) name=\(stableSelection.name)") }
+            .onDisappear { print("[UseBy] sheet wrapper disappear for id=\(stableSelection.id)") }
+            .interactiveDismissDisabled(true)
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
+        // Removed boolean-based sheet change observer; sheet is item-driven now
+        .onChange(of: selectedFoodForUseBy?.id, perform: { newId in
+            if let id = newId, let f = selectedFoodForUseBy {
+                print("[UseBy] selectedFoodForUseBy set -> \(id) \(f.name)")
+            } else {
+                print("[UseBy] selectedFoodForUseBy cleared")
+            }
+        })
+        .onChange(of: lastUseBySelection?.id, perform: { newId in
+            if let id = newId, let f = lastUseBySelection {
+                print("[UseBy] lastUseBySelection changed -> \(id) \(f.name)")
+            } else {
+                print("[UseBy] lastUseBySelection cleared")
+            }
+        })
     }
 }
 

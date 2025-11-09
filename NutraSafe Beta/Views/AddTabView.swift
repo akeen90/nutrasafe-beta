@@ -5,11 +5,13 @@ struct AddTabView: View {
     @Binding var selectedTab: TabItem
     @Environment(\.dismiss) private var dismiss
     var sourceDestination: AddFoodMainView.AddDestination? = nil
+    @State private var resolvedDestination: AddFoodMainView.AddDestination? = nil
 
     var body: some View {
+        let dest = resolvedDestination ?? determineDestination() ?? .diary
         AddFoodMainView(
             selectedTab: $selectedTab,
-            sourceDestination: determineDestination(),
+            sourceDestination: dest,
             onDismiss: {
                 dismiss()
             },
@@ -18,10 +20,14 @@ struct AddTabView: View {
                 dismiss()
             }
         )
-        // Force re-init when desired default destination changes to avoid sticky last state
-        .id(determineDestination() ?? .diary)
+        // Stabilize identity using the initially resolved destination to prevent mid-session reinit
+        .id(dest)
         .onAppear {
-            // Clear the preselected destination after using it
+            // Capture destination once per presentation to avoid identity flip after clearing defaults
+            if resolvedDestination == nil {
+                resolvedDestination = determineDestination()
+            }
+            // Clear the preselected destination after capturing it
             UserDefaults.standard.removeObject(forKey: "preselectedDestination")
         }
     }
