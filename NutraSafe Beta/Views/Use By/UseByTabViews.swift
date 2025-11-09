@@ -1822,7 +1822,8 @@ struct ModernExpiryRow: View {
 
     private var urgencyText: String {
         switch daysLeft {
-        case ...0: return "Expired"
+        case ..<0: return "Expired"
+        case 0: return "Last day"
         case 1: return "Tomorrow"
         case 2...7: return "\(daysLeft) days"
         case 8...30: return "\(daysLeft) days"
@@ -2603,6 +2604,7 @@ struct FreshnessIndicatorView: View {
     let freshnessScore: Double
     let freshnessColor: Color
     let freshnessEmoji: String
+    let freshnessLabel: String
     @Binding var pulseAnimation: Bool
 
     var body: some View {
@@ -2627,7 +2629,7 @@ struct FreshnessIndicatorView: View {
                 Text("\(Int(freshnessScore * 100))%")
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundColor(freshnessColor)
-                Text("Fresh")
+                Text(freshnessLabel)
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
             }
@@ -2696,8 +2698,11 @@ struct UseByItemDetailView: View {
     }
 
     var freshnessScore: Double {
-        let totalShelfLife = max(daysLeft + 7, 1)
-        let remaining = max(daysLeft, 0)
+        // When daysLeft < 0, item is expired (0%)
+        // When daysLeft = 0, item is on last day (show ~12% to indicate still usable but urgent)
+        // Add 1 so last day shows some freshness
+        let totalShelfLife = max(daysLeft + 8, 1)
+        let remaining = max(daysLeft + 1, 0)
         return Double(remaining) / Double(totalShelfLife)
     }
 
@@ -2717,11 +2722,20 @@ struct UseByItemDetailView: View {
 
     var smartRecommendation: String {
         switch daysLeft {
-        case ...0: return "Use immediately or consider freezing"
-        case 1: return "Perfect for tonight's dinner"
+        case ..<0: return "Expired - discard item"
+        case 0: return "Last day - use today"
+        case 1: return "Perfect for tomorrow"
         case 2...3: return "Plan to use within next few meals"
         case 4...7: return "Still fresh - use this week"
         default: return "Plenty of time - store properly"
+        }
+    }
+
+    var freshnessLabel: String {
+        switch daysLeft {
+        case ..<0: return "Expired"
+        case 0: return "Last day"
+        default: return "Fresh"
         }
     }
 
@@ -2736,6 +2750,7 @@ struct UseByItemDetailView: View {
                             freshnessScore: freshnessScore,
                             freshnessColor: freshnessColor,
                             freshnessEmoji: freshnessEmoji,
+                            freshnessLabel: freshnessLabel,
                             pulseAnimation: $pulseAnimation
                         )
 
@@ -2762,7 +2777,7 @@ struct UseByItemDetailView: View {
                             }
 
                             HStack(spacing: 12) {
-                                Label("\(daysLeft) days", systemImage: "calendar")
+                                Label(daysLeft < 0 ? "Expired" : (daysLeft == 0 ? "Last day" : "\(daysLeft) days"), systemImage: "calendar")
                                     .font(.system(size: 13))
                                     .foregroundColor(freshnessColor)
                             }
@@ -2836,7 +2851,7 @@ struct UseByItemDetailView: View {
                             HStack(spacing: 6) {
                                 // Amount picker
                                 HStack {
-                                    Button(action: { if expiryAmount > 1 { expiryAmount -= 1 } }) {
+                                    Button(action: { if expiryAmount > 0 { expiryAmount -= 1 } }) {
                                         Image(systemName: "minus.circle.fill")
                                             .font(.system(size: 24))
                                             .foregroundColor(.blue)
@@ -3062,10 +3077,10 @@ struct UseByItemDetailView: View {
                 let today = calendar.startOfDay(for: Date())
                 let expiry = calendar.startOfDay(for: item.expiryDate)
                 let actualDaysLeft = calendar.dateComponents([.day], from: today, to: expiry).day ?? 7
-                expiryAmount = max(actualDaysLeft, 1)
+                expiryAmount = max(actualDaysLeft, 0)
                 expiryUnit = actualDaysLeft > 14 ? .weeks : .days
                 if expiryUnit == .weeks {
-                    expiryAmount = expiryAmount / 7
+                    expiryAmount = max(expiryAmount / 7, 0)
                 }
             } else {
                 // Add mode: Set defaults
