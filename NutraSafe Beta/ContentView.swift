@@ -1589,6 +1589,13 @@ struct ContentView: View {
         }
         
         .onChange(of: selectedTab) { newTab in
+            // Track the last non-add tab for proper return behavior when dismissing
+            if newTab != .add {
+                // Update previousTabBeforeAdd to the current non-add tab
+                previousTabBeforeAdd = newTab
+                print("[Tab] Updated previousTabBeforeAdd to: \(newTab)")
+            }
+
             // PERFORMANCE: Mark tab as visited for lazy initialization
             visitedTabs.insert(newTab)
             print("[Tab] selectedTab changed -> \(newTab)")
