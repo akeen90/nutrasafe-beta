@@ -32,15 +32,6 @@ struct AddActionMenu: View {
 
                 // Menu container - slides up from bottom
                 VStack(spacing: 0) {
-                    // Header with subtle fade and slide
-                    Text("Add to...")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.9))
-                        .padding(.bottom, 24)
-                        .opacity(isPresented ? 1 : 0)
-                        .offset(y: isPresented ? 0 : 10)
-                        .animation(.spring(response: 0.45, dampingFraction: 0.8).delay(0.1), value: isPresented)
-
                     // Triangle formation of buttons
                     VStack(spacing: 20) {
                         // Top button (Reaction - center)
@@ -48,7 +39,7 @@ struct AddActionMenu: View {
                             Spacer()
                             ModernFloatingButton(
                                 icon: "heart.fill",
-                                label: "",
+                                label: "Log Reaction",
                                 color: .red,
                                 delay: 0.0,
                                 isPresented: isPresented
