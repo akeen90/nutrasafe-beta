@@ -16,9 +16,8 @@ struct AddActionMenu: View {
 
     var body: some View {
         ZStack {
-            // Blur dimmed background with fade-in
-            Color.black.opacity(0.5)
-                .background(.ultraThinMaterial)
+            // Darker overlay for focus without blur
+            Color.black.opacity(0.6)
                 .ignoresSafeArea()
                 .opacity(isPresented ? 1 : 0)
                 .animation(.easeOut(duration: 0.25), value: isPresented)
@@ -54,7 +53,7 @@ struct AddActionMenu: View {
                         HStack(spacing: 70) {
                             ModernFloatingButton(
                                 icon: "fork.knife",
-                                label: "Diary",
+                                label: "Add to Diary",
                                 color: .blue,
                                 delay: 0.05,
                                 isPresented: isPresented
@@ -64,7 +63,7 @@ struct AddActionMenu: View {
 
                             ModernFloatingButton(
                                 icon: "calendar.badge.clock",
-                                label: "Use By",
+                                label: "Add to Use By",
                                 color: .orange,
                                 delay: 0.1,
                                 isPresented: isPresented
