@@ -2194,11 +2194,24 @@ struct DataPrivacyView: View {
                             showingError = true
                             isDeleting = false
                         } else {
-                            successMessage = "Your account has been deleted."
+                            // Account successfully deleted - now sign out and reset onboarding
+                            do {
+                                try Auth.auth().signOut()
+                                // Reset onboarding so they see it again if they create a new account
+                                OnboardingManager.shared.resetOnboarding()
+                                // Clear any local data
+                                UserDefaults.standard.removeObject(forKey: "preselectedDestination")
+                                UserDefaults.standard.removeObject(forKey: "preselectedMealType")
+                                UserDefaults.standard.removeObject(forKey: "preselectedDate")
+                            } catch {
+                                print("Error signing out after account deletion: \(error.localizedDescription)")
+                            }
+
+                            successMessage = "Your account has been deleted and you have been signed out."
                             showingSuccess = true
                             isDeleting = false
-                            // Optionally dismiss after a delay
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            // Dismiss after a delay to show the success message
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                                 dismiss()
                             }
                         }
