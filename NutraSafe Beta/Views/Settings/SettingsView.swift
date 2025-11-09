@@ -2187,39 +2187,58 @@ struct DataPrivacyView: View {
                     try await firebaseManager.deleteAllUserData()
                     // Delete Storage assets best-effort
                     await deleteUserStorageAssets(for: user.uid)
-                    // Finally delete the Auth user
-                    user.delete { err in
-                        if let err = err {
-                            errorMessage = "Account deletion failed: \(err.localizedDescription)"
+
+                    // Get a fresh reference to the current user after reauthentication
+                    // This is critical - the user object must be fresh after reauthentication
+                    guard let freshUser = Auth.auth().currentUser else {
+                        await MainActor.run {
+                            errorMessage = "Unable to get current user for deletion."
                             showingError = true
                             isDeleting = false
-                        } else {
-                            // Account successfully deleted - now sign out and reset onboarding
-                            do {
-                                try Auth.auth().signOut()
-                                // Reset onboarding so they see it again if they create a new account
-                                OnboardingManager.shared.resetOnboarding()
-                                // Clear any local data
-                                UserDefaults.standard.removeObject(forKey: "preselectedDestination")
-                                UserDefaults.standard.removeObject(forKey: "preselectedMealType")
-                                UserDefaults.standard.removeObject(forKey: "preselectedDate")
-                            } catch {
-                                print("Error signing out after account deletion: \(error.localizedDescription)")
-                            }
+                        }
+                        return
+                    }
 
-                            successMessage = "Your account has been deleted and you have been signed out."
-                            showingSuccess = true
-                            isDeleting = false
-                            // Dismiss after a delay to show the success message
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                                dismiss()
+                    // Delete the Auth user account
+                    await MainActor.run {
+                        freshUser.delete { err in
+                            if let err = err {
+                                print("[Account Deletion] Error deleting user: \(err.localizedDescription)")
+                                errorMessage = "Account deletion failed: \(err.localizedDescription)"
+                                showingError = true
+                                isDeleting = false
+                            } else {
+                                print("[Account Deletion] User account successfully deleted from Firebase Auth")
+                                // Account successfully deleted - now sign out and reset onboarding
+                                do {
+                                    try Auth.auth().signOut()
+                                    print("[Account Deletion] Signed out successfully")
+                                    // Reset onboarding so they see it again if they create a new account
+                                    OnboardingManager.shared.resetOnboarding()
+                                    // Clear any local data
+                                    UserDefaults.standard.removeObject(forKey: "preselectedDestination")
+                                    UserDefaults.standard.removeObject(forKey: "preselectedMealType")
+                                    UserDefaults.standard.removeObject(forKey: "preselectedDate")
+                                } catch {
+                                    print("[Account Deletion] Error signing out: \(error.localizedDescription)")
+                                }
+
+                                successMessage = "Your account has been permanently deleted."
+                                showingSuccess = true
+                                isDeleting = false
+                                // Dismiss after a delay to show the success message
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                                    dismiss()
+                                }
                             }
                         }
                     }
                 } catch {
-                    errorMessage = "Failed to delete data: \(error.localizedDescription)"
-                    showingError = true
-                    isDeleting = false
+                    await MainActor.run {
+                        errorMessage = "Failed to delete data: \(error.localizedDescription)"
+                        showingError = true
+                        isDeleting = false
+                    }
                 }
             }
         }
