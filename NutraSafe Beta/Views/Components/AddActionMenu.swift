@@ -24,19 +24,20 @@ struct AddActionMenu: View {
                     }
                 }
 
-            VStack(spacing: 24) {
+            VStack {
                 Spacer()
 
                 // Header text
                 Text("Where do you want to add?")
-                    .font(.system(size: 22, weight: .bold))
+                    .font(.system(size: 20, weight: .bold))
                     .foregroundColor(.white)
                     .opacity(isPresented ? 1 : 0)
                     .scaleEffect(isPresented ? 1 : 0.9)
                     .animation(.spring(response: 0.4, dampingFraction: 0.8).delay(0.1), value: isPresented)
+                    .padding(.bottom, 20)
 
                 // Triangle formation of buttons
-                VStack(spacing: 24) {
+                VStack(spacing: 20) {
                     // Top button (Diary - center)
                     HStack {
                         Spacer()
@@ -57,7 +58,7 @@ struct AddActionMenu: View {
                     }
 
                     // Bottom row (Use By left, Reaction right)
-                    HStack(spacing: 80) {
+                    HStack(spacing: 70) {
                         TriangleFloatingButton(
                             icon: "calendar.badge.clock",
                             label: "Use By",
@@ -87,10 +88,8 @@ struct AddActionMenu: View {
                         }
                     }
                 }
-
-                Spacer()
+                .padding(.bottom, 130) // Position just above the + button
             }
-            .padding(.bottom, 140) // Center vertically, accounting for tab bar
         }
         .transition(.opacity)
     }
