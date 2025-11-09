@@ -2605,6 +2605,7 @@ struct FreshnessIndicatorView: View {
     let freshnessColor: Color
     let freshnessEmoji: String
     let freshnessLabel: String
+    let daysLeft: Int
     @Binding var pulseAnimation: Bool
 
     var body: some View {
@@ -2626,7 +2627,7 @@ struct FreshnessIndicatorView: View {
             VStack(spacing: 2) {
                 Text(freshnessEmoji)
                     .font(.system(size: 24))
-                Text("\(Int(freshnessScore * 100))%")
+                Text(daysLeftText)
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundColor(freshnessColor)
                 Text(freshnessLabel)
@@ -2634,6 +2635,18 @@ struct FreshnessIndicatorView: View {
                     .foregroundColor(.secondary)
             }
             .scaleEffect(pulseAnimation ? 1.05 : 1.0)
+        }
+    }
+
+    var daysLeftText: String {
+        if daysLeft < 0 {
+            return "Expired"
+        } else if daysLeft == 0 {
+            return "Today"
+        } else if daysLeft == 1 {
+            return "1 day"
+        } else {
+            return "\(daysLeft) days"
         }
     }
 }
@@ -2751,6 +2764,7 @@ struct UseByItemDetailView: View {
                             freshnessColor: freshnessColor,
                             freshnessEmoji: freshnessEmoji,
                             freshnessLabel: freshnessLabel,
+                            daysLeft: daysLeft,
                             pulseAnimation: $pulseAnimation
                         )
 
