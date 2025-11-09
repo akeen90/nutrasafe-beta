@@ -1406,7 +1406,13 @@ struct ContentView: View {
 
             // Add Tab - Lazy load on first visit
             if visitedTabs.contains(.add) {
-                AddTabView(selectedTab: $selectedTab)
+                AddTabView(
+                    selectedTab: $selectedTab,
+                    isPresented: Binding(
+                        get: { selectedTab == .add },
+                        set: { if !$0 { selectedTab = .diary } }
+                    )
+                )
                     .environmentObject(diaryDataManager)
                     .opacity(selectedTab == .add ? 1 : 0)
                     .zIndex(selectedTab == .add ? 1 : 0)
@@ -1528,10 +1534,14 @@ struct ContentView: View {
             AddFoodMainView(
                 selectedTab: $selectedTab,
                 sourceDestination: .diary,
+                isPresented: $showingDiaryAdd,
                 onDismiss: {
+                    print("🟢 onDismiss called - setting showingDiaryAdd to false (was: \(showingDiaryAdd))")
                     showingDiaryAdd = false
+                    print("🟢 showingDiaryAdd is now: \(showingDiaryAdd)")
                 },
                 onComplete: { tab in
+                    print("🟢 onComplete called - setting showingDiaryAdd to false")
                     showingDiaryAdd = false
                     selectedTab = tab
                 }
@@ -1542,6 +1552,7 @@ struct ContentView: View {
             AddFoodMainView(
                 selectedTab: $selectedTab,
                 sourceDestination: .useBy,
+                isPresented: $showingUseByAdd,
                 onDismiss: {
                     showingUseByAdd = false
                 },
@@ -6509,8 +6520,17 @@ struct AddFoodMainView: View {
     @State private var selectedFoodForUseBy: FoodSearchResult? = nil
     @State private var lastUseBySelection: FoodSearchResult? = nil
     @State private var showingUseBySheet: Bool = false
+    @Binding var isPresented: Bool // Direct binding to presentation state
     var onDismiss: (() -> Void)?
     var onComplete: ((TabItem) -> Void)?
+
+    init(selectedTab: Binding<TabItem>, sourceDestination: AddDestination, isPresented: Binding<Bool>, onDismiss: (() -> Void)? = nil, onComplete: ((TabItem) -> Void)? = nil) {
+        self._selectedTab = selectedTab
+        self._destination = State(initialValue: sourceDestination)
+        self._isPresented = isPresented
+        self.onDismiss = onDismiss
+        self.onComplete = onComplete
+    }
 
     enum AddDestination: String, CaseIterable {
         case diary = "Diary"
@@ -6564,13 +6584,6 @@ struct AddFoodMainView: View {
             }
             .buttonStyle(PlainButtonStyle())
         }
-    }
-
-    init(selectedTab: Binding<TabItem>, sourceDestination: AddDestination? = nil, onDismiss: (() -> Void)? = nil, onComplete: ((TabItem) -> Void)? = nil) {
-        self._selectedTab = selectedTab
-        self._destination = State(initialValue: sourceDestination ?? .diary)
-        self.onDismiss = onDismiss
-        self.onComplete = onComplete
     }
 
     var body: some View {
@@ -6636,9 +6649,10 @@ struct AddFoodMainView: View {
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button(action: {
-                            // Call onDismiss callback to dismiss the fullScreenCover
-                            // (Environment dismiss doesn't work inside NavigationView with fullScreenCover)
-                            onDismiss?()
+                            print("🔴 X button tapped - directly setting isPresented to false")
+                            // Directly modify the binding to dismiss the fullScreenCover
+                            isPresented = false
+                            print("🔴 isPresented set to false")
                         }) {
                             Image(systemName: "xmark")
                                 .font(.system(size: 16, weight: .semibold))
