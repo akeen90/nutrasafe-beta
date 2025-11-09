@@ -6688,7 +6688,7 @@ struct AddFoodMainView: View {
             .onAppear { print("[UseBy] sheet wrapper appear for id=\(stableSelection.id) name=\(stableSelection.name)") }
             .onDisappear { print("[UseBy] sheet wrapper disappear for id=\(stableSelection.id)") }
             .interactiveDismissDisabled(true)
-            .presentationDetents([.medium, .large])
+            .presentationDetents([.large])
             .presentationDragIndicator(.visible)
         }
         // Removed boolean-based sheet change observer; sheet is item-driven now
