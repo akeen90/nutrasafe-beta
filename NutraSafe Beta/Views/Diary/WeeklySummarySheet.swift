@@ -19,6 +19,7 @@ struct WeeklySummarySheet: View {
     @State private var weeklySummary: WeeklySummary?
     @State private var isLoading = false
     @State private var expandedDays: Set<String> = [] // Track which days are expanded
+    @State private var weeklyCache: [String: WeeklySummary] = [:] // Cache for loaded weeks
 
     init(initialDate: Date, calorieGoal: Double, macroGoals: [MacroGoal], fetchWeeklySummary: @escaping (Date, Double, Double, Double, Double) async -> WeeklySummary?, setSelectedDate: @escaping (Date) -> Void) {
         self.initialDate = initialDate
@@ -237,7 +238,31 @@ struct WeeklySummarySheet: View {
         loadWeek()
     }
 
+    private func getCacheKey(for date: Date) -> String {
+        // Use the Monday of the week as the cache key (consistent for all dates in the same week)
+        let calendar = Calendar.current
+        let weekday = calendar.component(.weekday, from: date)
+        let daysFromMonday = (weekday == 1) ? -6 : 2 - weekday
+
+        if let monday = calendar.date(byAdding: .day, value: daysFromMonday, to: date) {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd"
+            return formatter.string(from: monday)
+        }
+
+        return "\(date.timeIntervalSince1970)" // Fallback
+    }
+
     private func loadWeek() {
+        let cacheKey = getCacheKey(for: currentDisplayDate)
+
+        // Check cache first
+        if let cachedSummary = weeklyCache[cacheKey] {
+            weeklySummary = cachedSummary
+            return
+        }
+
+        // Not in cache, fetch from Firebase
         isLoading = true
         Task {
             // Update parent-selected date
@@ -245,6 +270,8 @@ struct WeeklySummarySheet: View {
 
             if let summary = await fetchWeeklySummary(currentDisplayDate, calorieGoal, proteinGoal, carbGoal, fatGoal) {
                 await MainActor.run {
+                    // Store in cache
+                    weeklyCache[cacheKey] = summary
                     weeklySummary = summary
                     isLoading = false
                 }
