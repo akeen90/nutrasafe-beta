@@ -3,6 +3,7 @@
 //  NutraSafe Beta
 //
 //  Floating action buttons for adding items to diary, use by, or logging reactions
+//  Modern bottom-slide menu with glass/visionOS styling
 //
 
 import SwiftUI
@@ -15,11 +16,13 @@ struct AddActionMenu: View {
 
     var body: some View {
         ZStack {
-            // Dimmed background
-            Color.black.opacity(0.3)
+            // Blur dimmed background with fade-in
+            Color.black.opacity(0.4)
                 .ignoresSafeArea()
+                .opacity(isPresented ? 1 : 0)
+                .animation(.easeOut(duration: 0.25), value: isPresented)
                 .onTapGesture {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                         isPresented = false
                     }
                 }
@@ -27,124 +30,144 @@ struct AddActionMenu: View {
             VStack {
                 Spacer()
 
-                // Header text
-                Text("Where do you want to add?")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(.white)
-                    .opacity(isPresented ? 1 : 0)
-                    .scaleEffect(isPresented ? 1 : 0.9)
-                    .animation(.spring(response: 0.4, dampingFraction: 0.8).delay(0.1), value: isPresented)
-                    .padding(.bottom, 20)
+                // Menu container - slides up from bottom
+                VStack(spacing: 0) {
+                    // Header with subtle fade and slide
+                    Text("Add to...")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.9))
+                        .padding(.bottom, 24)
+                        .opacity(isPresented ? 1 : 0)
+                        .offset(y: isPresented ? 0 : 10)
+                        .animation(.spring(response: 0.45, dampingFraction: 0.8).delay(0.1), value: isPresented)
 
-                // Triangle formation of buttons
-                VStack(spacing: 20) {
-                    // Top button (Diary - center)
-                    HStack {
-                        Spacer()
-                        TriangleFloatingButton(
+                    // Horizontal row of buttons
+                    HStack(spacing: 40) {
+                        ModernFloatingButton(
                             icon: "fork.knife",
                             label: "Diary",
                             color: .blue,
-                            delay: 0.0
+                            delay: 0.0,
+                            isPresented: isPresented
                         ) {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                isPresented = false
-                            }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                                onSelectDiary()
-                            }
+                            dismissAndExecute(onSelectDiary)
                         }
-                        Spacer()
-                    }
 
-                    // Bottom row (Use By left, Reaction right)
-                    HStack(spacing: 70) {
-                        TriangleFloatingButton(
+                        ModernFloatingButton(
                             icon: "calendar.badge.clock",
                             label: "Use By",
                             color: .orange,
-                            delay: 0.05
+                            delay: 0.05,
+                            isPresented: isPresented
                         ) {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                isPresented = false
-                            }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                                onSelectUseBy()
-                            }
+                            dismissAndExecute(onSelectUseBy)
                         }
 
-                        TriangleFloatingButton(
+                        ModernFloatingButton(
                             icon: "exclamationmark.triangle.fill",
                             label: "Reaction",
                             color: .red,
-                            delay: 0.1
+                            delay: 0.1,
+                            isPresented: isPresented
                         ) {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                isPresented = false
-                            }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                                onSelectReaction()
-                            }
+                            dismissAndExecute(onSelectReaction)
                         }
                     }
+                    .padding(.horizontal, 32)
                 }
-                .padding(.bottom, 130) // Position just above the + button
+                .padding(.bottom, 140) // Position above the + button and tab bar
+                .offset(y: isPresented ? 0 : 300) // Slide up from bottom
+                .animation(.spring(response: 0.45, dampingFraction: 0.82), value: isPresented)
             }
         }
-        .transition(.opacity)
+    }
+
+    private func dismissAndExecute(_ action: @escaping () -> Void) {
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+            isPresented = false
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            action()
+        }
     }
 }
 
-struct TriangleFloatingButton: View {
+struct ModernFloatingButton: View {
     let icon: String
     let label: String
     let color: Color
     let delay: Double
+    let isPresented: Bool
     let action: () -> Void
 
-    @State private var appeared = false
-
     var body: some View {
-        VStack(spacing: 12) {
-            // Circular button
-            Button(action: {
-                let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                impactFeedback.impactOccurred()
-                action()
-            }) {
+        Button(action: action) {
+            VStack(spacing: 10) {
+                // Glass button with shadow
                 ZStack {
+                    // Shadow layer
+                    Circle()
+                        .fill(color.opacity(0.3))
+                        .frame(width: 56, height: 56)
+                        .blur(radius: 8)
+                        .offset(y: 4)
+
+                    // Main button with gradient and glass effect
                     Circle()
                         .fill(
                             LinearGradient(
-                                gradient: Gradient(colors: [color, color.opacity(0.8)]),
+                                gradient: Gradient(colors: [
+                                    color.opacity(0.95),
+                                    color.opacity(0.85)
+                                ]),
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .frame(width: 70, height: 70)
-                        .shadow(color: color.opacity(0.5), radius: 12, x: 0, y: 6)
+                        .frame(width: 56, height: 56)
+                        .overlay(
+                            Circle()
+                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                        )
+                        .shadow(color: color.opacity(0.4), radius: 12, x: 0, y: 6)
 
+                    // Icon
                     Image(systemName: icon)
-                        .font(.system(size: 28, weight: .semibold))
+                        .font(.system(size: 24, weight: .semibold))
                         .foregroundColor(.white)
                 }
-            }
-            .buttonStyle(PlainButtonStyle())
-            .scaleEffect(appeared ? 1 : 0.3)
-            .opacity(appeared ? 1 : 0)
+                .scaleEffect(isPresented ? 1 : 0.5)
+                .opacity(isPresented ? 1 : 0)
+                .animation(
+                    .spring(response: 0.5, dampingFraction: 0.7).delay(delay),
+                    value: isPresented
+                )
 
-            // Label below button
-            Text(label)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.white)
-                .opacity(appeared ? 1 : 0)
-                .offset(y: appeared ? 0 : -10)
-        }
-        .onAppear {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.7).delay(delay)) {
-                appeared = true
+                // Label
+                Text(label)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.white.opacity(0.9))
+                    .opacity(isPresented ? 1 : 0)
+                    .offset(y: isPresented ? 0 : 5)
+                    .animation(
+                        .spring(response: 0.5, dampingFraction: 0.75).delay(delay + 0.05),
+                        value: isPresented
+                    )
             }
         }
+        .buttonStyle(ScaleButtonStyle())
+    }
+}
+
+// Custom button style for subtle press effect
+struct ScaleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.92 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: configuration.isPressed)
     }
 }
 
