@@ -1553,11 +1553,13 @@ struct ContentView: View {
             .environmentObject(diaryDataManager)
         }
         .fullScreenCover(isPresented: $showingReactionLog) {
-            LogReactionSheet(selectedDayRange: .threeDays)
-                .onDisappear {
-                    // Clean up when sheet is dismissed
-                    showingReactionLog = false
-                }
+            NavigationView {
+                LogReactionView(reactionManager: ReactionManager.shared)
+            }
+            .onDisappear {
+                // Clean up when sheet is dismissed
+                showingReactionLog = false
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToUseBy)) { _ in
             print("[Nav] Received navigateToUseBy")
