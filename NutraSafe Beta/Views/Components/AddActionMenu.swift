@@ -24,61 +24,79 @@ struct AddActionMenu: View {
                     }
                 }
 
-            VStack {
+            VStack(spacing: 24) {
                 Spacer()
 
-                // Floating action buttons - stacked vertically above the + button
-                VStack(spacing: 16) {
-                    FloatingActionButton(
-                        icon: "exclamationmark.triangle.fill",
-                        label: "Reaction",
-                        color: .red,
-                        delay: 0.0
-                    ) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                            isPresented = false
+                // Header text
+                Text("Where do you want to add?")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundColor(.white)
+                    .opacity(isPresented ? 1 : 0)
+                    .scaleEffect(isPresented ? 1 : 0.9)
+                    .animation(.spring(response: 0.4, dampingFraction: 0.8).delay(0.1), value: isPresented)
+
+                // Triangle formation of buttons
+                VStack(spacing: 24) {
+                    // Top button (Diary - center)
+                    HStack {
+                        Spacer()
+                        TriangleFloatingButton(
+                            icon: "fork.knife",
+                            label: "Diary",
+                            color: .blue,
+                            delay: 0.0
+                        ) {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                isPresented = false
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                onSelectDiary()
+                            }
                         }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                            onSelectReaction()
-                        }
+                        Spacer()
                     }
 
-                    FloatingActionButton(
-                        icon: "calendar.badge.clock",
-                        label: "Use By",
-                        color: .orange,
-                        delay: 0.05
-                    ) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                            isPresented = false
+                    // Bottom row (Use By left, Reaction right)
+                    HStack(spacing: 80) {
+                        TriangleFloatingButton(
+                            icon: "calendar.badge.clock",
+                            label: "Use By",
+                            color: .orange,
+                            delay: 0.05
+                        ) {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                isPresented = false
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                onSelectUseBy()
+                            }
                         }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                            onSelectUseBy()
-                        }
-                    }
 
-                    FloatingActionButton(
-                        icon: "fork.knife",
-                        label: "Diary",
-                        color: .blue,
-                        delay: 0.1
-                    ) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                            isPresented = false
-                        }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                            onSelectDiary()
+                        TriangleFloatingButton(
+                            icon: "exclamationmark.triangle.fill",
+                            label: "Reaction",
+                            color: .red,
+                            delay: 0.1
+                        ) {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                isPresented = false
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                onSelectReaction()
+                            }
                         }
                     }
                 }
-                .padding(.bottom, 110) // Position above the + button
+
+                Spacer()
             }
+            .padding(.bottom, 140) // Center vertically, accounting for tab bar
         }
         .transition(.opacity)
     }
 }
 
-struct FloatingActionButton: View {
+struct TriangleFloatingButton: View {
     let icon: String
     let label: String
     let color: Color
@@ -88,22 +106,7 @@ struct FloatingActionButton: View {
     @State private var appeared = false
 
     var body: some View {
-        HStack(spacing: 12) {
-            Spacer()
-
-            // Label
-            Text(label)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(.white)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(
-                    Capsule()
-                        .fill(Color.black.opacity(0.75))
-                )
-                .opacity(appeared ? 1 : 0)
-                .scaleEffect(appeared ? 1 : 0.8)
-
+        VStack(spacing: 12) {
             // Circular button
             Button(action: {
                 let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
@@ -119,21 +122,27 @@ struct FloatingActionButton: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .frame(width: 56, height: 56)
-                        .shadow(color: color.opacity(0.4), radius: 8, x: 0, y: 4)
+                        .frame(width: 70, height: 70)
+                        .shadow(color: color.opacity(0.5), radius: 12, x: 0, y: 6)
 
                     Image(systemName: icon)
-                        .font(.system(size: 24, weight: .semibold))
+                        .font(.system(size: 28, weight: .semibold))
                         .foregroundColor(.white)
                 }
             }
             .buttonStyle(PlainButtonStyle())
-            .scaleEffect(appeared ? 1 : 0.5)
+            .scaleEffect(appeared ? 1 : 0.3)
             .opacity(appeared ? 1 : 0)
+
+            // Label below button
+            Text(label)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(.white)
+                .opacity(appeared ? 1 : 0)
+                .offset(y: appeared ? 0 : -10)
         }
-        .padding(.horizontal, 20)
         .onAppear {
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.7).delay(delay)) {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.7).delay(delay)) {
                 appeared = true
             }
         }
