@@ -1553,16 +1553,11 @@ struct ContentView: View {
             .environmentObject(diaryDataManager)
         }
         .fullScreenCover(isPresented: $showingReactionLog) {
-            NavigationView {
-                LogReactionSheet(selectedDayRange: .threeDays)
-                    .toolbar {
-                        ToolbarItem(placement: .navigationBarLeading) {
-                            Button("Close") {
-                                showingReactionLog = false
-                            }
-                        }
-                    }
-            }
+            LogReactionSheet(selectedDayRange: .threeDays)
+                .onDisappear {
+                    // Clean up when sheet is dismissed
+                    showingReactionLog = false
+                }
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToUseBy)) { _ in
             print("[Nav] Received navigateToUseBy")
@@ -6644,8 +6639,8 @@ struct AddFoodMainView: View {
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button(action: {
-                            // Switch to Diary tab to "close" the Add tab
-                            selectedTab = .diary
+                            // Call onDismiss to close the fullScreenCover
+                            onDismiss?()
                         }) {
                             Image(systemName: "xmark")
                                 .font(.system(size: 16, weight: .semibold))
