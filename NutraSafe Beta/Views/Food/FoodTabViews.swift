@@ -148,12 +148,15 @@ struct FoodReactionsView: View {
     @State private var hasLoadedOnce = false // PERFORMANCE: Guard flag to prevent redundant loads
 
     var body: some View {
-        foodBasedReactionsView
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        GeometryReader { geometry in
+            foodBasedReactionsView
+                .frame(width: geometry.size.width, height: geometry.size.height)
+                .clipped()
+        }
     }
 
     private var foodBasedReactionsView: some View {
-        ScrollView {
+        ScrollView(.vertical, showsIndicators: true) {
             VStack(spacing: 12) {
                 // Reaction Summary
                 FoodReactionSummaryCard()
@@ -201,6 +204,16 @@ struct FoodReactionsView: View {
                     .frame(height: 100)
             }
         }
+        .gesture(
+            DragGesture(minimumDistance: 20, coordinateSpace: .local)
+                .onChanged { value in
+                    // Block horizontal dragging by checking if drag is more horizontal than vertical
+                    if abs(value.translation.width) > abs(value.translation.height) {
+                        // This consumes horizontal drags, blocking them
+                    }
+                },
+            including: .all
+        )
         .onAppear {
             // PERFORMANCE: Skip if already loaded - prevents redundant Firebase calls on tab switches
             guard !hasLoadedOnce else {
