@@ -992,7 +992,7 @@ struct CategoricalNutrientTrackingView: View {
                             )
                         )
 
-                    Text("Your Nutrient Rhythm")
+                    Text("Your Nutrient Overview")
                         .font(.system(size: 22, weight: .bold))
                         .foregroundColor(.primary)
 
