@@ -929,27 +929,25 @@ struct CategoricalNutrientTrackingView: View {
                     .cornerRadius(10)
                 }
 
-                // This week button (only show if not on current week)
-                if weekOffset != 0 {
-                    Button(action: {
-                        weekOffset = 0
-                        loadWeekData()
-                        selectedDate = Date()  // Set calendar to today AFTER loading week data
-                    }) {
-                        Text("This Week")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(
-                                LinearGradient(
-                                    colors: [Color(hex: "#3FD17C"), Color(hex: "#57A5FF")],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
+                // This week button (always visible)
+                Button(action: {
+                    weekOffset = 0
+                    loadWeekData()
+                    selectedDate = Date()  // Set calendar to today AFTER loading week data
+                }) {
+                    Text("This Week")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(
+                            LinearGradient(
+                                colors: [Color(hex: "#3FD17C"), Color(hex: "#57A5FF")],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
                             )
-                            .cornerRadius(10)
-                    }
+                        )
+                        .cornerRadius(10)
                 }
 
                 // Next week button

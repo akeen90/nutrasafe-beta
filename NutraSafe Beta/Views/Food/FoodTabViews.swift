@@ -413,7 +413,7 @@ struct FoodReactionListCard: View {
                         FoodReactionRow(reaction: reaction)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
-                            .listRowInsets(EdgeInsets(top: 5, leading: 0, bottom: 5, trailing: 0))
+                            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                 Button(role: .destructive) {
                                     Task {
@@ -426,7 +426,9 @@ struct FoodReactionListCard: View {
                     }
                 }
                 .listStyle(PlainListStyle())
-                .frame(height: CGFloat(reactions.count * 60))
+                .scrollContentBackground(.hidden)
+                .environment(\.defaultMinListRowHeight, 0)
+                .frame(height: CGFloat(min(reactions.count, 5) * 56))
             }
         }
         .padding(AppSpacing.large)
@@ -446,28 +448,27 @@ struct FoodReactionRow: View {
     @State private var showingDetail = false
 
     var body: some View {
-        Button(action: {
-            showingDetail = true
-        }) {
-            HStack(spacing: 14) {
-                // Premium severity indicator
+        Button(action: { showingDetail = true }) {
+            HStack(spacing: 16) {
+                // Larger circular severity indicator
                 ZStack {
                     Circle()
                         .fill(severityColor(for: reaction.severity).opacity(0.15))
-                        .frame(width: 10, height: 10)
+                        .frame(width: 40, height: 40)
 
-                    Circle()
-                        .fill(severityColor(for: reaction.severity))
-                        .frame(width: 6, height: 6)
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(severityColor(for: reaction.severity))
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(reaction.foodName)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.callout.weight(.semibold))
                         .foregroundColor(.primary)
+                        .lineLimit(1)
 
                     Text(reaction.symptoms.joined(separator: ", "))
-                        .font(.system(size: 13))
+                        .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                 }
@@ -475,16 +476,17 @@ struct FoodReactionRow: View {
                 Spacer()
 
                 VStack(alignment: .trailing, spacing: 4) {
-                    Text(formatDate(reaction.timestamp.dateValue()))
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.secondary)
+                    Text(severityText(for: reaction.severity))
+                        .font(.caption.weight(.bold))
+                        .foregroundColor(severityColor(for: reaction.severity))
 
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.secondary.opacity(0.5))
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(severityColor(for: reaction.severity))
+                        .frame(width: severityBarWidth(for: reaction.severity), height: 3)
                 }
             }
-            .padding(.vertical, 6)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
         }
         .buttonStyle(PlainButtonStyle())
         .sheet(isPresented: $showingDetail) {
@@ -499,7 +501,23 @@ struct FoodReactionRow: View {
         case .severe: return .red
         }
     }
-    
+
+    private func severityText(for severity: ReactionSeverity) -> String {
+        switch severity {
+        case .mild: return "Mild"
+        case .moderate: return "Moderate"
+        case .severe: return "Severe"
+        }
+    }
+
+    private func severityBarWidth(for severity: ReactionSeverity) -> CGFloat {
+        switch severity {
+        case .mild: return 25
+        case .moderate: return 40
+        case .severe: return 55
+        }
+    }
+
     private func formatDate(_ date: Date) -> String {
         let calendar = Calendar.current
         let now = Date()

@@ -2639,10 +2639,8 @@ struct FreshnessIndicatorView: View {
     }
 
     var daysLeftText: String {
-        if daysLeft < 0 {
+        if daysLeft <= 0 {
             return "Expired"
-        } else if daysLeft == 0 {
-            return "Today"
         } else if daysLeft == 1 {
             return "1 day"
         } else {
@@ -2735,8 +2733,7 @@ struct UseByItemDetailView: View {
 
     var smartRecommendation: String {
         switch daysLeft {
-        case ..<0: return "Expired - discard item"
-        case 0: return "Last day - use today"
+        case ...0: return "Expired - discard item"
         case 1: return "Perfect for tomorrow"
         case 2...3: return "Plan to use within next few meals"
         case 4...7: return "Still fresh - use this week"
@@ -2746,8 +2743,7 @@ struct UseByItemDetailView: View {
 
     var freshnessLabel: String {
         switch daysLeft {
-        case ..<0: return "Expired"
-        case 0: return "Last day"
+        case ...0: return "Expired"
         default: return "Fresh"
         }
     }
@@ -2791,7 +2787,7 @@ struct UseByItemDetailView: View {
                             }
 
                             HStack(spacing: 12) {
-                                Label(daysLeft < 0 ? "Expired" : (daysLeft == 0 ? "Last day" : "\(daysLeft) days"), systemImage: "calendar")
+                                Label(daysLeft <= 0 ? "Expired" : (daysLeft == 1 ? "1 day" : "\(daysLeft) days"), systemImage: "calendar")
                                     .font(.system(size: 13))
                                     .foregroundColor(freshnessColor)
                             }
