@@ -2630,9 +2630,6 @@ struct FreshnessIndicatorView: View {
                 Text(daysLeftText)
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundColor(freshnessColor)
-                Text(freshnessLabel)
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
             }
             .scaleEffect(pulseAnimation ? 1.05 : 1.0)
         }
