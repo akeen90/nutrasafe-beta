@@ -347,10 +347,12 @@ struct DiaryTabView: View {
 
             if let foodId = selectedFoodItems.first {
         // DEBUG LOG: print("📝 Looking for food with ID: \(foodId)")
-                if let itemToEdit = findFood(byId: foodId) {
-        // DEBUG LOG: print("📝 Found food to edit: \(itemToEdit.name)")
+                if let result = findFood(byId: foodId) {
+        // DEBUG LOG: print("📝 Found food to edit: \(result.food.name)")
         // DEBUG LOG: print("📝 Setting editingFood to trigger sheet...")
-                    editingFood = itemToEdit
+                    editingFood = result.food
+                    editingMealType = result.mealType
+                    print("📝 Set editingMealType to: '\(result.mealType)'")
                 } else {
                     print("❌ Could not find food with ID: \(foodId)")
                 }
@@ -386,15 +388,26 @@ struct DiaryTabView: View {
         .sheet(item: $editingFood, onDismiss: {
         // DEBUG LOG: print("📝 Edit sheet dismissed, resetting editingFood")
             editingFood = nil
+            // Reload data to reflect the changes made during editing
+            // Add delay to ensure Firebase save completes first
+            Task {
+                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                loadFoodData()
+            }
         }) { food in
             let _ = print("📝 Presenting edit sheet for: \(food.name)")
+            let _ = print("📝 food.time = '\(food.time ?? "NIL")'")
+            let _ = print("📝 editingMealType = '\(editingMealType)'")
+            let _ = print("📝 food.quantity = \(food.quantity)")
+            let _ = print("📝 food.servingDescription = '\(food.servingDescription)'")
             FoodDetailViewFromSearch(
                 food: food.toFoodSearchResult(),
                 sourceType: .diary,
                 selectedTab: $selectedTab,
                 destination: .diary,
                 diaryEntryId: food.id,
-                diaryMealType: food.time
+                diaryMealType: editingMealType,
+                diaryQuantity: food.quantity
             )
         }
     }
@@ -540,11 +553,11 @@ struct DiaryTabView: View {
     private func performMove() {
         let destinationMeal = moveToMeal.lowercased()
         for id in selectedFoodItems {
-            if let food = findFood(byId: id) {
+            if let result = findFood(byId: id) {
                 // Remove from current date
-                diaryDataManager.deleteFoodItems([food], for: selectedDate)
+                diaryDataManager.deleteFoodItems([result.food], for: selectedDate)
                 // Add to destination date (new id to avoid collisions)
-                var moved = food
+                var moved = result.food
                 moved.id = UUID()
                 diaryDataManager.addFoodItem(moved, to: destinationMeal, for: moveToDate)
             }
@@ -556,8 +569,8 @@ struct DiaryTabView: View {
     private func performCopy() {
         let destinationMeal = copyToMeal.lowercased()
         for id in selectedFoodItems {
-            if let food = findFood(byId: id) {
-                var copied = food
+            if let result = findFood(byId: id) {
+                var copied = result.food
                 copied.id = UUID()
                 diaryDataManager.addFoodItem(copied, to: destinationMeal, for: copyToDate)
             }
@@ -566,9 +579,18 @@ struct DiaryTabView: View {
         showingCopySheet = false
     }
 
-    private func findFood(byId id: String) -> DiaryFoodItem? {
-        for food in breakfastFoods + lunchFoods + dinnerFoods + snackFoods {
-            if food.id.uuidString == id { return food }
+    private func findFood(byId id: String) -> (food: DiaryFoodItem, mealType: String)? {
+        if let food = breakfastFoods.first(where: { $0.id.uuidString == id }) {
+            return (food, "Breakfast")
+        }
+        if let food = lunchFoods.first(where: { $0.id.uuidString == id }) {
+            return (food, "Lunch")
+        }
+        if let food = dinnerFoods.first(where: { $0.id.uuidString == id }) {
+            return (food, "Dinner")
+        }
+        if let food = snackFoods.first(where: { $0.id.uuidString == id }) {
+            return (food, "Snacks")
         }
         return nil
     }
@@ -688,8 +710,9 @@ struct DiaryTabView: View {
     }
 
     private func editSelectedFood() {
-        if let foodId = selectedFoodItems.first, let itemToEdit = findFood(byId: foodId) {
-            editingFood = itemToEdit
+        if let foodId = selectedFoodItems.first, let result = findFood(byId: foodId) {
+            editingFood = result.food
+            editingMealType = result.mealType
         }
     }
 
@@ -701,8 +724,8 @@ struct DiaryTabView: View {
     private func deleteSelectedFoods() {
         var itemsToDelete: [DiaryFoodItem] = []
         for id in selectedFoodItems {
-            if let food = findFood(byId: id) {
-                itemsToDelete.append(food)
+            if let result = findFood(byId: id) {
+                itemsToDelete.append(result.food)
             }
         }
         if !itemsToDelete.isEmpty {

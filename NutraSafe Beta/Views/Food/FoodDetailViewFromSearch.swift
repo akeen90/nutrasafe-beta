@@ -47,14 +47,16 @@ struct FoodDetailViewFromSearch: View {
     // MARK: - Diary replacement support
     let diaryEntryId: UUID?
     let diaryMealType: String?
+    let diaryQuantity: Double?
 
-    init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, destination: AddFoodMainView.AddDestination, diaryEntryId: UUID? = nil, diaryMealType: String? = nil, onComplete: ((TabItem) -> Void)? = nil) {
+    init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, destination: AddFoodMainView.AddDestination, diaryEntryId: UUID? = nil, diaryMealType: String? = nil, diaryQuantity: Double? = nil, onComplete: ((TabItem) -> Void)? = nil) {
         self.food = food
         self.sourceType = sourceType
         self._selectedTab = selectedTab
         self.destination = destination
         self.diaryEntryId = diaryEntryId
         self.diaryMealType = diaryMealType
+        self.diaryQuantity = diaryQuantity
         self.onComplete = onComplete
 
         // CRITICAL FIX: Initialize serving size from food data immediately
@@ -97,10 +99,15 @@ struct FoodDetailViewFromSearch: View {
         self._isEditingMode = State(initialValue: diaryEntryId != nil)
         self._originalMealType = State(initialValue: diaryMealType ?? "")
 
+        // Initialize quantity multiplier from diary entry if editing
+        self._quantityMultiplier = State(initialValue: diaryQuantity ?? 1.0)
+
         // Debug logging
-        // DEBUG LOG: print("DEBUG FoodDetailViewFromSearch init:")
+        print("🔧 DEBUG FoodDetailViewFromSearch init:")
         print("  - diaryEntryId: \(String(describing: diaryEntryId))")
         print("  - diaryMealType: \(String(describing: diaryMealType))")
+        print("  - diaryQuantity: \(String(describing: diaryQuantity))")
+        print("  - initialServingSize: \(initialServingSize)")
         print("  - isEditingMode will be: \(diaryEntryId != nil)")
         print("  - selectedMeal will be: \(diaryMealType ?? "Breakfast")")
     }
@@ -1834,10 +1841,13 @@ struct FoodDetailViewFromSearch: View {
     
     // MARK: - Add to Food Log Functionality
     private func addToFoodLog() {
-        print("Adding \(food.name) to food log")
-        
+        print("🍔 Adding \(food.name) to food log")
+
         // Calculate actual serving calories and macros based on user selections
         let servingSize = actualServingSize
+        print("🍔 servingAmount: '\(servingAmount)', servingUnit: '\(servingUnit)'")
+        print("🍔 actualServingSize: \(servingSize)g")
+        print("🍔 quantityMultiplier: \(quantityMultiplier)")
         let totalCalories = displayFood.calories * (servingSize / 100) * quantityMultiplier
         let totalProtein = displayFood.protein * (servingSize / 100) * quantityMultiplier
         let totalCarbs = displayFood.carbs * (servingSize / 100) * quantityMultiplier
@@ -1879,9 +1889,12 @@ struct FoodDetailViewFromSearch: View {
             micronutrientProfile: micronutrientProfile
         )
 
-        // DEBUG LOG: print("📝 Created DiaryFoodItem:")
+        print("📝 Created DiaryFoodItem:")
+        print("  - diaryEntry.id: \(diaryEntry.id)")
+        print("  - diaryEntry.servingDescription: '\(diaryEntry.servingDescription)'")
+        print("  - diaryEntry.quantity: \(diaryEntry.quantity)")
+        print("  - diaryEntry.calories: \(diaryEntry.calories)")
         print("  - diaryEntry.ingredients: \(diaryEntry.ingredients?.count ?? 0) items")
-        print("  - diaryEntry.ingredients: \(diaryEntry.ingredients ?? [])")
 
         // Add to diary or useBy based on destination
         if destination == .useBy {
@@ -1912,6 +1925,13 @@ struct FoodDetailViewFromSearch: View {
                 print("FoodDetailView: DiaryEntry details - Calories: \(diaryEntry.calories), Protein: \(diaryEntry.protein), Serving: \(diaryEntry.servingDescription), Quantity: \(diaryEntry.quantity)")
                 diaryDataManager.replaceFoodItem(diaryEntry, to: targetMeal, for: targetDate)
                 print("FoodDetailView: Successfully replaced \(diaryEntry.name) in \(targetMeal) on \(targetDate)")
+
+                // Wait a moment for Firebase save to complete before dismissing
+                Task {
+                    try? await Task.sleep(nanoseconds: 600_000_000) // 0.6 seconds
+                    dismiss()
+                    onComplete?(destination == .diary ? .diary : .useBy)
+                }
             } else {
         // DEBUG LOG: print("🔍 MEAL TIME DEBUG:")
                 print("  - NO diaryEntryId (adding new)")
@@ -1920,11 +1940,11 @@ struct FoodDetailViewFromSearch: View {
                 print("FoodDetailView: DiaryEntry details - Calories: \(diaryEntry.calories), Protein: \(diaryEntry.protein), Serving: \(diaryEntry.servingDescription), Quantity: \(diaryEntry.quantity)")
                 diaryDataManager.addFoodItem(diaryEntry, to: selectedMeal, for: targetDate)
                 print("FoodDetailView: Successfully added \(diaryEntry.name) to \(selectedMeal) on \(targetDate)")
-            }
 
-            // Dismiss and navigate to the destination tab
-            dismiss()
-            onComplete?(destination == .diary ? .diary : .useBy)
+                // Dismiss immediately for new items (adds are faster)
+                dismiss()
+                onComplete?(destination == .diary ? .diary : .useBy)
+            }
         }
     }
     
@@ -2368,8 +2388,14 @@ struct FoodDetailViewFromSearch: View {
         // DEBUG LOG: print("🔧 Parsed serving size: amount=\(parsed.amount), unit=\(parsed.unit)")
                             servingAmount = parsed.amount
                             servingUnit = parsed.unit
-                            gramsAmount = parsed.amount
-                            print("✅ Serving size updated: servingAmount=\(servingAmount), servingUnit=\(servingUnit), gramsAmount=\(gramsAmount)")
+                            if let amountValue = Double(parsed.amount) {
+                                let gramsValue = convertUnit(value: amountValue, from: parsed.unit, to: "g")
+                                gramsAmount = String(format: "%.0f", gramsValue)
+                            } else {
+                                // Fallback to 100g if parsing fails
+                                gramsAmount = "100"
+                            }
+                            print("✅ Serving size updated: servingAmount=\(servingAmount), servingUnit=\(servingUnit), gramsAmount=\(gramsAmount) [converted to g]")
                         } else {
                             print("⚠️ No serving size in result OR serving size is empty")
                         }

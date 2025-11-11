@@ -316,7 +316,8 @@ struct DiaryFoodRow: View {
                 selectedTab: .constant(.diary),
                 destination: .diary,
                 diaryEntryId: food.id,
-                diaryMealType: mealType
+                diaryMealType: mealType,
+                diaryQuantity: food.quantity
             )
         }
     }
