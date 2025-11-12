@@ -158,6 +158,10 @@ struct SignInView: View {
                 Spacer()
             }
         }
+        .onTapGesture {
+            // Dismiss keyboard when tapping outside text fields
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
         .alert("Error", isPresented: $showingError) {
             Button("OK", role: .cancel) { }
         } message: {
@@ -324,6 +328,10 @@ struct SignUpView: View {
                 Spacer()
             }
         }
+        .onTapGesture {
+            // Dismiss keyboard when tapping outside text fields
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
         .alert("Error", isPresented: $showingError) {
             Button("OK", role: .cancel) { }
         } message: {
@@ -455,6 +463,10 @@ struct PasswordResetView: View {
 
                     Spacer()
                 }
+            }
+            .onTapGesture {
+                // Dismiss keyboard when tapping outside text fields
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

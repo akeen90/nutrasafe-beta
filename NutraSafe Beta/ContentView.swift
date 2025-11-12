@@ -1520,7 +1520,10 @@ struct ContentView: View {
             }
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
-        .keyboardDismissButton()
+        .onTapGesture {
+            // Dismiss keyboard when tapping outside text fields
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
         .sheet(isPresented: $showingSettings) {
             SettingsView()
         }
@@ -1695,21 +1698,6 @@ extension View {
 
     func apply<V: View>(@ViewBuilder _ transform: (Self) -> V) -> V {
         transform(self)
-    }
-
-    /// Adds a dismiss button ("X") to the keyboard toolbar
-    func keyboardDismissButton() -> some View {
-        self.toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button {
-                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.secondary)
-                }
-            }
-        }
     }
 }
 
