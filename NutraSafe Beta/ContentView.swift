@@ -1520,6 +1520,7 @@ struct ContentView: View {
             }
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
+        .keyboardDismissButton()
         .sheet(isPresented: $showingSettings) {
             SettingsView()
         }
@@ -1691,9 +1692,24 @@ extension View {
     func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
         clipShape(RoundedCorner(radius: radius, corners: corners))
     }
-    
+
     func apply<V: View>(@ViewBuilder _ transform: (Self) -> V) -> V {
         transform(self)
+    }
+
+    /// Adds a dismiss button ("X") to the keyboard toolbar
+    func keyboardDismissButton() -> some View {
+        self.toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
     }
 }
 
