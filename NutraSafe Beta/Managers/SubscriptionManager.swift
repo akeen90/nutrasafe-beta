@@ -7,6 +7,7 @@ import UIKit
 final class SubscriptionManager: ObservableObject {
     @Published var isSubscribed = false
     @Published var isInTrial = false
+    @Published var isEligibleForTrial = false
     @Published var product: Product?
     @Published var status: [Product.SubscriptionInfo.Status] = []
     @Published var isPurchasing: Bool = false
@@ -65,6 +66,7 @@ final class SubscriptionManager: ObservableObject {
             print("StoreKit: Loaded product: \(first.id) price=\(first.displayPrice)")
             product = first
             isProductLoaded = true
+            await refreshEligibility()
             try await refreshStatus()
             await refreshPremiumOverride()
             return
@@ -89,22 +91,10 @@ final class SubscriptionManager: ObservableObject {
         isPurchasing = true
         defer { isPurchasing = false }
 
-        // Sync with App Store before purchase to ensure pricing matches user's Apple ID region
-        print("StoreKit: Syncing with App Store before purchase")
-        var productToPurchase = initialProduct
-        do {
-            try await AppStore.sync()
-            // Reload products after sync to get pricing for authenticated account
-            let products = try await Product.products(for: [productID])
-            if let updatedProduct = products.first {
-                self.product = updatedProduct
-                productToPurchase = updatedProduct
-                print("StoreKit: Updated product pricing: \(updatedProduct.displayPrice)")
-            }
-        } catch {
-            print("StoreKit: Pre-purchase sync failed: \(error), continuing with existing product")
-        }
-
+        // Note: Removed AppStore.sync() to prevent unnecessary Apple ID prompts
+        // The product pricing is already correct from initial load
+        // Transaction updates are handled automatically via Transaction.updates listener
+        let productToPurchase = initialProduct
         print("StoreKit: Starting purchase for \(productToPurchase.id) at \(productToPurchase.displayPrice)")
 
         do {
@@ -115,6 +105,7 @@ final class SubscriptionManager: ObservableObject {
                     let transaction = try checkVerified(verification)
                     print("StoreKit: Purchase verified. Finishing transaction \(transaction.id)")
                     await transaction.finish()
+                    await refreshEligibility()
                     try await refreshStatus()
                     purchaseError = nil
                 } catch {
@@ -161,35 +152,50 @@ final class SubscriptionManager: ObservableObject {
         print("StoreKit: refreshStatus — isSubscribed=\(isSubscribed) isInTrial=\(isInTrial) statusCount=\(status.count)")
     }
 
+    func refreshEligibility() async {
+        guard let product = product, let subscription = product.subscription else {
+            isEligibleForTrial = false
+            print("StoreKit: Cannot check trial eligibility - product or subscription is nil")
+            return
+        }
+
+        // Check if user is eligible for introductory offer (free trial)
+        let eligible = await subscription.isEligibleForIntroOffer
+        isEligibleForTrial = eligible
+
+        // Log trial configuration for debugging
+        if let introOffer = subscription.introductoryOffer {
+            print("StoreKit: Trial eligibility check:")
+            print("  - Eligible: \(eligible)")
+            print("  - Offer type: \(introOffer.paymentMode)")
+            print("  - Period: \(introOffer.period)")
+            if introOffer.paymentMode == .freeTrial {
+                print("  - Free trial available: \(introOffer.period.value) \(introOffer.period.unit)")
+            }
+        } else {
+            print("StoreKit: No introductory offer configured in App Store Connect")
+            print("  - Eligibility: \(eligible)")
+        }
+    }
+
     func restore() async throws {
         print("StoreKit: Starting restore purchases")
+
+        // Note: Removed AppStore.sync() to prevent unnecessary Apple ID prompts
+        // Transaction restoration happens automatically when refreshStatus() is called
+        // StoreKit 2 handles transaction syncing in the background
+
         do {
-            // Add timeout to prevent hanging on sync
-            try await withTimeout(seconds: 10) {
-                try await AppStore.sync()
-            }
-            print("StoreKit: Successfully synced with App Store")
-
-            // Refresh subscription status and product pricing after sync
-            if self.product != nil {
-                let products = try await Product.products(for: [productID])
-                if let first = products.first {
-                    self.product = first
-                    print("StoreKit: Updated product pricing after restore: \(first.displayPrice)")
-                }
-            }
-
+            // Refresh subscription status directly - this checks for existing transactions
+            await refreshEligibility()
             try await refreshStatus()
             await refreshPremiumOverride()
             print("StoreKit: Restore completed successfully")
-        } catch is TimeoutError {
-            print("StoreKit: Restore timed out, but will still refresh status")
-            // Even if sync times out, try to refresh status
-            try? await refreshStatus()
-            await refreshPremiumOverride()
-            throw TimeoutError()
         } catch {
             print("StoreKit: Restore failed with error: \(error)")
+            // Still try to refresh premium override and eligibility even if status refresh fails
+            await refreshEligibility()
+            await refreshPremiumOverride()
             throw error
         }
     }

@@ -6,11 +6,13 @@ struct PaywallView: View {
     @Environment(\.dismiss) private var dismiss
 
     private var hasFreeTrial: Bool {
-        // Check if product has a free trial available
+        // Check if product has a free trial available AND user is eligible
+        // This ensures "Start Free Trial" only shows to users who can actually get the trial
         guard let offer = subscriptionManager.product?.subscription?.introductoryOffer else {
             return false
         }
-        return offer.paymentMode == .freeTrial
+        // Must check BOTH: product has trial offer AND user hasn't used it before
+        return offer.paymentMode == .freeTrial && subscriptionManager.isEligibleForTrial
     }
 
     private var priceText: String {
