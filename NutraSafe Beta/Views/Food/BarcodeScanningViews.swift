@@ -16,6 +16,7 @@ import Foundation
 struct AddFoodBarcodeView: View {
     @Binding var selectedTab: TabItem
     @Binding var destination: AddFoodMainView.AddDestination
+    var onSwitchToManual: ((String) -> Void)? = nil // Callback with barcode
     @State private var scannedProduct: FoodSearchResult?
     @State private var pendingContribution: PendingFoodContribution?
     @State private var isSearching = false
@@ -46,17 +47,17 @@ struct AddFoodBarcodeView: View {
                 }
 
             } else if let contribution = pendingContribution {
-                // Product not found - show contribution prompt
+                // Product not found - navigate to manual add
                 VStack(spacing: 20) {
-                    Image(systemName: "plus.circle")
+                    Image(systemName: "square.and.pencil")
                         .font(.system(size: 50))
-                        .foregroundColor(.orange)
+                        .foregroundColor(.blue)
                         .padding(.top, 20)
 
                     Text("Product Not Found")
                         .font(.system(size: 20, weight: .semibold))
 
-                    Text("Help us grow our database!")
+                    Text("Add it manually with AI search")
                         .font(.system(size: 16))
                         .foregroundColor(.secondary)
 
@@ -70,8 +71,8 @@ struct AddFoodBarcodeView: View {
                     .cornerRadius(8)
                     .padding(.horizontal, 20)
 
-                    Button("Add Product Details") {
-                        showingContributionForm = true
+                    Button("Add Manually") {
+                        onSwitchToManual?(contribution.barcode)
                     }
                     .foregroundColor(.white)
                     .padding()

@@ -6535,6 +6535,7 @@ struct AddFoodMainView: View {
     @State private var selectedFoodForUseBy: FoodSearchResult? = nil
     @State private var lastUseBySelection: FoodSearchResult? = nil
     @State private var showingUseBySheet: Bool = false
+    @State private var prefilledBarcode: String? = nil // Barcode from scanner to prefill manual entry
     @Binding var isPresented: Bool // Direct binding to presentation state
     var onDismiss: (() -> Void)?
     var onComplete: ((TabItem) -> Void)?
@@ -6649,11 +6650,14 @@ struct AddFoodMainView: View {
                         )
                     case .manual:
                         AnyView(
-                            AddFoodManualView(selectedTab: $selectedTab, destination: $destination, onComplete: onComplete)
+                            AddFoodManualView(selectedTab: $selectedTab, destination: $destination, prefilledBarcode: prefilledBarcode, onComplete: onComplete)
                         )
                     case .barcode:
                         AnyView(
-                            AddFoodBarcodeView(selectedTab: $selectedTab, destination: $destination)
+                            AddFoodBarcodeView(selectedTab: $selectedTab, destination: $destination, onSwitchToManual: { barcode in
+                                prefilledBarcode = barcode
+                                selectedAddOption = .manual
+                            })
                         )
                     }
                 }

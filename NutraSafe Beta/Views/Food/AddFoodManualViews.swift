@@ -215,14 +215,14 @@ struct AddFoodManualView: View {
                 .padding(.bottom, 16)
 
             // Title
-            Text("Manual Entry")
+            Text(destination == .useBy ? "Manual Entry" : "Add with AI Search")
                 .font(.system(size: 28, weight: .bold))
                 .foregroundColor(.primary)
 
             // Description
             Text(destination == .useBy
                  ? "Add item with use-by date tracking"
-                 : "Add item to your diary with complete nutrition data")
+                 : "Intelligent search auto-fills nutrition data from UK supermarkets")
                 .font(.system(size: 16))
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
