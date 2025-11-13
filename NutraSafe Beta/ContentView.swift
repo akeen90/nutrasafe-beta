@@ -6613,7 +6613,7 @@ struct AddFoodMainView: View {
                         OptionSelectorButton(title: "Search", icon: "magnifyingglass", isSelected: selectedAddOption == .search) {
                             selectedAddOption = .search
                         }
-                        OptionSelectorButton(title: "Manual", icon: "square.and.pencil", isSelected: selectedAddOption == .manual) {
+                        OptionSelectorButton(title: "AI/Manual", icon: "square.and.pencil", isSelected: selectedAddOption == .manual) {
                             selectedAddOption = .manual
                         }
                         OptionSelectorButton(title: "Barcode", icon: "barcode.viewfinder", isSelected: selectedAddOption == .barcode) {
@@ -6645,6 +6645,9 @@ struct AddFoodMainView: View {
                                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                                     }
                                     // Sheet presentation is driven by item binding
+                                },
+                                onSwitchToManual: {
+                                    selectedAddOption = .manual
                                 }
                             )
                         )

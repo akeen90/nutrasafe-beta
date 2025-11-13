@@ -211,6 +211,27 @@ struct AddFoodBarcodeView: View {
         scannerKey = UUID()
     }
 
+    // MARK: - Barcode Normalization
+    /// Normalizes a barcode to handle format variations (EAN-13 ↔ UPC-A)
+    /// Returns an array of barcode variations to search
+    private func normalizeBarcode(_ barcode: String) -> [String] {
+        var variations = [barcode] // Always include original
+
+        // EAN-13 to UPC-A: Remove leading zero if length is 13 and starts with 0
+        if barcode.count == 13 && barcode.hasPrefix("0") {
+            let upcVariation = String(barcode.dropFirst())
+            variations.append(upcVariation)
+        }
+
+        // UPC-A to EAN-13: Add leading zero if length is 12
+        if barcode.count == 12 {
+            let eanVariation = "0" + barcode
+            variations.append(eanVariation)
+        }
+
+        return variations
+    }
+
     // MARK: - Barcode Handling
     private func handleBarcodeScanned(_ barcode: String) {
         guard !isSearching else { return }
@@ -218,32 +239,67 @@ struct AddFoodBarcodeView: View {
         isSearching = true
         errorMessage = nil
 
-        searchProductByBarcode(barcode) { result in
-            Task { @MainActor in
-                self.isSearching = false
+        Task {
+            // Step 1: Normalize barcode to handle format variations
+            let barcodeVariations = normalizeBarcode(barcode)
+            print("🔍 Searching for barcode variations: \(barcodeVariations)")
 
-                switch result {
-                case .success(let response):
-                    if response.success, let product = response.toFoodSearchResult() {
-                        self.scannedProduct = product
-                    } else if response.action == "user_contribution_needed",
-                              let placeholderId = response.placeholder_id {
-                        // Product not in internal database - show contribution prompt
-                        print("📱 Product not found in database. Showing contribution prompt.")
+            // Step 2: Search SQLite database FIRST (priority search - instant, no network)
+            var foundInSQLite: FoodSearchResult? = nil
+            for variation in barcodeVariations {
+                if let result = await SQLiteFoodDatabase.shared.searchByBarcode(variation) {
+                    foundInSQLite = result
+                    print("✅ Found in SQLite database with barcode: \(variation)")
+                    break
+                }
+            }
+
+            // If found in SQLite, show immediately (fast path)
+            if let product = foundInSQLite {
+                await MainActor.run {
+                    self.scannedProduct = product
+                    self.isSearching = false
+                }
+                return
+            }
+
+            print("⚠️ Not found in SQLite, falling back to Firebase Cloud Function...")
+
+            // Step 3: Fallback to Firebase Cloud Function if not in SQLite
+            searchProductByBarcode(barcode) { result in
+                Task { @MainActor in
+                    self.isSearching = false
+
+                    switch result {
+                    case .success(let response):
+                        if response.success, let product = response.toFoodSearchResult() {
+                            print("✅ Found via Firebase Cloud Function")
+                            self.scannedProduct = product
+                        } else if response.action == "user_contribution_needed",
+                                  let placeholderId = response.placeholder_id {
+                            // Product not found anywhere - show manual add option
+                            print("📱 Product not found anywhere. Showing manual add option.")
+                            self.pendingContribution = PendingFoodContribution(
+                                placeholderId: placeholderId,
+                                barcode: barcode
+                            )
+                        } else {
+                            // Network error or unexpected response
+                            self.errorMessage = response.message ?? "Product not found in our database."
+                            self.pendingContribution = PendingFoodContribution(
+                                placeholderId: "", // Empty placeholder for manual add
+                                barcode: barcode
+                            )
+                        }
+                    case .failure(let error):
+                        // Network failure - still show manual add option
+                        print("❌ Network error: \(error)")
+                        self.errorMessage = "Unable to search external sources. Add manually?"
                         self.pendingContribution = PendingFoodContribution(
-                            placeholderId: placeholderId,
+                            placeholderId: "",
                             barcode: barcode
                         )
-                    } else {
-                        // Show failure state
-                        self.errorMessage = response.message ?? "Product not found in our database."
-                        self.scanFailed = true
                     }
-                case .failure(let error):
-                    // Show failure state
-                    self.errorMessage = "Unable to search for this product. Please check your internet connection and try again."
-                    self.scanFailed = true
-                    print("Barcode search error: \(error)")
                 }
             }
         }
@@ -405,8 +461,10 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
             if captureSession.canAddOutput(metadataOutput) {
                 captureSession.addOutput(metadataOutput)
                 metadataOutput.setMetadataObjectsDelegate(self, queue: DispatchQueue.main)
-                metadataOutput.metadataObjectTypes = [.ean8, .ean13, .pdf417, .upce, .code128, .code39, .code93, .qr]
-                
+                // Restrict to food product barcode formats only (EAN-8, EAN-13, UPC-E)
+                // Excludes QR codes, Code39, Code128, etc. to prevent scanning non-food items
+                metadataOutput.metadataObjectTypes = [.ean8, .ean13, .upce]
+
                 // Set a much larger scanning area instead of the tiny default slit
                 // This covers most of the screen for easier barcode scanning
                 metadataOutput.rectOfInterest = CGRect(x: 0.1, y: 0.2, width: 0.8, height: 0.6)

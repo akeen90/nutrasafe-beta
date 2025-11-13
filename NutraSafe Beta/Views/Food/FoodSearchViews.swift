@@ -298,6 +298,7 @@ struct AddFoodSearchView: View {
     @Binding var destination: AddFoodMainView.AddDestination
     var onComplete: ((TabItem) -> Void)?
     var onSelectUseBy: ((FoodSearchResult) -> Void)? = nil
+    var onSwitchToManual: (() -> Void)? = nil
     @State private var searchText = ""
     @State private var searchResults: [FoodSearchResult] = []
     @State private var isSearching = false
@@ -359,15 +360,7 @@ struct AddFoodSearchView: View {
                     Spacer()
 
                     VStack(spacing: 20) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 48))
-                            .foregroundColor(.secondary)
-
-                        Text("No results found")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.secondary)
-
-                        // Barcode suggestion banner
+                        // AI Finder suggestion banner - moved to top
                         VStack(spacing: 12) {
                             HStack {
                                 Image(systemName: "info.circle.fill")
@@ -378,10 +371,26 @@ struct AddFoodSearchView: View {
                                     .foregroundColor(.primary)
                             }
 
-                            Text("Try scanning the product's barcode for more accurate results")
+                            Text("Try our intelligent AI finder")
                                 .font(.system(size: 14))
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
+
+                            Button(action: {
+                                onSwitchToManual?()
+                            }) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "sparkles")
+                                        .font(.system(size: 14, weight: .semibold))
+                                    Text("Use AI Finder")
+                                        .font(.system(size: 15, weight: .semibold))
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 12)
+                                .background(Color.blue)
+                                .cornerRadius(10)
+                            }
                         }
                         .padding(20)
                         .background(Color.blue.opacity(0.05))
@@ -391,6 +400,14 @@ struct AddFoodSearchView: View {
                                 .stroke(Color.blue.opacity(0.3), lineWidth: 1)
                         )
                         .padding(.horizontal, 32)
+
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 48))
+                            .foregroundColor(.secondary)
+
+                        Text("No results found")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.secondary)
                     }
 
                     Spacer()
