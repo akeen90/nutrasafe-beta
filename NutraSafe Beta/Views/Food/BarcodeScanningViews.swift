@@ -35,7 +35,16 @@ struct AddFoodBarcodeView: View {
                         .foregroundColor(.green)
                         .padding(.top, 20)
 
-                    FoodSearchResultRowEnhanced(food: product, sourceType: .barcode, selectedTab: $selectedTab, destination: $destination)
+                    FoodSearchResultRowEnhanced(
+                        food: product,
+                        sourceType: .barcode,
+                        selectedTab: $selectedTab,
+                        destination: $destination,
+                        onComplete: { tab in
+                            // Switch to the selected tab after adding food
+                            selectedTab = tab
+                        }
+                    )
                     .padding(.horizontal, 16)
 
                     Button("Scan Another") {
