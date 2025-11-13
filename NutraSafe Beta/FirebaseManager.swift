@@ -710,16 +710,25 @@ class FirebaseManager: ObservableObject {
 
         // Convert back to array
         let mergedResults = Array(foodsById.values)
-        let limitedResults = Array(mergedResults.prefix(50))
+        var limitedResults = Array(mergedResults.prefix(50))
 
         // DEBUG LOG: print("🔍 Search results for '\(query)': \(userFoods.count) user + \(aiEnhanced.count) AI-enhanced + \(aiManual.count) AI-manual + \(mainFoods.count) SQL = \(mergedResults.count) total (after deduplication)")
+
+        // If no results found locally, try Cloud Function (with OpenFoodFacts fallback)
+        if limitedResults.isEmpty {
+            print("🌍 No local results - trying Cloud Function with OpenFoodFacts fallback")
+            if let cloudResults = try? await searchFoodsViaCloudFunction(query: query) {
+                limitedResults = cloudResults
+                print("✅ Found \(cloudResults.count) results from Cloud Function (OpenFoodFacts)")
+            }
+        }
 
         // Store in cache for next time (NSCache auto-manages memory)
         searchCache.setObject(
             SearchCacheEntry(results: limitedResults, timestamp: Date()),
             forKey: cacheKey
         )
-        // DEBUG LOG: print("💾 Cached \(mergedResults.count) results for '\(query)'")
+        // DEBUG LOG: print("💾 Cached \(limitedResults.count) results for '\(query)'")
 
         return limitedResults
     }
@@ -1871,6 +1880,95 @@ class FirebaseManager: ObservableObject {
                 processingLabel: nil
             )
         }
+    }
+
+    /// Search foods via Cloud Function (includes OpenFoodFacts fallback)
+    private func searchFoodsViaCloudFunction(query: String) async throws -> [FoodSearchResult] {
+        let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/searchFoods?q=\(query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")")!
+
+        let (data, response) = try await URLSession.shared.data(from: url)
+
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            print("❌ Cloud Function search failed")
+            return []
+        }
+
+        // Parse the JSON response
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let foods = json["foods"] as? [[String: Any]] else {
+            print("❌ Failed to parse Cloud Function response")
+            return []
+        }
+
+        // Convert to FoodSearchResult objects
+        return foods.compactMap { foodDict -> FoodSearchResult? in
+            guard let id = foodDict["id"] as? String,
+                  let name = foodDict["name"] as? String else {
+                return nil
+            }
+
+            let brand = foodDict["brand"] as? String
+            let barcode = foodDict["barcode"] as? String
+
+            // Extract nutrition values (may be wrapped in objects like {kcal: 100})
+            let calories = extractNutritionValue(foodDict["calories"])
+            let protein = extractNutritionValue(foodDict["protein"])
+            let carbs = extractNutritionValue(foodDict["carbs"])
+            let fat = extractNutritionValue(foodDict["fat"])
+            let fiber = extractNutritionValue(foodDict["fiber"])
+            let sugar = extractNutritionValue(foodDict["sugar"])
+            let sodium = extractNutritionValue(foodDict["sodium"])
+
+            let servingDescription = foodDict["servingDescription"] as? String ?? "100g"
+
+            // Get ingredients string
+            let ingredientsString = foodDict["ingredients"] as? String
+            let ingredients: [String]? = ingredientsString?.components(separatedBy: ",").map {
+                $0.trimmingCharacters(in: .whitespaces)
+            }
+
+            return FoodSearchResult(
+                id: id,
+                name: name,
+                brand: brand,
+                calories: calories,
+                protein: protein,
+                carbs: carbs,
+                fat: fat,
+                fiber: fiber,
+                sugar: sugar,
+                sodium: sodium,
+                servingDescription: servingDescription,
+                servingSizeG: nil,
+                ingredients: ingredients,
+                confidence: nil,
+                isVerified: false,
+                additives: nil,
+                additivesDatabaseVersion: nil,
+                processingScore: nil,
+                processingGrade: nil,
+                processingLabel: nil,
+                barcode: barcode,
+                micronutrientProfile: nil
+            )
+        }
+    }
+
+    /// Helper to extract nutrition values from either plain numbers or objects like {kcal: 100, per100g: 100}
+    private func extractNutritionValue(_ value: Any?) -> Double {
+        if let number = value as? Double {
+            return number
+        }
+        if let dict = value as? [String: Any] {
+            // Try different keys
+            if let kcal = dict["kcal"] as? Double {
+                return kcal
+            }
+            if let per100g = dict["per100g"] as? Double {
+                return per100g
+            }
+        }
+        return 0.0
     }
 
     // MARK: - AI-Improved Foods
