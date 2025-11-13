@@ -279,15 +279,15 @@ struct NutrientDatabase {
 struct NutrientDetector {
     /// Food source keywords for each nutrient
     static let nutrientFoodSources: [String: [String]] = [
-        "vitamin_c": ["orange", "lemon", "lime", "strawberry", "strawberries", "kiwi", "bell pepper", "peppers", "broccoli", "tomato", "potato", "papaya", "guava"],
+        "vitamin_c": ["orange", "lemon", "lime", "strawberry", "strawberries", "kiwi", "bell pepper", "peppers", "broccoli", "tomato", "potato", "papaya", "guava", "apple", "apples"],
         "vitamin_d": ["salmon", "tuna", "mackerel", "sardines", "egg", "eggs", "fortified milk", "fortified cereal", "mushrooms", "cod liver oil"],
         "vitamin_a": ["carrot", "sweet potato", "spinach", "kale", "pumpkin", "mango", "apricot", "liver", "egg yolk", "red pepper"],
         "vitamin_e": ["almonds", "sunflower seeds", "hazelnuts", "peanuts", "avocado", "spinach", "broccoli", "olive oil", "wheat germ"],
-        "vitamin_k": ["kale", "spinach", "broccoli", "brussels sprouts", "cabbage", "lettuce", "asparagus", "parsley"],
+        "vitamin_k": ["kale", "spinach", "broccoli", "brussels sprouts", "cabbage", "lettuce", "asparagus", "parsley", "apple", "apples"],
         "vitamin_b1": ["pork", "beans", "lentils", "nuts", "whole grains", "fortified cereals", "sunflower seeds"],
         "vitamin_b2": ["milk", "yogurt", "cheese", "eggs", "lean meats", "almonds", "spinach"],
         "vitamin_b3": ["chicken", "turkey", "tuna", "salmon", "peanuts", "mushrooms", "green peas"],
-        "vitamin_b6": ["chicken", "turkey", "tuna", "salmon", "potato", "chickpeas", "banana"],
+        "vitamin_b6": ["chicken", "turkey", "tuna", "salmon", "potato", "chickpeas", "banana", "apple", "apples"],
         "vitamin_b12": ["meat", "fish", "dairy", "eggs", "nutritional yeast", "fortified", "clams", "liver"],
         "folate": ["leafy greens", "spinach", "asparagus", "avocado", "beans", "lentils", "fortified", "broccoli"],
         "biotin": ["eggs", "almonds", "sweet potato", "spinach", "broccoli", "cheese", "salmon"],
@@ -295,14 +295,14 @@ struct NutrientDetector {
         "calcium": ["milk", "cheese", "yogurt", "yoghurt", "broccoli", "kale", "sardines", "almonds", "tofu", "fortified"],
         "iron": ["spinach", "beef", "chicken", "turkey", "lentils", "beans", "quinoa", "tofu", "liver", "oysters"],
         "magnesium": ["almonds", "spinach", "cashews", "peanuts", "black beans", "avocado", "dark chocolate"],
-        "potassium": ["banana", "potato", "sweet potato", "spinach", "avocado", "beans", "lentils", "yogurt"],
+        "potassium": ["banana", "potato", "sweet potato", "spinach", "avocado", "beans", "lentils", "yogurt", "apple", "apples"],
         "zinc": ["oysters", "beef", "chicken", "beans", "nuts", "seeds", "dairy", "whole grains"],
         "selenium": ["brazil nuts", "tuna", "halibut", "sardines", "shrimp", "turkey", "chicken"],
         "phosphorus": ["dairy", "meat", "fish", "poultry", "beans", "lentils", "nuts", "whole grains"],
-        "copper": ["shellfish", "nuts", "seeds", "organ meats", "beans", "dark chocolate"],
+        "copper": ["shellfish", "nuts", "seeds", "organ meats", "beans", "dark chocolate", "apple", "apples"],
         "manganese": ["nuts", "beans", "whole grains", "tea", "leafy vegetables", "pineapple"],
         "iodine": ["seaweed", "cod", "dairy", "iodized salt", "shrimp", "eggs"],
-        "chromium": ["broccoli", "grapes", "potatoes", "garlic", "whole grains", "beef", "turkey", "green beans"],
+        "chromium": ["broccoli", "grapes", "potatoes", "garlic", "whole grains", "beef", "turkey", "green beans", "apple", "apples"],
         "molybdenum": ["lentils", "beans", "peas", "nuts", "whole grains", "leafy vegetables", "liver"],
         "omega_3": ["salmon", "sardines", "mackerel", "walnuts", "flax", "flaxseed", "chia", "hemp", "tuna"]
     ]

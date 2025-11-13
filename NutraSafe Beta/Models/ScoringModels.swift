@@ -180,9 +180,57 @@ class ProcessingScorer {
         let analysisText = (ingredientsText.isEmpty ? food.name : "\(food.name) \(ingredientsText)")
         let lowerText = analysisText.lowercased()
 
-        // Additive count (prefer provided additives; fallback to analysis)
+        // VALIDATION: Filter out whole food names to prevent false positives
+        let filteredIngredients = (food.ingredients ?? []).filter { ingredient in
+            let trimmed = ingredient.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+            // Skip empty ingredients
+            if trimmed.isEmpty {
+                return false
+            }
+
+            // Skip if ingredient is a common single whole food name (data quality issue)
+            let commonWholeFoods = [
+                "apple", "apples", "banana", "bananas", "orange", "oranges",
+                "carrot", "carrots", "potato", "potatoes", "tomato", "tomatoes",
+                "cucumber", "cucumbers", "lettuce", "spinach", "broccoli",
+                "chicken", "beef", "pork", "fish", "salmon", "tuna",
+                "rice", "water", "milk", "egg", "eggs"
+            ]
+
+            if commonWholeFoods.contains(trimmed) {
+                print("⚠️ [ProcessingScorer] Skipping whole food name: '\(ingredient)'")
+                return false
+            }
+
+            return true
+        }
+
+        // Additive count (prefer provided additives; fallback to analysis with filtered ingredients)
         // CRITICAL FIX: Include ultra-processed ingredients as additives in the count
-        let fullAnalysis = analyseAdditives(in: analysisText)
+        let fullAnalysis: AdditiveAnalysis
+        if filteredIngredients.isEmpty {
+            // No valid ingredients to analyze - whole food
+            print("⚠️ [ProcessingScorer] No valid ingredients to analyze for '\(food.name)' - treating as whole food")
+            fullAnalysis = AdditiveAnalysis(
+                eNumbers: [],
+                additives: [],
+                preservatives: [],
+                goodAdditives: [],
+                comprehensiveAdditives: [],
+                totalHealthScore: 0,
+                worstVerdict: "neutral",
+                hasChildWarnings: false,
+                hasAllergenWarnings: false,
+                ultraProcessedIngredients: [],
+                ultraProcessedPenalty: 0
+            )
+        } else {
+            // Analyze only filtered ingredients
+            let filteredAnalysisText = filteredIngredients.joined(separator: ", ")
+            fullAnalysis = analyseAdditives(in: filteredAnalysisText)
+        }
+
         let additiveCount: Int = {
             if let additives = food.additives {
                 // Even if we have provided additives, add ultra-processed ingredients count
@@ -192,8 +240,8 @@ class ProcessingScorer {
             }
         }()
 
-        // Ingredient complexity weight
-        let ingredientCount = food.ingredients?.count ?? 0
+        // Ingredient complexity weight (use filtered ingredients to exclude whole food names)
+        let ingredientCount = filteredIngredients.count
         let ingredientComplexityWeight: Double = ingredientCount > 20 ? 1.0 : (ingredientCount > 10 ? 0.5 : 0.0)
 
         // Industrial process weight
@@ -1173,30 +1221,26 @@ class ProcessingScorer {
             // Common bad additives (fallback) - Enhanced for specific additive detection
             let badAdditives = [
                 "monosodium glutamate", "msg", "high fructose corn syrup", "glucose syrup",
-                "sodium nitrite", "sodium nitrate", "potassium sorbate", "sodium benzoate",
-                "artificial colours", "artificial flavours", "artificial colors", "artificial flavors",
-                "trans fat", "hydrogenated oil", "palm fat", "palm oil",
-                "emulsifier", "lecithin", "stabiliser", "thickener",
-                "aspartame", "sucralose", "syrup", "modified starch",
-                // Specific artificial color additives (not generic color words)
-                "brilliant blue fcf", "brilliant blue", "blue fcf", "fd&c blue",
-                "tartrazine", "e102", "yellow 5", "yellow 6", "fd&c yellow 5", "fd&c yellow 6",
-                "sunset yellow fcf", "sunset yellow", "quinoline yellow",
-                "allura red", "red 40", "red 3", "fd&c red 40", "fd&c red 3",
-                "erythrosine", "carmine", "cochineal", "carmoisine", "azorubine",
+                "sodium nitrite", "sodium nitrate",
+                "aspartame", "sucralose", "modified starch",
+                // Specific artificial colors
+                "brilliant blue fcf", "tartrazine", "sunset yellow fcf", "quinoline yellow",
+                "allura red", "red 40", "red 3", "erythrosine", "carmine", "cochineal", "carmoisine", "azorubine",
                 "green s", "patent blue", "indigo carmine",
-                "corn syrup", "invert sugar", "dextrose"
+                // Texture agents when explicitly listed
+                "lecithin"
             ]
             
             // Common preservatives (fallback)
             let preservativeTerms = [
-                "preservative", "sodium", "potassium", "calcium", "benzoate",
-                "sorbate", "nitrate", "nitrite", "sulfite", "bisulfite"
+                "sodium benzoate", "potassium sorbate", "calcium propionate",
+                "sodium nitrite", "sodium nitrate", "potassium nitrate",
+                "sulfur dioxide", "sodium metabisulfite", "potassium metabisulfite", "sodium bisulfite"
             ]
             
-            eNumbers = commonENumbers.filter { foodLower.contains($0) }
-            additives = badAdditives.filter { foodLower.contains($0) }
-            preservatives = preservativeTerms.filter { foodLower.contains($0) }
+            eNumbers = commonENumbers.filter { matchesWithWordBoundary(text: normalizedFood, pattern: $0) }
+            additives = badAdditives.filter { matchesWithWordBoundary(text: normalizedFood, pattern: $0) }
+            preservatives = preservativeTerms.filter { matchesWithWordBoundary(text: normalizedFood, pattern: $0) }
         }
         
         // Good additives that should boost score
@@ -1823,4 +1867,3 @@ class SugarContentScorer {
         }
     }
 }
-

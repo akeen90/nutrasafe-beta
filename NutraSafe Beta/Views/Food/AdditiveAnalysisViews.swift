@@ -108,14 +108,14 @@ struct AdditiveWatchView: View {
 
             if totalIssues > 0 {
                 VStack(alignment: .leading, spacing: 12) {
-                    // Regular additives (E-numbers)
-                    ForEach(result.detectedAdditives, id: \.eNumber) { additive in
-                        AdditiveCard(additive: additive)
+                    // Regular additives (E-numbers) — use AdditiveCardView for better UI
+                    ForEach(Array(result.detectedAdditives.enumerated()), id: \.element.eNumber) { index, additive in
+                        AdditiveCardView(additive: convertToDetailedAdditive(additive))
                     }
 
-                    // Ultra-processed ingredients
+                    // Ultra-processed ingredients — all cards expanded by default
                     ForEach(result.ultraProcessedIngredients) { ingredient in
-                        UltraProcessedIngredientCard(ingredient: ingredient)
+                        UltraProcessedIngredientCard(ingredient: ingredient, initialExpanded: true)
                     }
                 }
             } else {
@@ -164,8 +164,49 @@ struct AdditiveWatchView: View {
         print("🧪 [AdditiveWatchView] Ingredients array count: \(ingredients.count)")
         print("🧪 [AdditiveWatchView] Ingredients: \(ingredients)")
 
+        // VALIDATION: Check if ingredients look suspicious or incomplete
+        let filteredIngredients = ingredients.filter { ingredient in
+            let trimmed = ingredient.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+            // Skip empty ingredients
+            if trimmed.isEmpty {
+                return false
+            }
+
+            // Skip if ingredient is a common single whole food name (data quality issue)
+            let commonWholeFoods = [
+                "apple", "apples", "banana", "bananas", "orange", "oranges",
+                "carrot", "carrots", "potato", "potatoes", "tomato", "tomatoes",
+                "cucumber", "cucumbers", "lettuce", "spinach", "broccoli",
+                "chicken", "beef", "pork", "fish", "salmon", "tuna",
+                "rice", "water", "milk", "egg", "eggs"
+            ]
+
+            if commonWholeFoods.contains(trimmed) {
+                print("⚠️ [AdditiveWatchView] Skipping whole food name: '\(ingredient)'")
+                return false
+            }
+
+            return true
+        }
+
+        // If no valid ingredients remain after filtering, return empty result
+        if filteredIngredients.isEmpty {
+            print("⚠️ [AdditiveWatchView] No valid ingredients to analyze after filtering")
+            self.additiveResult = AdditiveDetectionResult(
+                detectedAdditives: [],
+                childWarnings: [],
+                hasChildConcernAdditives: false,
+                analysisConfidence: 1.0,
+                processingScore: nil,
+                comprehensiveWarnings: nil,
+                ultraProcessedIngredients: []
+            )
+            return
+        }
+
         // Use AdditiveWatchService which now uses local comprehensive database
-        AdditiveWatchService.shared.analyzeIngredients(ingredients) { result in
+        AdditiveWatchService.shared.analyzeIngredients(filteredIngredients) { result in
             print("🧪 [AdditiveWatchView] Analysis complete!")
             print("🧪 [AdditiveWatchView] Detected additives count: \(result.detectedAdditives.count)")
             if !result.detectedAdditives.isEmpty {
@@ -190,14 +231,33 @@ struct AdditiveWatchView: View {
             self.additiveResult = result
         }
     }
+
+    // Convert AdditiveInfo to DetailedAdditive for UI display
+    private func convertToDetailedAdditive(_ additive: AdditiveInfo) -> DetailedAdditive {
+        return DetailedAdditive(
+            name: additive.name,
+            code: additive.eNumber.isEmpty ? nil : additive.eNumber,
+            purpose: additive.typicalUses.isEmpty ? additive.group.rawValue.capitalized : additive.typicalUses,
+            origin: additive.origin.rawValue.capitalized,
+            childWarning: additive.hasChildWarning,
+            riskLevel: additive.effectsVerdict.rawValue,
+            description: additive.effectsSummary,
+            sources: additive.sources
+        )
+    }
 }
 
 // MARK: - Additive Card Component
 
 struct AdditiveCard: View {
     let additive: AdditiveInfo
-    @State private var isExpanded = false
+    @State private var isExpanded: Bool
     @State private var showingSources = false
+
+    init(additive: AdditiveInfo, initialExpanded: Bool = false) {
+        self.additive = additive
+        _isExpanded = State(initialValue: initialExpanded)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -456,7 +516,7 @@ struct DetailedAdditive {
 
 struct AdditiveCardView: View {
     let additive: DetailedAdditive
-    @State private var isExpanded = false
+    @State private var isExpanded = true
     @State private var showingSources = false
 
     var body: some View {
@@ -950,7 +1010,12 @@ struct AdditiveSection {
 
 struct UltraProcessedIngredientCard: View {
     let ingredient: UltraProcessedIngredientDisplay
-    @State private var isExpanded = false
+    @State private var isExpanded: Bool
+
+    init(ingredient: UltraProcessedIngredientDisplay, initialExpanded: Bool = false) {
+        self.ingredient = ingredient
+        _isExpanded = State(initialValue: initialExpanded)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {

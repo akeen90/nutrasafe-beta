@@ -8740,15 +8740,15 @@
       "eNumbers": [],
       "category": "sweetener",
       "group": "sweetener",
-      "origin": "synthetic",
-      "overview": "",
-      "what_it_is": "",
-      "why_its_used": "",
-      "where_it_comes_from": "",
-      "typicalUses": "",
+      "origin": "plant",
+      "overview": "A concentrated syrup made from germinated grains (usually barley) that have been mashed, filtered and evaporated",
+      "what_it_is": "A concentrated syrup made from germinated grains (usually barley) that have been mashed, filtered and evaporated",
+      "why_its_used": "Adds malty flavour, sweetness and colour to foods; commonly used in baked goods and breakfast cereals",
+      "where_it_comes_from": "Produced by germinating grains (typically barley), extracting sugars through mashing, then concentrating the liquid through evaporation",
+      "typicalUses": "Baked goods, breakfast cereals, confectionery",
       "effectsVerdict": "neutral",
-      "effectsSummary": "Processed sweetener",
-      "concerns": "Processed sweetener",
+      "effectsSummary": "Processed sweetener, contains gluten",
+      "concerns": "Processed sweetener, contains gluten",
       "hasChildWarning": false,
       "hasPKUWarning": false,
       "hasSulphitesAllergenLabel": false,
@@ -8761,9 +8761,9 @@
       ],
       "sources": [
         {
-          "title": "Food Standards Agency (FSA)",
-          "url": "https://www.food.gov.uk/business-guidance/approved-additives-and-e-numbers",
-          "covers": "UK food additive regulations and safety information"
+          "title": "NHS: Sugar - the facts",
+          "url": "https://www.nhs.uk/live-well/eat-well/food-types/how-does-sugar-in-our-diet-affect-our-health/",
+          "covers": "Health effects of added sweeteners and processed sugars"
         }
       ],
       "processingPenalty": 8,
