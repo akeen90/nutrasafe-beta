@@ -269,7 +269,7 @@ struct DiaryDailySummaryCard: View {
         Task {
             await loadNutritionGoals()
             if healthKitRingsEnabled {
-                await healthKitManager.updateExerciseCalories()
+                await healthKitManager.updateExerciseCalories(for: currentDate)
             } else {
                 await MainActor.run { healthKitManager.exerciseCalories = 0 }
             }
@@ -280,7 +280,7 @@ struct DiaryDailySummaryCard: View {
         Task {
             await loadNutritionGoals()
             if healthKitRingsEnabled {
-                await healthKitManager.updateExerciseCalories()
+                await healthKitManager.updateExerciseCalories(for: currentDate)
             }
         }
     }
@@ -288,7 +288,7 @@ struct DiaryDailySummaryCard: View {
     private func handleHealthKitToggle(_ enabled: Bool) {
         Task {
             if enabled {
-                await healthKitManager.updateExerciseCalories()
+                await healthKitManager.updateExerciseCalories(for: currentDate)
             } else {
                 await MainActor.run { healthKitManager.exerciseCalories = 0 }
             }

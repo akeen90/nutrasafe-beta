@@ -245,9 +245,9 @@ class HealthKitManager: ObservableObject {
         return caloriesPerMinute * durationInMinutes
     }
     
-    func updateExerciseCalories() async {
+    func updateExerciseCalories(for date: Date = Date()) async {
         do {
-            let calories = try await fetchTodayExerciseCalories()
+            let calories = try await fetchExerciseCalories(for: date)
             await MainActor.run {
                 self.exerciseCalories = calories
             }
