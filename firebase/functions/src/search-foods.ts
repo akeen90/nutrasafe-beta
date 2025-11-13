@@ -131,9 +131,8 @@ async function searchOpenFoodFacts(query: string): Promise<any[]> {
 function transformOpenFoodFactsProduct(offProduct: any): any {
   const nutriments = offProduct.nutriments || {};
 
-  // Get ingredients text (prefer English version)
+  // Get ingredients text (prefer English version) - iOS app expects a string, not an array
   const ingredientsText = offProduct.ingredients_text_en || offProduct.ingredients_text || '';
-  const ingredientsArray = ingredientsText ? ingredientsText.split(',').map((i: string) => i.trim()).filter((i: string) => i.length > 0) : null;
 
   const barcode = offProduct.code || offProduct._id || '';
 
@@ -150,7 +149,7 @@ function transformOpenFoodFactsProduct(offProduct: any): any {
     sugar: { per100g: nutriments.sugars_100g || nutriments.sugars || 0 },
     sodium: nutriments.sodium_100g ? { per100g: nutriments.sodium_100g * 1000 } : (nutriments.salt_100g ? { per100g: nutriments.salt_100g * 1000 } : null),
     servingDescription: 'per 100g',
-    ingredients: ingredientsArray,
+    ingredients: ingredientsText, // Return as string - iOS app will split it
     additives: [],
     processingScore: 0,
     processingGrade: 'A',
@@ -398,10 +397,10 @@ export const searchFoods = functions
         const offResults = offProducts.map(offProduct => {
           const transformed = transformOpenFoodFactsProduct(offProduct);
 
-          // Analyze ingredients for additives if available
+          // Analyze ingredients for additives if available (ingredients is now a string)
           if (transformed.ingredients && transformed.ingredients.length > 0) {
             try {
-              const ingredientsString = transformed.ingredients.join(', ');
+              const ingredientsString = transformed.ingredients; // Already a string
               const analysisResult = analyzeIngredientsForAdditives(ingredientsString);
               const processingScore = calculateProcessingScore(analysisResult.detectedAdditives, ingredientsString);
               const grade = determineGrade(processingScore.totalScore, analysisResult.hasRedFlags);
