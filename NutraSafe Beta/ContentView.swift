@@ -3908,7 +3908,7 @@ struct EditWeightView: View {
             var loadedImages: [IdentifiableImage] = []
 
             // Try loading from local cache first
-            let cachedImages = ImageCacheManager.shared.loadWeightImages(for: entry.id.uuidString, count: urls.count)
+            let cachedImages = await ImageCacheManager.shared.loadWeightImagesAsync(for: entry.id.uuidString, count: urls.count)
 
             if !cachedImages.isEmpty && cachedImages.count == urls.count {
                 // All images found in cache

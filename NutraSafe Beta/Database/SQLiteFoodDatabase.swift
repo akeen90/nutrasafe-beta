@@ -378,7 +378,9 @@ actor SQLiteFoodDatabase {
         let wholeWordSpace = "% \(query) %"
         let wholeWordStart = "\(query) %"
 
+        #if DEBUG
         print("🔎 SQLite fuzzy search for: '\(query)'")
+        #endif
 
         if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
             // WHERE clause bindings
@@ -407,13 +409,19 @@ actor SQLiteFoodDatabase {
                 if let food = parseFoodRow(statement: statement) {
                     results.append(food)
                 } else {
+                    #if DEBUG
                     print("⚠️ Failed to parse food row \(rowCount)")
+                    #endif
                 }
             }
+            #if DEBUG
             print("🔎 SQLite found \(rowCount) rows, parsed \(results.count) foods")
+            #endif
         } else {
             let errorMessage = String(cString: sqlite3_errmsg(db))
+            #if DEBUG
             print("❌ SQLite prepare failed: \(errorMessage)")
+            #endif
         }
 
         sqlite3_finalize(statement)

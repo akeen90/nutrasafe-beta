@@ -1775,92 +1775,24 @@ struct FoodDetailViewFromSearch: View {
 
 
     private var nutritionFactsSection: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            // Calories - most prominent
-            VStack(alignment: .leading, spacing: 12) {
-                Text("CALORIES")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundColor(.secondary)
-                    .tracking(0.5)
-                    .padding(.horizontal, 20)
-
-                // Per serving first
-                HStack(alignment: .bottom, spacing: 8) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Per Serving")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.primary)
-
-                        HStack(alignment: .bottom, spacing: 4) {
-                            Text(String(format: "%.0f", adjustedCalories))
-                                .font(.system(size: 28, weight: .bold, design: .rounded))
-                                .foregroundColor(.primary)
-                            Text("kcal")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.secondary)
-                                .padding(.bottom, 2)
-                        }
-
-                        Text("\(quantityMultiplier == 0.5 ? "½" : String(format: "%.0f", quantityMultiplier))× \(servingSizeText.isEmpty ? (food.servingDescription ?? "serving") : servingSizeText)")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-
-                    Spacer()
-
-                    // Per 100g second
-                    VStack(alignment: .trailing, spacing: 4) {
-                        Text("Per 100g")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.primary)
-
-                        HStack(alignment: .bottom, spacing: 4) {
-                            Text(String(format: "%.0f", displayFood.calories))
-                                .font(.system(size: 24, weight: .bold, design: .rounded))
-                                .foregroundColor(.secondary)
-                            Text("kcal")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.secondary)
-                                .padding(.bottom, 2)
-                        }
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color(.systemBackground))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(Color(.systemGray4), lineWidth: 1.5)
-                        )
-                        .shadow(color: Color.black.opacity(0.03), radius: 2, x: 0, y: 1)
-                )
-            }
-            
-            // Other nutrients in clean layout
-            VStack(alignment: .leading, spacing: 16) {
-                Text("NUTRITION PER SERVING")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundColor(.secondary)
-                    .tracking(0.5)
-                    .padding(.horizontal, 4)
-
-                VStack(spacing: 8) {
-                    nutritionRowModern("Protein", perServing: adjustedProtein, per100g: displayFood.protein, unit: "g")
-                    nutritionRowModern("Carbs", perServing: adjustedCarbs, per100g: displayFood.carbs, unit: "g")
-                    nutritionRowModern("Fat", perServing: adjustedFat, per100g: displayFood.fat, unit: "g")
-                    nutritionRowModern("Fibre", perServing: adjustedFiber, per100g: displayFood.fiber, unit: "g")
-                    nutritionRowModern("Sugar", perServing: adjustedSugar, per100g: displayFood.sugar, unit: "g")
-                    nutritionRowModern("Salt", perServing: adjustedSalt, per100g: saltPer100g, unit: "g")
-                }
-                .padding(.bottom, 4)
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 20)
-        .background(Color(.systemGray6))
-        .cornerRadius(16)
+        NutritionFactsSectionView(
+            adjustedCalories: adjustedCalories,
+            quantityMultiplier: quantityMultiplier,
+            servingSizeText: servingSizeText.isEmpty ? (food.servingDescription ?? "serving") : servingSizeText,
+            per100Calories: displayFood.calories,
+            adjustedProtein: adjustedProtein,
+            adjustedCarbs: adjustedCarbs,
+            adjustedFat: adjustedFat,
+            adjustedFiber: adjustedFiber,
+            adjustedSugar: adjustedSugar,
+            adjustedSalt: adjustedSalt,
+            per100Protein: displayFood.protein,
+            per100Carbs: displayFood.carbs,
+            per100Fat: displayFood.fat,
+            per100Fiber: displayFood.fiber,
+            per100Sugar: displayFood.sugar,
+            per100Salt: saltPer100g
+        )
     }
     
     private func nutritionRowModern(_ label: String, perServing: Double, per100g: Double, unit: String) -> some View {
@@ -2050,76 +1982,195 @@ struct FoodDetailViewFromSearch: View {
     // The food parameter already has all ingredients, additives, and nutrition data from Firebase search
     
     private var ingredientsSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header with border separator
-            HStack {
-                if cachedIngredientsStatus == .pending {
-                    Text("⏳ Awaiting Verification")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.orange)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.orange.opacity(0.1))
-                        .cornerRadius(6)
-                    Spacer()
+        IngredientsSectionView(status: cachedIngredientsStatus, ingredients: cachedIngredients)
+    }
+
+    struct NutritionFactsSectionView: View {
+        let adjustedCalories: Double
+        let quantityMultiplier: Double
+        let servingSizeText: String
+        let per100Calories: Double
+        let adjustedProtein: Double
+        let adjustedCarbs: Double
+        let adjustedFat: Double
+        let adjustedFiber: Double
+        let adjustedSugar: Double
+        let adjustedSalt: Double
+        let per100Protein: Double
+        let per100Carbs: Double
+        let per100Fat: Double
+        let per100Fiber: Double
+        let per100Sugar: Double
+        let per100Salt: Double
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("CALORIES")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundColor(.secondary)
+                        .tracking(0.5)
+                        .padding(.horizontal, 20)
+                    HStack(alignment: .bottom, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Per Serving")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.primary)
+                            HStack(alignment: .bottom, spacing: 4) {
+                                Text(String(format: "%.0f", adjustedCalories))
+                                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                                    .foregroundColor(.primary)
+                                Text("kcal")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                    .padding(.bottom, 2)
+                            }
+                            Text("\(quantityMultiplier == 0.5 ? "½" : String(format: "%.0f", quantityMultiplier))× \(servingSizeText)")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text("Per 100g")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.primary)
+                            HStack(alignment: .bottom, spacing: 4) {
+                                Text(String(format: "%.0f", per100Calories))
+                                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                                    .foregroundColor(.secondary)
+                                Text("kcal")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                    .padding(.bottom, 2)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color(.systemBackground))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(Color(.systemGray4), lineWidth: 1.5)
+                            )
+                            .shadow(color: Color.black.opacity(0.03), radius: 2, x: 0, y: 1)
+                    )
                 }
-
-                Text("Ingredients")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(.primary)
-
-                if cachedIngredientsStatus == .pending {
-                    Spacer()
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("NUTRITION PER SERVING")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundColor(.secondary)
+                        .tracking(0.5)
+                        .padding(.horizontal, 4)
+                    VStack(spacing: 8) {
+                        row("Protein", adjustedProtein, per100Protein, "g")
+                        row("Carbs", adjustedCarbs, per100Carbs, "g")
+                        row("Fat", adjustedFat, per100Fat, "g")
+                        row("Fibre", adjustedFiber, per100Fiber, "g")
+                        row("Sugar", adjustedSugar, per100Sugar, "g")
+                        row("Salt", adjustedSalt, per100Salt, "g")
+                    }
+                    .padding(.bottom, 4)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(16)
-            .background(Color.white)
-            .overlay(
-                Rectangle()
-                    .frame(height: 2)
-                    .foregroundColor(.black),
-                alignment: .bottom
-            )
+            .padding(.horizontal, 20)
+            .padding(.vertical, 20)
+            .background(Color(.systemGray6))
+            .cornerRadius(16)
+        }
 
-            // Ingredients content
-            if let ingredientsList = cachedIngredients {
-                let cleanIngredients = ingredientsList
-                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                    .filter { !$0.isEmpty }
-                    .joined(separator: ", ")
-
-                Text(cleanIngredients.isEmpty ? "No ingredients found" : cleanIngredients)
-                    .font(.system(size: 15))
+        private func row(_ label: String, _ perServing: Double, _ per100: Double, _ unit: String) -> some View {
+            HStack(spacing: 8) {
+                Text(label)
+                    .font(.system(size: 15, weight: .medium))
                     .foregroundColor(.primary)
-                    .lineLimit(nil)
-                    .multilineTextAlignment(.leading)
-                    .padding(16)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.white)
-            } else {
-                VStack(alignment: .center, spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle")
-                        .foregroundColor(.orange)
-                        .font(.system(size: 18))
-
-                    Text("Ingredients information not available")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(20)
-                .background(Color.white)
+                    .frame(width: 60, alignment: .leading)
+                Text(String(format: unit == "mg" ? "%.0f" : "%.1f", perServing))
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundColor(.primary)
+                    .frame(width: 55, alignment: .trailing)
+                Text(unit)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .frame(width: 15, alignment: .leading)
+                Text("•")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                Text(String(format: unit == "mg" ? "%.0f" : "%.1f", per100))
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.secondary)
+                Spacer()
             }
         }
-        .background(Color.white)
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.black, lineWidth: 2)
-        )
-        .padding(.horizontal, 16)
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+    }
+
+    struct IngredientsSectionView: View {
+        let status: IngredientsStatus?
+        let ingredients: [String]?
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack {
+                    if status == .pending {
+                        Text("⏳ Awaiting Verification")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.orange)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.orange.opacity(0.1))
+                            .cornerRadius(6)
+                        Spacer()
+                    }
+                    Text("Ingredients")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.primary)
+                    if status == .pending {
+                        Spacer()
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+                .background(Color.white)
+                .overlay(
+                    Rectangle().frame(height: 2).foregroundColor(.black),
+                    alignment: .bottom
+                )
+                if let ingredientsList = ingredients {
+                    let clean = ingredientsList
+                        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                        .filter { !$0.isEmpty }
+                        .joined(separator: ", ")
+                    Text(clean.isEmpty ? "No ingredients found" : clean)
+                        .font(.system(size: 15))
+                        .foregroundColor(.primary)
+                        .lineLimit(nil)
+                        .multilineTextAlignment(.leading)
+                        .padding(16)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.white)
+                } else {
+                    VStack(alignment: .center, spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .foregroundColor(.orange)
+                            .font(.system(size: 18))
+                        Text("Ingredients information not available")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(20)
+                    .background(Color.white)
+                }
+            }
+            .background(Color.white)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8).stroke(Color.black, lineWidth: 2)
+            )
+            .padding(.horizontal, 16)
+            .background(Color(.systemGray6))
+            .cornerRadius(12)
+        }
     }
     
     @ViewBuilder

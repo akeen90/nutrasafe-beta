@@ -2,6 +2,16 @@ import SwiftUI
 import Foundation
 import FirebaseFirestore
 
+@ViewBuilder
+func navigationContainer<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+    if #available(iOS 16.0, *) {
+        NavigationStack { content() }
+    } else {
+        NavigationView { content() }
+            .navigationViewStyle(StackNavigationViewStyle())
+    }
+}
+
 // MARK: - Food Tab Navigation System
 // Extracted from ContentView.swift (lines 4761-4936) + supporting components
 // Complete food hub navigation with sub-tabs and comprehensive food tracking
@@ -23,7 +33,7 @@ struct FoodTabView: View {
     }
     
     var body: some View {
-        NavigationView {
+        navigationContainer {
             VStack(spacing: 0) {
                 // Header - Simplified Clean Design
                 VStack(spacing: 16) {
@@ -322,7 +332,7 @@ struct FoodReactionSummaryCard: View {
         )
         .cardShadow()
         .sheet(isPresented: $showingLogReaction) {
-            NavigationView { LogReactionView(reactionManager: reactionManager) }
+            navigationContainer { LogReactionView(reactionManager: reactionManager) }
         }
     }
 }
@@ -1016,7 +1026,7 @@ struct ReactionDetailView: View {
     @State private var showingExportSheet = false
 
     var body: some View {
-        NavigationView {
+        navigationContainer {
             ScrollView {
                 VStack(spacing: 16) {
                     // Food Info Card
@@ -1813,9 +1823,7 @@ struct LogReactionView: View {
             .disabled(selectedFood == nil || symptoms.isEmpty)
         )
         .sheet(isPresented: $showingFoodSearch) {
-            NavigationView {
-                FoodReactionSearchView(selectedFood: $selectedFood)
-            }
+            navigationContainer { FoodReactionSearchView(selectedFood: $selectedFood) }
         }
     }
 
@@ -2109,12 +2117,10 @@ struct FoodReactionSearchView: View {
             }
         )
         .sheet(isPresented: $showingManualEntry) {
-            NavigationView {
+            navigationContainer {
                 ManualReactionFoodEntryView(prefilledName: searchText) { manualFood in
                     selectedFood = manualFood
-                    DispatchQueue.main.async {
-                        dismiss()
-                    }
+                    DispatchQueue.main.async { dismiss() }
                 }
             }
         }
@@ -2711,7 +2717,7 @@ struct FoodReactionPDFExportSheet: View {
     @State private var showingShareSheet = false
 
     var body: some View {
-        NavigationView {
+        navigationContainer {
             VStack(spacing: 24) {
                 if isGenerating {
                     ProgressView("Generating PDF...")
@@ -2863,7 +2869,7 @@ struct MultipleFoodReactionsPDFExportSheet: View {
     @State private var showingNameAlert = false
 
     var body: some View {
-        NavigationView {
+        navigationContainer {
             VStack(spacing: 30) {
                 if isGenerating {
                     ProgressView("Generating PDF...")

@@ -161,6 +161,17 @@ class ImageCacheManager {
         return images
     }
 
+    func loadWeightImagesAsync(for entryId: String, count: Int) async -> [UIImage] {
+        var images: [UIImage] = []
+        for index in 0..<count {
+            let imageId = "\(entryId)_\(index)"
+            if let image = await loadWeightImageAsync(for: imageId) {
+                images.append(image)
+            }
+        }
+        return images
+    }
+
     /// Delete all images for a Weight entry (when entry is deleted)
     func deleteAllWeightImages(for entryId: String) {
         // Delete main image

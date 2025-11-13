@@ -703,11 +703,13 @@ class FirebaseManager: ObservableObject {
         // SQLite search runs off main thread via actor
         let localResults = await SQLiteFoodDatabase.shared.searchFoods(query: query, limit: 20)
 
+        #if DEBUG
         if !localResults.isEmpty {
             print("✅ Found \(localResults.count) results in local SQLite database (async!)")
         } else {
             print("⚠️ No results found in local database for '\(query)'")
         }
+        #endif
         
         return localResults
     }
@@ -721,26 +723,36 @@ class FirebaseManager: ObservableObject {
     /// Pre-warm cache with popular searches for instant results
     func prewarmSearchCache() async {
         let popularSearches = ["chicken", "milk", "bread", "cheese", "apple", "banana"]
+        #if DEBUG
         print("🔥 Pre-warming cache with popular searches...")
+        #endif
 
         for search in popularSearches {
             do {
                 _ = try await searchFoods(query: search)
             } catch {
+                #if DEBUG
                 print("⚠️ Failed to cache '\(search)': \(error)")
+                #endif
             }
         }
+        #if DEBUG
         print("✅ Cache pre-warming complete!")
+        #endif
     }
 
     func searchFoodsByBarcode(barcode: String) async throws -> [FoodSearchResult] {
         // SQLite barcode search runs off main thread via actor
         if let localResult = await SQLiteFoodDatabase.shared.searchByBarcode(barcode) {
+            #if DEBUG
             print("✅ Found barcode '\(barcode)' in local SQLite database (async!)")
+            #endif
             return [localResult]
         }
 
+        #if DEBUG
         print("⚠️ Barcode '\(barcode)' not found in local database")
+        #endif
         return []
     }
 
