@@ -2081,27 +2081,34 @@ struct FoodDetailViewFromSearch: View {
         }
 
         private func row(_ label: String, _ perServing: Double, _ per100: Double, _ unit: String) -> some View {
-            HStack(spacing: 8) {
+            HStack(spacing: 10) {
                 Text(label)
                     .font(.system(size: 15, weight: .medium))
                     .foregroundColor(.primary)
-                    .frame(width: 60, alignment: .leading)
-                Text(String(format: unit == "mg" ? "%.0f" : "%.1f", perServing))
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .foregroundColor(.primary)
-                    .frame(width: 55, alignment: .trailing)
-                Text(unit)
-                    .font(.system(size: 12, weight: .medium))
+                    .frame(width: 80, alignment: .leading)
+                HStack(spacing: 4) {
+                    Text(String(format: unit == "mg" ? "%.0f" : "%.1f", perServing))
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundColor(.primary)
+                    Text(unit)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                Text("·")
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.secondary)
-                    .frame(width: 15, alignment: .leading)
-                Text("•")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-                Text(String(format: unit == "mg" ? "%.0f" : "%.1f", per100))
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 4)
                 Spacer()
+                Text(String(format: unit == "mg" ? "%.0f" : "%.1f", per100) + " \(unit)/100g")
+                    .font(.system(size: 13, weight: .medium))
+                    .monospacedDigit()
+                    .foregroundColor(.secondary)
             }
+            .padding(.vertical, 10)
+            .padding(.horizontal, 12)
+            .background(Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
         }
     }
 
@@ -2164,12 +2171,12 @@ struct FoodDetailViewFromSearch: View {
                 }
             }
             .background(Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 8).stroke(Color.black, lineWidth: 2)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color.black, lineWidth: 2)
             )
             .padding(.horizontal, 16)
-            .background(Color(.systemGray6))
-            .cornerRadius(12)
         }
     }
     
@@ -3365,7 +3372,7 @@ struct FoodDetailViewFromSearch: View {
             // Tab Content - Wrapped in ScrollView to prevent overflow
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(spacing: 0) {
+                    VStack(spacing: 0) {
                         switch selectedWatchTab {
                         case .additives:
                             additivesContent
@@ -3375,32 +3382,28 @@ struct FoodDetailViewFromSearch: View {
                             vitaminsContent(scrollProxy: proxy)
                         }
                     }
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 12)
                 }
                 .frame(maxHeight: 400) // Limit height to prevent tab overlap
-                .background(Color(.systemBackground))
             }
         }
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color(.systemBackground))
-                .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
         )
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
     }
     
     // MARK: - Additive Analysis Content
     private var additivesContent: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // PERFORMANCE: Use cached additives computed once on appear
-            let detectedAdditives = cachedAdditives ?? []
-            
-            if !detectedAdditives.isEmpty {
-                VStack(spacing: 12) {
-                    ForEach(detectedAdditives, id: \.name) { additive in
-                        AdditiveCardView(additive: additive)
-                    }
-                }
+            // Use AdditiveWatchView for proper loading state and auto-expansion
+            if let ingredientsList = cachedIngredients, !ingredientsList.isEmpty {
+                AdditiveWatchView(ingredients: ingredientsList)
             } else {
-                Text("No additives detected in this food")
+                Text("No ingredients available for analysis")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)

@@ -113,9 +113,9 @@ struct AdditiveWatchView: View {
                         AdditiveCardView(additive: convertToDetailedAdditive(additive))
                     }
 
-                    // Ultra-processed ingredients — all cards expanded by default
+                    // Ultra-processed ingredients — collapsed by default
                     ForEach(result.ultraProcessedIngredients) { ingredient in
-                        UltraProcessedIngredientCard(ingredient: ingredient, initialExpanded: true)
+                        UltraProcessedIngredientCard(ingredient: ingredient, initialExpanded: false)
                     }
                 }
             } else {
@@ -516,7 +516,7 @@ struct DetailedAdditive {
 
 struct AdditiveCardView: View {
     let additive: DetailedAdditive
-    @State private var isExpanded = true
+    @State private var isExpanded = false
     @State private var showingSources = false
 
     var body: some View {
