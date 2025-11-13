@@ -16,6 +16,7 @@ interface ProductVariant {
   product_name: string | null;
   brand: string | null;
   barcode: string | null;
+  serving_size_g: number | null;
   ingredients_text: string | null;
   nutrition_per_100g: NutritionPer100g | null;
   source_url: string | null;
@@ -51,18 +52,20 @@ export const findIngredients = functions
       return;
     }
 
-    const { productName, brand } = req.body;
+    const { productName, brand, barcode } = req.body;
 
     if (!productName || typeof productName !== 'string') {
       res.status(400).json({ error: 'productName is required' });
       return;
     }
 
-    console.log(`🔍 Finding ingredients for: ${productName}${brand ? ` (${brand})` : ''}`);
+    console.log(`🔍 Finding ingredients for: ${productName}${brand ? ` (${brand})` : ''}${barcode ? ` [Barcode: ${barcode}]` : ''}`);
 
     try {
-      // Build search query prioritizing manufacturer then UK supermarkets
-      const searchQuery = brand
+      // Build search query prioritizing barcode, then manufacturer, then UK supermarkets
+      const searchQuery = barcode
+        ? `barcode ${barcode} UK supermarket nutrition ingredients`
+        : brand
         ? `${brand} ${productName} UK nutrition per 100g ingredients`
         : `${productName} UK nutrition per 100g ingredients`;
 
@@ -82,20 +85,65 @@ export const findIngredients = functions
         model: 'gemini-2.0-flash-exp'
       });
 
-      const prompt = `IMPORTANT: Search the actual UK supermarket websites (Tesco.com, Sainsburys.co.uk, Asda.com) for this EXACT product: "${productName}"${brand ? ` by ${brand}` : ''}.
+      const prompt = barcode
+        ? `IMPORTANT: Search UK supermarket websites (Tesco.com, Sainsburys.co.uk, Asda.com) for a product with barcode: "${barcode}".
 
 CRITICAL: Only return data you can VERIFY from real supermarket websites. DO NOT make up or guess any data.
 
 If you find the product on a supermarket website:
 1. Extract ALL available pack sizes (e.g., single bar, multipack, sharing bag)
-2. For EACH size found, get: ingredients list + nutrition per 100g (energy in kcal, protein, carbs, fat, fiber, sugar, salt - all in grams)
+2. For EACH size found, extract:
+   - Ingredients list
+   - Nutrition PER 100g (energy in kcal, protein, carbs, fat, fiber, sugar, salt - all in grams)
+   - Serving size in grams if shown on the website (e.g., "per 30g serving" → serving_size_g: 30)
 3. Include the source URL you used
 
+CRITICAL NUTRITION EXTRACTION RULES:
+- ALWAYS return nutrition per 100g
+- If website shows "per serving" (e.g., per 30g), CONVERT to per 100g: (value × 100 / 30)
+- If website shows "per pack" (e.g., per 500g), CONVERT to per 100g: (value × 100 / 500)
+- Extract serving_size_g separately (e.g., if website says "per 30g serving", set serving_size_g: 30)
+
+PACK SIZE vs SERVING SIZE (DO NOT CONFUSE):
+- size_description = total pack weight (e.g., "500g bag", "330ml can", "6x45g bars")
+- serving_size_g = recommended serving in grams (e.g., 30 for a 30g serving)
+
 Return ONLY valid JSON (no explanatory text):
-[{"size_description":"100g bar","product_name":"...","brand":"...","barcode":"...","ingredients_text":"milk, sugar, cocoa butter, ...","nutrition_per_100g":{"calories":530,"protein":7.3,"carbs":57,"fat":30,"fiber":2.1,"sugar":56,"salt":0.24},"source_url":"https://..."}]
+[{"size_description":"100g bar","product_name":"...","brand":"...","barcode":"...","serving_size_g":30,"ingredients_text":"milk, sugar, cocoa butter, ...","nutrition_per_100g":{"calories":530,"protein":7.3,"carbs":57,"fat":30,"fiber":2.1,"sugar":56,"salt":0.24},"source_url":"https://..."}]
 
 Rules:
-- Use null for any missing fields
+- Use null for any missing fields (including serving_size_g if not shown)
+- Convert sodium to salt (multiply by 2.5)
+- Remove "Ingredients:" prefix from ingredients text
+- Return 2-3+ sizes if multiple are available on the website
+- If you cannot find REAL data from UK supermarkets, return an empty array []`
+        : `IMPORTANT: Search the actual UK supermarket websites (Tesco.com, Sainsburys.co.uk, Asda.com) for this EXACT product: "${productName}"${brand ? ` by ${brand}` : ''}.
+
+CRITICAL: Only return data you can VERIFY from real supermarket websites. DO NOT make up or guess any data.
+
+If you find the product on a supermarket website:
+1. Extract ALL available pack sizes (e.g., single bar, multipack, sharing bag)
+2. For EACH size found, extract:
+   - Ingredients list
+   - Nutrition PER 100g (energy in kcal, protein, carbs, fat, fiber, sugar, salt - all in grams)
+   - Serving size in grams if shown on the website (e.g., "per 30g serving" → serving_size_g: 30)
+3. Include the source URL you used
+
+CRITICAL NUTRITION EXTRACTION RULES:
+- ALWAYS return nutrition per 100g
+- If website shows "per serving" (e.g., per 30g), CONVERT to per 100g: (value × 100 / 30)
+- If website shows "per pack" (e.g., per 500g), CONVERT to per 100g: (value × 100 / 500)
+- Extract serving_size_g separately (e.g., if website says "per 30g serving", set serving_size_g: 30)
+
+PACK SIZE vs SERVING SIZE (DO NOT CONFUSE):
+- size_description = total pack weight (e.g., "500g bag", "330ml can", "6x45g bars")
+- serving_size_g = recommended serving in grams (e.g., 30 for a 30g serving)
+
+Return ONLY valid JSON (no explanatory text):
+[{"size_description":"100g bar","product_name":"...","brand":"...","barcode":"...","serving_size_g":30,"ingredients_text":"milk, sugar, cocoa butter, ...","nutrition_per_100g":{"calories":530,"protein":7.3,"carbs":57,"fat":30,"fiber":2.1,"sugar":56,"salt":0.24},"source_url":"https://..."}]
+
+Rules:
+- Use null for any missing fields (including serving_size_g if not shown)
 - Convert sodium to salt (multiply by 2.5)
 - Remove "Ingredients:" prefix from ingredients text
 - Return 2-3+ sizes if multiple are available on the website
@@ -155,6 +203,7 @@ Rules:
           product_name: variant.product_name || null,
           brand: variant.brand || null,
           barcode: variant.barcode || null,
+          serving_size_g: variant.serving_size_g || null,
           ingredients_text: variant.ingredients_text ?
             variant.ingredients_text.replace(/^ingredients\s*:\s*/i, '').trim() : null,
           nutrition_per_100g: variant.nutrition_per_100g || null,

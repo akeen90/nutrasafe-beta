@@ -44,6 +44,11 @@ struct FoodDetailViewFromSearch: View {
     @State private var enhancedProductName: String?
     @State private var enhancedBrand: String?
 
+    // Barcode Enhancement states
+    @State private var showingBarcodeScannerForEnhancement = false
+    @State private var showingManualSearchForEnhancement = false
+    @State private var manualSearchText = ""
+
     // MARK: - Diary replacement support
     let diaryEntryId: UUID?
     let diaryMealType: String?
@@ -1249,7 +1254,7 @@ struct FoodDetailViewFromSearch: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(spacing: 24) {
+                LazyVStack(spacing: 24) {
                     foodHeaderView
 
                     // Serving and Meal Controls Section
@@ -1692,9 +1697,83 @@ struct FoodDetailViewFromSearch: View {
                 }
             }
         }
+        // Barcode scanner for enhancement
+        .sheet(isPresented: $showingBarcodeScannerForEnhancement) {
+            BarcodeScannerForEnhancement(
+                onBarcodeScanned: { barcode in
+                    showingBarcodeScannerForEnhancement = false
+                    enhanceWithBarcode(barcode)
+                },
+                onDismiss: {
+                    showingBarcodeScannerForEnhancement = false
+                }
+            )
+        }
+        // Manual search for enhancement
+        .sheet(isPresented: $showingManualSearchForEnhancement) {
+            NavigationView {
+                VStack(spacing: 20) {
+                    Text("Search for Product")
+                        .font(.title2.weight(.bold))
+                        .padding(.top)
+
+                    Text("Enter the product name or description to search UK supermarket databases.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 14))
+                                .foregroundColor(.blue)
+                            Text("Enter the food and brand name to search with AI")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.blue)
+                        }
+                        .padding(.horizontal)
+
+                        TextField("e.g., Cadbury Dairy Milk 200g", text: $manualSearchText)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                    }
+                    .padding(.horizontal)
+
+                    Button(action: {
+                        if !manualSearchText.isEmpty {
+                            showingManualSearchForEnhancement = false
+                            enhanceWithManualSearch(manualSearchText)
+                        }
+                    }) {
+                        HStack {
+                            Image(systemName: "magnifyingglass")
+                            Text("Search")
+                                .font(.system(size: 16, weight: .semibold))
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(manualSearchText.isEmpty ? Color.gray : Color.blue)
+                        .cornerRadius(10)
+                    }
+                    .disabled(manualSearchText.isEmpty)
+                    .padding(.horizontal)
+
+                    Spacer()
+                }
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button("Cancel") {
+                            showingManualSearchForEnhancement = false
+                        }
+                    }
+                }
+            }
+        }
     }
 
-    
+
     private var nutritionFactsSection: some View {
         VStack(alignment: .leading, spacing: 24) {
             // Calories - most prominent
@@ -1913,24 +1992,32 @@ struct FoodDetailViewFromSearch: View {
 
             // Check if we're replacing an existing diary entry or adding a new one
             if let _ = diaryEntryId {
-                // When editing, ALWAYS use originalMealType to preserve the meal
-                // Ignore selectedMeal changes from UI - editing should never move meals
-                let targetMeal = originalMealType
-        // DEBUG LOG: print("🔍 MEAL TIME DEBUG:")
                 print("  - diaryEntryId exists (editing mode)")
                 print("  - originalMealType: '\(originalMealType)'")
-                print("  - selectedMeal: '\(selectedMeal)' (IGNORED for editing)")
-                print("  - targetMeal will be: '\(targetMeal)'")
-                print("FoodDetailView: About to replace food '\(diaryEntry.name)' (ID: \(diaryEntry.id)) in meal '\(targetMeal)' on date '\(targetDate)'")
+                print("  - selectedMeal: '\(selectedMeal)'")
                 print("FoodDetailView: DiaryEntry details - Calories: \(diaryEntry.calories), Protein: \(diaryEntry.protein), Serving: \(diaryEntry.servingDescription), Quantity: \(diaryEntry.quantity)")
-                diaryDataManager.replaceFoodItem(diaryEntry, to: targetMeal, for: targetDate)
-                print("FoodDetailView: Successfully replaced \(diaryEntry.name) in \(targetMeal) on \(targetDate)")
 
-                // Wait a moment for Firebase save to complete before dismissing
                 Task {
-                    try? await Task.sleep(nanoseconds: 600_000_000) // 0.6 seconds
-                    dismiss()
-                    onComplete?(destination == .diary ? .diary : .useBy)
+                    do {
+                        // Decide: move across meals or replace within the same meal
+                        if originalMealType.lowercased() != selectedMeal.lowercased() {
+                            print("FoodDetailView: Moving food to new meal: \(selectedMeal)")
+                            try await diaryDataManager.moveFoodItem(diaryEntry, from: originalMealType, to: selectedMeal, for: targetDate)
+                            print("FoodDetailView: Successfully moved \(diaryEntry.name) to \(selectedMeal) on \(targetDate)")
+                        } else {
+                            print("FoodDetailView: Replacing within same meal: \(selectedMeal)")
+                            try await diaryDataManager.replaceFoodItem(diaryEntry, to: selectedMeal, for: targetDate)
+                            print("FoodDetailView: Successfully replaced \(diaryEntry.name) in \(selectedMeal) on \(targetDate)")
+                        }
+
+                        await MainActor.run {
+                            dismiss()
+                            onComplete?(destination == .diary ? .diary : .useBy)
+                        }
+                    } catch {
+                        print("FoodDetailView: Error updating food: \(error.localizedDescription)")
+                        await MainActor.run { dismiss() }
+                    }
                 }
             } else {
         // DEBUG LOG: print("🔍 MEAL TIME DEBUG:")
@@ -2150,61 +2237,89 @@ struct FoodDetailViewFromSearch: View {
                     Image(systemName: "info.circle.fill")
                         .font(.title2)
                         .foregroundColor(.orange)
-                    Text("Incomplete Food Data?")
+                    Text("Ingredients not looking right?")
                         .font(.system(size: 20, weight: .bold))
                         .foregroundColor(.primary)
                 }
 
-                Text("Food details not quite right? Try enhancing with AI or notify our team for manual review.")
+                Text("Scan the barcode to search for accurate product data, or search manually if you don't have the barcode.")
                     .font(.system(size: 14))
                     .foregroundColor(.secondary)
                     .lineLimit(nil)
                     .multilineTextAlignment(.center)
 
-                HStack(spacing: 12) {
-                    // AI Enhancement Button
-                    Button(action: {
-                        enhanceWithAI()
-                    }) {
-                        HStack {
-                            if isEnhancing {
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            } else {
-                                Image(systemName: "sparkles")
-                                Text("Enhance with AI")
-                                    .font(.system(size: 14, weight: .medium))
+                VStack(spacing: 12) {
+                    HStack(spacing: 12) {
+                        // Scan Barcode Button
+                        Button(action: {
+                            showingBarcodeScannerForEnhancement = true
+                        }) {
+                            HStack(spacing: 6) {
+                                if isEnhancing {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                } else {
+                                    Image(systemName: "barcode.viewfinder")
+                                        .font(.system(size: 16))
+                                    Text("Scan Barcode")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.8)
+                                }
                             }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(isEnhancing ? Color.gray : Color.blue)
+                            .cornerRadius(10)
                         }
-                        .foregroundColor(.white)
-                        .padding(.vertical, 10)
-                        .padding(.horizontal, 16)
-                        .background(isEnhancing ? Color.gray : Color.blue)
-                        .cornerRadius(8)
+                        .disabled(isEnhancing)
+
+                        // Search Manually Button
+                        Button(action: {
+                            showingManualSearchForEnhancement = true
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "magnifyingglass")
+                                    .font(.system(size: 16))
+                                Text("Search Manually")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.purple)
+                            .cornerRadius(10)
+                        }
+                        .disabled(isEnhancing)
                     }
-                    .disabled(isEnhancing)
 
                     // Notify Team Button
                     Button(action: {
                         notifyTeamAboutIncompleteFood()
                     }) {
-                        HStack {
+                        HStack(spacing: 6) {
                             if isNotifyingTeam {
                                 ProgressView()
                                     .scaleEffect(0.8)
                                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
                             } else {
                                 Image(systemName: "exclamationmark.triangle")
+                                    .font(.system(size: 16))
                                 Text("Notify Team")
-                                    .font(.system(size: 14, weight: .medium))
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
                             }
                         }
                         .foregroundColor(.white)
-                        .padding(.vertical, 10)
-                        .padding(.horizontal, 16)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
                         .background(isNotifyingTeam ? Color.gray : Color.orange)
-                        .cornerRadius(8)
+                        .cornerRadius(10)
                     }
                     .disabled(isNotifyingTeam)
                 }
@@ -2281,17 +2396,18 @@ struct FoodDetailViewFromSearch: View {
         }
     }
 
-    // Enhance food data using AI ingredient finder
-    private func enhanceWithAI() {
+    // Enhance food data using barcode scan
+    private func enhanceWithBarcode(_ barcode: String) {
         isEnhancing = true
-        // DEBUG LOG: print("🤖 Starting AI enhancement for: \(food.name), brand: \(food.brand ?? "none")")
+        print("📱 Starting barcode enhancement for: \(barcode)")
 
         Task {
             do {
-                // Call the AI ingredient finder service
+                // Call the AI ingredient finder service with barcode
                 let result = try await IngredientFinderService.shared.findIngredients(
                     productName: food.name,
-                    brand: food.brand
+                    brand: food.brand,
+                    barcode: barcode
                 )
 
         // DEBUG LOG: print("🔍 AI Search Result:")
@@ -2472,6 +2588,165 @@ struct FoodDetailViewFromSearch: View {
                 await MainActor.run {
                     isEnhancing = false
                     enhancementErrorMessage = "Unable to enhance with AI. Please try again later."
+                    showingEnhancementError = true
+                }
+            }
+        }
+    }
+
+    // Enhance food data using manual search
+    private func enhanceWithManualSearch(_ searchTerm: String) {
+        isEnhancing = true
+        print("🔍 Starting manual search enhancement for: \(searchTerm)")
+
+        Task {
+            do {
+                // Call the AI ingredient finder service with custom search term
+                let result = try await IngredientFinderService.shared.findIngredients(
+                    productName: searchTerm,
+                    brand: nil, // User provides the full search term
+                    barcode: nil
+                )
+
+                print("🔍 Manual Search Result:")
+                print("  - ingredients_found: \(result.ingredients_found)")
+                print("  - ingredients_text: \(result.ingredients_text?.prefix(50) ?? "nil")")
+                print("  - nutrition: \(result.nutrition_per_100g != nil ? "YES" : "NO")")
+
+                // Save to Firebase AI-improved foods collection (outside MainActor)
+                if result.ingredients_found {
+                    print("💾 Saving manually searched food to Firebase")
+                    var enhancedData: [String: Any] = [:]
+
+                    if let ingredientsText = result.ingredients_text {
+                        enhancedData["ingredientsText"] = ingredientsText
+                    }
+
+                    if let nutrition = result.nutrition_per_100g {
+                        enhancedData["calories"] = nutrition.calories ?? 0
+                        enhancedData["protein"] = nutrition.protein ?? 0
+                        enhancedData["carbs"] = nutrition.carbs ?? 0
+                        enhancedData["fat"] = nutrition.fat ?? 0
+                        enhancedData["fiber"] = nutrition.fiber ?? 0
+                        enhancedData["sugar"] = nutrition.sugar ?? 0
+                        enhancedData["salt"] = nutrition.salt ?? 0
+                    }
+
+                    if let productName = result.product_name {
+                        enhancedData["productName"] = productName
+                    }
+
+                    if let brand = result.brand {
+                        enhancedData["brand"] = brand
+                    }
+
+                    if let servingSize = result.serving_size {
+                        enhancedData["servingSize"] = servingSize
+                    }
+
+                    if let sourceUrl = result.source_url {
+                        enhancedData["sourceUrl"] = sourceUrl
+                    }
+
+                    // Save to Firebase
+                    do {
+                        let savedId = try await firebaseManager.saveAIImprovedFood(
+                            originalFood: food,
+                            enhancedData: enhancedData
+                        )
+                        print("✅ Manually searched food saved with ID: \(savedId)")
+                    } catch {
+                        print("⚠️ Failed to save manually searched food to Firebase: \(error)")
+                    }
+                }
+
+                await MainActor.run {
+                    isEnhancing = false
+
+                    if result.ingredients_found {
+                        // Store enhanced ingredients
+                        if let ingredientsText = result.ingredients_text {
+                            print("✅ Manual search found enhanced ingredients: \(ingredientsText.prefix(100))...")
+                            enhancedIngredientsText = ingredientsText
+                        }
+
+                        // Store enhanced nutrition data
+                        if let nutrition = result.nutrition_per_100g {
+                            print("✅ Manual search found enhanced nutrition data")
+                            enhancedNutrition = nutrition
+                        }
+
+                        // Store enhanced product details
+                        enhancedProductName = result.product_name
+                        enhancedBrand = result.brand
+
+                        // Clear and repopulate cached data with enhanced information
+                        cachedIngredients = nil
+                        cachedAdditives = nil
+                        cachedIngredientsStatus = nil
+                        cachedNutritionScore = nil
+                        cachedNutraSafeGrade = nil
+
+                        // Immediately repopulate ingredients cache with enhanced data
+                        cachedIngredients = getIngredientsList()
+                        cachedIngredientsStatus = getIngredientsStatus()
+
+                        print("✅ Cache repopulated: \(cachedIngredients?.count ?? 0) ingredients")
+
+                        // Recalculate NutraSafe grade with enhanced data
+                        cachedNutraSafeGrade = ProcessingScorer.shared.computeNutraSafeProcessingGrade(for: displayFood)
+                        if let grade = cachedNutraSafeGrade {
+                            print("✅ NutraSafe grade recalculated: \(grade.grade)")
+                        }
+
+                        // Trigger additive analysis with new ingredients
+                        if let ingredientsArray = cachedIngredients, !ingredientsArray.isEmpty {
+                            AdditiveWatchService.shared.analyzeIngredients(ingredientsArray) { result in
+                                let mapped: [DetailedAdditive] = result.detectedAdditives.map { additive in
+                                    let riskLevel: String
+                                    if additive.effectsVerdict == .avoid {
+                                        riskLevel = "High"
+                                    } else if additive.effectsVerdict == .caution {
+                                        riskLevel = "Moderate"
+                                    } else {
+                                        riskLevel = "Low"
+                                    }
+                                    let description = additive.consumerInfo ?? "No detailed information available for this additive."
+                                    return DetailedAdditive(
+                                        name: additive.name,
+                                        code: additive.eNumber,
+                                        purpose: additive.group.rawValue.capitalized,
+                                        origin: additive.origin.rawValue.capitalized,
+                                        childWarning: additive.hasChildWarning,
+                                        riskLevel: riskLevel,
+                                        description: description,
+                                        sources: additive.sources
+                                    )
+                                }
+                                DispatchQueue.main.async {
+                                    self.cachedAdditives = mapped
+                                    print("✅ Additives analyzed: \(mapped.count) found")
+                                }
+                            }
+                        }
+
+                        // Trigger UI refresh
+                        refreshTrigger = UUID()
+
+                        print("✨ Manual search enhancement complete! Showing success alert")
+                        showingEnhancementSuccess = true
+                    } else {
+                        print("⚠️ Manual search could not find enhanced ingredients")
+                        enhancementErrorMessage = "Could not find product with this search term. Try different keywords."
+                        showingEnhancementError = true
+                    }
+                }
+
+            } catch {
+                print("❌ Error with manual search: \(error)")
+                await MainActor.run {
+                    isEnhancing = false
+                    enhancementErrorMessage = "Unable to search. Please try again later."
                     showingEnhancementError = true
                 }
             }
@@ -2840,71 +3115,7 @@ struct FoodDetailViewFromSearch: View {
     
     // MARK: - Food Scores Section
     private var foodScoresSection: some View {
-        HStack(spacing: 12) {
-            // NutraSafe Grade Square
-            if let ns = cachedNutraSafeGrade {
-                Button(action: { showingNutraSafeInfo = true }) {
-                    VStack(spacing: 6) {
-                        Text("NUTRASAFE GRADE")
-                            .font(.system(size: 10, weight: .semibold, design: .rounded))
-                            .foregroundColor(.secondary)
-                            .tracking(0.5)
-                        Text(ns.grade)
-                            .font(.system(size: 24, weight: .black, design: .rounded))
-                            .foregroundColor(getNutraSafeColor(ns.grade))
-                        Text(ns.label)
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 100)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(PlainButtonStyle())
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(getNutraSafeColor(ns.grade).opacity(0.08))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(getNutraSafeColor(ns.grade).opacity(0.2), lineWidth: 1)
-                        )
-                )
-            }
-            
-            // Sugar Score Square (only show if sugar data available)
-            if sugarScore.grade != .unknown {
-                Button(action: { showingSugarInfo = true }) {
-                    VStack(spacing: 6) {
-                        Text("SUGAR SCORE")
-                            .font(.system(size: 10, weight: .semibold, design: .rounded))
-                            .foregroundColor(.secondary)
-                            .tracking(0.5)
-                        
-                        Text(sugarScore.grade.rawValue)
-                            .font(.system(size: 24, weight: .black, design: .rounded))
-                            .foregroundColor(sugarScore.color)
-                        
-                        Text(getSugarLevelDescription())
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 100)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(sugarScore.color.opacity(0.3 - 0.22))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .stroke(sugarScore.color.opacity(0.2), lineWidth: 1)
-                            )
-                    )
-                }
-                .buttonStyle(PlainButtonStyle())
-                .contentShape(Rectangle())
-            }
-        }
+        FoodScoresSectionView(ns: cachedNutraSafeGrade, sugarScore: sugarScore, showingInfo: $showingNutraSafeInfo, showingSugarInfo: $showingSugarInfo)
     }
     
     private func getSimplifiedProcessingLevel() -> String {
@@ -3012,7 +3223,7 @@ struct FoodDetailViewFromSearch: View {
             // Tab Content - Wrapped in ScrollView to prevent overflow
             ScrollViewReader { proxy in
                 ScrollView {
-                    VStack(spacing: 0) {
+                    LazyVStack(spacing: 0) {
                         switch selectedWatchTab {
                         case .additives:
                             additivesContent
@@ -4303,7 +4514,7 @@ struct NutraSafeGradeInfoView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                LazyVStack(alignment: .leading, spacing: 16) {
                     HStack(alignment: .center, spacing: 12) {
                         Text(result.grade)
                             .font(.system(size: 34, weight: .black, design: .rounded))
@@ -4454,7 +4665,7 @@ struct SugarScoreInfoView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                LazyVStack(alignment: .leading, spacing: 16) {
                     HStack(alignment: .center, spacing: 12) {
                         Text(score.grade.rawValue)
                             .font(.system(size: 34, weight: .black, design: .rounded))
@@ -4641,5 +4852,91 @@ struct SugarScoreInfoView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Barcode Scanner for Enhancement
+struct BarcodeScannerForEnhancement: View {
+    let onBarcodeScanned: (String) -> Void
+    let onDismiss: () -> Void
+
+    @State private var scannedCode: String?
+    @State private var showingError = false
+
+    var body: some View {
+        NavigationView {
+            VStack {
+                if let code = scannedCode {
+                    VStack(spacing: 20) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 60))
+                            .foregroundColor(.green)
+
+                        Text("Barcode Scanned")
+                            .font(.title2.weight(.bold))
+
+                        Text(code)
+                            .font(.system(.title3, design: .monospaced))
+                            .padding()
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(8)
+
+                        Button(action: {
+                            onBarcodeScanned(code)
+                        }) {
+                            HStack {
+                                Image(systemName: "sparkles")
+                                Text("Search with this barcode")
+                            }
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color.blue)
+                            .cornerRadius(10)
+                        }
+                        .padding(.horizontal)
+                    }
+                } else {
+                    BarcodeScannerViewControllerRepresentable(
+                        onBarcodeScanned: { code in
+                            scannedCode = code
+                        }
+                    )
+                    .edgesIgnoringSafeArea(.all)
+                }
+            }
+            .navigationTitle("Scan Barcode")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        onDismiss()
+                    }
+                }
+            }
+            .alert("Scanner Error", isPresented: $showingError) {
+                Button("OK") {
+                    onDismiss()
+                }
+            } message: {
+                Text("Unable to access camera. Please check permissions in Settings.")
+            }
+        }
+    }
+}
+
+// MARK: - Barcode Scanner UIKit Wrapper (Reuses existing BarcodeScannerViewController from BarcodeScanningViews.swift)
+struct BarcodeScannerViewControllerRepresentable: UIViewControllerRepresentable {
+    let onBarcodeScanned: (String) -> Void
+
+    func makeUIViewController(context: Context) -> BarcodeScannerViewController {
+        let scanner = BarcodeScannerViewController()
+        scanner.onBarcodeScanned = onBarcodeScanned
+        return scanner
+    }
+
+    func updateUIViewController(_ uiViewController: BarcodeScannerViewController, context: Context) {
+        // No updates needed
     }
 }

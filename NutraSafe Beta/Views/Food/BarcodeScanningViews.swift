@@ -218,28 +218,96 @@ struct AddFoodBarcodeView: View {
         errorMessage = nil
 
         searchProductByBarcode(barcode) { result in
-            DispatchQueue.main.async {
-                isSearching = false
+            Task { @MainActor in
+                self.isSearching = false
 
                 switch result {
                 case .success(let response):
                     if response.success, let product = response.toFoodSearchResult() {
-                        scannedProduct = product
+                        self.scannedProduct = product
                     } else if response.action == "user_contribution_needed",
                               let placeholderId = response.placeholder_id {
-                        pendingContribution = PendingFoodContribution(
-                            placeholderId: placeholderId,
-                            barcode: barcode
-                        )
+                        // Product not in internal database - try Google grounding fallback
+                        print("📱 Product not found in database. Trying Google grounding with barcode: \(barcode)")
+                        self.isSearching = true
+
+                        do {
+                            // Use IngredientFinderService with barcode
+                            let googleResult = try await IngredientFinderService.shared.findIngredients(
+                                productName: "Unknown Product",  // Placeholder name
+                                brand: nil,
+                                barcode: barcode
+                            )
+
+                            self.isSearching = false
+
+                            if googleResult.ingredients_found, let variant = googleResult.variants.first {
+                                // Success! Convert Google grounding result to FoodSearchResult
+                                print("✅ Google grounding found product via barcode")
+
+                                let calories = variant.nutrition_per_100g?.calories ?? 0
+                                let protein = variant.nutrition_per_100g?.protein ?? 0
+                                let carbs = variant.nutrition_per_100g?.carbs ?? 0
+                                let fat = variant.nutrition_per_100g?.fat ?? 0
+                                let fiber = variant.nutrition_per_100g?.fiber ?? 0
+                                let sugar = variant.nutrition_per_100g?.sugar ?? 0
+                                let salt = variant.nutrition_per_100g?.salt ?? 0
+
+                                // Convert ingredients text to array by splitting on commas
+                                let ingredientsArray: [String]? = variant.ingredients_text?.components(separatedBy: ",").map {
+                                    $0.trimmingCharacters(in: .whitespacesAndNewlines)
+                                }
+
+                                self.scannedProduct = FoodSearchResult(
+                                    id: UUID().uuidString,
+                                    name: variant.product_name ?? "Unknown Product",
+                                    brand: variant.brand,
+                                    calories: calories,
+                                    protein: protein,
+                                    carbs: carbs,
+                                    fat: fat,
+                                    fiber: fiber,
+                                    sugar: sugar,
+                                    sodium: salt / 2.5,  // Convert salt back to sodium
+                                    servingDescription: variant.size_description,
+                                    servingSizeG: variant.serving_size_g,
+                                    ingredients: ingredientsArray,
+                                    confidence: nil,
+                                    isVerified: false,  // From Google Search, not verified in our database
+                                    additives: nil,
+                                    additivesDatabaseVersion: nil,
+                                    processingScore: nil,
+                                    processingGrade: nil,
+                                    processingLabel: nil,
+                                    barcode: barcode,
+                                    micronutrientProfile: nil
+                                )
+                            } else {
+                                // Google grounding also failed - show contribution prompt
+                                print("⚠️ Google grounding also couldn't find product")
+                                self.pendingContribution = PendingFoodContribution(
+                                    placeholderId: placeholderId,
+                                    barcode: barcode
+                                )
+                            }
+                        } catch {
+                            self.isSearching = false
+                            print("❌ Google grounding error: \(error)")
+                            // Fallback to contribution prompt
+                            self.pendingContribution = PendingFoodContribution(
+                                placeholderId: placeholderId,
+                                barcode: barcode
+                            )
+                        }
                     } else {
                         // Show failure state
-                        errorMessage = response.message ?? "Product not found in our database."
-                        scanFailed = true
+                        self.errorMessage = response.message ?? "Product not found in our database."
+                        self.scanFailed = true
                     }
                 case .failure(let error):
                     // Show failure state
-                    errorMessage = "Unable to search for this product. Please check your internet connection and try again."
-                    scanFailed = true
+                    self.errorMessage = "Unable to search for this product. Please check your internet connection and try again."
+                    self.scanFailed = true
                     print("Barcode search error: \(error)")
                 }
             }

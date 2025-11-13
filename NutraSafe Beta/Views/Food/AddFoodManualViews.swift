@@ -30,6 +30,7 @@ struct ProductVariant: Codable {
     let product_name: String?
     let brand: String?
     let barcode: String?
+    let serving_size_g: Double?
     let ingredients_text: String?
     let nutrition_per_100g: NutritionPer100g?
     let source_url: String?
@@ -65,18 +66,19 @@ class IngredientFinderService: ObservableObject {
     private init() {}
 
     /// Search for ingredients using AI (checks cache first)
-    func findIngredients(productName: String, brand: String?) async throws -> IngredientFinderResponse {
+    func findIngredients(productName: String, brand: String?, barcode: String? = nil) async throws -> IngredientFinderResponse {
         // Check rate limit
         try checkRateLimit()
 
-        // Check cache first
-        if let cached = try? await FirebaseManager.shared.getIngredientCache(productName: productName, brand: brand) {
+        // Check cache first (only if not using barcode search, as barcode searches are more specific)
+        if barcode == nil, let cached = try? await FirebaseManager.shared.getIngredientCache(productName: productName, brand: brand) {
             print("✅ Found ingredients in cache for \(productName)")
             let variant = ProductVariant(
                 size_description: nil,
                 product_name: nil,
                 brand: nil,
                 barcode: nil,
+                serving_size_g: nil,
                 ingredients_text: cached.ingredients_text,
                 nutrition_per_100g: nil,
                 source_url: cached.source_url
@@ -91,7 +93,7 @@ class IngredientFinderService: ObservableObject {
         isSearching = true
         defer { isSearching = false }
 
-        let response = try await callCloudFunction(productName: productName, brand: brand)
+        let response = try await callCloudFunction(productName: productName, brand: brand, barcode: barcode)
 
         // Cache the result if ingredients were found
         if response.ingredients_found, let ingredientsText = response.ingredients_text {
@@ -130,7 +132,7 @@ class IngredientFinderService: ObservableObject {
         }
     }
 
-    private func callCloudFunction(productName: String, brand: String?) async throws -> IngredientFinderResponse {
+    private func callCloudFunction(productName: String, brand: String?, barcode: String?) async throws -> IngredientFinderResponse {
         // Get endpoint URL from AppConfig
         let endpointURLString = AppConfig.Firebase.Functions.findIngredients
         // DEBUG LOG: print("🔍 Debug: Endpoint URL from AppConfig: \(endpointURLString)")
@@ -144,6 +146,9 @@ class IngredientFinderService: ObservableObject {
         var requestBody: [String: Any] = ["productName": productName]
         if let brand = brand, !brand.isEmpty {
             requestBody["brand"] = brand
+        }
+        if let barcode = barcode, !barcode.isEmpty {
+            requestBody["barcode"] = barcode
         }
 
         let jsonData = try JSONSerialization.data(withJSONObject: requestBody)
@@ -404,7 +409,21 @@ struct ManualFoodDetailEntryView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         SectionHeader(title: "Basic Information")
 
-                        FormField(label: "Food Name", isRequired: true) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 4) {
+                                Text("Food Name")
+                                    .font(.system(size: 16, weight: .semibold))
+                                Text("*")
+                                    .foregroundColor(.red)
+                            }
+
+                            if destination == .diary {
+                                Text("Enter food and brand name here to search with AI (don't use Brand Name field below)")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+
                             TextField("Enter food name...", text: $foodName)
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
                                 .overlay(

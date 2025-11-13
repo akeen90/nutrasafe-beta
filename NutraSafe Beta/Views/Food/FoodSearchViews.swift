@@ -11,6 +11,11 @@ import SwiftUI
 import Foundation
 import UIKit
 
+final class LocalGradeCache {
+    static let processing = NSCache<NSString, NSString>()
+    static let sugar = NSCache<NSString, NSString>()
+}
+
 // MARK: - Food Search Result Components
 
 /// Simplified food search result row for basic display
@@ -107,19 +112,30 @@ struct FoodSearchResultRowEnhanced: View {
     }
     
     private var nutritionScore: ProcessingGrade {
-        // PERFORMANCE: Use pre-computed grade from FoodSearchResult if available
         if let precomputedGrade = food.processingGrade,
            let grade = ProcessingGrade(rawValue: precomputedGrade) {
             return grade
         }
-
-        // Fallback: calculate if not pre-computed
+        let key = NSString(string: food.id)
+        if let cached = LocalGradeCache.processing.object(forKey: key),
+           let grade = ProcessingGrade(rawValue: cached as String) {
+            return grade
+        }
         let ingredientsString = food.ingredients?.joined(separator: ", ")
-        return ProcessingScorer.shared.calculateProcessingScore(for: food.name, ingredients: ingredientsString).grade
+        let computed = ProcessingScorer.shared.calculateProcessingScore(for: food.name, ingredients: ingredientsString).grade
+        LocalGradeCache.processing.setObject(NSString(string: computed.rawValue), forKey: key)
+        return computed
     }
     
     private var sugarGrade: SugarGrade {
-        return SugarContentScorer.shared.calculateSugarScore(sugarPer100g: food.sugar).grade
+        let key = NSString(string: food.id)
+        if let cached = LocalGradeCache.sugar.object(forKey: key),
+           let grade = SugarGrade(rawValue: cached as String) {
+            return grade
+        }
+        let computed = SugarContentScorer.shared.calculateSugarScore(sugarPer100g: food.sugar).grade
+        LocalGradeCache.sugar.setObject(NSString(string: computed.rawValue), forKey: key)
+        return computed
     }
     
     // Calculate per-serving calories from per-100g values
@@ -341,20 +357,49 @@ struct AddFoodSearchView: View {
             } else if searchResults.isEmpty && !searchText.isEmpty {
                 VStack {
                     Spacer()
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 48))
-                        .foregroundColor(.secondary)
-                    Text("No results found")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(.secondary)
-                        .padding(.top, 8)
+
+                    VStack(spacing: 20) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 48))
+                            .foregroundColor(.secondary)
+
+                        Text("No results found")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.secondary)
+
+                        // Barcode suggestion banner
+                        VStack(spacing: 12) {
+                            HStack {
+                                Image(systemName: "info.circle.fill")
+                                    .font(.title2)
+                                    .foregroundColor(.blue)
+                                Text("Can't find it?")
+                                    .font(.system(size: 18, weight: .bold))
+                                    .foregroundColor(.primary)
+                            }
+
+                            Text("Try scanning the product's barcode for more accurate results")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .padding(20)
+                        .background(Color.blue.opacity(0.05))
+                        .cornerRadius(12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                        )
+                        .padding(.horizontal, 32)
+                    }
+
                     Spacer()
                 }
                 .frame(maxHeight: .infinity)
             } else {
                 ScrollViewReader { scrollProxy in
                     ScrollView {
-                        VStack(spacing: 8) {
+                        LazyVStack(spacing: 8) {
                             // Show recent foods when search is empty
                             if searchText.isEmpty && !recentFoods.isEmpty {
                                 // Recent Foods Section
