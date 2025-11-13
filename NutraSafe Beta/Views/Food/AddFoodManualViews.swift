@@ -327,7 +327,14 @@ struct ManualFoodDetailEntryView: View {
         case weeks = "Weeks"
     }
 
+    enum EntryMode {
+        case manual
+        case aiSearch
+    }
+
     // UI State
+    @State private var entryMode: EntryMode = .manual
+    @State private var aiSearchQuery = ""
     @State private var showingIngredients = false
     @State private var isSaving = false
     @State private var showingError = false
@@ -375,62 +382,125 @@ struct ManualFoodDetailEntryView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 24) {
-                    // AI Helper Banner - only for Diary destination
+                    // Mode Selector - only for Diary destination
                     if destination == .diary {
-                        HStack(spacing: 12) {
-                            Image(systemName: "sparkles")
-                                .font(.system(size: 20))
-                                .foregroundColor(.purple)
+                        VStack(spacing: 12) {
+                            Picker("Entry Mode", selection: $entryMode) {
+                                Text("Manual Entry").tag(EntryMode.manual)
+                                Text("Search with AI").tag(EntryMode.aiSearch)
+                            }
+                            .pickerStyle(SegmentedPickerStyle())
 
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("AI-Powered Search")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(.primary)
-                                Text("Enter what you know, then use 'Find with AI' to auto-complete ingredients & nutrition")
-                                    .font(.system(size: 12))
+                            // Mode description
+                            HStack(spacing: 8) {
+                                Image(systemName: entryMode == .aiSearch ? "sparkles" : "pencil")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(entryMode == .aiSearch ? .purple : .blue)
+
+                                Text(entryMode == .aiSearch
+                                    ? "Search UK supermarkets to auto-fill ingredients and nutrition"
+                                    : "Enter all details manually for full control")
+                                    .font(.system(size: 13))
                                     .foregroundColor(.secondary)
                                     .fixedSize(horizontal: false, vertical: true)
-                            }
 
-                            Spacer()
+                                Spacer()
+                            }
+                            .padding(.horizontal, 4)
                         }
-                        .padding(12)
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 16)
                         .background(
-                            LinearGradient(
-                                gradient: Gradient(colors: [Color.purple.opacity(0.1), Color.blue.opacity(0.1)]),
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(.systemGray6))
                         )
-                        .cornerRadius(12)
                     }
 
-                    // Basic Information Section
-                    VStack(alignment: .leading, spacing: 16) {
-                        SectionHeader(title: "Basic Information")
+                    // AI Search Mode Interface
+                    if destination == .diary && entryMode == .aiSearch {
+                        VStack(alignment: .leading, spacing: 20) {
+                            SectionHeader(title: "Search for Product")
 
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack(spacing: 4) {
-                                Text("Food Name")
-                                    .font(.system(size: 16, weight: .semibold))
-                                Text("*")
-                                    .foregroundColor(.red)
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Enter the product name and brand")
+                                    .font(.system(size: 14, weight: .medium))
+
+                                TextField("e.g., Cadbury Dairy Milk Chocolate", text: $aiSearchQuery)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                    .font(.system(size: 16))
+                                    .padding(.vertical, 4)
+
+                                Button(action: {
+                                    performAISearch()
+                                }) {
+                                    HStack(spacing: 8) {
+                                        if isSearchingIngredients {
+                                            ProgressView()
+                                                .scaleEffect(0.9)
+                                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        } else {
+                                            Image(systemName: "magnifyingglass")
+                                                .font(.system(size: 16))
+                                        }
+                                        Text(isSearchingIngredients ? "Searching..." : "Search with AI")
+                                            .font(.system(size: 16, weight: .semibold))
+                                    }
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [Color.blue, Color.purple]),
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .cornerRadius(12)
+                                }
+                                .disabled(isSearchingIngredients || aiSearchQuery.isEmpty)
+                                .opacity(aiSearchQuery.isEmpty ? 0.5 : 1.0)
+
+                                if isSearchingIngredients {
+                                    HStack(spacing: 8) {
+                                        ProgressView()
+                                            .scaleEffect(0.7)
+                                        Text("Searching UK supermarkets...")
+                                            .font(.system(size: 14))
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding(.top, 4)
+                                }
                             }
-
-                            if destination == .diary {
-                                Text("Enter food and brand name here to search with AI (don't use Brand Name field below)")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.secondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-
-                            TextField("Enter food name...", text: $foodName)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 5)
-                                        .stroke(shouldShowError(for: "foodName") ? Color.red : Color.clear, lineWidth: 2)
-                                )
+                            .padding(16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color(.systemBackground))
+                                    .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                            )
                         }
+                    }
+
+                    // Manual Entry Mode Interface
+                    if destination != .diary || entryMode == .manual {
+                        // Basic Information Section
+                        VStack(alignment: .leading, spacing: 16) {
+                            SectionHeader(title: "Basic Information")
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack(spacing: 4) {
+                                    Text("Food Name")
+                                        .font(.system(size: 16, weight: .semibold))
+                                    Text("*")
+                                        .foregroundColor(.red)
+                                }
+
+                                TextField("Enter food name...", text: $foodName)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 5)
+                                            .stroke(shouldShowError(for: "foodName") ? Color.red : Color.clear, lineWidth: 2)
+                                    )
+                            }
 
                         FormField(label: "Brand Name", isRequired: destination != .diary) {
                             TextField("Enter brand name...", text: $brand)
@@ -439,63 +509,6 @@ struct ManualFoodDetailEntryView: View {
                                     RoundedRectangle(cornerRadius: 5)
                                         .stroke(shouldShowError(for: "brand") ? Color.red : Color.clear, lineWidth: 2)
                                 )
-                        }
-
-                        // AI Search Button
-                        if destination == .diary {
-                            VStack(spacing: 8) {
-                                Button(action: {
-                                    searchIngredientsWithAI()
-                                }) {
-                                    HStack(spacing: 6) {
-                                        if isSearchingIngredients {
-                                            ProgressView()
-                                                .scaleEffect(0.8)
-                                        } else {
-                                            Image(systemName: "sparkles")
-                                                .font(.system(size: 14))
-                                        }
-                                        Text(isSearchingIngredients ? "Searching..." : "Find with AI")
-                                            .font(.system(size: 14, weight: .semibold))
-                                    }
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
-                                    .background(
-                                        LinearGradient(
-                                            gradient: Gradient(colors: [Color.blue, Color.purple.opacity(0.8)]),
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                                    .cornerRadius(8)
-                                }
-                                .disabled(isSearchingIngredients || foodName.isEmpty)
-                                .opacity(foodName.isEmpty ? 0.5 : 1.0)
-
-                                // Status indicator
-                                if isSearchingIngredients {
-                                    HStack(spacing: 6) {
-                                        ProgressView()
-                                            .scaleEffect(0.7)
-                                        Text("Searching UK supermarkets for ingredients...")
-                                            .font(.system(size: 13))
-                                            .foregroundColor(.secondary)
-                                    }
-                                    .padding(.horizontal, 4)
-                                } else if foundIngredients != nil && !ingredientsText.isEmpty {
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .foregroundColor(.green)
-                                            .font(.system(size: 14))
-                                        Text("Ingredients found and added below")
-                                            .font(.system(size: 13))
-                                            .foregroundColor(.secondary)
-                                    }
-                                    .padding(.horizontal, 4)
-                                }
-                            }
                         }
 
                         FormField(label: "Barcode (Optional)", isRequired: false) {
@@ -720,6 +733,7 @@ struct ManualFoodDetailEntryView: View {
                             }
                         }
                     }
+                    } // end manual entry mode
 
                     // Save Button
                     Button(action: saveFood) {
@@ -810,6 +824,10 @@ struct ManualFoodDetailEntryView: View {
                             if let saltValue = nutrition.salt { sodium = String(format: "%.1f", saltValue) }
                         }
                         showIngredientConfirmation = false
+                        // Switch to manual mode so user can see and edit the populated data
+                        if destination == .diary {
+                            entryMode = .manual
+                        }
                     },
                     onEdit: {
                         // Apply product name and brand if found
@@ -848,6 +866,10 @@ struct ManualFoodDetailEntryView: View {
                             if let saltValue = nutrition.salt { sodium = String(format: "%.1f", saltValue) }
                         }
                         showIngredientConfirmation = false
+                        // Switch to manual mode so user can see and edit the populated data
+                        if destination == .diary {
+                            entryMode = .manual
+                        }
                     },
                     onCancel: {
                         showIngredientConfirmation = false
@@ -922,6 +944,56 @@ struct ManualFoodDetailEntryView: View {
         }
     }
 
+    private func performAISearch() {
+        // Require search query
+        guard !aiSearchQuery.isEmpty else {
+            errorMessage = "Please enter a product name"
+            showingError = true
+            return
+        }
+
+        isSearchingIngredients = true
+
+        Task {
+            do {
+                let response = try await ingredientFinder.findIngredients(
+                    productName: aiSearchQuery,
+                    brand: nil
+                )
+
+                print("🔍 AI Search Result:")
+                print("  - ingredients_found: \(response.ingredients_found)")
+                print("  - variants count: \(response.variants.count)")
+
+                await MainActor.run {
+                    isSearchingIngredients = false
+
+                    if response.ingredients_found, !response.variants.isEmpty {
+                        // Show confirmation modal
+                        foundIngredients = response
+                        showIngredientConfirmation = true
+                    } else {
+                        // No ingredients found
+                        errorMessage = "No product data found from UK supermarkets. Try refining your search or switch to manual entry."
+                        showingError = true
+                    }
+                }
+            } catch let error as IngredientFinderError {
+                await MainActor.run {
+                    isSearchingIngredients = false
+                    errorMessage = error.localizedDescription
+                    showingError = true
+                }
+            } catch {
+                await MainActor.run {
+                    isSearchingIngredients = false
+                    errorMessage = "Network error. Please check your connection and try again."
+                    showingError = true
+                }
+            }
+        }
+    }
+
     private func updateExpiryDate() {
         let daysToAdd = expiryUnit == .weeks ? expiryAmount * 7 : expiryAmount
         expiryDate = Date().addingTimeInterval(TimeInterval(daysToAdd * 24 * 60 * 60))
@@ -948,18 +1020,18 @@ struct ManualFoodDetailEntryView: View {
                     try await saveFoodToDiary()
                 }
 
-                // Only dismiss if save was successful
-                await MainActor.run {
-                    isSaving = false
-                    dismiss()
-                }
-
-                // After sheet dismisses, switch to appropriate tab
+                // Switch to appropriate tab first, then dismiss
                 if destination == .diary {
                     await MainActor.run {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                            selectedTab = .diary
-                        }
+                        selectedTab = .diary
+                    }
+                }
+
+                // Small delay to let tab switch complete, then dismiss
+                await MainActor.run {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        isSaving = false
+                        dismiss()
                     }
                 }
             } catch {
@@ -983,14 +1055,24 @@ struct ManualFoodDetailEntryView: View {
         }
 
         // Parse nutrition values (all per 100g as entered)
-        let caloriesValue = Double(calories) ?? 0
-        let proteinValue = Double(protein) ?? 0
-        let carbsValue = Double(carbs) ?? 0
-        let fatValue = Double(fat) ?? 0
-        let fiberValue = Double(fiber) ?? 0
-        let sugarValue = Double(sugar) ?? 0
-        let sodiumValue = Double(sodium) ?? 0
+        let caloriesPer100g = Double(calories) ?? 0
+        let proteinPer100g = Double(protein) ?? 0
+        let carbsPer100g = Double(carbs) ?? 0
+        let fatPer100g = Double(fat) ?? 0
+        let fiberPer100g = Double(fiber) ?? 0
+        let sugarPer100g = Double(sugar) ?? 0
+        let sodiumPer100g = Double(sodium) ?? 0
         let servingSizeValue = Double(servingSize) ?? 100
+
+        // Convert per-100g values to per-serving values
+        let ratio = servingSizeValue / 100.0
+        let caloriesValue = caloriesPer100g * ratio
+        let proteinValue = proteinPer100g * ratio
+        let carbsValue = carbsPer100g * ratio
+        let fatValue = fatPer100g * ratio
+        let fiberValue = fiberPer100g * ratio
+        let sugarValue = sugarPer100g * ratio
+        let sodiumValue = sodiumPer100g * ratio
 
         do {
             // Prepare food data for userAdded collection with capitalized names
