@@ -227,78 +227,12 @@ struct AddFoodBarcodeView: View {
                         self.scannedProduct = product
                     } else if response.action == "user_contribution_needed",
                               let placeholderId = response.placeholder_id {
-                        // Product not in internal database - try Google grounding fallback
-                        print("📱 Product not found in database. Trying Google grounding with barcode: \(barcode)")
-                        self.isSearching = true
-
-                        do {
-                            // Use IngredientFinderService with barcode
-                            let googleResult = try await IngredientFinderService.shared.findIngredients(
-                                productName: "Unknown Product",  // Placeholder name
-                                brand: nil,
-                                barcode: barcode
-                            )
-
-                            self.isSearching = false
-
-                            if googleResult.ingredients_found, let variant = googleResult.variants.first {
-                                // Success! Convert Google grounding result to FoodSearchResult
-                                print("✅ Google grounding found product via barcode")
-
-                                let calories = variant.nutrition_per_100g?.calories ?? 0
-                                let protein = variant.nutrition_per_100g?.protein ?? 0
-                                let carbs = variant.nutrition_per_100g?.carbs ?? 0
-                                let fat = variant.nutrition_per_100g?.fat ?? 0
-                                let fiber = variant.nutrition_per_100g?.fiber ?? 0
-                                let sugar = variant.nutrition_per_100g?.sugar ?? 0
-                                let salt = variant.nutrition_per_100g?.salt ?? 0
-
-                                // Convert ingredients text to array by splitting on commas
-                                let ingredientsArray: [String]? = variant.ingredients_text?.components(separatedBy: ",").map {
-                                    $0.trimmingCharacters(in: .whitespacesAndNewlines)
-                                }
-
-                                self.scannedProduct = FoodSearchResult(
-                                    id: UUID().uuidString,
-                                    name: variant.product_name ?? "Unknown Product",
-                                    brand: variant.brand,
-                                    calories: calories,
-                                    protein: protein,
-                                    carbs: carbs,
-                                    fat: fat,
-                                    fiber: fiber,
-                                    sugar: sugar,
-                                    sodium: salt / 2.5,  // Convert salt back to sodium
-                                    servingDescription: variant.size_description,
-                                    servingSizeG: variant.serving_size_g,
-                                    ingredients: ingredientsArray,
-                                    confidence: nil,
-                                    isVerified: false,  // From Google Search, not verified in our database
-                                    additives: nil,
-                                    additivesDatabaseVersion: nil,
-                                    processingScore: nil,
-                                    processingGrade: nil,
-                                    processingLabel: nil,
-                                    barcode: barcode,
-                                    micronutrientProfile: nil
-                                )
-                            } else {
-                                // Google grounding also failed - show contribution prompt
-                                print("⚠️ Google grounding also couldn't find product")
-                                self.pendingContribution = PendingFoodContribution(
-                                    placeholderId: placeholderId,
-                                    barcode: barcode
-                                )
-                            }
-                        } catch {
-                            self.isSearching = false
-                            print("❌ Google grounding error: \(error)")
-                            // Fallback to contribution prompt
-                            self.pendingContribution = PendingFoodContribution(
-                                placeholderId: placeholderId,
-                                barcode: barcode
-                            )
-                        }
+                        // Product not in internal database - show contribution prompt
+                        print("📱 Product not found in database. Showing contribution prompt.")
+                        self.pendingContribution = PendingFoodContribution(
+                            placeholderId: placeholderId,
+                            barcode: barcode
+                        )
                     } else {
                         // Show failure state
                         self.errorMessage = response.message ?? "Product not found in our database."
@@ -399,6 +333,11 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
     private var lastScanTime: Date?
     private var isScanningPaused = false
     private var videoCaptureDevice: AVCaptureDevice?
+
+    // Multi-frame verification for barcode accuracy
+    private var candidateBarcode: String?
+    private var consecutiveDetections: Int = 0
+    private let requiredConsecutiveDetections: Int = 3
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -510,6 +449,9 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
         // Reset debounce to allow new scans
         lastScannedBarcode = nil
         lastScanTime = nil
+        // Reset multi-frame verification
+        candidateBarcode = nil
+        consecutiveDetections = 0
     }
     
     private func showCameraError(_ message: String) {
@@ -537,7 +479,7 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
             guard let readableObject = metadataObject as? AVMetadataMachineReadableCodeObject else { return }
             guard let stringValue = readableObject.stringValue else { return }
 
-            // Debounce repeated scans - prevent duplicate scans within 2 seconds
+            // Debounce repeated scans - prevent duplicate scans within 2 seconds of last ACCEPTED scan
             let now = Date()
             if let lastBarcode = lastScannedBarcode,
                let lastTime = lastScanTime,
@@ -545,13 +487,40 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
                 return
             }
 
-            lastScannedBarcode = stringValue
-            lastScanTime = now
+            // Multi-frame verification: require 3 consecutive identical reads
+            if candidateBarcode == stringValue {
+                // Same barcode detected again - increment counter
+                consecutiveDetections += 1
+                print("📸 Barcode verification: \(consecutiveDetections)/\(requiredConsecutiveDetections) - \(stringValue)")
 
-            print("Barcode scanned: \(stringValue)")
-            // Provide haptic feedback for successful scan
-            AudioServicesPlaySystemSound(SystemSoundID(kSystemSoundID_Vibrate))
-            onBarcodeScanned?(stringValue)
+                if consecutiveDetections >= requiredConsecutiveDetections {
+                    // Success! We have 3 consecutive identical reads
+                    print("✅ Barcode verified after \(requiredConsecutiveDetections) consecutive detections: \(stringValue)")
+
+                    lastScannedBarcode = stringValue
+                    lastScanTime = now
+
+                    // Reset verification state
+                    candidateBarcode = nil
+                    consecutiveDetections = 0
+
+                    // Provide haptic feedback for successful scan
+                    AudioServicesPlaySystemSound(SystemSoundID(kSystemSoundID_Vibrate))
+                    onBarcodeScanned?(stringValue)
+                }
+            } else {
+                // Different barcode detected - reset and start new verification
+                candidateBarcode = stringValue
+                consecutiveDetections = 1
+                print("🔄 New barcode candidate: \(stringValue) (1/\(requiredConsecutiveDetections))")
+            }
+        } else {
+            // No barcode detected in this frame - reset verification
+            if candidateBarcode != nil {
+                print("❌ Lost barcode lock - resetting verification")
+                candidateBarcode = nil
+                consecutiveDetections = 0
+            }
         }
     }
 }
