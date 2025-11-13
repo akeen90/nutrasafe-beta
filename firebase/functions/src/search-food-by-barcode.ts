@@ -1,10 +1,154 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
+import axios from 'axios';
 import { analyzeIngredientsForAdditives, calculateProcessingScore, determineGrade, loadAdditiveDatabase, DATABASE_VERSION } from './additive-analyzer-enhanced';
 
 // Initialize Firebase Admin if not already initialized
 if (!admin.apps.length) {
   admin.initializeApp();
+}
+
+// Helper function to check if ingredients are in English
+function isEnglishIngredients(ingredientsText: string): boolean {
+  if (!ingredientsText || ingredientsText.trim().length === 0) {
+    return false;
+  }
+
+  // Check for common non-English characters (French, German, Spanish, Italian accents)
+  const nonEnglishPattern = /[áàâäãåąčćęèéêëėįìíîïłńòóôöõøùúûüųūÿýżźñçčšž]/i;
+  if (nonEnglishPattern.test(ingredientsText)) {
+    console.log('⚠️ Non-English characters detected in ingredients');
+    return false;
+  }
+
+  // Check for common non-English words
+  const nonEnglishWords = [
+    // French
+    'ingrédients', 'eau', 'huile', 'sucre', 'sel', 'lait', 'beurre',
+    // German
+    'zutaten', 'wasser', 'zucker', 'salz', 'milch', 'butter',
+    // Spanish
+    'ingredientes', 'agua', 'azúcar', 'leche', 'mantequilla',
+    // Italian
+    'ingredienti', 'acqua', 'zucchero', 'latte', 'burro'
+  ];
+
+  const lowerText = ingredientsText.toLowerCase();
+  const hasNonEnglishWords = nonEnglishWords.some(word => {
+    // Check for word boundaries to avoid false positives
+    const regex = new RegExp(`\\b${word}\\b`, 'i');
+    return regex.test(lowerText);
+  });
+
+  if (hasNonEnglishWords) {
+    console.log('⚠️ Non-English words detected in ingredients');
+    return false;
+  }
+
+  // Check for common English food words (positive indicator)
+  const englishWords = ['water', 'sugar', 'salt', 'flour', 'oil', 'butter', 'milk', 'wheat', 'ingredients'];
+  const hasEnglishWords = englishWords.some(word => {
+    const regex = new RegExp(`\\b${word}\\b`, 'i');
+    return regex.test(lowerText);
+  });
+
+  return hasEnglishWords;
+}
+
+// Helper function to check if a product is UK/English
+function isUKEnglishProduct(product: any): boolean {
+  // Check countries
+  const countries = product.countries_tags || product.countries || [];
+  const countriesString = Array.isArray(countries) ? countries.join(',').toLowerCase() : String(countries).toLowerCase();
+
+  const isUKProduct = countriesString.includes('united-kingdom') ||
+                      countriesString.includes('uk') ||
+                      countriesString.includes('great-britain') ||
+                      countriesString.includes('england') ||
+                      countriesString.includes('scotland') ||
+                      countriesString.includes('wales') ||
+                      countriesString.includes('northern-ireland');
+
+  // Check languages
+  const languages = product.languages_tags || product.languages || [];
+  const languagesString = Array.isArray(languages) ? languages.join(',').toLowerCase() : String(languages).toLowerCase();
+  const hasEnglishLanguage = languagesString.includes('en') || languagesString.includes('english');
+
+  // Check ingredients language
+  const ingredientsText = product.ingredients_text_en || product.ingredients_text || '';
+  const hasEnglishIngredients = isEnglishIngredients(ingredientsText);
+
+  console.log(`🔍 Product check - UK: ${isUKProduct}, English lang: ${hasEnglishLanguage}, English ingredients: ${hasEnglishIngredients}`);
+
+  // Accept if: (UK product OR has English language) AND has English ingredients
+  // This ensures we get UK products or any product with proper English ingredient labels
+  return (isUKProduct || hasEnglishLanguage) && hasEnglishIngredients;
+}
+
+// Helper function to fetch from OpenFoodFacts with UK filtering
+async function fetchFromOpenFoodFacts(barcode: string): Promise<any | null> {
+  try {
+    console.log(`🌍 Fetching barcode ${barcode} from OpenFoodFacts...`);
+
+    const response = await axios.get(`https://world.openfoodfacts.org/api/v2/product/${barcode}`, {
+      timeout: 5000,
+      headers: {
+        'User-Agent': 'NutraSafe/1.0 (https://nutrasafe.co.uk)'
+      }
+    });
+
+    if (response.data.status === 1 && response.data.product) {
+      const product = response.data.product;
+
+      // Filter for UK English products
+      if (!isUKEnglishProduct(product)) {
+        console.log(`❌ Product ${product.product_name || barcode} is not a UK English product - skipping`);
+        return null;
+      }
+
+      console.log(`✅ Found UK English product: ${product.product_name || 'Unknown'}`);
+      return product;
+    }
+
+    console.log(`⚠️ Product not found on OpenFoodFacts`);
+    return null;
+  } catch (error) {
+    console.error('❌ OpenFoodFacts API error:', error);
+    return null;
+  }
+}
+
+// Helper function to transform OpenFoodFacts data to our format
+function transformOpenFoodFactsProduct(offProduct: any, barcode: string): any {
+  const nutriments = offProduct.nutriments || {};
+
+  // Get ingredients text (prefer English version)
+  const ingredientsText = offProduct.ingredients_text_en || offProduct.ingredients_text || '';
+
+  return {
+    food_id: `off-${barcode}`,
+    food_name: offProduct.product_name || offProduct.product_name_en || 'Unknown Product',
+    brand_name: offProduct.brands || null,
+    barcode: barcode,
+    calories: nutriments['energy-kcal_100g'] || nutriments['energy-kcal'] || 0,
+    protein: nutriments.proteins_100g || nutriments.proteins || 0,
+    carbohydrates: nutriments.carbohydrates_100g || nutriments.carbohydrates || 0,
+    fat: nutriments.fat_100g || nutriments.fat || 0,
+    fiber: nutriments.fiber_100g || nutriments.fiber || 0,
+    sugar: nutriments.sugars_100g || nutriments.sugars || 0,
+    sodium: nutriments.sodium_100g ? nutriments.sodium_100g * 1000 : (nutriments.salt_100g ? nutriments.salt_100g * 1000 : 0),
+    serving_description: 'per 100g',
+    ingredients: ingredientsText,
+    additives: [],
+    additivesDatabaseVersion: DATABASE_VERSION,
+    processing_score: 0,
+    processing_grade: 'A',
+    processing_label: 'Not analyzed',
+    micronutrient_profile: null,
+    source_collection: 'openfoodfacts',
+    verified_by: null,
+    verified_at: null
+  };
 }
 
 export const searchFoodByBarcode = functions.https.onRequest(async (req, res) => {
@@ -67,7 +211,48 @@ export const searchFoodByBarcode = functions.https.onRequest(async (req, res) =>
     }
 
     if (!foundFood) {
-      console.log(`No food found with barcode: ${barcode}`);
+      console.log(`No food found in Firebase collections with barcode: ${barcode}`);
+
+      // Try OpenFoodFacts as fallback
+      const offProduct = await fetchFromOpenFoodFacts(barcode);
+
+      if (offProduct) {
+        // Transform and analyze the OpenFoodFacts product
+        const transformedFood = transformOpenFoodFactsProduct(offProduct, barcode);
+
+        // Analyze ingredients for additives if available
+        if (transformedFood.ingredients && transformedFood.ingredients.length > 0) {
+          try {
+            const analysisResult = analyzeIngredientsForAdditives(transformedFood.ingredients);
+            const processingScore = calculateProcessingScore(analysisResult.detectedAdditives, transformedFood.ingredients);
+            const grade = determineGrade(processingScore.totalScore, analysisResult.hasRedFlags);
+
+            transformedFood.additives = analysisResult.detectedAdditives.map(additive => ({
+              ...additive,
+              id: additive.code,
+              consumerInfo: additive.consumer_guide
+            }));
+
+            transformedFood.processing_score = processingScore.totalScore;
+            transformedFood.processing_grade = grade.grade;
+            transformedFood.processing_label = grade.label;
+          } catch (error) {
+            console.log(`Additive analysis failed for OpenFoodFacts product:`, error);
+          }
+        }
+
+        console.log(`✅ Returning UK English product from OpenFoodFacts: ${transformedFood.food_name}`);
+
+        // Return the OpenFoodFacts product
+        res.json({
+          success: true,
+          food: transformedFood
+        });
+        return;
+      }
+
+      // Neither Firebase nor OpenFoodFacts (UK English) has this product
+      console.log(`❌ No UK English product found anywhere for barcode: ${barcode}`);
 
       // Create placeholder entry for unknown barcode
       const placeholderId = `barcode-${barcode}-${Date.now()}`;
@@ -104,7 +289,7 @@ export const searchFoodByBarcode = functions.https.onRequest(async (req, res) =>
         res.json({
           success: false,
           error: 'Product not found',
-          message: 'No food found with this barcode in our database',
+          message: 'No UK English product found with this barcode',
           action: 'user_contribution_needed',
           placeholder_id: placeholderId,
           barcode: barcode
@@ -114,7 +299,7 @@ export const searchFoodByBarcode = functions.https.onRequest(async (req, res) =>
         res.json({
           success: false,
           error: 'Product not found',
-          message: 'No food found with this barcode in our database'
+          message: 'No UK English product found with this barcode'
         });
       }
       return;
