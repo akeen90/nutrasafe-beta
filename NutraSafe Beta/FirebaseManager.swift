@@ -13,8 +13,8 @@ class FirebaseManager: ObservableObject {
     private lazy var db = Firestore.firestore()
     private lazy var auth = Auth.auth()
 
-    // Thread-safe cache using NSLock
-    private let cacheLock = NSLock()
+    // Thread-safe cache using DispatchQueue (Swift 6 async-safe)
+    private let cacheQueue = DispatchQueue(label: "com.nutrasafe.cacheQueue")
     private var authListenerHandle: AuthStateDidChangeListenerHandle?
 
     // MARK: - Search Cache (Optimized with NSCache)
@@ -253,10 +253,8 @@ class FirebaseManager: ObservableObject {
         dateFormatter.dateFormat = "yyyy-MM-dd"
         let dateKey = "\(userId)_\(dateFormatter.string(from: startOfDay))"
 
-        // Return cached entries if still valid (with lock protection)
-        cacheLock.lock()
-        let cachedEntry = foodEntriesCache[dateKey]
-        cacheLock.unlock()
+        // Return cached entries if still valid (with async-safe synchronization)
+        let cachedEntry = cacheQueue.sync { foodEntriesCache[dateKey] }
 
         if let cached = cachedEntry,
            Date().timeIntervalSince(cached.timestamp) < foodEntriesCacheExpirationSeconds {
@@ -283,10 +281,10 @@ class FirebaseManager: ObservableObject {
             }
         }
 
-        // Store in cache (thread-safe with NSLock)
-        cacheLock.lock()
-        foodEntriesCache[dateKey] = FoodEntriesCacheEntry(entries: entries, timestamp: Date())
-        cacheLock.unlock()
+        // Store in cache (async-safe with DispatchQueue)
+        cacheQueue.sync {
+            foodEntriesCache[dateKey] = FoodEntriesCacheEntry(entries: entries, timestamp: Date())
+        }
 
         return entries
     }
@@ -299,10 +297,8 @@ class FirebaseManager: ObservableObject {
     func getFoodEntriesForPeriod(days: Int) async throws -> [FoodEntry] {
         guard let userId = currentUser?.uid else { return [] }
 
-        // Check cache first (thread-safe with NSLock)
-        cacheLock.lock()
-        let cachedPeriod = periodCache[days]
-        cacheLock.unlock()
+        // Check cache first (async-safe synchronization)
+        let cachedPeriod = cacheQueue.sync { periodCache[days] }
 
         if let cached = cachedPeriod,
            Date().timeIntervalSince(cached.timestamp) < periodCacheExpirationSeconds {
@@ -332,10 +328,10 @@ class FirebaseManager: ObservableObject {
             }
         }
 
-        // Store in cache (thread-safe with NSLock)
-        cacheLock.lock()
-        periodCache[days] = (entries, Date())
-        cacheLock.unlock()
+        // Store in cache (async-safe with DispatchQueue)
+        cacheQueue.sync {
+            periodCache[days] = (entries, Date())
+        }
 
         return entries
     }

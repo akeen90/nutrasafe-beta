@@ -415,40 +415,6 @@ actor SQLiteFoodDatabase {
         LIMIT ?;
         """
 
-        let _ = """
-        SELECT
-            id, name, brand, barcode,
-            calories, protein, carbs, fat, fiber, sugar, sodium,
-            serving_description, serving_size_g,
-            vitamin_a, vitamin_c, vitamin_d, vitamin_e, vitamin_k,
-            thiamin_b1, riboflavin_b2, niacin_b3, pantothenic_b5,
-            vitamin_b6, biotin_b7, folate_b9, vitamin_b12, choline,
-            calcium, iron, magnesium, phosphorus, potassium,
-            zinc, copper, manganese, selenium, chromium, molybdenum, iodine,
-            processing_score, processing_grade, processing_label,
-            is_verified,
-            ingredients
-        FROM foods
-        WHERE id IN (SELECT id FROM foods_fts WHERE foods_fts MATCH ?)
-        ORDER BY
-            CASE
-                WHEN LOWER(brand) = 'generic' AND name LIKE ? COLLATE NOCASE THEN 0
-                WHEN barcode = ? THEN 1
-                WHEN LOWER(name) = LOWER(?) THEN 2
-                WHEN name LIKE ? COLLATE NOCASE OR name LIKE ? COLLATE NOCASE OR name LIKE ? COLLATE NOCASE THEN 3
-                WHEN name LIKE ? COLLATE NOCASE THEN 4
-                WHEN name LIKE ? COLLATE NOCASE OR name LIKE ? COLLATE NOCASE THEN 5
-                WHEN brand LIKE ? COLLATE NOCASE THEN 6
-                WHEN name LIKE ? COLLATE NOCASE THEN 7
-                WHEN brand LIKE ? COLLATE NOCASE THEN 8
-                ELSE 9
-            END,
-            CASE WHEN LOWER(brand) = 'generic' THEN 0 ELSE 1 END,
-            LENGTH(name) ASC,
-            name ASC
-        LIMIT ?;
-        """
-
         var statement: OpaquePointer?
         var results: [FoodSearchResult] = []
 

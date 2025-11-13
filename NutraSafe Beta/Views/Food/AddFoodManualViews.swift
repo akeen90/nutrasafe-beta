@@ -26,14 +26,24 @@ struct NutritionPer100g: Codable {
 
 /// Product variant from Cloud Function
 struct ProductVariant: Codable {
-    let size_description: String?
+    let pack_size: String?              // Total product size (e.g., "51g", "400g", "6 pack")
+    let serving_size_g: Double?         // Single serving weight in grams
+    let servings_per_pack: Double?      // Number of servings in the pack
+    let nutrition_basis: String?        // "per_100g", "per_serving", or "per_pack"
     let product_name: String?
     let brand: String?
     let barcode: String?
-    let serving_size_g: Double?
     let ingredients_text: String?
     let nutrition_per_100g: NutritionPer100g?
     let source_url: String?
+
+    // Backwards compatibility - map old size_description to pack_size
+    let size_description: String?
+
+    // Computed property to get pack size from either new or old field
+    var displayPackSize: String? {
+        pack_size ?? size_description
+    }
 }
 
 /// Response model from Cloud Function
@@ -45,11 +55,16 @@ struct IngredientFinderResponse: Codable {
     var product_name: String? { variants.first?.product_name }
     var brand: String? { variants.first?.brand }
     var barcode: String? { variants.first?.barcode }
-    var serving_size_g: Double? { variants.first?.serving_size_g }  // Use numeric serving size, not pack size
-    var size_description: String? { variants.first?.size_description }  // Pack size for display
+    var pack_size: String? { variants.first?.displayPackSize }         // Total product size
+    var serving_size_g: Double? { variants.first?.serving_size_g }     // Single serving weight
+    var servings_per_pack: Double? { variants.first?.servings_per_pack }
+    var nutrition_basis: String? { variants.first?.nutrition_basis }   // How nutrition is shown
     var ingredients_text: String? { variants.first?.ingredients_text }
     var nutrition_per_100g: NutritionPer100g? { variants.first?.nutrition_per_100g }
     var source_url: String? { variants.first?.source_url }
+
+    // Backwards compatibility
+    var size_description: String? { variants.first?.displayPackSize }
 }
 
 /// Service for finding ingredients using AI
@@ -1418,6 +1433,91 @@ struct BarcodeScannerSheetView: View {
     }
 }
 
+// MARK: - Serving Size Warning Banner
+
+/// Warning banner for serving size detection issues
+struct ServingSizeWarningBanner: View {
+    let response: IngredientFinderResponse?
+
+    var body: some View {
+        Group {
+            // Case 1: No serving size detected, but have pack size
+            if (response?.serving_size_g == nil || response?.serving_size_g == 0),
+               let packSize = response?.pack_size, !packSize.isEmpty {
+
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.orange)
+                        Text("No Serving Size Detected")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.primary)
+                    }
+
+                    Text("The product size is **\(packSize)**. If this is a single-serve item, you can use this as the serving size. Otherwise, please check the packet for the recommended serving.")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.orange.opacity(0.1))
+                .cornerRadius(12)
+                .padding(.horizontal, 20)
+            }
+            // Case 2: Serving size seems unrealistically large (>100g)
+            else if let servingSize = response?.serving_size_g, servingSize > 100 {
+
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "questionmark.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.orange)
+                        Text("Please Verify Serving Size")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.primary)
+                    }
+
+                    Text("The detected serving size is **\(String(format: "%.0f", servingSize))g**, which seems large. Please check the packet to confirm this is the correct serving size, not the product size.")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.orange.opacity(0.1))
+                .cornerRadius(12)
+                .padding(.horizontal, 20)
+            }
+            // Case 3: Good serving size detected (1-100g)
+            else if let servingSize = response?.serving_size_g, servingSize > 0 {
+
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.green)
+                        Text("Serving Size Detected")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.primary)
+                    }
+
+                    Text("Found a serving size of **\(String(format: "%.0f", servingSize))g**. This will be used for your food diary entry.")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.green.opacity(0.1))
+                .cornerRadius(12)
+                .padding(.horizontal, 20)
+            }
+        }
+    }
+}
+
 // MARK: - Ingredient Confirmation Modal
 
 /// Modal to confirm AI-found ingredients
@@ -1470,6 +1570,9 @@ struct IngredientConfirmationModal: View {
                     }
                     .padding(.horizontal, 20)
                 }
+
+                // Serving Size Warning Banner
+                ServingSizeWarningBanner(response: response)
 
                 // Serving Size (if available from AI)
                 if let servingSizeG = response?.serving_size_g, servingSizeG > 0 {

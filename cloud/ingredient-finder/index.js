@@ -65,12 +65,21 @@ async function searchWithGemini(productName, brand) {
     }]
   });
 
-  // Optimized concise prompt - searches for multiple pack sizes
+  // Enhanced prompt - distinguishes pack size, serving size, and nutrition basis
   const prompt = `Find UK product "${productName}"${brand ? ` by ${brand}` : ''} from Tesco/Sainsburys/Asda.
 Find ALL available pack sizes (single item, multipack, sharing bag, large family pack, etc).
-For EACH size: ingredients list + nutrition per 100g (kcal, protein, carbs, fat, fiber, sugar, salt in g).
+
+IMPORTANT: Extract THREE distinct values:
+1. pack_size: Total product weight/quantity (e.g., "51g", "400g", "6 pack")
+2. serving_size_g: Single serving weight in grams (e.g., 30g, 51g)
+3. nutrition_basis: How nutrition is shown - "per_100g", "per_serving", or "per_pack"
+
+For EACH pack size variant: ingredients list + nutrition always converted to per 100g (kcal, protein, carbs, fat, fiber, sugar, salt in g).
+
 Return JSON array:
-[{"size_description":"10 sweets (10g)","product_name":"...","brand":"...","barcode":"...","ingredients":"comma separated list","nutrition_per_100g":{"calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0,"salt":0},"source_url":"..."}]
+[{"pack_size":"51g","serving_size_g":51,"servings_per_pack":1,"nutrition_basis":"per_serving","product_name":"...","brand":"...","barcode":"...","ingredients":"comma separated list","nutrition_per_100g":{"calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0,"salt":0},"source_url":"..."}]
+
+CRITICAL: If nutrition label says "per serving" or "per bar/pack", put that value in serving_size_g. If only showing "per 100g", set serving_size_g to null.
 Use null for missing fields. Convert sodium to salt (*2.5). Remove "Ingredients:" prefix. Return 2-3+ sizes if available.`;
 
   try {
