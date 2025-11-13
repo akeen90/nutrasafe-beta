@@ -45,7 +45,8 @@ struct IngredientFinderResponse: Codable {
     var product_name: String? { variants.first?.product_name }
     var brand: String? { variants.first?.brand }
     var barcode: String? { variants.first?.barcode }
-    var serving_size: String? { variants.first?.size_description }
+    var serving_size_g: Double? { variants.first?.serving_size_g }  // Use numeric serving size, not pack size
+    var size_description: String? { variants.first?.size_description }  // Pack size for display
     var ingredients_text: String? { variants.first?.ingredients_text }
     var nutrition_per_100g: NutritionPer100g? { variants.first?.nutrition_per_100g }
     var source_url: String? { variants.first?.source_url }
@@ -65,45 +66,16 @@ class IngredientFinderService: ObservableObject {
 
     private init() {}
 
-    /// Search for ingredients using AI (checks cache first)
+    /// Search for ingredients using AI
     func findIngredients(productName: String, brand: String?, barcode: String? = nil) async throws -> IngredientFinderResponse {
         // Check rate limit
         try checkRateLimit()
-
-        // Check cache first (only if not using barcode search, as barcode searches are more specific)
-        if barcode == nil, let cached = try? await FirebaseManager.shared.getIngredientCache(productName: productName, brand: brand) {
-            print("✅ Found ingredients in cache for \(productName)")
-            let variant = ProductVariant(
-                size_description: nil,
-                product_name: nil,
-                brand: nil,
-                barcode: nil,
-                serving_size_g: nil,
-                ingredients_text: cached.ingredients_text,
-                nutrition_per_100g: nil,
-                source_url: cached.source_url
-            )
-            return IngredientFinderResponse(
-                ingredients_found: cached.ingredients_found,
-                variants: [variant]
-            )
-        }
 
         // Call Cloud Function
         isSearching = true
         defer { isSearching = false }
 
         let response = try await callCloudFunction(productName: productName, brand: brand, barcode: barcode)
-
-        // Cache the result if ingredients were found
-        if response.ingredients_found, let ingredientsText = response.ingredients_text {
-            try? await FirebaseManager.shared.setIngredientCache(
-                productName: productName,
-                brand: brand,
-                ingredientsText: ingredientsText,
-                sourceUrl: response.source_url
-            )
-        }
 
         // Update rate limit tracking
         await MainActor.run {
@@ -799,17 +771,24 @@ struct ManualFoodDetailEntryView: View {
                         if let barcodeValue = foundIngredients?.barcode, !barcodeValue.isEmpty {
                             barcode = barcodeValue
                         }
-                        // Apply serving size if found
-                        print("🔎 MANUAL ADD (onUse) - Checking serving size: \(foundIngredients?.serving_size ?? "NIL")")
-                        if let servingSizeStr = foundIngredients?.serving_size, !servingSizeStr.isEmpty {
-                            print("📏 MANUAL ADD (onUse) - Updating serving size from AI: \(servingSizeStr)")
-                            let parsed = parseServingSize(servingSizeStr)
-        // DEBUG LOG: print("🔧 MANUAL ADD (onUse) - Parsed: amount=\(parsed.amount), unit=\(parsed.unit)")
-                            servingSize = parsed.amount
-                            servingUnit = parsed.unit
-                            print("✅ MANUAL ADD (onUse) - Serving size updated: servingSize=\(servingSize), servingUnit=\(servingUnit)")
+                        // Apply serving size if found (use numeric field, not pack size string)
+                        if let servingSizeGrams = foundIngredients?.serving_size_g {
+                            // Validate that serving size is reasonable (not product size)
+                            if servingSizeGrams > 0 && servingSizeGrams <= 500 {
+                                servingSize = String(format: "%.0f", servingSizeGrams)
+                                servingUnit = "g"
+                                print("✅ MANUAL ADD - Using AI serving size: \(servingSizeGrams)g")
+                            } else {
+                                // Unreasonable serving size, default to 100g
+                                servingSize = "100"
+                                servingUnit = "g"
+                                print("⚠️ MANUAL ADD - AI serving size (\(servingSizeGrams)g) seems unreasonable, defaulting to 100g")
+                            }
                         } else {
-                            print("⚠️ MANUAL ADD (onUse) - No serving size in result OR serving size is empty")
+                            // No serving size from AI, default to 100g (matches nutrition per 100g)
+                            servingSize = "100"
+                            servingUnit = "g"
+                            print("ℹ️ MANUAL ADD - No serving size from AI, defaulting to 100g")
                         }
                         // Apply ingredients
                         if let ingredients = foundIngredients?.ingredients_text {
@@ -842,17 +821,24 @@ struct ManualFoodDetailEntryView: View {
                         if let barcodeValue = foundIngredients?.barcode, !barcodeValue.isEmpty {
                             barcode = barcodeValue
                         }
-                        // Apply serving size if found
-                        print("🔎 MANUAL ADD (onEdit) - Checking serving size: \(foundIngredients?.serving_size ?? "NIL")")
-                        if let servingSizeStr = foundIngredients?.serving_size, !servingSizeStr.isEmpty {
-                            print("📏 MANUAL ADD (onEdit) - Updating serving size from AI: \(servingSizeStr)")
-                            let parsed = parseServingSize(servingSizeStr)
-        // DEBUG LOG: print("🔧 MANUAL ADD (onEdit) - Parsed: amount=\(parsed.amount), unit=\(parsed.unit)")
-                            servingSize = parsed.amount
-                            servingUnit = parsed.unit
-                            print("✅ MANUAL ADD (onEdit) - Serving size updated: servingSize=\(servingSize), servingUnit=\(servingUnit)")
+                        // Apply serving size if found (use numeric field, not pack size string)
+                        if let servingSizeGrams = foundIngredients?.serving_size_g {
+                            // Validate that serving size is reasonable (not product size)
+                            if servingSizeGrams > 0 && servingSizeGrams <= 500 {
+                                servingSize = String(format: "%.0f", servingSizeGrams)
+                                servingUnit = "g"
+                                print("✅ MANUAL ADD (onEdit) - Using AI serving size: \(servingSizeGrams)g")
+                            } else {
+                                // Unreasonable serving size, default to 100g
+                                servingSize = "100"
+                                servingUnit = "g"
+                                print("⚠️ MANUAL ADD (onEdit) - AI serving size (\(servingSizeGrams)g) seems unreasonable, defaulting to 100g")
+                            }
                         } else {
-                            print("⚠️ MANUAL ADD (onEdit) - No serving size in result OR serving size is empty")
+                            // No serving size from AI, default to 100g (matches nutrition per 100g)
+                            servingSize = "100"
+                            servingUnit = "g"
+                            print("ℹ️ MANUAL ADD (onEdit) - No serving size from AI, defaulting to 100g")
                         }
                         // Apply ingredients and nutrition for editing
                         if let ingredients = foundIngredients?.ingredients_text {
@@ -913,7 +899,8 @@ struct ManualFoodDetailEntryView: View {
                 print("  - ingredients_found: \(response.ingredients_found)")
                 print("  - ingredients_text: \(response.ingredients_text?.prefix(50) ?? "nil")")
                 print("  - nutrition: \(response.nutrition_per_100g != nil ? "YES" : "NO")")
-                print("  - serving_size: \(response.serving_size ?? "NIL")")
+                print("  - serving_size_g: \(response.serving_size_g != nil ? "\(response.serving_size_g!)g" : "NIL")")
+                print("  - size_description: \(response.size_description ?? "NIL")")
                 print("  - product_name: \(response.product_name ?? "nil")")
                 print("  - brand: \(response.brand ?? "nil")")
                 print("  - source_url: \(response.source_url ?? "nil")")
@@ -1484,19 +1471,42 @@ struct IngredientConfirmationModal: View {
                     .padding(.horizontal, 20)
                 }
 
-                // Serving Size (if available)
-                if let servingSize = response?.serving_size {
+                // Serving Size (if available from AI)
+                if let servingSizeG = response?.serving_size_g, servingSizeG > 0 {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "fork.knife")
+                                .font(.system(size: 14))
+                                .foregroundColor(.green)
+                            Text("Recommended Serving:")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.secondary)
+                        }
+
+                        Text(String(format: "%.0fg", servingSizeG))
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.primary)
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.green.opacity(0.1))
+                            .cornerRadius(8)
+                    }
+                    .padding(.horizontal, 20)
+                }
+
+                // Product Size (if available)
+                if let sizeDesc = response?.size_description {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 6) {
                             Image(systemName: "gauge.with.dots.needle.67percent")
                                 .font(.system(size: 14))
                                 .foregroundColor(.blue)
-                            Text("Serving Size:")
+                            Text("Product Size:")
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundColor(.secondary)
                         }
 
-                        Text(servingSize)
+                        Text(sizeDesc)
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(.primary)
                             .padding(12)

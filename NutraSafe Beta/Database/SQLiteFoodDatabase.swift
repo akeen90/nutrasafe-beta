@@ -16,11 +16,18 @@ actor SQLiteFoodDatabase {
     private var db: OpaquePointer?
     private let dbPath: String
     private var isInitialized = false
+    private var ftsAvailable = false
 
     private init() {
         // Store database in app's documents directory
         let fileManager = FileManager.default
-        let documentDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        guard let documentDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            // Fallback: Use temporary directory if documents directory is unavailable (extremely rare)
+            let tempDirectory = fileManager.temporaryDirectory
+            dbPath = tempDirectory.appendingPathComponent("nutrasafe_foods.db").path
+            print("⚠️ Could not access documents directory, using temporary directory: \(dbPath)")
+            return
+        }
         dbPath = documentDirectory.appendingPathComponent("nutrasafe_foods.db").path
 
         print("📂 SQLite database path: \(dbPath)")
@@ -256,6 +263,15 @@ actor SQLiteFoodDatabase {
         CREATE INDEX IF NOT EXISTS idx_additives_food_id ON food_additives(food_id);
         """
 
+        let createFTSTable = """
+        CREATE VIRTUAL TABLE IF NOT EXISTS foods_fts USING fts5(
+            id UNINDEXED,
+            name,
+            brand,
+            ingredients
+        );
+        """
+
         // Execute all SQL statements
         executeSQL(createFoodsTable)
         executeSQL(createBarcodeIndex)
@@ -266,6 +282,10 @@ actor SQLiteFoodDatabase {
         executeSQL(createIngredientsSearchIndex)
         executeSQL(createAdditivesTable)
         executeSQL(createAdditivesIndex)
+        executeSQL(createFTSTable)
+
+        ftsAvailable = tableExists("foods_fts")
+        if ftsAvailable { rebuildFTSIndex() }
     }
 
     private func executeSQL(_ sql: String) {
@@ -281,6 +301,36 @@ actor SQLiteFoodDatabase {
             print("❌ SQL preparation error: \(errorMessage)")
         }
 
+        sqlite3_finalize(statement)
+    }
+
+    private func tableExists(_ name: String) -> Bool {
+        var statement: OpaquePointer?
+        let query = "SELECT name FROM sqlite_master WHERE type='table' AND name=?;"
+        var exists = false
+        if sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK {
+            sqlite3_bind_text(statement, 1, (name as NSString).utf8String, -1, nil)
+            if sqlite3_step(statement) == SQLITE_ROW { exists = true }
+        }
+        sqlite3_finalize(statement)
+        return exists
+    }
+
+    private func rebuildFTSIndex() {
+        var statement: OpaquePointer?
+        let deleteSQL = "DELETE FROM foods_fts;"
+        _ = sqlite3_exec(db, deleteSQL, nil, nil, nil)
+        let insertSQL = """
+        INSERT INTO foods_fts (id, name, brand, ingredients)
+        SELECT f.id, f.name, IFNULL(f.brand,''), IFNULL((
+            SELECT GROUP_CONCAT(ingredient, ' ')
+            FROM food_ingredients fi WHERE fi.food_id = f.id
+        ), '')
+        FROM foods f;
+        """
+        if sqlite3_prepare_v2(db, insertSQL, -1, &statement, nil) == SQLITE_OK {
+            while sqlite3_step(statement) == SQLITE_ROW { }
+        }
         sqlite3_finalize(statement)
     }
 
@@ -308,7 +358,6 @@ actor SQLiteFoodDatabase {
     /// Search foods by name, brand, or barcode with intelligent fuzzy ranking
     func searchFoods(query: String, limit: Int = 20) async -> [FoodSearchResult] {
         await ensureInitialized()
-
         let sql = """
         SELECT
             id, name, brand, barcode,
@@ -366,15 +415,49 @@ actor SQLiteFoodDatabase {
         LIMIT ?;
         """
 
+        let _ = """
+        SELECT
+            id, name, brand, barcode,
+            calories, protein, carbs, fat, fiber, sugar, sodium,
+            serving_description, serving_size_g,
+            vitamin_a, vitamin_c, vitamin_d, vitamin_e, vitamin_k,
+            thiamin_b1, riboflavin_b2, niacin_b3, pantothenic_b5,
+            vitamin_b6, biotin_b7, folate_b9, vitamin_b12, choline,
+            calcium, iron, magnesium, phosphorus, potassium,
+            zinc, copper, manganese, selenium, chromium, molybdenum, iodine,
+            processing_score, processing_grade, processing_label,
+            is_verified,
+            ingredients
+        FROM foods
+        WHERE id IN (SELECT id FROM foods_fts WHERE foods_fts MATCH ?)
+        ORDER BY
+            CASE
+                WHEN LOWER(brand) = 'generic' AND name LIKE ? COLLATE NOCASE THEN 0
+                WHEN barcode = ? THEN 1
+                WHEN LOWER(name) = LOWER(?) THEN 2
+                WHEN name LIKE ? COLLATE NOCASE OR name LIKE ? COLLATE NOCASE OR name LIKE ? COLLATE NOCASE THEN 3
+                WHEN name LIKE ? COLLATE NOCASE THEN 4
+                WHEN name LIKE ? COLLATE NOCASE OR name LIKE ? COLLATE NOCASE THEN 5
+                WHEN brand LIKE ? COLLATE NOCASE THEN 6
+                WHEN name LIKE ? COLLATE NOCASE THEN 7
+                WHEN brand LIKE ? COLLATE NOCASE THEN 8
+                ELSE 9
+            END,
+            CASE WHEN LOWER(brand) = 'generic' THEN 0 ELSE 1 END,
+            LENGTH(name) ASC,
+            name ASC
+        LIMIT ?;
+        """
+
         var statement: OpaquePointer?
         var results: [FoodSearchResult] = []
 
         let queryLower = query.lowercased()
         let searchPattern = "%\(query)%"
         let startsWithQuery = "\(query)%"
-        let startsWithComma = "\(query),%"  // Matches "Banana,something" and "Banana, something" (space handled by LIKE)
+        let startsWithComma = "\(query),%"
         let startsWithDash = "\(query) -%"
-        let startsWithParen = "\(query) (%"  // Matches "Banana (Small)" pattern
+        let startsWithParen = "\(query) (%"
         let wholeWordSpace = "% \(query) %"
         let wholeWordStart = "\(query) %"
 
@@ -384,24 +467,24 @@ actor SQLiteFoodDatabase {
 
         if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
             // WHERE clause bindings
-            sqlite3_bind_text(statement, 1, (searchPattern as NSString).utf8String, -1, nil)  // name LIKE
-            sqlite3_bind_text(statement, 2, (searchPattern as NSString).utf8String, -1, nil)  // brand LIKE
-            sqlite3_bind_text(statement, 3, (query as NSString).utf8String, -1, nil)         // barcode =
+            sqlite3_bind_text(statement, 1, (searchPattern as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(statement, 2, (searchPattern as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(statement, 3, (query as NSString).utf8String, -1, nil)
 
             // ORDER BY clause bindings
-            sqlite3_bind_text(statement, 4, (startsWithQuery as NSString).utf8String, -1, nil) // Priority 0: Generic brand + starts with
-            sqlite3_bind_text(statement, 5, (query as NSString).utf8String, -1, nil)         // Priority 1: barcode exact
-            sqlite3_bind_text(statement, 6, (queryLower as NSString).utf8String, -1, nil)    // Priority 2: name exact
-            sqlite3_bind_text(statement, 7, (startsWithComma as NSString).utf8String, -1, nil) // Priority 3: name, comma
-            sqlite3_bind_text(statement, 8, (startsWithDash as NSString).utf8String, -1, nil)  // Priority 3: name - dash
-            sqlite3_bind_text(statement, 9, (startsWithParen as NSString).utf8String, -1, nil) // Priority 3: name (parenthesis
-            sqlite3_bind_text(statement, 10, (startsWithQuery as NSString).utf8String, -1, nil) // Priority 4: name starts
-            sqlite3_bind_text(statement, 11, (wholeWordSpace as NSString).utf8String, -1, nil)  // Priority 5: whole word
-            sqlite3_bind_text(statement, 12, (wholeWordStart as NSString).utf8String, -1, nil) // Priority 5: whole word start
-            sqlite3_bind_text(statement, 13, (startsWithQuery as NSString).utf8String, -1, nil) // Priority 6: brand starts
-            sqlite3_bind_text(statement, 14, (searchPattern as NSString).utf8String, -1, nil)   // Priority 7: name contains
-            sqlite3_bind_text(statement, 15, (searchPattern as NSString).utf8String, -1, nil)   // Priority 8: brand contains
-            sqlite3_bind_int(statement, 16, Int32(limit * 2))  // Get extra results for better ranking
+            sqlite3_bind_text(statement, 4, (startsWithQuery as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(statement, 5, (query as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(statement, 6, (queryLower as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(statement, 7, (startsWithComma as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(statement, 8, (startsWithDash as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(statement, 9, (startsWithParen as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(statement, 10, (startsWithQuery as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(statement, 11, (wholeWordSpace as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(statement, 12, (wholeWordStart as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(statement, 13, (startsWithQuery as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(statement, 14, (searchPattern as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(statement, 15, (searchPattern as NSString).utf8String, -1, nil)
+            sqlite3_bind_int(statement, 16, Int32(limit * 2))
 
             var rowCount = 0
             while sqlite3_step(statement) == SQLITE_ROW {

@@ -301,11 +301,12 @@ struct DiaryFoodRow: View {
         .buttonStyle(PlainButtonStyle())
         .onLongPressGesture {
             // Long press to view food details
-        // DEBUG LOG: print("DEBUG: Opening FoodDetailViewFromSearch from diary")
-        // DEBUG LOG: print("DEBUG: DiaryFoodItem.ingredients = \(food.ingredients?.count ?? 0) items: \(food.ingredients ?? [])")
+            // DEBUG LOG: print("DEBUG: Opening FoodDetailViewFromSearch from diary")
+            // DEBUG LOG: print("DEBUG: DiaryFoodItem.ingredients = \(food.ingredients?.count ?? 0) items: \(food.ingredients ?? [])")
             _ = food.toFoodSearchResult()
-        // DEBUG LOG: print("DEBUG: FoodSearchResult.ingredients = \(searchResult.ingredients?.count ?? 0) items: \(searchResult.ingredients ?? [])")
+            // DEBUG LOG: print("DEBUG: FoodSearchResult.ingredients = \(searchResult.ingredients?.count ?? 0) items: \(searchResult.ingredients ?? [])")
             showingFoodDetail = true
+            NotificationCenter.default.post(name: .diaryFoodDetailOpened, object: nil)
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(action: onDelete) {

@@ -543,11 +543,17 @@ struct AddFoodSearchView: View {
                     for i in 0..<enrichedResults.count {
                         let result = enrichedResults[i]
                         
-                        // Look for matching pending verifications by name/brand
+                        // Match strictly by name AND brand when both are present; avoid enriching generic/unbranded items
                         let matchingVerifications = pendingVerifications.filter { pending in
                             let nameMatch = pending.foodName.lowercased() == result.name.lowercased()
-                            let brandMatch = (pending.brandName?.lowercased() ?? "") == (result.brand?.lowercased() ?? "")
-                            return nameMatch && (brandMatch || (pending.brandName == nil && result.brand == nil))
+                            guard let pendingBrand = pending.brandName?.trimmingCharacters(in: .whitespacesAndNewlines),
+                                  !pendingBrand.isEmpty,
+                                  let resultBrand = result.brand?.trimmingCharacters(in: .whitespacesAndNewlines),
+                                  !resultBrand.isEmpty else {
+                                return false
+                            }
+                            let brandMatch = pendingBrand.lowercased() == resultBrand.lowercased()
+                            return nameMatch && brandMatch
                         }
                         
                         // If we found a matching verification with ingredients, use those

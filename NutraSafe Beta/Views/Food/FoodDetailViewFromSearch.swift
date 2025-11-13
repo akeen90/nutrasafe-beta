@@ -1347,124 +1347,9 @@ struct FoodDetailViewFromSearch: View {
             }
         }
         .onAppear {
-            // PERFORMANCE: Only initialize once per view instance, even if .onAppear is called multiple times
+            // Only initialize once per view instance, even if .onAppear is called multiple times
             guard !hasInitialized else { return }
             hasInitialized = true
-
-            // PERFORMANCE: Cache ingredients list ONCE on appear
-            if cachedIngredients == nil {
-                cachedIngredients = getIngredientsList()
-            }
-
-            // PERFORMANCE: Cache ingredients status ONCE on appear
-            if cachedIngredientsStatus == nil {
-                cachedIngredientsStatus = getIngredientsStatus()
-            }
-
-            // PERFORMANCE: Compute additives ONCE on appear and cache
-            if cachedAdditives == nil {
-                // Prefer saved additives if present (e.g., from Firebase)
-                if let firebaseAdditives = displayFood.additives, !firebaseAdditives.isEmpty {
-                    cachedAdditives = firebaseAdditives.map { additive in
-                        let riskLevel: String
-                        if additive.effectsVerdict == "avoid" {
-                            riskLevel = "High"
-                        } else if additive.effectsVerdict == "caution" {
-                            riskLevel = "Moderate"
-                        } else {
-                            riskLevel = "Low"
-                        }
-
-                        let description = additive.consumerGuide ?? "No detailed information available for this additive."
-
-                        return DetailedAdditive(
-                            name: additive.name,
-                            code: additive.code,
-                            purpose: additive.category.capitalized,
-                            origin: additive.origin ?? "Unknown",
-                            childWarning: additive.childWarning,
-                            riskLevel: riskLevel,
-                            description: description,
-                            sources: []
-                        )
-                    }
-                } else {
-                    // Use enhanced AdditiveWatchService which includes CSV fallback when comprehensive DB is missing
-                    let ingredientsArray = cachedIngredients ?? displayFood.ingredients ?? []
-                    AdditiveWatchService.shared.analyzeIngredients(ingredientsArray) { result in
-                        let mapped: [DetailedAdditive] = result.detectedAdditives.map { additive in
-                            let riskLevel: String
-                            if additive.effectsVerdict == .avoid {
-                                riskLevel = "High"
-                            } else if additive.effectsVerdict == .caution {
-                                riskLevel = "Moderate"
-                            } else {
-                                riskLevel = "Low"
-                            }
-
-                            let description = additive.consumerInfo ?? "No detailed information available for this additive."
-
-                            return DetailedAdditive(
-                                name: additive.name,
-                                code: additive.eNumber,
-                                purpose: additive.group.rawValue.capitalized,
-                                origin: additive.origin.rawValue.capitalized,
-                                childWarning: additive.hasChildWarning,
-                                riskLevel: riskLevel,
-                                description: description,
-                                sources: additive.sources
-                            )
-                        }
-                        DispatchQueue.main.async {
-                            self.cachedAdditives = mapped
-                        }
-                    }
-                }
-            }
-
-            // PERFORMANCE: Compute nutrition score ONCE on appear and cache (prevents 40+ analyseAdditives calls)
-            if cachedNutritionScore == nil {
-                let submittedFoods = UserDefaults.standard.array(forKey: "submittedFoodsForReview") as? [String] ?? []
-                let foodKey = "\(food.name)|\(food.brand ?? "")"
-
-                // First check if we have user-verified ingredients
-                if let userIngredients = cachedIngredients, !userIngredients.isEmpty {
-                    let ingredientsString = userIngredients.joined(separator: ", ")
-                    cachedNutritionScore = ProcessingScorer.shared.calculateProcessingScore(for: displayFood.name, ingredients: ingredientsString, sugarPer100g: displayFood.sugar)
-                }
-                // Fallback to official ingredients if available
-                else if let ingredients = displayFood.ingredients, !ingredients.isEmpty {
-                    if submittedFoods.contains(foodKey) {
-                        var updatedSubmittedFoods = submittedFoods
-                        updatedSubmittedFoods.removeAll { $0 == foodKey }
-                        UserDefaults.standard.set(updatedSubmittedFoods, forKey: "submittedFoodsForReview")
-                    }
-                    let ingredientsString = ingredients.joined(separator: ", ")
-                    cachedNutritionScore = ProcessingScorer.shared.calculateProcessingScore(for: displayFood.name, ingredients: ingredientsString, sugarPer100g: displayFood.sugar)
-                }
-                // Only show "In Review" if the food was submitted AND has no ingredients
-                else if submittedFoods.contains(foodKey) {
-                    cachedNutritionScore = NutritionProcessingScore(
-                        grade: .unknown,
-                        score: 0,
-                        explanation: "Awaiting Verification - Ingredients submitted for review",
-                        factors: ["Submitted for verification"],
-                        processingLevel: .unprocessed,
-                        additiveCount: 0,
-                        eNumberCount: 0,
-                        naturalScore: 0
-                    )
-                }
-                // Default score for foods without ingredients
-                else {
-                    cachedNutritionScore = ProcessingScorer.shared.calculateProcessingScore(for: displayFood.name, sugarPer100g: displayFood.sugar)
-                }
-            }
-
-            // PERFORMANCE: Compute NutraSafe grade ONCE on appear and cache
-            if cachedNutraSafeGrade == nil {
-                cachedNutraSafeGrade = ProcessingScorer.shared.computeNutraSafeProcessingGrade(for: displayFood)
-            }
 
             // Load user allergens from cache (instant) and detect if present in this food
             Task {
@@ -2472,7 +2357,8 @@ struct FoodDetailViewFromSearch: View {
                 print("  - ingredients_found: \(result.ingredients_found)")
                 print("  - ingredients_text: \(result.ingredients_text?.prefix(50) ?? "nil")")
                 print("  - nutrition: \(result.nutrition_per_100g != nil ? "YES" : "NO")")
-                print("  - serving_size: \(result.serving_size ?? "NIL")")
+                print("  - serving_size_g: \(result.serving_size_g != nil ? "\(result.serving_size_g!)g" : "NIL")")
+                print("  - size_description: \(result.size_description ?? "NIL")")
                 print("  - product_name: \(result.product_name ?? "nil")")
                 print("  - brand: \(result.brand ?? "nil")")
                 print("  - source_url: \(result.source_url ?? "nil")")
@@ -2504,8 +2390,8 @@ struct FoodDetailViewFromSearch: View {
                         enhancedData["brand"] = brand
                     }
 
-                    if let servingSize = result.serving_size {
-                        enhancedData["servingSize"] = servingSize
+                    if let servingSizeG = result.serving_size_g {
+                        enhancedData["servingSizeG"] = servingSizeG
                     }
 
                     if let sourceUrl = result.source_url {
@@ -2554,78 +2440,25 @@ struct FoodDetailViewFromSearch: View {
                         enhancedBrand = result.brand
                         print("📦 Product details: name=\(result.product_name ?? "nil"), brand=\(result.brand ?? "nil")")
 
-                        // Update serving size if found
-                        print("🔎 Checking serving size: result.serving_size = \(result.serving_size ?? "NIL")")
-                        if let servingSizeStr = result.serving_size, !servingSizeStr.isEmpty {
-                            print("📏 Updating serving size from AI: \(servingSizeStr)")
-                            let parsed = parseServingSizeString(servingSizeStr)
-        // DEBUG LOG: print("🔧 Parsed serving size: amount=\(parsed.amount), unit=\(parsed.unit)")
-                            servingAmount = parsed.amount
-                            servingUnit = parsed.unit
-                            if let amountValue = Double(parsed.amount) {
-                                let gramsValue = convertUnit(value: amountValue, from: parsed.unit, to: "g")
-                                gramsAmount = String(format: "%.0f", gramsValue)
+                        // Update serving size if found (using numeric field with validation)
+                        print("🔎 Checking serving size: result.serving_size_g = \(result.serving_size_g != nil ? "\(result.serving_size_g!)g" : "NIL")")
+                        if let servingSizeGrams = result.serving_size_g {
+                            // Validate that serving size is reasonable (not product size)
+                            if servingSizeGrams > 0 && servingSizeGrams <= 500 {
+                                servingAmount = String(format: "%.0f", servingSizeGrams)
+                                servingUnit = "g"
+                                gramsAmount = String(format: "%.0f", servingSizeGrams)
+                                print("✅ Using AI serving size: \(servingSizeGrams)g")
                             } else {
-                                // Fallback to 100g if parsing fails
+                                // Unreasonable serving size, default to 100g
+                                servingAmount = "100"
+                                servingUnit = "g"
                                 gramsAmount = "100"
+                                print("⚠️ AI serving size (\(servingSizeGrams)g) seems unreasonable, defaulting to 100g")
                             }
-                            print("✅ Serving size updated: servingAmount=\(servingAmount), servingUnit=\(servingUnit), gramsAmount=\(gramsAmount) [converted to g]")
                         } else {
-                            print("⚠️ No serving size in result OR serving size is empty")
-                        }
-
-                        // Clear and repopulate cached data with enhanced information
-        // DEBUG LOG: print("🗑️ Clearing all caches and repopulating with enhanced data")
-                        cachedIngredients = nil
-                        cachedAdditives = nil
-                        cachedIngredientsStatus = nil
-                        cachedNutritionScore = nil
-                        cachedNutraSafeGrade = nil
-
-                        // Immediately repopulate ingredients cache with enhanced data
-        // DEBUG LOG: print("🔄 Repopulating ingredients cache")
-                        cachedIngredients = getIngredientsList()
-                        cachedIngredientsStatus = getIngredientsStatus()
-
-                        print("✅ Cache repopulated: \(cachedIngredients?.count ?? 0) ingredients")
-
-                        // Recalculate NutraSafe grade with enhanced data
-        // DEBUG LOG: print("🔄 Recalculating NutraSafe grade with enhanced data")
-                        cachedNutraSafeGrade = ProcessingScorer.shared.computeNutraSafeProcessingGrade(for: displayFood)
-                        if let grade = cachedNutraSafeGrade {
-                            print("✅ NutraSafe grade recalculated: \(grade.grade)")
-                        }
-
-                        // Trigger additive analysis with new ingredients
-                        if let ingredientsArray = cachedIngredients, !ingredientsArray.isEmpty {
-        // DEBUG LOG: print("🔬 Analyzing additives in enhanced ingredients")
-                            AdditiveWatchService.shared.analyzeIngredients(ingredientsArray) { result in
-                                let mapped: [DetailedAdditive] = result.detectedAdditives.map { additive in
-                                    let riskLevel: String
-                                    if additive.effectsVerdict == .avoid {
-                                        riskLevel = "High"
-                                    } else if additive.effectsVerdict == .caution {
-                                        riskLevel = "Moderate"
-                                    } else {
-                                        riskLevel = "Low"
-                                    }
-                                    let description = additive.consumerInfo ?? "No detailed information available for this additive."
-                                    return DetailedAdditive(
-                                        name: additive.name,
-                                        code: additive.eNumber,
-                                        purpose: additive.group.rawValue.capitalized,
-                                        origin: additive.origin.rawValue.capitalized,
-                                        childWarning: additive.hasChildWarning,
-                                        riskLevel: riskLevel,
-                                        description: description,
-                                        sources: additive.sources
-                                    )
-                                }
-                                DispatchQueue.main.async {
-                                    self.cachedAdditives = mapped
-                                    print("✅ Additives analyzed: \(mapped.count) found")
-                                }
-                            }
+                            // No serving size from AI, keep existing or default to 100g
+                            print("ℹ️ No serving size from AI, keeping current: \(servingAmount)\(servingUnit)")
                         }
 
                         // Trigger UI refresh
@@ -2698,8 +2531,8 @@ struct FoodDetailViewFromSearch: View {
                         enhancedData["brand"] = brand
                     }
 
-                    if let servingSize = result.serving_size {
-                        enhancedData["servingSize"] = servingSize
+                    if let servingSizeG = result.serving_size_g {
+                        enhancedData["servingSizeG"] = servingSizeG
                     }
 
                     if let sourceUrl = result.source_url {
@@ -2737,56 +2570,6 @@ struct FoodDetailViewFromSearch: View {
                         // Store enhanced product details
                         enhancedProductName = result.product_name
                         enhancedBrand = result.brand
-
-                        // Clear and repopulate cached data with enhanced information
-                        cachedIngredients = nil
-                        cachedAdditives = nil
-                        cachedIngredientsStatus = nil
-                        cachedNutritionScore = nil
-                        cachedNutraSafeGrade = nil
-
-                        // Immediately repopulate ingredients cache with enhanced data
-                        cachedIngredients = getIngredientsList()
-                        cachedIngredientsStatus = getIngredientsStatus()
-
-                        print("✅ Cache repopulated: \(cachedIngredients?.count ?? 0) ingredients")
-
-                        // Recalculate NutraSafe grade with enhanced data
-                        cachedNutraSafeGrade = ProcessingScorer.shared.computeNutraSafeProcessingGrade(for: displayFood)
-                        if let grade = cachedNutraSafeGrade {
-                            print("✅ NutraSafe grade recalculated: \(grade.grade)")
-                        }
-
-                        // Trigger additive analysis with new ingredients
-                        if let ingredientsArray = cachedIngredients, !ingredientsArray.isEmpty {
-                            AdditiveWatchService.shared.analyzeIngredients(ingredientsArray) { result in
-                                let mapped: [DetailedAdditive] = result.detectedAdditives.map { additive in
-                                    let riskLevel: String
-                                    if additive.effectsVerdict == .avoid {
-                                        riskLevel = "High"
-                                    } else if additive.effectsVerdict == .caution {
-                                        riskLevel = "Moderate"
-                                    } else {
-                                        riskLevel = "Low"
-                                    }
-                                    let description = additive.consumerInfo ?? "No detailed information available for this additive."
-                                    return DetailedAdditive(
-                                        name: additive.name,
-                                        code: additive.eNumber,
-                                        purpose: additive.group.rawValue.capitalized,
-                                        origin: additive.origin.rawValue.capitalized,
-                                        childWarning: additive.hasChildWarning,
-                                        riskLevel: riskLevel,
-                                        description: description,
-                                        sources: additive.sources
-                                    )
-                                }
-                                DispatchQueue.main.async {
-                                    self.cachedAdditives = mapped
-                                    print("✅ Additives analyzed: \(mapped.count) found")
-                                }
-                            }
-                        }
 
                         // Trigger UI refresh
                         refreshTrigger = UUID()

@@ -16,6 +16,7 @@ struct AdditiveWatchView: View {
     let ingredients: [String]
     @State private var additiveResult: AdditiveDetectionResult?
     @State private var showingSources = false
+    @State private var lastAnalyzedHash: Int = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -33,7 +34,10 @@ struct AdditiveWatchView: View {
             SourcesAndCitationsView()
         }
         .onAppear {
-            if additiveResult == nil {
+            // PERFORMANCE: Only re-analyze if ingredients have changed
+            let currentHash = ingredients.hashValue
+            if additiveResult == nil || lastAnalyzedHash != currentHash {
+                lastAnalyzedHash = currentHash
                 analyzeAdditives()
             }
         }

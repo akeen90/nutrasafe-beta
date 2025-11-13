@@ -6,12 +6,15 @@ import FirebaseStorage
 
 class FirebaseManager: ObservableObject {
     static let shared = FirebaseManager()
-    
+
     @Published var currentUser: User?
     @Published var isAuthenticated = false
-    
+
     private lazy var db = Firestore.firestore()
     private lazy var auth = Auth.auth()
+
+    // Thread-safe cache using NSLock
+    private let cacheLock = NSLock()
     private var authListenerHandle: AuthStateDidChangeListenerHandle?
 
     // MARK: - Search Cache (Optimized with NSCache)
@@ -243,10 +246,25 @@ class FirebaseManager: ObservableObject {
     func getFoodEntries(for date: Date) async throws -> [FoodEntry] {
         guard let userId = currentUser?.uid else { return [] }
 
-        // DISABLED: Cache checking disabled due to threading crashes
-        // Fetch directly from Firestore (still fast with Firestore's internal caching)
+        // Check cache first (thread-safe with NSLock)
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        let dateKey = "\(userId)_\(dateFormatter.string(from: startOfDay))"
+
+        // Return cached entries if still valid (with lock protection)
+        cacheLock.lock()
+        let cachedEntry = foodEntriesCache[dateKey]
+        cacheLock.unlock()
+
+        if let cached = cachedEntry,
+           Date().timeIntervalSince(cached.timestamp) < foodEntriesCacheExpirationSeconds {
+            // DEBUG LOG: print("✅ [Cache HIT] Returning cached entries for \(dateKey)")
+            return cached.entries
+        }
+
+        // Cache miss - fetch from Firestore
         let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
 
         let snapshot = try await db.collection("users").document(userId)
@@ -265,9 +283,10 @@ class FirebaseManager: ObservableObject {
             }
         }
 
-        // DISABLED: Caching causes crashes with async/threading issues
-        // TODO: Re-enable with proper actor-based thread safety
-        // foodEntriesCache[dateKey] = FoodEntriesCacheEntry(entries: entries, timestamp: Date())
+        // Store in cache (thread-safe with NSLock)
+        cacheLock.lock()
+        foodEntriesCache[dateKey] = FoodEntriesCacheEntry(entries: entries, timestamp: Date())
+        cacheLock.unlock()
 
         return entries
     }
@@ -280,8 +299,18 @@ class FirebaseManager: ObservableObject {
     func getFoodEntriesForPeriod(days: Int) async throws -> [FoodEntry] {
         guard let userId = currentUser?.uid else { return [] }
 
-        // DISABLED: Cache disabled due to threading crashes
-        // Fetch directly from Firestore (still fast with Firestore's internal caching)
+        // Check cache first (thread-safe with NSLock)
+        cacheLock.lock()
+        let cachedPeriod = periodCache[days]
+        cacheLock.unlock()
+
+        if let cached = cachedPeriod,
+           Date().timeIntervalSince(cached.timestamp) < periodCacheExpirationSeconds {
+            // DEBUG LOG: print("✅ [Period Cache HIT] Returning cached entries for \(days) days")
+            return cached.entries
+        }
+
+        // Cache miss - fetch from Firestore
         let calendar = Calendar.current
         let endDate = Date()
         guard let startDate = calendar.date(byAdding: .day, value: -days, to: endDate) else { return [] }
@@ -303,9 +332,10 @@ class FirebaseManager: ObservableObject {
             }
         }
 
-        // DISABLED: Caching causes crashes with async/threading issues
-        // TODO: Re-enable with proper actor-based thread safety
-        // periodCache[days] = (entries, Date())
+        // Store in cache (thread-safe with NSLock)
+        cacheLock.lock()
+        periodCache[days] = (entries, Date())
+        cacheLock.unlock()
 
         return entries
     }
@@ -915,6 +945,7 @@ class FirebaseManager: ObservableObject {
     // MARK: - Weight Tracking
 
     // Resize and compress image for faster uploads
+    @MainActor
     private func optimizeImage(_ image: UIImage) -> Data? {
         let maxDimension: CGFloat = 1200
         var newSize = image.size
@@ -945,8 +976,8 @@ class FirebaseManager: ObservableObject {
         return try await withThrowingTaskGroup(of: String.self) { group in
             for image in images {
                 group.addTask {
-                    // Optimize image
-                    guard let imageData = self.optimizeImage(image) else {
+                    // Optimize image (must run on main actor for UIGraphics)
+                    guard let imageData = await self.optimizeImage(image) else {
                         throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to compress image"])
                     }
 
@@ -984,8 +1015,8 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to upload photos"])
         }
 
-        // Optimize image
-        guard let imageData = optimizeImage(image) else {
+        // Optimize image (must run on main actor for UIGraphics)
+        guard let imageData = await optimizeImage(image) else {
             throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to compress image"])
         }
 
@@ -1030,8 +1061,8 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to upload photos"])
         }
 
-        // Optimize image
-        guard let imageData = optimizeImage(image) else {
+        // Optimize image (must run on main actor for UIGraphics)
+        guard let imageData = await optimizeImage(image) else {
             throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to compress image"])
         }
 
@@ -2108,6 +2139,7 @@ extension Notification.Name {
     // Fasting-related updates
     static let fastHistoryUpdated = Notification.Name("fastHistoryUpdated")
     static let fastingSettingsUpdated = Notification.Name("fastingSettingsUpdated")
+    static let diaryFoodDetailOpened = Notification.Name("diaryFoodDetailOpened")
 }
 
 // MARK: - Response Models for Food Search

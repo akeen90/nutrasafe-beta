@@ -233,6 +233,14 @@ class AllergenDetector {
     
     private init() {}
     
+    private func matchesWord(_ text: String, _ pattern: String) -> Bool {
+        let escaped = NSRegularExpression.escapedPattern(for: pattern.lowercased())
+        let regexPattern = "(?<![A-Za-z0-9])\(escaped)(?![A-Za-z0-9])"
+        guard let regex = try? NSRegularExpression(pattern: regexPattern, options: []) else { return false }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        return regex.firstMatch(in: text, options: [], range: range) != nil
+    }
+    
     func detectAllergens(in foodName: String, ingredients: [String] = [], userAllergens: [Allergen]) -> AllergenDetectionResult {
         let searchText = (foodName + " " + ingredients.joined(separator: " ")).lowercased()
         var detectedAllergens: [Allergen] = []
@@ -242,15 +250,15 @@ class AllergenDetector {
         // Check each user allergen against the food
         for allergen in userAllergens {
             let matchingKeywords = allergen.keywords.filter { keyword in
-                searchText.contains(keyword.lowercased())
+                matchesWord(searchText, keyword)
             }
             
             if !matchingKeywords.isEmpty {
                 detectedAllergens.append(allergen)
                 warnings.append("Contains \(allergen.displayName): \(matchingKeywords.joined(separator: ", "))")
                 
-                // Increase confidence based on number of matches
-                confidence += Double(matchingKeywords.count) * 0.2
+                // Increase confidence based on number of matches (slightly lower weight)
+                confidence += Double(matchingKeywords.count) * 0.15
             }
         }
         
@@ -267,7 +275,7 @@ class AllergenDetector {
             riskLevel = .low
         } else {
             riskLevel = .low
-            confidence = max(confidence, 0.8) // High confidence if no allergens detected
+            confidence = max(confidence, 0.8)
         }
         
         return AllergenDetectionResult(
@@ -804,11 +812,10 @@ class AdditiveWatchService {
         print("✅ [AdditiveWatchService] Primary analysis complete!")
         print("✅ [AdditiveWatchService] Total additives detected: \(primaryDetected.count)")
 
-        // Fallback: scan CSV database with boundary-aware matching if primary found nothing
-        if primaryDetected.isEmpty && isLoaded {
-            print("🔁 [AdditiveWatchService] Performing CSV fallback scan")
+        // CSV scan: always merge boundary-aware matches to capture synonyms present only in CSV
+        if isLoaded {
             var csvMatches: [AdditiveInfo] = []
-            var seenCodes = Set<String>()
+            var seenCodes = Set<String>(finalDetected.map { $0.eNumber })
             for additive in additiveDatabase {
                 let code = additive.eNumber.lowercased()
                 let name = additive.name.lowercased()
@@ -830,8 +837,10 @@ class AdditiveWatchService {
                     seenCodes.insert(additive.eNumber)
                 }
             }
-            print("🔁 [AdditiveWatchService] CSV fallback matches: \(csvMatches.count)")
-            finalDetected = csvMatches
+            if !csvMatches.isEmpty {
+                print("🔁 [AdditiveWatchService] Merged CSV matches: \(csvMatches.count)")
+                finalDetected.append(contentsOf: csvMatches)
+            }
         }
 
         // Extract child warnings
@@ -1086,8 +1095,16 @@ class AdditiveWatchService {
     
     private func parseCSVLine(_ line: String) -> AdditiveInfo? {
         let components = parseCSVComponents(line)
+
+        // Require minimum 16 columns for all required fields (indices 0-15)
         guard components.count >= 16 else {
-            print("❌ CSV line has \(components.count) components, need at least 16. Line: \(line.prefix(100))")
+            print("❌ [CSV Parser] Invalid CSV row: has \(components.count) components, need at least 16. Line: \(line.prefix(100))")
+            return nil
+        }
+
+        // Safety: Verify we can safely access all required indices
+        guard components.indices.contains(15) else {
+            print("❌ [CSV Parser] Array bounds check failed for required fields")
             return nil
         }
 
@@ -1335,4 +1352,3 @@ enum AdditiveRating: String, Codable, CaseIterable {
     case caution
     case avoid
 }
-

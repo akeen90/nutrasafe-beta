@@ -322,9 +322,11 @@ struct DiaryTabView: View {
             loadFoodData()
         }
         .onChange(of: selectedTab) { newTab in
-            // Reset to overview when leaving and returning to diary tab
+            // Unselect when leaving diary; reset overview when returning
             if newTab == .diary {
                 diarySubTab = .overview
+            } else {
+                selectedFoodItems.removeAll()
             }
         }
         .onChange(of: diarySubTab) { newTab in
@@ -346,11 +348,13 @@ struct DiaryTabView: View {
         // DEBUG LOG: print("📝 Edit trigger fired. Selected items: \(selectedFoodItems)")
 
             if let foodId = selectedFoodItems.first {
-        // DEBUG LOG: print("📝 Looking for food with ID: \(foodId)")
+                // DEBUG LOG: print("📝 Looking for food with ID: \(foodId)")
                 if let itemToEdit = findFood(byId: foodId) {
-        // DEBUG LOG: print("📝 Found food to edit: \(itemToEdit.name)")
-        // DEBUG LOG: print("📝 Setting editingFood to trigger sheet...")
+                    // DEBUG LOG: print("📝 Found food to edit: \(itemToEdit.name)")
+                    // DEBUG LOG: print("📝 Setting editingFood to trigger sheet...")
                     editingFood = itemToEdit
+                    // Clear selection once user enters edit flow
+                    selectedFoodItems.removeAll()
                 } else {
                     print("❌ Could not find food with ID: \(foodId)")
                 }
@@ -359,6 +363,9 @@ struct DiaryTabView: View {
             }
 
             editTrigger = false
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .diaryFoodDetailOpened)) { _ in
+            selectedFoodItems.removeAll()
         }
         .onChange(of: moveTrigger) { newValue in
             if newValue {
