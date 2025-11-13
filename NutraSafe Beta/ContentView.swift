@@ -3926,7 +3926,7 @@ struct EditWeightView: View {
                         // Cache the downloaded image locally for next time
                         let imageId = "\(entry.id.uuidString)_\(index)"
                         do {
-                            try ImageCacheManager.shared.saveWeightImage(image, for: imageId)
+                            try await ImageCacheManager.shared.saveWeightImageAsync(image, for: imageId)
                             print("💾 Cached downloaded weight image: \(imageId)")
                         } catch {
                             print("⚠️ Failed to cache downloaded image: \(error)")
@@ -3974,7 +3974,7 @@ struct EditWeightView: View {
                         let currentPhotoCount = selectedPhotos.count - newPhotosToUpload.count
                         for (index, image) in newPhotosToUpload.enumerated() {
                             let imageId = "\(entry.id.uuidString)_\(currentPhotoCount + index)"
-                            try ImageCacheManager.shared.saveWeightImage(image, for: imageId)
+                            try await ImageCacheManager.shared.saveWeightImageAsync(image, for: imageId)
                         }
                         print("✅ Saved \(newPhotosToUpload.count) new weight images to local cache")
                     } catch {

@@ -8,6 +8,7 @@
 
 import Foundation
 import UIKit
+import SwiftUI
 
 /// Manages persistent local image caching for UseBy items and Weight entries
 @MainActor
@@ -26,9 +27,7 @@ class ImageCacheManager {
 
     private init() {
         // Get the app's caches directory
-        guard let cachesDirectory = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first else {
-            fatalError("Unable to access caches directory")
-        }
+        let cachesDirectory = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first ?? fileManager.temporaryDirectory
 
         // Create subdirectories for different image types
         useByImagesDirectory = cachesDirectory.appendingPathComponent("UseByImages", isDirectory: true)
@@ -67,10 +66,21 @@ class ImageCacheManager {
         print("✅ Saved UseBy image for item: \(itemId)")
     }
 
+    func saveUseByImageAsync(_ image: UIImage, for itemId: String) async throws {
+        let fileURL = useByImageURL(for: itemId)
+        try await saveImageAsync(image, to: fileURL, itemId: itemId)
+        print("✅ Saved UseBy image for item: \(itemId)")
+    }
+
     /// Load a UseBy item image from cache
     func loadUseByImage(for itemId: String) -> UIImage? {
         let fileURL = useByImageURL(for: itemId)
         return loadImage(from: fileURL, itemId: itemId)
+    }
+
+    func loadUseByImageAsync(for itemId: String) async -> UIImage? {
+        let fileURL = useByImageURL(for: itemId)
+        return await loadImageAsync(from: fileURL, itemId: itemId)
     }
 
     /// Check if a UseBy item has a cached image
@@ -99,10 +109,21 @@ class ImageCacheManager {
         print("✅ Saved Weight image for entry: \(entryId)")
     }
 
+    func saveWeightImageAsync(_ image: UIImage, for entryId: String) async throws {
+        let fileURL = weightImageURL(for: entryId)
+        try await saveImageAsync(image, to: fileURL, itemId: entryId)
+        print("✅ Saved Weight image for entry: \(entryId)")
+    }
+
     /// Load a Weight entry image from cache
     func loadWeightImage(for entryId: String) -> UIImage? {
         let fileURL = weightImageURL(for: entryId)
         return loadImage(from: fileURL, itemId: entryId)
+    }
+
+    func loadWeightImageAsync(for entryId: String) async -> UIImage? {
+        let fileURL = weightImageURL(for: entryId)
+        return await loadImageAsync(from: fileURL, itemId: entryId)
     }
 
     /// Check if a Weight entry has a cached image
@@ -184,6 +205,26 @@ class ImageCacheManager {
         print("💾 Cached image to disk: \(fileURL.lastPathComponent) (\(imageData.count / 1024)KB)")
     }
 
+    private func saveImageAsync(_ image: UIImage, to fileURL: URL, itemId: String) async throws {
+        let cacheKey = NSString(string: fileURL.path)
+        guard let imageData = image.jpegData(compressionQuality: 0.7) else {
+            throw NSError(domain: "ImageCache", code: -1, userInfo: [
+                NSLocalizedDescriptionKey: "Failed to convert image to JPEG data"
+            ])
+        }
+        let writeResult = await Task.detached { () -> Result<Void, Error> in
+            do {
+                try imageData.write(to: fileURL, options: .atomic)
+                return .success(())
+            } catch {
+                return .failure(error)
+            }
+        }.value
+        if case .failure(let e) = writeResult { throw e }
+        memoryCache.setObject(image, forKey: cacheKey, cost: imageData.count)
+        print("💾 Cached image to disk: \(fileURL.lastPathComponent) (\(imageData.count / 1024)KB)")
+    }
+
     private func loadImage(from fileURL: URL, itemId: String) -> UIImage? {
         let cacheKey = NSString(string: fileURL.path)
 
@@ -204,6 +245,21 @@ class ImageCacheManager {
         memoryCache.setObject(image, forKey: cacheKey, cost: imageData.count)
         print("📀 Disk cache HIT for: \(fileURL.lastPathComponent) (\(imageData.count / 1024)KB)")
 
+        return image
+    }
+
+    private func loadImageAsync(from fileURL: URL, itemId: String) async -> UIImage? {
+        let cacheKey = NSString(string: fileURL.path)
+        if let cachedImage = memoryCache.object(forKey: cacheKey) { return cachedImage }
+        let dataResult: Data? = await Task.detached { () -> Data? in
+            return try? Data(contentsOf: fileURL)
+        }.value
+        guard let imageData = dataResult, let image = UIImage(data: imageData) else {
+            print("⚠️ No cached image found at: \(fileURL.lastPathComponent)")
+            return nil
+        }
+        memoryCache.setObject(image, forKey: cacheKey, cost: imageData.count)
+        print("📀 Disk cache HIT for: \(fileURL.lastPathComponent) (\(imageData.count / 1024)KB)")
         return image
     }
 

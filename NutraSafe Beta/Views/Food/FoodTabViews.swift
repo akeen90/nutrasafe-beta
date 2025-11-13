@@ -78,7 +78,7 @@ struct FoodTabView: View {
             .background(Color.adaptiveBackground)
             .navigationBarHidden(true)
         }
-        .navigationViewStyle(StackNavigationViewStyle())
+        
         .onReceive(NotificationCenter.default.publisher(for: .navigateToFasting)) { _ in
             selectedFoodSubTab = .fasting
         }
@@ -322,9 +322,7 @@ struct FoodReactionSummaryCard: View {
         )
         .cardShadow()
         .sheet(isPresented: $showingLogReaction) {
-            NavigationView {
-                LogReactionView(reactionManager: reactionManager)
-            }
+            NavigationView { LogReactionView(reactionManager: reactionManager) }
         }
     }
 }
@@ -2213,7 +2211,7 @@ struct FoodReactionSearchView: View {
                 .padding()
             } else {
                 ScrollView {
-                    VStack(spacing: 8) {
+                    LazyVStack(spacing: 8) {
                         ForEach(searchResults, id: \.id) { food in
                             FoodSearchResultRowForReaction(
                                 food: food,
@@ -2269,7 +2267,7 @@ struct FoodReactionSearchView: View {
                 .padding()
             } else {
                 ScrollView {
-                    VStack(spacing: 0) {
+                    LazyVStack(spacing: 0) {
                         // Group entries by date
                         ForEach(groupedDiaryEntries(), id: \.date) { group in
                             VStack(alignment: .leading, spacing: 8) {

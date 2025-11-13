@@ -1,6 +1,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Foods collection - main collection
+    // Allow unauthenticated access for database manager tool
+    match /foods/{foodId} {
+      allow read, write: if true;
+    }
+
     // Users can only access their own data
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
@@ -12,40 +18,33 @@ service cloud.firestore {
     }
 
     // User-added foods collection (manually entered foods)
-    // Any authenticated user can read all user-added foods
-    // Users can only write if authenticated (profanity check done server-side)
+    // Allow unauthenticated access for database manager tool
     match /userAdded/{foodId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null
-        && request.resource.data.foodName is string
-        && request.resource.data.foodName.size() > 0
-        && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read, write: if true;
     }
 
     // AI manually added foods collection (foods found via "Find with AI" feature)
-    // Any authenticated user can read all AI-enhanced foods
-    // Users can create if authenticated (profanity check done server-side)
+    // Allow unauthenticated access for database manager tool
     match /aiManuallyAdded/{foodId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null
-        && request.resource.data.foodName is string
-        && request.resource.data.foodName.size() > 0
-        && request.resource.data.userId == request.auth.uid
-        && request.resource.data.isAIEnhanced == true;
-      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read, write: if true;
     }
 
     // AI enhanced foods collection (foods enhanced from detail page)
-    // Any authenticated user can read all AI-enhanced foods
-    // Users can create if authenticated
+    // Allow unauthenticated access for database manager tool
     match /aiEnhanced/{foodId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null
-        && request.resource.data.originalFoodName is string
-        && request.resource.data.originalFoodName.size() > 0
-        && request.resource.data.improvedBy == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.improvedBy == request.auth.uid;
+      allow read, write: if true;
+    }
+
+    // Verified foods collection (admin-managed, high-quality verified foods)
+    // Allow unauthenticated access for database manager tool
+    match /verifiedFoods/{foodId} {
+      allow read, write: if true;
+    }
+
+    // Cleansed foods collection (foods that have been cleaned/validated)
+    // Allow unauthenticated access for database manager tool
+    match /cleansedFoods/{foodId} {
+      allow read, write: if true;
     }
 
     // Public read access for app configuration

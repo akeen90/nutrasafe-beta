@@ -188,7 +188,7 @@ struct UseByTabView: View {
                     .padding(.bottom, 8)
 
                 ScrollView {
-                    VStack(spacing: 0) {
+                    LazyVStack(spacing: 0) {
                         // Main content
                         UseByExpiryView(
                             showingScanner: $showingScanner,
@@ -356,7 +356,7 @@ struct AddFoundFoodToUseBySheet: View {
             Divider()
 
             ScrollView {
-                VStack(spacing: 16) {
+                LazyVStack(spacing: 16) {
                     SectionCard(title: "ITEM") {
                         VStack(spacing: 16) {
                             // Horizontal layout with photo and details
@@ -751,7 +751,7 @@ struct UseByExpiryView: View {
             } else {
                 // Clean simple design with obvious item container
                 ScrollView {
-                    VStack(spacing: 16) {
+                    LazyVStack(spacing: 16) {
                         // Search bar
                         HStack(spacing: 12) {
                             HStack(spacing: 10) {
@@ -2383,7 +2383,7 @@ struct UseByInlineSearchView: View {
                         searchTask?.cancel()
                         let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
                         guard trimmed.count >= 2 else { self.results = []; self.isSearching = false; return }
-                        searchTask = Task { @MainActor in
+                        searchTask = Task {
                             try? await Task.sleep(nanoseconds: 300_000_000)
                             await runSearch(trimmed)
                         }
@@ -2406,7 +2406,7 @@ struct UseByInlineSearchView: View {
 
             // Results
             ScrollView {
-                VStack(spacing: 0) {
+                LazyVStack(spacing: 0) {
                     ForEach(results, id: \.id) { food in
 Button {
                             if isInteractionEnabled {
@@ -2630,14 +2630,19 @@ struct FreshnessIndicatorView: View {
                 Text(daysLeftText)
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundColor(freshnessColor)
+                Text(freshnessLabel)
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
             }
             .scaleEffect(pulseAnimation ? 1.05 : 1.0)
         }
     }
 
     var daysLeftText: String {
-        if daysLeft <= 0 {
+        if daysLeft < 0 {
             return "Expired"
+        } else if daysLeft == 0 {
+            return "Today"
         } else if daysLeft == 1 {
             return "1 day"
         } else {
@@ -2730,7 +2735,8 @@ struct UseByItemDetailView: View {
 
     var smartRecommendation: String {
         switch daysLeft {
-        case ...0: return "Expired - discard item"
+        case ..<0: return "Expired - discard item"
+        case 0: return "Last day - use today"
         case 1: return "Perfect for tomorrow"
         case 2...3: return "Plan to use within next few meals"
         case 4...7: return "Still fresh - use this week"
@@ -2740,7 +2746,8 @@ struct UseByItemDetailView: View {
 
     var freshnessLabel: String {
         switch daysLeft {
-        case ...0: return "Expired"
+        case ..<0: return "Expired"
+        case 0: return "Last day"
         default: return "Fresh"
         }
     }
@@ -2748,7 +2755,7 @@ struct UseByItemDetailView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(spacing: 16) {
+                LazyVStack(spacing: 16) {
                     // Top Product Card - Horizontal Layout
                     HStack(spacing: 16) {
                         // Freshness Indicator
@@ -2784,7 +2791,7 @@ struct UseByItemDetailView: View {
                             }
 
                             HStack(spacing: 12) {
-                                Label(daysLeft <= 0 ? "Expired" : (daysLeft == 1 ? "1 day" : "\(daysLeft) days"), systemImage: "calendar")
+                                Label(daysLeft < 0 ? "Expired" : (daysLeft == 0 ? "Last day" : "\(daysLeft) days"), systemImage: "calendar")
                                     .font(.system(size: 13))
                                     .foregroundColor(freshnessColor)
                             }
@@ -4095,7 +4102,7 @@ struct CachedUseByImage: View {
         isLoading = true
 
         // 1. Try local cache first (instant!)
-        if let cachedImage = ImageCacheManager.shared.loadUseByImage(for: itemId) {
+        if let cachedImage = await ImageCacheManager.shared.loadUseByImageAsync(for: itemId) {
             loadedImage = cachedImage
             isLoading = false
             print("⚡️ Loaded UseBy thumbnail from cache: \(itemId)")
@@ -4115,7 +4122,7 @@ struct CachedUseByImage: View {
 
                 // Cache for next time
                 do {
-                    try ImageCacheManager.shared.saveUseByImage(image, for: itemId)
+                    try await ImageCacheManager.shared.saveUseByImageAsync(image, for: itemId)
                     print("💾 Cached downloaded UseBy thumbnail: \(itemId)")
                 } catch {
                     print("⚠️ Failed to cache thumbnail: \(error)")

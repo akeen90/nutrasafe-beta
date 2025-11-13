@@ -69,17 +69,18 @@ class HealthKitManager: ObservableObject {
     
     func requestAuthorization() async {
         guard HKHealthStore.isHealthDataAvailable() else { return }
-        
+
         let typesToRead: Set<HKObjectType> = [
             HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
-            HKObjectType.quantityType(forIdentifier: .bodyMass)!
+            HKObjectType.quantityType(forIdentifier: .bodyMass)!,
+            HKObjectType.quantityType(forIdentifier: .stepCount)!
         ]
 
         let typesToWrite: Set<HKSampleType> = [
             HKObjectType.quantityType(forIdentifier: .dietaryEnergyConsumed)!,
             HKObjectType.quantityType(forIdentifier: .bodyMass)!
         ]
-        
+
         do {
             try await healthStore.requestAuthorization(toShare: typesToWrite, read: typesToRead)
             await MainActor.run {

@@ -35,6 +35,12 @@ struct AddTabView: View {
             return explicit
         }
 
+        // If a preselected meal type exists, this add flow originated from Diary.
+        // Force destination to .diary to prevent stale Use By state from leaking in.
+        if UserDefaults.standard.string(forKey: "preselectedMealType") != nil {
+            return .diary
+        }
+
         // Check UserDefaults only when no explicit source
         if let preselected = UserDefaults.standard.string(forKey: "preselectedDestination") {
             if preselected == "Use By" {

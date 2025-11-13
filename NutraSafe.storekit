@@ -54,6 +54,7 @@
           "groupNumber" : 1,
           "internalID" : "504B59A4",
           "introductoryOffer" : {
+            "displayPrice" : "0.99",
             "internalID" : "1F852FCD",
             "paymentMode" : "free",
             "subscriptionPeriod" : "P1W"

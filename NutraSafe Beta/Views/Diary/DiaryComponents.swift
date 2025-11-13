@@ -154,6 +154,8 @@ struct DiaryMealCard: View {
                         // Store the selected meal type and date, then navigate to add tab
                         UserDefaults.standard.set(mealType, forKey: "preselectedMealType")
                         UserDefaults.standard.set(currentDate.timeIntervalSince1970, forKey: "preselectedDate")
+                        // Ensure destination defaults to Diary when coming from Diary
+                        UserDefaults.standard.removeObject(forKey: "preselectedDestination")
                         selectedTab = .add
                     }) {
                         HStack(spacing: 8) {
@@ -178,6 +180,8 @@ struct DiaryMealCard: View {
                     // Store the selected meal type and date, then navigate to add tab
                     UserDefaults.standard.set(mealType, forKey: "preselectedMealType")
                     UserDefaults.standard.set(currentDate.timeIntervalSince1970, forKey: "preselectedDate")
+                    // Ensure destination defaults to Diary when coming from Diary
+                    UserDefaults.standard.removeObject(forKey: "preselectedDestination")
                     selectedTab = .add
                 }) {
                     HStack {

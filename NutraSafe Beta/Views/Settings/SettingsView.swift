@@ -3317,7 +3317,7 @@ struct AppleHealthSettingsView: View {
                     Text("Apple Health")
                         .font(.system(size: 28, weight: .bold))
 
-                    Text("By linking NutraSafe to Apple Health, you can allow NutraSafe to read and update your calories and body measurements.")
+                    Text("By linking NutraSafe to Apple Health, you can allow NutraSafe to read your activity, steps, and body measurements, and update your calories.")
                         .font(.system(size: 16))
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -3376,6 +3376,15 @@ struct AppleHealthSettingsView: View {
                             icon: "flame.fill",
                             title: "Active Energy",
                             description: "Calories burned from physical activity"
+                        )
+
+                        Divider()
+                            .padding(.leading, 52)
+
+                        HealthDataRow(
+                            icon: "figure.walk",
+                            title: "Steps",
+                            description: "Daily step count from your activity"
                         )
 
                         Divider()

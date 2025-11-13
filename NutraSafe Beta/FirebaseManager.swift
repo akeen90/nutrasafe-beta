@@ -684,17 +684,18 @@ class FirebaseManager: ObservableObject {
 
         // Convert back to array
         let mergedResults = Array(foodsById.values)
+        let limitedResults = Array(mergedResults.prefix(50))
 
         // DEBUG LOG: print("🔍 Search results for '\(query)': \(userFoods.count) user + \(aiEnhanced.count) AI-enhanced + \(aiManual.count) AI-manual + \(mainFoods.count) SQL = \(mergedResults.count) total (after deduplication)")
 
         // Store in cache for next time (NSCache auto-manages memory)
         searchCache.setObject(
-            SearchCacheEntry(results: mergedResults, timestamp: Date()),
+            SearchCacheEntry(results: limitedResults, timestamp: Date()),
             forKey: cacheKey
         )
         // DEBUG LOG: print("💾 Cached \(mergedResults.count) results for '\(query)'")
 
-        return mergedResults
+        return limitedResults
     }
 
     /// Search main food database via SQLite (optimized async)
@@ -707,7 +708,7 @@ class FirebaseManager: ObservableObject {
         } else {
             print("⚠️ No results found in local database for '\(query)'")
         }
-
+        
         return localResults
     }
 
