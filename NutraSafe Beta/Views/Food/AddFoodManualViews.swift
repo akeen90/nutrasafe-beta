@@ -905,7 +905,8 @@ struct ManualFoodDetailEntryView: View {
             do {
                 let response = try await ingredientFinder.findIngredients(
                     productName: foodName,
-                    brand: brand.isEmpty ? nil : brand
+                    brand: brand.isEmpty ? nil : brand,
+                    barcode: barcode.isEmpty ? nil : barcode
                 )
 
         // DEBUG LOG: print("🍎 MANUAL ADD - AI Search Result:")
@@ -1025,10 +1026,21 @@ struct ManualFoodDetailEntryView: View {
                 // Use the onComplete callback to dismiss entire sheet stack and navigate
                 await MainActor.run {
                     isSaving = false
-                    if destination == .diary {
-                        onComplete?(.diary)
+                    if let callback = onComplete {
+                        // Use callback if available (proper dismissal)
+                        if destination == .diary {
+                            callback(.diary)
+                        } else {
+                            callback(.useBy)
+                        }
                     } else {
-                        onComplete?(.useBy)
+                        // Fallback: manually dismiss and switch tabs
+                        dismiss()
+                        if destination == .diary {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                selectedTab = .diary
+                            }
+                        }
                     }
                 }
             } catch {
