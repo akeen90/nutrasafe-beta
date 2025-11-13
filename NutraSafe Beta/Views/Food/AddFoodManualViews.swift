@@ -214,6 +214,7 @@ struct AddFoodManualView: View {
     @Binding var selectedTab: TabItem
     @Binding var destination: AddFoodMainView.AddDestination
     var prefilledBarcode: String? = nil
+    var onComplete: ((TabItem) -> Void)?
     @State private var showingDetailEntry = false
 
     var body: some View {
@@ -264,7 +265,7 @@ struct AddFoodManualView: View {
             Spacer()
         }
         .sheet(isPresented: $showingDetailEntry) {
-            ManualFoodDetailEntryView(selectedTab: $selectedTab, destination: destination, prefilledBarcode: prefilledBarcode)
+            ManualFoodDetailEntryView(selectedTab: $selectedTab, destination: destination, prefilledBarcode: prefilledBarcode, onComplete: onComplete)
         }
         .onAppear {
             // If we have a prefilled barcode, automatically show the detail entry
@@ -282,6 +283,7 @@ struct ManualFoodDetailEntryView: View {
     @Binding var selectedTab: TabItem
     let destination: AddFoodMainView.AddDestination
     var prefilledBarcode: String? = nil
+    var onComplete: ((TabItem) -> Void)?
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var diaryDataManager: DiaryDataManager
 
@@ -1020,22 +1022,13 @@ struct ManualFoodDetailEntryView: View {
                     try await saveFoodToDiary()
                 }
 
-                // Dismiss first
+                // Use the onComplete callback to dismiss entire sheet stack and navigate
                 await MainActor.run {
-                    dismiss()
-                }
-
-                // Then switch to appropriate tab after dismiss animation
-                if destination == .diary {
-                    await MainActor.run {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            selectedTab = .diary
-                            isSaving = false
-                        }
-                    }
-                } else {
-                    await MainActor.run {
-                        isSaving = false
+                    isSaving = false
+                    if destination == .diary {
+                        onComplete?(.diary)
+                    } else {
+                        onComplete?(.useBy)
                     }
                 }
             } catch {

@@ -6649,7 +6649,7 @@ struct AddFoodMainView: View {
                         )
                     case .manual:
                         AnyView(
-                            AddFoodManualView(selectedTab: $selectedTab, destination: $destination)
+                            AddFoodManualView(selectedTab: $selectedTab, destination: $destination, onComplete: onComplete)
                         )
                     case .barcode:
                         AnyView(
