@@ -1020,18 +1020,22 @@ struct ManualFoodDetailEntryView: View {
                     try await saveFoodToDiary()
                 }
 
-                // Switch to appropriate tab first, then dismiss
-                if destination == .diary {
-                    await MainActor.run {
-                        selectedTab = .diary
-                    }
+                // Dismiss first
+                await MainActor.run {
+                    dismiss()
                 }
 
-                // Small delay to let tab switch complete, then dismiss
-                await MainActor.run {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                // Then switch to appropriate tab after dismiss animation
+                if destination == .diary {
+                    await MainActor.run {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            selectedTab = .diary
+                            isSaving = false
+                        }
+                    }
+                } else {
+                    await MainActor.run {
                         isSaving = false
-                        dismiss()
                     }
                 }
             } catch {
