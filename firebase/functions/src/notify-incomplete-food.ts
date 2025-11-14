@@ -6,12 +6,27 @@ import * as nodemailer from 'nodemailer';
  * Firebase function to notify team about incomplete food information
  * Sends an email to info@nutrasafe.co.uk when a user reports missing data
  */
-export const notifyIncompleteFood = functions.https.onCall(async (data, context) => {
+export const notifyIncompleteFood = functions.https.onRequest(async (req, res) => {
+  // Set CORS headers
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).send();
+    return;
+  }
+
   try {
-    const { foodName, brandName, userId, userEmail } = data;
+    // Extract data from request body (iOS sends nested in "data" field)
+    const requestData = req.body.data || req.body;
+    const { foodName, brandName, foodId, userId, userEmail } = requestData;
 
     if (!foodName) {
-      throw new functions.https.HttpsError('invalid-argument', 'Food name is required');
+      res.status(400).json({
+        result: { success: false, error: 'Food name is required' }
+      });
+      return;
     }
 
     // Log the notification
@@ -24,14 +39,18 @@ export const notifyIncompleteFood = functions.https.onCall(async (data, context)
     });
 
     // Store notification in Firestore for tracking
-    await admin.firestore().collection('incompleteFood').add({
+    const docRef = await admin.firestore().collection('incompleteFood').add({
       foodName,
       brandName: brandName || null,
+      foodId: foodId || null,
       userId: userId || 'anonymous',
       userEmail: userEmail || 'anonymous',
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      status: 'pending'
+      status: 'pending',
+      notificationSent: false
     });
+
+    console.log('✅ Notification saved to Firestore:', docRef.id);
 
     // Try to send email if credentials are configured
     const emailUser = functions.config().email?.user || process.env.EMAIL_USER;
@@ -81,22 +100,33 @@ This is an automated message from NutraSafe app.
           text: emailBody
         });
 
-        console.log('Email sent successfully to info@nutrasafe.co.uk');
+        console.log('✅ Email sent successfully to info@nutrasafe.co.uk');
+
+        // Update Firestore to mark email as sent
+        await docRef.update({ notificationSent: true });
       } catch (emailError) {
-        console.warn('Failed to send email notification:', emailError);
+        console.warn('⚠️ Failed to send email notification:', emailError);
         // Don't throw - notification is still logged to Firestore
       }
     } else {
-      console.log('Email credentials not configured - notification logged to Firestore only');
+      console.log('ℹ️ Email credentials not configured - notification logged to Firestore only');
     }
 
-    return {
-      success: true,
-      message: 'Team has been notified successfully'
-    };
+    res.status(200).json({
+      result: {
+        success: true,
+        message: 'Team has been notified successfully',
+        notificationId: docRef.id
+      }
+    });
 
   } catch (error) {
-    console.error('Error notifying team about incomplete food:', error);
-    throw new functions.https.HttpsError('internal', 'Failed to notify team. Please try again later.');
+    console.error('❌ Error notifying team about incomplete food:', error);
+    res.status(500).json({
+      result: {
+        success: false,
+        error: 'Failed to notify team. Please try again later.'
+      }
+    });
   }
 });

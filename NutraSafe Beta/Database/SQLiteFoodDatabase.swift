@@ -622,7 +622,16 @@ actor SQLiteFoodDatabase {
         if let ingredientsText = sqlite3_column_text(statement, 43) {
             let ingredientsString = String(cString: ingredientsText)
             if !ingredientsString.isEmpty {
-                ingredients = ingredientsString.components(separatedBy: ", ")
+                // Try splitting by ", " first (comma + space), then fallback to just ","
+                let separated = ingredientsString.components(separatedBy: ", ")
+                if separated.count > 1 {
+                    ingredients = separated
+                } else {
+                    // Fallback: split by comma only and trim whitespace
+                    ingredients = ingredientsString.components(separatedBy: ",").map {
+                        $0.trimmingCharacters(in: .whitespaces)
+                    }
+                }
             }
         }
 
