@@ -1351,6 +1351,13 @@ struct FoodDetailViewFromSearch: View {
             guard !hasInitialized else { return }
             hasInitialized = true
 
+            // Initialize cached ingredients from food data
+            cachedIngredients = food.ingredients
+            print("🔍 DEBUG: Initialized cachedIngredients with \(cachedIngredients?.count ?? 0) items")
+            if let ingredients = cachedIngredients {
+                print("   Ingredients: \(ingredients.joined(separator: ", "))")
+            }
+
             // Load user allergens from cache (instant) and detect if present in this food
             Task {
                 await loadAndDetectUserAllergensOptimized()
