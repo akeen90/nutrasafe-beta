@@ -57,7 +57,9 @@ class UseByNotificationManager {
     func scheduleNotifications(for item: UseByInventoryItem) async {
         // Check if user has enabled use-by notifications in settings
         guard useByNotificationsEnabled else {
+            #if DEBUG
             print("⏸️ Use-by notifications disabled in settings - not scheduling for \(item.name)")
+            #endif
             return
         }
 
@@ -66,7 +68,9 @@ class UseByNotificationManager {
 
         // Ensure we have permission
         guard await requestNotificationPermissions() else {
+            #if DEBUG
             print("❌ Notification permission not granted")
+            #endif
             return
         }
 
@@ -129,7 +133,9 @@ class UseByNotificationManager {
 
         // Create the full trigger date
         guard let triggerDate = calendar.date(from: dateComponents) else {
+            #if DEBUG
             print("❌ Failed to create trigger date from components for \(identifier)")
+            #endif
             return
         }
 
@@ -139,11 +145,15 @@ class UseByNotificationManager {
 
         // Validate that the notification is in the future
         guard timeInterval > 0 else {
+            #if DEBUG
             print("⚠️ Notification time is in the past for \(identifier) - triggerDate: \(triggerDate), now: \(now)")
+            #endif
             return
         }
 
+        #if DEBUG
         print("📅 Scheduling notification '\(identifier)' for \(triggerDate) (in \(Int(timeInterval/3600)) hours)")
+        #endif
 
         // Use UNTimeIntervalNotificationTrigger instead of calendar trigger
         // This matches the working fasting notification implementation
@@ -152,12 +162,16 @@ class UseByNotificationManager {
 
         do {
             try await UNUserNotificationCenter.current().add(request)
+            #if DEBUG
             print("✅ Use-by notification scheduled: '\(identifier)' for \(triggerDate)")
+            #endif
 
             // Verify it was added
             await printPendingNotifications()
         } catch {
+            #if DEBUG
             print("❌ Error scheduling use-by notification '\(identifier)': \(error.localizedDescription)")
+            #endif
         }
     }
 
@@ -199,10 +213,12 @@ class UseByNotificationManager {
 
     /// Print all pending notifications (for debugging)
     func printPendingNotifications() async {
+        #if DEBUG
         let requests = await UNUserNotificationCenter.current().pendingNotificationRequests()
         print("📋 Pending Notifications: \(requests.count)")
         for request in requests {
             print("  - \(request.identifier): \(request.content.title)")
         }
+        #endif
     }
 }

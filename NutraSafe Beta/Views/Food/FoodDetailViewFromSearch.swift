@@ -647,7 +647,7 @@ struct FoodDetailViewFromSearch: View {
             if word.count > 2 && word.uppercased() == word && !word.contains("(") && !word.contains(")") {
                 // Check if it's not a known abbreviation
                 let isAbbreviation = knownAbbreviations.contains { abbr in
-                    word.hasPrefix(abbr) && (word.count == abbr.count || !word.dropFirst(abbr.count).first!.isLetter)
+                    word.hasPrefix(abbr) && (word.count == abbr.count || !(word.dropFirst(abbr.count).first?.isLetter ?? false))
                 }
 
                 if !isAbbreviation {
