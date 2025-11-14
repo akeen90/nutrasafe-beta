@@ -1721,6 +1721,11 @@ class FirebaseManager: ObservableObject {
                 $0.trimmingCharacters(in: .whitespaces)
             }
 
+            // Read processing/grade information from Firestore
+            let processingScore = data["processingScore"] as? Int
+            let processingGrade = data["processingGrade"] as? String
+            let processingLabel = data["processingLabel"] as? String
+
             return FoodSearchResult(
                 id: id,
                 name: foodName,
@@ -1737,9 +1742,9 @@ class FirebaseManager: ObservableObject {
                 confidence: nil,
                 isVerified: false, // User-added foods are unverified by default
                 additives: nil,
-                processingScore: nil,
-                processingGrade: nil,
-                processingLabel: nil
+                processingScore: processingScore,
+                processingGrade: processingGrade,
+                processingLabel: processingLabel
             )
         }
     }
@@ -1796,6 +1801,11 @@ class FirebaseManager: ObservableObject {
             // Get serving size from enhanced data, fallback to "100g"
             let servingSize = data["servingSize"] as? String ?? "100g"
 
+            // Read processing/grade information from Firestore
+            let processingScore = data["processingScore"] as? Int
+            let processingGrade = data["processingGrade"] as? String
+            let processingLabel = data["processingLabel"] as? String
+
             return FoodSearchResult(
                 id: id,
                 name: originalFoodName,
@@ -1812,9 +1822,9 @@ class FirebaseManager: ObservableObject {
                 confidence: nil,
                 isVerified: true, // AI-enhanced foods are verified
                 additives: nil,
-                processingScore: nil,
-                processingGrade: nil,
-                processingLabel: nil
+                processingScore: processingScore,
+                processingGrade: processingGrade,
+                processingLabel: processingLabel
             )
         }
     }
@@ -1859,6 +1869,11 @@ class FirebaseManager: ObservableObject {
             let servingUnit = data["servingUnit"] as? String ?? "g"
             let servingDescription = "\(Int(servingSizeValue))\(servingUnit)"
 
+            // Read processing/grade information from Firestore
+            let processingScore = data["processingScore"] as? Int
+            let processingGrade = data["processingGrade"] as? String
+            let processingLabel = data["processingLabel"] as? String
+
             return FoodSearchResult(
                 id: id,
                 name: foodName,
@@ -1875,9 +1890,9 @@ class FirebaseManager: ObservableObject {
                 confidence: nil,
                 isVerified: true, // AI-found foods are verified
                 additives: nil,
-                processingScore: nil,
-                processingGrade: nil,
-                processingLabel: nil
+                processingScore: processingScore,
+                processingGrade: processingGrade,
+                processingLabel: processingLabel
             )
         }
     }
