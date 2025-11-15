@@ -549,6 +549,23 @@ struct FoodDetailViewFromSearch: View {
             servingSizeG: actualServingSize * quantityMultiplier
         )
     }
+
+    private var nutraSafeGrade: ProcessingScorer.NutraSafeProcessingGradeResult {
+        // PERFORMANCE: Return cached grade if available
+        if let cached = cachedNutraSafeGrade {
+            return cached
+        }
+
+        // Compute the NutraSafe processing grade
+        let result = ProcessingScorer.shared.computeNutraSafeProcessingGrade(for: displayFood)
+
+        // Cache the result for performance
+        DispatchQueue.main.async {
+            cachedNutraSafeGrade = result
+        }
+
+        return result
+    }
     
     enum IngredientsStatus {
         case verified, pending, unverified, clientVerified, userVerified, none
@@ -1498,18 +1515,7 @@ struct FoodDetailViewFromSearch: View {
             }
         }
         .sheet(isPresented: $showingNutraSafeInfo) {
-            if let result = cachedNutraSafeGrade {
-                NutraSafeGradeInfoView(result: result, food: displayFood)
-            } else {
-                VStack(spacing: 16) {
-                    Text("NutraSafe Grade")
-                        .font(.title2.weight(.bold))
-                    Text("Grade information isn't available for this food yet.")
-                        .font(.callout)
-                        .foregroundColor(.secondary)
-                }
-                .padding()
-            }
+            NutraSafeGradeInfoView(result: nutraSafeGrade, food: displayFood)
         }
         .sheet(isPresented: $showingSugarInfo) {
             SugarScoreInfoView(
@@ -1825,7 +1831,7 @@ struct FoodDetailViewFromSearch: View {
             servingDescription: "\(String(format: "%.0f", servingSize))g serving",
             quantity: quantityMultiplier,
             time: selectedMeal,
-            processedScore: cachedNutraSafeGrade?.grade ?? "",
+            processedScore: nutraSafeGrade.grade,
             sugarLevel: getSugarLevel(),
             ingredients: displayFood.ingredients,
             additives: displayFood.additives,
@@ -2941,6 +2947,7 @@ struct FoodDetailViewFromSearch: View {
             cachedIngredientsStatus = nil
             cachedAdditives = nil
             cachedNutritionScore = nil
+            cachedNutraSafeGrade = nil
             hasInitialized = false
         }
 
@@ -3101,7 +3108,7 @@ struct FoodDetailViewFromSearch: View {
     
     // MARK: - Food Scores Section
     private var foodScoresSection: some View {
-        FoodScoresSectionView(ns: cachedNutraSafeGrade, sugarScore: sugarScore, showingInfo: $showingNutraSafeInfo, showingSugarInfo: $showingSugarInfo)
+        FoodScoresSectionView(ns: nutraSafeGrade, sugarScore: sugarScore, showingInfo: $showingNutraSafeInfo, showingSugarInfo: $showingSugarInfo)
     }
     
     private func getSimplifiedProcessingLevel() -> String {
@@ -3547,7 +3554,7 @@ struct FoodDetailViewFromSearch: View {
             servingDescription: "\(String(format: "%.0f", actualServingSize))g serving",
             quantity: quantityMultiplier,
             time: getCurrentTimeString(),
-            processedScore: cachedNutraSafeGrade?.grade ?? "",
+            processedScore: nutraSafeGrade.grade,
             sugarLevel: getSugarLevel(),
             ingredients: food.ingredients,
             additives: food.additives,
@@ -3619,7 +3626,7 @@ struct FoodDetailViewFromSearch: View {
             carbs: adjustedCarbs,
             fat: adjustedFat,
             time: getCurrentTimeString(),
-            processedScore: cachedNutraSafeGrade?.grade ?? "",
+            processedScore: nutraSafeGrade.grade,
             sugarLevel: getSugarLevel(),
             ingredients: food.ingredients,
             additives: food.additives
@@ -3662,7 +3669,7 @@ struct FoodDetailViewFromSearch: View {
             carbs: adjustedCarbs,
             fat: adjustedFat,
             time: getCurrentTimeString(),
-            processedScore: cachedNutraSafeGrade?.grade ?? "",
+            processedScore: nutraSafeGrade.grade,
             sugarLevel: getSugarLevel(),
             ingredients: food.ingredients,
             additives: food.additives
