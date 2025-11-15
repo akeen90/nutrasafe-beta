@@ -2389,28 +2389,48 @@ struct FoodDetailViewFromSearch: View {
     
     // Notify team about incomplete food information
     private func notifyTeamAboutIncompleteFood() {
-        isNotifyingTeam = true
+        // Prepare email details
+        let email = "contact@nutrasafe.co.uk"
+        let subject = "Incorrect Ingredients - \(food.name)"
 
-        Task {
-            do {
-                // Send complete food object to FirebaseManager
-                // This will save to Firestore database and notify team via email
-                try await firebaseManager.notifyIncompleteFood(food: food)
+        var body = "Hello NutraSafe Team,\n\n"
+        body += "I found incorrect ingredient information for the following food:\n\n"
+        body += "Food ID: \(food.foodId ?? "N/A")\n"
+        body += "Food Name: \(food.name)\n"
+        body += "Brand: \(food.brand ?? "N/A")\n"
+        if let barcode = food.barcode {
+            body += "Barcode: \(barcode)\n"
+        }
+        body += "\nPlease review and update the ingredient information.\n\n"
+        body += "Thank you!"
 
-                await MainActor.run {
-                    isNotifyingTeam = false
-                    showingNotificationSuccess = true
+        // URL encode the subject and body
+        let subjectEncoded = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let bodyEncoded = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+
+        // Create mailto URL
+        let mailtoString = "mailto:\(email)?subject=\(subjectEncoded)&body=\(bodyEncoded)"
+
+        if let mailtoURL = URL(string: mailtoString) {
+            if UIApplication.shared.canOpenURL(mailtoURL) {
+                UIApplication.shared.open(mailtoURL) { success in
+                    if success {
+                        #if DEBUG
+                        print("✅ Email client opened successfully")
+                        #endif
+                    } else {
+                        #if DEBUG
+                        print("❌ Failed to open email client")
+                        #endif
+                    }
                 }
-
-            } catch {
+            } else {
+                // No email client available
                 #if DEBUG
-                print("Error notifying team: \(error)")
+                print("⚠️ No email client configured on device")
                 #endif
-                await MainActor.run {
-                    isNotifyingTeam = false
-                    notificationErrorMessage = "Unable to send notification. Please try again later."
-                    showingNotificationError = true
-                }
+                notificationErrorMessage = "No email client configured. Please email us at contact@nutrasafe.co.uk with the food details."
+                showingNotificationError = true
             }
         }
     }
