@@ -825,43 +825,99 @@ struct UseByExpiryView: View {
                         .padding(.horizontal, 16)
                         .padding(.top, 12)
 
-                        // Stats cards
-                        HStack(spacing: 12) {
-                            UseByStatCard(
-                                title: "Total Items",
+                        // Ultra-modern compact stat cards
+                        HStack(spacing: 10) {
+                            CompactStatPill(
                                 value: "\(sortedItems.count)",
+                                label: "Items",
                                 icon: "refrigerator.fill",
-                                color: .blue,
-                                subtitle: sortedItems.count == 0 ? "No items yet" : "In your useBy"
+                                gradient: [Color.blue, Color.purple.opacity(0.8)]
                             )
 
-                            UseByStatCard(
-                                title: adaptiveTitle,
+                            CompactStatPill(
                                 value: adaptiveValue,
+                                label: adaptiveTitle == "This Week" ? "This Week" : "Expiring",
                                 icon: adaptiveIcon,
-                                color: adaptiveColor,
-                                subtitle: adaptiveSubtitle
+                                gradient: [adaptiveColor, adaptiveColor.opacity(0.7)]
                             )
                         }
                         .padding(.horizontal, 16)
+                        .padding(.top, 4)
 
-                        // Items container - CLEAR WHITE CARD
+                        // Ultra-modern items container
                         VStack(spacing: 0) {
-                            // Header
+                            // Modern gradient header
                             HStack {
                                 Text("Your Items")
-                                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                                    .foregroundColor(.primary)
+                                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                                    .foregroundStyle(
+                                        LinearGradient(
+                                            colors: [.primary, .primary.opacity(0.7)],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
 
                                 Spacer()
 
-                                Text("\(sortedItems.count) item\(sortedItems.count == 1 ? "" : "s")")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(.secondary)
+                                // Modern count badge
+                                HStack(spacing: 4) {
+                                    Text("\(sortedItems.count)")
+                                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                                        .foregroundStyle(
+                                            LinearGradient(
+                                                colors: [Color.blue, Color.purple.opacity(0.8)],
+                                                startPoint: .leading,
+                                                endPoint: .trailing
+                                            )
+                                        )
+                                    Text("item\(sortedItems.count == 1 ? "" : "s")")
+                                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background {
+                                    Capsule()
+                                        .fill(
+                                            LinearGradient(
+                                                colors: [
+                                                    Color.blue.opacity(0.12),
+                                                    Color.purple.opacity(0.08)
+                                                ],
+                                                startPoint: .leading,
+                                                endPoint: .trailing
+                                            )
+                                        )
+                                        .overlay(
+                                            Capsule()
+                                                .strokeBorder(
+                                                    LinearGradient(
+                                                        colors: [
+                                                            Color.blue.opacity(0.3),
+                                                            Color.purple.opacity(0.2)
+                                                        ],
+                                                        startPoint: .leading,
+                                                        endPoint: .trailing
+                                                    ),
+                                                    lineWidth: 1.5
+                                                )
+                                        )
+                                }
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 16)
-                            .background(Color(.systemGray6))
+                            .padding(.horizontal, 18)
+                            .padding(.top, 18)
+                            .padding(.bottom, 14)
+                            .background {
+                                LinearGradient(
+                                    colors: [
+                                        Color(.systemBackground),
+                                        Color(.systemBackground).opacity(0.95)
+                                    ],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            }
 
                             // Items list
                             if sortedItems.isEmpty {
@@ -4787,6 +4843,110 @@ struct ModernTipCard: View {
         .offset(y: isVisible ? 0 : 20)
         .onAppear {
             withAnimation(.spring(response: 0.6, dampingFraction: 0.75).delay(0.4)) {
+                isVisible = true
+            }
+        }
+    }
+}
+
+// MARK: - Compact Stat Pill (Ultra-Modern)
+
+struct CompactStatPill: View {
+    let value: String
+    let label: String
+    let icon: String
+    let gradient: [Color]
+    @State private var isVisible = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            // Compact gradient icon
+            ZStack {
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [gradient[0].opacity(0.3), gradient[0].opacity(0.15)],
+                            center: .center,
+                            startRadius: 5,
+                            endRadius: 18
+                        )
+                    )
+                    .frame(width: 36, height: 36)
+
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: gradient,
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(value)
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: gradient,
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+
+                Text(label)
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundColor(.secondary.opacity(0.9))
+                    .textCase(.uppercase)
+                    .tracking(0.5)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity)
+        .background {
+            ZStack {
+                // Glassmorphic background
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(.ultraThinMaterial)
+
+                // Gradient overlay
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                gradient[0].opacity(0.08),
+                                gradient[1].opacity(0.04)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+
+                // Gradient border
+                RoundedRectangle(cornerRadius: 14)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                gradient[0].opacity(0.35),
+                                gradient[1].opacity(0.2)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1.5
+                    )
+            }
+        }
+        .shadow(color: gradient[0].opacity(0.15), radius: 10, x: 0, y: 5)
+        .shadow(color: Color.black.opacity(0.06), radius: 4, x: 0, y: 2)
+        .scaleEffect(isVisible ? 1 : 0.9)
+        .opacity(isVisible ? 1 : 0)
+        .onAppear {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.2)) {
                 isVisible = true
             }
         }
