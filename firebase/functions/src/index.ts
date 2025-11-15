@@ -33,3 +33,6 @@ export { parseMicronutrientsWithAI, parseMicronutrientsWithAICached } from './pa
 export { parseAdditivesWithAI, parseAdditivesWithAICached } from './parse-additives-ai';
 export { findIngredients } from './find-ingredients';
 export { auditMissingIngredients } from './audit-missing-ingredients';
+
+// Algolia integration
+export { syncVerifiedFoodToAlgolia, syncFoodToAlgolia, syncManualFoodToAlgolia, bulkImportFoodsToAlgolia, searchFoodsAlgolia } from './algolia-sync';
