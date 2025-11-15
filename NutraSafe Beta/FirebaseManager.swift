@@ -2437,7 +2437,7 @@ class FirebaseManager: ObservableObject {
             "data": [
                 "foodName": food.name,
                 "brandName": food.brand ?? "",
-                "foodId": food.foodId ?? food.id,
+                "foodId": food.id,
                 "barcode": food.barcode ?? "",
                 "userId": currentUser?.uid ?? "anonymous",
                 "userEmail": currentUser?.email ?? "anonymous",
