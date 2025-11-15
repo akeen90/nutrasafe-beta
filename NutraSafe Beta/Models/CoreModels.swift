@@ -451,13 +451,10 @@ class DiaryDataManager: ObservableObject {
 
     private init() {}
     
-    // Date-based keys for UserDefaults (using local timezone)
-    // IMPORTANT: These keys must use local timezone so diary entries
-    // are grouped by the user's calendar day, not UTC day
+    // Date-based keys for UserDefaults
     private func keyForDate(_ date: Date, type: String) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = Calendar.current.timeZone
         return "\(type)_\(formatter.string(from: date))"
     }
     
@@ -473,11 +470,9 @@ class DiaryDataManager: ObservableObject {
         // Load from Firebase (single source of truth)
         let foodEntries = try await FirebaseManager.shared.getFoodEntries(for: date)
 
-        #if DEBUG
         print("DiaryDataManager: Loaded \(foodEntries.count) food entries from Firebase for date \(date)")
 
         // Separate entries by meal type
-        #endif
         var breakfast: [DiaryFoodItem] = []
         var lunch: [DiaryFoodItem] = []
         var dinner: [DiaryFoodItem] = []
@@ -498,18 +493,14 @@ class DiaryDataManager: ObservableObject {
             }
         }
 
-        #if DEBUG
         print("DiaryDataManager: Separated into - Breakfast: \(breakfast.count), Lunch: \(lunch.count), Dinner: \(dinner.count), Snacks: \(snacks.count)")
 
-        #endif
         return (breakfast, lunch, dinner, snacks)
     }
     
     func saveFoodData(for date: Date, breakfast: [DiaryFoodItem], lunch: [DiaryFoodItem], dinner: [DiaryFoodItem], snacks: [DiaryFoodItem]) {
-        #if DEBUG
         print("DiaryDataManager: Saving food data for date \(date)")
         print("DiaryDataManager: Saving counts - Breakfast: \(breakfast.count), Lunch: \(lunch.count), Dinner: \(dinner.count), Snacks: \(snacks.count)")
-        #endif
         saveFoodItems(key: keyForDate(date, type: "breakfast"), items: breakfast)
         saveFoodItems(key: keyForDate(date, type: "lunch"), items: lunch)
         saveFoodItems(key: keyForDate(date, type: "dinner"), items: dinner)
@@ -519,60 +510,44 @@ class DiaryDataManager: ObservableObject {
         DispatchQueue.main.async {
             self.objectWillChange.send()
             self.dataReloadTrigger = UUID()
-            #if DEBUG
             print("DiaryDataManager: Notified observers and triggered dataReloadTrigger")
-            #endif
         }
     }
     
     // Add a single food item to a specific meal
     func addFoodItem(_ item: DiaryFoodItem, to meal: String, for date: Date) {
-        #if DEBUG
         print("DiaryDataManager: Adding food item '\(item.name)' to meal '\(meal)' for date \(date)")
 
-        #endif
         Task {
             do {
                 // Load current data from Firebase (single source of truth)
                 let (breakfast, lunch, dinner, snacks) = try await getFoodDataAsync(for: date)
-                #if DEBUG
                 print("DiaryDataManager: Loaded current counts from Firebase - Breakfast: \(breakfast.count), Lunch: \(lunch.count), Dinner: \(dinner.count), Snacks: \(snacks.count)")
 
                 // Add new item to appropriate meal
-                #endif
                 switch meal.lowercased() {
                 case "breakfast":
                     var updatedBreakfast = breakfast
                     updatedBreakfast.append(item)
-                    #if DEBUG
                     print("DiaryDataManager: Adding to breakfast. New count: \(updatedBreakfast.count)")
-                    #endif
                     saveFoodData(for: date, breakfast: updatedBreakfast, lunch: lunch, dinner: dinner, snacks: snacks)
                 case "lunch":
                     var updatedLunch = lunch
                     updatedLunch.append(item)
-                    #if DEBUG
                     print("DiaryDataManager: Adding to lunch. New count: \(updatedLunch.count)")
-                    #endif
                     saveFoodData(for: date, breakfast: breakfast, lunch: updatedLunch, dinner: dinner, snacks: snacks)
                 case "dinner":
                     var updatedDinner = dinner
                     updatedDinner.append(item)
-                    #if DEBUG
                     print("DiaryDataManager: Adding to dinner. New count: \(updatedDinner.count)")
-                    #endif
                     saveFoodData(for: date, breakfast: breakfast, lunch: lunch, dinner: updatedDinner, snacks: snacks)
                 case "snacks":
                     var updatedSnacks = snacks
                     updatedSnacks.append(item)
-                    #if DEBUG
                     print("DiaryDataManager: Adding to snacks. New count: \(updatedSnacks.count)")
-                    #endif
                     saveFoodData(for: date, breakfast: breakfast, lunch: lunch, dinner: dinner, snacks: updatedSnacks)
                 default:
-                    #if DEBUG
                     print("DiaryDataManager: ERROR - Unknown meal type: \(meal)")
-                    #endif
                 }
 
                 // Add to recent foods for quick access in search
@@ -596,10 +571,8 @@ class DiaryDataManager: ObservableObject {
                 }
 
             } catch {
-                #if DEBUG
                 print("DiaryDataManager: Error loading current data from Firebase: \(error.localizedDescription)")
                 // Fallback: just sync to Firebase
-                #endif
                 await syncFoodItemToFirebase(item, meal: meal, date: date)
                 await MainActor.run {
                     addToRecentFoods(item)
@@ -612,29 +585,21 @@ class DiaryDataManager: ObservableObject {
 
     // Replace an existing food item in the diary (used when enhancing from diary)
     func replaceFoodItem(_ item: DiaryFoodItem, to meal: String, for date: Date) async throws {
-        #if DEBUG
         print("DiaryDataManager: Replacing food item '\(item.name)' (ID: \(item.id)) in meal '\(meal)' for date \(date)")
 
         // Load current data from Firebase (single source of truth)
-        #endif
         let (breakfast, lunch, dinner, snacks) = try await getFoodDataAsync(for: date)
-        #if DEBUG
         print("DiaryDataManager: Loaded current counts from Firebase - Breakfast: \(breakfast.count), Lunch: \(lunch.count), Dinner: \(dinner.count), Snacks: \(snacks.count)")
 
         // Replace existing item in appropriate meal
-        #endif
         switch meal.lowercased() {
         case "breakfast":
             var updatedBreakfast = breakfast
             if let index = updatedBreakfast.firstIndex(where: { $0.id == item.id }) {
                 updatedBreakfast[index] = item
-                #if DEBUG
                 print("DiaryDataManager: Replaced in breakfast at index \(index)")
-                #endif
             } else {
-                #if DEBUG
                 print("DiaryDataManager: WARNING - Item not found in breakfast, appending instead")
-                #endif
                 updatedBreakfast.append(item)
             }
             saveFoodData(for: date, breakfast: updatedBreakfast, lunch: lunch, dinner: dinner, snacks: snacks)
@@ -642,13 +607,9 @@ class DiaryDataManager: ObservableObject {
             var updatedLunch = lunch
             if let index = updatedLunch.firstIndex(where: { $0.id == item.id }) {
                 updatedLunch[index] = item
-                #if DEBUG
                 print("DiaryDataManager: Replaced in lunch at index \(index)")
-                #endif
             } else {
-                #if DEBUG
                 print("DiaryDataManager: WARNING - Item not found in lunch, appending instead")
-                #endif
                 updatedLunch.append(item)
             }
             saveFoodData(for: date, breakfast: breakfast, lunch: updatedLunch, dinner: dinner, snacks: snacks)
@@ -656,13 +617,9 @@ class DiaryDataManager: ObservableObject {
             var updatedDinner = dinner
             if let index = updatedDinner.firstIndex(where: { $0.id == item.id }) {
                 updatedDinner[index] = item
-                #if DEBUG
                 print("DiaryDataManager: Replaced in dinner at index \(index)")
-                #endif
             } else {
-                #if DEBUG
                 print("DiaryDataManager: WARNING - Item not found in dinner, appending instead")
-                #endif
                 updatedDinner.append(item)
             }
             saveFoodData(for: date, breakfast: breakfast, lunch: lunch, dinner: updatedDinner, snacks: snacks)
@@ -670,20 +627,14 @@ class DiaryDataManager: ObservableObject {
             var updatedSnacks = snacks
             if let index = updatedSnacks.firstIndex(where: { $0.id == item.id }) {
                 updatedSnacks[index] = item
-                #if DEBUG
                 print("DiaryDataManager: Replaced in snacks at index \(index)")
-                #endif
             } else {
-                #if DEBUG
                 print("DiaryDataManager: WARNING - Item not found in snacks, appending instead")
-                #endif
                 updatedSnacks.append(item)
             }
             saveFoodData(for: date, breakfast: breakfast, lunch: lunch, dinner: dinner, snacks: updatedSnacks)
         default:
-            #if DEBUG
             print("DiaryDataManager: ERROR - Unknown meal type: \(meal)")
-            #endif
         }
 
         // Add to recent foods for quick access in search
@@ -706,24 +657,18 @@ class DiaryDataManager: ObservableObject {
             self.dataReloadTrigger = UUID() // Trigger DiaryTabView to reload from Firebase
         }
 
-        #if DEBUG
         print("DiaryDataManager: Successfully completed replacing '\(item.name)'")
-        #endif
     }
 
     // Move an existing food item from one meal to another for a given date
     func moveFoodItem(_ item: DiaryFoodItem, from originalMeal: String, to newMeal: String, for date: Date) async throws {
-        #if DEBUG
         print("DiaryDataManager: Moving food item '\(item.name)' (ID: \(item.id)) from '\(originalMeal)' to '\(newMeal)' for date \(date)")
 
         // Load current data from Firebase (single source of truth)
-        #endif
         let (breakfast, lunch, dinner, snacks) = try await getFoodDataAsync(for: date)
-        #if DEBUG
         print("DiaryDataManager: Loaded current counts from Firebase - Breakfast: \(breakfast.count), Lunch: \(lunch.count), Dinner: \(dinner.count), Snacks: \(snacks.count)")
 
         // Remove from original meal
-        #endif
         var updatedBreakfast = breakfast
         var updatedLunch = lunch
         var updatedDinner = dinner
@@ -732,28 +677,18 @@ class DiaryDataManager: ObservableObject {
         switch originalMeal.lowercased() {
         case "breakfast":
             updatedBreakfast.removeAll { $0.id == item.id }
-            #if DEBUG
             print("DiaryDataManager: Removed from breakfast if present")
-            #endif
         case "lunch":
             updatedLunch.removeAll { $0.id == item.id }
-            #if DEBUG
             print("DiaryDataManager: Removed from lunch if present")
-            #endif
         case "dinner":
             updatedDinner.removeAll { $0.id == item.id }
-            #if DEBUG
             print("DiaryDataManager: Removed from dinner if present")
-            #endif
         case "snacks":
             updatedSnacks.removeAll { $0.id == item.id }
-            #if DEBUG
             print("DiaryDataManager: Removed from snacks if present")
-            #endif
         default:
-            #if DEBUG
             print("DiaryDataManager: WARNING - Unknown original meal type: \(originalMeal)")
-            #endif
         }
 
         // Add to new meal (replace if same id already exists, otherwise append)
@@ -761,55 +696,37 @@ class DiaryDataManager: ObservableObject {
         case "breakfast":
             if let index = updatedBreakfast.firstIndex(where: { $0.id == item.id }) {
                 updatedBreakfast[index] = item
-                #if DEBUG
                 print("DiaryDataManager: Replaced in breakfast at index \(index)")
-                #endif
             } else {
                 updatedBreakfast.append(item)
-                #if DEBUG
                 print("DiaryDataManager: Appended to breakfast. New count: \(updatedBreakfast.count)")
-                #endif
             }
         case "lunch":
             if let index = updatedLunch.firstIndex(where: { $0.id == item.id }) {
                 updatedLunch[index] = item
-                #if DEBUG
                 print("DiaryDataManager: Replaced in lunch at index \(index)")
-                #endif
             } else {
                 updatedLunch.append(item)
-                #if DEBUG
                 print("DiaryDataManager: Appended to lunch. New count: \(updatedLunch.count)")
-                #endif
             }
         case "dinner":
             if let index = updatedDinner.firstIndex(where: { $0.id == item.id }) {
                 updatedDinner[index] = item
-                #if DEBUG
                 print("DiaryDataManager: Replaced in dinner at index \(index)")
-                #endif
             } else {
                 updatedDinner.append(item)
-                #if DEBUG
                 print("DiaryDataManager: Appended to dinner. New count: \(updatedDinner.count)")
-                #endif
             }
         case "snacks":
             if let index = updatedSnacks.firstIndex(where: { $0.id == item.id }) {
                 updatedSnacks[index] = item
-                #if DEBUG
                 print("DiaryDataManager: Replaced in snacks at index \(index)")
-                #endif
             } else {
                 updatedSnacks.append(item)
-                #if DEBUG
                 print("DiaryDataManager: Appended to snacks. New count: \(updatedSnacks.count)")
-                #endif
             }
         default:
-            #if DEBUG
             print("DiaryDataManager: ERROR - Unknown new meal type: \(newMeal)")
-            #endif
         }
 
         // Persist updated arrays
@@ -835,29 +752,21 @@ class DiaryDataManager: ObservableObject {
             self.dataReloadTrigger = UUID() // Trigger DiaryTabView to reload from Firebase
         }
 
-        #if DEBUG
         print("DiaryDataManager: Successfully completed moving '\(item.name)' to \(newMeal)")
-        #endif
     }
 
     // Delete food items from both local storage and Firebase
     func deleteFoodItems(_ items: [DiaryFoodItem], for date: Date) {
         Task {
-            #if DEBUG
             print("DiaryDataManager: Deleting \(items.count) food items from Firebase")
 
-            #endif
             for item in items {
                 do {
                     // Delete from Firebase using the item's ID
                     try await FirebaseManager.shared.deleteFoodEntry(entryId: item.id.uuidString)
-                    #if DEBUG
                     print("DiaryDataManager: Deleted item '\(item.name)' from Firebase")
-                    #endif
                 } catch {
-                    #if DEBUG
                     print("DiaryDataManager: Error deleting item '\(item.name)' from Firebase: \(error.localizedDescription)")
-                    #endif
                 }
             }
 
@@ -874,9 +783,7 @@ class DiaryDataManager: ObservableObject {
         do {
             // Get the current user ID from FirebaseManager
             guard let userId = FirebaseManager.shared.currentUser?.uid else {
-                #if DEBUG
                 print("DiaryDataManager: Cannot sync to Firebase - no user logged in")
-                #endif
                 return
             }
 
@@ -888,9 +795,7 @@ class DiaryDataManager: ObservableObject {
             case "dinner": mealType = .dinner
             case "snacks": mealType = .snacks
             default:
-                #if DEBUG
                 print("DiaryDataManager: Cannot sync to Firebase - invalid meal type: \(meal)")
-                #endif
                 return
             }
 
@@ -900,13 +805,9 @@ class DiaryDataManager: ObservableObject {
             // Save to Firebase
             try await FirebaseManager.shared.saveFoodEntry(foodEntry)
 
-            #if DEBUG
             print("DiaryDataManager: Successfully synced '\(item.name)' to Firebase")
-            #endif
         } catch {
-            #if DEBUG
             print("DiaryDataManager: Failed to sync to Firebase: \(error.localizedDescription)")
-            #endif
         }
     }
     
@@ -1015,11 +916,9 @@ class DiaryDataManager: ObservableObject {
 
         // Check if the food has a micronutrient profile with actual data
         if let profile = item.micronutrientProfile {
-            #if DEBUG
             print("  📊 Found micronutrient profile with \(profile.vitamins.count) vitamins and \(profile.minerals.count) minerals")
 
             // Process actual nutrient data
-            #endif
             Task { @MainActor in
                 await MicronutrientTrackingManager.shared.processNutrientProfile(
                     profile,
@@ -1030,9 +929,7 @@ class DiaryDataManager: ObservableObject {
             }
         } else {
             // Fallback: Extract ingredients and use keyword-based detection
-            #if DEBUG
             print("  ⚠️ No micronutrient profile found, falling back to ingredient analysis")
-            #endif
             let ingredients = item.ingredients ?? []
 
             Task { @MainActor in
@@ -1044,9 +941,7 @@ class DiaryDataManager: ObservableObject {
             }
         }
 
-        #if DEBUG
         print("✅ Micronutrient processing queued for: \(item.name)")
-        #endif
     }
 
     // MARK: - Reaction Log Support
@@ -1061,17 +956,13 @@ class DiaryDataManager: ObservableObject {
             throw NSError(domain: "DiaryDataManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "User not logged in"])
         }
 
-        #if DEBUG
         print("DiaryDataManager: Fetching meals from \(startDate) to \(endDate)")
 
         // Use Firebase to query food entries within the date range
-        #endif
         let entries = try await FirebaseManager.shared.getFoodEntriesInRange(userId: userId, startDate: startDate, endDate: endDate)
 
-        #if DEBUG
         print("DiaryDataManager: Found \(entries.count) food entries in time range")
 
-        #endif
         return entries
     }
 }
@@ -1180,14 +1071,12 @@ struct DailyBreakdown: Identifiable {
     var dayName: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE"
-        formatter.timeZone = Calendar.current.timeZone
         return formatter.string(from: date)
     }
 
     var shortDateString: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM d"
-        formatter.timeZone = Calendar.current.timeZone
         return formatter.string(from: date)
     }
 }

@@ -5,9 +5,8 @@ extension DiaryDataManager {
     func moveFoodItemAcrossDates(_ item: DiaryFoodItem, from originalMeal: String, fromDate: Date, to newMeal: String, toDate: Date) async throws {
         print("DiaryDataManager: Moving food item '\(item.name)' (ID: \(item.id)) from '\(originalMeal)' on \(fromDate) to '\(newMeal)' on \(toDate)")
 
-        // Use DateHelper for consistent local timezone date comparison
-        if DateHelper.isSameDay(fromDate, toDate) {
-            // Same day - just move between meals
+        let calendar = Calendar.current
+        if calendar.isDate(fromDate, inSameDayAs: toDate) {
             try await moveFoodItem(item, from: originalMeal, to: newMeal, for: toDate)
             return
         }

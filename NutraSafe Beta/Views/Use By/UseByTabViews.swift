@@ -96,8 +96,7 @@ struct UseByTabView: View {
     private var expiringSoonCount: Int { 0 }
 
     var body: some View {
-        NavigationView {
-            VStack(spacing: 0) {
+        VStack(spacing: 0) {
                 // Header - AAA Modern Design
                 HStack(spacing: 16) {
                     Text("Use By")
@@ -201,9 +200,7 @@ struct UseByTabView: View {
                 }
             }
             .background(Color.adaptiveBackground)
-            .navigationBarHidden(true)
-        }
-        .navigationViewStyle(StackNavigationViewStyle())
+            .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
         .fullScreenCover(isPresented: $showingAddSheet) {
             AddUseByItemSheet(selectedFood: $selectedFoodForUseBy)
         }

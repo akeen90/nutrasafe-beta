@@ -834,26 +834,46 @@ class AdditiveWatchService {
                 let code = additive.eNumber.lowercased()
                 let name = additive.name.lowercased()
                 var matched = false
-                if matchesWithWordBoundaryLocal(text: normalized, pattern: code) || matchesWithWordBoundaryLocal(text: normalized, pattern: name) {
+                var matchedPattern = ""
+
+                // Check E-number first (skip if empty to prevent false positives)
+                if !code.isEmpty && matchesWithWordBoundaryLocal(text: normalized, pattern: code) {
                     matched = true
+                    matchedPattern = "E-number: \(code)"
+                } else if !name.isEmpty && matchesWithWordBoundaryLocal(text: normalized, pattern: name) {
+                    matched = true
+                    matchedPattern = "Name: \(name)"
                 } else {
                     for syn in additive.synonyms {
                         let term = syn.lowercased()
                         if term.isEmpty { continue }
                         if matchesWithWordBoundaryLocal(text: normalized, pattern: term) {
                             matched = true
+                            matchedPattern = "Synonym: \(term)"
                             break
                         }
                     }
                 }
+
                 if matched && !seenCodes.contains(additive.eNumber) {
                     csvMatches.append(additive)
                     seenCodes.insert(additive.eNumber)
+
+                    #if DEBUG
+                    // Log suspicious matches for debugging
+                    if name.contains("malt") || name.contains("invert") || name.contains("hydrolys") {
+                        print("🚨 [CSV FALSE POSITIVE?] Matched '\(additive.name)' via \(matchedPattern)")
+                        print("   Normalized text: '\(normalized.prefix(200))'")
+                    }
+                    #endif
                 }
             }
             if !csvMatches.isEmpty {
                 #if DEBUG
                 print("🔁 [AdditiveWatchService] Merged CSV matches: \(csvMatches.count)")
+                for match in csvMatches {
+                    print("   📌 Added: \(match.name)")
+                }
                 #endif
                 finalDetected.append(contentsOf: csvMatches)
             }
