@@ -1679,21 +1679,6 @@ exports.analyzeAdditivesEnhanced = functions.https.onRequest(async (req, res) =>
         });
     }
 });
-/**
- * Check if a pattern matches as a complete word (not substring) in the text.
- * Uses word boundary matching to prevent false positives like "mollusc" matching "molybdenum"
- * or "protein" matching "hydrolysed protein".
- */
-function matchesWordBoundary(text, pattern) {
-    if (!pattern || pattern.trim().length === 0)
-        return false;
-    // Escape special regex characters in the pattern
-    const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    // Create regex with word boundaries (\b) to match complete words/phrases only
-    // Word boundary matches between word character (\w) and non-word character
-    const regex = new RegExp(`\\b${escapedPattern}\\b`, 'i');
-    return regex.test(text);
-}
 function analyzeIngredientsForAdditives(ingredients) {
     const text = ingredients.toLowerCase();
     const detectedAdditives = [];
@@ -1712,16 +1697,16 @@ function analyzeIngredientsForAdditives(ingredients) {
     for (const [, additive] of Object.entries(COMPREHENSIVE_ADDITIVES_DB)) {
         if (foundCodes.has(additive.code))
             continue; // Use additive.code instead of code to avoid duplicate aliases
-        // Check main name with word boundary matching to prevent false positives
-        if (matchesWordBoundary(text, additive.name.toLowerCase())) {
+        // Check main name
+        if (text.includes(additive.name.toLowerCase())) {
             detectedAdditives.push(additive);
             foundCodes.add(additive.code);
             continue;
         }
-        // Check synonyms and matches with word boundary matching
+        // Check synonyms and matches with flexible matching
         const searchTerms = [...additive.synonyms, ...additive.matches];
         for (const term of searchTerms) {
-            if (term && matchesWordBoundary(text, term.toLowerCase())) {
+            if (term && text.includes(term.toLowerCase())) {
                 detectedAdditives.push(additive);
                 foundCodes.add(additive.code);
                 break;
@@ -1729,12 +1714,12 @@ function analyzeIngredientsForAdditives(ingredients) {
         }
         // Special flexible matching for common additives (more precise)
         if (!foundCodes.has(additive.code)) {
-            // Lecithin matching (E322) - specific patterns only with word boundaries
-            if (additive.code === 'E322' && (matchesWordBoundary(text, 'lecithin') ||
-                matchesWordBoundary(text, 'soya lecithin') ||
-                matchesWordBoundary(text, 'soy lecithin') ||
-                matchesWordBoundary(text, 'sunflower lecithin') ||
-                matchesWordBoundary(text, 'egg lecithin'))) {
+            // Lecithin matching (E322) - specific patterns only
+            if (additive.code === 'E322' && (text.includes('lecithin') ||
+                text.includes('soya lecithin') ||
+                text.includes('soy lecithin') ||
+                text.includes('sunflower lecithin') ||
+                text.includes('egg lecithin'))) {
                 detectedAdditives.push(additive);
                 foundCodes.add(additive.code);
             }
@@ -1838,7 +1823,7 @@ function calculateProcessingScore(additives, ingredientsText) {
         if (rules.ingredient_names) {
             const lowerIngredients = ingredientsText.toLowerCase();
             for (const ingredient of rules.ingredient_names) {
-                if (matchesWordBoundary(lowerIngredients, ingredient.toLowerCase())) {
+                if (lowerIngredients.includes(ingredient.toLowerCase())) {
                     ingredientMatches.push(ingredient);
                 }
             }
@@ -1847,7 +1832,7 @@ function calculateProcessingScore(additives, ingredientsText) {
         if (rules.us_color_names) {
             const lowerIngredients = ingredientsText.toLowerCase();
             for (const colorName of rules.us_color_names) {
-                if (matchesWordBoundary(lowerIngredients, colorName.toLowerCase())) {
+                if (lowerIngredients.includes(colorName.toLowerCase())) {
                     ingredientMatches.push(colorName);
                 }
             }

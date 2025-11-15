@@ -14,16 +14,10 @@ function isEnglishIngredients(ingredientsText) {
     if (!ingredientsText || ingredientsText.trim().length === 0) {
         return false;
     }
-    // Check for non-Latin scripts (Arabic, Chinese, Japanese, Korean, Cyrillic, Greek, Thai, etc.)
-    const nonLatinPattern = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF\u0400-\u04FF\u0370-\u03FF\u0E00-\u0E7F]/;
-    if (nonLatinPattern.test(ingredientsText)) {
-        console.log('⚠️ Non-Latin script detected in ingredients (Arabic, Chinese, Japanese, Korean, Cyrillic, Greek, Thai, etc.)');
-        return false;
-    }
-    // Check for common European non-English characters (French, German, Spanish, Italian accents)
+    // Check for common non-English characters (French, German, Spanish, Italian accents)
     const nonEnglishPattern = /[áàâäãåąčćęèéêëėįìíîïłńòóôöõøùúûüųūÿýżźñçčšž]/i;
     if (nonEnglishPattern.test(ingredientsText)) {
-        console.log('⚠️ Non-English European characters detected in ingredients');
+        console.log('⚠️ Non-English characters detected in ingredients');
         return false;
     }
     // Check for common non-English words

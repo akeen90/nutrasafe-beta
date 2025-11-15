@@ -87,9 +87,7 @@ class HealthKitManager: ObservableObject {
                 self.isAuthorized = true
             }
         } catch {
-            #if DEBUG
             print("HealthKit authorization failed: \(error)")
-            #endif
         }
     }
     
@@ -121,16 +119,12 @@ class HealthKitManager: ObservableObject {
                 }
                 return total
             }
-
-            #if DEBUG
+            
             print("🔥 Firebase exercise calories for \(date.formatted(.dateTime.day().month())): \(Int(totalCalories))")
-            #endif
             return totalCalories
-
+            
         } catch {
-            #if DEBUG
             print("⚠️ Error fetching Firebase exercise entries: \(error)")
-            #endif
             return 0.0
         }
     }
@@ -184,9 +178,7 @@ class HealthKitManager: ObservableObject {
                 // Estimate calories for resistance training and other workouts without recorded calories
                 let estimatedCalories = estimateCaloriesForWorkout(workout)
                 totalCalories += estimatedCalories
-                #if DEBUG
                 print("Estimated \(estimatedCalories) calories for \(workout.workoutActivityType.name) workout")
-                #endif
             }
         }
         
@@ -260,9 +252,7 @@ class HealthKitManager: ObservableObject {
                 self.exerciseCalories = calories
             }
         } catch {
-            #if DEBUG
             print("Failed to fetch exercise energy: \(error)")
-            #endif
         }
     }
     
@@ -345,17 +335,13 @@ class HealthKitManager: ObservableObject {
                 self.userWeight = weight
             }
         } catch {
-            #if DEBUG
             print("Failed to fetch user weight: \(error)")
-            #endif
         }
     }
     
     func writeDietaryEnergyConsumed(calories: Double, date: Date = Date()) async throws {
         guard isAuthorized else {
-            #if DEBUG
             print("HealthKit not authorized for writing dietary energy")
-            #endif
             return
         }
 
@@ -370,16 +356,12 @@ class HealthKitManager: ObservableObject {
         )
 
         try await healthStore.save(sample)
-        #if DEBUG
         print("Successfully wrote \(calories) kcal to Apple Health")
-        #endif
     }
 
     func writeBodyWeight(weightKg: Double, date: Date = Date()) async throws {
         guard isAuthorized else {
-            #if DEBUG
             print("HealthKit not authorized for writing body weight")
-            #endif
             return
         }
 
@@ -394,8 +376,6 @@ class HealthKitManager: ObservableObject {
         )
 
         try await healthStore.save(sample)
-        #if DEBUG
         print("✅ Successfully wrote \(weightKg) kg to Apple Health")
-        #endif
     }
 }

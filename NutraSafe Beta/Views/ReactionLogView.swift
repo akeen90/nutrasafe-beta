@@ -1163,7 +1163,7 @@ struct IngredientScoreRow: View {
                     }
                 }
 
-                Text("Found in: \(Array(score.contributingFoodNames.prefix(3)).joined(separator: ", "))")
+                Text("Found in: \(score.contributingFoodNames.prefix(3).joined(separator: ", "))")
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
@@ -1282,7 +1282,7 @@ struct ReactionAllergenGroup: View {
                                     }
                                 }
 
-                                Text("Found in: \(Array(ingredient.contributingFoodNames.prefix(3)).joined(separator: ", "))")
+                                Text("Found in: \(ingredient.contributingFoodNames.prefix(3).joined(separator: ", "))")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                                     .lineLimit(1)

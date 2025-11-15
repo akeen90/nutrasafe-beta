@@ -1866,13 +1866,17 @@ struct LogReactionView: View {
         let standardized = standardizeIngredients(ingredients)
         suspectedIngredients = standardized
 
+        // Then try AI refinement in background
         Task {
-            let aiRefined = await standardizeIngredientsWithAI(standardized)
-            await MainActor.run {
-                suspectedIngredients = aiRefined
-                #if DEBUG
-                print("✨ AI refined to: \(aiRefined.joined(separator: ", "))")
-                #endif
+            do {
+                let aiRefined = try await standardizeIngredientsWithAI(standardized)
+                await MainActor.run {
+                    suspectedIngredients = aiRefined
+                    print("✨ AI refined to: \(aiRefined.joined(separator: ", "))")
+                }
+            } catch {
+                print("ℹ️ AI refinement unavailable, using client-side filter: \(error.localizedDescription)")
+                // Keep the client-side results, which are already pretty good
             }
         }
     }
@@ -1881,16 +1885,10 @@ struct LogReactionView: View {
         var processed: [String] = []
         var seen = Set<String>()
 
-        // Filter out any empty or whitespace-only strings early
-        let validIngredients = ingredients
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
+        for ingredient in ingredients {
+            var cleaned = ingredient.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        for ingredient in validIngredients {
-            var cleaned = ingredient
-            print("🔍 Processing ingredient: '\(cleaned.prefix(60))'...")
-
-            // Skip empty (defensive check)
+            // Skip empty
             guard !cleaned.isEmpty else { continue }
 
             // Skip long text blocks (instructions/warnings)
@@ -1937,61 +1935,31 @@ struct LogReactionView: View {
             if shouldSkip { continue }
 
             // Clean up the ingredient name
-            // Remove percentages - split into two passes to avoid catastrophic backtracking
-            print("   ⚙️ Before regex: '\(cleaned.prefix(40))'")
-            cleaned = cleaned.replacingOccurrences(of: #" *\(\d+%?\)"#, with: "", options: .regularExpression)
-            print("   ⚙️ After regex 1: '\(cleaned.prefix(40))'")
-            cleaned = cleaned.replacingOccurrences(of: #" +\d+%"#, with: "", options: .regularExpression)
-            print("   ⚙️ After regex 2: '\(cleaned.prefix(40))'")
+            // Remove percentages
+            cleaned = cleaned.replacingOccurrences(of: #"\s*\(\d+%?\)|\s*\d+%"#, with: "", options: .regularExpression)
 
-            // Safe parenthetical extraction without slicing
-            print("   🔄 Starting character loop (length: \(cleaned.count))...")
-            var outside = ""
-            var subs: [String] = []
-            var inParen = false
-            var currentSub = ""
-            for ch in cleaned {
-                if ch == "(" {
-                    if inParen { currentSub.append(ch) } else { inParen = true }
-                } else if ch == ")" {
-                    if inParen {
-                        inParen = false
-                        let sub = currentSub.trimmingCharacters(in: .whitespaces)
-                        if !sub.isEmpty { subs.append(sub) }
-                        currentSub = ""
-                    } else {
-                        outside.append(ch)
+            // Handle parenthetical sub-ingredients: "butter (milk)" → "butter, milk"
+            if let openParen = cleaned.firstIndex(of: "("),
+               let closeParen = cleaned.lastIndex(of: ")") {
+                let main = String(cleaned[..<openParen]).trimmingCharacters(in: .whitespaces)
+                let sub = String(cleaned[cleaned.index(after: openParen)..<closeParen]).trimmingCharacters(in: .whitespaces)
+
+                // If sub-ingredient is not just clarification, keep both
+                if !sub.isEmpty && !sub.lowercased().contains(main.lowercased()) {
+                    if !seen.contains(main.lowercased()) {
+                        processed.append(main)
+                        seen.insert(main.lowercased())
                     }
-                } else {
-                    if inParen { currentSub.append(ch) } else { outside.append(ch) }
-                }
-            }
-            print("   ✅ Character loop complete. main='\(outside.prefix(30))', subs=\(subs.count)")
-            let main = outside.trimmingCharacters(in: .whitespaces)
-            var addedAny = false
-            if main.count >= 2 {
-                let lowerMain = main.lowercased()
-                if !seen.contains(lowerMain) {
-                    processed.append(main)
-                    seen.insert(lowerMain)
-                    addedAny = true
-                }
-            }
-            // Only check sub-ingredients if we have a valid main ingredient
-            let lowerMain = main.isEmpty ? nil : main.lowercased()
-            for sub in subs {
-                if sub.count >= 2 {
-                    let lowerSub = sub.lowercased()
-                    // Guard against empty main string in contains check
-                    let isSubOfMain = lowerMain != nil ? lowerSub.contains(lowerMain!) : false
-                    if !isSubOfMain && !seen.contains(lowerSub) {
+                    if !seen.contains(sub.lowercased()) {
                         processed.append(sub)
-                        seen.insert(lowerSub)
-                        addedAny = true
+                        seen.insert(sub.lowercased())
                     }
+                    continue
+                } else {
+                    // Clarification, use main only
+                    cleaned = main
                 }
             }
-            if addedAny { continue }
 
             // Remove trailing/leading punctuation except periods at end
             cleaned = cleaned.trimmingCharacters(in: CharacterSet(charactersIn: "()[]{}"))
@@ -2013,44 +1981,26 @@ struct LogReactionView: View {
         return processed
     }
 
-    private func standardizeIngredientsWithAI(_ ingredients: [String]) async -> [String] {
+    private func standardizeIngredientsWithAI(_ ingredients: [String]) async throws -> [String] {
         guard let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/standardizeIngredients") else {
-            #if DEBUG
-            print("⚠️ [AI Standardize] Invalid URL")
-            #endif
-            return ingredients
+            throw NSError(domain: "StandardizeIngredients", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 10
 
-        do {
-            let requestBody: [String: Any] = ["data": ["ingredients": ingredients]]
-            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        let requestBody: [String: Any] = ["data": ["ingredients": ingredients]]
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
 
-            let (data, _) = try await URLSession.shared.data(for: request)
-            let response = try JSONDecoder().decode(StandardizeResponse.self, from: data)
-            if response.result.success {
-                return response.result.standardizedIngredients
-            } else {
-                #if DEBUG
-                print("⚠️ [AI Standardize] Service returned error: \(response.result.error ?? "Unknown")")
-                #endif
-                return ingredients
-            }
-        } catch is CancellationError {
-            #if DEBUG
-            print("ℹ️ [AI Standardize] Request cancelled")
-            #endif
-            return ingredients
-        } catch {
-            #if DEBUG
-            print("❌ [AI Standardize] Failed: \(error)")
-            #endif
-            return ingredients
+        let (data, _) = try await URLSession.shared.data(for: request)
+        let response = try JSONDecoder().decode(StandardizeResponse.self, from: data)
+
+        guard response.result.success else {
+            throw NSError(domain: "StandardizeIngredients", code: -1, userInfo: [NSLocalizedDescriptionKey: response.result.error ?? "Unknown error"])
         }
+
+        return response.result.standardizedIngredients
     }
 
     struct StandardizeResponse: Codable {

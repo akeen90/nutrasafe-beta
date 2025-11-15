@@ -289,20 +289,15 @@ actor SQLiteFoodDatabase {
     }
 
     private func executeSQL(_ sql: String) {
-        guard let db = db else {
-            print("❌ Database connection not available")
-            return
-        }
-
         var statement: OpaquePointer?
 
         if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
             if sqlite3_step(statement) != SQLITE_DONE {
-                let errorMessage = String(cString: sqlite3_errmsg(db))
+                let errorMessage = String(cString: sqlite3_errmsg(db)!)
                 print("❌ SQL execution error: \(errorMessage)")
             }
         } else {
-            let errorMessage = String(cString: sqlite3_errmsg(db))
+            let errorMessage = String(cString: sqlite3_errmsg(db)!)
             print("❌ SQL preparation error: \(errorMessage)")
         }
 
@@ -360,21 +355,9 @@ actor SQLiteFoodDatabase {
 
     // MARK: - Search Operations
 
-    /// Escape special LIKE characters to prevent unexpected wildcard behavior
-    private func escapeLikeString(_ string: String) -> String {
-        return string
-            .replacingOccurrences(of: "\\", with: "\\\\")  // Escape backslash first
-            .replacingOccurrences(of: "%", with: "\\%")     // Escape % wildcard
-            .replacingOccurrences(of: "_", with: "\\_")     // Escape _ wildcard
-    }
-
     /// Search foods by name, brand, or barcode with intelligent fuzzy ranking
     func searchFoods(query: String, limit: Int = 20) async -> [FoodSearchResult] {
         await ensureInitialized()
-
-        // Escape special LIKE characters in user input to prevent SQL injection
-        let escapedQuery = escapeLikeString(query)
-
         let sql = """
         SELECT
             id, name, brand, barcode,
@@ -389,12 +372,12 @@ actor SQLiteFoodDatabase {
             is_verified,
             ingredients
         FROM foods
-        WHERE name LIKE ? ESCAPE '\\' COLLATE NOCASE OR brand LIKE ? ESCAPE '\\' COLLATE NOCASE OR barcode = ?
+        WHERE name LIKE ? COLLATE NOCASE OR brand LIKE ? COLLATE NOCASE OR barcode = ?
         ORDER BY
             CASE
                 -- Priority 0: Generic brand items that start with the query (highest priority for fruits/veg)
                 -- This ensures "Banana (small)" from Generic brand appears before "Banana Loaf" from Soreen
-                WHEN LOWER(brand) = 'generic' AND name LIKE ? ESCAPE '\\' COLLATE NOCASE THEN 0
+                WHEN LOWER(brand) = 'generic' AND name LIKE ? COLLATE NOCASE THEN 0
 
                 -- Priority 1: Exact barcode match
                 WHEN barcode = ? THEN 1
@@ -404,22 +387,22 @@ actor SQLiteFoodDatabase {
 
                 -- Priority 3: Name starts with query followed by comma/space/parenthesis (e.g., "Banana, raw" or "Banana (small)")
                 -- These are likely generic/unprocessed items
-                WHEN name LIKE ? ESCAPE '\\' COLLATE NOCASE OR name LIKE ? ESCAPE '\\' COLLATE NOCASE OR name LIKE ? ESCAPE '\\' COLLATE NOCASE THEN 3
+                WHEN name LIKE ? COLLATE NOCASE OR name LIKE ? COLLATE NOCASE OR name LIKE ? COLLATE NOCASE THEN 3
 
                 -- Priority 4: Name starts with query (whole word) but no comma/space immediately after
-                WHEN name LIKE ? ESCAPE '\\' COLLATE NOCASE THEN 4
+                WHEN name LIKE ? COLLATE NOCASE THEN 4
 
                 -- Priority 5: Name contains query as whole word with spaces
-                WHEN name LIKE ? ESCAPE '\\' COLLATE NOCASE OR name LIKE ? ESCAPE '\\' COLLATE NOCASE THEN 5
+                WHEN name LIKE ? COLLATE NOCASE OR name LIKE ? COLLATE NOCASE THEN 5
 
                 -- Priority 6: Brand starts with query
-                WHEN brand LIKE ? ESCAPE '\\' COLLATE NOCASE THEN 6
+                WHEN brand LIKE ? COLLATE NOCASE THEN 6
 
                 -- Priority 7: Name contains query anywhere
-                WHEN name LIKE ? ESCAPE '\\' COLLATE NOCASE THEN 7
+                WHEN name LIKE ? COLLATE NOCASE THEN 7
 
                 -- Priority 8: Brand contains query
-                WHEN brand LIKE ? ESCAPE '\\' COLLATE NOCASE THEN 8
+                WHEN brand LIKE ? COLLATE NOCASE THEN 8
 
                 ELSE 9
             END,
@@ -435,14 +418,14 @@ actor SQLiteFoodDatabase {
         var statement: OpaquePointer?
         var results: [FoodSearchResult] = []
 
-        let queryLower = escapedQuery.lowercased()
-        let searchPattern = "%\(escapedQuery)%"
-        let startsWithQuery = "\(escapedQuery)%"
-        let startsWithComma = "\(escapedQuery),%"
-        let startsWithDash = "\(escapedQuery) -%"
-        let startsWithParen = "\(escapedQuery) (%"
-        let wholeWordSpace = "% \(escapedQuery) %"
-        let wholeWordStart = "\(escapedQuery) %"
+        let queryLower = query.lowercased()
+        let searchPattern = "%\(query)%"
+        let startsWithQuery = "\(query)%"
+        let startsWithComma = "\(query),%"
+        let startsWithDash = "\(query) -%"
+        let startsWithParen = "\(query) (%"
+        let wholeWordSpace = "% \(query) %"
+        let wholeWordStart = "\(query) %"
 
         #if DEBUG
         print("🔎 SQLite fuzzy search for: '\(query)'")
@@ -641,19 +624,14 @@ actor SQLiteFoodDatabase {
             if !ingredientsString.isEmpty {
                 // Try splitting by ", " first (comma + space), then fallback to just ","
                 let separated = ingredientsString.components(separatedBy: ", ")
-                let filtered: [String]
                 if separated.count > 1 {
-                    // Filter out empty strings and trim whitespace
-                    filtered = separated
-                        .map { $0.trimmingCharacters(in: .whitespaces) }
-                        .filter { !$0.isEmpty }
+                    ingredients = separated
                 } else {
                     // Fallback: split by comma only and trim whitespace
-                    filtered = ingredientsString.components(separatedBy: ",")
-                        .map { $0.trimmingCharacters(in: .whitespaces) }
-                        .filter { !$0.isEmpty }
+                    ingredients = ingredientsString.components(separatedBy: ",").map {
+                        $0.trimmingCharacters(in: .whitespaces)
+                    }
                 }
-                ingredients = filtered.isEmpty ? nil : filtered
             }
         }
 

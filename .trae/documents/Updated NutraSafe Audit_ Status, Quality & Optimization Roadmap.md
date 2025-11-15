@@ -1,50 +1,47 @@
-## Objectives
-- Ensure items like “Greggs Bacon and Sausage Roll” always show ingredients
-- Merge verified Firebase data into local results even when SQLite returns items
-- Relax strict brand/name enrichment gates while keeping accuracy
-- Add client barcode Cloud fallback
+## Current Architecture
+- SwiftUI-first UI with selective UIKit interop
+- Navigation via a reusable container providing NavigationStack with fallback
+- Data layer: SQLite actor (LIKE-based prioritized search) + Firebase Firestore
+- Caching: Image cache with NSCache + disk, async IO for load/save
+- Concurrency: async/await throughout; background tasks for debounce and disk IO
 
-## Changes
-1) Parallel Verified Enrichment
-- Update `FirebaseManager.searchFoods` to call the Cloud Function search in parallel with local sources
-- Merge results by a deterministic key (normalized `brand+name`), preferring verified `ingredients`, `isVerified`, and micronutrients
-- Files: `NutraSafe Beta/FirebaseManager.swift` (searchFoods merge section)
+## Implemented Improvements (Verified)
+- Async image cache APIs in use for UseBy and weight images
+- Debounce off-main for search; cancellation guard
+- LazyVStack adopted across search, food tab, diary, use-by and food detail lists
+- Navigation consolidation in Food flows via container wrapper
+- Nutrition card rows restyled: white striped rows inside grey card; per-100g right-aligned
+- Additive analysis: boundary-aware allergen detection, tighter preservative fallbacks, CSV fallback merged, first additive card expanded by default
+- Search rolled back to LIKE with domain ranking; FTS no longer filters candidates by default
 
-2) Normalization & Matching Utility
-- Add a small helper to normalize brand/name (trim, lowercase, strip punctuation and corporate suffixes “PLC”, “Ltd”), collapse whitespace
-- Use for map keys and enrichment comparisons
-- Files: `NutraSafe Beta/FirebaseManager.swift` (private helpers)
+## Performance Status (6/10)
+- Pros: Async image IO, early limiting in SQLite/Firebase, debounce off main, lazy lists
+- Cons: Very large views still drive recomposition; prints in hot paths; a synchronous weight image save path remains; broad EnvironmentObject usage
 
-3) Relax Pending Verification Gate
-- In `FoodSearchViews`, enrich when:
-  - Name matches (normalized)
-  - Brand matches OR either side brand is missing (normalized)
-- Keep existing safeguards to avoid wrong matches
-- Files: `NutraSafe Beta/Views/Food/FoodSearchViews.swift` (pending verifications enrichment block)
+## Code Quality Status (6/10)
+- Pros: Clear separation (SQLite/Firebase/caching), navigation wrapper, accuracy improvements in additive detection
+- Cons: Commented blocks, legacy NavigationView in many screens, prolific prints, scattered TODOs, potential unsafe `!` patterns in large views
 
-4) Barcode Client Fallback
-- If SQLite barcode search has no ingredients or not found, call the Cloud Function barcode search (server already aggregates verified/foods and OpenFoodFacts)
-- Merge response into the local result
-- Files: `NutraSafe Beta/FirebaseManager.swift` (barcode search path)
+## Priority Issues & References
+- Synchronous weight image write path: ContentView.swift:3358 (switch to async save API)
+- Hot-path logging: FoodDetailViewFromSearch.swift:111–117, 216–233, 977–979; ContentView.swift:635–637, 775–789; FirebaseManager & SQLiteFoodDatabase
+- Legacy NavigationView usages: FoodDetailViewFromSearch, SettingsView, DiaryTabView, UseByTabViews
+- Oversized views: ContentView.swift (~7.5k), FoodDetailViewFromSearch (~5k), UseByTabViews (~4.1k), DiaryTabView (~3k), SettingsView (~3.7k)
 
-5) Ingredients Field Consistency
-- Ensure client consistently reads `ingredients` string and splits to `[String]`; retain `ingredientsText` only for ingest collections
-- Files: `NutraSafe Beta/FirebaseManager.swift` (collection mappings)
+## Metrics
+- Commented lines: ~6,439 across 93 files
+- Prints: ~1,043 across 42 files
+- TODO/FIXME: 21 across 7 files
+- Files >1k lines: multiple core screens; see list above
 
-6) Debug Trace (optional)
-- Under `#if DEBUG`, log enrichment decisions: match keys, chosen source (verified/pending), and final ingredients count
-- Files: `NutraSafe Beta/FirebaseManager.swift`, `NutraSafe Beta/Views/Food/FoodSearchViews.swift`
+## Roadmap (Next Steps)
+1) Replace sync weight image writes with async variants in ContentView; confirm off-main execution
+2) Gate and reduce prints in hot paths under DEBUG; keep error logs only
+3) Continue migration to navigation container: remove nested NavigationView in remaining sheets
+4) Split oversized views into subviews; move heavy onAppear to lightweight async loaders
+5) Audit and replace risky `!` usages in biggest views
+6) Confirm consolidated additive parsing covers tightened preservative cases end-to-end
+7) Optional: reintroduce FTS as a secondary boost (not filter), strictly for name/brand matches, preserving current ranking
 
-## Validation
-- Test cases:
-  - “Greggs Bacon and Sausage Roll” → ingredients populated from verified
-  - Items with brand variants (“Greggs”, “Greggs PLC”) → enriched post-normalization
-  - Barcode-only items → Cloud fallback enriches
-  - Simple fruit (Apple) → no additives, no false enrichment
-- Manual runs and quick Instruments checks to confirm no UI stalls
-
-## Deliverables
-- Updated search/enrichment with verified merge, relaxed gate, barcode fallback, normalization helpers, and DEBUG traces
-- Short report: examples verified and places changed
-
-Approve to proceed and I will implement these targeted fixes and validate with the above test cases.
+## Request to Proceed
+Approve and I’ll start with items (1)–(3): async weight image writes, logging gates in hot screens, and navigation consolidation in remaining sheets; then deliver incremental updates with measurements (search latency, page transition smoothness, recomposition reduction).

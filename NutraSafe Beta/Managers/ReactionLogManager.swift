@@ -174,26 +174,21 @@ class ReactionLogManager: ObservableObject {
                 foodData[foodName] = (0, [], hoursBeforeReaction, 0, 0, 0)
             }
 
-            // Safely update existing entry
-            if var data = foodData[foodName] {
-                data.occurrences += 1
-                data.mealIds.append(item.mealId)
+            foodData[foodName]!.occurrences += 1
+            foodData[foodName]!.mealIds.append(item.mealId)
 
-                // Update last seen
-                if hoursBeforeReaction < data.lastSeenHours {
-                    data.lastSeenHours = hoursBeforeReaction
-                }
+            // Update last seen
+            if hoursBeforeReaction < foodData[foodName]!.lastSeenHours {
+                foodData[foodName]!.lastSeenHours = hoursBeforeReaction
+            }
 
-                // Count by time window
-                if hoursBeforeReaction < 24 {
-                    data.within24h += 1
-                } else if hoursBeforeReaction < 48 {
-                    data.between24_48h += 1
-                } else {
-                    data.between48_72h += 1
-                }
-
-                foodData[foodName] = data
+            // Count by time window
+            if hoursBeforeReaction < 24 {
+                foodData[foodName]!.within24h += 1
+            } else if hoursBeforeReaction < 48 {
+                foodData[foodName]!.between24_48h += 1
+            } else {
+                foodData[foodName]!.between48_72h += 1
             }
         }
 
@@ -274,27 +269,22 @@ class ReactionLogManager: ObservableObject {
                     ingredientData[normalizedIngredient] = (0, [], [], hoursBeforeReaction, 0, 0, 0, ingredient)
                 }
 
-                // Safely update existing entry
-                if var data = ingredientData[normalizedIngredient] {
-                    data.occurrences += 1
-                    data.foodNames.insert(item.food.foodName)
-                    data.mealIds.append(item.mealId)
+                ingredientData[normalizedIngredient]!.occurrences += 1
+                ingredientData[normalizedIngredient]!.foodNames.insert(item.food.foodName)
+                ingredientData[normalizedIngredient]!.mealIds.append(item.mealId)
 
-                    // Update last seen
-                    if hoursBeforeReaction < data.lastSeenHours {
-                        data.lastSeenHours = hoursBeforeReaction
-                    }
+                // Update last seen
+                if hoursBeforeReaction < ingredientData[normalizedIngredient]!.lastSeenHours {
+                    ingredientData[normalizedIngredient]!.lastSeenHours = hoursBeforeReaction
+                }
 
-                    // Count by time window
-                    if hoursBeforeReaction < 24 {
-                        data.within24h += 1
-                    } else if hoursBeforeReaction < 48 {
-                        data.between24_48h += 1
-                    } else {
-                        data.between48_72h += 1
-                    }
-
-                    ingredientData[normalizedIngredient] = data
+                // Count by time window
+                if hoursBeforeReaction < 24 {
+                    ingredientData[normalizedIngredient]!.within24h += 1
+                } else if hoursBeforeReaction < 48 {
+                    ingredientData[normalizedIngredient]!.between24_48h += 1
+                } else {
+                    ingredientData[normalizedIngredient]!.between48_72h += 1
                 }
             }
         }
@@ -381,15 +371,10 @@ class ReactionLogManager: ObservableObject {
                     associations[normalizedName] = (0, 0)
                 }
 
-                // Safely update existing entry
-                if var data = associations[normalizedName] {
-                    data.total += 1
+                associations[normalizedName]!.total += 1
 
-                    if isSameSymptom {
-                        data.sameSymptom += 1
-                    }
-
-                    associations[normalizedName] = data
+                if isSameSymptom {
+                    associations[normalizedName]!.sameSymptom += 1
                 }
             }
         }

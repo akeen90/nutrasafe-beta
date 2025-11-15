@@ -1774,25 +1774,23 @@ class SugarContentScorer {
             servingGrade = getGradeForSugarAmount(perServing)
 
             // Use the WORSE of the two grades (lower numericValue = worse)
-            if let grade = servingGrade {
-                if grade.numericValue < densityGrade.numericValue {
-                    finalGrade = grade
-                    // Large serving causing high sugar despite moderate density
-                    explanation = "High per-serving (\(String(format: "%.1f", perServing))g in \(String(format: "%.0f", servingSize))g serving) despite moderate density (\(String(format: "%.1f", sugar))g per 100g)"
-                    healthImpact = getHealthImpact(for: grade)
-                    recommendation = "Large serving size. " + getRecommendation(for: grade)
-                } else if densityGrade.numericValue < grade.numericValue {
-                    finalGrade = densityGrade
-                    // High density even though serving might be small
-                    explanation = "High sugar density (\(String(format: "%.1f", sugar))g per 100g) - \(String(format: "%.1f", perServing))g in \(String(format: "%.0f", servingSize))g serving"
-                    healthImpact = getHealthImpact(for: densityGrade)
-                    recommendation = getRecommendation(for: densityGrade)
-                } else {
-                    // Both grades are the same
-                    explanation = "\(String(format: "%.1f", perServing))g sugar in \(String(format: "%.0f", servingSize))g serving (\(String(format: "%.1f", sugar))g per 100g)"
-                    healthImpact = getHealthImpact(for: finalGrade)
-                    recommendation = getRecommendation(for: finalGrade)
-                }
+            if servingGrade!.numericValue < densityGrade.numericValue {
+                finalGrade = servingGrade!
+                // Large serving causing high sugar despite moderate density
+                explanation = "High per-serving (\(String(format: "%.1f", perServing))g in \(String(format: "%.0f", servingSize))g serving) despite moderate density (\(String(format: "%.1f", sugar))g per 100g)"
+                healthImpact = getHealthImpact(for: servingGrade!)
+                recommendation = "Large serving size. " + getRecommendation(for: servingGrade!)
+            } else if densityGrade.numericValue < servingGrade!.numericValue {
+                finalGrade = densityGrade
+                // High density even though serving might be small
+                explanation = "High sugar density (\(String(format: "%.1f", sugar))g per 100g) - \(String(format: "%.1f", perServing))g in \(String(format: "%.0f", servingSize))g serving"
+                healthImpact = getHealthImpact(for: densityGrade)
+                recommendation = getRecommendation(for: densityGrade)
+            } else {
+                // Both grades are the same
+                explanation = "\(String(format: "%.1f", perServing))g sugar in \(String(format: "%.0f", servingSize))g serving (\(String(format: "%.1f", sugar))g per 100g)"
+                healthImpact = getHealthImpact(for: finalGrade)
+                recommendation = getRecommendation(for: finalGrade)
             }
         } else {
             // Only have per-100g data

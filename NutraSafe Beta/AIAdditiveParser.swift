@@ -31,9 +31,7 @@ class AIAdditiveParser {
         if useCached {
             let cacheKey = ingredientsText.md5Hash() as NSString
             if let cached = cache.object(forKey: cacheKey) {
-                #if DEBUG
                 print("✅ Using locally cached AI additive result (\(cached.additives.count) additives)")
-                #endif
                 return cached.additives
             }
         }
@@ -47,17 +45,13 @@ class AIAdditiveParser {
             let cacheKey = ingredientsText.md5Hash() as NSString
             cache.setObject(CachedAdditiveResult(additives: additives), forKey: cacheKey)
 
-            #if DEBUG
             print("✅ AI parser found \(additives.count) additives")
-            #endif
             return additives
 
         } catch {
             // Fallback - return empty array (let the main database detection handle it)
-            #if DEBUG
             print("⚠️ AI additive parsing failed, using database-only detection")
             print("   Error: \(error.localizedDescription)")
-            #endif
             return []
         }
     }
