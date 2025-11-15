@@ -14,8 +14,14 @@ struct AuthenticationView: View {
 
     var body: some View {
         if firebaseManager.isAuthenticated {
-            // User is signed in, show main app
-            ContentView()
+            // Check if email is verified
+            if firebaseManager.isEmailVerified {
+                // Email verified, show main app
+                ContentView()
+            } else {
+                // Email not verified, show verification screen
+                EmailVerificationView()
+            }
         } else {
             // User is not signed in, show auth screen
             if showingSignUp {
@@ -519,6 +525,235 @@ struct PasswordResetView: View {
                     showingError = true
                     isLoading = false
                 }
+            }
+        }
+    }
+}
+
+// MARK: - Email Verification View
+
+struct EmailVerificationView: View {
+    @StateObject private var firebaseManager = FirebaseManager.shared
+    @State private var isChecking = false
+    @State private var showingError = false
+    @State private var errorMessage = ""
+    @State private var showingSuccess = false
+    @State private var canResend = true
+    @State private var countdown = 0
+
+    var body: some View {
+        ZStack {
+            // Modern gradient background
+            LinearGradient(
+                colors: [
+                    Color(red: 0.3, green: 0.5, blue: 1.0),
+                    Color(red: 0.5, green: 0.3, blue: 0.9)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            ScrollView {
+                VStack(spacing: 32) {
+                    Spacer()
+                        .frame(height: 60)
+
+                    // Email icon with animation
+                    ZStack {
+                        Circle()
+                            .fill(
+                                RadialGradient(
+                                    colors: [Color.white.opacity(0.3), Color.white.opacity(0.1)],
+                                    center: .center,
+                                    startRadius: 40,
+                                    endRadius: 100
+                                )
+                            )
+                            .frame(width: 180, height: 180)
+
+                        Image(systemName: "envelope.fill")
+                            .font(.system(size: 70, weight: .light))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [.white, .white.opacity(0.9)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                    }
+
+                    VStack(spacing: 16) {
+                        Text("Verify Your Email")
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+
+                        Text("We've sent a verification email to:")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white.opacity(0.9))
+
+                        Text(firebaseManager.currentUser?.email ?? "")
+                            .font(.system(size: 17, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.white.opacity(0.15))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .strokeBorder(Color.white.opacity(0.3), lineWidth: 1)
+                                    )
+                            )
+
+                        Text("Click the link in the email to verify your account")
+                            .font(.system(size: 15))
+                            .foregroundColor(.white.opacity(0.8))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                            .padding(.top, 8)
+                    }
+
+                    VStack(spacing: 14) {
+                        // Check if verified button
+                        Button(action: {
+                            Task { await checkVerification() }
+                        }) {
+                            HStack(spacing: 10) {
+                                if isChecking {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        .scaleEffect(0.9)
+                                } else {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.system(size: 18, weight: .semibold))
+                                }
+
+                                Text(isChecking ? "Checking..." : "I've Verified My Email")
+                                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color.white.opacity(0.25), Color.white.opacity(0.15)],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                            .cornerRadius(14)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .strokeBorder(Color.white.opacity(0.4), lineWidth: 2)
+                            )
+                            .shadow(color: Color.black.opacity(0.15), radius: 12, x: 0, y: 6)
+                        }
+                        .disabled(isChecking)
+
+                        // Resend email button
+                        Button(action: {
+                            Task { await resendVerification() }
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.system(size: 15, weight: .semibold))
+
+                                if countdown > 0 {
+                                    Text("Resend in \(countdown)s")
+                                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                                } else {
+                                    Text("Resend Verification Email")
+                                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                                }
+                            }
+                            .foregroundColor(.white.opacity(canResend ? 1.0 : 0.5))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.white.opacity(canResend ? 0.15 : 0.08))
+                            )
+                        }
+                        .disabled(!canResend)
+
+                        // Sign out button
+                        Button(action: {
+                            Task {
+                                try? await firebaseManager.signOut()
+                            }
+                        }) {
+                            Text("Sign Out")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(.white.opacity(0.7))
+                                .padding(.top, 8)
+                        }
+                    }
+                    .padding(.horizontal, 32)
+
+                    Spacer()
+                }
+                .padding()
+            }
+        }
+        .alert("Error", isPresented: $showingError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(errorMessage)
+        }
+        .alert("Email Sent!", isPresented: $showingSuccess) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Verification email has been sent. Please check your inbox.")
+        }
+    }
+
+    private func checkVerification() async {
+        await MainActor.run { isChecking = true }
+
+        do {
+            try await firebaseManager.reloadUser()
+
+            await MainActor.run {
+                isChecking = false
+                if !firebaseManager.isEmailVerified {
+                    errorMessage = "Email not yet verified. Please check your inbox and click the verification link."
+                    showingError = true
+                }
+            }
+        } catch {
+            await MainActor.run {
+                isChecking = false
+                errorMessage = error.localizedDescription
+                showingError = true
+            }
+        }
+    }
+
+    private func resendVerification() async {
+        guard canResend else { return }
+
+        do {
+            try await firebaseManager.resendVerificationEmail()
+
+            await MainActor.run {
+                canResend = false
+                countdown = 60
+                showingSuccess = true
+
+                // Countdown timer
+                Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { timer in
+                    countdown -= 1
+                    if countdown <= 0 {
+                        timer.invalidate()
+                        canResend = true
+                    }
+                }
+            }
+        } catch {
+            await MainActor.run {
+                errorMessage = error.localizedDescription
+                showingError = true
             }
         }
     }

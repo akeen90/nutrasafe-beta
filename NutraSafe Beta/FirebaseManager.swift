@@ -275,10 +275,35 @@ class FirebaseManager: ObservableObject {
     func signUp(email: String, password: String) async throws {
         initializeFirebaseServices()
         let result = try await auth.createUser(withEmail: email, password: password)
+
+        // Send email verification immediately after signup
+        try await result.user.sendEmailVerification()
+
         await MainActor.run {
             self.currentUser = result.user
             self.isAuthenticated = true
         }
+    }
+
+    // Check if current user's email is verified
+    var isEmailVerified: Bool {
+        return currentUser?.isEmailVerified ?? false
+    }
+
+    // Reload user to get latest email verification status
+    func reloadUser() async throws {
+        try await auth.currentUser?.reload()
+        await MainActor.run {
+            self.currentUser = auth.currentUser
+        }
+    }
+
+    // Resend verification email
+    func resendVerificationEmail() async throws {
+        guard let user = currentUser else {
+            throw NSError(domain: "FirebaseManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "No user logged in"])
+        }
+        try await user.sendEmailVerification()
     }
     
     // MARK: - User Data
