@@ -2249,17 +2249,16 @@ struct FoodDetailViewFromSearch: View {
     private var ingredientVerificationSection: some View {
         VStack(alignment: .center, spacing: 16) {
             VStack(alignment: .center, spacing: 12) {
-                HStack(spacing: 8) {
-                    Image(systemName: "info.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(.orange)
-                    Text("Ingredients not looking right?")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(.primary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                Image(systemName: "info.circle.fill")
+                    .font(.largeTitle)
+                    .foregroundColor(.orange)
 
-                Text("Scan the barcode to search for accurate product data, or search manually if you don't have the barcode.")
+                Text("Something not looking right?")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text("Scan the barcode to search for accurate product data, or enhance with AI if you don't have the barcode.")
                     .font(.system(size: 14))
                     .foregroundColor(.secondary)
                     .lineLimit(nil)
@@ -2293,14 +2292,14 @@ struct FoodDetailViewFromSearch: View {
                         }
                         .disabled(isEnhancing)
 
-                        // Search Manually Button
+                        // Enhance with AI Button
                         Button(action: {
                             showingManualSearchForEnhancement = true
                         }) {
                             HStack(spacing: 6) {
-                                Image(systemName: "magnifyingglass")
+                                Image(systemName: "sparkles")
                                     .font(.system(size: 16))
-                                Text("Search Manually")
+                                Text("Enhance with AI")
                                     .font(.system(size: 14, weight: .semibold))
                                     .lineLimit(1)
                                     .minimumScaleFactor(0.8)
