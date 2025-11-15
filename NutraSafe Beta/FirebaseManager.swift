@@ -37,6 +37,7 @@ class FirebaseManager: ObservableObject {
     }
     private var foodEntriesCache: [String: FoodEntriesCacheEntry] = [:]
     private let foodEntriesCacheExpirationSeconds: TimeInterval = 600 // 10 minutes
+    private let maxFoodEntriesCacheSize: Int = 100 // Maximum number of cached dates
 
     // In-flight request tracking to prevent duplicate fetches
     private var inFlightFoodEntriesRequests: [String: Task<[FoodEntry], Error>] = [:]
@@ -441,6 +442,17 @@ class FirebaseManager: ObservableObject {
             // Store in cache and remove from in-flight (async-safe with DispatchQueue)
             self.cacheQueue.sync {
                 self.foodEntriesCache[dateKey] = FoodEntriesCacheEntry(entries: entries, timestamp: Date())
+
+                // Evict oldest entries if cache exceeds size limit
+                if self.foodEntriesCache.count > self.maxFoodEntriesCacheSize {
+                    // Sort by timestamp and remove oldest entries
+                    let sortedEntries = self.foodEntriesCache.sorted { $0.value.timestamp < $1.value.timestamp }
+                    let entriesToRemove = sortedEntries.prefix(self.foodEntriesCache.count - self.maxFoodEntriesCacheSize)
+                    for (key, _) in entriesToRemove {
+                        self.foodEntriesCache.removeValue(forKey: key)
+                    }
+                }
+
                 self.inFlightFoodEntriesRequests.removeValue(forKey: dateKey)
             }
 
@@ -458,6 +470,7 @@ class FirebaseManager: ObservableObject {
     // MARK: - Period Cache (for Micronutrient Dashboard)
     private var periodCache: [Int: (entries: [FoodEntry], timestamp: Date)] = [:]
     private let periodCacheExpirationSeconds: TimeInterval = 300 // 5 minutes
+    private let maxPeriodCacheSize: Int = 50 // Maximum number of cached periods
 
     // In-flight request tracking for period queries
     private var inFlightPeriodRequests: [Int: Task<[FoodEntry], Error>] = [:]
@@ -526,6 +539,17 @@ class FirebaseManager: ObservableObject {
             // Store in cache and remove from in-flight (async-safe with DispatchQueue)
             self.cacheQueue.sync {
                 self.periodCache[days] = (entries, Date())
+
+                // Evict oldest entries if cache exceeds size limit
+                if self.periodCache.count > self.maxPeriodCacheSize {
+                    // Sort by timestamp and remove oldest entries
+                    let sortedEntries = self.periodCache.sorted { $0.value.timestamp < $1.value.timestamp }
+                    let entriesToRemove = sortedEntries.prefix(self.periodCache.count - self.maxPeriodCacheSize)
+                    for (key, _) in entriesToRemove {
+                        self.periodCache.removeValue(forKey: key)
+                    }
+                }
+
                 self.inFlightPeriodRequests.removeValue(forKey: days)
             }
 

@@ -70,7 +70,10 @@ enum DateHelper {
     /// - Parameter date: Input date
     /// - Returns: Date at 23:59:59.999 in local timezone
     static func endOfDay(for date: Date) -> Date {
-        let startOfNextDay = calendar.date(byAdding: .day, value: 1, to: startOfDay(for: date))!
+        guard let startOfNextDay = calendar.date(byAdding: .day, value: 1, to: startOfDay(for: date)) else {
+            // Fallback: if calendar math fails, return 23:59:59 by adding seconds
+            return startOfDay(for: date).addingTimeInterval(86399.999)
+        }
         return startOfNextDay.addingTimeInterval(-0.001) // 1 millisecond before next day
     }
 
@@ -116,7 +119,8 @@ enum DateHelper {
     static func utcDateFormatter(format: String) -> DateFormatter {
         let formatter = DateFormatter()
         formatter.dateFormat = format
-        formatter.timeZone = TimeZone(identifier: "UTC")!
+        // UTC timezone should always be available, but provide fallback for safety
+        formatter.timeZone = TimeZone(identifier: "UTC") ?? TimeZone(secondsFromGMT: 0)
         formatter.locale = Locale(identifier: "en_US_POSIX") // Stable locale for UTC
         return formatter
     }

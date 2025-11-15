@@ -2820,12 +2820,12 @@ struct UseByItemDetailView: View {
 
     // Computed properties that work for both add and edit modes
     private var isAddMode: Bool { item == nil }
-    private var itemName: String { isAddMode ? editedName : item!.name }
+    private var itemName: String { isAddMode ? editedName : (item?.name ?? "") }
     private var brand: String? {
         if isAddMode {
             return editedBrand.isEmpty ? nil : editedBrand
         }
-        return item!.brand
+        return item?.brand
     }
     private var daysLeft: Int {
         let calendar = Calendar.current

@@ -67,6 +67,7 @@
 		ABB0AEFA2EAC3F14009F044D /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ABB0AEF92EAC3F13009F044D /* StoreKit.framework */; };
 		ABC1D3B02EAD665E00518F41 /* NutraSafe.storekit in Resources */ = {isa = PBXBuildFile; fileRef = ABC1D3AF2EAD665E00518F41 /* NutraSafe.storekit */; };
 		ABCDD6892EB51DEE0085890E /* WeeklySummarySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCDD6882EB51DEE0085890E /* WeeklySummarySheet.swift */; };
+		ABCDDED32EC9300F0085890E /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = ABCDDED22EC9300F0085890E /* Core */; };
 		AUTH1234567890123456789001 /* AuthenticationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AUTH1234567890123456789002 /* AuthenticationView.swift */; };
 		B1234567890123456789CM02 /* CoreModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1234567890123456789CM01 /* CoreModels.swift */; };
 		B1234567890123456789EM02 /* ExerciseModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1234567890123456789EM01 /* ExerciseModels.swift */; };
@@ -212,6 +213,7 @@
 				AB4B75A72E72DEF60058DCD3 /* FirebaseAuth in Frameworks */,
 				ABB0AEFA2EAC3F14009F044D /* StoreKit.framework in Frameworks */,
 				AB13BC1C2EAE253100C7B892 /* FirebaseFunctions in Frameworks */,
+				ABCDDED32EC9300F0085890E /* Core in Frameworks */,
 				AB4B75AB2E72DF020058DCD3 /* FirebaseFirestore in Frameworks */,
 				AB4B75AD2E72DF080058DCD3 /* FirebaseStorage in Frameworks */,
 			);
@@ -486,6 +488,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				AB4B75A52E72DD260058DCD3 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				ABCDDED12EC92FEE0085890E /* XCRemoteSwiftPackageReference "algoliasearch-client-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A1234567890123456789011997 /* Products */;
@@ -832,6 +835,14 @@
 				minimumVersion = 12.2.0;
 			};
 		};
+		ABCDDED12EC92FEE0085890E /* XCRemoteSwiftPackageReference "algoliasearch-client-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/algolia/algoliasearch-client-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.35.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -859,6 +870,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = AB4B75A52E72DD260058DCD3 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
+		};
+		ABCDDED22EC9300F0085890E /* Core */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = ABCDDED12EC92FEE0085890E /* XCRemoteSwiftPackageReference "algoliasearch-client-swift" */;
+			productName = Core;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

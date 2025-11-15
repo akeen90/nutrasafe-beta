@@ -924,9 +924,12 @@ class ReactionPDFExporter {
             }
 
             // Food name
-            let foodDisplayName = crossReaction.food.brandName != nil
-                ? "\(crossReaction.food.foodName) (\(crossReaction.food.brandName!))"
-                : crossReaction.food.foodName
+            let foodDisplayName: String
+            if let brandName = crossReaction.food.brandName {
+                foodDisplayName = "\(crossReaction.food.foodName) (\(brandName))"
+            } else {
+                foodDisplayName = crossReaction.food.foodName
+            }
 
             foodDisplayName.draw(at: CGPoint(x: 65, y: currentY), withAttributes: foodNameAttributes)
             currentY += 18
