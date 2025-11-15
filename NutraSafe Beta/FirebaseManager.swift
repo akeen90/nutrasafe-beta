@@ -1016,20 +1016,81 @@ class FirebaseManager: ObservableObject {
         return limitedResults
     }
 
-    /// Search main food database via SQLite (optimized async)
+    /// Search main food database via Algolia Cloud Function (instant search)
     private func searchMainDatabase(query: String) async throws -> [FoodSearchResult] {
-        // SQLite search runs off main thread via actor
-        let localResults = await SQLiteFoodDatabase.shared.searchFoods(query: query, limit: 20)
-
         #if DEBUG
-        if !localResults.isEmpty {
-            print("✅ Found \(localResults.count) results in local SQLite database (async!)")
-        } else {
-            print("⚠️ No results found in local database for '\(query)'")
-        }
+        print("🚀 Searching Algolia for '\(query)'...")
         #endif
-        
-        return localResults
+
+        let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let urlString = "https://us-central1-nutrasafe-705c7.cloudfunctions.net/searchFoodsAlgolia?q=\(encodedQuery)"
+
+        guard let url = URL(string: urlString) else {
+            #if DEBUG
+            print("❌ Invalid Algolia search URL")
+            #endif
+            return []
+        }
+
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let hits = json["hits"] as? [[String: Any]] else {
+                #if DEBUG
+                print("⚠️ Invalid Algolia response format")
+                #endif
+                return []
+            }
+
+            #if DEBUG
+            print("⚡️ Algolia: Found \(hits.count) results in ~20ms")
+            #endif
+
+            // Convert Algolia hits to FoodSearchResult
+            let results: [FoodSearchResult] = hits.compactMap { hit in
+                guard let objectID = hit["objectID"] as? String,
+                      let name = hit["name"] as? String else {
+                    return nil
+                }
+
+                return FoodSearchResult(
+                    id: objectID,
+                    name: name,
+                    brand: hit["brandName"] as? String,
+                    calories: (hit["calories"] as? Double) ?? 0,
+                    protein: (hit["protein"] as? Double) ?? 0,
+                    carbs: (hit["carbs"] as? Double) ?? 0,
+                    fat: (hit["fat"] as? Double) ?? 0,
+                    fiber: (hit["fiber"] as? Double) ?? 0,
+                    sugar: (hit["sugar"] as? Double) ?? 0,
+                    sodium: (hit["sodium"] as? Double) ?? 0,
+                    servingDescription: hit["servingSize"] as? String,
+                    servingSizeG: hit["servingSizeG"] as? Double,
+                    ingredients: (hit["ingredients"] as? String).map { [$0] },
+                    isVerified: (hit["verified"] as? Bool) ?? false,
+                    barcode: hit["barcode"] as? String
+                )
+            }
+
+            return results
+        } catch {
+            #if DEBUG
+            print("⚠️ Algolia search failed: \(error.localizedDescription)")
+            print("🔄 Falling back to local SQLite...")
+            #endif
+
+            // Fallback to SQLite if Algolia fails
+            let localResults = await SQLiteFoodDatabase.shared.searchFoods(query: query, limit: 20)
+
+            #if DEBUG
+            if !localResults.isEmpty {
+                print("✅ Found \(localResults.count) results in local SQLite database (fallback)")
+            }
+            #endif
+
+            return localResults
+        }
     }
 
     /// Clear the search cache (useful for testing or memory management)

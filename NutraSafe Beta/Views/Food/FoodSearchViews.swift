@@ -325,9 +325,6 @@ struct AddFoodSearchView: View {
     @State private var originalMealType = ""
     // Use By sheet presentation moved to parent; emit selection via callback
 
-    // Algolia manager for instant search
-    @StateObject private var algoliaManager = AlgoliaManager()
-
     var body: some View {
         VStack(spacing: 0) {
             // Search Bar - fixed at top
@@ -597,64 +594,19 @@ struct AddFoodSearchView: View {
                 return
             }
 
-            #if DEBUG
-            print("🚀 Algolia: Searching for '\(query)'...")
-            #endif
-
-            // Try Algolia first (instant search, ~20ms)
+            // Try search (Firebase searchFoods already includes Algolia via backend)
             var results: [FoodSearchResult] = []
 
             do {
-                let algoliaFoods = try await algoliaManager.searchFoods(query: query, hitsPerPage: 50)
+                results = try await FirebaseManager.shared.searchFoods(query: query)
 
                 #if DEBUG
-                print("⚡️ Algolia: Found \(algoliaFoods.count) results in ~20ms")
+                print("✅ Search complete: Found \(results.count) results")
                 #endif
-
-                // Convert Algolia results to FoodSearchResult
-                results = algoliaFoods.map { algoliaFood in
-                    FoodSearchResult(
-                        id: algoliaFood.id,
-                        name: algoliaFood.name,
-                        brand: algoliaFood.brandName,
-                        calories: algoliaFood.calories ?? 0,
-                        protein: algoliaFood.protein ?? 0,
-                        carbs: algoliaFood.carbs ?? 0,
-                        fat: algoliaFood.fat ?? 0,
-                        fiber: algoliaFood.fiber ?? 0,
-                        sugar: algoliaFood.sugar ?? 0,
-                        sodium: algoliaFood.sodium ?? 0,
-                        servingDescription: algoliaFood.servingSize,
-                        servingSizeG: algoliaFood.servingSizeG,
-                        ingredients: algoliaFood.ingredients.map { [$0] },
-                        barcode: algoliaFood.barcode,
-                        isVerified: algoliaFood.verified
-                    )
-                }
             } catch {
                 #if DEBUG
-                print("⚠️ Algolia search failed: \(error.localizedDescription)")
-                print("🔄 Falling back to Firebase/OpenFoodFacts search...")
+                print("❌ Search failed: \(error)")
                 #endif
-            }
-
-            // If Algolia returned no results, fallback to Firebase/OpenFoodFacts
-            if results.isEmpty {
-                #if DEBUG
-                print("🔄 No Algolia results, trying Firebase/OpenFoodFacts...")
-                #endif
-
-                do {
-                    results = try await FirebaseManager.shared.searchFoods(query: query)
-
-                    #if DEBUG
-                    print("🌐 Firebase/OpenFoodFacts: Found \(results.count) results")
-                    #endif
-                } catch {
-                    #if DEBUG
-                    print("❌ Firebase/OpenFoodFacts search also failed: \(error)")
-                    #endif
-                }
             }
 
             if Task.isCancelled { return }
