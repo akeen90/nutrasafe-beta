@@ -1077,19 +1077,10 @@ class FirebaseManager: ObservableObject {
         } catch {
             #if DEBUG
             print("⚠️ Algolia search failed: \(error.localizedDescription)")
-            print("🔄 Falling back to local SQLite...")
             #endif
 
-            // Fallback to SQLite if Algolia fails
-            let localResults = await SQLiteFoodDatabase.shared.searchFoods(query: query, limit: 20)
-
-            #if DEBUG
-            if !localResults.isEmpty {
-                print("✅ Found \(localResults.count) results in local SQLite database (fallback)")
-            }
-            #endif
-
-            return localResults
+            // No fallback - Algolia is the only main database
+            return []
         }
     }
 
