@@ -20,7 +20,7 @@ export const notifyIncompleteFood = functions.https.onRequest(async (req, res) =
   try {
     // Extract data from request body (iOS sends nested in "data" field)
     const requestData = req.body.data || req.body;
-    const { foodName, brandName, foodId, userId, userEmail } = requestData;
+    const { foodName, brandName, foodId, barcode, userId, userEmail } = requestData;
 
     if (!foodName) {
       res.status(400).json({
@@ -43,6 +43,7 @@ export const notifyIncompleteFood = functions.https.onRequest(async (req, res) =
       foodName,
       brandName: brandName || null,
       foodId: foodId || null,
+      barcode: barcode || null,
       userId: userId || 'anonymous',
       userEmail: userEmail || 'anonymous',
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
@@ -58,7 +59,7 @@ export const notifyIncompleteFood = functions.https.onRequest(async (req, res) =
 
     if (emailUser && emailPassword) {
       try {
-        // Configure email transport
+        // Configure email transport for Gmail
         const transporter = nodemailer.createTransport({
           service: 'gmail',
           auth: {
@@ -76,6 +77,8 @@ A user has reported incomplete food information:
 
 Food Name: ${foodName}
 Brand: ${brandName || 'Not specified'}
+Food ID: ${foodId || 'Not provided'}
+Barcode: ${barcode || 'Not provided'}
 User Email: ${userEmail || 'Anonymous'}
 User ID: ${userId || 'Not provided'}
 Reported: ${new Date().toLocaleString('en-GB', { timeZone: 'Europe/London' })}
@@ -94,13 +97,13 @@ This is an automated message from NutraSafe app.
 
         // Send email
         await transporter.sendMail({
-          from: 'NutraSafe App <noreply@nutrasafe.co.uk>',
-          to: 'info@nutrasafe.co.uk',
+          from: `NutraSafe App <${emailUser}>`,
+          to: 'contact@nutrasafe.co.uk',
           subject: emailSubject,
           text: emailBody
         });
 
-        console.log('✅ Email sent successfully to info@nutrasafe.co.uk');
+        console.log('✅ Email sent successfully to contact@nutrasafe.co.uk');
 
         // Update Firestore to mark email as sent
         await docRef.update({ notificationSent: true });

@@ -1100,6 +1100,11 @@ class ProcessingScorer {
     // MARK: - Helper: Word Boundary Matching
 
     private func matchesWithWordBoundary(text: String, pattern: String) -> Bool {
+        // Skip empty patterns
+        if pattern.isEmpty {
+            return false
+        }
+
         // Escape special regex characters in the pattern
         let escapedPattern = NSRegularExpression.escapedPattern(for: pattern)
 
@@ -1107,11 +1112,27 @@ class ProcessingScorer {
         let regexPattern = "\\b\(escapedPattern)\\b"
 
         guard let regex = try? NSRegularExpression(pattern: regexPattern, options: .caseInsensitive) else {
+            #if DEBUG
+            // Only log if pattern seems suspicious
+            if pattern.contains("invert") || pattern.contains("hydrolys") {
+                print("⚠️ [REGEX ERROR] Failed to create regex for pattern: '\(pattern)'")
+            }
+            #endif
             return false
         }
 
         let range = NSRange(text.startIndex..., in: text)
-        return regex.firstMatch(in: text, range: range) != nil
+        let matched = regex.firstMatch(in: text, range: range) != nil
+
+        // DEBUG: Log matches for problematic patterns
+        #if DEBUG
+        if matched && (pattern.contains("invert") || pattern.contains("hydrolys")) {
+            print("🚨 [MATCH FOUND] Pattern '\(pattern)' matched in text!")
+            print("   Text snippet: '\(text.prefix(200))'")
+        }
+        #endif
+
+        return matched
     }
 
     // MARK: - Helper: Text Normalization
@@ -1173,6 +1194,18 @@ class ProcessingScorer {
             print("   Normalized text: '\(normalized)'")
             print("   Match types: \(matchDetails.joined(separator: ", "))")
             print("   Confidence: \(score)")
+            #endif
+        }
+
+        // DEBUG: Log Invert sugar false positives
+        if additive.name.lowercased() == "invert sugar" && score > 0 {
+            #if DEBUG
+            print("🚨 [FALSE POSITIVE?] Invert sugar matched with score \(score)")
+            print("   E-number: '\(additive.eNumber)'")
+            print("   Name: '\(additive.name)'")
+            print("   Synonyms: \(additive.synonyms)")
+            print("   Match details: \(matchDetails)")
+            print("   Normalized text: '\(normalized.prefix(200))'")
             #endif
         }
 

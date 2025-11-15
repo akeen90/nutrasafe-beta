@@ -177,6 +177,7 @@ struct AdditiveWatchView: View {
         #endif
         #if DEBUG
         print("🧪 [AdditiveWatchView] Ingredients: \(ingredients)")
+        print("🧪 [AdditiveWatchView] FULL INGREDIENTS STRING: '\(ingredients.joined(separator: ", "))'")
         #endif
 
         // VALIDATION: Check if ingredients look suspicious or incomplete
@@ -223,6 +224,11 @@ struct AdditiveWatchView: View {
             )
             return
         }
+
+        #if DEBUG
+        print("🔍 [AdditiveWatchView] FILTERED INGREDIENTS TO ANALYZE: \(filteredIngredients)")
+        print("🔍 [AdditiveWatchView] JOINED FOR ANALYSIS: '\(filteredIngredients.joined(separator: ", "))'")
+        #endif
 
         // Use AdditiveWatchService which now uses local comprehensive database
         AdditiveWatchService.shared.analyzeIngredients(filteredIngredients) { result in

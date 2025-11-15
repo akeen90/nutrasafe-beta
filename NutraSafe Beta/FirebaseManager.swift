@@ -2419,12 +2419,9 @@ class FirebaseManager: ObservableObject {
 
     // MARK: - Incomplete Food Notification
 
-    /// Notify team about incomplete food information and save to Firestore
+    /// Notify team about incomplete food information via Cloud Function
     func notifyIncompleteFood(food: FoodSearchResult) async throws {
-        // Save to Firestore database first
-        try await saveIncompleteFoodToFirestore(food: food)
-
-        // Then call the Cloud Function for email notification
+        // Call the Cloud Function which handles both Firestore save and email notification
         guard let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/notifyIncompleteFood") else {
             throw NSError(domain: "Invalid URL", code: -1)
         }
