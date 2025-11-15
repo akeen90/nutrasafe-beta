@@ -682,103 +682,117 @@ struct UseByExpiryView: View {
     var body: some View {
         Group {
             if useByItems.isEmpty && !isLoading {
-                // Premium empty state
-                VStack(spacing: 0) {
-                    Spacer()
+                // Modern premium empty state with animations
+                ZStack {
+                    // Animated gradient background
+                    ModernGradientBackground()
 
-                    VStack(spacing: 24) {
-                        // Large icon with background
-                        ZStack {
-                            Circle()
-                                .fill(Color.blue.opacity(0.12))
-                                .frame(width: 120, height: 120)
+                    VStack(spacing: 0) {
+                        Spacer()
 
-                            Image(systemName: "refrigerator.fill")
-                                .font(.system(size: 56, weight: .light))
-                                .foregroundColor(.blue)
-                                .symbolRenderingMode(.hierarchical)
-                        }
-                        .padding(.bottom, 8)
+                        VStack(spacing: 32) {
+                            // Animated 3D-style fridge icon
+                            AnimatedFridgeIcon()
+                                .scaleEffect(1.0)
+                                .padding(.bottom, 8)
 
-                        VStack(spacing: 10) {
-                            Text("No Items Yet")
-                                .font(.system(size: 24, weight: .semibold))
-                                .foregroundColor(.primary)
-
-                            Text("Start tracking your food to reduce waste\nand save money")
-                                .font(.system(size: 16))
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .padding(.horizontal, 32)
-                        }
-                    }
-
-                    Spacer()
-
-                    // Primary action with shadow
-                    VStack(spacing: 12) {
-                        Button(action: {
-                            // Set useBy as default destination
-                            UserDefaults.standard.set("Use By", forKey: "preselectedDestination")
-                            selectedTab = .add
-                        }) {
-                            Label("Add Your First Item", systemImage: "plus.circle.fill")
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(
-                                    LinearGradient(
-                                        colors: [Color.blue, Color.blue.opacity(0.9)],
-                                        startPoint: .top,
-                                        endPoint: .bottom
+                            VStack(spacing: 16) {
+                                // Gradient title
+                                Text("No Items Yet")
+                                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                                    .foregroundStyle(
+                                        LinearGradient(
+                                            colors: [.primary, .primary.opacity(0.7)],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
                                     )
-                                )
-                                .cornerRadius(14)
-                                .shadow(color: Color.blue.opacity(0.3), radius: 8, x: 0, y: 4)
+
+                                Text("Start tracking your food to reduce waste\nand save money")
+                                    .font(.system(size: 17, weight: .medium, design: .rounded))
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .lineSpacing(4)
+                                    .padding(.horizontal, 40)
+
+                                Text("Every item saved is money in your pocket")
+                                    .font(.system(size: 14, design: .rounded))
+                                    .foregroundColor(.secondary.opacity(0.8))
+                                    .italic()
+                            }
                         }
 
-                        Text("💡 Tip: Scan barcodes for instant details")
-                            .font(.system(size: 13))
-                            .foregroundColor(Color(.tertiaryLabel))
+                        Spacer()
+
+                        // Modern glassmorphic button and tip
+                        VStack(spacing: 16) {
+                            ModernAddButton(action: {
+                                UserDefaults.standard.set("Use By", forKey: "preselectedDestination")
+                                selectedTab = .add
+                            })
+
+                            ModernTipCard(tip: "Scan barcodes for instant details")
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 40)
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 40)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(.systemGroupedBackground))
             } else {
-                // Clean simple design with obvious item container
+                // Modern premium design with gradients and depth
                 ScrollView {
                     LazyVStack(spacing: 16) {
-                        // Search bar
-                        HStack(spacing: 12) {
-                            HStack(spacing: 10) {
-                                Image(systemName: "magnifyingglass")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(.secondary)
+                        // Modern search bar with gradient accent
+                        HStack(spacing: 10) {
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [Color.blue, Color.purple.opacity(0.8)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
 
-                                TextField("Search your useBy...", text: $searchText)
-                                    .font(.system(size: 16))
-                                    .textFieldStyle(PlainTextFieldStyle())
+                            TextField("Search your useBy...", text: $searchText)
+                                .font(.system(size: 16, weight: .medium))
+                                .textFieldStyle(PlainTextFieldStyle())
 
-                                if !searchText.isEmpty {
-                                    Button(action: { searchText = "" }) {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .font(.system(size: 16))
-                                            .foregroundColor(.secondary)
-                                    }
+                            if !searchText.isEmpty {
+                                Button(action: { searchText = "" }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.system(size: 18))
+                                        .foregroundColor(.secondary.opacity(0.6))
                                 }
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
-                            .background(Color.adaptiveCard)
-                            .cornerRadius(12)
-                            .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
                         }
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 14)
+                        .background {
+                            ZStack {
+                                // Glassmorphic background
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(.ultraThinMaterial)
+
+                                // Gradient border
+                                RoundedRectangle(cornerRadius: 16)
+                                    .strokeBorder(
+                                        LinearGradient(
+                                            colors: [
+                                                Color.blue.opacity(0.3),
+                                                Color.purple.opacity(0.2)
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                        lineWidth: 1.5
+                                    )
+                            }
+                        }
+                        .shadow(color: Color.blue.opacity(0.08), radius: 12, x: 0, y: 4)
+                        .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
                         .padding(.horizontal, 16)
-                        .padding(.top, 8)
+                        .padding(.top, 12)
 
                         // Stats cards
                         HStack(spacing: 12) {
@@ -3691,72 +3705,137 @@ struct CleanUseByRow: View {
                 .transition(.opacity)
             }
 
-            // Main content - Modern card design with product image
-            HStack(spacing: 12) {
-                // Product image or placeholder - using cached image for instant loading
-                Group {
-                    if item.imageURL != nil {
-                        CachedUseByImage(
-                            itemId: item.id,
-                            imageURL: item.imageURL,
-                            width: 56,
-                            height: 56,
-                            cornerRadius: 10
+            // Main content - Premium modern card design
+            HStack(spacing: 14) {
+                // Enhanced product image with gradient border
+                ZStack {
+                    // Subtle gradient glow behind image
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(
+                            RadialGradient(
+                                colors: [statusColor.opacity(0.12), Color.clear],
+                                center: .center,
+                                startRadius: 10,
+                                endRadius: 40
+                            )
                         )
-                    } else {
-                        PlaceholderImageView()
-                    }
-                }
-                .frame(width: 56, height: 56)
-                .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+                        .frame(width: 64, height: 64)
+                        .blur(radius: 8)
 
-                // Item info
-                VStack(alignment: .leading, spacing: 4) {
+                    Group {
+                        if item.imageURL != nil {
+                            CachedUseByImage(
+                                itemId: item.id,
+                                imageURL: item.imageURL,
+                                width: 60,
+                                height: 60,
+                                cornerRadius: 12
+                            )
+                        } else {
+                            PlaceholderImageView()
+                        }
+                    }
+                    .frame(width: 60, height: 60)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .strokeBorder(
+                                LinearGradient(
+                                    colors: [
+                                        statusColor.opacity(0.2),
+                                        statusColor.opacity(0.05)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1.5
+                            )
+                    )
+                    .shadow(color: statusColor.opacity(0.15), radius: 8, x: 0, y: 4)
+                    .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+                }
+
+                // Item info with enhanced typography
+                VStack(alignment: .leading, spacing: 5) {
                     Text(item.name)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
                         .foregroundColor(.primary)
                         .lineLimit(2)
 
-                    HStack(spacing: 4) {
-                        if let brand = item.brand, !brand.isEmpty {
-                            Text(brand)
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
-                                .lineLimit(1)
-                        }
+                    if let brand = item.brand, !brand.isEmpty {
+                        Text(brand)
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .foregroundColor(.secondary.opacity(0.8))
+                            .lineLimit(1)
                     }
 
-                    // Status badge with icon
-                    HStack(spacing: 4) {
+                    // Modern status badge with gradient
+                    HStack(spacing: 5) {
                         Image(systemName: statusIcon)
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundColor(statusColor)
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [statusColor, statusColor.opacity(0.8)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
 
                         Text(statusText)
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(statusColor)
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        Capsule()
-                            .fill(statusColor.opacity(0.12))
-                            .overlay(
-                                Capsule()
-                                    .strokeBorder(statusColor.opacity(0.3), lineWidth: 1)
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [statusColor, statusColor.opacity(0.85)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
                             )
-                    )
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background {
+                        ZStack {
+                            // Glassmorphic background
+                            Capsule()
+                                .fill(statusColor.opacity(0.15))
+
+                            // Gradient overlay
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            statusColor.opacity(0.08),
+                                            statusColor.opacity(0.03)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+
+                            // Border
+                            Capsule()
+                                .strokeBorder(
+                                    statusColor.opacity(0.35),
+                                    lineWidth: 1.5
+                                )
+                        }
+                    }
                 }
 
                 Spacer()
 
-                // Chevron
+                // Modern chevron with gradient
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color.secondary, Color.secondary.opacity(0.6)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 14)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 16)
             .background(Color(.systemBackground))
             .offset(x: offset)
             .highPriorityGesture(
@@ -3855,37 +3934,60 @@ struct UseByStatCard: View {
     let icon: String
     let color: Color
     var subtitle: String? = nil
+    @State private var isVisible = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // Icon with gradient background
+        VStack(alignment: .leading, spacing: 12) {
+            // Enhanced icon with glassmorphic effect
             ZStack {
+                // Outer glow
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [color.opacity(0.15), color.opacity(0.05)],
+                            center: .center,
+                            startRadius: 10,
+                            endRadius: 30
+                        )
+                    )
+                    .frame(width: 56, height: 56)
+                    .blur(radius: 4)
+
+                // Main icon circle with glassmorphic background
                 Circle()
                     .fill(
                         LinearGradient(
-                            colors: [color.opacity(0.22), color.opacity(0.10)],
+                            colors: [color.opacity(0.25), color.opacity(0.15)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 44, height: 44)
-                    .overlay(
-                        Circle()
-                            .stroke(color.opacity(0.25), lineWidth: 1.5)
-                    )
+                    .frame(width: 48, height: 48)
+
+                // Inner glassmorphic layer
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .frame(width: 46, height: 46)
+                    .opacity(0.5)
 
                 Image(systemName: icon)
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(color)
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [color, color.opacity(0.8)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
                     .symbolRenderingMode(.hierarchical)
             }
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(value)
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [color, color.opacity(0.7)],
+                            colors: [color, color.opacity(0.75)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -3893,30 +3995,63 @@ struct UseByStatCard: View {
                     .minimumScaleFactor(0.8)
 
                 Text(title)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundColor(.primary)
 
                 if let subtitle = subtitle {
                     Text(subtitle)
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary.opacity(0.8))
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
-        .padding(12)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.adaptiveCard)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(color.opacity(0.15), lineWidth: 2)
-        )
-        .shadow(color: color.opacity(0.12), radius: 8, x: 0, y: 4)
-        .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 4)
+        .background {
+            ZStack {
+                // Glassmorphic background
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(.ultraThinMaterial)
+
+                // Subtle gradient overlay
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                color.opacity(0.08),
+                                color.opacity(0.03)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+
+                // Gradient border
+                RoundedRectangle(cornerRadius: 18)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                color.opacity(0.3),
+                                color.opacity(0.15)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 2
+                    )
+            }
+        }
+        .shadow(color: color.opacity(0.15), radius: 12, x: 0, y: 6)
+        .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 4)
+        .scaleEffect(isVisible ? 1 : 0.95)
+        .opacity(isVisible ? 1 : 0)
+        .onAppear {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                isVisible = true
+            }
+        }
     }
 }
 
@@ -4133,5 +4268,378 @@ struct CachedUseByImage: View {
         }
 
         isLoading = false
+    }
+}
+
+// MARK: - Modern Visual Components for Empty State
+
+struct ModernGradientBackground: View {
+    @State private var animate = false
+
+    var body: some View {
+        ZStack {
+            // Base gradient background
+            LinearGradient(
+                colors: [
+                    Color(.systemBackground),
+                    Color.blue.opacity(0.03),
+                    Color.purple.opacity(0.02)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            // Floating blur orbs
+            GeometryReader { geometry in
+                ZStack {
+                    // Orb 1 - Top left
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [Color.blue.opacity(0.15), Color.clear],
+                                center: .center,
+                                startRadius: 0,
+                                endRadius: 150
+                            )
+                        )
+                        .frame(width: 300, height: 300)
+                        .offset(
+                            x: animate ? -50 : -80,
+                            y: animate ? 50 : 80
+                        )
+                        .blur(radius: 40)
+
+                    // Orb 2 - Bottom right
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [Color.purple.opacity(0.12), Color.clear],
+                                center: .center,
+                                startRadius: 0,
+                                endRadius: 150
+                            )
+                        )
+                        .frame(width: 250, height: 250)
+                        .offset(
+                            x: geometry.size.width - (animate ? 150 : 180),
+                            y: geometry.size.height - (animate ? 200 : 230)
+                        )
+                        .blur(radius: 35)
+
+                    // Orb 3 - Center right
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [Color.cyan.opacity(0.08), Color.clear],
+                                center: .center,
+                                startRadius: 0,
+                                endRadius: 120
+                            )
+                        )
+                        .frame(width: 200, height: 200)
+                        .offset(
+                            x: geometry.size.width - (animate ? 80 : 110),
+                            y: geometry.size.height / 2 + (animate ? 20 : -10)
+                        )
+                        .blur(radius: 30)
+                }
+            }
+        }
+        .ignoresSafeArea()
+        .onAppear {
+            withAnimation(
+                Animation.easeInOut(duration: 8)
+                    .repeatForever(autoreverses: true)
+            ) {
+                animate = true
+            }
+        }
+    }
+}
+
+struct AnimatedFridgeIcon: View {
+    @State private var isAnimating = false
+    @State private var particlesVisible = false
+
+    var body: some View {
+        ZStack {
+            // Background gradient glow
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            Color.blue.opacity(0.2),
+                            Color.purple.opacity(0.1),
+                            Color.clear
+                        ],
+                        center: .center,
+                        startRadius: 50,
+                        endRadius: 120
+                    )
+                )
+                .frame(width: 240, height: 240)
+                .blur(radius: 20)
+                .scaleEffect(isAnimating ? 1.1 : 1.0)
+
+            // Main icon container with gradient backdrop
+            ZStack {
+                // Gradient circle backdrop
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.blue.opacity(0.15),
+                                Color.purple.opacity(0.12)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 140, height: 140)
+
+                // Inner glassmorphic circle
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .frame(width: 130, height: 130)
+
+                // Fridge icon with 3D effect
+                ZStack {
+                    // Shadow layer
+                    Image(systemName: "refrigerator.fill")
+                        .font(.system(size: 64, weight: .light))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [Color.black.opacity(0.1), Color.clear],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .offset(y: 2)
+
+                    // Main icon with gradient
+                    Image(systemName: "refrigerator.fill")
+                        .font(.system(size: 64, weight: .light))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [Color.blue, Color.purple.opacity(0.8)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .symbolRenderingMode(.hierarchical)
+                }
+            }
+            .shadow(color: Color.blue.opacity(0.2), radius: 20, x: 0, y: 10)
+
+            // Floating sparkle particles
+            if particlesVisible {
+                ForEach(0..<6, id: \.self) { index in
+                    FloatingParticle(index: index)
+                }
+            }
+        }
+        .onAppear {
+            withAnimation(
+                Animation.easeInOut(duration: 2.5)
+                    .repeatForever(autoreverses: true)
+            ) {
+                isAnimating = true
+            }
+
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.3)) {
+                particlesVisible = true
+            }
+        }
+    }
+}
+
+struct FloatingParticle: View {
+    let index: Int
+    @State private var isFloating = false
+
+    var body: some View {
+        Circle()
+            .fill(
+                LinearGradient(
+                    colors: [Color.blue.opacity(0.6), Color.purple.opacity(0.4)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .frame(width: 6, height: 6)
+            .blur(radius: 1)
+            .offset(
+                x: particleOffset.x + (isFloating ? 20 : -20),
+                y: particleOffset.y + (isFloating ? -30 : 30)
+            )
+            .opacity(isFloating ? 0 : 0.8)
+            .onAppear {
+                withAnimation(
+                    Animation.easeInOut(duration: 2.0 + Double(index) * 0.3)
+                        .repeatForever(autoreverses: false)
+                        .delay(Double(index) * 0.2)
+                ) {
+                    isFloating = true
+                }
+            }
+    }
+
+    var particleOffset: CGPoint {
+        let angle = Double(index) * .pi / 3
+        let radius: CGFloat = 80
+        return CGPoint(
+            x: cos(angle) * radius,
+            y: sin(angle) * radius
+        )
+    }
+}
+
+struct ModernAddButton: View {
+    let action: () -> Void
+    @State private var isPressed = false
+
+    var body: some View {
+        Button(action: {
+            let generator = UIImpactFeedbackGenerator(style: .medium)
+            generator.impactOccurred()
+            action()
+        }) {
+            HStack(spacing: 12) {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 20, weight: .semibold))
+
+                Text("Add Your First Item")
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 18)
+            .background {
+                ZStack {
+                    // Gradient background
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.3, green: 0.5, blue: 1.0),
+                            Color(red: 0.5, green: 0.3, blue: 0.9)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+
+                    // Glassmorphic overlay
+                    Color.white.opacity(0.15)
+                }
+            }
+            .cornerRadius(16)
+            .shadow(
+                color: Color.blue.opacity(0.4),
+                radius: isPressed ? 8 : 15,
+                x: 0,
+                y: isPressed ? 4 : 8
+            )
+            .shadow(
+                color: Color.purple.opacity(0.3),
+                radius: isPressed ? 12 : 20,
+                x: 0,
+                y: isPressed ? 6 : 12
+            )
+            .scaleEffect(isPressed ? 0.96 : 1.0)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                        isPressed = true
+                    }
+                }
+                .onEnded { _ in
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                        isPressed = false
+                    }
+                }
+        )
+    }
+}
+
+struct ModernTipCard: View {
+    let tip: String
+    @State private var isVisible = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Gradient icon
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.yellow.opacity(0.2), Color.orange.opacity(0.15)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 32, height: 32)
+
+                Image(systemName: "lightbulb.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color.yellow, Color.orange],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+
+            Text(tip)
+                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .foregroundColor(.secondary)
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background {
+            ZStack {
+                // Glassmorphic background
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(.ultraThinMaterial)
+
+                // Subtle gradient overlay
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.yellow.opacity(0.05),
+                                Color.orange.opacity(0.03)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+
+                // Border
+                RoundedRectangle(cornerRadius: 14)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                Color.yellow.opacity(0.2),
+                                Color.orange.opacity(0.15)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            }
+        }
+        .shadow(color: Color.yellow.opacity(0.1), radius: 8, x: 0, y: 4)
+        .opacity(isVisible ? 1 : 0)
+        .offset(y: isVisible ? 0 : 20)
+        .onAppear {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.75).delay(0.4)) {
+                isVisible = true
+            }
+        }
     }
 }
