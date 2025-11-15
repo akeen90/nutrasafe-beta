@@ -476,6 +476,7 @@ struct AdditiveCard: View {
                 .padding(.top, 8)
             }
         }
+        .frame(maxWidth: .infinity)
         .padding(12)
         .background(Color.purple.opacity(0.08))
         .overlay(
@@ -699,6 +700,7 @@ struct AdditiveCardView: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 14)
                 .fill(Color.purple.opacity(0.06))
@@ -1239,6 +1241,7 @@ struct UltraProcessedIngredientCard: View {
                 .padding(.top, 8)
             }
         }
+        .frame(maxWidth: .infinity)
         .padding(12)
         .background(Color.purple.opacity(0.08))
         .overlay(
