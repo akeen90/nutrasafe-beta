@@ -258,9 +258,15 @@ struct AddFoodAIView: View {
         }
         
         let base64Image = imageData.base64EncodedString()
-        
+
         // Call Firebase function for AI food recognition
-        let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/recognizeFood")!
+        let urlString = "https://us-central1-nutrasafe-705c7.cloudfunctions.net/recognizeFood"
+        guard let url = URL(string: urlString) else {
+            #if DEBUG
+            print("❌ Invalid URL for food recognition: \(urlString)")
+            #endif
+            throw NSError(domain: "AddFoodAIView", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid recognition URL"])
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")

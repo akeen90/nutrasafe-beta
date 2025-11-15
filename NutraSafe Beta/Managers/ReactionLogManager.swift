@@ -202,21 +202,30 @@ class ReactionLogManager: ObservableObject {
                 foodData[foodName] = (0, [], hoursBeforeReaction, 0, 0, 0)
             }
 
-            foodData[foodName]!.occurrences += 1
-            foodData[foodName]!.mealIds.append(item.mealId)
+            // Safe dictionary mutation
+            if var data = foodData[foodName] {
+                data.occurrences += 1
+                data.mealIds.append(item.mealId)
 
-            // Update last seen
-            if hoursBeforeReaction < foodData[foodName]!.lastSeenHours {
-                foodData[foodName]!.lastSeenHours = hoursBeforeReaction
-            }
+                // Update last seen
+                if hoursBeforeReaction < data.lastSeenHours {
+                    data.lastSeenHours = hoursBeforeReaction
+                }
 
-            // Count by time window
-            if hoursBeforeReaction < 24 {
-                foodData[foodName]!.within24h += 1
-            } else if hoursBeforeReaction < 48 {
-                foodData[foodName]!.between24_48h += 1
+                // Count by time window
+                if hoursBeforeReaction < 24 {
+                    data.within24h += 1
+                } else if hoursBeforeReaction < 48 {
+                    data.between24_48h += 1
+                } else {
+                    data.between48_72h += 1
+                }
+
+                foodData[foodName] = data
             } else {
-                foodData[foodName]!.between48_72h += 1
+                #if DEBUG
+                print("⚠️ ReactionLogManager: Unexpected nil foodData for \(foodName)")
+                #endif
             }
         }
 
@@ -297,22 +306,31 @@ class ReactionLogManager: ObservableObject {
                     ingredientData[normalizedIngredient] = (0, [], [], hoursBeforeReaction, 0, 0, 0, ingredient)
                 }
 
-                ingredientData[normalizedIngredient]!.occurrences += 1
-                ingredientData[normalizedIngredient]!.foodNames.insert(item.food.foodName)
-                ingredientData[normalizedIngredient]!.mealIds.append(item.mealId)
+                // Safe dictionary mutation
+                if var data = ingredientData[normalizedIngredient] {
+                    data.occurrences += 1
+                    data.foodNames.insert(item.food.foodName)
+                    data.mealIds.append(item.mealId)
 
-                // Update last seen
-                if hoursBeforeReaction < ingredientData[normalizedIngredient]!.lastSeenHours {
-                    ingredientData[normalizedIngredient]!.lastSeenHours = hoursBeforeReaction
-                }
+                    // Update last seen
+                    if hoursBeforeReaction < data.lastSeenHours {
+                        data.lastSeenHours = hoursBeforeReaction
+                    }
 
-                // Count by time window
-                if hoursBeforeReaction < 24 {
-                    ingredientData[normalizedIngredient]!.within24h += 1
-                } else if hoursBeforeReaction < 48 {
-                    ingredientData[normalizedIngredient]!.between24_48h += 1
+                    // Count by time window
+                    if hoursBeforeReaction < 24 {
+                        data.within24h += 1
+                    } else if hoursBeforeReaction < 48 {
+                        data.between24_48h += 1
+                    } else {
+                        data.between48_72h += 1
+                    }
+
+                    ingredientData[normalizedIngredient] = data
                 } else {
-                    ingredientData[normalizedIngredient]!.between48_72h += 1
+                    #if DEBUG
+                    print("⚠️ ReactionLogManager: Unexpected nil ingredientData for \(normalizedIngredient)")
+                    #endif
                 }
             }
         }
@@ -399,10 +417,19 @@ class ReactionLogManager: ObservableObject {
                     associations[normalizedName] = (0, 0)
                 }
 
-                associations[normalizedName]!.total += 1
+                // Safe dictionary mutation
+                if var data = associations[normalizedName] {
+                    data.total += 1
 
-                if isSameSymptom {
-                    associations[normalizedName]!.sameSymptom += 1
+                    if isSameSymptom {
+                        data.sameSymptom += 1
+                    }
+
+                    associations[normalizedName] = data
+                } else {
+                    #if DEBUG
+                    print("⚠️ ReactionLogManager: Unexpected nil associations for \(normalizedName)")
+                    #endif
                 }
             }
         }

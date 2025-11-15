@@ -1251,9 +1251,14 @@ class ReactionPDFExporter {
                     if allergenData[allergenCategory] == nil {
                         allergenData[allergenCategory] = (0, [], [])
                     }
-                    allergenData[allergenCategory]!.count += 1
-                    allergenData[allergenCategory]!.reactionsAppeared.insert(reaction.id ?? "")
-                    allergenData[allergenCategory]!.ingredients.insert(ingredient.ingredientName)
+
+                    // Safe dictionary mutation
+                    if var data = allergenData[allergenCategory] {
+                        data.count += 1
+                        data.reactionsAppeared.insert(reaction.id ?? "")
+                        data.ingredients.insert(ingredient.ingredientName)
+                        allergenData[allergenCategory] = data
+                    }
                 }
             }
         }
@@ -1332,8 +1337,13 @@ class ReactionPDFExporter {
                 if ingredientData[normalizedName] == nil {
                     ingredientData[normalizedName] = (0, [])
                 }
-                ingredientData[normalizedName]!.count += 1
-                ingredientData[normalizedName]!.reactionsAppeared.insert(reaction.id ?? "")
+
+                // Safe dictionary mutation
+                if var data = ingredientData[normalizedName] {
+                    data.count += 1
+                    data.reactionsAppeared.insert(reaction.id ?? "")
+                    ingredientData[normalizedName] = data
+                }
             }
         }
 

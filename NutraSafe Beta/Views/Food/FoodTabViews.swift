@@ -3053,7 +3053,16 @@ struct MultipleFoodReactionsPDFExportSheet: View {
                 }
 
                 // Get the most recent reaction
-                let mostRecentReaction = reactions.first!
+                guard let mostRecentReaction = reactions.first else {
+                    await MainActor.run {
+                        self.errorMessage = "No reactions found to export."
+                        self.isGenerating = false
+                    }
+                    #if DEBUG
+                    print("❌ FoodTabViews: reactions.first unexpectedly nil after isEmpty check")
+                    #endif
+                    return
+                }
                 let reactionDate = mostRecentReaction.timestamp.dateValue()
 
                 // Fetch 7-day meal history prior to the most recent reaction

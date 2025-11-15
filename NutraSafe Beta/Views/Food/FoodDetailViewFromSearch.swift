@@ -657,7 +657,14 @@ struct FoodDetailViewFromSearch: View {
             if word.count > 2 && word.uppercased() == word && !word.contains("(") && !word.contains(")") {
                 // Check if it's not a known abbreviation
                 let isAbbreviation = knownAbbreviations.contains { abbr in
-                    word.hasPrefix(abbr) && (word.count == abbr.count || !word.dropFirst(abbr.count).first!.isLetter)
+                    guard word.hasPrefix(abbr) else { return false }
+                    if word.count == abbr.count {
+                        return true
+                    }
+                    // Safely check if the next character after abbreviation is not a letter
+                    let remainingPart = word.dropFirst(abbr.count)
+                    guard let firstChar = remainingPart.first else { return false }
+                    return !firstChar.isLetter
                 }
 
                 if !isAbbreviation {
@@ -2744,7 +2751,13 @@ struct FoodDetailViewFromSearch: View {
                 }
                 
                 // Submit to Firebase function for complete processing
-                let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/processCompleteFoodProfile")!
+                let urlString = "https://us-central1-nutrasafe-705c7.cloudfunctions.net/processCompleteFoodProfile"
+                guard let url = URL(string: urlString) else {
+                    #if DEBUG
+                    print("❌ Invalid URL for food profile processing: \(urlString)")
+                    #endif
+                    throw NSError(domain: "FoodDetailView", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid processing URL"])
+                }
                 var request = URLRequest(url: url)
                 request.httpMethod = "POST"
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")

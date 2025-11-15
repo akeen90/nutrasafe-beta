@@ -381,7 +381,12 @@ class FirebaseManager: ObservableObject {
         let fetchTask = Task<[FoodEntry], Error> {
             // Query using local day boundaries (Firebase stores UTC timestamps but we query by local day)
             let queryStart = calendar.startOfDay(for: date)
-            let endOfDay = calendar.date(byAdding: .day, value: 1, to: queryStart)!.addingTimeInterval(-0.001)
+            guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: queryStart)?.addingTimeInterval(-0.001) else {
+                #if DEBUG
+                print("❌ Failed to calculate end of day for date: \(date)")
+                #endif
+                throw NSError(domain: "FirebaseManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to calculate date range"])
+            }
             let queryEnd = endOfDay
 
             let snapshot = try await withRetry {
@@ -453,9 +458,19 @@ class FirebaseManager: ObservableObject {
             let calendar = Calendar.current
             let today = Date()
             let startOfToday = calendar.startOfDay(for: today)
-            let endOfToday = calendar.date(byAdding: .day, value: 1, to: startOfToday)!.addingTimeInterval(-0.001)
+            guard let endOfToday = calendar.date(byAdding: .day, value: 1, to: startOfToday)?.addingTimeInterval(-0.001) else {
+                #if DEBUG
+                print("❌ Failed to calculate end of today")
+                #endif
+                return []
+            }
             let endDate = endOfToday
-            guard let startDate = calendar.date(byAdding: .day, value: -days, to: today) else { return [] }
+            guard let startDate = calendar.date(byAdding: .day, value: -days, to: today) else {
+                #if DEBUG
+                print("❌ Failed to calculate start date for \(days) days ago")
+                #endif
+                return []
+            }
             let queryStart = calendar.startOfDay(for: startDate)
 
             let snapshot = try await withRetry {
@@ -1103,10 +1118,15 @@ class FirebaseManager: ObservableObject {
     
     func getExerciseEntries(for date: Date) async throws -> [ExerciseEntry] {
         guard let userId = currentUser?.uid else { return [] }
-        
+
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
-        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+        guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else {
+            #if DEBUG
+            print("❌ Failed to calculate end of day for exercise entries")
+            #endif
+            throw NSError(domain: "FirebaseManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to calculate date range"])
+        }
         
         let snapshot = try await db.collection("users").document(userId)
             .collection("exerciseEntries")
@@ -2190,7 +2210,15 @@ class FirebaseManager: ObservableObject {
 
     /// Search foods via Cloud Function (includes OpenFoodFacts fallback)
     private func searchFoodsViaCloudFunction(query: String) async throws -> [FoodSearchResult] {
-        let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/searchFoods?q=\(query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")")!
+        let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let urlString = "https://us-central1-nutrasafe-705c7.cloudfunctions.net/searchFoods?q=\(encodedQuery)"
+
+        guard let url = URL(string: urlString) else {
+            #if DEBUG
+            print("❌ Invalid URL for Cloud Function search: \(urlString)")
+            #endif
+            throw NSError(domain: "FirebaseManager", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid search URL"])
+        }
 
         let (data, response) = try await URLSession.shared.data(from: url)
 

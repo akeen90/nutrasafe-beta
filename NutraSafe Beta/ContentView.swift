@@ -585,14 +585,20 @@ class IngredientSubmissionService: ObservableObject {
     private func submitToBackendForFullProcessing(foodName: String, brandName: String?,
                                                 ingredientsImage: UIImage?, nutritionImage: UIImage?,
                                                 barcodeImage: UIImage?, pendingId: String) async throws {
-        guard let userId = FirebaseManager.shared.currentUser?.uid else { 
+        guard let userId = FirebaseManager.shared.currentUser?.uid else {
             #if DEBUG
             print("No user ID available for submission")
             #endif
-            return 
+            return
         }
-        
-        let url = URL(string: "\(functionsBaseURL)/submitFoodVerification")!
+
+        let urlString = "\(functionsBaseURL)/submitFoodVerification"
+        guard let url = URL(string: urlString) else {
+            #if DEBUG
+            print("❌ Invalid URL for food verification: \(urlString)")
+            #endif
+            throw NSError(domain: "ContentView", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid submission URL"])
+        }
         
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -659,7 +665,13 @@ class FatSecretService: ObservableObject {
     }
     
     private func performFatSecretSearch(query: String) async throws -> [FoodSearchResult] {
-        let url = URL(string: "\(functionsBaseURL)/searchFoods")!
+        let urlString = "\(functionsBaseURL)/searchFoods"
+        guard let url = URL(string: urlString) else {
+            #if DEBUG
+            print("❌ Invalid URL for food search: \(urlString)")
+            #endif
+            throw NSError(domain: "FatSecretService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid search URL"])
+        }
         
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -884,7 +896,13 @@ class FatSecretService: ObservableObject {
     }
     
     func getFoodDetails(foodId: String) async throws -> FoodSearchResult? {
-        let url = URL(string: "\(functionsBaseURL)/getFoodDetails")!
+        let urlString = "\(functionsBaseURL)/getFoodDetails"
+        guard let url = URL(string: urlString) else {
+            #if DEBUG
+            print("❌ Invalid URL for food details: \(urlString)")
+            #endif
+            throw NSError(domain: "FatSecretService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid details URL"])
+        }
         
         var request = URLRequest(url: url)
         request.httpMethod = "POST"

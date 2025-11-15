@@ -844,10 +844,10 @@ struct FoodEntry: Identifiable, Codable {
         var ingredients: [String]? = nil
         if let ingredientsArray = data["ingredients"] as? [String] {
             ingredients = ingredientsArray
-        } else if data["ingredients"] != nil {
+        } else if let ingredientsValue = data["ingredients"] {
             // CRITICAL: Reject entire entry if ingredients field contains invalid type
             #if DEBUG
-            print("❌ CORRUPT DATA: ingredients field has invalid type \(type(of: data["ingredients"]!)) for food: \(foodName) (ID: \(id))")
+            print("❌ CORRUPT DATA: ingredients field has invalid type \(type(of: ingredientsValue)) for food: \(foodName) (ID: \(id))")
             #endif
             #if DEBUG
             print("   Rejecting entry to prevent cache crash")
@@ -861,10 +861,10 @@ struct FoodEntry: Identifiable, Codable {
            JSONSerialization.isValidJSONObject(additivesArray),
            let additivesData = try? JSONSerialization.data(withJSONObject: additivesArray, options: []) {
             additives = try? JSONDecoder().decode([NutritionAdditiveInfo].self, from: additivesData)
-        } else if data["additives"] != nil {
+        } else if let additivesValue = data["additives"] {
             // CRITICAL: Reject entire entry if additives field contains invalid type
             #if DEBUG
-            print("❌ CORRUPT DATA: additives field has invalid type \(type(of: data["additives"]!)) for food: \(foodName) (ID: \(id))")
+            print("❌ CORRUPT DATA: additives field has invalid type \(type(of: additivesValue)) for food: \(foodName) (ID: \(id))")
             #endif
             #if DEBUG
             print("   Rejecting entry to prevent cache crash")
@@ -900,10 +900,10 @@ struct FoodEntry: Identifiable, Codable {
                 // Don't reject the entire entry, just skip the micronutrient data
                 micronutrientProfile = nil
             }
-        } else if data["micronutrientProfile"] != nil {
+        } else if let micronutrientValue = data["micronutrientProfile"] {
             // CRITICAL: Reject entire entry if micronutrientProfile field contains invalid type
             #if DEBUG
-            print("❌ CORRUPT DATA: micronutrientProfile field has invalid type \(type(of: data["micronutrientProfile"]!)) for food: \(foodName) (ID: \(id))")
+            print("❌ CORRUPT DATA: micronutrientProfile field has invalid type \(type(of: micronutrientValue)) for food: \(foodName) (ID: \(id))")
             #endif
             #if DEBUG
             print("   Rejecting entry to prevent cache crash")

@@ -324,22 +324,33 @@ actor SQLiteFoodDatabase {
     }
 
     private func executeSQL(_ sql: String) {
+        guard let db = db else {
+            #if DEBUG
+            print("❌ Database not initialized - cannot execute SQL")
+            #endif
+            return
+        }
+
         var statement: OpaquePointer?
 
         if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
             if sqlite3_step(statement) != SQLITE_DONE {
-                let errorMessage = String(cString: sqlite3_errmsg(db)!)
-                #if DEBUG
-                print("❌ Database operation failed: \(errorMessage)")
-                print("   This may cause food search to return incomplete results")
-                #endif
+                if let errorCString = sqlite3_errmsg(db) {
+                    let errorMessage = String(cString: errorCString)
+                    #if DEBUG
+                    print("❌ Database operation failed: \(errorMessage)")
+                    print("   This may cause food search to return incomplete results")
+                    #endif
+                }
             }
         } else {
-            let errorMessage = String(cString: sqlite3_errmsg(db)!)
-            #if DEBUG
-            print("❌ Database error: \(errorMessage)")
-            print("   SQL: \(sql.prefix(100))...")
-            #endif
+            if let errorCString = sqlite3_errmsg(db) {
+                let errorMessage = String(cString: errorCString)
+                #if DEBUG
+                print("❌ Database error: \(errorMessage)")
+                print("   SQL: \(sql.prefix(100))...")
+                #endif
+            }
         }
 
         sqlite3_finalize(statement)

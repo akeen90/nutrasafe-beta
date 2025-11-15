@@ -387,13 +387,13 @@ class CitationManager {
     }
 
     /// Get primary citation for daily values
-    var primaryDailyValuesCitation: Citation {
-        return allCitations.first { $0.category == .dailyValues && $0.organization.contains("FDA") }!
+    var primaryDailyValuesCitation: Citation? {
+        return allCitations.first { $0.category == .dailyValues && $0.organization.contains("FDA") }
     }
 
     /// Get primary citation for nutrition data
-    var primaryNutritionDataCitation: Citation {
-        return allCitations.first { $0.category == .nutritionData }!
+    var primaryNutritionDataCitation: Citation? {
+        return allCitations.first { $0.category == .nutritionData }
     }
 
     // MARK: - Quick Access URLs
