@@ -172,51 +172,36 @@ export const bulkImportFoodsToAlgolia = functions.https.onCall({
  * Search foods using Algolia
  * This provides a fast search endpoint for the iOS app
  */
-export const searchFoodsAlgolia = functions.https.onCall({
+export const searchFoodsAlgolia = functions.https.onRequest({
   secrets: [algoliaAdminKey],
-}, async (request) => {
-  const {query, filters, hitsPerPage = 20} = request.data;
+  cors: true,
+}, async (request, response) => {
+  // Get query from URL parameter for GET requests
+  const query = request.query.q as string;
+  const hitsPerPage = parseInt(request.query.limit as string) || 20;
 
   if (!query || typeof query !== "string") {
-    throw new functions.https.HttpsError(
-      "invalid-argument",
-      "Query is required and must be a string"
-    );
+    response.status(400).json({
+      error: "Query parameter 'q' is required",
+    });
+    return;
   }
 
   const client = algoliasearch(ALGOLIA_APP_ID, algoliaAdminKey.value());
 
-  // Search across all indices
-  const indices = [
-    VERIFIED_FOODS_INDEX,
-    FOODS_INDEX,
-    MANUAL_FOODS_INDEX,
-  ];
+  // Search the foods index (24,150+ foods)
+  const searchResult = await client.searchSingleIndex({
+    indexName: FOODS_INDEX,
+    searchParams: {
+      query,
+      hitsPerPage,
+    },
+  });
 
-  const searchResults = await Promise.all(
-    indices.map((indexName) =>
-      client.searchSingleIndex({
-        indexName,
-        searchParams: {
-          query,
-          hitsPerPage,
-          filters,
-        },
-      })
-    )
-  );
-
-  // Combine results, prioritizing verified foods
-  const combinedHits = [
-    ...searchResults[0].hits, // Verified foods first
-    ...searchResults[1].hits, // Regular foods
-    ...searchResults[2].hits, // Manual foods
-  ];
-
-  return {
-    hits: combinedHits.slice(0, hitsPerPage),
-    nbHits: combinedHits.length,
-  };
+  response.json({
+    hits: searchResult.hits,
+    nbHits: searchResult.nbHits || searchResult.hits.length,
+  });
 });
 
 /**
