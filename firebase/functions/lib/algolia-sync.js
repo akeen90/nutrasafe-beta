@@ -103,6 +103,8 @@ exports.syncManualFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
  */
 exports.bulkImportFoodsToAlgolia = functions.https.onCall({
     secrets: [algoliaAdminKey],
+    memory: "512MiB", // Increased memory for bulk operations
+    timeoutSeconds: 300, // 5 minutes timeout for large datasets
 }, async (request) => {
     const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
     const db = admin.firestore();
