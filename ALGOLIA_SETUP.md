@@ -191,4 +191,19 @@ Once confident in Algolia:
 
 ---
 
-**Status**: ✅ Backend deployed | ⏳ Waiting for iOS SDK integration
+**Status**: ✅ Backend deployed | ✅ iOS SDK integrated | ✅ Search flow updated
+
+## 🎉 Integration Complete!
+
+The app now uses Algolia as the primary search method with intelligent fallback:
+
+1. **Primary**: Algolia search (~20ms, instant results)
+2. **Fallback**: Firebase/OpenFoodFacts (if Algolia returns no results)
+3. **Enrichment**: Pending verification ingredients added automatically
+
+### Search Flow
+```
+User types query → Algolia search (fast!) → Results found?
+                                         ├─ Yes → Display results
+                                         └─ No  → Try Firebase/OpenFoodFacts → Display results
+```

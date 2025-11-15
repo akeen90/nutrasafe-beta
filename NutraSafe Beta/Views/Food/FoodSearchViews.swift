@@ -325,6 +325,9 @@ struct AddFoodSearchView: View {
     @State private var originalMealType = ""
     // Use By sheet presentation moved to parent; emit selection via callback
 
+    // Algolia manager for instant search
+    @StateObject private var algoliaManager = AlgoliaManager()
+
     var body: some View {
         VStack(spacing: 0) {
             // Search Bar - fixed at top
@@ -594,85 +597,130 @@ struct AddFoodSearchView: View {
                 return
             }
 
-        // DEBUG LOG: print("🔍 AddFoodSearchView: Executing search for '\(query)'")
+            #if DEBUG
+            print("🚀 Algolia: Searching for '\(query)'...")
+            #endif
+
+            // Try Algolia first (instant search, ~20ms)
+            var results: [FoodSearchResult] = []
 
             do {
-                let results = try await FirebaseManager.shared.searchFoods(query: query)
-                
-                if Task.isCancelled { return }
-                
-                // Check for pending verifications with extracted ingredients
-                var enrichedResults = results
-                
-                // Get pending verifications for this user
-                do {
-                    let pendingVerifications = try await FirebaseManager.shared.getPendingVerifications()
-                    
-                    // Find matching foods and add pending ingredients
-                    for i in 0..<enrichedResults.count {
-                        let result = enrichedResults[i]
-                        
-                        // Match strictly by name AND brand when both are present; avoid enriching generic/unbranded items
-                        let matchingVerifications = pendingVerifications.filter { pending in
-                            let nameMatch = pending.foodName.lowercased() == result.name.lowercased()
-                            guard let pendingBrand = pending.brandName?.trimmingCharacters(in: .whitespacesAndNewlines),
-                                  !pendingBrand.isEmpty,
-                                  let resultBrand = result.brand?.trimmingCharacters(in: .whitespacesAndNewlines),
-                                  !resultBrand.isEmpty else {
-                                return false
-                            }
-                            let brandMatch = pendingBrand.lowercased() == resultBrand.lowercased()
-                            return nameMatch && brandMatch
-                        }
-                        
-                        // If we found a matching verification with ingredients, use those
-                        if let pendingMatch = matchingVerifications.first,
-                           let ingredients = pendingMatch.ingredients,
-                           !ingredients.isEmpty,
-                           ingredients != "Processing ingredient image..." {
-                            
-                            // Create new search result with pending ingredients
-                            enrichedResults[i] = FoodSearchResult(
-                                id: result.id,
-                                name: result.name,
-                                brand: result.brand,
-                                calories: result.calories,
-                                protein: result.protein,
-                                carbs: result.carbs,
-                                fat: result.fat,
-                                fiber: result.fiber,
-                                sugar: result.sugar,
-                                sodium: result.sodium,
-                                servingDescription: result.servingDescription,
-                                ingredients: [ingredients + " (⏳ Awaiting Verification)"]
-                            )
-                        }
-                    }
-                } catch {
-                    #if DEBUG
-                    print("Failed to check pending verifications: \(error)")
-                    #endif
-                    // Continue with original results if pending check fails
-                }
-                
-                await MainActor.run {
-        // DEBUG LOG: print("🍎 Setting search results: \(enrichedResults.count) foods found")
-        // DEBUG LOG: print("🍎 First few results: \(enrichedResults.prefix(3).map { "\($0.name) (\($0.brand ?? "no brand"))" })")
-                    self.searchResults = enrichedResults
-                    self.isSearching = false
+                let algoliaFoods = try await algoliaManager.searchFoods(query: query, hitsPerPage: 50)
+
+                #if DEBUG
+                print("⚡️ Algolia: Found \(algoliaFoods.count) results in ~20ms")
+                #endif
+
+                // Convert Algolia results to FoodSearchResult
+                results = algoliaFoods.map { algoliaFood in
+                    FoodSearchResult(
+                        id: algoliaFood.id,
+                        name: algoliaFood.name,
+                        brand: algoliaFood.brandName,
+                        calories: algoliaFood.calories ?? 0,
+                        protein: algoliaFood.protein ?? 0,
+                        carbs: algoliaFood.carbs ?? 0,
+                        fat: algoliaFood.fat ?? 0,
+                        fiber: algoliaFood.fiber ?? 0,
+                        sugar: algoliaFood.sugar ?? 0,
+                        sodium: algoliaFood.sodium ?? 0,
+                        servingDescription: algoliaFood.servingSize,
+                        servingSizeG: algoliaFood.servingSizeG,
+                        ingredients: algoliaFood.ingredients.map { [$0] },
+                        barcode: algoliaFood.barcode,
+                        isVerified: algoliaFood.verified
+                    )
                 }
             } catch {
                 #if DEBUG
-                print("❌ Search failed with error: \(error)")
+                print("⚠️ Algolia search failed: \(error.localizedDescription)")
+                print("🔄 Falling back to Firebase/OpenFoodFacts search...")
+                #endif
+            }
+
+            // If Algolia returned no results, fallback to Firebase/OpenFoodFacts
+            if results.isEmpty {
+                #if DEBUG
+                print("🔄 No Algolia results, trying Firebase/OpenFoodFacts...")
                 #endif
 
-                if Task.isCancelled { return }
+                do {
+                    results = try await FirebaseManager.shared.searchFoods(query: query)
 
-                await MainActor.run {
-        // DEBUG LOG: print("🍎 Search failed - setting empty results")
-                    self.searchResults = []
-                    self.isSearching = false
+                    #if DEBUG
+                    print("🌐 Firebase/OpenFoodFacts: Found \(results.count) results")
+                    #endif
+                } catch {
+                    #if DEBUG
+                    print("❌ Firebase/OpenFoodFacts search also failed: \(error)")
+                    #endif
                 }
+            }
+
+            if Task.isCancelled { return }
+
+            // Check for pending verifications with extracted ingredients (for all results)
+            var enrichedResults = results
+
+            // Get pending verifications for this user
+            do {
+                let pendingVerifications = try await FirebaseManager.shared.getPendingVerifications()
+
+                // Find matching foods and add pending ingredients
+                for i in 0..<enrichedResults.count {
+                    let result = enrichedResults[i]
+
+                    // Match strictly by name AND brand when both are present; avoid enriching generic/unbranded items
+                    let matchingVerifications = pendingVerifications.filter { pending in
+                        let nameMatch = pending.foodName.lowercased() == result.name.lowercased()
+                        guard let pendingBrand = pending.brandName?.trimmingCharacters(in: .whitespacesAndNewlines),
+                              !pendingBrand.isEmpty,
+                              let resultBrand = result.brand?.trimmingCharacters(in: .whitespacesAndNewlines),
+                              !resultBrand.isEmpty else {
+                            return false
+                        }
+                        let brandMatch = pendingBrand.lowercased() == resultBrand.lowercased()
+                        return nameMatch && brandMatch
+                    }
+
+                    // If we found a matching verification with ingredients, use those
+                    if let pendingMatch = matchingVerifications.first,
+                       let ingredients = pendingMatch.ingredients,
+                       !ingredients.isEmpty,
+                       ingredients != "Processing ingredient image..." {
+
+                        // Create new search result with pending ingredients
+                        enrichedResults[i] = FoodSearchResult(
+                            id: result.id,
+                            name: result.name,
+                            brand: result.brand,
+                            calories: result.calories,
+                            protein: result.protein,
+                            carbs: result.carbs,
+                            fat: result.fat,
+                            fiber: result.fiber,
+                            sugar: result.sugar,
+                            sodium: result.sodium,
+                            servingDescription: result.servingDescription,
+                            ingredients: [ingredients + " (⏳ Awaiting Verification)"]
+                        )
+                    }
+                }
+            } catch {
+                #if DEBUG
+                print("Failed to check pending verifications: \(error)")
+                #endif
+                // Continue with original results if pending check fails
+            }
+
+            if Task.isCancelled { return }
+
+            await MainActor.run {
+                #if DEBUG
+                print("✅ Search complete: \(enrichedResults.count) foods found")
+                #endif
+                self.searchResults = enrichedResults
+                self.isSearching = false
             }
         }
     }
