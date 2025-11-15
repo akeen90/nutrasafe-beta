@@ -23,10 +23,14 @@ struct AdditiveWatchView: View {
             // Show content directly without collapsible header
             if let result = additiveResult {
                 additiveContent(result: result)
+                    .transition(.opacity)
             } else {
                 loadingContent
+                    .frame(minHeight: 100)
+                    .transition(.opacity)
             }
         }
+        .animation(.easeInOut(duration: 0.3), value: additiveResult != nil)
         .background(Color.white)
         .cornerRadius(12)
         .sheet(isPresented: $showingSources) {
