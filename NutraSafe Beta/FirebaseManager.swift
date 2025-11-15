@@ -2437,9 +2437,11 @@ class FirebaseManager: ObservableObject {
             "data": [
                 "foodName": food.name,
                 "brandName": food.brand ?? "",
-                "foodId": food.id,
+                "foodId": food.foodId ?? food.id,
+                "barcode": food.barcode ?? "",
                 "userId": currentUser?.uid ?? "anonymous",
-                "userEmail": currentUser?.email ?? "anonymous"
+                "userEmail": currentUser?.email ?? "anonymous",
+                "recipientEmail": "contact@nutrasafe.co.uk"
             ]
         ]
 
@@ -2447,9 +2449,21 @@ class FirebaseManager: ObservableObject {
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw NSError(domain: "Server Error", code: -1)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            #if DEBUG
+            print("❌ Invalid response from server")
+            #endif
+            throw NSError(domain: "Invalid Response", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response from server"])
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            #if DEBUG
+            print("❌ Server returned status code: \(httpResponse.statusCode)")
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("Response: \(responseString)")
+            }
+            #endif
+            throw NSError(domain: "Server Error", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "Server returned error code \(httpResponse.statusCode)"])
         }
 
         // Parse response to ensure success
