@@ -266,8 +266,12 @@ class FirebaseManager: ObservableObject {
     func signIn(email: String, password: String) async throws {
         initializeFirebaseServices()
         let result = try await auth.signIn(withEmail: email, password: password)
+
+        // Reload user to get latest email verification status from Firebase servers
+        try await result.user.reload()
+
         await MainActor.run {
-            self.currentUser = result.user
+            self.currentUser = auth.currentUser
             self.isAuthenticated = true
         }
     }
