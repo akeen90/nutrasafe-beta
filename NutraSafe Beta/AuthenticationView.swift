@@ -679,9 +679,7 @@ struct EmailVerificationView: View {
 
                         // Sign out button
                         Button(action: {
-                            Task {
-                                try? await firebaseManager.signOut()
-                            }
+                            try? firebaseManager.signOut()
                         }) {
                             Text("Sign Out")
                                 .font(.system(size: 15, weight: .medium))

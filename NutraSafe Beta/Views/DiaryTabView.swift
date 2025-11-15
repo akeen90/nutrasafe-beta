@@ -568,7 +568,6 @@ struct DiaryTabView: View {
 
     private func performMove() {
         let destinationMeal = moveToMeal.lowercased()
-        let count = selectedFoodItems.count
         for id in selectedFoodItems {
             if let food = findFood(byId: id) {
                 // Remove from current date
@@ -585,7 +584,6 @@ struct DiaryTabView: View {
 
     private func performCopy() {
         let destinationMeal = copyToMeal.lowercased()
-        let count = selectedFoodItems.count
         for id in selectedFoodItems {
             if let food = findFood(byId: id) {
                 var copied = food
@@ -748,7 +746,6 @@ struct DiaryTabView: View {
                 itemsToDelete.append(food)
             }
         }
-        let count = itemsToDelete.count
         if !itemsToDelete.isEmpty {
             diaryDataManager.deleteFoodItems(itemsToDelete, for: selectedDate)
         }
