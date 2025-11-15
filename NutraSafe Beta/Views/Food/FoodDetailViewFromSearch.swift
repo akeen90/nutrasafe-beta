@@ -2258,60 +2258,32 @@ struct FoodDetailViewFromSearch: View {
                     .foregroundColor(.primary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text("Scan the barcode to search for accurate product data, or enhance with AI if you don't have the barcode.")
+                Text("Enhance this product with AI to get more accurate nutritional data, or notify our team to review it.")
                     .font(.system(size: 14))
                     .foregroundColor(.secondary)
                     .lineLimit(nil)
                     .multilineTextAlignment(.center)
 
                 VStack(spacing: 12) {
-                    HStack(spacing: 12) {
-                        // Scan Barcode Button
-                        Button(action: {
-                            showingBarcodeScannerForEnhancement = true
-                        }) {
-                            HStack(spacing: 6) {
-                                if isEnhancing {
-                                    ProgressView()
-                                        .scaleEffect(0.8)
-                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                } else {
-                                    Image(systemName: "barcode.viewfinder")
-                                        .font(.system(size: 16))
-                                    Text("Scan Barcode")
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .lineLimit(1)
-                                        .minimumScaleFactor(0.8)
-                                }
-                            }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(isEnhancing ? Color.gray : Color.blue)
-                            .cornerRadius(10)
+                    // Enhance with AI Button
+                    Button(action: {
+                        showingManualSearchForEnhancement = true
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 16))
+                            Text("Enhance with AI")
+                                .font(.system(size: 14, weight: .semibold))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                         }
-                        .disabled(isEnhancing)
-
-                        // Enhance with AI Button
-                        Button(action: {
-                            showingManualSearchForEnhancement = true
-                        }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "sparkles")
-                                    .font(.system(size: 16))
-                                Text("Enhance with AI")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.8)
-                            }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(Color.purple)
-                            .cornerRadius(10)
-                        }
-                        .disabled(isEnhancing)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.purple)
+                        .cornerRadius(10)
                     }
+                    .disabled(isEnhancing)
 
                     // Notify Team Button
                     Button(action: {
