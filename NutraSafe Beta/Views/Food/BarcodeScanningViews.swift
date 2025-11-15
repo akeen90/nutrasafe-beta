@@ -24,7 +24,7 @@ struct AddFoodBarcodeView: View {
     @State private var showingContributionForm = false
     @State private var scanFailed = false
     @State private var scannerKey = UUID() // Force scanner reset
-    
+
     var body: some View {
         VStack(spacing: 0) {
             if let product = scannedProduct {
@@ -251,14 +251,18 @@ struct AddFoodBarcodeView: View {
         Task {
             // Step 1: Normalize barcode to handle format variations
             let barcodeVariations = normalizeBarcode(barcode)
+            #if DEBUG
             print("🔍 Searching for barcode variations: \(barcodeVariations)")
+            #endif
 
             // Step 2: Search SQLite database FIRST (priority search - instant, no network)
             var foundInSQLite: FoodSearchResult? = nil
             for variation in barcodeVariations {
                 if let result = await SQLiteFoodDatabase.shared.searchByBarcode(variation) {
                     foundInSQLite = result
+                    #if DEBUG
                     print("✅ Found in SQLite database with barcode: \(variation)")
+                    #endif
                     break
                 }
             }
@@ -272,7 +276,9 @@ struct AddFoodBarcodeView: View {
                 return
             }
 
+            #if DEBUG
             print("⚠️ Not found in SQLite, falling back to Firebase Cloud Function...")
+            #endif
 
             // Step 3: Fallback to Firebase Cloud Function if not in SQLite
             searchProductByBarcode(barcode) { result in
@@ -282,12 +288,16 @@ struct AddFoodBarcodeView: View {
                     switch result {
                     case .success(let response):
                         if response.success, let product = response.toFoodSearchResult() {
+                            #if DEBUG
                             print("✅ Found via Firebase Cloud Function")
+                            #endif
                             self.scannedProduct = product
                         } else if response.action == "user_contribution_needed",
                                   let placeholderId = response.placeholder_id {
                             // Product not found anywhere - show manual add option
+                            #if DEBUG
                             print("📱 Product not found anywhere. Showing manual add option.")
+                            #endif
                             self.pendingContribution = PendingFoodContribution(
                                 placeholderId: placeholderId,
                                 barcode: barcode
@@ -301,9 +311,24 @@ struct AddFoodBarcodeView: View {
                             )
                         }
                     case .failure(let error):
-                        // Network failure - still show manual add option
+                        // Network failure - show user-friendly error and manual add option
+                        #if DEBUG
                         print("❌ Network error: \(error)")
-                        self.errorMessage = "Unable to search external sources. Add manually?"
+                        #endif
+
+                        // Determine error type and show appropriate message
+                        if let urlError = error as? URLError {
+                            switch urlError.code {
+                            case .notConnectedToInternet, .networkConnectionLost:
+                                self.errorMessage = "No internet connection. You can add this product manually."
+                            case .timedOut:
+                                self.errorMessage = "Request timed out. You can add this product manually."
+                            default:
+                                self.errorMessage = "Unable to search. You can add this product manually."
+                            }
+                        } else {
+                            self.errorMessage = "Unable to search. You can add this product manually."
+                        }
                         self.pendingContribution = PendingFoodContribution(
                             placeholderId: "",
                             barcode: barcode
@@ -490,7 +515,9 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
             self.captureSession = captureSession
             self.previewLayer = previewLayer
             
+            #if DEBUG
             print("Camera setup completed successfully")
+            #endif
             
         } catch {
             showCameraError("Camera setup failed: \(error.localizedDescription)")
@@ -523,11 +550,22 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
     }
     
     private func showCameraError(_ message: String) {
+        // Create user-friendly error message
+        let userMessage: String
+        if message.contains("not available") {
+            userMessage = "Camera is not available on this device"
+        } else if message.contains("setup failed") || message.contains("Cannot add") {
+            userMessage = "Unable to access camera. Please check permissions in Settings"
+        } else {
+            userMessage = "Camera error: Please restart the app"
+        }
+
         let label = UILabel()
-        label.text = message
+        label.text = userMessage
         label.textAlignment = .center
         label.textColor = .white
         label.numberOfLines = 0
+        label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
         view.addSubview(label)
         label.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -536,6 +574,10 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
             label.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 20),
             label.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -20)
         ])
+
+        #if DEBUG
+        print("📷 Camera Error: \(message)")
+        #endif
     }
     
     // MARK: - Barcode Detection Delegate
@@ -559,11 +601,15 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
             if candidateBarcode == stringValue {
                 // Same barcode detected again - increment counter
                 consecutiveDetections += 1
+                #if DEBUG
                 print("📸 Barcode verification: \(consecutiveDetections)/\(requiredConsecutiveDetections) - \(stringValue)")
+                #endif
 
                 if consecutiveDetections >= requiredConsecutiveDetections {
                     // Success! We have 3 consecutive identical reads
+                    #if DEBUG
                     print("✅ Barcode verified after \(requiredConsecutiveDetections) consecutive detections: \(stringValue)")
+                    #endif
 
                     lastScannedBarcode = stringValue
                     lastScanTime = now
@@ -580,12 +626,16 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
                 // Different barcode detected - reset and start new verification
                 candidateBarcode = stringValue
                 consecutiveDetections = 1
+                #if DEBUG
                 print("🔄 New barcode candidate: \(stringValue) (1/\(requiredConsecutiveDetections))")
+                #endif
             }
         } else {
             // No barcode detected in this frame - reset verification
             if candidateBarcode != nil {
+                #if DEBUG
                 print("❌ Lost barcode lock - resetting verification")
+                #endif
                 candidateBarcode = nil
                 consecutiveDetections = 0
             }

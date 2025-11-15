@@ -38,6 +38,9 @@ class FirebaseManager: ObservableObject {
     private var foodEntriesCache: [String: FoodEntriesCacheEntry] = [:]
     private let foodEntriesCacheExpirationSeconds: TimeInterval = 600 // 10 minutes
 
+    // In-flight request tracking to prevent duplicate fetches
+    private var inFlightFoodEntriesRequests: [String: Task<[FoodEntry], Error>] = [:]
+
     // MARK: - Allergen Cache
     @Published var cachedUserAllergens: [Allergen] = []
     private var allergensLastFetched: Date?
@@ -76,7 +79,86 @@ class FirebaseManager: ObservableObject {
             }
         }
     }
-    
+
+    // MARK: - Network Retry Logic
+
+    /// Retry failed network operations with exponential backoff
+    /// - Parameters:
+    ///   - maxAttempts: Maximum number of retry attempts (default: 3)
+    ///   - operation: The async operation to retry
+    /// - Returns: The result of the operation
+    private func withRetry<T>(
+        maxAttempts: Int = 3,
+        operation: @escaping () async throws -> T
+    ) async throws -> T {
+        var lastError: Error?
+
+        for attempt in 0..<maxAttempts {
+            do {
+                return try await operation()
+            } catch {
+                lastError = error
+
+                // Check if error is retryable
+                if !isRetryableError(error) || attempt == maxAttempts - 1 {
+                    throw error
+                }
+
+                // Exponential backoff: 1s, 2s, 4s
+                let delay = pow(2.0, Double(attempt))
+
+                #if DEBUG
+                print("⚠️ [Retry \(attempt + 1)/\(maxAttempts)] Network error: \(error.localizedDescription)")
+                print("   Retrying in \(delay)s...")
+                #endif
+
+                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            }
+        }
+
+        throw lastError ?? NSError(domain: "NutraSafeRetry", code: -1, userInfo: [NSLocalizedDescriptionKey: "Operation failed after \(maxAttempts) attempts"])
+    }
+
+    /// Determines if an error is retryable (network-related)
+    /// - Parameter error: The error to check
+    /// - Returns: True if the error is retryable
+    private func isRetryableError(_ error: Error) -> Bool {
+        // Check for URLError (network errors)
+        if let urlError = error as? URLError {
+            return [
+                .notConnectedToInternet,
+                .timedOut,
+                .networkConnectionLost,
+                .cannotFindHost,
+                .cannotConnectToHost,
+                .dnsLookupFailed
+            ].contains(urlError.code)
+        }
+
+        // Check for NSError with network-related domains
+        let nsError = error as NSError
+        if nsError.domain == NSURLErrorDomain {
+            return [
+                NSURLErrorNotConnectedToInternet,
+                NSURLErrorTimedOut,
+                NSURLErrorNetworkConnectionLost,
+                NSURLErrorCannotFindHost,
+                NSURLErrorCannotConnectToHost,
+                NSURLErrorDNSLookupFailed
+            ].contains(nsError.code)
+        }
+
+        // Don't retry authentication errors, permission errors, or data validation errors
+        if nsError.domain == "FIRFirestoreErrorDomain" {
+            // Firestore error codes: 7 = permission denied, 5 = not found, 3 = invalid argument
+            let nonRetryableCodes = [3, 5, 7, 16] // Invalid, NotFound, PermissionDenied, Unauthenticated
+            return !nonRetryableCodes.contains(nsError.code)
+        }
+
+        // Default: don't retry unknown errors
+        return false
+    }
+
     // MARK: - Authentication
 
     func signOut() throws {
@@ -87,9 +169,11 @@ class FirebaseManager: ObservableObject {
         UserDefaults.standard.removeObject(forKey: "goalWeight")
         UserDefaults.standard.removeObject(forKey: "userHeight")
         UserDefaults.standard.removeObject(forKey: "weightHistory")
+        #if DEBUG
         print("🧹 Cleared local UserDefaults data on sign out")
 
         // Clear ReactionManager data to prevent leakage between accounts
+        #endif
         Task { @MainActor in
             ReactionManager.shared.clearData()
         }
@@ -131,24 +215,37 @@ class FirebaseManager: ObservableObject {
                 .collection(collection).getDocuments()
 
             let count = snapshot.documents.count
+            #if DEBUG
             print("   Deleting \(count) documents from \(collection)...")
 
+            #endif
             for document in snapshot.documents {
                 try await document.reference.delete()
             }
 
             totalDeleted += count
+            #if DEBUG
             print("   ✅ Successfully deleted \(count) documents from \(collection)")
+            #endif
         }
 
+        #if DEBUG
         print("✅ All user data deleted successfully - Total: \(totalDeleted) documents deleted")
 
         // Clear caches and notify observers so the UI refreshes immediately
-        await MainActor.run {
-            // Invalidate internal caches
-            self.searchCache.removeAllObjects()
+        #endif
+        // Invalidate internal caches - thread-safe, also cancel in-flight requests
+        cacheQueue.sync {
             self.foodEntriesCache.removeAll()
             self.periodCache.removeAll()
+            self.inFlightFoodEntriesRequests.values.forEach { $0.cancel() }
+            self.inFlightFoodEntriesRequests.removeAll()
+            self.inFlightPeriodRequests.values.forEach { $0.cancel() }
+            self.inFlightPeriodRequests.removeAll()
+        }
+
+        await MainActor.run {
+            self.searchCache.removeAllObjects()
             self.cachedUserAllergens = []
             self.allergensLastFetched = nil
 
@@ -207,8 +304,12 @@ class FirebaseManager: ObservableObject {
         // Invalidate cache for this date
         invalidateFoodEntriesCache(for: entry.date, userId: userId)
 
-        // Invalidate period cache (7-day queries)
-        periodCache.removeAll()
+        // Invalidate period cache (7-day queries) - thread-safe, also cancel in-flight requests
+        cacheQueue.sync {
+            periodCache.removeAll()
+            inFlightPeriodRequests.values.forEach { $0.cancel() }
+            inFlightPeriodRequests.removeAll()
+        }
         // DEBUG LOG: print("🗑️ Cleared period cache after saving food entry")
 
         // Notify that food diary was updated
@@ -225,7 +326,9 @@ class FirebaseManager: ObservableObject {
                 do {
                     try await HealthKitManager.shared.writeDietaryEnergyConsumed(calories: entry.calories, date: entry.date)
                 } catch {
+                    #if DEBUG
                     print("⚠️ Failed to write dietary energy to HealthKit: \(error)")
+                    #endif
                 }
             }
         }
@@ -235,23 +338,28 @@ class FirebaseManager: ObservableObject {
     private func invalidateFoodEntriesCache(for date: Date, userId: String) {
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        let dateKey = "\(userId)_\(dateFormatter.string(from: startOfDay))"
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = calendar.timeZone
+        let dateKey = "\(userId)_\(formatter.string(from: startOfDay))"
 
-        foodEntriesCache.removeValue(forKey: dateKey)
-        // DEBUG LOG: print("🗑️ Invalidated food entries cache for \(dateFormatter.string(from: startOfDay))")
+        // Thread-safe cache invalidation - also cancel any in-flight requests
+        cacheQueue.sync {
+            foodEntriesCache.removeValue(forKey: dateKey)
+            inFlightFoodEntriesRequests.removeValue(forKey: dateKey)?.cancel()
+        }
+        // DEBUG LOG: print("🗑️ Invalidated food entries cache for \(formatter.string(from: startOfDay))")
     }
     
     func getFoodEntries(for date: Date) async throws -> [FoodEntry] {
         guard let userId = currentUser?.uid else { return [] }
 
-        // Check cache first (thread-safe with NSLock)
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        let dateKey = "\(userId)_\(dateFormatter.string(from: startOfDay))"
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = calendar.timeZone
+        let dateKey = "\(userId)_\(formatter.string(from: startOfDay))"
 
         // Return cached entries if still valid (with async-safe synchronization)
         let cachedEntry = cacheQueue.sync { foodEntriesCache[dateKey] }
@@ -262,36 +370,63 @@ class FirebaseManager: ObservableObject {
             return cached.entries
         }
 
-        // Cache miss - fetch from Firestore
-        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+        // Check for in-flight request to prevent duplicate fetches
+        let existingTask = cacheQueue.sync { inFlightFoodEntriesRequests[dateKey] }
+        if let task = existingTask {
+            // DEBUG LOG: print("⏳ [In-flight Request] Waiting for existing fetch for \(dateKey)")
+            return try await task.value
+        }
 
-        let snapshot = try await db.collection("users").document(userId)
-            .collection("foodEntries")
-            .whereField("date", isGreaterThanOrEqualTo: FirebaseFirestore.Timestamp(date: startOfDay))
-            .whereField("date", isLessThan: FirebaseFirestore.Timestamp(date: endOfDay))
-            .getDocuments()
+        // Create new fetch task
+        let fetchTask = Task<[FoodEntry], Error> {
+            // Query using local day boundaries (Firebase stores UTC timestamps but we query by local day)
+            let queryStart = calendar.startOfDay(for: date)
+            let endOfDay = calendar.date(byAdding: .day, value: 1, to: queryStart)!.addingTimeInterval(-0.001)
+            let queryEnd = endOfDay
 
-        let entries = snapshot.documents.compactMap { doc -> FoodEntry? in
-            // Use Firestore's native Codable decoder for safe, crash-proof parsing
-            do {
-                return try doc.data(as: FoodEntry.self)
-            } catch {
-                print("⚠️ Skipping corrupt entry \(doc.documentID): \(error.localizedDescription)")
-                return nil
+            let snapshot = try await withRetry {
+                try await self.db.collection("users").document(userId)
+                    .collection("foodEntries")
+                    .whereField("date", isGreaterThanOrEqualTo: FirebaseFirestore.Timestamp(date: queryStart))
+                    .whereField("date", isLessThan: FirebaseFirestore.Timestamp(date: queryEnd))
+                    .getDocuments()
             }
+
+            let entries = snapshot.documents.compactMap { doc -> FoodEntry? in
+                // Use Firestore's native Codable decoder for safe, crash-proof parsing
+                do {
+                    return try doc.data(as: FoodEntry.self)
+                } catch {
+                    #if DEBUG
+                    print("⚠️ Skipping corrupt entry \(doc.documentID): \(error.localizedDescription)")
+                    #endif
+                    return nil
+                }
+            }
+
+            // Store in cache and remove from in-flight (async-safe with DispatchQueue)
+            self.cacheQueue.sync {
+                self.foodEntriesCache[dateKey] = FoodEntriesCacheEntry(entries: entries, timestamp: Date())
+                self.inFlightFoodEntriesRequests.removeValue(forKey: dateKey)
+            }
+
+            return entries
         }
 
-        // Store in cache (async-safe with DispatchQueue)
+        // Register the in-flight request
         cacheQueue.sync {
-            foodEntriesCache[dateKey] = FoodEntriesCacheEntry(entries: entries, timestamp: Date())
+            inFlightFoodEntriesRequests[dateKey] = fetchTask
         }
 
-        return entries
+        return try await fetchTask.value
     }
 
     // MARK: - Period Cache (for Micronutrient Dashboard)
     private var periodCache: [Int: (entries: [FoodEntry], timestamp: Date)] = [:]
     private let periodCacheExpirationSeconds: TimeInterval = 300 // 5 minutes
+
+    // In-flight request tracking for period queries
+    private var inFlightPeriodRequests: [Int: Task<[FoodEntry], Error>] = [:]
 
     // Get food entries for the past N days for nutritional analysis
     func getFoodEntriesForPeriod(days: Int) async throws -> [FoodEntry] {
@@ -306,53 +441,85 @@ class FirebaseManager: ObservableObject {
             return cached.entries
         }
 
-        // Cache miss - fetch from Firestore
-        let calendar = Calendar.current
-        let endDate = Date()
-        guard let startDate = calendar.date(byAdding: .day, value: -days, to: endDate) else { return [] }
+        // Check for in-flight request to prevent duplicate fetches
+        let existingTask = cacheQueue.sync { inFlightPeriodRequests[days] }
+        if let task = existingTask {
+            // DEBUG LOG: print("⏳ [In-flight Request] Waiting for existing period fetch for \(days) days")
+            return try await task.value
+        }
 
-        let snapshot = try await db.collection("users").document(userId)
-            .collection("foodEntries")
-            .whereField("date", isGreaterThanOrEqualTo: FirebaseFirestore.Timestamp(date: startDate))
-            .whereField("date", isLessThanOrEqualTo: FirebaseFirestore.Timestamp(date: endDate))
-            .order(by: "date", descending: true)
-            .getDocuments()
+        // Create new fetch task
+        let fetchTask = Task<[FoodEntry], Error> {
+            let calendar = Calendar.current
+            let today = Date()
+            let startOfToday = calendar.startOfDay(for: today)
+            let endOfToday = calendar.date(byAdding: .day, value: 1, to: startOfToday)!.addingTimeInterval(-0.001)
+            let endDate = endOfToday
+            guard let startDate = calendar.date(byAdding: .day, value: -days, to: today) else { return [] }
+            let queryStart = calendar.startOfDay(for: startDate)
 
-        let entries = snapshot.documents.compactMap { doc -> FoodEntry? in
-            // Use Firestore's native Codable decoder for safe, crash-proof parsing
-            do {
-                return try doc.data(as: FoodEntry.self)
-            } catch {
-                print("⚠️ Skipping corrupt entry \(doc.documentID): \(error.localizedDescription)")
-                return nil
+            let snapshot = try await withRetry {
+                try await self.db.collection("users").document(userId)
+                    .collection("foodEntries")
+                    .whereField("date", isGreaterThanOrEqualTo: FirebaseFirestore.Timestamp(date: queryStart))
+                    .whereField("date", isLessThanOrEqualTo: FirebaseFirestore.Timestamp(date: endDate))
+                    .order(by: "date", descending: true)
+                    .getDocuments()
             }
+
+            let entries = snapshot.documents.compactMap { doc -> FoodEntry? in
+                // Use Firestore's native Codable decoder for safe, crash-proof parsing
+                do {
+                    return try doc.data(as: FoodEntry.self)
+                } catch {
+                    #if DEBUG
+                    print("⚠️ Skipping corrupt entry \(doc.documentID): \(error.localizedDescription)")
+                    #endif
+                    return nil
+                }
+            }
+
+            // Store in cache and remove from in-flight (async-safe with DispatchQueue)
+            self.cacheQueue.sync {
+                self.periodCache[days] = (entries, Date())
+                self.inFlightPeriodRequests.removeValue(forKey: days)
+            }
+
+            return entries
         }
 
-        // Store in cache (async-safe with DispatchQueue)
+        // Register the in-flight request
         cacheQueue.sync {
-            periodCache[days] = (entries, Date())
+            inFlightPeriodRequests[days] = fetchTask
         }
 
-        return entries
+        return try await fetchTask.value
     }
 
-    // Get food entries within a specific date range for calendar view
+    // Get food entries within a specific date range (used by ReactionLogManager)
+    // NOTE: Caller is responsible for passing correct date boundaries
     func getFoodEntriesInRange(from startDate: Date, to endDate: Date) async throws -> [FoodEntry] {
         guard let userId = currentUser?.uid else { return [] }
 
-        let snapshot = try await db.collection("users").document(userId)
-            .collection("foodEntries")
-            .whereField("date", isGreaterThanOrEqualTo: FirebaseFirestore.Timestamp(date: startDate))
-            .whereField("date", isLessThanOrEqualTo: FirebaseFirestore.Timestamp(date: endDate))
-            .order(by: "date", descending: false)
-            .getDocuments()
+        // Query Firebase with the provided date range with retry logic
+        // ReactionLogManager uses this for time-based reaction analysis
+        let snapshot = try await withRetry {
+            try await self.db.collection("users").document(userId)
+                .collection("foodEntries")
+                .whereField("date", isGreaterThanOrEqualTo: FirebaseFirestore.Timestamp(date: startDate))
+                .whereField("date", isLessThanOrEqualTo: FirebaseFirestore.Timestamp(date: endDate))
+                .order(by: "date", descending: false)
+                .getDocuments()
+        }
 
         return snapshot.documents.compactMap { doc -> FoodEntry? in
             // Use Firestore's native Codable decoder for safe, crash-proof parsing
             do {
                 return try doc.data(as: FoodEntry.self)
             } catch {
+                #if DEBUG
                 print("⚠️ Skipping corrupt entry \(doc.documentID): \(error.localizedDescription)")
+                #endif
                 return nil
             }
         }
@@ -362,11 +529,10 @@ class FirebaseManager: ObservableObject {
     func deleteOldFoodEntries() async throws {
         guard let userId = currentUser?.uid else { return }
 
-        // Get the start of today
         let calendar = Calendar.current
         let startOfToday = calendar.startOfDay(for: Date())
 
-        // Query for all entries before today
+        // Query for all entries before today (in local timezone)
         let snapshot = try await db.collection("users").document(userId)
             .collection("foodEntries")
             .whereField("date", isLessThan: FirebaseFirestore.Timestamp(date: startOfToday))
@@ -379,7 +545,9 @@ class FirebaseManager: ObservableObject {
             try await document.reference.delete()
         }
 
+        #if DEBUG
         print("✅ Deleted \(snapshot.documents.count) old food entries")
+        #endif
     }
 
     func deleteFoodEntry(entryId: String) async throws {
@@ -387,12 +555,17 @@ class FirebaseManager: ObservableObject {
         try await db.collection("users").document(userId)
             .collection("foodEntries").document(entryId).delete()
 
-        // Clear entire cache since we don't know which date this entry belongs to
-        foodEntriesCache.removeAll()
+        // Clear entire cache since we don't know which date this entry belongs to - thread-safe
+        // Also cancel all in-flight requests
+        cacheQueue.sync {
+            foodEntriesCache.removeAll()
+            periodCache.removeAll()
+            inFlightFoodEntriesRequests.values.forEach { $0.cancel() }
+            inFlightFoodEntriesRequests.removeAll()
+            inFlightPeriodRequests.values.forEach { $0.cancel() }
+            inFlightPeriodRequests.removeAll()
+        }
         // DEBUG LOG: print("🗑️ Cleared all food entries cache after deletion")
-
-        // Invalidate period cache (7-day queries)
-        periodCache.removeAll()
         // DEBUG LOG: print("🗑️ Cleared period cache after deletion")
 
         // Notify that food diary was updated
@@ -409,15 +582,19 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to cleanup entries"])
         }
 
+        #if DEBUG
         print("🔍 Scanning all food entries for corrupt data...")
 
         // Get ALL food entries (no date filter)
+        #endif
         let snapshot = try await db.collection("users").document(userId)
             .collection("foodEntries")
             .getDocuments()
 
+        #if DEBUG
         print("📄 Found \(snapshot.documents.count) total food entries")
 
+        #endif
         var corruptEntries: [String] = []
 
         // Test each entry to see if it can be decoded
@@ -427,34 +604,50 @@ class FirebaseManager: ObservableObject {
                 // Successfully decoded - this entry is fine
             } catch {
                 // Failed to decode - this entry is corrupt
+                #if DEBUG
                 print("❌ Corrupt entry found: \(doc.documentID)")
                 print("   Error: \(error.localizedDescription)")
+                #endif
                 corruptEntries.append(doc.documentID)
             }
         }
 
         if corruptEntries.isEmpty {
+            #if DEBUG
             print("✅ No corrupt entries found!")
+            #endif
             return 0
         }
 
+        #if DEBUG
         print("🗑️ Deleting \(corruptEntries.count) corrupt entries...")
 
         // Delete all corrupt entries
+        #endif
         for docId in corruptEntries {
             try await db.collection("users").document(userId)
                 .collection("foodEntries").document(docId).delete()
+            #if DEBUG
             print("   ✓ Deleted: \(docId)")
+            #endif
         }
 
-        // Clear caches and notify UI
-        foodEntriesCache.removeAll()
-        periodCache.removeAll()
+        // Clear caches and notify UI - thread-safe, also cancel in-flight requests
+        cacheQueue.sync {
+            foodEntriesCache.removeAll()
+            periodCache.removeAll()
+            inFlightFoodEntriesRequests.values.forEach { $0.cancel() }
+            inFlightFoodEntriesRequests.removeAll()
+            inFlightPeriodRequests.values.forEach { $0.cancel() }
+            inFlightPeriodRequests.removeAll()
+        }
         await MainActor.run {
             NotificationCenter.default.post(name: .foodDiaryUpdated, object: nil)
         }
 
+        #if DEBUG
         print("✅ Cleanup complete! Deleted \(corruptEntries.count) corrupt entries")
+        #endif
         return corruptEntries.count
     }
     
@@ -464,7 +657,9 @@ class FirebaseManager: ObservableObject {
         ensureAuthStateLoaded()
 
         guard let userId = currentUser?.uid else {
+            #if DEBUG
             print("⚠️ saveReaction: No user authenticated - cannot save reaction")
+            #endif
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save reactions"])
         }
 
@@ -472,7 +667,9 @@ class FirebaseManager: ObservableObject {
         let reactionData = reaction.toDictionary()
         try await db.collection("users").document(userId)
             .collection("reactions").document(reaction.id.uuidString).setData(reactionData)
+        #if DEBUG
         print("✅ Reaction saved successfully")
+        #endif
     }
 
     // MARK: - Reaction Log
@@ -505,10 +702,14 @@ class FirebaseManager: ObservableObject {
         var entryWithId = entry
         entryWithId.id = docRef.documentID
 
-        // Save to Firestore
-        try docRef.setData(from: entryWithId)
+        // Save to Firestore with retry logic
+        try await withRetry {
+            try docRef.setData(from: entryWithId)
+        }
 
+        #if DEBUG
         print("✅ Reaction log saved successfully with ID: \(docRef.documentID)")
+        #endif
         return entryWithId
     }
 
@@ -519,23 +720,29 @@ class FirebaseManager: ObservableObject {
         try await db.collection("users").document(userId)
             .collection("reactionLogs").document(entryId).delete()
 
+        #if DEBUG
         print("✅ Reaction log deleted successfully")
+        #endif
     }
 
     /// Get food entries within a date range (for reaction analysis)
     func getFoodEntriesInRange(userId: String, startDate: Date, endDate: Date) async throws -> [FoodEntry] {
-        let snapshot = try await db.collection("users").document(userId)
-            .collection("foodEntries")
-            .whereField("date", isGreaterThanOrEqualTo: FirebaseFirestore.Timestamp(date: startDate))
-            .whereField("date", isLessThanOrEqualTo: FirebaseFirestore.Timestamp(date: endDate))
-            .order(by: "date", descending: false)
-            .getDocuments()
+        let snapshot = try await withRetry {
+            try await self.db.collection("users").document(userId)
+                .collection("foodEntries")
+                .whereField("date", isGreaterThanOrEqualTo: FirebaseFirestore.Timestamp(date: startDate))
+                .whereField("date", isLessThanOrEqualTo: FirebaseFirestore.Timestamp(date: endDate))
+                .order(by: "date", descending: false)
+                .getDocuments()
+        }
 
         let entries = try snapshot.documents.compactMap { doc in
             try doc.data(as: FoodEntry.self)
         }
 
+        #if DEBUG
         print("📊 Found \(entries.count) food entries between \(startDate) and \(endDate)")
+        #endif
         return entries
     }
 
@@ -628,7 +835,9 @@ class FirebaseManager: ObservableObject {
 
         try await db.collection("users").document(userId)
             .collection("useByInventory").document(item.id).setData(dict, merge: true)
+        #if DEBUG
         print("✅ updateUseByItem: Successfully updated item in Firebase \(item.id)")
+        #endif
     }
 
     func deleteUseByItem(itemId: String) async throws {
@@ -640,7 +849,9 @@ class FirebaseManager: ObservableObject {
 
         try await db.collection("users").document(userId)
             .collection("useByInventory").document(itemId).delete()
+        #if DEBUG
         print("✅ deleteUseByItem: Successfully deleted item from Firebase \(itemId)")
+        #endif
     }
 
     func clearUseByInventory() async throws {
@@ -716,10 +927,14 @@ class FirebaseManager: ObservableObject {
 
         // If no results found locally, try Cloud Function (with OpenFoodFacts fallback)
         if limitedResults.isEmpty {
+            #if DEBUG
             print("🌍 No local results - trying Cloud Function with OpenFoodFacts fallback")
+            #endif
             if let cloudResults = try? await searchFoodsViaCloudFunction(query: query) {
                 limitedResults = cloudResults
+                #if DEBUG
                 print("✅ Found \(cloudResults.count) results from Cloud Function (OpenFoodFacts)")
+                #endif
             }
         }
 
@@ -795,7 +1010,9 @@ class FirebaseManager: ObservableObject {
         ensureAuthStateLoaded()
 
         guard let userId = currentUser?.uid else {
+            #if DEBUG
             print("⚠️ getReactions: No user authenticated - returning empty array")
+            #endif
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view reactions"])
         }
 
@@ -813,12 +1030,16 @@ class FirebaseManager: ObservableObject {
             if let reaction = FoodReaction.fromDictionary(data) {
                 return reaction
             } else {
+                #if DEBUG
                 print("⚠️ Failed to parse reaction document \(doc.documentID)")
                 print("   Data keys: \(data.keys.joined(separator: ", "))")
+                #endif
                 return nil
             }
         }
+        #if DEBUG
         print("✅ Successfully loaded \(reactions.count) reactions from Firebase")
+        #endif
         return reactions
     }
 
@@ -826,14 +1047,18 @@ class FirebaseManager: ObservableObject {
         ensureAuthStateLoaded()
 
         guard let userId = currentUser?.uid else {
+            #if DEBUG
             print("⚠️ deleteReaction: No user authenticated - cannot delete reaction")
+            #endif
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to delete reactions"])
         }
 
         // DEBUG LOG: print("🗑️ Deleting reaction from Firebase for user: \(userId)")
         try await db.collection("users").document(userId)
             .collection("reactions").document(reactionId.uuidString).delete()
+        #if DEBUG
         print("✅ Reaction deleted successfully")
+        #endif
     }
     
     // MARK: - Safe Foods
@@ -991,15 +1216,22 @@ class FirebaseManager: ObservableObject {
                     let storageRef = Storage.storage().reference()
                     let photoRef = storageRef.child("weightPhotos/\(userId)/\(filename)")
 
-                    // Upload image
+                    // Upload image with retry logic
                     let metadata = StorageMetadata()
                     metadata.contentType = "image/jpeg"
 
-                    _ = try await photoRef.putDataAsync(imageData, metadata: metadata)
+                    _ = try await self.withRetry {
+                        try await photoRef.putDataAsync(imageData, metadata: metadata)
+                    }
 
-                    // Get download URL
-                    let downloadURL = try await photoRef.downloadURL()
+                    // Get download URL with retry logic
+                    let downloadURL = try await self.withRetry {
+                        try await photoRef.downloadURL()
+                    }
+
+                    #if DEBUG
                     print("✅ Weight photo uploaded successfully: \(downloadURL.absoluteString)")
+                    #endif
                     return downloadURL.absoluteString
                 }
             }
@@ -1030,15 +1262,22 @@ class FirebaseManager: ObservableObject {
         let storageRef = Storage.storage().reference()
         let photoRef = storageRef.child("weightPhotos/\(userId)/\(filename)")
 
-        // Upload image
+        // Upload image with retry logic
         let metadata = StorageMetadata()
         metadata.contentType = "image/jpeg"
 
-        _ = try await photoRef.putDataAsync(imageData, metadata: metadata)
+        _ = try await withRetry {
+            try await photoRef.putDataAsync(imageData, metadata: metadata)
+        }
 
-        // Get download URL
-        let downloadURL = try await photoRef.downloadURL()
+        // Get download URL with retry logic
+        let downloadURL = try await withRetry {
+            try await photoRef.downloadURL()
+        }
+
+        #if DEBUG
         print("✅ Weight photo uploaded successfully: \(downloadURL.absoluteString)")
+        #endif
         return downloadURL.absoluteString
     }
 
@@ -1047,14 +1286,18 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid photo URL"])
         }
 
-        // Download image data from URL
-        let (data, _) = try await URLSession.shared.data(from: url)
+        // Download image data from URL with retry logic
+        let (data, _) = try await withRetry {
+            try await URLSession.shared.data(from: url)
+        }
 
         guard let image = UIImage(data: data) else {
             throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to create image from data"])
         }
 
+        #if DEBUG
         print("✅ Weight photo downloaded successfully")
+        #endif
         return image
     }
 
@@ -1076,15 +1319,22 @@ class FirebaseManager: ObservableObject {
         let storageRef = Storage.storage().reference()
         let photoRef = storageRef.child("useByItemPhotos/\(userId)/\(filename)")
 
-        // Upload image
+        // Upload image with retry logic
         let metadata = StorageMetadata()
         metadata.contentType = "image/jpeg"
 
-        _ = try await photoRef.putDataAsync(imageData, metadata: metadata)
+        _ = try await withRetry {
+            try await photoRef.putDataAsync(imageData, metadata: metadata)
+        }
 
-        // Get download URL
-        let downloadURL = try await photoRef.downloadURL()
+        // Get download URL with retry logic
+        let downloadURL = try await withRetry {
+            try await photoRef.downloadURL()
+        }
+
+        #if DEBUG
         print("✅ Use By item photo uploaded successfully: \(downloadURL.absoluteString)")
+        #endif
         return downloadURL.absoluteString
     }
 
@@ -1119,8 +1369,10 @@ class FirebaseManager: ObservableObject {
 
         try await db.collection("users").document(userId)
             .collection("weightHistory").document(entry.id.uuidString).setData(entryData)
+        #if DEBUG
         print("✅ Weight entry saved successfully")
         // Notify listeners that weight history changed
+        #endif
         DispatchQueue.main.async {
             NotificationCenter.default.post(name: .weightHistoryUpdated, object: nil, userInfo: ["entry": entry])
         }
@@ -1157,7 +1409,9 @@ class FirebaseManager: ObservableObject {
             return WeightEntry(id: id, weight: weight, date: timestamp.dateValue(), bmi: bmi, note: note, photoURL: photoURL, photoURLs: photoURLs, waistSize: waistSize, dressSize: dressSize)
         }
 
+        #if DEBUG
         print("✅ Loaded \(entries.count) weight entries from Firebase")
+        #endif
         return entries
     }
 
@@ -1170,7 +1424,9 @@ class FirebaseManager: ObservableObject {
 
         try await db.collection("users").document(userId)
             .collection("weightHistory").document(id.uuidString).delete()
+        #if DEBUG
         print("✅ Weight entry deleted successfully")
+        #endif
     }
 
     // MARK: - User Settings (Height, Goal Weight, Caloric Goal)
@@ -1195,8 +1451,10 @@ class FirebaseManager: ObservableObject {
 
         try await db.collection("users").document(userId)
             .collection("settings").document("preferences").setData(data, merge: true)
+        #if DEBUG
         print("✅ User settings saved successfully")
 
+        #endif
         await MainActor.run {
             // Broadcast granular updates to refresh live UI
             if let goalWeight = goalWeight {
@@ -1259,8 +1517,10 @@ class FirebaseManager: ObservableObject {
             let settings = try await getUserSettings()
             return settings.allergens ?? []
         } catch {
+            #if DEBUG
             print("❌ Failed to load allergens: \(error.localizedDescription)")
             // Return cached allergens even if expired, better than nothing
+            #endif
             return cachedUserAllergens
         }
     }
@@ -1280,7 +1540,9 @@ class FirebaseManager: ObservableObject {
 
         try await db.collection("users").document(userId)
             .collection("settings").document("preferences").setData(data, merge: true)
+        #if DEBUG
         print("✅ Macro percentages saved successfully")
+        #endif
     }
 
     // MARK: - Macro Management (Customizable Macros)
@@ -1322,7 +1584,9 @@ class FirebaseManager: ObservableObject {
                 return "\(goal.macroType.displayName)"
             }
         }
+        #if DEBUG
         print("✅ Macro goals saved successfully: \(descriptions)")
+        #endif
     }
 
     func getMacroGoals() async throws -> [MacroGoal] {
@@ -1337,7 +1601,9 @@ class FirebaseManager: ObservableObject {
 
         guard let data = document.data() else {
             // No settings found, return defaults
+            #if DEBUG
             print("ℹ️ No macro goals found, returning defaults (P 30%, C 40%, F 30%, Fibre 30g)")
+            #endif
             return MacroGoal.defaultMacros
         }
 
@@ -1360,7 +1626,9 @@ class FirebaseManager: ObservableObject {
             }
 
             if !macroGoals.isEmpty {
+                #if DEBUG
                 print("ℹ️ Loaded \(macroGoals.count) macro goals from Firebase")
+                #endif
                 return macroGoals
             }
         }
@@ -1369,7 +1637,9 @@ class FirebaseManager: ObservableObject {
         if let proteinPercent = data["proteinPercent"] as? Int,
            let carbsPercent = data["carbsPercent"] as? Int,
            let fatPercent = data["fatPercent"] as? Int {
+            #if DEBUG
             print("ℹ️ Migrating old macro percentages to new 4-macro structure (P:\(proteinPercent)%, C:\(carbsPercent)%, F:\(fatPercent)% + Fibre 30g)")
+            #endif
             let migratedMacros = [
                 MacroGoal(macroType: .protein, percentage: proteinPercent),
                 MacroGoal(macroType: .carbs, percentage: carbsPercent),
@@ -1384,7 +1654,9 @@ class FirebaseManager: ObservableObject {
         }
 
         // No data found at all, return defaults
+        #if DEBUG
         print("ℹ️ No macro data found, returning defaults (P 30%, C 40%, F 30%, Fibre 30g)")
+        #endif
         return MacroGoal.defaultMacros
     }
 
@@ -1398,9 +1670,14 @@ class FirebaseManager: ObservableObject {
         let allergenStrings = allergens.map { $0.rawValue }
         let data: [String: Any] = ["allergens": allergenStrings]
 
-        try await db.collection("users").document(userId)
-            .collection("settings").document("preferences").setData(data, merge: true)
+        try await withRetry {
+            try await self.db.collection("users").document(userId)
+                .collection("settings").document("preferences").setData(data, merge: true)
+        }
+
+        #if DEBUG
         print("✅ Allergens saved successfully")
+        #endif
     }
 
     // MARK: - Fasting Tracking
@@ -1425,7 +1702,9 @@ class FirebaseManager: ObservableObject {
 
         try await db.collection("users").document(userId)
             .collection("settings").document("fasting").setData(data, merge: true)
+        #if DEBUG
         print("✅ Fasting state saved successfully")
+        #endif
     }
 
     func getFastingState() async throws -> (isFasting: Bool, startTime: Date?, goal: Int, notificationsEnabled: Bool, reminderInterval: Int) {
@@ -1463,7 +1742,9 @@ class FirebaseManager: ObservableObject {
         let foodId = food["id"] as? String ?? UUID().uuidString
         try await db.collection("users").document(userId)
             .collection("submittedFoods").document(foodId).setData(food, merge: true)
+        #if DEBUG
         print("✅ User submitted food saved successfully")
+        #endif
     }
 
     func getUserSubmittedFoods() async throws -> [[String: Any]] {
@@ -1493,7 +1774,9 @@ class FirebaseManager: ObservableObject {
 
         try await db.collection("users").document(userId)
             .collection("customIngredients").document(foodKey).setData(data, merge: true)
+        #if DEBUG
         print("✅ User ingredients saved successfully")
+        #endif
     }
 
     func getUserIngredients(foodKey: String) async throws -> String? {
@@ -1523,7 +1806,9 @@ class FirebaseManager: ObservableObject {
 
         try await db.collection("users").document(userId)
             .collection("verifiedFoods").document(foodKey).setData(data)
+        #if DEBUG
         print("✅ Verified food saved successfully")
+        #endif
     }
 
     func getVerifiedFoods() async throws -> [String] {
@@ -1563,7 +1848,9 @@ class FirebaseManager: ObservableObject {
             .document(productId)
             .setData(enhancedData)
 
+        #if DEBUG
         print("✅ User enhanced product data saved: \(productId)")
+        #endif
     }
 
     func getUserEnhancedProduct(barcode: String) async throws -> [String: Any]? {
@@ -1624,7 +1911,9 @@ class FirebaseManager: ObservableObject {
             .document(foodId)
             .setData(foodData, merge: true)
 
+        #if DEBUG
         print("✅ User added food saved: \(foodId)")
+        #endif
         return foodId
     }
 
@@ -1682,7 +1971,9 @@ class FirebaseManager: ObservableObject {
             .document(foodId)
             .setData(foodData, merge: true)
 
+        #if DEBUG
         print("✅ AI enhanced food saved: \(foodId)")
+        #endif
         return foodId
     }
 
@@ -1904,14 +2195,18 @@ class FirebaseManager: ObservableObject {
         let (data, response) = try await URLSession.shared.data(from: url)
 
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            #if DEBUG
             print("❌ Cloud Function search failed")
+            #endif
             return []
         }
 
         // Parse the JSON response
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let foods = json["foods"] as? [[String: Any]] else {
+            #if DEBUG
             print("❌ Failed to parse Cloud Function response")
+            #endif
             return []
         }
 
@@ -2020,8 +2315,10 @@ class FirebaseManager: ObservableObject {
 
         // Save to aiEnhanced collection (global, accessible by all users)
         try await db.collection("aiEnhanced").document(foodId).setData(aiImprovedData, merge: true)
+        #if DEBUG
         print("✅ AI-enhanced food saved to Firebase: \(foodId)")
 
+        #endif
         return foodId
     }
 
@@ -2103,7 +2400,9 @@ class FirebaseManager: ObservableObject {
            let result = json["result"] as? [String: Any],
            let success = result["success"] as? Bool,
            success {
+            #if DEBUG
             print("✅ Team notified about incomplete food: \(food.name)")
+            #endif
         } else {
             throw NSError(domain: "Notification failed", code: -1)
         }
@@ -2156,7 +2455,9 @@ class FirebaseManager: ObservableObject {
         let docRef = db.collection("incomplete_foods").document(String(sanitizedName))
         try await docRef.setData(foodData, merge: true) // Use merge to avoid overwriting if name collision
 
+        #if DEBUG
         print("✅ Incomplete food saved to Firestore: \(food.name) (ID: \(docRef.documentID))")
+        #endif
     }
  
 

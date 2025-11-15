@@ -57,7 +57,9 @@ class UseByNotificationManager {
     func scheduleNotifications(for item: UseByInventoryItem) async {
         // Check if user has enabled use-by notifications in settings
         guard useByNotificationsEnabled else {
+            #if DEBUG
             print("⏸️ Use-by notifications disabled in settings - not scheduling for \(item.name)")
+            #endif
             return
         }
 
@@ -66,32 +68,39 @@ class UseByNotificationManager {
 
         // Ensure we have permission
         guard await requestNotificationPermissions() else {
+            #if DEBUG
             print("❌ Notification permission not granted")
+            #endif
             return
         }
 
         let calendar = Calendar.current
         let now = Date()
+        let today = calendar.startOfDay(for: now)
+        let expiryDay = calendar.startOfDay(for: useByDate)
 
         // Calculate tomorrow notification (day before expiry)
-        if let tomorrowDate = calendar.date(byAdding: .day, value: -1, to: useByDate),
-           tomorrowDate > now {
-            await scheduleSingleNotification(
-                itemId: item.id,
-                itemName: itemName,
-                on: tomorrowDate,
-                title: "🔔 Food Expiring Tomorrow",
-                body: "\(itemName) expires tomorrow. Use it soon!",
-                identifier: "tomorrow-\(item.id)"
-            )
+        if let tomorrowDate = calendar.date(byAdding: .day, value: -1, to: expiryDay) {
+            let daysBetween = calendar.dateComponents([.day], from: today, to: tomorrowDate).day ?? 0
+            if daysBetween >= 0 {
+                await scheduleSingleNotification(
+                    itemId: item.id,
+                    itemName: itemName,
+                    on: tomorrowDate,
+                    title: "🔔 Food Expiring Tomorrow",
+                    body: "\(itemName) expires tomorrow. Use it soon!",
+                    identifier: "tomorrow-\(item.id)"
+                )
+            }
         }
 
         // Calculate expiry day notification
-        if useByDate > now {
+        let daysUntilExpiry = calendar.dateComponents([.day], from: today, to: expiryDay).day ?? 0
+        if daysUntilExpiry >= 0 {
             await scheduleSingleNotification(
                 itemId: item.id,
                 itemName: itemName,
-                on: useByDate,
+                on: expiryDay,
                 title: "⚠️ Food Expiring Today",
                 body: "\(itemName) expires today. Use it or freeze it!",
                 identifier: "expiry-\(item.id)"
@@ -120,44 +129,51 @@ class UseByNotificationManager {
             "itemName": itemName
         ]
 
-        // Set notification at 9 AM on the target date
+        // Schedule notification at 9 AM on the target date
         let calendar = Calendar.current
-        var dateComponents = calendar.dateComponents([.year, .month, .day], from: date)
-        dateComponents.hour = 9
-        dateComponents.minute = 0
-        dateComponents.second = 0
+        var components = calendar.dateComponents([.year, .month, .day], from: date)
+        components.hour = 9
+        components.minute = 0
+        components.second = 0
+        components.timeZone = calendar.timeZone
 
-        // Create the full trigger date
-        guard let triggerDate = calendar.date(from: dateComponents) else {
-            print("❌ Failed to create trigger date from components for \(identifier)")
+        guard let targetDate = calendar.date(from: components) else {
+            #if DEBUG
+            print("⚠️ Failed to create target date for \(identifier)")
+            #endif
             return
         }
 
-        // Calculate time interval from now
         let now = Date()
-        let timeInterval = triggerDate.timeIntervalSince(now)
+        let timeInterval = targetDate.timeIntervalSince(now)
 
-        // Validate that the notification is in the future
         guard timeInterval > 0 else {
-            print("⚠️ Notification time is in the past for \(identifier) - triggerDate: \(triggerDate), now: \(now)")
+            #if DEBUG
+            print("⚠️ Notification time is in the past for \(identifier)")
+            #endif
             return
         }
 
-        print("📅 Scheduling notification '\(identifier)' for \(triggerDate) (in \(Int(timeInterval/3600)) hours)")
+        #if DEBUG
+        print("📅 Scheduling notification '\(identifier)' for \(targetDate) (in \(Int(timeInterval/3600)) hours)")
+        #endif
 
-        // Use UNTimeIntervalNotificationTrigger instead of calendar trigger
-        // This matches the working fasting notification implementation
+        // Use UNTimeIntervalNotificationTrigger for reliable scheduling
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: timeInterval, repeats: false)
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
 
         do {
             try await UNUserNotificationCenter.current().add(request)
-            print("✅ Use-by notification scheduled: '\(identifier)' for \(triggerDate)")
+            #if DEBUG
+            print("✅ Use-by notification scheduled: '\(identifier)' for \(targetDate)")
+            #endif
 
             // Verify it was added
             await printPendingNotifications()
         } catch {
+            #if DEBUG
             print("❌ Error scheduling use-by notification '\(identifier)': \(error.localizedDescription)")
+            #endif
         }
     }
 
@@ -200,9 +216,13 @@ class UseByNotificationManager {
     /// Print all pending notifications (for debugging)
     func printPendingNotifications() async {
         let requests = await UNUserNotificationCenter.current().pendingNotificationRequests()
+        #if DEBUG
         print("📋 Pending Notifications: \(requests.count)")
+        #endif
         for request in requests {
+            #if DEBUG
             print("  - \(request.identifier): \(request.content.title)")
+            #endif
         }
     }
 }

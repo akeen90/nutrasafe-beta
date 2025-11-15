@@ -175,30 +175,52 @@ struct DiaryMealCard: View {
                     .buttonStyle(SpringyButtonStyle())
                 }
             } else {
-                // Empty state add button
-                Button(action: {
-                    // Store the selected meal type and date, then navigate to add tab
-                    UserDefaults.standard.set(mealType, forKey: "preselectedMealType")
-                    UserDefaults.standard.set(currentDate.timeIntervalSince1970, forKey: "preselectedDate")
-                    // Ensure destination defaults to Diary when coming from Diary
-                    UserDefaults.standard.removeObject(forKey: "preselectedDestination")
-                    selectedTab = .add
-                }) {
-                    HStack {
-                        Image(systemName: "plus.circle")
-                            .font(.system(size: 16))
-                            .foregroundColor(.blue)
+                // Enhanced empty state with helpful guidance
+                VStack(spacing: 16) {
+                    Image(systemName: getMealIcon())
+                        .font(.system(size: 40))
+                        .foregroundColor(.secondary.opacity(0.4))
+                        .padding(.top, 20)
 
-                        Text("Add \(mealType.lowercased())")
+                    VStack(spacing: 4) {
+                        Text("No \(mealType.lowercased()) logged")
                             .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(.blue)
+                            .foregroundColor(.primary)
 
-                        Spacer()
+                        Text("Tap to add your first item")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
+
+                    Button(action: {
+                        // Store the selected meal type and date, then navigate to add tab
+                        UserDefaults.standard.set(mealType, forKey: "preselectedMealType")
+                        UserDefaults.standard.set(currentDate.timeIntervalSince1970, forKey: "preselectedDate")
+                        // Ensure destination defaults to Diary when coming from Diary
+                        UserDefaults.standard.removeObject(forKey: "preselectedDestination")
+                        selectedTab = .add
+                    }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 14, weight: .semibold))
+                            Text("Add \(mealType)")
+                                .font(.system(size: 15, weight: .semibold))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(
+                            LinearGradient(
+                                colors: [color, color.opacity(0.8)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(10)
+                    }
+                    .padding(.bottom, 20)
                 }
-                .buttonStyle(SpringyButtonStyle())
+                .frame(maxWidth: .infinity)
             }
         }
         .background(
@@ -206,6 +228,22 @@ struct DiaryMealCard: View {
                 .fill(AppColors.cardBackgroundElevated)
         )
         .cardShadow()
+    }
+
+    // Get meal-specific icon
+    private func getMealIcon() -> String {
+        switch mealType.lowercased() {
+        case "breakfast":
+            return "sun.and.horizon"
+        case "lunch":
+            return "fork.knife"
+        case "dinner":
+            return "moon.stars"
+        case "snacks":
+            return "birthday.cake"
+        default:
+            return "fork.knife"
+        }
     }
     
     private func deleteFood(at offsets: IndexSet) {

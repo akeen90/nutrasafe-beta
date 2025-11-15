@@ -38,22 +38,37 @@ struct MicronutrientDashboard: View {
                 // Health disclaimer banner
                 healthDisclaimerBanner
 
-                // Header
-                headerSection
+                // Loading state or content
+                if isLoading && !hasLoadedData {
+                    // Initial loading state
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                            .progressViewStyle(.circular)
+                        Text("Calculating your nutrients...")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 60)
+                } else {
+                    // Header
+                    headerSection
 
-                // Nutrient Balance Overview Bar
-                if let balance = trackingManager.getTodayBalance() {
-                    balanceOverviewBar(balance: balance)
+                    // Nutrient Balance Overview Bar
+                    if let balance = trackingManager.getTodayBalance() {
+                        balanceOverviewBar(balance: balance)
+                    }
+
+                    // Insights
+                    insightsSection
+
+                    // Filter tabs
+                    filterTabsSection
+
+                    // Nutrient list
+                    nutrientListSection
                 }
-
-                // Insights
-                insightsSection
-
-                // Filter tabs
-                filterTabsSection
-
-                // Nutrient list
-                nutrientListSection
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 100)
@@ -94,7 +109,9 @@ struct MicronutrientDashboard: View {
 
             hasLoadedData = true
             isLoading = false
+            #if DEBUG
             print("✅ MicronutrientDashboard: UI ready with fresh data")
+            #endif
         }
     }
 
@@ -518,28 +535,110 @@ struct MicronutrientDashboard: View {
                 Spacer()
             }
 
-            VStack(spacing: 1) {
-                ForEach(filteredSummaries) { summary in
-                    MicronutrientRow(summary: summary)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            selectedNutrient = summary
-                        }
+            if filteredSummaries.isEmpty && selectedFilter != .all {
+                // Empty state for filtered view with no results
+                VStack(spacing: 16) {
+                    Image(systemName: "chart.bar")
+                        .font(.system(size: 50))
+                        .foregroundColor(.secondary.opacity(0.4))
+                        .padding(.top, 20)
 
-                    if summary.id != filteredSummaries.last?.id {
-                        Divider()
-                            .padding(.leading, 68)
+                    VStack(spacing: 8) {
+                        Text("No nutrients in this category")
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundColor(.primary)
+
+                        Text("Try selecting a different filter or log more meals")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
                     }
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 50)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color(.systemBackground))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color(.systemGray4), lineWidth: 0.5)
+                )
+            } else if nutrientSummaries.isEmpty {
+                // Empty state for no nutrients at all
+                VStack(spacing: 20) {
+                    Image(systemName: "chart.bar.xaxis")
+                        .font(.system(size: 60))
+                        .foregroundColor(.secondary.opacity(0.4))
+                        .padding(.top, 20)
+
+                    VStack(spacing: 8) {
+                        Text("No nutrition data yet")
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundColor(.primary)
+
+                        Text("Start logging meals to track your nutrients")
+                            .font(.system(size: 16))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                    }
+
+                    // Helpful tip
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(alignment: .top, spacing: 12) {
+                            Image(systemName: "lightbulb.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(.orange)
+                                .frame(width: 20)
+
+                            Text("Add meals to your diary to see detailed micronutrient tracking and personalized insights")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .padding(16)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+                    .padding(.horizontal, 32)
+                    .padding(.bottom, 20)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color(.systemBackground))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color(.systemGray4), lineWidth: 0.5)
+                )
+            } else {
+                VStack(spacing: 1) {
+                    ForEach(filteredSummaries) { summary in
+                        MicronutrientRow(summary: summary)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                selectedNutrient = summary
+                            }
+
+                        if summary.id != filteredSummaries.last?.id {
+                            Divider()
+                                .padding(.leading, 68)
+                        }
+                    }
+                }
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color(.systemBackground))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color(.systemGray4), lineWidth: 0.5)
+                )
             }
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemBackground))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color(.systemGray4), lineWidth: 0.5)
-            )
         }
     }
 
@@ -593,9 +692,13 @@ struct MicronutrientDashboard: View {
                 }
             }
 
+            #if DEBUG
             print("✅ MicronutrientDashboard: Finished processing today's foods")
+            #endif
         } catch {
+            #if DEBUG
             print("❌ Error loading today's food entries: \(error)")
+            #endif
         }
     }
 
@@ -631,7 +734,9 @@ struct MicronutrientDashboard: View {
                 self.rhythmDays = days
             }
         } catch {
+            #if DEBUG
             print("❌ Failed to load rhythm data: \(error)")
+            #endif
         }
     }
 

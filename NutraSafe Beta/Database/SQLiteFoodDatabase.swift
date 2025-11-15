@@ -25,12 +25,16 @@ actor SQLiteFoodDatabase {
             // Fallback: Use temporary directory if documents directory is unavailable (extremely rare)
             let tempDirectory = fileManager.temporaryDirectory
             dbPath = tempDirectory.appendingPathComponent("nutrasafe_foods.db").path
+            #if DEBUG
             print("⚠️ Could not access documents directory, using temporary directory: \(dbPath)")
+            #endif
             return
         }
         dbPath = documentDirectory.appendingPathComponent("nutrasafe_foods.db").path
 
+        #if DEBUG
         print("📂 SQLite database path: \(dbPath)")
+        #endif
     }
 
     /// Perform database initialization
@@ -42,7 +46,9 @@ actor SQLiteFoodDatabase {
         createTables()
         checkAndImportInitialData()
         isInitialized = true
+        #if DEBUG
         print("✅ Database initialization complete")
+        #endif
     }
 
     /// Ensure database is initialized before use
@@ -61,29 +67,39 @@ actor SQLiteFoodDatabase {
         // Method 1: Try standard resource lookup
         if let path = Bundle.main.path(forResource: "nutrasafe_foods", ofType: "db") {
             bundlePath = path
+            #if DEBUG
             print("✅ Found database using path(forResource:)")
+            #endif
         }
         // Method 2: Try URL-based lookup
         else if let url = Bundle.main.url(forResource: "nutrasafe_foods", withExtension: "db") {
             bundlePath = url.path
+            #if DEBUG
             print("✅ Found database using url(forResource:)")
+            #endif
         }
         // Method 3: Try direct bundle path
         else {
             let directPath = Bundle.main.bundlePath + "/nutrasafe_foods.db"
             if fileManager.fileExists(atPath: directPath) {
                 bundlePath = directPath
+                #if DEBUG
                 print("✅ Found database using direct bundle path")
+                #endif
             }
         }
 
         guard let bundlePath = bundlePath else {
+            #if DEBUG
             print("⚠️ Database not found in app bundle - searched all locations")
             print("   Bundle path: \(Bundle.main.bundlePath)")
+            #endif
             return
         }
 
+        #if DEBUG
         print("📦 Bundle database path: \(bundlePath)")
+        #endif
 
         // Always force refresh by comparing file sizes OR modification dates
         // This ensures new data is picked up even if dates are similar
@@ -103,32 +119,41 @@ actor SQLiteFoodDatabase {
 
                     // If size is different OR bundle is newer, update
                     if bundleSize != docsSize || bundleDate > docsDate {
+                        #if DEBUG
                         print("📦 Bundle database has changed - updating...")
                         print("   Bundle size: \(bundleSize) bytes, date: \(bundleDate)")
                         print("   Docs size: \(docsSize) bytes, date: \(docsDate)")
+                        #endif
                         shouldCopy = true
 
                         // Remove old database
                         try fileManager.removeItem(atPath: dbPath)
                     } else {
+                        #if DEBUG
                         print("✅ Database already exists and is up to date")
                         print("   Size: \(docsSize) bytes, date: \(docsDate)")
+                        #endif
                     }
                 }
             } catch {
+                #if DEBUG
                 print("⚠️ Could not compare database attributes: \(error.localizedDescription)")
                 print("   Keeping existing database")
+                #endif
             }
         } else {
             // Database doesn't exist, copy it
             shouldCopy = true
+            #if DEBUG
             print("📦 No database in Documents - copying from bundle")
+            #endif
         }
 
         // Copy from bundle to Documents if needed
         if shouldCopy {
             do {
                 try fileManager.copyItem(atPath: bundlePath, toPath: dbPath)
+                #if DEBUG
                 print("✅ Copied database from bundle to Documents directory")
                 print("   Bundle: \(bundlePath)")
                 print("   Target: \(dbPath)")
@@ -137,8 +162,11 @@ actor SQLiteFoodDatabase {
                 let attrs = try fileManager.attributesOfItem(atPath: dbPath)
                 let size = attrs[.size] as? Int64 ?? 0
                 print("   Verified size: \(size) bytes")
+                #endif
             } catch {
+                #if DEBUG
                 print("❌ Failed to copy database: \(error.localizedDescription)")
+                #endif
             }
         }
     }
@@ -147,10 +175,17 @@ actor SQLiteFoodDatabase {
 
     private func openDatabase() {
         if sqlite3_open(dbPath, &db) != SQLITE_OK {
-            print("❌ Error opening database")
+            #if DEBUG
+            let errorMessage = String(cString: sqlite3_errmsg(db))
+            print("❌ Failed to open database: \(errorMessage)")
+            print("   Path: \(dbPath)")
+            #endif
+            // Note: Database operations will fail gracefully if db is nil
             return
         }
+        #if DEBUG
         print("✅ SQLite database opened successfully")
+        #endif
     }
 
     private func createTables() {
@@ -294,11 +329,17 @@ actor SQLiteFoodDatabase {
         if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
             if sqlite3_step(statement) != SQLITE_DONE {
                 let errorMessage = String(cString: sqlite3_errmsg(db)!)
-                print("❌ SQL execution error: \(errorMessage)")
+                #if DEBUG
+                print("❌ Database operation failed: \(errorMessage)")
+                print("   This may cause food search to return incomplete results")
+                #endif
             }
         } else {
             let errorMessage = String(cString: sqlite3_errmsg(db)!)
-            print("❌ SQL preparation error: \(errorMessage)")
+            #if DEBUG
+            print("❌ Database error: \(errorMessage)")
+            print("   SQL: \(sql.prefix(100))...")
+            #endif
         }
 
         sqlite3_finalize(statement)
@@ -344,10 +385,12 @@ actor SQLiteFoodDatabase {
                 let count = sqlite3_column_int(statement, 0)
         // DEBUG LOG: print("📊 Current food count in SQLite: \(count)")
 
+                #if DEBUG
                 if count == 0 {
                     print("⚠️ Database is empty. You need to import data from Firebase or a CSV file.")
                     print("   Run the export script: node firebase/scripts/exportToSQLite.js")
                 }
+                #endif
             }
         }
         sqlite3_finalize(statement)
@@ -469,7 +512,9 @@ actor SQLiteFoodDatabase {
         } else {
             let errorMessage = String(cString: sqlite3_errmsg(db))
             #if DEBUG
-            print("❌ SQLite prepare failed: \(errorMessage)")
+            print("❌ Food search failed: \(errorMessage)")
+            print("   Query: '\(query)'")
+            print("   Note: The app will continue with empty results. Check database integrity.")
             #endif
         }
 

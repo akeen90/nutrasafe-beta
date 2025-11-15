@@ -40,9 +40,11 @@ class ImageCacheManager {
         // Create cache directories if they don't exist
         createCacheDirectoriesIfNeeded()
 
+        #if DEBUG
         print("📦 ImageCacheManager initialized")
         print("   UseBy cache: \(useByImagesDirectory.path)")
         print("   Weight cache: \(weightImagesDirectory.path)")
+        #endif
     }
 
     // MARK: - Directory Management
@@ -51,9 +53,13 @@ class ImageCacheManager {
         do {
             try fileManager.createDirectory(at: useByImagesDirectory, withIntermediateDirectories: true)
             try fileManager.createDirectory(at: weightImagesDirectory, withIntermediateDirectories: true)
+            #if DEBUG
             print("✅ Cache directories created/verified")
+            #endif
         } catch {
+            #if DEBUG
             print("❌ Failed to create cache directories: \(error)")
+            #endif
         }
     }
 
@@ -63,13 +69,17 @@ class ImageCacheManager {
     func saveUseByImage(_ image: UIImage, for itemId: String) throws {
         let fileURL = useByImageURL(for: itemId)
         try saveImage(image, to: fileURL, itemId: itemId)
+        #if DEBUG
         print("✅ Saved UseBy image for item: \(itemId)")
+        #endif
     }
 
     func saveUseByImageAsync(_ image: UIImage, for itemId: String) async throws {
         let fileURL = useByImageURL(for: itemId)
         try await saveImageAsync(image, to: fileURL, itemId: itemId)
+        #if DEBUG
         print("✅ Saved UseBy image for item: \(itemId)")
+        #endif
     }
 
     /// Load a UseBy item image from cache
@@ -93,7 +103,9 @@ class ImageCacheManager {
     func deleteUseByImage(for itemId: String) {
         let fileURL = useByImageURL(for: itemId)
         deleteImage(at: fileURL, itemId: itemId)
+        #if DEBUG
         print("🗑️ Deleted UseBy image for item: \(itemId)")
+        #endif
     }
 
     private func useByImageURL(for itemId: String) -> URL {
@@ -106,13 +118,17 @@ class ImageCacheManager {
     func saveWeightImage(_ image: UIImage, for entryId: String) throws {
         let fileURL = weightImageURL(for: entryId)
         try saveImage(image, to: fileURL, itemId: entryId)
+        #if DEBUG
         print("✅ Saved Weight image for entry: \(entryId)")
+        #endif
     }
 
     func saveWeightImageAsync(_ image: UIImage, for entryId: String) async throws {
         let fileURL = weightImageURL(for: entryId)
         try await saveImageAsync(image, to: fileURL, itemId: entryId)
+        #if DEBUG
         print("✅ Saved Weight image for entry: \(entryId)")
+        #endif
     }
 
     /// Load a Weight entry image from cache
@@ -136,7 +152,9 @@ class ImageCacheManager {
     func deleteWeightImage(for entryId: String) {
         let fileURL = weightImageURL(for: entryId)
         deleteImage(at: fileURL, itemId: entryId)
+        #if DEBUG
         print("🗑️ Deleted Weight image for entry: \(entryId)")
+        #endif
     }
 
     /// Save multiple images for a Weight entry (for photoURLs array)
@@ -146,7 +164,9 @@ class ImageCacheManager {
             let fileURL = weightImageURL(for: imageId)
             try saveImage(image, to: fileURL, itemId: imageId)
         }
+        #if DEBUG
         print("✅ Saved \(images.count) Weight images for entry: \(entryId)")
+        #endif
     }
 
     /// Load multiple images for a Weight entry
@@ -187,7 +207,9 @@ class ImageCacheManager {
                 break // No more images
             }
         }
+        #if DEBUG
         print("🗑️ Deleted all Weight images for entry: \(entryId)")
+        #endif
     }
 
     private func weightImageURL(for entryId: String) -> URL {
@@ -202,18 +224,29 @@ class ImageCacheManager {
 
         // Optimize image for storage (compress to 70% quality JPEG)
         guard let imageData = image.jpegData(compressionQuality: 0.7) else {
-            throw NSError(domain: "ImageCache", code: -1, userInfo: [
-                NSLocalizedDescriptionKey: "Failed to convert image to JPEG data"
-            ])
+            #if DEBUG
+            print("❌ Failed to convert image to JPEG for \(itemId)")
+            #endif
+            throw NSError(domain: "ImageCache", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to convert image to JPEG"])
         }
 
         // Write to disk
-        try imageData.write(to: fileURL, options: .atomic)
+        do {
+            try imageData.write(to: fileURL, options: .atomic)
+        } catch {
+            #if DEBUG
+            print("❌ Failed to write image to disk for \(itemId): \(error.localizedDescription)")
+            print("   Path: \(fileURL.path)")
+            #endif
+            throw error
+        }
 
         // Store in memory cache for quick access
         memoryCache.setObject(image, forKey: cacheKey, cost: imageData.count)
 
+        #if DEBUG
         print("💾 Cached image to disk: \(fileURL.lastPathComponent) (\(imageData.count / 1024)KB)")
+        #endif
     }
 
     private func saveImageAsync(_ image: UIImage, to fileURL: URL, itemId: String) async throws {
@@ -233,7 +266,9 @@ class ImageCacheManager {
         }.value
         if case .failure(let e) = writeResult { throw e }
         memoryCache.setObject(image, forKey: cacheKey, cost: imageData.count)
+        #if DEBUG
         print("💾 Cached image to disk: \(fileURL.lastPathComponent) (\(imageData.count / 1024)KB)")
+        #endif
     }
 
     private func loadImage(from fileURL: URL, itemId: String) -> UIImage? {
@@ -241,20 +276,27 @@ class ImageCacheManager {
 
         // Check memory cache first (fastest)
         if let cachedImage = memoryCache.object(forKey: cacheKey) {
+            #if DEBUG
             print("⚡️ Memory cache HIT for: \(fileURL.lastPathComponent)")
+            #endif
             return cachedImage
         }
 
         // Load from disk
         guard let imageData = try? Data(contentsOf: fileURL),
               let image = UIImage(data: imageData) else {
-            print("⚠️ No cached image found at: \(fileURL.lastPathComponent)")
+            #if DEBUG
+            print("⚠️ No cached image found for \(itemId)")
+            print("   This is normal if the image hasn't been cached yet")
+            #endif
             return nil
         }
 
         // Store in memory cache for next time
         memoryCache.setObject(image, forKey: cacheKey, cost: imageData.count)
+        #if DEBUG
         print("📀 Disk cache HIT for: \(fileURL.lastPathComponent) (\(imageData.count / 1024)KB)")
+        #endif
 
         return image
     }
@@ -266,11 +308,15 @@ class ImageCacheManager {
             return try? Data(contentsOf: fileURL)
         }.value
         guard let imageData = dataResult, let image = UIImage(data: imageData) else {
+            #if DEBUG
             print("⚠️ No cached image found at: \(fileURL.lastPathComponent)")
+            #endif
             return nil
         }
         memoryCache.setObject(image, forKey: cacheKey, cost: imageData.count)
+        #if DEBUG
         print("📀 Disk cache HIT for: \(fileURL.lastPathComponent) (\(imageData.count / 1024)KB)")
+        #endif
         return image
     }
 
@@ -284,10 +330,16 @@ class ImageCacheManager {
         do {
             if fileManager.fileExists(atPath: fileURL.path) {
                 try fileManager.removeItem(at: fileURL)
+                #if DEBUG
                 print("🗑️ Deleted cached image: \(fileURL.lastPathComponent)")
+                #endif
             }
         } catch {
-            print("❌ Failed to delete cached image: \(error)")
+            #if DEBUG
+            print("❌ Failed to delete cached image for \(itemId): \(error.localizedDescription)")
+            print("   Path: \(fileURL.path)")
+            print("   Note: This won't affect app functionality")
+            #endif
         }
     }
 
@@ -315,9 +367,13 @@ class ImageCacheManager {
                 }
             }
 
+            #if DEBUG
             print("🧹 Cleared all cached images")
+            #endif
         } catch {
+            #if DEBUG
             print("❌ Failed to clear cache: \(error)")
+            #endif
         }
     }
 
@@ -352,7 +408,9 @@ class ImageCacheManager {
                 }
             }
         } catch {
+            #if DEBUG
             print("❌ Failed to get cache stats: \(error)")
+            #endif
         }
 
         let totalSizeMB = Double(totalSize) / (1024 * 1024)
@@ -362,9 +420,11 @@ class ImageCacheManager {
     /// Print cache statistics (for debugging)
     func printCacheStats() {
         let stats = getCacheStats()
+        #if DEBUG
         print("📊 Image Cache Statistics:")
         print("   UseBy images: \(stats.useByCount)")
         print("   Weight images: \(stats.weightCount)")
         print("   Total size: \(String(format: "%.2f", stats.totalSizeMB)) MB")
+        #endif
     }
 }

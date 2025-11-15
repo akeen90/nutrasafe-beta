@@ -164,9 +164,15 @@ struct AdditiveWatchView: View {
     }
     
     private func analyzeAdditives() {
+        #if DEBUG
         print("🧪 [AdditiveWatchView] Starting enhanced additive analysis")
+        #endif
+        #if DEBUG
         print("🧪 [AdditiveWatchView] Ingredients array count: \(ingredients.count)")
+        #endif
+        #if DEBUG
         print("🧪 [AdditiveWatchView] Ingredients: \(ingredients)")
+        #endif
 
         // VALIDATION: Check if ingredients look suspicious or incomplete
         let filteredIngredients = ingredients.filter { ingredient in
@@ -187,7 +193,9 @@ struct AdditiveWatchView: View {
             ]
 
             if commonWholeFoods.contains(trimmed) {
+                #if DEBUG
                 print("⚠️ [AdditiveWatchView] Skipping whole food name: '\(ingredient)'")
+                #endif
                 return false
             }
 
@@ -196,7 +204,9 @@ struct AdditiveWatchView: View {
 
         // If no valid ingredients remain after filtering, return empty result
         if filteredIngredients.isEmpty {
+            #if DEBUG
             print("⚠️ [AdditiveWatchView] No valid ingredients to analyze after filtering")
+            #endif
             self.additiveResult = AdditiveDetectionResult(
                 detectedAdditives: [],
                 childWarnings: [],
@@ -211,25 +221,43 @@ struct AdditiveWatchView: View {
 
         // Use AdditiveWatchService which now uses local comprehensive database
         AdditiveWatchService.shared.analyzeIngredients(filteredIngredients) { result in
+            #if DEBUG
             print("🧪 [AdditiveWatchView] Analysis complete!")
+            #endif
+            #if DEBUG
             print("🧪 [AdditiveWatchView] Detected additives count: \(result.detectedAdditives.count)")
+            #endif
             if !result.detectedAdditives.isEmpty {
+                #if DEBUG
                 print("🧪 [AdditiveWatchView] Detected additives:")
+                #endif
                 for additive in result.detectedAdditives {
+                    #if DEBUG
                     print("   - \(additive.eNumber): \(additive.name)")
+                    #endif
                 }
             } else {
+                #if DEBUG
                 print("🧪 [AdditiveWatchView] ⚠️ NO ADDITIVES DETECTED")
+                #endif
             }
 
+            #if DEBUG
             print("🏭 [AdditiveWatchView] Ultra-processed ingredients count: \(result.ultraProcessedIngredients.count)")
+            #endif
             if !result.ultraProcessedIngredients.isEmpty {
+                #if DEBUG
                 print("🏭 [AdditiveWatchView] Detected ultra-processed ingredients:")
+                #endif
                 for ingredient in result.ultraProcessedIngredients {
+                    #if DEBUG
                     print("   - \(ingredient.name) (penalty: \(ingredient.processingPenalty))")
+                    #endif
                 }
             } else {
+                #if DEBUG
                 print("🏭 [AdditiveWatchView] ⚠️ NO ULTRA-PROCESSED INGREDIENTS DETECTED")
+                #endif
             }
 
             self.additiveResult = result

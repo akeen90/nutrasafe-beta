@@ -14,6 +14,7 @@ struct ReactionLogView: View {
     @State private var selectedDayRange: DayRange = .threeDays
     @State private var selectedTab: AnalysisTab = .potentialTriggers
     @State private var showingPDFExportSheet = false
+    @State private var isLoadingData = false
 
     enum DayRange: Int, CaseIterable {
         case threeDays = 3
@@ -41,11 +42,25 @@ struct ReactionLogView: View {
                     exportPDFButton
                 }
 
-                // Analysis Tabs
-                analysisTabPicker
+                // Loading state or content
+                if isLoadingData {
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                            .progressViewStyle(.circular)
+                        Text("Loading reaction history...")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 60)
+                } else {
+                    // Analysis Tabs
+                    analysisTabPicker
 
-                // Tab Content
-                tabContent
+                    // Tab Content
+                    tabContent
+                }
             }
             .padding(.horizontal, 16)
             .padding(.top, 16)
@@ -62,7 +77,9 @@ struct ReactionLogView: View {
             MultiReactionPDFExportSheet()
         }
         .task {
+            isLoadingData = true
             await manager.loadReactionLogs()
+            isLoadingData = false
         }
     }
 
@@ -225,20 +242,43 @@ struct ReactionLogView: View {
 
     // MARK: - Empty State
     private func emptyStateView(icon: String, title: String, message: String) -> some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
             Image(systemName: icon)
-                .font(.system(size: 60))
-                .foregroundColor(.gray.opacity(0.5))
+                .font(.system(size: 70))
+                .foregroundColor(.secondary.opacity(0.4))
+                .padding(.top, 20)
 
-            Text(title)
-                .font(.headline)
-                .foregroundColor(.primary)
+            VStack(spacing: 8) {
+                Text(title)
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundColor(.primary)
 
-            Text(message)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
+                Text(message)
+                    .font(.system(size: 16))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            // Helpful tip
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "lightbulb.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(.orange)
+                        .frame(width: 20)
+
+                    Text("Track reactions to help identify patterns and potential food sensitivities over time")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(16)
+            .background(Color(.systemGray6))
+            .cornerRadius(12)
+            .padding(.horizontal, 32)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)
@@ -644,6 +684,7 @@ struct LogReactionSheet: View {
             if isLoadingMeals {
                 HStack {
                     ProgressView()
+                        .progressViewStyle(.circular)
                         .padding(.trailing, 8)
                     Text("Loading recent meals...")
                         .font(.caption)
@@ -1880,7 +1921,9 @@ struct FoodHistoryDetailView: View {
                 foodEntry = meals.first { $0.id == firstMealId }
             }
         } catch {
+            #if DEBUG
             print("Error loading food entry: \(error)")
+            #endif
         }
     }
 }
@@ -2179,7 +2222,9 @@ struct RecentMealsListView: View {
             categorizeIngredients(allIngredientsList)
 
         } catch {
+            #if DEBUG
             print("Error loading recent meals: \(error)")
+            #endif
         }
     }
 

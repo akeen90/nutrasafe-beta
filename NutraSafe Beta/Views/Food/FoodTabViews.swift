@@ -1501,7 +1501,9 @@ class ReactionManager: ObservableObject {
         do {
             try await firebaseManager.saveReaction(reaction)
         } catch {
+            #if DEBUG
             print("Failed to save reaction: \(error)")
+            #endif
             await MainActor.run {
                 errorMessage = "Failed to save reaction: \(error.localizedDescription)"
                 showingError = true
@@ -1523,10 +1525,14 @@ class ReactionManager: ObservableObject {
                 await MainActor.run {
                     self.reactions = fetchedReactions.sorted { $0.timestamp.dateValue() > $1.timestamp.dateValue() }
                     self.isLoading = false
+                    #if DEBUG
                     print("✅ ReactionManager: UI updated - reactions.count = \(self.reactions.count)")
+                    #endif
                 }
             } catch {
+                #if DEBUG
                 print("❌ Failed to load reactions: \(error)")
+                #endif
                 await MainActor.run {
                     self.reactions = []
                     self.isLoading = false
@@ -1547,7 +1553,9 @@ class ReactionManager: ObservableObject {
                 self.isLoading = false
             }
         } catch {
+            #if DEBUG
             print("Failed to refresh reactions: \(error)")
+            #endif
             await MainActor.run {
                 self.isLoading = false
             }
@@ -1564,7 +1572,9 @@ class ReactionManager: ObservableObject {
         do {
             try await firebaseManager.deleteReaction(reactionId: reaction.id)
         } catch {
+            #if DEBUG
             print("Failed to delete reaction: \(error)")
+            #endif
             // Re-add if deletion failed
             await MainActor.run {
                 reactions.insert(reaction, at: 0)
@@ -1580,7 +1590,9 @@ class ReactionManager: ObservableObject {
         errorMessage = nil
         showingError = false
         lastLoadedUserId = nil
+        #if DEBUG
         print("🧹 Cleared ReactionManager data")
+        #endif
     }
 }
 
@@ -1872,10 +1884,14 @@ struct LogReactionView: View {
                 let aiRefined = try await standardizeIngredientsWithAI(standardized)
                 await MainActor.run {
                     suspectedIngredients = aiRefined
+                    #if DEBUG
                     print("✨ AI refined to: \(aiRefined.joined(separator: ", "))")
+                    #endif
                 }
             } catch {
+                #if DEBUG
                 print("ℹ️ AI refinement unavailable, using client-side filter: \(error.localizedDescription)")
+                #endif
                 // Keep the client-side results, which are already pretty good
             }
         }
@@ -2362,7 +2378,9 @@ struct FoodReactionSearchView: View {
                     self.isLoadingDiary = false
                 }
             } catch {
+                #if DEBUG
                 print("Error loading diary entries: \(error)")
+                #endif
                 await MainActor.run {
                     self.isLoadingDiary = false
                 }

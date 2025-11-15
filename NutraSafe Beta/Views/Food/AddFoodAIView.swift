@@ -156,13 +156,17 @@ struct AddFoodAIView: View {
                         self.presentImagePicker()
                     } else {
                         // Show permission denied message
+                        #if DEBUG
                         print("Camera permission denied")
+                        #endif
                     }
                 }
             }
         case .denied, .restricted:
             // Show settings alert to enable camera
+            #if DEBUG
             print("Camera permission denied - redirect to settings")
+            #endif
         @unknown default:
             break
         }
@@ -216,7 +220,9 @@ struct AddFoodAIView: View {
         } catch {
             DispatchQueue.main.async {
                 self.isScanning = false
+                #if DEBUG
                 print("Vision analysis failed: \(error)")
+                #endif
             }
         }
     }
@@ -234,7 +240,9 @@ struct AddFoodAIView: View {
             } catch {
                 DispatchQueue.main.async {
                     self.isScanning = false
+                    #if DEBUG
                     print("Food recognition failed: \(error)")
+                    #endif
                     // Fallback to manual entry or basic text recognition
                     self.recognizedFoods = []
                 }
@@ -321,7 +329,9 @@ struct ImagePicker: UIViewControllerRepresentable {
     let onImageSelected: (UIImage?) -> Void
 
     func makeUIViewController(context: Context) -> UIImagePickerController {
+        #if DEBUG
         print("📸 ImagePicker makeUIViewController - sourceType: \(sourceType == .camera ? "CAMERA" : "PHOTO LIBRARY")")
+        #endif
         let picker = UIImagePickerController()
         picker.delegate = context.coordinator
         picker.sourceType = sourceType
@@ -405,11 +415,15 @@ struct MultiImagePicker: UIViewControllerRepresentable {
         }
 
         func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+            #if DEBUG
             print("📸 MultiImagePicker: User finished picking \(results.count) photos")
+            #endif
             picker.dismiss(animated: true)
 
             guard !results.isEmpty else {
+                #if DEBUG
                 print("⚠️ MultiImagePicker: User cancelled - no photos selected")
+                #endif
                 parent.onImagesSelected([])
                 return
             }
@@ -423,15 +437,21 @@ struct MultiImagePicker: UIViewControllerRepresentable {
                     defer { group.leave() }
                     if let image = object as? UIImage {
                         images.append(image)
+                        #if DEBUG
                         print("✅ MultiImagePicker: Successfully loaded image")
+                        #endif
                     } else {
+                        #if DEBUG
                         print("❌ MultiImagePicker: Failed to load image: \(error?.localizedDescription ?? "unknown error")")
+                        #endif
                     }
                 }
             }
 
             group.notify(queue: .main) {
+                #if DEBUG
                 print("📦 MultiImagePicker: Returning \(images.count) images to callback")
+                #endif
                 self.parent.onImagesSelected(images)
             }
         }
@@ -846,7 +866,9 @@ struct CombinedMealView: View {
                     showingSuccessAlert = true
                 }
             } catch {
+                #if DEBUG
                 print("Error saving combined meal: \(error)")
+                #endif
             }
         }
     }

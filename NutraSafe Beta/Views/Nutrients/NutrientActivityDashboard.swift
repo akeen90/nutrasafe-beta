@@ -387,7 +387,9 @@ struct NutrientActivityDashboard: View {
 
             await MainActor.run {
                 trackingManager.objectWillChange.send()
+                #if DEBUG
                 print("✅ Processed diary: \(totalNutrientsTracked) unique nutrient occurrences tracked")
+                #endif
             }
         }
     }

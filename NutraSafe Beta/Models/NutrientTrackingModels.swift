@@ -222,6 +222,7 @@ struct DayNutrientActivity: Codable {
     var dateId: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = Calendar.current.timeZone
         return formatter.string(from: date)
     }
 
@@ -322,7 +323,9 @@ struct NutrientDetector {
                     let nutrientId = mapVitaminKeyToNutrientId(vitaminKey)
                     if !nutrientId.isEmpty {
                         detectedNutrients.insert(nutrientId)
+                        #if DEBUG
                         print("  ✅ Found vitamin: \(vitaminKey) -> \(nutrientId) (\(amount))")
+                        #endif
                     }
                 }
             }
@@ -334,33 +337,45 @@ struct NutrientDetector {
                     let nutrientId = mapMineralKeyToNutrientId(mineralKey)
                     if !nutrientId.isEmpty {
                         detectedNutrients.insert(nutrientId)
+                        #if DEBUG
                         print("  ✅ Found mineral: \(mineralKey) -> \(nutrientId) (\(amount))")
+                        #endif
                     }
                 }
             }
 
+            #if DEBUG
             print("  📊 Total nutrients from profile: \(detectedNutrients.count)")
+            #endif
         } else {
         // DEBUG LOG: print("🔍 Detecting nutrients in '\(food.name)' using keyword matching (no micronutrient profile)")
         }
 
         // ENHANCED: Use pattern-based parser for fortified nutrients from ingredients
         if let ingredients = food.ingredients, !ingredients.isEmpty {
+            #if DEBUG
             print("  🔬 Using pattern-based parser for fortified nutrients...")
+            #endif
             let fortifiedNutrients = IngredientMicronutrientParser.shared.parseIngredientsArray(ingredients)
 
             for detected in fortifiedNutrients {
                 let wasNew = detectedNutrients.insert(detected.nutrient).inserted
                 if wasNew {
+                    #if DEBUG
                     print("  ✅ Found fortified nutrient: \(detected.nutrient) from '\(detected.rawText)'")
+                    #endif
                 }
             }
+            #if DEBUG
             print("  📊 Pattern parser found \(fortifiedNutrients.count) fortified nutrients")
+            #endif
         }
 
         // ALWAYS do keyword-based detection for nutrients not in micronutrient profiles
         // (like omega-3, lutein, lycopene, etc.) regardless of whether food has a profile
+        #if DEBUG
         print("  🔎 Supplementing with keyword matching for special nutrients...")
+        #endif
         let searchText = "\(food.name.lowercased()) \(food.brand?.lowercased() ?? "") \(food.ingredients?.joined(separator: " ").lowercased() ?? "")"
 
         for (nutrientId, keywords) in nutrientFoodSources {
@@ -368,14 +383,18 @@ struct NutrientDetector {
                 if searchText.contains(keyword.lowercased()) {
                     let wasNew = detectedNutrients.insert(nutrientId).inserted
                     if wasNew {
+                        #if DEBUG
                         print("  ✅ Found keyword '\(keyword)' -> \(nutrientId)")
+                        #endif
                     }
                     break
                 }
             }
         }
 
+        #if DEBUG
         print("  📊 Total nutrients detected: \(detectedNutrients.count)")
+        #endif
         return Array(detectedNutrients)
     }
 

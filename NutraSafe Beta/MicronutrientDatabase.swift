@@ -110,12 +110,16 @@ class MicronutrientDatabase {
 
     private func openDatabase() {
         guard let dbPath = Bundle.main.path(forResource: "micronutrients_ingredients_v6", ofType: "db") else {
+            #if DEBUG
             print("❌ MicronutrientDatabase: Database file not found in bundle")
+            #endif
             return
         }
 
         if sqlite3_open(dbPath, &db) == SQLITE_OK {
+            #if DEBUG
             print("✅ MicronutrientDatabase: Successfully opened database at \(dbPath)")
+            #endif
             isInitialized = true
 
             // DIAGNOSTIC: Test database readability
@@ -124,9 +128,13 @@ class MicronutrientDatabase {
             // PERFORMANCE: Preload all nutrients into cache on startup (1 query instead of 33+)
             preloadAllNutrients()
         } else {
+            #if DEBUG
             print("❌ MicronutrientDatabase: Failed to open database")
+            #endif
             if let error = sqlite3_errmsg(db) {
+                #if DEBUG
                 print("   Error: \(String(cString: error))")
+                #endif
             }
         }
     }
@@ -154,11 +162,15 @@ class MicronutrientDatabase {
         defer { sqlite3_finalize(listStmt) }
 
         if sqlite3_prepare_v2(db, listQuery, -1, &listStmt, nil) == SQLITE_OK {
+            #if DEBUG
             print("📋 First 10 nutrients in database:")
+            #endif
             var index = 1
             while sqlite3_step(listStmt) == SQLITE_ROW {
                 let nutrient = String(cString: sqlite3_column_text(listStmt, 0))
+                #if DEBUG
                 print("   \(index). \(nutrient)")
+                #endif
                 index += 1
             }
         }
@@ -173,12 +185,18 @@ class MicronutrientDatabase {
             if sqlite3_step(testStmt) == SQLITE_ROW {
                 let nutrient = String(cString: sqlite3_column_text(testStmt, 0))
                 let name = String(cString: sqlite3_column_text(testStmt, 1))
+                #if DEBUG
                 print("✅ Test query successful: Found '\(nutrient)' with name '\(name)'")
+                #endif
             } else {
+                #if DEBUG
                 print("❌ Test query failed: Could not find 'Niacin_B3'")
+                #endif
             }
         } else {
+            #if DEBUG
             print("❌ Test query prepare failed")
+            #endif
         }
     }
 
@@ -210,7 +228,9 @@ class MicronutrientDatabase {
         }
 
         guard sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK else {
+            #if DEBUG
             print("❌ Failed to prepare preload query")
+            #endif
             return
         }
 
@@ -232,7 +252,9 @@ class MicronutrientDatabase {
         }
 
         let elapsed = Date().timeIntervalSince(startTime) * 1000 // Convert to milliseconds
+        #if DEBUG
         print("✅ Preloaded \(count) nutrients into cache in \(String(format: "%.1f", elapsed))ms")
+        #endif
     }
 
     // MARK: - Synonym Lookup
@@ -401,7 +423,9 @@ class MicronutrientDatabase {
         }
 
         // Cache miss - query database (rare after preload)
+        #if DEBUG
         print("⚠️  Cache miss for nutrient '\(nutrient)' - querying database")
+        #endif
 
         // Map detector IDs to database IDs
         let nutrientMapping: [String: String] = [
@@ -477,7 +501,9 @@ class MicronutrientDatabase {
 
         let prepareResult = sqlite3_prepare_v2(db, query, -1, &statement, nil)
         guard prepareResult == SQLITE_OK else {
+            #if DEBUG
             print("❌ Failed to prepare statement for '\(normalizedNutrient)': result = \(prepareResult)")
+            #endif
             return nil
         }
 
@@ -487,7 +513,9 @@ class MicronutrientDatabase {
 
         let stepResult = sqlite3_step(statement)
         guard stepResult == SQLITE_ROW else {
+            #if DEBUG
             print("❌ Nutrient not found in database: '\(normalizedNutrient)'")
+            #endif
             return nil
         }
 
@@ -633,7 +661,9 @@ class MicronutrientDatabase {
             // Fortified nutrients are categorized as high sources (0.7 contribution)
             // See bioavailability research above for scientific rationale
             nutrientContributions[detected.nutrient] = 0.7
+            #if DEBUG
             print("   ✅ \(detected.nutrient) (fortified) - from: \(detected.rawText)")
+            #endif
         }
 
         // 3. Calculate dish complexity penalty

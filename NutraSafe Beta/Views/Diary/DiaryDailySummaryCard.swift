@@ -307,10 +307,14 @@ struct DiaryDailySummaryCard: View {
 
                 // Update macro goals from Firebase
                 macroGoals = loadedMacroGoals
+                #if DEBUG
                 print("✅ Loaded \(macroGoals.count) macro goals for diary display")
+                #endif
             }
         } catch {
+            #if DEBUG
             print("⚠️ Failed to load nutrition goals: \(error.localizedDescription)")
+            #endif
             // Keep default values if loading fails
         }
     }

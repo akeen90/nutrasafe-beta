@@ -31,7 +31,9 @@ class AIMicronutrientParser {
         if useCached {
             let cacheKey = ingredientsText.md5Hash() as NSString
             if let cached = cache.object(forKey: cacheKey) {
+                #if DEBUG
                 print("✅ Using locally cached AI result (\(cached.nutrients.count) nutrients)")
+                #endif
                 return cached.nutrients
             }
         }
@@ -45,13 +47,19 @@ class AIMicronutrientParser {
             let cacheKey = ingredientsText.md5Hash() as NSString
             cache.setObject(CachedMicronutrientResult(nutrients: nutrients), forKey: cacheKey)
 
+            #if DEBUG
             print("✅ AI parser found \(nutrients.count) micronutrients")
+            #endif
             return nutrients
 
         } catch {
             // Fallback to local pattern-based parser
+            #if DEBUG
             print("⚠️ AI parsing failed, falling back to local pattern parser")
+            #endif
+            #if DEBUG
             print("   Error: \(error.localizedDescription)")
+            #endif
             return fallbackToLocalParser(ingredientsText)
         }
     }

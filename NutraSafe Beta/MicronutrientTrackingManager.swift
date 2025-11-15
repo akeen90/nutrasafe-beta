@@ -109,7 +109,9 @@ class MicronutrientTrackingManager: ObservableObject {
     /// Process actual micronutrient data from a food's nutrient profile
     func processNutrientProfile(_ profile: MicronutrientProfile, foodName: String, servingSize: Double = 1.0, date: Date = Date()) async {
         // DEBUG LOG: print("🔬 Processing nutrient profile for: \(foodName) (serving: \(servingSize)x)")
+        #if DEBUG
         print("  📊 Profile has \(profile.vitamins.count) vitamins, \(profile.minerals.count) minerals")
+        #endif
 
         var processedCount = 0
 
@@ -142,7 +144,9 @@ class MicronutrientTrackingManager: ObservableObject {
                     source: foodName
                 )
                 processedCount += 1
+                #if DEBUG
                 print("  ✅ \(nutrientKey) -> \(normalizedKey): \(points)% DV")
+                #endif
             }
         }
 
@@ -175,7 +179,9 @@ class MicronutrientTrackingManager: ObservableObject {
                     source: foodName
                 )
                 processedCount += 1
+                #if DEBUG
                 print("  ✅ \(nutrientKey) -> \(normalizedKey): \(points)% DV")
+                #endif
             }
         }
 
@@ -190,7 +196,9 @@ class MicronutrientTrackingManager: ObservableObject {
         let plantSources = ["walnuts", "flax", "flaxseed", "chia", "hemp"]
 
         if marineSources.contains(where: { searchText.contains($0) }) {
+            #if DEBUG
             print("  🐟 Detected marine omega-3 source: \(foodName)")
+            #endif
 
             // Marine sources: High EPA/DHA, minimal ALA
             await updateDailyScore(
@@ -206,9 +214,13 @@ class MicronutrientTrackingManager: ObservableObject {
                 source: foodName
             )
             processedCount += 2
+            #if DEBUG
             print("  ✅ Added Omega-3: EPA/DHA: \(Int(40 * servingSize))%, ALA: \(Int(5 * servingSize))%")
+            #endif
         } else if plantSources.contains(where: { searchText.contains($0) }) {
+            #if DEBUG
             print("  🌱 Detected plant omega-3 source: \(foodName)")
+            #endif
 
             // Plant sources: High ALA, no EPA/DHA
             await updateDailyScore(
@@ -218,7 +230,9 @@ class MicronutrientTrackingManager: ObservableObject {
                 source: foodName
             )
             processedCount += 1
+            #if DEBUG
             print("  ✅ Added Omega-3 (ALA): \(Int(50 * servingSize))%")
+            #endif
         }
         */
 
@@ -228,7 +242,9 @@ class MicronutrientTrackingManager: ObservableObject {
         // Save to Firebase
         await saveDailyScores()
 
+        #if DEBUG
         print("✅ Successfully processed \(processedCount) nutrients for: \(foodName)")
+        #endif
     }
 
     // MARK: - Daily Score Management
@@ -344,13 +360,21 @@ class MicronutrientTrackingManager: ObservableObject {
 
         // DEBUG: Log if info was found
         if info == nil {
+            #if DEBUG
             print("⚠️ No nutrient info found for: '\(nutrient)'")
+            #endif
         } else {
+            #if DEBUG
             print("✅ Loaded nutrient info for: '\(nutrient)' - name: '\(info!.name)'")
+            #endif
             if let sources = info?.commonSources {
+                #if DEBUG
                 print("   📋 Common sources: \(sources)")
+                #endif
             } else {
+                #if DEBUG
                 print("   ⚠️ Common sources is nil")
+                #endif
             }
         }
 
@@ -453,6 +477,7 @@ class MicronutrientTrackingManager: ObservableObject {
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = Calendar.current.timeZone
         return formatter.string(from: date)
     }
 
@@ -483,7 +508,9 @@ class MicronutrientTrackingManager: ObservableObject {
                         "percentage": score.percentage
                     ])
                 } catch {
+                    #if DEBUG
                     print("❌ Error saving nutrient score: \(error)")
+                    #endif
                 }
             }
         }
@@ -507,7 +534,9 @@ class MicronutrientTrackingManager: ObservableObject {
                     "balancePercentage": balance.balancePercentage
                 ])
             } catch {
+                #if DEBUG
                 print("❌ Error saving balance score: \(error)")
+                #endif
             }
         }
     }
@@ -607,7 +636,9 @@ class MicronutrientTrackingManager: ObservableObject {
 
             balanceHistory = loadedBalance.sorted { $0.date > $1.date }
 
+            #if DEBUG
             print("✅ Loaded \(dailyScores.count) nutrients with scores and \(balanceHistory.count) balance records")
+            #endif
 
             // Recalculate all balance scores with new formula (fixes old weighted data)
         // DEBUG LOG: print("🔄 Recalculating balance scores with new average coverage formula...")
@@ -621,7 +652,9 @@ class MicronutrientTrackingManager: ObservableObject {
                 }
             }
             await saveDailyScores()
+            #if DEBUG
             print("✅ Recalculated \(uniqueDates.count) balance scores")
+            #endif
 
             // MEMORY CACHE: Cache the loaded data
             firebaseCache = (scores: dailyScores, balance: balanceHistory)
@@ -629,7 +662,9 @@ class MicronutrientTrackingManager: ObservableObject {
         // DEBUG LOG: print("💾 Cached Firebase data for future access")
 
         } catch {
+            #if DEBUG
             print("❌ Error loading micronutrient data: \(error)")
+            #endif
         }
     }
 }

@@ -14,21 +14,43 @@ class ReactionLogManager: ObservableObject {
 
     @Published var reactionLogs: [ReactionLogEntry] = []
     @Published var isLoading: Bool = false
+    @Published var errorMessage: String?
+    @Published var showError = false
 
     private init() {}
 
     // MARK: - Load Reaction Logs
 
     func loadReactionLogs() async {
-        guard let userId = FirebaseManager.shared.currentUser?.uid else { return }
+        guard let userId = FirebaseManager.shared.currentUser?.uid else {
+            errorMessage = "You must be signed in to view reaction logs"
+            showError = true
+            return
+        }
 
         isLoading = true
+        errorMessage = nil
+        showError = false
         defer { isLoading = false }
 
         do {
             reactionLogs = try await FirebaseManager.shared.getReactionLogs(userId: userId)
         } catch {
+            #if DEBUG
             print("Error loading reaction logs: \(error.localizedDescription)")
+            #endif
+
+            // Provide user-friendly error message
+            if let urlError = error as? URLError {
+                if urlError.code == .notConnectedToInternet {
+                    errorMessage = "Unable to load reaction logs. Please check your internet connection."
+                } else {
+                    errorMessage = "Failed to load reaction logs. Please try again."
+                }
+            } else {
+                errorMessage = "Failed to load reaction logs. Please try again."
+            }
+            showError = true
         }
     }
 
@@ -36,7 +58,9 @@ class ReactionLogManager: ObservableObject {
 
     func saveReactionLog(reactionType: String, reactionDate: Date, notes: String?, dayRange: Int = 3) async throws -> ReactionLogEntry {
         guard let userId = FirebaseManager.shared.currentUser?.uid else {
-            throw NSError(domain: "ReactionLog", code: 1, userInfo: [NSLocalizedDescriptionKey: "User not logged in"])
+            errorMessage = "You must be signed in to save reaction logs"
+            showError = true
+            throw NSError(domain: "ReactionLogManager", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
         }
 
         // Create the log entry
@@ -69,9 +93,13 @@ class ReactionLogManager: ObservableObject {
     // MARK: - Weighted Trigger Analysis
 
     func analyzeReactionTriggers(reactionDate: Date, reactionType: String, userId: String, dayRange: Int = 3) async throws -> TriggerAnalysis {
-        // Define configurable day window
+        let calendar = Calendar.current
         let timeRangeEnd = reactionDate
-        let timeRangeStart = reactionDate.addingTimeInterval(-Double(dayRange * 24 * 3600))  // dayRange days before
+
+        // Calculate start date by going back N days
+        guard let timeRangeStart = calendar.date(byAdding: .day, value: -dayRange, to: reactionDate) else {
+            throw NSError(domain: "ReactionLogManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to calculate date range"])
+        }
 
         // Fetch diary meals in this window
         let meals = try await DiaryDataManager.shared.getMealsInTimeRange(from: timeRangeStart, to: timeRangeEnd)
@@ -406,6 +434,7 @@ class ReactionLogManager: ObservableObject {
 
     private func getPreviouslyAnalyzedMealIds(userId: String, beforeDate: Date) -> Set<String> {
         // Get all past reaction logs for this user that occurred before this date
+        // Date comparison is safe here as we're comparing timestamps directly
         let pastReactions = reactionLogs.filter { $0.userId == userId && $0.reactionDate < beforeDate }
 
         var mealIds: Set<String> = []
@@ -430,12 +459,29 @@ class ReactionLogManager: ObservableObject {
     // MARK: - Delete Reaction Log
 
     func deleteReactionLog(_ entry: ReactionLogEntry) async throws {
-        guard let entryId = entry.id else { return }
+        guard let entryId = entry.id else {
+            errorMessage = "Cannot delete reaction log: Invalid entry"
+            showError = true
+            throw NSError(domain: "ReactionLogManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "Entry not found"])
+        }
 
-        try await FirebaseManager.shared.deleteReactionLog(entryId: entryId)
+        do {
+            try await FirebaseManager.shared.deleteReactionLog(entryId: entryId)
 
-        if let index = reactionLogs.firstIndex(where: { $0.id == entryId }) {
-            reactionLogs.remove(at: index)
+            if let index = reactionLogs.firstIndex(where: { $0.id == entryId }) {
+                reactionLogs.remove(at: index)
+            }
+
+            errorMessage = nil
+            showError = false
+        } catch {
+            #if DEBUG
+            print("Error deleting reaction log: \(error.localizedDescription)")
+            #endif
+
+            errorMessage = "Failed to delete reaction log. Please try again."
+            showError = true
+            throw error
         }
     }
 }

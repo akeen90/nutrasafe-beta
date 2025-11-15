@@ -38,7 +38,9 @@ class NutrientTrackingManager: ObservableObject {
 
     func startTracking(for userId: String) {
         guard !userId.isEmpty else {
+            #if DEBUG
             print("⚠️ Cannot start tracking: userId is empty")
+            #endif
             return
         }
         // DEBUG LOG: print("🚀 Starting nutrient tracking for user: \(userId)")
@@ -58,7 +60,9 @@ class NutrientTrackingManager: ObservableObject {
 
     private func loadUserData(userId: String) async {
         guard !userId.isEmpty else {
+            #if DEBUG
             print("⚠️ Cannot load user data: userId is empty")
+            #endif
             return
         }
 
@@ -94,25 +98,33 @@ class NutrientTrackingManager: ObservableObject {
             lastUpdated = Date()
 
         } catch {
+            #if DEBUG
             print("❌ Error loading nutrient tracking data: \(error)")
+            #endif
         }
     }
 
     private func performInitialDiaryProcessing(userId: String) async {
+        #if DEBUG
         print("📋 Performing initial diary data processing...")
+        #endif
         do {
             // Load all diary entries
             let diarySnapshot = try await db.collection("users").document(userId)
                 .collection("diary")
                 .getDocuments()
 
+            #if DEBUG
             print("📋 Found \(diarySnapshot.documents.count) diary entries to process")
+            #endif
 
             // Process them
             await processDiaryChanges(userId: userId, snapshot: diarySnapshot)
 
         } catch {
+            #if DEBUG
             print("❌ Error performing initial diary processing: \(error)")
+            #endif
         }
     }
 
@@ -253,15 +265,21 @@ class NutrientTrackingManager: ObservableObject {
             }
 
             // Detect nutrients in all foods
+            #if DEBUG
             print("🍽️ Processing \(allFoods.count) foods for date \(dateId)")
+            #endif
             var nutrientsPresent: Set<String> = []
             for food in allFoods {
                 let detectedNutrients = NutrientDetector.detectNutrients(in: food)
                 nutrientsPresent.formUnion(detectedNutrients)
             }
 
+            #if DEBUG
             print("✅ Day \(dateId): Found \(nutrientsPresent.count) unique nutrients across \(allFoods.count) foods")
+            #endif
+            #if DEBUG
             print("   Nutrients: \(nutrientsPresent.sorted())")
+            #endif
 
             // Update day activity
             let activity = DayNutrientActivity(
@@ -534,7 +552,9 @@ class NutrientTrackingManager: ObservableObject {
                 .setData(data, merge: true)
 
         } catch {
+            #if DEBUG
             print("❌ Error saving day activity: \(error)")
+            #endif
         }
     }
 
@@ -569,7 +589,9 @@ class NutrientTrackingManager: ObservableObject {
                 .setData(data, merge: true)
 
         } catch {
+            #if DEBUG
             print("❌ Error saving nutrient frequency: \(error)")
+            #endif
         }
     }
 
@@ -591,7 +613,9 @@ class NutrientTrackingManager: ObservableObject {
                 .setData(data, merge: true)
 
         } catch {
+            #if DEBUG
             print("❌ Error saving monthly snapshot: \(error)")
+            #endif
         }
     }
 
@@ -621,7 +645,9 @@ class NutrientTrackingManager: ObservableObject {
     /// Manually trigger a full recalculation
     func forceRefresh(userId: String) async {
         guard !userId.isEmpty else {
+            #if DEBUG
             print("⚠️ Cannot refresh: userId is empty")
+            #endif
             return
         }
         await loadUserData(userId: userId)
@@ -691,6 +717,7 @@ class NutrientTrackingManager: ObservableObject {
     private func formatDateId(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = Calendar.current.timeZone
         return formatter.string(from: date)
     }
 }

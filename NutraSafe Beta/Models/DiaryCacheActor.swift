@@ -97,7 +97,9 @@ actor DiaryCacheActor {
         }
         accessOrder.append(dateKey)
 
+        #if DEBUG
         print("📦 [DiaryCache] Cached data for \(dateKey): \(data.totalItems) items")
+        #endif
     }
 
     /// Invalidate (remove) cache for a specific date
@@ -108,7 +110,9 @@ actor DiaryCacheActor {
             if let index = accessOrder.firstIndex(of: dateKey) {
                 accessOrder.remove(at: index)
             }
+            #if DEBUG
             print("🗑️ [DiaryCache] Invalidated cache for \(dateKey)")
+            #endif
         }
     }
 
@@ -126,7 +130,9 @@ actor DiaryCacheActor {
             }
         }
         if invalidatedCount > 0 {
+            #if DEBUG
             print("🗑️ [DiaryCache] Invalidated \(invalidatedCount) days in range")
+            #endif
         }
     }
 
@@ -137,7 +143,9 @@ actor DiaryCacheActor {
         accessOrder.removeAll()
         hits = 0
         misses = 0
+        #if DEBUG
         print("🗑️ [DiaryCache] Cleared \(previousSize) cached days")
+        #endif
     }
 
     /// Get current cache size
@@ -166,12 +174,15 @@ actor DiaryCacheActor {
         // Remove least recently used entry
         let oldestKey = accessOrder.removeFirst()
         dayCache.removeValue(forKey: oldestKey)
+        #if DEBUG
         print("♻️ [DiaryCache] Evicted oldest entry: \(oldestKey)")
+        #endif
     }
 
     private func formatDateKey(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = Calendar.current.timeZone
         return formatter.string(from: date)
     }
 }

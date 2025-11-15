@@ -125,7 +125,9 @@ class IngredientFinderService: ObservableObject {
         // DEBUG LOG: print("🔍 Debug: Endpoint URL from AppConfig: \(endpointURLString)")
 
         guard let url = URL(string: endpointURLString) else {
+            #if DEBUG
             print("❌ Debug: Invalid URL: \(endpointURLString)")
+            #endif
             throw IngredientFinderError.notConfigured
         }
 
@@ -792,18 +794,24 @@ struct ManualFoodDetailEntryView: View {
                             if servingSizeGrams > 0 && servingSizeGrams <= 500 {
                                 servingSize = String(format: "%.0f", servingSizeGrams)
                                 servingUnit = "g"
+                                #if DEBUG
                                 print("✅ MANUAL ADD - Using AI serving size: \(servingSizeGrams)g")
+                                #endif
                             } else {
                                 // Unreasonable serving size, default to 100g
                                 servingSize = "100"
                                 servingUnit = "g"
+                                #if DEBUG
                                 print("⚠️ MANUAL ADD - AI serving size (\(servingSizeGrams)g) seems unreasonable, defaulting to 100g")
+                                #endif
                             }
                         } else {
                             // No serving size from AI, default to 100g (matches nutrition per 100g)
                             servingSize = "100"
                             servingUnit = "g"
+                            #if DEBUG
                             print("ℹ️ MANUAL ADD - No serving size from AI, defaulting to 100g")
+                            #endif
                         }
                         // Apply ingredients
                         if let ingredients = foundIngredients?.ingredients_text {
@@ -842,18 +850,24 @@ struct ManualFoodDetailEntryView: View {
                             if servingSizeGrams > 0 && servingSizeGrams <= 500 {
                                 servingSize = String(format: "%.0f", servingSizeGrams)
                                 servingUnit = "g"
+                                #if DEBUG
                                 print("✅ MANUAL ADD (onEdit) - Using AI serving size: \(servingSizeGrams)g")
+                                #endif
                             } else {
                                 // Unreasonable serving size, default to 100g
                                 servingSize = "100"
                                 servingUnit = "g"
+                                #if DEBUG
                                 print("⚠️ MANUAL ADD (onEdit) - AI serving size (\(servingSizeGrams)g) seems unreasonable, defaulting to 100g")
+                                #endif
                             }
                         } else {
                             // No serving size from AI, default to 100g (matches nutrition per 100g)
                             servingSize = "100"
                             servingUnit = "g"
+                            #if DEBUG
                             print("ℹ️ MANUAL ADD (onEdit) - No serving size from AI, defaulting to 100g")
+                            #endif
                         }
                         // Apply ingredients and nutrition for editing
                         if let ingredients = foundIngredients?.ingredients_text {
@@ -911,14 +925,30 @@ struct ManualFoodDetailEntryView: View {
                 )
 
         // DEBUG LOG: print("🍎 MANUAL ADD - AI Search Result:")
+                #if DEBUG
                 print("  - ingredients_found: \(response.ingredients_found)")
+                #endif
+                #if DEBUG
                 print("  - ingredients_text: \(response.ingredients_text?.prefix(50) ?? "nil")")
+                #endif
+                #if DEBUG
                 print("  - nutrition: \(response.nutrition_per_100g != nil ? "YES" : "NO")")
+                #endif
+                #if DEBUG
                 print("  - serving_size_g: \(response.serving_size_g != nil ? "\(response.serving_size_g!)g" : "NIL")")
+                #endif
+                #if DEBUG
                 print("  - size_description: \(response.size_description ?? "NIL")")
+                #endif
+                #if DEBUG
                 print("  - product_name: \(response.product_name ?? "nil")")
+                #endif
+                #if DEBUG
                 print("  - brand: \(response.brand ?? "nil")")
+                #endif
+                #if DEBUG
                 print("  - source_url: \(response.source_url ?? "nil")")
+                #endif
 
                 await MainActor.run {
                     isSearchingIngredients = false
@@ -966,9 +996,15 @@ struct ManualFoodDetailEntryView: View {
                     brand: nil
                 )
 
+                #if DEBUG
                 print("🔍 AI Search Result:")
+                #endif
+                #if DEBUG
                 print("  - ingredients_found: \(response.ingredients_found)")
+                #endif
+                #if DEBUG
                 print("  - variants count: \(response.variants.count)")
+                #endif
 
                 await MainActor.run {
                     isSearchingIngredients = false
@@ -1128,11 +1164,15 @@ struct ManualFoodDetailEntryView: View {
                     sourceURL: foundIngredients?.source_url,
                     aiProductName: foundIngredients?.product_name
                 )
+                #if DEBUG
                 print("✅ AI-enhanced food saved to aiManuallyAdded collection: \(foodId)")
+                #endif
             } else {
                 // Save to userAdded collection (manual entry with profanity check)
                 foodId = try await FirebaseManager.shared.saveUserAddedFood(foodData)
+                #if DEBUG
                 print("✅ Manual food saved to userAdded collection: \(foodId)")
+                #endif
             }
 
             // Now add to user's diary with capitalized values
@@ -1163,7 +1203,9 @@ struct ManualFoodDetailEntryView: View {
             await MainActor.run {
                 let mealType = selectedMealTime.lowercased() // Convert to lowercase for storage
                 diaryDataManager.addFoodItem(diaryEntry, to: mealType, for: Date())
+                #if DEBUG
                 print("✅ Food added to user's diary (\(selectedMealTime))")
+                #endif
             }
 
             // Switch to diary tab to show the added food
@@ -1175,7 +1217,9 @@ struct ManualFoodDetailEntryView: View {
             await MainActor.run {
                 errorMessage = error.localizedDescription
                 showingError = true
+                #if DEBUG
                 print("❌ Error saving manual food: \(error.localizedDescription)")
+                #endif
             }
             throw error
         }
@@ -1213,7 +1257,9 @@ struct ManualFoodDetailEntryView: View {
         // Save to Firebase (users/{uid}/useByInventory)
         do {
             try await FirebaseManager.shared.addUseByItem(item)
+            #if DEBUG
             print("✅ Successfully saved item to use-by inventory")
+            #endif
 
             // Switch to Use By tab and trigger refresh
             await MainActor.run {
@@ -1230,7 +1276,9 @@ struct ManualFoodDetailEntryView: View {
             await MainActor.run {
                 errorMessage = error.localizedDescription
                 showingError = true
+                #if DEBUG
                 print("❌ Error saving to use-by: \(error)")
+                #endif
             }
             throw error
         }

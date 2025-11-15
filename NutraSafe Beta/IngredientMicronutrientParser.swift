@@ -198,29 +198,47 @@ class IngredientMicronutrientParser {
     func testParsing(_ ingredientsText: String) {
         // DEBUG LOG: print("🔬 Testing ingredient parsing:")
         // DEBUG LOG: print("📝 Input: \(ingredientsText)")
+        #if DEBUG
         print("")
+        #endif
 
         let detected = parseIngredients(ingredientsText)
 
         if detected.isEmpty {
+            #if DEBUG
             print("❌ No micronutrients detected")
+            #endif
         } else {
+            #if DEBUG
             print("✅ Found \(detected.count) micronutrients:")
+            #endif
             for nutrient in detected.sorted(by: { $0.nutrient < $1.nutrient }) {
+                #if DEBUG
                 print("   • \(nutrient.nutrient) (\(nutrient.strength)) - from: \(nutrient.rawText)")
+                #endif
             }
         }
+        #if DEBUG
         print("")
+        #endif
     }
 
     /// Run diagnostic tests with sample ingredient lists
     static func runDiagnosticTests() {
         let parser = IngredientMicronutrientParser.shared
 
+        #if DEBUG
         print("=" .repeating(80))
+        #endif
+        #if DEBUG
         print("DIAGNOSTIC TEST: Ingredient Micronutrient Parser")
+        #endif
+        #if DEBUG
         print("=" .repeating(80))
+        #endif
+        #if DEBUG
         print("")
+        #endif
 
         // Test 1: Your actual ingredient list from the screenshot
         let test1 = """
@@ -237,9 +255,15 @@ class IngredientMicronutrientParser {
         let test3 = "Vitamin C (ascorbic acid), Vitamin D3 (cholecalciferol), Calcium carbonate, Zinc oxide"
         parser.testParsing(test3)
 
+        #if DEBUG
         print("=" .repeating(80))
+        #endif
+        #if DEBUG
         print("END OF DIAGNOSTIC TESTS")
+        #endif
+        #if DEBUG
         print("=" .repeating(80))
+        #endif
     }
 }
 

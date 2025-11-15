@@ -335,13 +335,17 @@ struct FastingTimerView: View {
                     await MainActor.run { streakSettings = settings }
                 } catch {
                     // keep defaults if load fails
+                    #if DEBUG
                     print("⚠️ Failed to load fasting streak settings: \(error.localizedDescription)")
+                    #endif
                 }
                 do {
                     let records = try await firebaseManager.getFastHistory()
                     await MainActor.run { fastHistory = records }
                 } catch {
+                    #if DEBUG
                     print("⚠️ Failed to load fast history: \(error.localizedDescription)")
+                    #endif
                 }
             }
         }
@@ -351,7 +355,9 @@ struct FastingTimerView: View {
                     let records = try await firebaseManager.getFastHistory()
                     await MainActor.run { fastHistory = records }
                 } catch {
+                    #if DEBUG
                     print("⚠️ Failed to refresh fast history: \(error.localizedDescription)")
+                    #endif
                 }
             }
         }
@@ -415,7 +421,9 @@ struct FastingTimerView: View {
                 await scheduleFastingNotifications()
             }
         } catch {
+            #if DEBUG
             print("❌ Error loading fasting state: \(error.localizedDescription)")
+            #endif
             await MainActor.run {
                 isLoading = false
             }
@@ -428,8 +436,10 @@ struct FastingTimerView: View {
 
         // Generate unique session ID for this fast
         activeFastSessionId = UUID().uuidString
+        #if DEBUG
         print("🆔 Started fast session: \(activeFastSessionId)")
 
+        #endif
         Task {
             do {
                 try await firebaseManager.saveFastingState(
@@ -440,7 +450,9 @@ struct FastingTimerView: View {
                     reminderInterval: 0  // No longer used - stage-based only
                 )
             } catch {
+                #if DEBUG
                 print("❌ Error saving fasting start: \(error.localizedDescription)")
+                #endif
             }
 
             // Start Live Activity for Dynamic Island
@@ -461,7 +473,9 @@ struct FastingTimerView: View {
         fastingStartTime = nil
 
         // Clear session ID immediately to prevent notifications
+        #if DEBUG
         print("🛑 Stopping fast session: \(activeFastSessionId)")
+        #endif
         activeFastSessionId = ""
 
         // Cancel all fasting notifications IMMEDIATELY (synchronous)
@@ -477,7 +491,9 @@ struct FastingTimerView: View {
                     reminderInterval: 0  // No longer used - stage-based only
                 )
             } catch {
+                #if DEBUG
                 print("❌ Error saving fasting stop: \(error.localizedDescription)")
+                #endif
             }
 
             // End Live Activity
@@ -503,7 +519,9 @@ struct FastingTimerView: View {
                     reminderInterval: 0  // No longer used - stage-based only
                 )
             } catch {
+                #if DEBUG
                 print("❌ Error saving fasting goal: \(error.localizedDescription)")
+                #endif
             }
         }
 
@@ -522,7 +540,9 @@ struct FastingTimerView: View {
                     reminderInterval: 0  // No longer used - stage-based only
                 )
             } catch {
+                #if DEBUG
                 print("❌ Error saving fasting settings: \(error.localizedDescription)")
+                #endif
             }
         }
     }
@@ -538,20 +558,28 @@ struct FastingTimerView: View {
         // DEBUG LOG: print("🔵 Live Activities enabled: \(authInfo.areActivitiesEnabled)")
 
         #if targetEnvironment(simulator)
+        #if DEBUG
         print("⚠️  Running in SIMULATOR - Live Activities won't appear")
         print("ℹ️  Deploy to real iPhone 14 Pro/15 Pro/16 Pro to see Dynamic Island")
+        #endif
         #else
+        #if DEBUG
         print("✅ Running on REAL DEVICE")
+        #endif
         #endif
 
         guard authInfo.areActivitiesEnabled else {
+            #if DEBUG
             print("❌ Live Activities not enabled by system")
             print("ℹ️  Check: Settings > [Your App Name] > Allow Live Activities")
+            #endif
             return
         }
 
         guard let startTime = fastingStartTime else {
+            #if DEBUG
             print("❌ No fasting start time")
+            #endif
             return
         }
 
@@ -559,10 +587,12 @@ struct FastingTimerView: View {
         let minutes = Int((fastingDuration.truncatingRemainder(dividingBy: 3600)) / 60)
 
         // DEBUG LOG: print("🔵 Creating Live Activity with:")
+        #if DEBUG
         print("   - Goal: \(fastingGoal)h")
         print("   - Current: \(hours)h \(minutes)m")
         print("   - Start time: \(startTime)")
 
+        #endif
         let attributes = FastingActivityAttributes(fastingGoalHours: fastingGoal)
         let contentState = FastingActivityAttributes.ContentState(
             fastingStartTime: startTime,
@@ -577,25 +607,33 @@ struct FastingTimerView: View {
                 pushType: nil
             )
             currentActivity = activity
+            #if DEBUG
             print("✅ Live Activity created successfully!")
             print("   - Activity ID: \(activity.id)")
             print("   - Activity state: \(activity.activityState)")
             print("   - This should now appear in Dynamic Island")
 
             // List all active activities to verify
+            #endif
             let activeActivities = Activity<FastingActivityAttributes>.activities
+            #if DEBUG
             print("📋 Total active fasting activities: \(activeActivities.count)")
+            #endif
         } catch {
+            #if DEBUG
             print("❌ Failed to start Live Activity: \(error)")
             print("   - Error type: \(type(of: error))")
             print("   - Error details: \(error.localizedDescription)")
+            #endif
         }
     }
 
     @available(iOS 16.1, *)
     private func updateLiveActivity() async {
         guard let activity = currentActivity as? Activity<FastingActivityAttributes> else {
+            #if DEBUG
             print("⚠️  No active Live Activity to update")
+            #endif
             return
         }
         guard let startTime = fastingStartTime else { return }
@@ -616,18 +654,24 @@ struct FastingTimerView: View {
     @available(iOS 16.1, *)
     private func endLiveActivity() async {
         guard let activity = currentActivity as? Activity<FastingActivityAttributes> else {
+            #if DEBUG
             print("⚠️  No active Live Activity to end")
+            #endif
             return
         }
         await activity.end(dismissalPolicy: .immediate)
         currentActivity = nil
+        #if DEBUG
         print("✅ Fasting Live Activity ended and removed from Dynamic Island")
+        #endif
     }
 
     // MARK: - Fasting Notifications
     private func scheduleFastingNotifications() async {
         guard notificationsEnabled else {
+            #if DEBUG
             print("⏸️ Fasting notifications disabled - not scheduling")
+            #endif
             return
         }
 
@@ -641,15 +685,21 @@ struct FastingTimerView: View {
             do {
                 let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
                 if !granted {
+                    #if DEBUG
                     print("❌ Notification permission denied")
+                    #endif
                     return
                 }
             } catch {
+                #if DEBUG
                 print("❌ Error requesting notification permission: \(error)")
+                #endif
                 return
             }
         } else if settings.authorizationStatus != .authorized {
+            #if DEBUG
             print("❌ Notifications not authorized")
+            #endif
             return
         }
 
@@ -692,9 +742,13 @@ struct FastingTimerView: View {
 
                 do {
                     try await center.add(request)
+                    #if DEBUG
                     print("✅ Scheduled \(stage.hours)h fasting notification (session: \(activeFastSessionId))")
+                    #endif
                 } catch {
+                    #if DEBUG
                     print("❌ Error scheduling \(stage.hours)h notification: \(error)")
+                    #endif
                 }
             }
         }
@@ -734,9 +788,13 @@ struct FastingTimerView: View {
 
             do {
                 try await center.add(request)
+                #if DEBUG
                 print("✅ Scheduled goal completion notification (session: \(activeFastSessionId))")
+                #endif
             } catch {
+                #if DEBUG
                 print("❌ Error scheduling goal notification: \(error)")
+                #endif
             }
         }
     }
@@ -805,7 +863,9 @@ struct FastingTimerView: View {
                 do {
                     _ = try await firebaseManager.saveFastRecord(record)
                 } catch {
+                    #if DEBUG
                     print("❌ Error saving fast record: \(error.localizedDescription)")
+                    #endif
                 }
             }
             stopFasting()
@@ -1000,7 +1060,9 @@ struct FastingSettingsView: View {
             do {
                 try await firebaseManager.saveFastingStreakSettings(streakSettings)
             } catch {
+                #if DEBUG
                 print("❌ Error saving streak settings: \(error.localizedDescription)")
+                #endif
             }
         }
 

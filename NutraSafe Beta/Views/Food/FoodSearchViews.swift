@@ -173,7 +173,9 @@ struct FoodSearchResultRowEnhanced: View {
     
     var body: some View {
         Button(action: {
+            #if DEBUG
             print("[UseByTap:Button] tapped; destination=\(String(describing: destination)) foodId=\(food.id)")
+            #endif
             handleTap()
         }) {
             HStack(spacing: 12) {
@@ -217,7 +219,9 @@ struct FoodSearchResultRowEnhanced: View {
         .buttonStyle(PlainButtonStyle())
         .highPriorityGesture(
             TapGesture().onEnded {
+                #if DEBUG
                 print("[UseByTap:HighPriority] row tap ended; destination=\(String(describing: destination)) foodId=\(food.id)")
+                #endif
                 handleTap()
             }
         )
@@ -230,10 +234,14 @@ struct FoodSearchResultRowEnhanced: View {
             .environmentObject(diaryDataManager)
         }
         .onAppear {
+            #if DEBUG
             print("[AddDest] Row appear; destination=\(String(describing: destination)) foodId=\(food.id)")
+            #endif
         }
         .onChange(of: destination) { newDest in
+            #if DEBUG
             print("[AddDest] Row destination changed -> \(String(describing: newDest)) foodId=\(food.id)")
+            #endif
         }
     }
 
@@ -242,16 +250,22 @@ struct FoodSearchResultRowEnhanced: View {
     private func handleTap() {
         let now = CFAbsoluteTimeGetCurrent()
         if now - lastTapTimestamp < 0.2 {
+            #if DEBUG
             print("[UseByTap] Skipping duplicate tap within debounce window")
+            #endif
             return
         }
         lastTapTimestamp = now
 
         if destination == .useBy {
+            #if DEBUG
             print("[UseByTap] Forwarding to onTapUseBy for foodId=\(food.id)")
+            #endif
             onTapUseBy?(food)
         } else {
+            #if DEBUG
             print("[UseByTap] Opening FoodDetail; destination=\(String(describing: destination)) foodId=\(food.id)")
+            #endif
             showingFoodDetail = true
         }
     }
@@ -310,7 +324,7 @@ struct AddFoodSearchView: View {
     @State private var editingFoodName = ""
     @State private var originalMealType = ""
     // Use By sheet presentation moved to parent; emit selection via callback
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Search Bar - fixed at top
@@ -359,55 +373,89 @@ struct AddFoodSearchView: View {
                 VStack {
                     Spacer()
 
-                    VStack(spacing: 20) {
-                        // AI Finder suggestion banner - moved to top
-                        VStack(spacing: 12) {
-                            HStack {
-                                Image(systemName: "info.circle.fill")
-                                    .font(.title2)
-                                    .foregroundColor(.blue)
-                                Text("Can't find it?")
-                                    .font(.system(size: 18, weight: .bold))
-                                    .foregroundColor(.primary)
-                            }
+                    VStack(spacing: 24) {
+                        // Icon and message
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 60))
+                            .foregroundColor(.secondary.opacity(0.4))
 
-                            Text("Try our intelligent AI finder")
-                                .font(.system(size: 14))
+                        VStack(spacing: 8) {
+                            Text("No foods found")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.primary)
+
+                            Text("matching '\(searchText)'")
+                                .font(.system(size: 16))
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
+                                .padding(.horizontal, 40)
+                        }
 
+                        // Helpful tips
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(alignment: .top, spacing: 12) {
+                                Image(systemName: "lightbulb.fill")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.orange)
+                                    .frame(width: 20)
+
+                                Text("Try a different search term")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                            }
+
+                            HStack(alignment: .top, spacing: 12) {
+                                Image(systemName: "barcode.viewfinder")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.blue)
+                                    .frame(width: 20)
+
+                                Text("Scan a barcode for instant results")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                            }
+
+                            HStack(alignment: .top, spacing: 12) {
+                                Image(systemName: "sparkles")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.purple)
+                                    .frame(width: 20)
+
+                                Text("Use our AI Finder for better accuracy")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(16)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                        .padding(.horizontal, 32)
+
+                        // AI Finder CTA
+                        if onSwitchToManual != nil {
                             Button(action: {
                                 onSwitchToManual?()
                             }) {
-                                HStack(spacing: 6) {
+                                HStack(spacing: 8) {
                                     Image(systemName: "sparkles")
                                         .font(.system(size: 14, weight: .semibold))
-                                    Text("Use AI Finder")
-                                        .font(.system(size: 15, weight: .semibold))
+                                    Text("Try AI Finder")
+                                        .font(.system(size: 16, weight: .semibold))
                                 }
                                 .foregroundColor(.white)
-                                .padding(.horizontal, 20)
+                                .padding(.horizontal, 24)
                                 .padding(.vertical, 12)
-                                .background(Color.blue)
-                                .cornerRadius(10)
+                                .background(
+                                    LinearGradient(
+                                        colors: [Color.blue, Color.purple],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .cornerRadius(12)
+                                .shadow(color: Color.blue.opacity(0.3), radius: 8, x: 0, y: 4)
                             }
                         }
-                        .padding(20)
-                        .background(Color.blue.opacity(0.05))
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.blue.opacity(0.3), lineWidth: 1)
-                        )
-                        .padding(.horizontal, 32)
-
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 48))
-                            .foregroundColor(.secondary)
-
-                        Text("No results found")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.secondary)
                     }
 
                     Spacer()
@@ -529,7 +577,9 @@ struct AddFoodSearchView: View {
             return
         }
 
+        #if DEBUG
         print("🔎 AddFoodSearchView: Starting search for '\(query)' (length: \(query.count))")
+        #endif
 
         isSearching = true
 
@@ -538,7 +588,9 @@ struct AddFoodSearchView: View {
             try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
 
             if Task.isCancelled {
+                #if DEBUG
                 print("⚠️ AddFoodSearchView: Search cancelled for '\(query)'")
+                #endif
                 return
             }
 
@@ -597,7 +649,9 @@ struct AddFoodSearchView: View {
                         }
                     }
                 } catch {
+                    #if DEBUG
                     print("Failed to check pending verifications: \(error)")
+                    #endif
                     // Continue with original results if pending check fails
                 }
                 
@@ -608,10 +662,12 @@ struct AddFoodSearchView: View {
                     self.isSearching = false
                 }
             } catch {
+                #if DEBUG
                 print("❌ Search failed with error: \(error)")
-                
+                #endif
+
                 if Task.isCancelled { return }
-                
+
                 await MainActor.run {
         // DEBUG LOG: print("🍎 Search failed - setting empty results")
                     self.searchResults = []

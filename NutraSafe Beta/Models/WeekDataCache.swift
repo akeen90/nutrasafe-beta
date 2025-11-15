@@ -118,7 +118,9 @@ actor WeekDataCache {
         }
         accessOrder.append(weekKey)
 
+        #if DEBUG
         print("📦 [WeekCache] Cached week data for \(weekKey): \(coverageRows.count) nutrients, \(rhythmDays.count) days")
+        #endif
     }
 
     /// Invalidate (remove) cache for a specific week
@@ -129,7 +131,9 @@ actor WeekDataCache {
             if let index = accessOrder.firstIndex(of: weekKey) {
                 accessOrder.remove(at: index)
             }
+            #if DEBUG
             print("🗑️ [WeekCache] Invalidated cache for week \(weekKey)")
+            #endif
         }
     }
 
@@ -149,7 +153,9 @@ actor WeekDataCache {
         accessOrder.removeAll()
         hits = 0
         misses = 0
+        #if DEBUG
         print("🗑️ [WeekCache] Cleared \(previousSize) cached weeks")
+        #endif
     }
 
     /// Get current cache size
@@ -178,12 +184,15 @@ actor WeekDataCache {
         // Remove least recently used entry
         let oldestKey = accessOrder.removeFirst()
         weekCache.removeValue(forKey: oldestKey)
+        #if DEBUG
         print("♻️ [WeekCache] Evicted oldest week: \(oldestKey)")
+        #endif
     }
 
     private func formatWeekKey(_ weekStart: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-'W'ww"
+        formatter.timeZone = Calendar.current.timeZone
         return formatter.string(from: weekStart)
     }
 }

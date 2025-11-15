@@ -29,13 +29,17 @@ class OnboardingManager: ObservableObject {
     /// Mark onboarding as completed
     func completeOnboarding() {
         UserDefaults.standard.set(true, forKey: hasCompletedKey)
+        #if DEBUG
         print("✅ Onboarding completed")
+        #endif
     }
 
     /// Mark disclaimer as accepted
     func acceptDisclaimer() {
         UserDefaults.standard.set(true, forKey: hasAcceptedDisclaimerKey)
+        #if DEBUG
         print("✅ Health disclaimer accepted")
+        #endif
     }
 
     /// Reset onboarding (for restart from Settings)

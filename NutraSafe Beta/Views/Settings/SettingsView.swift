@@ -546,7 +546,9 @@ struct NutritionGoalsSection: View {
                 caloricGoal = settings.caloricGoal ?? 2000
                 macroGoals = loadedMacroGoals
                 isLoading = false
+                #if DEBUG
                 print("✅ Loaded \(macroGoals.count) macro goals for settings display")
+                #endif
             }
         } catch {
             await MainActor.run {
@@ -561,7 +563,9 @@ struct NutritionGoalsSection: View {
         Task {
             do {
                 try await firebaseManager.saveUserSettings(height: nil, goalWeight: nil, caloricGoal: goal)
+                #if DEBUG
                 print("✅ Caloric goal updated to \(goal)")
+                #endif
 
                 // Notify diary view to update immediately
                 await MainActor.run {
@@ -582,7 +586,9 @@ struct NutritionGoalsSection: View {
         Task {
             do {
                 try await firebaseManager.saveMacroGoals(macroGoals)
+                #if DEBUG
                 print("✅ Macro goals updated: \(macroGoals.map { "\($0.macroType.displayName): \(String(describing: $0.percentage))%" })")
+                #endif
 
                 // Notify diary view to update immediately
                 await MainActor.run {
@@ -885,7 +891,9 @@ struct ProgressGoalsSection: View {
         Task {
             do {
                 try await manager.saveUserSettings(height: height, goalWeight: nil, caloricGoal: nil)
+                #if DEBUG
                 print("✅ Height saved: \(height ?? 0) cm")
+                #endif
 
                 // Reload data to update the UI immediately
                 await loadProgressData()
@@ -903,7 +911,9 @@ struct ProgressGoalsSection: View {
         Task {
             do {
                 try await manager.saveUserSettings(height: nil, goalWeight: goalWeight, caloricGoal: nil)
+                #if DEBUG
                 print("✅ Goal weight saved: \(goalWeight ?? 0) kg")
+                #endif
 
                 // Reload data to update the UI immediately
                 await loadProgressData()
@@ -929,7 +939,9 @@ struct ProgressGoalsSection: View {
             do {
                 // Save to Firebase
                 try await manager.saveWeightEntry(newEntry)
+                #if DEBUG
                 print("✅ Current weight saved to Firebase: \(weight) kg")
+                #endif
 
                 // Write to Apple Health
                 try? await HealthKitManager.shared.writeBodyWeight(weightKg: weight, date: newEntry.date)
@@ -2203,16 +2215,22 @@ struct DataPrivacyView: View {
                     await MainActor.run {
                         freshUser.delete { err in
                             if let err = err {
+                                #if DEBUG
                                 print("[Account Deletion] Error deleting user: \(err.localizedDescription)")
+                                #endif
                                 errorMessage = "Account deletion failed: \(err.localizedDescription)"
                                 showingError = true
                                 isDeleting = false
                             } else {
+                                #if DEBUG
                                 print("[Account Deletion] User account successfully deleted from Firebase Auth")
+                                #endif
                                 // Account successfully deleted - now sign out and reset onboarding
                                 do {
                                     try Auth.auth().signOut()
+                                    #if DEBUG
                                     print("[Account Deletion] Signed out successfully")
+                                    #endif
                                     // Reset onboarding so they see it again if they create a new account
                                     OnboardingManager.shared.resetOnboarding()
                                     // Clear any local data
@@ -2220,7 +2238,9 @@ struct DataPrivacyView: View {
                                     UserDefaults.standard.removeObject(forKey: "preselectedMealType")
                                     UserDefaults.standard.removeObject(forKey: "preselectedDate")
                                 } catch {
+                                    #if DEBUG
                                     print("[Account Deletion] Error signing out: \(error.localizedDescription)")
+                                    #endif
                                 }
 
                                 successMessage = "Your account has been permanently deleted."
@@ -2733,6 +2753,7 @@ struct AllergenManagementView: View {
                     // Success haptic
                     let notificationFeedback = UINotificationFeedbackGenerator()
                     notificationFeedback.notificationOccurred(.success)
+
                     dismiss()
                 }
             } catch {
@@ -3158,15 +3179,21 @@ struct NotificationSettingsView: View {
                                 do {
                                     let items: [UseByInventoryItem] = try await FirebaseManager.shared.getUseByItems()
                                     await UseByNotificationManager.shared.refreshAllNotifications(for: items)
+                                    #if DEBUG
                                     print("✅ Rescheduled notifications for \(items.count) use-by items")
+                                    #endif
                                 } catch {
+                                    #if DEBUG
                                     print("❌ Error refreshing use-by notifications: \(error)")
+                                    #endif
                                 }
                             }
                         } else {
                             // Cancel all notifications when disabled
                             UseByNotificationManager.shared.cancelAllNotifications()
+                            #if DEBUG
                             print("🔕 Cancelled all use-by notifications")
+                            #endif
                         }
                     }
 
@@ -3490,7 +3517,9 @@ struct AppleHealthSettingsView: View {
         // Check if HealthKit is available
         guard HKHealthStore.isHealthDataAvailable() else {
             isConnected = false
+            #if DEBUG
             print("🏥 HealthKit not available")
+            #endif
             return
         }
 
@@ -3504,9 +3533,11 @@ struct AppleHealthSettingsView: View {
         // 2. User has enabled rings (they went through authorization process)
         let newConnectionStatus = (authStatus == .sharingAuthorized) || healthKitRingsEnabled
 
+        #if DEBUG
         print("🏥 HealthKit Status - Auth: \(authStatus.rawValue), RingsEnabled: \(healthKitRingsEnabled)")
         print("🏥 Calculating: authStatus == .sharingAuthorized? \(authStatus == .sharingAuthorized)")
         print("🏥 Setting isConnected to: \(newConnectionStatus)")
+        #endif
 
         isConnected = newConnectionStatus
     }

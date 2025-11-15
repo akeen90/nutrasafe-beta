@@ -41,6 +41,7 @@ struct DiaryTabView: View {
     // MARK: - Cached Nutrition Totals (Performance Optimization)
     @State private var cachedNutrition: NutritionTotals = NutritionTotals()
     @State private var hasLoadedOnce = false // PERFORMANCE: Guard flag to prevent redundant loads
+    @State private var isLoadingData = false // Loading state for UI feedback
 
     private struct NutritionTotals {
         var totalCalories: Int = 0
@@ -296,18 +297,35 @@ struct DiaryTabView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
 
-            ScrollView {
-                LazyVStack(spacing: 16) {
-                    if diarySubTab == .overview {
-                        overviewTabContent
-                    } else {
-                        nutrientsTabContent
+            // Loading state or content
+            if isLoadingData && !hasLoadedOnce {
+                // Initial loading state
+                VStack(spacing: 16) {
+                    Spacer()
+                    ProgressView()
+                        .scaleEffect(1.2)
+                        .progressViewStyle(.circular)
+                    Text("Loading your diary...")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.adaptiveBackground)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 16) {
+                        if diarySubTab == .overview {
+                            overviewTabContent
+                        } else {
+                            nutrientsTabContent
+                        }
                     }
                 }
+                .id(diarySubTab) // Force new scroll view when tab changes
+                .background(Color.adaptiveBackground)
+                .navigationBarHidden(true)
             }
-            .id(diarySubTab) // Force new scroll view when tab changes
-            .background(Color.adaptiveBackground)
-            .navigationBarHidden(true)
         }
         .onChange(of: selectedDate) { _ in
             loadFoodData()
@@ -356,10 +374,14 @@ struct DiaryTabView: View {
                     // Clear selection once user enters edit flow
                     selectedFoodItems.removeAll()
                 } else {
+                    #if DEBUG
                     print("❌ Could not find food with ID: \(foodId)")
+                    #endif
                 }
             } else {
+                #if DEBUG
                 print("❌ No food ID in selectedFoodItems")
+                #endif
             }
 
             editTrigger = false
@@ -546,6 +568,7 @@ struct DiaryTabView: View {
 
     private func performMove() {
         let destinationMeal = moveToMeal.lowercased()
+        let count = selectedFoodItems.count
         for id in selectedFoodItems {
             if let food = findFood(byId: id) {
                 // Remove from current date
@@ -562,6 +585,7 @@ struct DiaryTabView: View {
 
     private func performCopy() {
         let destinationMeal = copyToMeal.lowercased()
+        let count = selectedFoodItems.count
         for id in selectedFoodItems {
             if let food = findFood(byId: id) {
                 var copied = food
@@ -582,6 +606,10 @@ struct DiaryTabView: View {
 
     private func loadFoodData() {
         Task {
+            await MainActor.run {
+                isLoadingData = true
+            }
+
             do {
                 let (breakfast, lunch, dinner, snacks) = try await diaryDataManager.getFoodDataAsync(for: selectedDate)
                 await MainActor.run {
@@ -590,9 +618,15 @@ struct DiaryTabView: View {
                     dinnerFoods = dinner
                     snackFoods = snacks
                     recalculateNutrition()
+                    isLoadingData = false
                 }
             } catch {
+                #if DEBUG
                 print("❌ Failed to load food data: \(error)")
+                #endif
+                await MainActor.run {
+                    isLoadingData = false
+                }
             }
         }
     }
@@ -689,7 +723,9 @@ struct DiaryTabView: View {
             )
 
         } catch {
+            #if DEBUG
             print("❌ Failed to fetch weekly summary: \(error)")
+            #endif
             return nil
         }
     }
@@ -712,6 +748,7 @@ struct DiaryTabView: View {
                 itemsToDelete.append(food)
             }
         }
+        let count = itemsToDelete.count
         if !itemsToDelete.isEmpty {
             diaryDataManager.deleteFoodItems(itemsToDelete, for: selectedDate)
         }
@@ -776,12 +813,16 @@ struct CategoricalNutrientTrackingView: View {
 
             // Guard against duplicate initial loads
             guard !hasInitiallyLoaded else {
+                #if DEBUG
                 print("⚡️ Skipping duplicate initial load")
+                #endif
                 return
             }
             hasInitiallyLoaded = true
 
+            #if DEBUG
             print("🎬 CategoricalNutrientTrackingView: Starting task...")
+            #endif
             vm.setDiaryManager(diaryDataManager)
 
             // Initialize with the week containing selectedDate
@@ -794,7 +835,9 @@ struct CategoricalNutrientTrackingView: View {
             let components = calendar.dateComponents([.weekOfYear], from: currentWeekStart, to: weekStart)
             weekOffset = components.weekOfYear ?? 0
 
+            #if DEBUG
             print("📍 Initial week: \(weekStart), offset: \(weekOffset)")
+            #endif
             requestDataLoad(for: weekStart, reason: "initial-load")
         }
         .onChange(of: diaryDataManager.dataReloadTrigger) { _ in
@@ -853,7 +896,9 @@ struct CategoricalNutrientTrackingView: View {
             // Reset flag for next appearance
             hasInitiallyLoaded = false
 
+            #if DEBUG
             print("🧹 Nutrients tab cleanup: cancelled tasks, cleared data and scheduled cache cleanup")
+            #endif
         }
         .sheet(isPresented: $showingGaps) {
             if #available(iOS 16.0, *) {
@@ -1434,9 +1479,11 @@ struct CategoricalNutrientTrackingView: View {
             selectedWeekStart = weekStart
             // DON'T modify parent selectedDate - let user control calendar independently
 
+            #if DEBUG
             print("🔄 requestDataLoad - reason: \(reason), weekStart: \(weekStart)")
 
             // Load data for that week
+            #endif
             await vm.loadWeekData(for: weekStart)
         }
     }
@@ -1539,7 +1586,9 @@ final class CategoricalNutrientViewModel: ObservableObject {
     func invalidateCache(for date: Date) async {
         await diaryCache.invalidate(date: date)
         await weekCache.invalidate(containingDate: date)
+        #if DEBUG
         print("🗑️ Invalidated cache for date: \(date)")
+        #endif
     }
 
     // MARK: - Cache Conversion Helpers
@@ -1627,14 +1676,18 @@ final class CategoricalNutrientViewModel: ObservableObject {
         let weekday = calendar.component(.weekday, from: weekStartDate)
         let daysFromMonday = (weekday == 1) ? -6 : 2 - weekday
         guard let monday = calendar.date(byAdding: .day, value: daysFromMonday, to: weekStartDate) else {
+            #if DEBUG
             print("❌ Failed to calculate Monday")
+            #endif
             return
         }
         let mondayStart = calendar.startOfDay(for: monday)
 
         // Prevent duplicate loads for the same week
         if let currentDate = currentLoadingDate, calendar.isDate(currentDate, equalTo: mondayStart, toGranularity: .day) {
+            #if DEBUG
             print("⚠️ Already loading data for this week, skipping duplicate request")
+            #endif
             return
         }
 
@@ -1644,13 +1697,17 @@ final class CategoricalNutrientViewModel: ObservableObject {
 
         // Guard against concurrent loads
         guard !isLoading else {
+            #if DEBUG
             print("⚠️ Already loading data, skipping duplicate request")
+            #endif
             return
         }
 
         // Capture strong reference to manager to prevent deallocation during task
         guard let manager = diaryManager else {
+            #if DEBUG
             print("❌ DiaryManager not set")
+            #endif
             self.rhythmDays = []
             self.nutrientCoverageRows = []
             return
@@ -1659,9 +1716,11 @@ final class CategoricalNutrientViewModel: ObservableObject {
         isLoading = true
         currentLoadingDate = mondayStart
 
+        #if DEBUG
         print("🔄 CategoricalNutrientViewModel: Starting loadWeekData for \(mondayStart)...")
 
         // Create properly cancellable task (NOT detached)
+        #endif
         loadTask = Task { @MainActor in
             defer {
                 self.isLoading = false
@@ -1670,14 +1729,18 @@ final class CategoricalNutrientViewModel: ObservableObject {
 
             // CACHE CHECK: Try week cache first
             if let cachedWeekData = await self.weekCache.getData(for: mondayStart) {
+                #if DEBUG
                 print("✅ [WeekCache] HIT - Using cached week data")
+                #endif
                 self.rhythmDays = self.convertFromCache(rhythmDays: cachedWeekData.rhythmDays)
                 self.nutrientCoverageRows = self.convertFromCache(coverageRows: cachedWeekData.coverageRows)
                 return
             }
+            #if DEBUG
             print("⚠️ [WeekCache] MISS - Fetching fresh data")
 
             // Perform heavy processing on background thread but maintain cancellation context
+            #endif
             let result: (days: [RhythmDay], rows: [CoverageRow])? = await Task {
                 // Generate 7 days starting from Monday
                 let dates = (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: mondayStart) }
@@ -1688,7 +1751,9 @@ final class CategoricalNutrientViewModel: ObservableObject {
                 for date in dates {
                     // Check for task cancellation
                     if Task.isCancelled {
+                        #if DEBUG
                         print("⚠️ Task cancelled during data fetch")
+                        #endif
                         return nil
                     }
 
@@ -1699,13 +1764,17 @@ final class CategoricalNutrientViewModel: ObservableObject {
                     var snacks: [DiaryFoodItem]
 
                     if let cachedDayData = await self.diaryCache.getData(for: date) {
+                        #if DEBUG
                         print("✅ [DiaryCache] HIT - Using cached data for \(date)")
+                        #endif
                         breakfast = cachedDayData.breakfast
                         lunch = cachedDayData.lunch
                         dinner = cachedDayData.dinner
                         snacks = cachedDayData.snacks
                     } else {
+                        #if DEBUG
                         print("⚠️ [DiaryCache] MISS - Fetching from Firebase for \(date)")
+                        #endif
                         do {
                             let fetchedData = try await manager.getFoodDataAsync(for: date)
                             breakfast = fetchedData.0
@@ -1722,8 +1791,10 @@ final class CategoricalNutrientViewModel: ObservableObject {
                                 for: date
                             )
                         } catch {
+                            #if DEBUG
                             print("⚠️ Error fetching data for \(date): \(error)")
                             // Use empty arrays if fetch fails
+                            #endif
                             breakfast = []
                             lunch = []
                             dinner = []
@@ -1746,8 +1817,10 @@ final class CategoricalNutrientViewModel: ObservableObject {
                     }
                 }
 
+                #if DEBUG
                 print("📥 Total entries fetched: \(allEntries.count) for week starting \(mondayStart)")
 
+                #endif
                 let entries = allEntries
                 let grouped = Dictionary(grouping: entries, by: { calendar.startOfDay(for: $0.date) })
 
@@ -1772,7 +1845,9 @@ final class CategoricalNutrientViewModel: ObservableObject {
 
                 // Check for cancellation before expensive nutrient processing
                 if Task.isCancelled {
+                    #if DEBUG
                     print("⚠️ Task cancelled before nutrient processing")
+                    #endif
                     return nil
                 }
 
@@ -1810,7 +1885,9 @@ final class CategoricalNutrientViewModel: ObservableObject {
                 // Save new profiles to cache
                 if !newProfiles.isEmpty {
                     await self.profileCache.setProfiles(newProfiles)
+                    #if DEBUG
                     print("💾 Cached \(newProfiles.count) new profiles (total cache size: \(await self.profileCache.size()))")
+                    #endif
                 }
 
                 return (days, rows)
@@ -1818,16 +1895,20 @@ final class CategoricalNutrientViewModel: ObservableObject {
 
             // Update UI on main thread (we're already on MainActor due to @MainActor annotation)
             if Task.isCancelled {
+                #if DEBUG
                 print("⚠️ Task cancelled before UI update")
+                #endif
                 return
             }
 
             if let result = result {
                 self.rhythmDays = result.days
                 self.nutrientCoverageRows = result.rows
+                #if DEBUG
                 print("✅ Loaded \(result.days.count) rhythm days and \(result.rows.count) nutrient rows")
 
                 // CACHE STORE: Save processed week data to cache for future loads
+                #endif
                 await self.weekCache.setData(
                     rhythmDays: self.convertToCache(rhythmDays: result.days),
                     coverageRows: self.convertToCache(coverageRows: result.rows),
@@ -2015,7 +2096,9 @@ final class CategoricalNutrientViewModel: ObservableObject {
                 best = max(best, level)
 
                 if isVitC {
+                    #if DEBUG
                     print("   🔍 \(entry.foodName): amt=\(String(format: "%.1f", amt))mg, level=\(level)")
+                    #endif
                 }
             } else {
                 // Fallback: use keyword detection
@@ -2024,7 +2107,9 @@ final class CategoricalNutrientViewModel: ObservableObject {
                 best = max(best, present ? .trace : .none)
 
                 if isVitC {
+                    #if DEBUG
                     print("   ⚠️ \(entry.foodName): NO AMOUNT in profile (profileKey=\(profileKey))")
+                    #endif
                 }
             }
         }
@@ -2065,7 +2150,9 @@ final class CategoricalNutrientViewModel: ObservableObject {
 
         if let percent = profile.getDailyValuePercentage(for: dvKey, amount: amount) {
             if isVitC {
+                #if DEBUG
                 print("      📊 classify: amount=\(String(format: "%.1f", amount))mg, percent=\(String(format: "%.1f", percent))%")
+                #endif
             }
 
             if percent >= 70 { return .strong }
@@ -2074,7 +2161,9 @@ final class CategoricalNutrientViewModel: ObservableObject {
         }
 
         if isVitC {
+            #if DEBUG
             print("      ❌ classify: NO DAILY VALUE found for dvKey=\(dvKey)")
+            #endif
         }
 
         return .trace
