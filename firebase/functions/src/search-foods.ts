@@ -194,45 +194,47 @@ export const searchFoods = functions
 
     // Split query into words for multi-strategy search
     const queryWords = query.toLowerCase().split(/\s+/).filter((word: string) => word.length > 0);
-    const firstWord = queryWords[0];
 
     // FAST SEARCH: Use targeted queries instead of fetching everything
     let allDocs = new Map<string, FirebaseFirestore.DocumentSnapshot>();
 
-    // Helper function for fast targeted search
-    async function fastSearch(collectionName: string, searchTerm: string) {
+    // Helper function for fast targeted search with multiple words
+    async function fastSearch(collectionName: string, searchTerms: string[]) {
       const searches: Promise<FirebaseFirestore.QuerySnapshot>[] = [];
 
-      // Strategy 1: Capitalize first letter (e.g., "Charlie")
-      const capitalized = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
+      // Search for each word in the query
+      for (const searchTerm of searchTerms) {
+        // Strategy 1: Capitalize first letter (e.g., "Charlie")
+        const capitalized = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
 
-      // Strategy 2: All lowercase (e.g., "charlie")
-      const lowercase = searchTerm.toLowerCase();
+        // Strategy 2: All lowercase (e.g., "charlie")
+        const lowercase = searchTerm.toLowerCase();
 
-      // Strategy 3: All uppercase (e.g., "CHARLIE")
-      const uppercase = searchTerm.toUpperCase();
+        // Strategy 3: All uppercase (e.g., "CHARLIE")
+        const uppercase = searchTerm.toUpperCase();
 
-      // Run searches in parallel for speed
-      for (const term of [capitalized, lowercase, uppercase]) {
-        // Search foodName
-        searches.push(
-          admin.firestore()
-            .collection(collectionName)
-            .where('foodName', '>=', term)
-            .where('foodName', '<=', term + '\uf8ff')
-            .limit(100)
-            .get()
-        );
+        // Run searches in parallel for speed
+        for (const term of [capitalized, lowercase, uppercase]) {
+          // Search foodName
+          searches.push(
+            admin.firestore()
+              .collection(collectionName)
+              .where('foodName', '>=', term)
+              .where('foodName', '<=', term + '\uf8ff')
+              .limit(100)
+              .get()
+          );
 
-        // Search brandName
-        searches.push(
-          admin.firestore()
-            .collection(collectionName)
-            .where('brandName', '>=', term)
-            .where('brandName', '<=', term + '\uf8ff')
-            .limit(100)
-            .get()
-        );
+          // Search brandName
+          searches.push(
+            admin.firestore()
+              .collection(collectionName)
+              .where('brandName', '>=', term)
+              .where('brandName', '<=', term + '\uf8ff')
+              .limit(100)
+              .get()
+          );
+        }
       }
 
       const results = await Promise.allSettled(searches);
@@ -255,8 +257,8 @@ export const searchFoods = functions
     // Search both collections in parallel (much faster!)
     const startTime = Date.now();
     const [verifiedCount, foodsCount] = await Promise.all([
-      fastSearch('verifiedFoods', firstWord),
-      fastSearch('foods', firstWord)
+      fastSearch('verifiedFoods', queryWords),
+      fastSearch('foods', queryWords)
     ]);
 
     const searchTime = Date.now() - startTime;
