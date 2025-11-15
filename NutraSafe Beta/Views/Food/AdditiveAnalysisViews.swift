@@ -30,6 +30,7 @@ struct AdditiveWatchView: View {
                     .transition(.opacity)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .animation(.easeInOut(duration: 0.3), value: additiveResult != nil)
         .background(Color.white)
         .cornerRadius(12)
@@ -68,6 +69,7 @@ struct AdditiveWatchView: View {
                 .font(.system(size: 14))
                 .foregroundColor(.secondary)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 8)
     }
     
