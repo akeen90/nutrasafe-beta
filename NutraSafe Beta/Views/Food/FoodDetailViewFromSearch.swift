@@ -2249,13 +2249,14 @@ struct FoodDetailViewFromSearch: View {
     private var ingredientVerificationSection: some View {
         VStack(alignment: .center, spacing: 16) {
             VStack(alignment: .center, spacing: 12) {
-                HStack {
+                HStack(spacing: 8) {
                     Image(systemName: "info.circle.fill")
                         .font(.title2)
                         .foregroundColor(.orange)
                     Text("Ingredients not looking right?")
                         .font(.system(size: 20, weight: .bold))
                         .foregroundColor(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Text("Scan the barcode to search for accurate product data, or search manually if you don't have the barcode.")
