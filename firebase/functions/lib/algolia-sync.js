@@ -1,11 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.searchFoodsAlgolia = exports.bulkImportFoodsToAlgolia = exports.syncManualFoodToAlgolia = exports.syncFoodToAlgolia = exports.syncVerifiedFoodToAlgolia = void 0;
+exports.searchFoodsAlgolia = exports.bulkImportFoodsToAlgolia = exports.syncAIManuallyAddedFoodToAlgolia = exports.syncAIEnhancedFoodToAlgolia = exports.syncUserAddedFoodToAlgolia = exports.syncManualFoodToAlgolia = exports.syncFoodToAlgolia = exports.syncVerifiedFoodToAlgolia = void 0;
 const functions = require("firebase-functions/v2");
 const firestore_1 = require("firebase-functions/v2/firestore");
 const params_1 = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const algoliasearch_1 = require("algoliasearch");
+const axios_1 = require("axios");
 // Algolia configuration
 const ALGOLIA_APP_ID = "WK0TIF84M2";
 const algoliaAdminKey = (0, params_1.defineSecret)("ALGOLIA_ADMIN_API_KEY");
@@ -13,6 +14,95 @@ const algoliaAdminKey = (0, params_1.defineSecret)("ALGOLIA_ADMIN_API_KEY");
 const VERIFIED_FOODS_INDEX = "verified_foods";
 const FOODS_INDEX = "foods";
 const MANUAL_FOODS_INDEX = "manual_foods";
+const USER_ADDED_INDEX = "user_added";
+const AI_ENHANCED_INDEX = "ai_enhanced";
+const AI_MANUALLY_ADDED_INDEX = "ai_manually_added";
+// OpenFoodFacts helper functions
+function isEnglishIngredients(ingredientsText) {
+    if (!ingredientsText || ingredientsText.trim().length === 0)
+        return false;
+    const nonLatinPattern = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF\u0400-\u04FF\u0370-\u03FF\u0E00-\u0E7F]/;
+    if (nonLatinPattern.test(ingredientsText))
+        return false;
+    const nonEnglishPattern = /[áàâäãåąčćęèéêëėįìíîïłńòóôöõøùúûüųūÿýżźñçčšž]/i;
+    if (nonEnglishPattern.test(ingredientsText))
+        return false;
+    const englishWords = ["water", "sugar", "salt", "flour", "oil", "butter", "milk", "wheat", "ingredients"];
+    return englishWords.some((word) => new RegExp(`\\b${word}\\b`, "i").test(ingredientsText.toLowerCase()));
+}
+function isUKEnglishProduct(product) {
+    const countries = product.countries_tags || product.countries || [];
+    const countriesString = Array.isArray(countries) ? countries.join(",").toLowerCase() : String(countries).toLowerCase();
+    const isUKProduct = countriesString.includes("united-kingdom") || countriesString.includes("uk") ||
+        countriesString.includes("great-britain") || countriesString.includes("england") ||
+        countriesString.includes("scotland") || countriesString.includes("wales") ||
+        countriesString.includes("northern-ireland");
+    const languages = product.languages_tags || product.languages || [];
+    const languagesString = Array.isArray(languages) ? languages.join(",").toLowerCase() : String(languages).toLowerCase();
+    const hasEnglishLanguage = languagesString.includes("en") || languagesString.includes("english");
+    const ingredientsText = product.ingredients_text_en || product.ingredients_text || "";
+    const hasEnglishIngredients = isEnglishIngredients(ingredientsText);
+    return (isUKProduct || hasEnglishLanguage) && hasEnglishIngredients;
+}
+async function searchOpenFoodFacts(query) {
+    try {
+        console.log(`🌍 Searching OpenFoodFacts for: "${query}"`);
+        const response = await axios_1.default.get("https://world.openfoodfacts.org/cgi/search.pl", {
+            params: {
+                search_terms: query,
+                search_simple: 1,
+                action: "process",
+                json: 1,
+                page_size: 10,
+            },
+            timeout: 5000,
+            headers: {
+                "User-Agent": "NutraSafe/1.0 (https://nutrasafe.co.uk)",
+            },
+        });
+        if (response.data.products && response.data.products.length > 0) {
+            const ukProducts = response.data.products.filter((product) => isUKEnglishProduct(product));
+            console.log(`✅ Found ${ukProducts.length} UK English products out of ${response.data.products.length} total`);
+            return ukProducts;
+        }
+        return [];
+    }
+    catch (error) {
+        console.error("❌ OpenFoodFacts API error:", error);
+        return [];
+    }
+}
+function transformOpenFoodFactsToAlgoliaFormat(offProduct) {
+    const nutriments = offProduct.nutriments || {};
+    const ingredientsText = offProduct.ingredients_text_en || offProduct.ingredients_text || "";
+    const barcode = offProduct.code || offProduct._id || "";
+    return {
+        objectID: `off-${barcode}`,
+        name: offProduct.product_name || offProduct.product_name_en || "Unknown Product",
+        brandName: offProduct.brands || "",
+        ingredients: ingredientsText,
+        barcode: barcode,
+        calories: nutriments["energy-kcal_100g"] || nutriments["energy-kcal"] || 0,
+        protein: nutriments.proteins_100g || nutriments.proteins || 0,
+        carbs: nutriments.carbohydrates_100g || nutriments.carbohydrates || 0,
+        fat: nutriments.fat_100g || nutriments.fat || 0,
+        fiber: nutriments.fiber_100g || nutriments.fiber || 0,
+        sugar: nutriments.sugars_100g || nutriments.sugars || 0,
+        sodium: nutriments.sodium_100g ? nutriments.sodium_100g * 1000 : (nutriments.salt_100g ? nutriments.salt_100g * 1000 : 0),
+        servingSize: "per 100g",
+        servingSizeG: 100,
+        category: "",
+        source: "OpenFoodFacts",
+        verified: false,
+        allergens: [],
+        additives: [],
+        createdAt: Date.now() / 1000,
+        updatedAt: Date.now() / 1000,
+        nutritionGrade: offProduct.nutrition_grade || "",
+        score: 0,
+        _isOpenFoodFacts: true,
+    };
+}
 /**
  * Sync verified foods to Algolia when they're created/updated/deleted
  */
@@ -98,6 +188,95 @@ exports.syncManualFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
     console.log(`Synced manual food ${foodId} to Algolia`);
 });
 /**
+ * Sync user-added foods to Algolia
+ */
+exports.syncUserAddedFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
+    document: "userAdded/{foodId}",
+    secrets: [algoliaAdminKey],
+}, async (event) => {
+    var _a, _b;
+    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
+    const foodId = event.params.foodId;
+    const afterData = (_b = (_a = event.data) === null || _a === void 0 ? void 0 : _a.after) === null || _b === void 0 ? void 0 : _b.data();
+    // Delete
+    if (!afterData) {
+        await client.deleteObject({
+            indexName: USER_ADDED_INDEX,
+            objectID: foodId,
+        });
+        console.log(`Deleted user-added food ${foodId} from Algolia`);
+        return;
+    }
+    // Create or Update
+    const algoliaObject = Object.assign({ objectID: foodId }, prepareForAlgolia(afterData));
+    await client.saveObject({
+        indexName: USER_ADDED_INDEX,
+        body: algoliaObject,
+    });
+    console.log(`Synced user-added food ${foodId} to Algolia`);
+});
+/**
+ * Sync AI-enhanced foods to Algolia
+ */
+exports.syncAIEnhancedFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
+    document: "aiEnhanced/{foodId}",
+    secrets: [algoliaAdminKey],
+}, async (event) => {
+    var _a, _b;
+    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
+    const foodId = event.params.foodId;
+    const afterData = (_b = (_a = event.data) === null || _a === void 0 ? void 0 : _a.after) === null || _b === void 0 ? void 0 : _b.data();
+    // Delete
+    if (!afterData) {
+        await client.deleteObject({
+            indexName: AI_ENHANCED_INDEX,
+            objectID: foodId,
+        });
+        console.log(`Deleted AI-enhanced food ${foodId} from Algolia`);
+        return;
+    }
+    // Only sync approved foods
+    if (afterData.status !== "approved") {
+        console.log(`Skipping AI-enhanced food ${foodId} - status: ${afterData.status}`);
+        return;
+    }
+    // Create or Update
+    const algoliaObject = Object.assign({ objectID: foodId }, prepareForAlgolia(afterData));
+    await client.saveObject({
+        indexName: AI_ENHANCED_INDEX,
+        body: algoliaObject,
+    });
+    console.log(`Synced AI-enhanced food ${foodId} to Algolia`);
+});
+/**
+ * Sync AI manually added foods to Algolia
+ */
+exports.syncAIManuallyAddedFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
+    document: "aiManuallyAdded/{foodId}",
+    secrets: [algoliaAdminKey],
+}, async (event) => {
+    var _a, _b;
+    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
+    const foodId = event.params.foodId;
+    const afterData = (_b = (_a = event.data) === null || _a === void 0 ? void 0 : _a.after) === null || _b === void 0 ? void 0 : _b.data();
+    // Delete
+    if (!afterData) {
+        await client.deleteObject({
+            indexName: AI_MANUALLY_ADDED_INDEX,
+            objectID: foodId,
+        });
+        console.log(`Deleted AI manually added food ${foodId} from Algolia`);
+        return;
+    }
+    // Create or Update
+    const algoliaObject = Object.assign({ objectID: foodId }, prepareForAlgolia(afterData));
+    await client.saveObject({
+        indexName: AI_MANUALLY_ADDED_INDEX,
+        body: algoliaObject,
+    });
+    console.log(`Synced AI manually added food ${foodId} to Algolia`);
+});
+/**
  * Bulk import all existing foods to Algolia
  * Call this once to migrate existing data
  */
@@ -112,15 +291,27 @@ exports.bulkImportFoodsToAlgolia = functions.https.onCall({
         { name: "verifiedFoods", indexName: VERIFIED_FOODS_INDEX },
         { name: "foods", indexName: FOODS_INDEX },
         { name: "manualFoods", indexName: MANUAL_FOODS_INDEX },
+        { name: "userAdded", indexName: USER_ADDED_INDEX },
+        { name: "aiEnhanced", indexName: AI_ENHANCED_INDEX },
+        { name: "aiManuallyAdded", indexName: AI_MANUALLY_ADDED_INDEX },
     ];
     const results = {
         verifiedFoods: 0,
         foods: 0,
         manualFoods: 0,
+        userAdded: 0,
+        aiEnhanced: 0,
+        aiManuallyAdded: 0,
     };
     for (const collection of collections) {
         const snapshot = await db.collection(collection.name).get();
-        const algoliaObjects = snapshot.docs.map((doc) => (Object.assign({ objectID: doc.id }, prepareForAlgolia(doc.data()))));
+        let algoliaObjects = snapshot.docs.map((doc) => (Object.assign({ objectID: doc.id }, prepareForAlgolia(doc.data()))));
+        // Filter aiEnhanced to only include approved foods
+        if (collection.name === "aiEnhanced") {
+            const originalCount = algoliaObjects.length;
+            algoliaObjects = algoliaObjects.filter((obj) => obj.status === "approved");
+            console.log(`Filtered aiEnhanced: ${originalCount} total, ${algoliaObjects.length} approved`);
+        }
         if (algoliaObjects.length > 0) {
             // Batch save objects
             await client.saveObjects({
@@ -141,38 +332,71 @@ exports.bulkImportFoodsToAlgolia = functions.https.onCall({
  * Search foods using Algolia
  * This provides a fast search endpoint for the iOS app
  */
-exports.searchFoodsAlgolia = functions.https.onCall({
+exports.searchFoodsAlgolia = functions.https.onRequest({
     secrets: [algoliaAdminKey],
-}, async (request) => {
-    const { query, filters, hitsPerPage = 20 } = request.data;
+    cors: true,
+}, async (request, response) => {
+    // Get query from URL parameter for GET requests
+    const query = request.query.q;
+    const hitsPerPage = parseInt(request.query.limit) || 20;
     if (!query || typeof query !== "string") {
-        throw new functions.https.HttpsError("invalid-argument", "Query is required and must be a string");
+        response.status(400).json({
+            error: "Query parameter 'q' is required",
+        });
+        return;
     }
     const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
-    // Search across all indices
+    // Search across all food indices
     const indices = [
-        VERIFIED_FOODS_INDEX,
-        FOODS_INDEX,
-        MANUAL_FOODS_INDEX,
+        USER_ADDED_INDEX, // User-added (highest priority)
+        AI_ENHANCED_INDEX, // AI-enhanced
+        AI_MANUALLY_ADDED_INDEX, // AI manually added
+        FOODS_INDEX, // Main database (24,150+ foods)
     ];
     const searchResults = await Promise.all(indices.map((indexName) => client.searchSingleIndex({
         indexName,
         searchParams: {
             query,
             hitsPerPage,
-            filters,
         },
+    }).catch((error) => {
+        // Ignore errors from non-existent indices
+        console.log(`Index ${indexName} not found or error: ${error.message}`);
+        return { hits: [], nbHits: 0 };
     })));
-    // Combine results, prioritizing verified foods
+    // Combine results with priority: user-added > AI-enhanced > AI-manual > foods
     const combinedHits = [
-        ...searchResults[0].hits, // Verified foods first
-        ...searchResults[1].hits, // Regular foods
-        ...searchResults[2].hits, // Manual foods
+        ...searchResults[0].hits, // User-added first
+        ...searchResults[1].hits, // AI-enhanced
+        ...searchResults[2].hits, // AI manually added
+        ...searchResults[3].hits, // Main foods
     ];
-    return {
+    // If no results found in Algolia, try OpenFoodFacts
+    if (combinedHits.length === 0) {
+        console.log(`No Algolia results found. Trying OpenFoodFacts for: "${query}"`);
+        try {
+            const offProducts = await searchOpenFoodFacts(query);
+            if (offProducts.length > 0) {
+                console.log(`Found ${offProducts.length} products from OpenFoodFacts`);
+                // Transform OpenFoodFacts products to Algolia format
+                const offResults = offProducts.map((offProduct) => transformOpenFoodFactsToAlgoliaFormat(offProduct));
+                console.log(`✅ Returning ${offResults.length} UK English products from OpenFoodFacts`);
+                response.json({
+                    hits: offResults.slice(0, hitsPerPage),
+                    nbHits: offResults.length,
+                });
+                return;
+            }
+            console.log(`❌ No UK English products found anywhere for: "${query}"`);
+        }
+        catch (error) {
+            console.error("Error fetching from OpenFoodFacts:", error);
+        }
+    }
+    response.json({
         hits: combinedHits.slice(0, hitsPerPage),
         nbHits: combinedHits.length,
-    };
+    });
 });
 /**
  * Prepare food data for Algolia indexing

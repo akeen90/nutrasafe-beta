@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.syncManualFoodToAlgolia = exports.syncFoodToAlgolia = exports.syncVerifiedFoodToAlgolia = exports.auditMissingIngredients = exports.findIngredients = exports.parseAdditivesWithAICached = exports.parseAdditivesWithAI = exports.parseMicronutrientsWithAICached = exports.parseMicronutrientsWithAI = exports.notifyIncompleteFood = exports.standardizeIngredients = exports.replaceAllFoods = exports.detectLiveText = exports.testCors = exports.updateCleansedFoodStatus = exports.emergencyCleanCleansedFoods = exports.updateCleansedFood = exports.deleteCleansedFood = exports.exportCleansedFoods = exports.getCleansedFoods = exports.analyzeAndCleanFoods = exports.getAllFoods = exports.getNutrientSuggestions = exports.importGenericFoods = exports.extractIngredientsWithAI = exports.analyzeAdditivesEnhanced = exports.getContextualNutritionScore = exports.getUserAnalytics = exports.deleteUsers = exports.updateUser = exports.addUser = exports.getUsers = exports.getAnalyticsData = exports.getOverviewStats = exports.updateServingSizes = exports.fixExistingFoodsVerification = exports.resetAllFoodsToInitial = exports.resetAdminManualFoods = exports.moveFoodBetweenCollections = exports.deleteVerifiedFoods = exports.updateVerifiedFood = exports.addVerifiedFood = exports.searchFoodsByCollection = exports.getFoodDetails = exports.searchFoodsWeb = exports.fastSearchFoods = exports.searchFoodByBarcode = exports.searchCleansedFoods = exports.searchFoods = exports.addVerifiedFoodComplete = void 0;
-exports.searchFoodsAlgolia = exports.bulkImportFoodsToAlgolia = void 0;
+exports.searchFoodsAlgolia = exports.bulkImportFoodsToAlgolia = exports.syncAIManuallyAddedFoodToAlgolia = exports.syncAIEnhancedFoodToAlgolia = exports.syncUserAddedFoodToAlgolia = void 0;
 const admin = require("firebase-admin");
 // Initialize Firebase Admin
 if (!admin.apps.length) {
@@ -87,6 +87,9 @@ var algolia_sync_1 = require("./algolia-sync");
 Object.defineProperty(exports, "syncVerifiedFoodToAlgolia", { enumerable: true, get: function () { return algolia_sync_1.syncVerifiedFoodToAlgolia; } });
 Object.defineProperty(exports, "syncFoodToAlgolia", { enumerable: true, get: function () { return algolia_sync_1.syncFoodToAlgolia; } });
 Object.defineProperty(exports, "syncManualFoodToAlgolia", { enumerable: true, get: function () { return algolia_sync_1.syncManualFoodToAlgolia; } });
+Object.defineProperty(exports, "syncUserAddedFoodToAlgolia", { enumerable: true, get: function () { return algolia_sync_1.syncUserAddedFoodToAlgolia; } });
+Object.defineProperty(exports, "syncAIEnhancedFoodToAlgolia", { enumerable: true, get: function () { return algolia_sync_1.syncAIEnhancedFoodToAlgolia; } });
+Object.defineProperty(exports, "syncAIManuallyAddedFoodToAlgolia", { enumerable: true, get: function () { return algolia_sync_1.syncAIManuallyAddedFoodToAlgolia; } });
 Object.defineProperty(exports, "bulkImportFoodsToAlgolia", { enumerable: true, get: function () { return algolia_sync_1.bulkImportFoodsToAlgolia; } });
 Object.defineProperty(exports, "searchFoodsAlgolia", { enumerable: true, get: function () { return algolia_sync_1.searchFoodsAlgolia; } });
 //# sourceMappingURL=index.js.map
