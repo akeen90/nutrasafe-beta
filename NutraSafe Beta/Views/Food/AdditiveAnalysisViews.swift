@@ -27,7 +27,6 @@ struct AdditiveWatchView: View {
                 loadingContent
             }
         }
-        .padding()
         .background(Color.white)
         .cornerRadius(12)
         .sheet(isPresented: $showingSources) {
