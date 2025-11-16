@@ -955,56 +955,9 @@ class FirebaseManager: ObservableObject {
 
         // DEBUG LOG: print("🔍 Cache MISS - fetching '\(query)' from server...")
 
-        // Search all sources in parallel for maximum performance
-        async let mainResults = searchMainDatabase(query: query)
-        async let userAddedResults = try searchUserAddedFoods(query: query)
-        async let aiEnhancedResults = try searchAIEnhancedFoods(query: query)
-        async let aiManualResults = try searchAIManuallyAddedFoods(query: query)
-
-        // Wait for all searches to complete
-        let (mainFoods, userFoods, aiEnhanced, aiManual) = try await (mainResults, userAddedResults, aiEnhancedResults, aiManualResults)
-
-        // Deduplicate and merge with priority: user-added > AI-enhanced > AI-manual > SQL
-        var foodsById: [String: FoodSearchResult] = [:]
-
-        // 1. Add SQL database results first (lowest priority)
-        for food in mainFoods {
-            foodsById[food.id] = food
-        }
-
-        // 2. Add/overwrite with AI manually added foods (higher priority)
-        for food in aiManual {
-            foodsById[food.id] = food
-        }
-
-        // 3. Add/overwrite with AI-enhanced foods (even higher priority - replaces SQL versions)
-        for food in aiEnhanced {
-            foodsById[food.id] = food
-        }
-
-        // 4. Add/overwrite with user-added foods (highest priority - user's own data)
-        for food in userFoods {
-            foodsById[food.id] = food
-        }
-
-        // Convert back to array
-        let mergedResults = Array(foodsById.values)
-        var limitedResults = Array(mergedResults.prefix(50))
-
-        // DEBUG LOG: print("🔍 Search results for '\(query)': \(userFoods.count) user + \(aiEnhanced.count) AI-enhanced + \(aiManual.count) AI-manual + \(mainFoods.count) SQL = \(mergedResults.count) total (after deduplication)")
-
-        // If no results found locally, try Cloud Function (with OpenFoodFacts fallback)
-        if limitedResults.isEmpty {
-            #if DEBUG
-            print("🌍 No local results - trying Cloud Function with OpenFoodFacts fallback")
-            #endif
-            if let cloudResults = try? await searchFoodsViaCloudFunction(query: query) {
-                limitedResults = cloudResults
-                #if DEBUG
-                print("✅ Found \(cloudResults.count) results from Cloud Function (OpenFoodFacts)")
-                #endif
-            }
-        }
+        // Use Algolia for all searches - it already searches all indices (user-added, AI-enhanced, AI-manual, foods)
+        // This is MUCH faster than making 4 separate Firestore queries
+        let limitedResults = await searchMainDatabase(query: query)
 
         // Store in cache for next time (NSCache auto-manages memory)
         searchCache.setObject(
