@@ -2656,9 +2656,20 @@ class FirebaseManager: ObservableObject {
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save fasting plans"])
         }
+        print("      🔥 FirebaseManager.saveFastingPlan")
+        print("         UserID: \(userId)")
+        print("         Plan ID: \(plan.id ?? "nil - will generate new UUID")")
+        print("         Plan name: '\(plan.name)'")
+        print("         Active: \(plan.active)")
+
         let docRef = db.collection("users").document(userId)
             .collection("fastingPlans").document(plan.id ?? UUID().uuidString)
+
+        let path = "users/\(userId)/fastingPlans/\(docRef.documentID)"
+        print("         Saving to path: \(path)")
+
         try await docRef.setData(from: plan, merge: true)
+        print("         ✅ Successfully saved to Firebase")
         return docRef.documentID
     }
 
@@ -2667,9 +2678,29 @@ class FirebaseManager: ObservableObject {
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view fasting plans"])
         }
+        print("      🔥 FirebaseManager.getFastingPlans")
+        print("         UserID: \(userId)")
+        let path = "users/\(userId)/fastingPlans"
+        print("         Fetching from path: \(path)")
+
         let snapshot = try await db.collection("users").document(userId)
             .collection("fastingPlans").order(by: "createdAt", descending: true).getDocuments()
-        return snapshot.documents.compactMap { try? $0.data(as: FastingPlan.self) }
+
+        print("         Raw document count: \(snapshot.documents.count)")
+
+        var plans: [FastingPlan] = []
+        for (index, doc) in snapshot.documents.enumerated() {
+            do {
+                let plan = try doc.data(as: FastingPlan.self)
+                print("         ✅ Decoded plan \(index + 1): '\(plan.name)' (ID: \(plan.id ?? "nil"))")
+                plans.append(plan)
+            } catch {
+                print("         ❌ Failed to decode plan \(index + 1) (docID: \(doc.documentID)): \(error.localizedDescription)")
+            }
+        }
+
+        print("         Returning \(plans.count) successfully decoded plans")
+        return plans
     }
 
     func updateFastingPlan(_ plan: FastingPlan) async throws {
