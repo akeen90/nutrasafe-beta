@@ -537,10 +537,8 @@ struct AddFoodSearchView: View {
 
         isSearching = true
 
-        // Debounce search by 0.5 seconds
+        // Instant search - no debounce for immediate feedback
         searchTask = Task {
-            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-
             if Task.isCancelled {
                 #if DEBUG
                 print("⚠️ AddFoodSearchView: Search cancelled for '\(query)'")
