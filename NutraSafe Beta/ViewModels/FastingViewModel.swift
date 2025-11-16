@@ -188,10 +188,16 @@ class FastingViewModel: ObservableObject {
         reminderEnabled: Bool,
         reminderMinutesBeforeEnd: Int
     ) async {
+        print("📝 FastingViewModel.createFastingPlan called")
+        print("   Name: '\(name)'")
+        print("   Duration: \(durationHours) hours")
+        print("   Days: \(daysOfWeek)")
+
         isLoading = true
         defer { isLoading = false }
 
         // Validate plan
+        print("   🔍 Validating plan...")
         let validationResult = FastingManager.validatePlan(
             name: name,
             durationHours: durationHours,
@@ -200,11 +206,14 @@ class FastingViewModel: ObservableObject {
 
         guard case .success = validationResult else {
             if case .failure(let error) = validationResult {
+                print("   ❌ Validation failed: \(error.reason)")
                 self.error = error
                 self.showError = true
             }
             return
         }
+
+        print("   ✅ Validation passed")
 
         // Deactivate current plan if exists
         if let currentPlan = activePlan {
