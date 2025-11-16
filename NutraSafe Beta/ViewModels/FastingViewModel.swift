@@ -55,10 +55,12 @@ class FastingViewModel: ObservableObject {
     }
 
     var currentElapsedTime: String {
-        guard let session = activeSession else { return "0:00" }
-        let hours = Int(session.actualDurationHours)
-        let minutes = Int((session.actualDurationHours - Double(hours)) * 60)
-        return String(format: "%d:%02d", hours, minutes)
+        guard let session = activeSession else { return "0:00:00" }
+        let totalSeconds = Int(session.actualDurationHours * 3600)
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+        return String(format: "%d:%02d:%02d", hours, minutes, seconds)
     }
 
     var currentPhase: FastingPhase? {
@@ -72,14 +74,18 @@ class FastingViewModel: ObservableObject {
 
         if elapsed < target {
             let remaining = target - elapsed
-            let hours = Int(remaining)
-            let minutes = Int((remaining - Double(hours)) * 60)
-            return "\(hours)h \(minutes)m until target"
+            let totalSeconds = Int(remaining * 3600)
+            let hours = totalSeconds / 3600
+            let minutes = (totalSeconds % 3600) / 60
+            let seconds = totalSeconds % 60
+            return "\(hours)h \(minutes)m \(seconds)s until target"
         } else {
             let over = elapsed - target
-            let hours = Int(over)
-            let minutes = Int((over - Double(hours)) * 60)
-            return "\(hours)h \(minutes)m past target"
+            let totalSeconds = Int(over * 3600)
+            let hours = totalSeconds / 3600
+            let minutes = (totalSeconds % 3600) / 60
+            let seconds = totalSeconds % 60
+            return "\(hours)h \(minutes)m \(seconds)s past target"
         }
     }
 
