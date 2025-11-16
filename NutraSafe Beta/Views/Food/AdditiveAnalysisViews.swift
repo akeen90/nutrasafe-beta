@@ -18,10 +18,18 @@ struct AdditiveWatchView: View {
     @State private var showingSources = false
     @State private var lastAnalyzedHash: Int = 0
 
+    // Check if ingredients contain meaningful data (not just empty strings)
+    private var hasMeaningfulIngredients: Bool {
+        let clean = ingredients
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        return !clean.isEmpty
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Check if ingredients are empty first
-            if ingredients.isEmpty {
+            // Check if ingredients contain meaningful data
+            if !hasMeaningfulIngredients {
                 emptyIngredientsContent
                     .transition(.opacity)
             } else if let result = additiveResult {
@@ -41,8 +49,8 @@ struct AdditiveWatchView: View {
             SourcesAndCitationsView()
         }
         .onAppear {
-            // Only analyze if we have ingredients
-            if !ingredients.isEmpty {
+            // Only analyze if we have meaningful ingredients
+            if hasMeaningfulIngredients {
                 // PERFORMANCE: Only re-analyze if ingredients have changed
                 let currentHash = ingredients.hashValue
                 if additiveResult == nil || lastAnalyzedHash != currentHash {

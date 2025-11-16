@@ -2140,8 +2140,13 @@ struct FoodDetailViewFromSearch: View {
     
     @ViewBuilder
     private var additiveWatchSection: some View {
-        if let ingredientsList = cachedIngredients, !ingredientsList.isEmpty {
-            AdditiveWatchView(ingredients: ingredientsList)
+        if let ingredientsList = cachedIngredients {
+            let clean = ingredientsList
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+            if !clean.isEmpty {
+                AdditiveWatchView(ingredients: ingredientsList)
+            }
         }
     }
     
@@ -2150,8 +2155,12 @@ struct FoodDetailViewFromSearch: View {
             Text("Allergen & Safety Information")
                 .font(.system(size: 18, weight: .semibold))
 
-            // Check if ingredients exist first
-            if let ingredients = food.ingredients, !ingredients.isEmpty {
+            // Check if ingredients exist and contain meaningful data
+            if let ingredients = food.ingredients {
+                let clean = ingredients
+                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                    .filter { !$0.isEmpty }
+                if !clean.isEmpty {
                 let detectedAllergens = detectAllergens(in: ingredients)
                 let additiveAnalysis: AdditiveDetectionResult? = nil // Placeholder for now
 
@@ -2206,6 +2215,7 @@ struct FoodDetailViewFromSearch: View {
                                 .foregroundColor(.secondary)
                         }
                     }
+                }
                 }
             } else {
                 // No ingredients available
@@ -3097,8 +3107,14 @@ struct FoodDetailViewFromSearch: View {
     
     // MARK: - Food Scores Section
     private var foodScoresSection: some View {
-        // Only show NutraSafe grade if ingredients exist
-        let hasIngredients = cachedIngredients != nil && !(cachedIngredients?.isEmpty ?? true)
+        // Only show NutraSafe grade if ingredients exist and contain meaningful data
+        let hasIngredients: Bool = {
+            guard let ingredients = cachedIngredients else { return false }
+            let clean = ingredients
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+            return !clean.isEmpty
+        }()
         let gradeToShow = hasIngredients ? nutraSafeGrade : nil
 
         return FoodScoresSectionView(ns: gradeToShow, sugarScore: sugarScore, showingInfo: $showingNutraSafeInfo, showingSugarInfo: $showingSugarInfo)
@@ -3336,7 +3352,7 @@ struct FoodDetailViewFromSearch: View {
                         Image(systemName: "info.circle.fill")
                             .foregroundColor(.secondary)
                             .font(.system(size: 16))
-                        Text("No ingredient data available - unable to analyze additives and allergens")
+                        Text("No ingredient data available - unable to analyse additives and allergens")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.secondary)
                             .lineLimit(nil)
@@ -3349,12 +3365,16 @@ struct FoodDetailViewFromSearch: View {
         }
         .padding(16)
     }
-    
+
     // MARK: - Allergens Watch Content
     private var allergensContent: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Check if ingredients exist first
-            if let ingredients = cachedIngredients, !ingredients.isEmpty {
+            // Check if ingredients exist and contain meaningful data
+            if let ingredients = cachedIngredients {
+                let clean = ingredients
+                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                    .filter { !$0.isEmpty }
+                if !clean.isEmpty {
                 let potentialAllergens = getPotentialAllergens()
 
                 if !potentialAllergens.isEmpty {
@@ -3403,6 +3423,7 @@ struct FoodDetailViewFromSearch: View {
                         }
                     }
                 }
+                }
             } else {
                 // No ingredients available
                 VStack(alignment: .leading, spacing: 8) {
@@ -3410,7 +3431,7 @@ struct FoodDetailViewFromSearch: View {
                         Image(systemName: "info.circle.fill")
                             .foregroundColor(.secondary)
                             .font(.system(size: 16))
-                        Text("No ingredient data available - unable to analyze additives and allergens")
+                        Text("No ingredient data available - unable to analyse additives and allergens")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.secondary)
                             .lineLimit(nil)
