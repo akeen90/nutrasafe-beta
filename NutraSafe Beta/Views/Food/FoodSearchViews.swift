@@ -565,68 +565,82 @@ struct AddFoodSearchView: View {
 
             if Task.isCancelled { return }
 
-            // Check for pending verifications with extracted ingredients (for all results)
-            var enrichedResults = results
-
-            // Get pending verifications for this user
-            do {
-                let pendingVerifications = try await FirebaseManager.shared.getPendingVerifications()
-
-                // Find matching foods and add pending ingredients
-                for i in 0..<enrichedResults.count {
-                    let result = enrichedResults[i]
-
-                    // Match strictly by name AND brand when both are present; avoid enriching generic/unbranded items
-                    let matchingVerifications = pendingVerifications.filter { pending in
-                        let nameMatch = pending.foodName.lowercased() == result.name.lowercased()
-                        guard let pendingBrand = pending.brandName?.trimmingCharacters(in: .whitespacesAndNewlines),
-                              !pendingBrand.isEmpty,
-                              let resultBrand = result.brand?.trimmingCharacters(in: .whitespacesAndNewlines),
-                              !resultBrand.isEmpty else {
-                            return false
-                        }
-                        let brandMatch = pendingBrand.lowercased() == resultBrand.lowercased()
-                        return nameMatch && brandMatch
-                    }
-
-                    // If we found a matching verification with ingredients, use those
-                    if let pendingMatch = matchingVerifications.first,
-                       let ingredients = pendingMatch.ingredients,
-                       !ingredients.isEmpty,
-                       ingredients != "Processing ingredient image..." {
-
-                        // Create new search result with pending ingredients
-                        enrichedResults[i] = FoodSearchResult(
-                            id: result.id,
-                            name: result.name,
-                            brand: result.brand,
-                            calories: result.calories,
-                            protein: result.protein,
-                            carbs: result.carbs,
-                            fat: result.fat,
-                            fiber: result.fiber,
-                            sugar: result.sugar,
-                            sodium: result.sodium,
-                            servingDescription: result.servingDescription,
-                            ingredients: [ingredients + " (⏳ Awaiting Verification)"]
-                        )
-                    }
-                }
-            } catch {
-                #if DEBUG
-                print("Failed to check pending verifications: \(error)")
-                #endif
-                // Continue with original results if pending check fails
-            }
-
-            if Task.isCancelled { return }
-
+            // Show results immediately for instant feedback
             await MainActor.run {
                 #if DEBUG
-                print("✅ Search complete: \(enrichedResults.count) foods found")
+                print("⚡️ Showing \(results.count) results immediately (instant feedback)")
                 #endif
-                self.searchResults = enrichedResults
+                self.searchResults = results
                 self.isSearching = false
+            }
+
+            // OPTIONAL: Check for pending verifications in background (non-blocking)
+            // This enriches results with pending ingredient data but doesn't delay the UI
+            Task.detached(priority: .background) {
+                do {
+                    let pendingVerifications = try await FirebaseManager.shared.getPendingVerifications()
+
+                    if Task.isCancelled { return }
+
+                    var enrichedResults = results
+                    var hasChanges = false
+
+                    // Find matching foods and add pending ingredients
+                    for i in 0..<enrichedResults.count {
+                        let result = enrichedResults[i]
+
+                        // Match strictly by name AND brand when both are present
+                        let matchingVerifications = pendingVerifications.filter { pending in
+                            let nameMatch = pending.foodName.lowercased() == result.name.lowercased()
+                            guard let pendingBrand = pending.brandName?.trimmingCharacters(in: .whitespacesAndNewlines),
+                                  !pendingBrand.isEmpty,
+                                  let resultBrand = result.brand?.trimmingCharacters(in: .whitespacesAndNewlines),
+                                  !resultBrand.isEmpty else {
+                                return false
+                            }
+                            let brandMatch = pendingBrand.lowercased() == resultBrand.lowercased()
+                            return nameMatch && brandMatch
+                        }
+
+                        // If we found a matching verification with ingredients, use those
+                        if let pendingMatch = matchingVerifications.first,
+                           let ingredients = pendingMatch.ingredients,
+                           !ingredients.isEmpty,
+                           ingredients != "Processing ingredient image..." {
+
+                            enrichedResults[i] = FoodSearchResult(
+                                id: result.id,
+                                name: result.name,
+                                brand: result.brand,
+                                calories: result.calories,
+                                protein: result.protein,
+                                carbs: result.carbs,
+                                fat: result.fat,
+                                fiber: result.fiber,
+                                sugar: result.sugar,
+                                sodium: result.sodium,
+                                servingDescription: result.servingDescription,
+                                ingredients: [ingredients + " (⏳ Awaiting Verification)"]
+                            )
+                            hasChanges = true
+                        }
+                    }
+
+                    // Only update UI if we actually found pending data
+                    if hasChanges, !Task.isCancelled {
+                        await MainActor.run {
+                            #if DEBUG
+                            print("✅ Updated results with pending verification data")
+                            #endif
+                            self.searchResults = enrichedResults
+                        }
+                    }
+                } catch {
+                    #if DEBUG
+                    print("⚠️ Background pending verification check failed (non-critical): \(error)")
+                    #endif
+                    // Silently fail - results already showing
+                }
             }
         }
     }
