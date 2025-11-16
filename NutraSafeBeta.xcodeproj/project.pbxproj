@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B9E69A3D4385429DA8CB3239 /* FastingEarlyEndViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3904D5585038499D93BAFF26 /* FastingEarlyEndViews.swift */; };
 		013A7F75B09C430AB1EE40154700DAAB /* DiaryDailySummaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE1E506F81E64504BA776F466B03D0BC /* DiaryDailySummaryCard.swift */; };
 		053A05A52E60FD20C626C633 /* NutrientTrendChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24ED2B63CEA2D1DEA6011858 /* NutrientTrendChart.swift */; };
 		170B8500767E821043D1D6E5 /* FastingPlanViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4CC825B3113A674F68A6B62 /* FastingPlanViews.swift */; };
@@ -116,6 +117,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		3904D5585038499D93BAFF26 /* FastingEarlyEndViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastingEarlyEndViews.swift; sourceTree = "<group>"; };
 		025E4F9F2ED6507377598194 /* UseByNotificationManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UseByNotificationManager.swift; sourceTree = "<group>"; };
 		034F60AA8BCB4662A86709D4 /* FastingTimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastingTimerView.swift; sourceTree = "<group>"; };
 		062BCEAA60197405CFED2ACE /* NutrientActivityDashboard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NutrientActivityDashboard.swift; sourceTree = "<group>"; };
@@ -294,6 +296,7 @@
 		2DF585D9E80C4490A72B6467 /* Fasting */ = {
 			isa = PBXGroup;
 			children = (
+				3904D5585038499D93BAFF26 /* FastingEarlyEndViews.swift */,
 				AB9A79F52ECA773F00F7354A /* FastingSourcesView.swift */,
 				034F60AA8BCB4662A86709D4 /* FastingTimerView.swift */,
 				FASTHIST0001FILE /* FastingHistoryDropdown.swift */,
@@ -578,6 +581,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B9E69A3D4385429DA8CB3239 /* FastingEarlyEndViews.swift in Sources */,
 				42B4CA708B0E403EAFFD2EED /* NutrientCacheActor.swift in Sources */,
 				DB01DIARY000CACHE000ACTOR /* DiaryCacheActor.swift in Sources */,
 				DB02WEEKD000CACHE000ACTOR /* WeekDataCache.swift in Sources */,
