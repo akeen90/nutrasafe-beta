@@ -25,7 +25,7 @@ class FastingViewModel: ObservableObject {
 
     // MARK: - Private Properties
 
-    private let firebaseManager: FirebaseManager
+    let firebaseManager: FirebaseManager // Exposed for early-end modal
     private var timer: Timer?
     private let userId: String
 
@@ -461,6 +461,52 @@ class FastingViewModel: ObservableObject {
     func clearError() {
         error = nil
         showError = false
+    }
+
+    // MARK: - Early End & Restart Logic
+
+    func continuePreviousFast(_ session: FastingSession) async {
+        guard var previousSession = activeSession ?? (recentSessions.first { $0.id == session.id }) else {
+            print("❌ Cannot continue fast - session not found")
+            return
+        }
+
+        print("🔄 Continuing previous fast from early end")
+        isLoading = true
+        defer { isLoading = false }
+
+        // Reactivate the session
+        previousSession.endTime = nil
+        previousSession.mergedFromEarlyEnd = true
+        previousSession.completionStatus = .active
+
+        do {
+            try await firebaseManager.updateFastingSession(previousSession)
+            self.activeSession = previousSession
+            print("✅ Session reactivated successfully")
+        } catch {
+            print("❌ Failed to reactivate session: \(error.localizedDescription)")
+            self.error = error
+            self.showError = true
+        }
+    }
+
+    var isEarlyEnd: Bool {
+        guard let session = activeSession else { return false }
+        let completionPercentage = session.actualDurationHours / Double(session.targetDurationHours)
+        return completionPercentage < 0.25
+    }
+
+    func checkForQuickRestart() -> FastingSession? {
+        // Check if user ended a fast within the last 60 minutes
+        guard let lastSession = recentSessions.first,
+              lastSession.completionStatus == .earlyEnd,
+              let endTime = lastSession.endTime else {
+            return nil
+        }
+
+        let minutesSinceEnd = Date().timeIntervalSince(endTime) / 60
+        return minutesSinceEnd <= 60 ? lastSession : nil
     }
 
     // MARK: - Preview

@@ -210,6 +210,8 @@ struct IdleStateView: View {
 struct ActiveSessionView: View {
     @ObservedObject var viewModel: FastingViewModel
     @State private var showingEditTimes = false
+    @State private var showingEarlyEndModal = false
+    @State private var endedSession: FastingSession?
 
     var body: some View {
         VStack(spacing: 20) {
@@ -226,7 +228,17 @@ struct ActiveSessionView: View {
             VStack(spacing: 12) {
                 Button {
                     Task {
-                        await viewModel.endFastingSession()
+                        // Check if this will be an early end
+                        if viewModel.isEarlyEnd, let session = viewModel.activeSession {
+                            // End the session first
+                            await viewModel.endFastingSession()
+                            // Then show the early-end modal
+                            endedSession = session
+                            showingEarlyEndModal = true
+                        } else {
+                            // Normal end
+                            await viewModel.endFastingSession()
+                        }
                     }
                 } label: {
                     HStack {
@@ -281,6 +293,11 @@ struct ActiveSessionView: View {
         .sheet(isPresented: $showingEditTimes) {
             if let session = viewModel.activeSession {
                 EditSessionTimesView(viewModel: viewModel, session: session)
+            }
+        }
+        .sheet(isPresented: $showingEarlyEndModal) {
+            if let session = endedSession {
+                EarlyEndModal(viewModel: viewModel, session: session)
             }
         }
     }

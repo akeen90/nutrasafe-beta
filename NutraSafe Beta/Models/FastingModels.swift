@@ -224,7 +224,25 @@ struct FastingSession: Identifiable, Codable {
     var notes: String?
     var createdAt: Date
     var archived: Bool = false
-    
+
+    // Early-end and restart fields
+    var attemptType: AttemptType = .normal
+    var mergedFromEarlyEnd: Bool = false
+    var earlyEndReason: String? = nil
+    var lastEarlyEndTime: Date? = nil
+
+    enum AttemptType: String, Codable {
+        case normal = "normal"
+        case warmup = "warmup"
+
+        var displayName: String {
+            switch self {
+            case .normal: return "Normal"
+            case .warmup: return "Warm-up attempt"
+            }
+        }
+    }
+
     enum CodingKeys: String, CodingKey {
         case id
         case userId = "user_id"
@@ -238,6 +256,10 @@ struct FastingSession: Identifiable, Codable {
         case notes
         case createdAt = "created_at"
         case archived
+        case attemptType = "attempt_type"
+        case mergedFromEarlyEnd = "merged_from_early_end"
+        case earlyEndReason = "early_end_reason"
+        case lastEarlyEndTime = "last_early_end_time"
     }
     
     var actualDurationHours: Double {

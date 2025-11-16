@@ -43,6 +43,7 @@ class FastingManager {
 
         let actualDuration = endTime.timeIntervalSince(session.startTime) / 3600
         let targetDuration = Double(session.targetDurationHours)
+        let completionPercentage = actualDuration / targetDuration
 
         // Automatically determine completion status based on actual vs target duration
         if actualDuration >= targetDuration * 1.1 {
@@ -51,11 +52,16 @@ class FastingManager {
         } else if actualDuration >= targetDuration {
             // Met or slightly exceeded target (within 10%)
             updatedSession.completionStatus = .completed
+        } else if completionPercentage < 0.25 {
+            // Less than 25% of target - very early end (warm-up attempt)
+            updatedSession.completionStatus = .earlyEnd
+            updatedSession.attemptType = .warmup
+            updatedSession.lastEarlyEndTime = endTime
         } else if actualDuration < 1 {
             // Less than 1 hour - considered failed
             updatedSession.completionStatus = .failed
         } else {
-            // Between 1 hour and target - ended early
+            // Between 25% and target - ended early but significant progress
             updatedSession.completionStatus = .earlyEnd
         }
 
