@@ -326,14 +326,42 @@ struct ProgressRingCard: View {
                     .frame(width: 200, height: 200)
                     .animation(.easeInOut(duration: 0.5), value: viewModel.currentProgress)
                 
-                VStack(spacing: 4) {
-                    Text(viewModel.currentElapsedTime)
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .monospacedDigit()
-                    
-                    Text("of \(viewModel.activeSession?.targetDurationHours ?? 0)h")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                VStack(spacing: 8) {
+                    // Time IN fast
+                    VStack(spacing: 2) {
+                        Text("Fasting")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .textCase(.uppercase)
+
+                        Text(viewModel.currentElapsedTime)
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+
+                        Text("of \(viewModel.activeSession?.targetDurationHours ?? 0)h")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    // Divider
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.3))
+                        .frame(width: 60, height: 1)
+
+                    // Time OUT of fast (eating window)
+                    if viewModel.isInEatingWindow {
+                        VStack(spacing: 2) {
+                            Text("Eating Window")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .textCase(.uppercase)
+
+                            Text(viewModel.eatingWindowTime)
+                                .font(.system(size: 20, weight: .semibold, design: .rounded))
+                                .monospacedDigit()
+                                .foregroundColor(.green)
+                        }
+                    }
                 }
             }
             

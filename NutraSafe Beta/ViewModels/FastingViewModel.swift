@@ -89,6 +89,29 @@ class FastingViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Eating Window Counter
+
+    var eatingWindowTime: String {
+        // Get the last completed fast
+        guard let lastCompletedFast = recentSessions.first(where: { $0.endTime != nil && !$0.isActive }),
+              let endTime = lastCompletedFast.endTime else {
+            return "0:00:00"
+        }
+
+        // Calculate time since last fast ended
+        let timeSinceEnd = Date().timeIntervalSince(endTime)
+        let totalSeconds = Int(timeSinceEnd)
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+        return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+    }
+
+    var isInEatingWindow: Bool {
+        // User is in eating window if there's no active session and they've completed a fast recently
+        return activeSession == nil && recentSessions.first(where: { $0.endTime != nil }) != nil
+    }
+
     var motivationalMessage: String {
         // Change message every 5 minutes instead of every second
         let now = Date()
