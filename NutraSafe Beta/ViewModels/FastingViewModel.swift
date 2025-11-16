@@ -267,13 +267,19 @@ class FastingViewModel: ObservableObject {
 
         print("   💾 Saving plan to Firebase...")
         do {
-            try await firebaseManager.saveFastingPlan(newPlan)
-            print("   ✅ Plan saved to Firebase successfully")
-            print("   🔄 Loading active plan...")
-            await loadActivePlan()
-            print("   🔄 Loading all plans...")
-            await loadAllPlans()
-            print("   ✅ All plans loaded - createFastingPlan complete")
+            let docId = try await firebaseManager.saveFastingPlan(newPlan)
+            print("   ✅ Plan saved to Firebase successfully with ID: \(docId)")
+
+            // Update the plan with the returned document ID
+            var savedPlan = newPlan
+            savedPlan.id = docId
+
+            // Update local state immediately instead of waiting for Firebase fetch
+            // (Firestore has eventual consistency - the document might not be immediately available for reads)
+            print("   🔄 Updating local state with saved plan...")
+            self.activePlan = savedPlan
+            self.allPlans.insert(savedPlan, at: 0) // Insert at beginning (most recent)
+            print("   ✅ Local state updated - createFastingPlan complete")
         } catch {
             print("   ❌ Failed to save plan to Firebase: \(error.localizedDescription)")
             self.error = error
