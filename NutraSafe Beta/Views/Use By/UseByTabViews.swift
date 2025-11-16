@@ -2447,47 +2447,46 @@ struct AddUseByItemSheet: View {
     @State private var showingSearch = false
     @State private var showingBarcodeScan = false
     @State private var selectedOption: AddFoodMainView.AddOption = .search
-    @State private var isReady = false // Prevent interaction until presentation is stable
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            VStack(spacing: 16) {
-                HStack {
-                    Text("Add to Use By")
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.primary)
-                    Spacer()
-                    Button("Close") { dismiss() }
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.blue)
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
+        ZStack(alignment: .top) {
+            Color(.systemBackground)
+                .ignoresSafeArea()
 
-                // Use the same 2x2 option grid as Add Food
-                AddOptionSelector(selectedOption: $selectedOption)
+            VStack(spacing: 0) {
+                // Header
+                VStack(spacing: 16) {
+                    HStack {
+                        Text("Add to Use By")
+                            .font(.system(size: 28, weight: .bold))
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Button("Close") { dismiss() }
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.blue)
+                    }
                     .padding(.horizontal, 16)
-            }
-            .background(Color(.systemBackground))
+                    .padding(.top, 16)
 
-            // When the user taps a tile, open the corresponding flow
-            Group {
-                switch selectedOption {
-                case .search:
-                    UseByInlineSearchView(selectedFood: $selectedFood, isInteractionEnabled: isReady)
-                case .manual:
-                    UseByItemDetailView(item: nil)
-                case .barcode:
-                    UseByBarcodeScanSheet()
+                    // Use the same 2x2 option grid as Add Food
+                    AddOptionSelector(selectedOption: $selectedOption)
+                        .padding(.horizontal, 16)
                 }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .onAppear {
-            // Small delay to ensure fullScreenCover is stable before allowing interactions
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                isReady = true
+                .background(Color(.systemBackground))
+                .zIndex(1)
+
+                // When the user taps a tile, open the corresponding flow
+                Group {
+                    switch selectedOption {
+                    case .search:
+                        UseByInlineSearchView(selectedFood: $selectedFood)
+                    case .manual:
+                        UseByItemDetailView(item: nil)
+                    case .barcode:
+                        UseByBarcodeScanSheet()
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
     }
@@ -2496,7 +2495,6 @@ struct AddUseByItemSheet: View {
 // Inline search content for Add-to-UseBy sheet, without its own navigation bar
 struct UseByInlineSearchView: View {
     @Binding var selectedFood: FoodSearchResult? // Accept binding from parent
-    var isInteractionEnabled: Bool = true // Control when taps are allowed
     @State private var query: String = ""
     @State private var isSearching = false
     @State private var results: [FoodSearchResult] = []
@@ -2541,9 +2539,7 @@ struct UseByInlineSearchView: View {
                 LazyVStack(spacing: 0) {
                     ForEach(results, id: \.id) { food in
 Button {
-                            if isInteractionEnabled {
-                                selectedFood = food
-                            }
+                            selectedFood = food
                         } label: {
                             HStack(alignment: .center, spacing: 12) {
                                 VStack(alignment: .leading, spacing: 2) {
@@ -2566,7 +2562,6 @@ Text(food.name)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 12)
                         }
-                        .disabled(!isInteractionEnabled)
                         Divider().padding(.leading, 16)
                     }
                 }
