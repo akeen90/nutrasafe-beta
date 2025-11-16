@@ -355,25 +355,38 @@ class FastingViewModel: ObservableObject {
     // MARK: - Session Management
 
     func startFastingSession() async {
+        print("🚀 startFastingSession() called")
         guard let plan = activePlan else {
+            print("   ❌ No active plan found")
             self.error = NSError(domain: "FastingViewModel", code: 1, userInfo: [NSLocalizedDescriptionKey: "No active plan found"])
             self.showError = true
             return
         }
 
+        print("   ✅ Active plan found: '\(plan.name)'")
         isLoading = true
         defer { isLoading = false }
 
+        print("   📝 Creating session...")
         let session = FastingManager.createSession(
             plan: plan,
             targetDurationHours: plan.durationHours
         )
 
+        print("   💾 Saving session to Firebase...")
         do {
-            try await firebaseManager.saveFastingSession(session)
-            await loadActiveSession()
-            await loadRecentSessions()
+            let docId = try await firebaseManager.saveFastingSession(session)
+            print("   ✅ Session saved with ID: \(docId)")
+
+            // Update local state immediately (same fix as for plan creation)
+            var savedSession = session
+            savedSession.id = docId
+            self.activeSession = savedSession
+            self.recentSessions.insert(savedSession, at: 0)
+
+            print("   ✅ Local state updated - startFastingSession complete")
         } catch {
+            print("   ❌ Failed to save session: \(error.localizedDescription)")
             self.error = error
             self.showError = true
         }
