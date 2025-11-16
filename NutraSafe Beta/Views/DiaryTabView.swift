@@ -149,15 +149,17 @@ struct DiaryTabView: View {
                     showingDatePicker.toggle()
                 }) {
                     HStack(spacing: 6) {
-                        Text(formatDateShort(selectedDate))
+                        Text(showingDatePicker ? "Close" : formatDateShort(selectedDate))
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(.primary)
                             .fixedSize()
                             .lineLimit(1)
+                            .animation(nil, value: showingDatePicker)
 
                         Image(systemName: "chevron.down")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(.secondary)
+                            .rotationEffect(.degrees(showingDatePicker ? 180 : 0))
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
