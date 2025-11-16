@@ -121,16 +121,33 @@ async function searchOpenFoodFacts(query) {
         return [];
     }
 }
+// Helper function to capitalize each word for consistent formatting
+function capitalizeWords(text) {
+    if (!text)
+        return text;
+    return text
+        .split(' ')
+        .map(word => {
+        if (!word)
+            return word;
+        // Capitalize first letter, keep rest as-is (preserves acronyms like "UK")
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+        .join(' ');
+}
 // Helper function to transform OpenFoodFacts data to our format
 function transformOpenFoodFactsProduct(offProduct) {
     const nutriments = offProduct.nutriments || {};
     // Get ingredients text (prefer English version) - iOS app expects a string, not an array
     const ingredientsText = offProduct.ingredients_text_en || offProduct.ingredients_text || '';
     const barcode = offProduct.code || offProduct._id || '';
+    // Get raw name and brand, then capitalize for consistent formatting
+    const rawName = offProduct.product_name || offProduct.product_name_en || 'Unknown Product';
+    const rawBrand = offProduct.brands || null;
     return {
         id: `off-${barcode}`,
-        name: offProduct.product_name || offProduct.product_name_en || 'Unknown Product',
-        brand: offProduct.brands || null,
+        name: capitalizeWords(rawName),
+        brand: rawBrand ? capitalizeWords(rawBrand) : null,
         barcode: barcode,
         calories: { kcal: nutriments['energy-kcal_100g'] || nutriments['energy-kcal'] || 0 },
         protein: { per100g: nutriments.proteins_100g || nutriments.proteins || 0 },
