@@ -16,12 +16,11 @@ import Foundation
 import Vision
 import AVFoundation
 
-// MARK: - Food Detail View From Search (2,305 lines extracted from ContentView.swift)
+// MARK: - Food Detail View From Search (DIARY-ONLY)
 struct FoodDetailViewFromSearch: View {
     let food: FoodSearchResult
     let sourceType: FoodSourceType
     @Binding var selectedTab: TabItem
-    let destination: AddFoodMainView.AddDestination
     var onComplete: ((TabItem) -> Void)?
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var diaryDataManager: DiaryDataManager
@@ -54,11 +53,10 @@ struct FoodDetailViewFromSearch: View {
     let diaryMealType: String?
     let diaryQuantity: Double?
 
-    init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, destination: AddFoodMainView.AddDestination, diaryEntryId: UUID? = nil, diaryMealType: String? = nil, diaryQuantity: Double? = nil, onComplete: ((TabItem) -> Void)? = nil) {
+    init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, diaryEntryId: UUID? = nil, diaryMealType: String? = nil, diaryQuantity: Double? = nil, onComplete: ((TabItem) -> Void)? = nil) {
         self.food = food
         self.sourceType = sourceType
         self._selectedTab = selectedTab
-        self.destination = destination
         self.diaryEntryId = diaryEntryId
         self.diaryMealType = diaryMealType
         self.diaryQuantity = diaryQuantity
@@ -215,15 +213,12 @@ struct FoodDetailViewFromSearch: View {
     @State private var showingAllergenCitations = false
 
     private var buttonText: String {
-        // DEBUG LOG: print("DEBUG buttonText calculation:")
         #if DEBUG
+        print("DEBUG buttonText calculation:")
         print("  - diaryEntryId: \(String(describing: diaryEntryId))")
         print("  - isEditingMode: \(isEditingMode)")
         print("  - selectedMeal: \(selectedMeal)")
         print("  - originalMealType: \(originalMealType)")
-        print("  - destination: \(destination)")
-
-        // Check if we're replacing a diary entry
         #endif
         if let _ = diaryEntryId {
             // When editing, we ALWAYS stay in the same meal, so just say "Update"
@@ -239,10 +234,9 @@ struct FoodDetailViewFromSearch: View {
             return "Update"
         } else {
             #if DEBUG
-            print("  -> Default case, returning Add")
-            // Reflect destination selection
+            print("  -> Default case, returning Add to Diary")
             #endif
-            return destination == .useBy ? "Add to Use By" : "Add to Diary"
+            return "Add to Diary"
         }
     }
     
@@ -1847,13 +1841,9 @@ struct FoodDetailViewFromSearch: View {
         print("  - diaryEntry.calories: \(diaryEntry.calories)")
         print("  - diaryEntry.ingredients: \(diaryEntry.ingredients?.count ?? 0) items")
 
-        // Add to diary or useBy based on destination
+        // Add to diary (diary-only view)
         #endif
-        if destination == .useBy {
-            // Show useBy detail sheet where user can set expiry, location, etc.
-            showingUseByAddSheet = true
-        } else {
-            // Add to diary using DiaryDataManager
+        // Add to diary using DiaryDataManager
             // Get the preselected date from UserDefaults, or use today if not available
             let targetDate: Date
             if let preselectedTimestamp = UserDefaults.standard.object(forKey: "preselectedDate") as? Double {
@@ -1895,7 +1885,7 @@ struct FoodDetailViewFromSearch: View {
 
                         await MainActor.run {
                             dismiss()
-                            onComplete?(destination == .diary ? .diary : .useBy)
+                            onComplete?(.diary)
                         }
                     } catch {
                         #if DEBUG
@@ -1920,9 +1910,8 @@ struct FoodDetailViewFromSearch: View {
                 #endif
 
                 dismiss()
-                onComplete?(destination == .diary ? .diary : .useBy)
+                onComplete?(.diary)
             }
-        }
     }
     
     private func formatQuantityMultiplier(_ quantity: Double) -> String {
@@ -3075,13 +3064,9 @@ struct FoodDetailViewFromSearch: View {
                     }
                 }
                 
-                // Add Button
+                // Add Button (diary-only)
                 Button(action: {
-                    if destination == .useBy {
-                        showingUseByAddSheet = true
-                    } else {
-                        addToFoodLog()
-                    }
+                    addToFoodLog()
                 }) {
                     HStack {
                         Image(systemName: "plus.circle.fill")

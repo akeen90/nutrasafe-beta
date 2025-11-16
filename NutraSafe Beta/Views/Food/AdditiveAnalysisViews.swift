@@ -81,7 +81,7 @@ struct AdditiveWatchView: View {
                 Image(systemName: "info.circle.fill")
                     .foregroundColor(.secondary)
                     .font(.system(size: 16))
-                Text("No ingredient data available - unable to analyze additives and allergens")
+                Text("No ingredient data available - unable to analyse additives and allergens")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.secondary)
                     .lineLimit(nil)

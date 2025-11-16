@@ -1433,6 +1433,7 @@ struct ContentView: View {
     @State private var showingDiaryAdd = false
     @State private var showingUseByAdd = false
     @State private var showingReactionLog = false
+    @State private var useBySelectedFood: FoodSearchResult? = nil
     @State private var previousTabBeforeAdd: TabItem = .diary
 
     // PERFORMANCE: Track which tabs have been visited for lazy initialization
@@ -1578,10 +1579,11 @@ struct ContentView: View {
             }
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
-        .onTapGesture {
-            // Dismiss keyboard when tapping outside text fields
-            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        }
+        // REMOVED: .onTapGesture that was consuming ALL taps and blocking buttons
+        // Keyboard dismissal now handled by:
+        // - scrollDismissesKeyboard on ScrollViews
+        // - Return key on TextFields
+        // - Individual view dismiss actions
         .sheet(isPresented: $showingSettings) {
             SettingsView()
         }
@@ -1599,7 +1601,6 @@ struct ContentView: View {
         .fullScreenCover(isPresented: $showingDiaryAdd) {
             AddFoodMainView(
                 selectedTab: $selectedTab,
-                sourceDestination: .diary,
                 isPresented: $showingDiaryAdd,
                 onDismiss: {
                     #if DEBUG
@@ -1621,19 +1622,13 @@ struct ContentView: View {
             .environmentObject(diaryDataManager)
         }
         .fullScreenCover(isPresented: $showingUseByAdd) {
-            AddFoodMainView(
-                selectedTab: $selectedTab,
-                sourceDestination: .useBy,
-                isPresented: $showingUseByAdd,
-                onDismiss: {
-                    showingUseByAdd = false
-                },
-                onComplete: { tab in
-                    showingUseByAdd = false
-                    selectedTab = tab
-                }
-            )
-            .environmentObject(diaryDataManager)
+            AddUseByItemSheet(onComplete: {
+                showingUseByAdd = false
+                selectedTab = .useBy
+            })
+            .onDisappear {
+                showingUseByAdd = false
+            }
         }
         .fullScreenCover(isPresented: $showingReactionLog) {
             NavigationView {
@@ -6699,26 +6694,17 @@ struct ModernMacroItem: View {
 struct AddFoodMainView: View {
     @Binding var selectedTab: TabItem
     @State private var selectedAddOption: AddOption = .search
-    @State private var destination: AddDestination
-    @State private var selectedFoodForUseBy: FoodSearchResult? = nil
-    @State private var lastUseBySelection: FoodSearchResult? = nil
-    @State private var showingUseBySheet: Bool = false
     @State private var prefilledBarcode: String? = nil // Barcode from scanner to prefill manual entry
     @Binding var isPresented: Bool // Direct binding to presentation state
     var onDismiss: (() -> Void)?
     var onComplete: ((TabItem) -> Void)?
+    @State private var keyboardVisible = false
 
-    init(selectedTab: Binding<TabItem>, sourceDestination: AddDestination, isPresented: Binding<Bool>, onDismiss: (() -> Void)? = nil, onComplete: ((TabItem) -> Void)? = nil) {
+    init(selectedTab: Binding<TabItem>, isPresented: Binding<Bool>, onDismiss: (() -> Void)? = nil, onComplete: ((TabItem) -> Void)? = nil) {
         self._selectedTab = selectedTab
-        self._destination = State(initialValue: sourceDestination)
         self._isPresented = isPresented
         self.onDismiss = onDismiss
         self.onComplete = onComplete
-    }
-
-    enum AddDestination: String, CaseIterable {
-        case diary = "Diary"
-        case useBy = "Use By"
     }
 
     enum AddOption: String, CaseIterable {
@@ -6779,19 +6765,28 @@ struct AddFoodMainView: View {
                     // Option selector
                     HStack(spacing: 0) {
                         OptionSelectorButton(title: "Search", icon: "magnifyingglass", isSelected: selectedAddOption == .search) {
+                            print("🔵 [Diary] Search option tapped")
                             selectedAddOption = .search
                         }
                         OptionSelectorButton(title: "AI/Manual", icon: "square.and.pencil", isSelected: selectedAddOption == .manual) {
+                            print("🔵 [Diary] AI/Manual option tapped")
                             selectedAddOption = .manual
                         }
                         OptionSelectorButton(title: "Barcode", icon: "barcode.viewfinder", isSelected: selectedAddOption == .barcode) {
+                            print("🔵 [Diary] Barcode option tapped")
                             selectedAddOption = .barcode
                         }
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
+                    .background(Color.green.opacity(0.001)) // Ultra-transparent hit test helper
                 }
                 .background(Color(.systemBackground))
+                .zIndex(999)
+                .allowsHitTesting(true)
+                .onAppear {
+                    print("🟢 [Diary] Header VStack appeared with zIndex 999")
+                }
 
                 // Content based on selected option
                 Group {
@@ -6800,20 +6795,7 @@ struct AddFoodMainView: View {
                         AnyView(
                             AddFoodSearchView(
                                 selectedTab: $selectedTab,
-                                destination: $destination,
                                 onComplete: onComplete,
-                                onSelectUseBy: { selected in
-                                    // Keep this closure simple to help the type-checker
-                                    // Guard against re-selecting the same item to avoid churn
-                                    if lastUseBySelection?.id != selected.id {
-                                        lastUseBySelection = selected
-                                    }
-                                    selectedFoodForUseBy = selected
-                                    DispatchQueue.main.async {
-                                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                                    }
-                                    // Sheet presentation is driven by item binding
-                                },
                                 onSwitchToManual: {
                                     selectedAddOption = .manual
                                 }
@@ -6821,11 +6803,11 @@ struct AddFoodMainView: View {
                         )
                     case .manual:
                         AnyView(
-                            AddFoodManualView(selectedTab: $selectedTab, destination: $destination, prefilledBarcode: prefilledBarcode, onComplete: onComplete)
+                            AddFoodManualView(selectedTab: $selectedTab, prefilledBarcode: prefilledBarcode, onComplete: onComplete)
                         )
                     case .barcode:
                         AnyView(
-                            AddFoodBarcodeView(selectedTab: $selectedTab, destination: $destination, onSwitchToManual: { barcode in
+                            AddFoodBarcodeView(selectedTab: $selectedTab, onSwitchToManual: { barcode in
                                 prefilledBarcode = barcode
                                 selectedAddOption = .manual
                             })
@@ -6833,125 +6815,52 @@ struct AddFoodMainView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .zIndex(0)
+                .onAppear {
+                    print("🟢 [Diary] Content Group appeared with zIndex 0, frame: maxWidth/maxHeight")
                 }
-                .navigationTitle(destination.rawValue)
+                }
+                .navigationTitle("Diary")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button(action: {
-                            #if DEBUG
-                            print("🔴 X button tapped - directly setting isPresented to false")
-                            // Directly modify the binding to dismiss the fullScreenCover
-                            #endif
+                            print("🔴 [Diary] X button TAPPED - keyboard visible: \(keyboardVisible)")
+                            print("🔴 [Diary] Directly setting isPresented to false")
                             isPresented = false
-                            #if DEBUG
-                            print("🔴 isPresented set to false")
-                            #endif
+                            print("🔴 [Diary] isPresented set to false")
                         }) {
                             Image(systemName: "xmark")
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(.primary)
+                        }
+                        .zIndex(1000)
+                        .allowsHitTesting(true)
+                        .onAppear {
+                            print("🟢 [Diary] X button appeared with zIndex 1000")
                         }
                     }
                 }
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
-        // Removed first-time full-screen cover; using sheet for all opens
-        .sheet(item: $lastUseBySelection, onDismiss: {
-            #if DEBUG
-            print("[UseBy] sheet dismissed")
-            #endif
-            selectedFoodForUseBy = nil
-        }) { stableSelection in
-            let sheetView = AddFoundFoodToUseBySheet(food: stableSelection) { tab in
-                onComplete?(tab)
-            }
-            Group {
-                sheetView
-            }
-            .onAppear { print("[UseBy] sheet wrapper appear for id=\(stableSelection.id) name=\(stableSelection.name)") }
-            .onDisappear { print("[UseBy] sheet wrapper disappear for id=\(stableSelection.id)") }
-            .interactiveDismissDisabled(true)
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
-        }
-        // Removed boolean-based sheet change observer; sheet is item-driven now
-        .onChange(of: selectedFoodForUseBy?.id, perform: { newId in
-            if let id = newId, let f = selectedFoodForUseBy {
-                #if DEBUG
-                print("[UseBy] selectedFoodForUseBy set -> \(id) \(f.name)")
-                #endif
-            } else {
-                #if DEBUG
-                print("[UseBy] selectedFoodForUseBy cleared")
-                #endif
-            }
-        })
-        .onChange(of: lastUseBySelection?.id, perform: { newId in
-            if let id = newId, let f = lastUseBySelection {
-                #if DEBUG
-                print("[UseBy] lastUseBySelection changed -> \(id) \(f.name)")
-                #endif
-            } else {
-                #if DEBUG
-                print("[UseBy] lastUseBySelection cleared")
-                #endif
-            }
-        })
-    }
-}
+        .onAppear {
+            print("🟢 [Diary] AddFoodMainView APPEARED")
+            print("🔍 [Diary] ROOT NavigationView - allowsHitTesting: true, disabled: false")
 
-struct DestinationSelector: View {
-    @Binding var selectedDestination: AddFoodMainView.AddDestination
-
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach(AddFoodMainView.AddDestination.allCases, id: \.self) { destination in
-                Button(action: {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        selectedDestination = destination
-                    }
-                }) {
-                    Text(destination.rawValue)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(
-                            selectedDestination == destination ?
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.6, green: 0.3, blue: 0.8),
-                                    Color(red: 0.4, green: 0.5, blue: 0.9)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            ) :
-                            LinearGradient(
-                                colors: [Color.secondary, Color.secondary],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(
-                            ZStack {
-                                if selectedDestination == destination {
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(Color(.systemBackground))
-                                        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-                                }
-                            }
-                        )
-                }
-                .buttonStyle(PlainButtonStyle())
+            // Monitor keyboard
+            NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main) { _ in
+                print("⌨️ [Diary] Keyboard WILL SHOW")
+                keyboardVisible = true
+            }
+            NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil, queue: .main) { _ in
+                print("⌨️ [Diary] Keyboard WILL HIDE")
+                keyboardVisible = false
             }
         }
-        .padding(4)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(.systemGray6))
-        )
-        .frame(height: 40)
+        .onDisappear {
+            print("🔴 [Diary] AddFoodMainView DISAPPEARED")
+        }
     }
 }
 
@@ -6962,6 +6871,7 @@ struct AddOptionSelector: View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 12) {
             ForEach(AddFoodMainView.AddOption.allCases, id: \.self) { option in
                 Button(action: {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     selectedOption = option
                 }) {
                     VStack(spacing: 12) {

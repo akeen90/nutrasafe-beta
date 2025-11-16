@@ -357,7 +357,6 @@ struct DiaryFoodRow: View {
                 food: food.toFoodSearchResult(),
                 sourceType: .diary,
                 selectedTab: .constant(.diary),
-                destination: .diary,
                 diaryEntryId: food.id,
                 diaryMealType: mealType,
                 diaryQuantity: food.quantity

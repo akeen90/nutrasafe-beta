@@ -199,7 +199,6 @@ enum IngredientFinderError: LocalizedError {
 /// Main manual food addition view that navigates to detail entry page
 struct AddFoodManualView: View {
     @Binding var selectedTab: TabItem
-    @Binding var destination: AddFoodMainView.AddDestination
     var prefilledBarcode: String? = nil
     var onComplete: ((TabItem) -> Void)?
     @State private var showingDetailEntry = false
@@ -215,14 +214,12 @@ struct AddFoodManualView: View {
                 .padding(.bottom, 16)
 
             // Title
-            Text(destination == .useBy ? "Manual Entry" : "Add with AI Search")
+            Text("Add with AI Search")
                 .font(.system(size: 28, weight: .bold))
                 .foregroundColor(.primary)
 
             // Description
-            Text(destination == .useBy
-                 ? "Add item with use-by date tracking"
-                 : "Intelligent search auto-fills nutrition data from UK supermarkets")
+            Text("Intelligent search auto-fills nutrition data from UK supermarkets")
                 .font(.system(size: 16))
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
@@ -252,7 +249,7 @@ struct AddFoodManualView: View {
             Spacer()
         }
         .sheet(isPresented: $showingDetailEntry) {
-            ManualFoodDetailEntryView(selectedTab: $selectedTab, destination: destination, prefilledBarcode: prefilledBarcode, onComplete: onComplete)
+            ManualFoodDetailEntryView(selectedTab: $selectedTab, prefilledBarcode: prefilledBarcode, onComplete: onComplete)
         }
         .onAppear {
             // If we have a prefilled barcode, automatically show the detail entry
@@ -265,10 +262,9 @@ struct AddFoodManualView: View {
 
 // MARK: - Detail Entry View
 
-/// Comprehensive manual food entry form with all nutrition fields
+/// Comprehensive manual food entry form with all nutrition fields (DIARY-ONLY)
 struct ManualFoodDetailEntryView: View {
     @Binding var selectedTab: TabItem
-    let destination: AddFoodMainView.AddDestination
     var prefilledBarcode: String? = nil
     var onComplete: ((TabItem) -> Void)?
     @Environment(\.dismiss) private var dismiss
@@ -304,18 +300,6 @@ struct ManualFoodDetailEntryView: View {
     // Diary-specific fields
     @State private var selectedMealTime = "Breakfast"
 
-    // Use By-specific fields
-    @State private var expiryDate = Date()
-    @State private var quantity = "1"
-    @State private var location = "General"
-    @State private var expiryAmount = 7
-    @State private var expiryUnit: ExpiryUnit = .days
-
-    enum ExpiryUnit: String, CaseIterable {
-        case days = "Days"
-        case weeks = "Weeks"
-    }
-
     enum EntryMode {
         case manual
         case aiSearch
@@ -331,17 +315,11 @@ struct ManualFoodDetailEntryView: View {
     @State private var showingBarcodeScanner = false
 
     let servingUnits = ["g", "ml", "oz", "cup", "tbsp", "tsp", "piece", "slice", "serving"]
-    let useByLocations = ["General", "UseBy", "Freezer", "Pantry", "Cupboard"]
     let mealTimes = ["Breakfast", "Lunch", "Dinner", "Snacks"]
 
     var isFormValid: Bool {
-        if destination == .useBy {
-            // For useBy: need food name and brand only
-            return !foodName.isEmpty && !brand.isEmpty
-        } else {
-            // For diary: need food name, brand, calories, carbs, protein, and fat
-            return !foodName.isEmpty && !brand.isEmpty && !calories.isEmpty && !carbs.isEmpty && !protein.isEmpty && !fat.isEmpty
-        }
+        // For diary: need food name, brand, calories, carbs, protein, and fat
+        return !foodName.isEmpty && !brand.isEmpty && !calories.isEmpty && !carbs.isEmpty && !protein.isEmpty && !fat.isEmpty
     }
 
     // Helper to check if a required field is empty and should show error
@@ -355,13 +333,13 @@ struct ManualFoodDetailEntryView: View {
         case "brand":
             return brand.isEmpty
         case "calories":
-            return destination == .diary && calories.isEmpty
+            return calories.isEmpty
         case "carbs":
-            return destination == .diary && carbs.isEmpty
+            return carbs.isEmpty
         case "protein":
-            return destination == .diary && protein.isEmpty
+            return protein.isEmpty
         case "fat":
-            return destination == .diary && fat.isEmpty
+            return fat.isEmpty
         default:
             return false
         }
@@ -371,42 +349,40 @@ struct ManualFoodDetailEntryView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 24) {
-                    // Mode Selector - only for Diary destination
-                    if destination == .diary {
-                        VStack(spacing: 12) {
-                            Picker("Entry Mode", selection: $entryMode) {
-                                Text("Manual Entry").tag(EntryMode.manual)
-                                Text("Search with AI").tag(EntryMode.aiSearch)
-                            }
-                            .pickerStyle(SegmentedPickerStyle())
-
-                            // Mode description
-                            HStack(spacing: 8) {
-                                Image(systemName: entryMode == .aiSearch ? "sparkles" : "pencil")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(entryMode == .aiSearch ? .purple : .blue)
-
-                                Text(entryMode == .aiSearch
-                                    ? "Search UK supermarkets to auto-fill ingredients and nutrition"
-                                    : "Enter all details manually for full control")
-                                    .font(.system(size: 13))
-                                    .foregroundColor(.secondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-
-                                Spacer()
-                            }
-                            .padding(.horizontal, 4)
+                    // Mode Selector - Diary-only view
+                    VStack(spacing: 12) {
+                        Picker("Entry Mode", selection: $entryMode) {
+                            Text("Manual Entry").tag(EntryMode.manual)
+                            Text("Search with AI").tag(EntryMode.aiSearch)
                         }
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 16)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color(.systemGray6))
-                        )
+                        .pickerStyle(SegmentedPickerStyle())
+
+                        // Mode description
+                        HStack(spacing: 8) {
+                            Image(systemName: entryMode == .aiSearch ? "sparkles" : "pencil")
+                                .font(.system(size: 14))
+                                .foregroundColor(entryMode == .aiSearch ? .purple : .blue)
+
+                            Text(entryMode == .aiSearch
+                                ? "Search UK supermarkets to auto-fill ingredients and nutrition"
+                                : "Enter all details manually for full control")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            Spacer()
+                        }
+                        .padding(.horizontal, 4)
                     }
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(.systemGray6))
+                    )
 
                     // AI Search Mode Interface
-                    if destination == .diary && entryMode == .aiSearch {
+                    if entryMode == .aiSearch {
                         VStack(alignment: .leading, spacing: 20) {
                             SectionHeader(title: "Search for Product")
 
@@ -470,7 +446,7 @@ struct ManualFoodDetailEntryView: View {
                     }
 
                     // Manual Entry Mode Interface
-                    if destination != .diary || entryMode == .manual {
+                    if entryMode == .manual {
                         // Basic Information Section
                         VStack(alignment: .leading, spacing: 16) {
                             SectionHeader(title: "Basic Information")
@@ -491,7 +467,7 @@ struct ManualFoodDetailEntryView: View {
                                     )
                             }
 
-                        FormField(label: "Brand Name", isRequired: destination != .diary) {
+                        FormField(label: "Brand Name", isRequired: false) {
                             TextField("Enter brand name...", text: $brand)
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
                                 .overlay(
@@ -520,11 +496,10 @@ struct ManualFoodDetailEntryView: View {
                         }
                     }
 
-                    // Show full nutrition form for diary, simplified form for useBy
-                    if destination == .diary {
-                        Divider()
+                    // Diary nutrition form
+                    Divider()
 
-                        // Serving Size Section
+                    // Serving Size Section
                         VStack(alignment: .leading, spacing: 16) {
                             SectionHeader(title: "Serving Size")
 
@@ -649,79 +624,6 @@ struct ManualFoodDetailEntryView: View {
                             }
                         }
 
-                        } // end diary section
-
-                    // Use By-specific fields (simplified form)
-                    if destination == .useBy {
-                        Divider()
-
-                        VStack(alignment: .leading, spacing: 16) {
-                            SectionHeader(title: "Use By Details")
-
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Expires In")
-                                    .font(.system(size: 14, weight: .medium))
-
-                                HStack(spacing: 12) {
-                                    // Counter for days/weeks
-                                    HStack(spacing: 0) {
-                                        Button(action: { if expiryAmount > 1 { expiryAmount -= 1; updateExpiryDate() } }) {
-                                            Image(systemName: "minus")
-                                                .font(.system(size: 16, weight: .semibold))
-                                        }
-                                        .frame(width: 40, height: 36)
-
-                                        Divider().frame(height: 20)
-
-                                        Text("\(expiryAmount)")
-                                            .frame(minWidth: 44)
-                                            .font(.system(size: 16, weight: .semibold))
-
-                                        Divider().frame(height: 20)
-
-                                        Button(action: { if expiryAmount < 365 { expiryAmount += 1; updateExpiryDate() } }) {
-                                            Image(systemName: "plus")
-                                                .font(.system(size: 16, weight: .semibold))
-                                        }
-                                        .frame(width: 40, height: 36)
-                                    }
-                                    .foregroundColor(.primary)
-                                    .background(RoundedRectangle(cornerRadius: 10).fill(Color(.systemGray6)))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 10)
-                                            .stroke(Color(.systemGray4), lineWidth: 1)
-                                    )
-
-                                    // Days/Weeks picker
-                                    Picker("Unit", selection: $expiryUnit) {
-                                        ForEach(ExpiryUnit.allCases, id: \.self) { unit in
-                                            Text(unit.rawValue).tag(unit)
-                                        }
-                                    }
-                                    .pickerStyle(.segmented)
-                                    .onChange(of: expiryUnit) { _ in updateExpiryDate() }
-                                }
-                            }
-
-                            FormField(label: "Calculated Expiry Date") {
-                                Text(expiryDate, style: .date)
-                                    .font(.system(size: 16))
-                                    .foregroundColor(.secondary)
-                            }
-
-                            FormField(label: "Notes (Optional)") {
-                                TextEditor(text: $ingredientsText)
-                                    .frame(height: 80)
-                                    .padding(8)
-                                    .background(Color(.systemGray6))
-                                    .cornerRadius(8)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .stroke(Color(.systemGray4), lineWidth: 1)
-                                    )
-                            }
-                        }
-                    }
                     } // end manual entry mode
 
                     // Save Button
@@ -735,7 +637,7 @@ struct ManualFoodDetailEntryView: View {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.system(size: 20))
                             }
-                            Text(isSaving ? "Saving..." : (destination == .useBy ? "Add to Use By" : "Add to Diary"))
+                            Text(isSaving ? "Saving..." : "Add to Diary")
                                 .font(.system(size: 18, weight: .semibold))
                         }
                         .foregroundColor(.white)
@@ -755,7 +657,7 @@ struct ManualFoodDetailEntryView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
             }
-            .navigationTitle(destination == .useBy ? "Add to Use By" : "Add to Diary")
+            .navigationTitle("Add to Diary")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -821,9 +723,7 @@ struct ManualFoodDetailEntryView: View {
                         }
                         showIngredientConfirmation = false
                         // Switch to manual mode so user can see and edit the populated data
-                        if destination == .diary {
-                            entryMode = .manual
-                        }
+                        entryMode = .manual
                     },
                     onEdit: {
                         // Apply product name and brand if found
@@ -870,9 +770,7 @@ struct ManualFoodDetailEntryView: View {
                         }
                         showIngredientConfirmation = false
                         // Switch to manual mode so user can see and edit the populated data
-                        if destination == .diary {
-                            entryMode = .manual
-                        }
+                        entryMode = .manual
                     },
                     onCancel: {
                         showIngredientConfirmation = false
@@ -883,10 +781,6 @@ struct ManualFoodDetailEntryView: View {
                 // Initialize barcode from prefilledBarcode if provided
                 if let prefilledBarcode = prefilledBarcode {
                     barcode = prefilledBarcode
-                }
-                // Initialize expiry date for Use By
-                if destination == .useBy {
-                    updateExpiryDate()
                 }
             }
         }
@@ -999,11 +893,6 @@ struct ManualFoodDetailEntryView: View {
         }
     }
 
-    private func updateExpiryDate() {
-        let daysToAdd = expiryUnit == .weeks ? expiryAmount * 7 : expiryAmount
-        expiryDate = Date().addingTimeInterval(TimeInterval(daysToAdd * 24 * 60 * 60))
-    }
-
     private func saveFood() {
         // First check if form is valid
         if !isFormValid {
@@ -1019,29 +908,19 @@ struct ManualFoodDetailEntryView: View {
 
         Task {
             do {
-                if destination == .useBy {
-                    try await saveFoodToUseBy()
-                } else {
-                    try await saveFoodToDiary()
-                }
+                try await saveFoodToDiary()
 
                 // Use the onComplete callback to dismiss entire sheet stack and navigate
                 await MainActor.run {
                     isSaving = false
                     if let callback = onComplete {
                         // Use callback if available (proper dismissal)
-                        if destination == .diary {
-                            callback(.diary)
-                        } else {
-                            callback(.useBy)
-                        }
+                        callback(.diary)
                     } else {
                         // Fallback: manually dismiss and switch tabs
                         dismiss()
-                        if destination == .diary {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                selectedTab = .diary
-                            }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            selectedTab = .diary
                         }
                     }
                 }
@@ -1049,7 +928,7 @@ struct ManualFoodDetailEntryView: View {
                 // Don't dismiss on error - show error message instead
                 await MainActor.run {
                     isSaving = false
-                    // Error will be shown by the saveFoodToDiary/saveFoodToUseBy functions
+                    // Error will be shown by the saveFoodToDiary function
                 }
             }
         }
@@ -1176,61 +1055,6 @@ struct ManualFoodDetailEntryView: View {
                 errorMessage = error.localizedDescription
                 showingError = true
                 print("❌ Error saving manual food: \(error.localizedDescription)")
-            }
-            throw error
-        }
-    }
-
-
-    private func saveFoodToUseBy() async throws {
-        // Create use-by item from manual data using UseByInventoryItem structure
-        guard FirebaseManager.shared.currentUser?.uid != nil else {
-            let error = NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to add items"])
-            await MainActor.run {
-                errorMessage = error.localizedDescription
-                showingError = true
-            }
-            throw error
-        }
-
-        // AUTO-CAPITALIZE: Food name and brand
-        let capitalizedFoodName = foodName.capitalized
-        let capitalizedBrand = brand.capitalized
-
-        // Build UseByInventoryItem to align with Use By views and Firebase storage
-        let item = UseByInventoryItem(
-            name: capitalizedFoodName,
-            brand: capitalizedBrand.isEmpty ? nil : capitalizedBrand,
-            quantity: quantity.isEmpty ? "1" : quantity,
-            expiryDate: expiryDate,
-            addedDate: Date(),
-            barcode: barcode.isEmpty ? nil : barcode,
-            category: nil,
-            imageURL: nil,
-            notes: ingredientsText.isEmpty ? nil : ingredientsText
-        )
-
-        // Save to Firebase (users/{uid}/useByInventory)
-        do {
-            try await FirebaseManager.shared.addUseByItem(item)
-            print("✅ Successfully saved item to use-by inventory")
-
-            // Switch to Use By tab and trigger refresh
-            await MainActor.run {
-                selectedTab = .useBy
-            }
-
-            // Give time for tab switch, then notify to refresh
-            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
-
-            await MainActor.run {
-                NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
-            }
-        } catch {
-            await MainActor.run {
-                errorMessage = error.localizedDescription
-                showingError = true
-                print("❌ Error saving to use-by: \(error)")
             }
             throw error
         }
@@ -1787,8 +1611,7 @@ struct NutritionRow: View {
 
 #Preview {
     ManualFoodDetailEntryView(
-        selectedTab: .constant(.add),
-        destination: .diary
+        selectedTab: .constant(.add)
     )
     .environmentObject(DiaryDataManager.shared)
 }

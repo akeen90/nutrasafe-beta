@@ -12,10 +12,9 @@ import UIKit
 import AudioToolbox
 import Foundation
 
-// MARK: - Barcode Scanning View
+// MARK: - Barcode Scanning View (DIARY-ONLY)
 struct AddFoodBarcodeView: View {
     @Binding var selectedTab: TabItem
-    @Binding var destination: AddFoodMainView.AddDestination
     var onSwitchToManual: ((String) -> Void)? = nil // Callback with barcode
     @State private var scannedProduct: FoodSearchResult?
     @State private var pendingContribution: PendingFoodContribution?
@@ -39,7 +38,6 @@ struct AddFoodBarcodeView: View {
                         food: product,
                         sourceType: .barcode,
                         selectedTab: $selectedTab,
-                        destination: $destination,
                         onComplete: { tab in
                             // Switch to the selected tab after adding food
                             selectedTab = tab
@@ -197,7 +195,6 @@ struct AddFoodBarcodeView: View {
                 NavigationView {
                     ManualFoodDetailEntryView(
                         selectedTab: $selectedTab,
-                        destination: destination,
                         prefilledBarcode: contribution.barcode
                     )
                     .navigationBarItems(leading: Button("Cancel") {

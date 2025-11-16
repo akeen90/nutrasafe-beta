@@ -132,9 +132,7 @@ struct UseByTabView: View {
                         }
 
                         Button(action: {
-                            // Set useBy as default destination
-                            UserDefaults.standard.set("Use By", forKey: "preselectedDestination")
-                            selectedTab = .add
+                            showingAddSheet = true
                         }) {
                             ZStack {
                                 // Glow effect
@@ -202,10 +200,7 @@ struct UseByTabView: View {
             .background(Color.adaptiveBackground)
             .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
         .fullScreenCover(isPresented: $showingAddSheet) {
-            AddUseByItemSheet(selectedFood: $selectedFoodForUseBy)
-        }
-        .sheet(item: $selectedFoodForUseBy) { food in
-            AddFoundFoodToUseBySheet(food: food)
+            AddUseByItemSheet()
         }
         .sheet(isPresented: $showingScanner) {
             // Barcode scanner will be implemented
@@ -1009,10 +1004,7 @@ struct UseByExpiryView: View {
             Text("This will remove all items from your useBy inventory.")
         }
         .fullScreenCover(isPresented: $showingAddSheet) {
-            AddUseByItemSheet(selectedFood: $selectedFoodForUseBy)
-        }
-        .sheet(item: $selectedFoodForUseBy) { food in
-            AddFoundFoodToUseBySheet(food: food)
+            AddUseByItemSheet()
         }
     } // End of var body: some View
 
@@ -1191,10 +1183,7 @@ struct UseByExpiryAlertsCard: View {
         .background(Color(.systemGray6))
         .cornerRadius(12)
         .fullScreenCover(isPresented: $showingAddSheet) {
-            AddUseByItemSheet(selectedFood: $selectedFoodForUseBy)
-        }
-        .sheet(item: $selectedFoodForUseBy) { food in
-            AddFoundFoodToUseBySheet(food: food)
+            AddUseByItemSheet()
         }
     }
 }
@@ -2270,10 +2259,7 @@ struct UseByQuickAddCard: View {
                 .fill(Color(.systemGray6))
         )
         .fullScreenCover(isPresented: $showingAddSheet) {
-            AddUseByItemSheet(selectedFood: $selectedFoodForUseBy)
-        }
-        .sheet(item: $selectedFoodForUseBy) { food in
-            AddFoundFoodToUseBySheet(food: food)
+            AddUseByItemSheet()
         }
     }
 }
@@ -2442,86 +2428,176 @@ struct UseByBarcodeScanSheet: View {
 
 struct AddUseByItemSheet: View {
     @Environment(\.dismiss) var dismiss
-    @Binding var selectedFood: FoodSearchResult? // Binding to parent state
+    var onComplete: (() -> Void)? = nil
     @State private var showingManualAdd = false
     @State private var showingSearch = false
     @State private var showingBarcodeScan = false
-    @State private var selectedOption: AddFoodMainView.AddOption = .search
+    @State private var selectedOption: UseByAddOption = .search
+    @State private var keyboardVisible = false
+
+    enum UseByAddOption: String, CaseIterable {
+        case search = "Search"
+        case manual = "Manual"
+        case barcode = "Barcode"
+
+        var icon: String {
+            switch self {
+            case .search: return "magnifyingglass"
+            case .manual: return "square.and.pencil"
+            case .barcode: return "barcode.viewfinder"
+            }
+        }
+    }
+
+    // Lightweight button component matching Diary's OptionSelectorButton
+    private struct UseByOptionSelectorButton: View {
+        let title: String
+        let icon: String
+        let isSelected: Bool
+        let onTap: () -> Void
+
+        var body: some View {
+            Button(action: { onTap() }) {
+                HStack(spacing: 6) {
+                    Image(systemName: icon)
+                        .font(.system(size: 14, weight: .medium))
+                    Text(title)
+                        .font(.system(size: 14, weight: .medium))
+                }
+                .foregroundColor(isSelected ? .white : .primary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(isSelected ? Color.blue : Color(.systemGray6))
+                )
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+    }
 
     var body: some View {
-        ZStack(alignment: .top) {
-            Color(.systemBackground)
-                .ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                // Header
-                VStack(spacing: 16) {
-                    HStack {
-                        Text("Add to Use By")
-                            .font(.system(size: 28, weight: .bold))
-                            .foregroundColor(.primary)
-                        Spacer()
-                        Button("Close") { dismiss() }
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.blue)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 16)
-
-                    // Use the same 2x2 option grid as Add Food
-                    AddOptionSelector(selectedOption: $selectedOption)
+        NavigationView {
+            ZStack {
+                VStack(spacing: 0) {
+                    // Header with tab-style options
+                    VStack(spacing: 12) {
+                        // Option selector - tab-style buttons
+                        HStack(spacing: 0) {
+                            UseByOptionSelectorButton(
+                                title: "Search",
+                                icon: "magnifyingglass",
+                                isSelected: selectedOption == .search
+                            ) {
+                                print("🔵 [UseBy] Search option tapped")
+                                selectedOption = .search
+                            }
+                            UseByOptionSelectorButton(
+                                title: "Manual",
+                                icon: "square.and.pencil",
+                                isSelected: selectedOption == .manual
+                            ) {
+                                print("🔵 [UseBy] Manual option tapped")
+                                selectedOption = .manual
+                            }
+                            UseByOptionSelectorButton(
+                                title: "Barcode",
+                                icon: "barcode.viewfinder",
+                                isSelected: selectedOption == .barcode
+                            ) {
+                                print("🔵 [UseBy] Barcode option tapped")
+                                selectedOption = .barcode
+                            }
+                        }
                         .padding(.horizontal, 16)
-                }
-                .background(Color(.systemBackground))
-                .zIndex(1)
+                        .padding(.top, 8)
+                    }
+                    .background(Color(.systemBackground))
+                    .zIndex(999)
+                    .allowsHitTesting(true)
 
-                // When the user taps a tile, open the corresponding flow
-                Group {
-                    switch selectedOption {
-                    case .search:
-                        UseByInlineSearchView(selectedFood: $selectedFood)
-                    case .manual:
-                        UseByItemDetailView(item: nil)
-                    case .barcode:
-                        UseByBarcodeScanSheet()
+                    // Content based on selected option
+                    Group {
+                        switch selectedOption {
+                        case .search:
+                            UseByInlineSearchView(onComplete: onComplete)
+                        case .manual:
+                            UseByItemDetailView(item: nil)
+                        case .barcode:
+                            UseByBarcodeScanSheet()
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .zIndex(0)
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Text("Add to Use By")
+                        .font(.system(size: 20, weight: .bold))
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        print("🔴 [UseBy] Close button tapped")
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        dismiss()
+                    }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.primary)
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+        }
+        .onAppear {
+            print("🟢 [UseBy] AddUseByItemSheet APPEARED")
+        }
+        .onDisappear {
+            print("🔴 [UseBy] AddUseByItemSheet DISAPPEARED")
+        }
+        .onChange(of: selectedOption) { newOption in
+            print("🔄 [UseBy] Selected option changed to: \(newOption)")
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
     }
 }
 
 // Inline search content for Add-to-UseBy sheet, without its own navigation bar
 struct UseByInlineSearchView: View {
-    @Binding var selectedFood: FoodSearchResult? // Accept binding from parent
+    var onComplete: (() -> Void)? = nil
     @State private var query: String = ""
     @State private var isSearching = false
     @State private var results: [FoodSearchResult] = []
     @State private var searchTask: Task<Void, Never>? = nil
+    @State private var showingFoodDetail = false
+    @State private var selectedFood: FoodSearchResult?
 
     var body: some View {
         VStack(spacing: 0) {
             // Search Bar
-            HStack {
-                Image(systemName: "magnifyingglass").foregroundColor(.secondary)
-                TextField("Search products", text: $query)
-                    .textInputAutocapitalization(.never)
-                    .disableAutocorrection(true)
-                    .onChange(of: query) { newValue in
-                        // Debounce search as you type
-                        searchTask?.cancel()
-                        let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
-                        guard trimmed.count >= 2 else { self.results = []; self.isSearching = false; return }
-                        searchTask = Task {
-                            try? await Task.sleep(nanoseconds: 300_000_000)
-                            await runSearch(trimmed)
+            ZStack(alignment: .trailing) {
+                HStack {
+                    Image(systemName: "magnifyingglass").foregroundColor(.secondary)
+                    TextField("Search products", text: $query)
+                        .textInputAutocapitalization(.never)
+                        .disableAutocorrection(true)
+                        .padding(.trailing, 28)
+                        .onChange(of: query) { newValue in
+                            searchTask?.cancel()
+                            let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                            guard trimmed.count >= 2 else { self.results = []; self.isSearching = false; return }
+                            searchTask = Task {
+                                try? await Task.sleep(nanoseconds: 300_000_000)
+                                await runSearch(trimmed)
+                            }
                         }
-                    }
+                }
                 if !query.isEmpty {
                     Button(action: { query = ""; results = [] }) {
                         Image(systemName: "xmark.circle.fill").foregroundColor(.secondary)
                     }
+                    .padding(.trailing, 4)
                 }
             }
             .padding(12)
@@ -2538,12 +2614,18 @@ struct UseByInlineSearchView: View {
             ScrollView {
                 LazyVStack(spacing: 0) {
                     ForEach(results, id: \.id) { food in
-Button {
+                        Button {
+                            print("🔵 [UseBy Search] Food item tapped: \(food.name)")
+                            print("🔵 [UseBy Search] Current selectedFood before assignment: \(selectedFood?.name ?? "nil")")
+                            print("🔵 [UseBy Search] Current showingFoodDetail before assignment: \(showingFoodDetail)")
                             selectedFood = food
+                            showingFoodDetail = true
+                            print("🔵 [UseBy Search] selectedFood after assignment: \(selectedFood?.name ?? "nil")")
+                            print("🔵 [UseBy Search] showingFoodDetail after assignment: \(showingFoodDetail)")
                         } label: {
                             HStack(alignment: .center, spacing: 12) {
                                 VStack(alignment: .leading, spacing: 2) {
-Text(food.name)
+                                    Text(food.name)
                                         .font(.system(size: 16, weight: .semibold))
                                         .foregroundColor(.primary)
                                         .multilineTextAlignment(.leading)
@@ -2565,6 +2647,21 @@ Text(food.name)
                         Divider().padding(.leading, 16)
                     }
                 }
+            }
+            .scrollDismissesKeyboard(.interactively)
+        }
+        .sheet(isPresented: $showingFoodDetail) {
+            if let food = selectedFood {
+                UseByFoodDetailSheet(food: food, onComplete: onComplete)
+                    .onAppear {
+                        print("🟢 [UseBy Search] UseByFoodDetailSheet appeared for: \(food.name)")
+                    }
+            }
+        }
+        .onChange(of: showingFoodDetail) { newValue in
+            print("🔄 [UseBy Search] showingFoodDetail changed to: \(newValue)")
+            if newValue {
+                print("🔄 [UseBy Search] selectedFood when showing sheet: \(selectedFood?.name ?? "nil")")
             }
         }
     }
@@ -2778,6 +2875,334 @@ struct FreshnessIndicatorView: View {
             return "1 day"
         } else {
             return "\(daysLeft) days"
+        }
+    }
+}
+
+// MARK: - UseBy Food Detail Sheet (from Search)
+
+/// Food detail sheet for Use By - shows food info and allows adding to Use By inventory
+struct UseByFoodDetailSheet: View {
+    let food: FoodSearchResult
+    var onComplete: (() -> Void)? = nil
+    @Environment(\.dismiss) private var dismiss
+    @State private var quantity: String = "1"
+    @State private var expiryDate: Date = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
+    @State private var location: String = ""
+    @State private var notes: String = ""
+    @State private var isSaving = false
+    @State private var expiryMode: ExpiryMode = .selector
+    @State private var expiryAmount: Int = 7
+    @State private var expiryUnit: ExpiryUnit = .days
+
+    enum ExpiryMode {
+        case calendar
+        case selector
+    }
+
+    enum ExpiryUnit: String, CaseIterable {
+        case days = "Days"
+        case weeks = "Weeks"
+        case months = "Months"
+    }
+
+    private var calculatedExpiryDate: Date {
+        let calendar = Calendar.current
+        let baseDate = Date()
+
+        switch expiryUnit {
+        case .days:
+            return calendar.date(byAdding: .day, value: expiryAmount, to: baseDate) ?? baseDate
+        case .weeks:
+            return calendar.date(byAdding: .day, value: expiryAmount * 7, to: baseDate) ?? baseDate
+        case .months:
+            return calendar.date(byAdding: .month, value: expiryAmount, to: baseDate) ?? baseDate
+        }
+    }
+
+    private var daysLeft: Int {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let expiry = calendar.startOfDay(for: expiryMode == .selector ? calculatedExpiryDate : expiryDate)
+        let components = calendar.dateComponents([.day], from: today, to: expiry)
+        return components.day ?? 0
+    }
+
+    private var freshnessScore: Double {
+        let totalShelfLife = max(daysLeft + 8, 1)
+        let remaining = max(daysLeft + 1, 0)
+        return Double(remaining) / Double(totalShelfLife)
+    }
+
+    private var freshnessColor: Color {
+        if freshnessScore > 0.7 { return .green }
+        else if freshnessScore > 0.4 { return .yellow }
+        else if freshnessScore > 0.2 { return .orange }
+        else { return .red }
+    }
+
+    private var freshnessEmoji: String {
+        if freshnessScore > 0.7 { return "👍" }
+        else if freshnessScore > 0.4 { return "👍" }
+        else if freshnessScore > 0.2 { return "⚠️" }
+        else { return "🚨" }
+    }
+
+    private var freshnessLabel: String {
+        switch daysLeft {
+        case ..<0: return "Expired"
+        case 0: return "Last day"
+        default: return "Fresh"
+        }
+    }
+
+    private var smartRecommendation: String {
+        switch daysLeft {
+        case ..<0: return "Expired - discard item"
+        case 0: return "Last day - use today"
+        case 1: return "Perfect for tomorrow"
+        case 2...3: return "Plan to use within next few meals"
+        case 4...7: return "Still fresh - use this week"
+        default: return "Plenty of time - store properly"
+        }
+    }
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                LazyVStack(spacing: 16) {
+                    // Top Product Card with Freshness Indicator
+                    HStack(spacing: 16) {
+                        // Freshness Indicator
+                        FreshnessIndicatorView(
+                            freshnessScore: freshnessScore,
+                            freshnessColor: freshnessColor,
+                            freshnessEmoji: freshnessEmoji,
+                            freshnessLabel: freshnessLabel,
+                            daysLeft: daysLeft,
+                            pulseAnimation: .constant(false)
+                        )
+
+                        // Product Info
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(food.name)
+                                .font(.system(size: 24, weight: .bold))
+                                .foregroundColor(.primary)
+
+                            if let brand = food.brand, !brand.isEmpty {
+                                Text(brand)
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                            }
+
+                            HStack(spacing: 12) {
+                                Label(daysLeft < 0 ? "Expired" : (daysLeft == 0 ? "Last day" : "\(daysLeft) days"), systemImage: "calendar")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(freshnessColor)
+                            }
+                            .padding(.top, 4)
+                        }
+
+                        Spacer()
+                    }
+                    .padding(20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(.secondarySystemBackground))
+                    )
+
+                    // Smart Recommendation Card
+                    HStack {
+                        Image(systemName: "lightbulb.fill")
+                            .foregroundColor(.yellow)
+                            .font(.system(size: 16))
+                        Text(smartRecommendation)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.primary)
+                        Spacer()
+                    }
+                    .padding(16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.yellow.opacity(0.1))
+                    )
+
+                    // Expiry Date Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("EXPIRY DATE", systemImage: "calendar.badge.clock")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.secondary)
+
+                        // Mode Selector
+                        SegmentedContainer {
+                            Picker("", selection: $expiryMode) {
+                                Text("Calendar").tag(ExpiryMode.calendar)
+                                Text("Select").tag(ExpiryMode.selector)
+                            }
+                            .pickerStyle(.segmented)
+                        }
+
+                        if expiryMode == .calendar {
+                            DatePicker("", selection: $expiryDate, displayedComponents: .date)
+                                .datePickerStyle(.graphical)
+                                .labelsHidden()
+                        } else {
+                            // Selector Mode
+                            HStack(spacing: 12) {
+                                // Amount stepper
+                                HStack {
+                                    Button(action: {
+                                        if expiryAmount > 1 {
+                                            expiryAmount -= 1
+                                        }
+                                    }) {
+                                        Image(systemName: "minus.circle.fill")
+                                            .font(.system(size: 32))
+                                            .foregroundColor(.blue)
+                                    }
+
+                                    Text("\(expiryAmount)")
+                                        .font(.system(size: 28, weight: .bold))
+                                        .frame(minWidth: 50)
+
+                                    Button(action: {
+                                        expiryAmount += 1
+                                    }) {
+                                        Image(systemName: "plus.circle.fill")
+                                            .font(.system(size: 32))
+                                            .foregroundColor(.blue)
+                                    }
+                                }
+
+                                // Unit picker
+                                Picker("", selection: $expiryUnit) {
+                                    ForEach(ExpiryUnit.allCases, id: \.self) { unit in
+                                        Text(unit.rawValue).tag(unit)
+                                    }
+                                }
+                                .pickerStyle(.segmented)
+                            }
+                            .padding(.vertical, 8)
+
+                            Text("Expires: \(calculatedExpiryDate, style: .date)")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                        }
+                    }
+                    .padding(16)
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(12)
+
+                    // Notes Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("NOTES", systemImage: "note.text")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.secondary)
+
+                        TextEditor(text: $notes)
+                            .frame(height: 100)
+                            .padding(8)
+                            .background(Color(.tertiarySystemBackground))
+                            .cornerRadius(8)
+                            .overlay(
+                                Group {
+                                    if notes.isEmpty {
+                                        Text("Add notes about this item...")
+                                            .foregroundColor(.secondary)
+                                            .font(.system(size: 14))
+                                            .padding(.leading, 12)
+                                            .padding(.top, 16)
+                                            .allowsHitTesting(false)
+                                    }
+                                },
+                                alignment: .topLeading
+                            )
+                    }
+                    .padding(16)
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(12)
+
+                    // Save Button
+                    Button(action: saveToUseBy) {
+                        HStack {
+                            if isSaving {
+                                ProgressView()
+                                    .progressViewStyle(.circular)
+                                    .tint(.white)
+                            } else {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 16))
+                                Text("Add to Use By")
+                                    .font(.system(size: 16, weight: .semibold))
+                            }
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            LinearGradient(
+                                colors: [Color.blue, Color.purple],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(12)
+                    }
+                    .disabled(isSaving || food.name.isEmpty)
+                    .opacity((isSaving || food.name.isEmpty) ? 0.6 : 1.0)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private func saveToUseBy() {
+        guard !food.name.isEmpty else { return }
+
+        isSaving = true
+
+        Task {
+            do {
+                let finalExpiryDate = expiryMode == .selector ? calculatedExpiryDate : expiryDate
+
+                let newItem = UseByInventoryItem(
+                    id: UUID().uuidString,
+                    name: food.name,
+                    brand: food.brand,
+                    quantity: quantity,
+                    expiryDate: finalExpiryDate,
+                    addedDate: Date(),
+                    barcode: nil,
+                    category: nil,
+                    imageURL: nil,
+                    notes: notes.isEmpty ? nil : notes
+                )
+
+                try await FirebaseManager.shared.addUseByItem(newItem)
+
+                await MainActor.run {
+                    // Notify Use By tab to refresh
+                    NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
+                    isSaving = false
+                    dismiss()
+                    onComplete?()
+                }
+            } catch {
+                print("Error saving Use By item: \(error)")
+                await MainActor.run {
+                    isSaving = false
+                }
+            }
         }
     }
 }

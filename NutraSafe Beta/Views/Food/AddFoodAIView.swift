@@ -11,11 +11,10 @@ import Vision
 import AVFoundation
 import AudioToolbox
 
-// MARK: - AI Food Scanner Main View
+// MARK: - AI Food Scanner Main View (DIARY-ONLY)
 
 struct AddFoodAIView: View {
     @Binding var selectedTab: TabItem
-    @Binding var destination: AddFoodMainView.AddDestination
     @State private var isScanning = false
     @State private var recognizedFoods: [FoodSearchResult] = []
     @State private var showingImagePicker = false
@@ -112,8 +111,7 @@ struct AddFoodAIView: View {
                         onScanAnother: {
                             recognizedFoods = []
                         },
-                        selectedTab: $selectedTab,
-                        destination: destination
+                        selectedTab: $selectedTab
                     )
                 }
             }
@@ -138,7 +136,7 @@ struct AddFoodAIView: View {
         .sheet(isPresented: $showingFoodDetail) {
             if let food = selectedFoodForDetail {
                 NavigationView {
-                    FoodDetailViewFromSearch(food: food, selectedTab: $selectedTab, destination: destination)
+                    FoodDetailViewFromSearch(food: food, selectedTab: $selectedTab)
                 }
             }
         }
@@ -471,7 +469,6 @@ struct AIFoodSelectionView: View {
     let onSelectionComplete: ([FoodSearchResult]) -> Void
     let onScanAnother: () -> Void
     @Binding var selectedTab: TabItem
-    let destination: AddFoodMainView.AddDestination
 
     @State private var selectedFoods: Set<String> = []
     @State private var showingFoodDetail = false
@@ -534,7 +531,7 @@ struct AIFoodSelectionView: View {
         .sheet(isPresented: $showingFoodDetail) {
             if let food = selectedFood {
                 NavigationView {
-                    FoodDetailViewFromSearch(food: food, selectedTab: $selectedTab, destination: destination)
+                    FoodDetailViewFromSearch(food: food, selectedTab: $selectedTab)
                 }
             }
         }

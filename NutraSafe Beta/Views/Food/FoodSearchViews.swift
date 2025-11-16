@@ -90,25 +90,21 @@ struct FoodSearchResultRow: View {
 
 // MARK: - Enhanced Food Search Result Row
 
-/// Enhanced food search result row with comprehensive nutrition display and grades
+/// Enhanced food search result row with comprehensive nutrition display and grades (DIARY-ONLY)
 struct FoodSearchResultRowEnhanced: View {
     let food: FoodSearchResult
     let sourceType: FoodSourceType
     @Binding var selectedTab: TabItem
-    @Binding var destination: AddFoodMainView.AddDestination
     var onComplete: ((TabItem) -> Void)?
-    var onTapUseBy: ((FoodSearchResult) -> Void)?
     @State private var showingFoodDetail = false
     @State private var isPressed = false
     @EnvironmentObject var diaryDataManager: DiaryDataManager
 
-    init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, destination: Binding<AddFoodMainView.AddDestination>, onComplete: ((TabItem) -> Void)? = nil, onTapUseBy: ((FoodSearchResult) -> Void)? = nil) {
+    init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, onComplete: ((TabItem) -> Void)? = nil) {
         self.food = food
         self.sourceType = sourceType
         self._selectedTab = selectedTab
-        self._destination = destination
         self.onComplete = onComplete
-        self.onTapUseBy = onTapUseBy
     }
     
     private var nutritionScore: ProcessingGrade {
@@ -173,10 +169,10 @@ struct FoodSearchResultRowEnhanced: View {
     
     var body: some View {
         Button(action: {
-            #if DEBUG
-            print("[UseByTap:Button] tapped; destination=\(String(describing: destination)) foodId=\(food.id)")
-            #endif
-            handleTap()
+            print("🔵 [Search] Food item tapped: \(food.name)")
+            print("🔵 [Search] Setting showingFoodDetail = true")
+            showingFoodDetail = true
+            print("🔵 [Search] showingFoodDetail is now: \(showingFoodDetail)")
         }) {
             HStack(spacing: 12) {
                 // Product name and brand
@@ -217,56 +213,21 @@ struct FoodSearchResultRowEnhanced: View {
         .scaleEffect(isPressed ? 0.98 : 1.0)
         .animation(.easeInOut(duration: 0.1), value: isPressed)
         .buttonStyle(PlainButtonStyle())
-        .highPriorityGesture(
-            TapGesture().onEnded {
-                #if DEBUG
-                print("[UseByTap:HighPriority] row tap ended; destination=\(String(describing: destination)) foodId=\(food.id)")
-                #endif
-                handleTap()
-            }
-        )
         .sheet(isPresented: $showingFoodDetail) {
-            FoodDetailViewFromSearch(food: food, sourceType: sourceType, selectedTab: $selectedTab, destination: destination) { tab in
+            print("🟢 [Search] Sheet presenting for food: \(food.name)")
+            return FoodDetailViewFromSearch(food: food, sourceType: sourceType, selectedTab: $selectedTab) { tab in
                 onComplete?(tab)
             }
-            .onAppear { print("[FoodDetail] sheet appear for foodId=\(food.id)") }
-            .onDisappear { print("[FoodDetail] sheet disappear for foodId=\(food.id)") }
             .environmentObject(diaryDataManager)
+            .onAppear {
+                print("🟢 [Search] FoodDetailViewFromSearch appeared for: \(food.name)")
+            }
+            .onDisappear {
+                print("🔴 [Search] FoodDetailViewFromSearch disappeared")
+            }
         }
-        .onAppear {
-            #if DEBUG
-            print("[AddDest] Row appear; destination=\(String(describing: destination)) foodId=\(food.id)")
-            #endif
-        }
-        .onChange(of: destination) { newDest in
-            #if DEBUG
-            print("[AddDest] Row destination changed -> \(String(describing: newDest)) foodId=\(food.id)")
-            #endif
-        }
-    }
-
-    @State private var lastTapTimestamp: TimeInterval = 0
-
-    private func handleTap() {
-        let now = CFAbsoluteTimeGetCurrent()
-        if now - lastTapTimestamp < 0.2 {
-            #if DEBUG
-            print("[UseByTap] Skipping duplicate tap within debounce window")
-            #endif
-            return
-        }
-        lastTapTimestamp = now
-
-        if destination == .useBy {
-            #if DEBUG
-            print("[UseByTap] Forwarding to onTapUseBy for foodId=\(food.id)")
-            #endif
-            onTapUseBy?(food)
-        } else {
-            #if DEBUG
-            print("[UseByTap] Opening FoodDetail; destination=\(String(describing: destination)) foodId=\(food.id)")
-            #endif
-            showingFoodDetail = true
+        .onChange(of: showingFoodDetail) { newValue in
+            print("🔄 [Search] showingFoodDetail changed to: \(newValue) for food: \(food.name)")
         }
     }
 }
@@ -306,12 +267,10 @@ enum FoodSourceType {
 
 // MARK: - Main Food Search View
 
-/// Comprehensive food search interface with live search, recent foods, and keyboard handling
+/// Comprehensive food search interface with live search, recent foods, and keyboard handling (DIARY-ONLY)
 struct AddFoodSearchView: View {
     @Binding var selectedTab: TabItem
-    @Binding var destination: AddFoodMainView.AddDestination
     var onComplete: ((TabItem) -> Void)?
-    var onSelectUseBy: ((FoodSearchResult) -> Void)? = nil
     var onSwitchToManual: (() -> Void)? = nil
     @State private var searchText = ""
     @State private var searchResults: [FoodSearchResult] = []
@@ -323,7 +282,6 @@ struct AddFoodSearchView: View {
     @State private var isEditingMode = false
     @State private var editingFoodName = ""
     @State private var originalMealType = ""
-    // Use By sheet presentation moved to parent; emit selection via callback
 
     var body: some View {
         VStack(spacing: 0) {
@@ -483,9 +441,7 @@ struct AddFoodSearchView: View {
 
                                     ForEach(recentFoods, id: \.id) { recentFood in
                                         let searchResult = convertToSearchResult(recentFood)
-                                        FoodSearchResultRowEnhanced(food: searchResult, selectedTab: $selectedTab, destination: $destination, onComplete: onComplete, onTapUseBy: { selected in
-                                            onSelectUseBy?(selected)
-                                        })
+                                        FoodSearchResultRowEnhanced(food: searchResult, selectedTab: $selectedTab, onComplete: onComplete)
                                             .padding(.horizontal, 16)
                                     }
                                 }
@@ -493,9 +449,7 @@ struct AddFoodSearchView: View {
 
                             // Show search results when searching
                             ForEach(Array(searchResults.enumerated()), id: \.element.id) { index, food in
-                                FoodSearchResultRowEnhanced(food: food, selectedTab: $selectedTab, destination: $destination, onComplete: onComplete, onTapUseBy: { selected in
-                                    onSelectUseBy?(selected)
-                                })
+                                FoodSearchResultRowEnhanced(food: food, selectedTab: $selectedTab, onComplete: onComplete)
                                     .id("result_\(index)")
                             }
 

@@ -121,311 +121,362 @@ struct DiaryTabView: View {
 
         return (calories, protein, carbs, fat)
     }
-    
-    var body: some View {
-        // Removed nested NavigationView to rely on root navigation
-        VStack(spacing: 0) {
-            // Only show calendar in Overview tab - Nutrients has its own week navigation
-            if diarySubTab == .overview {
-                VStack(spacing: 8) {
-                    // Header with inline date picker
-                    HStack {
-                    Text("Diary")
-                        .font(.system(size: 38, weight: .bold, design: .rounded))
-                        .frame(height: 44, alignment: .center)
+
+    // Extracted to reduce compiler complexity
+    private var diaryHeaderView: some View {
+        HStack {
+            Text("Diary")
+                .font(.system(size: 38, weight: .bold, design: .rounded))
+                .frame(height: 44, alignment: .center)
+                .foregroundColor(.primary)
+
+            Spacer()
+
+            // Date navigation arrows
+            HStack(spacing: 8) {
+                Button(action: {
+                    selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
+                }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.primary)
+                        .frame(width: 32, height: 32)
+                        .background(Circle().fill(.ultraThinMaterial))
+                }
 
-                    Spacer()
+                // Date Selector
+                Button(action: {
+                    showingDatePicker.toggle()
+                }) {
+                    HStack(spacing: 6) {
+                        Text(formatDateShort(selectedDate))
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.primary)
+                            .fixedSize()
+                            .lineLimit(1)
 
-                    // Date navigation arrows
-                    HStack(spacing: 8) {
-                        Button(action: {
-                            selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
-                        }) {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.primary)
-                                .frame(width: 32, height: 32)
-                                .background(
-                                    Circle()
-                                        .fill(.ultraThinMaterial)
-                                )
-                        }
-
-                        // Date Selector - now inline with Diary title
-                        Button(action: {
-                            showingDatePicker.toggle()
-                        }) {
-                            HStack(spacing: 6) {
-                                Text(formatDateShort(selectedDate))
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(.primary)
-                                    .fixedSize()
-                                    .lineLimit(1)
-
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(.secondary)
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(.ultraThinMaterial)
-                            )
-                        }
-
-                        Button(action: {
-                            selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
-                        }) {
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.primary)
-                                .frame(width: 32, height: 32)
-                                .background(
-                                    Circle()
-                                        .fill(.ultraThinMaterial)
-                                )
-                        }
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.secondary)
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(RoundedRectangle(cornerRadius: 10).fill(.ultraThinMaterial))
+                }
 
-                    Button(action: {
-                        showingSettings = true
-                    }) {
-                        ZStack {
+                Button(action: {
+                    selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
+                }) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .frame(width: 32, height: 32)
+                        .background(Circle().fill(.ultraThinMaterial))
+                }
+            }
+
+            Button(action: {
+                showingSettings = true
+            }) {
+                ZStack {
+                    Circle()
+                        .fill(.ultraThinMaterial)
+                        .frame(width: 44, height: 44)
+                        .overlay(
                             Circle()
-                                .fill(.ultraThinMaterial)
-                                .frame(width: 44, height: 44)
-                                .overlay(
-                                    Circle()
-                                        .stroke(
-                                            LinearGradient(
-                                                colors: [.white.opacity(0.5), .white.opacity(0.1)],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            ),
-                                            lineWidth: 1.5
-                                        )
+                                .stroke(
+                                    LinearGradient(
+                                        colors: [.white.opacity(0.5), .white.opacity(0.1)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 1.5
                                 )
-                                .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-
-                            Image(systemName: "gearshape.fill")
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundColor(.primary)
-                                .symbolRenderingMode(.hierarchical)
-                        }
-                    }
-                    .buttonStyle(SpringyButtonStyle())
-                }
-
-                // Expanded date picker (when shown)
-                if showingDatePicker {
-                    ZStack(alignment: .top) {
-                        // Native iOS calendar (with its header hidden by overlay)
-                        DatePicker(
-                            "Select Date",
-                            selection: $selectedDate,
-                            displayedComponents: .date
                         )
-                        .datePickerStyle(GraphicalDatePickerStyle())
-                        .padding(.horizontal, 16)
-                        .padding(.top, 8)
-                        .padding(.bottom, 8)
+                        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
 
-                        VStack(spacing: 0) {
-                            Color(UIColor.systemBackground)
-                                .frame(height: 50)
-                            Spacer()
-                        }
-                        .allowsHitTesting(false)
-
-                        HStack {
-                            Text(formatMonthYear(selectedDate))
-                                .font(.system(size: 20, weight: .bold))
-                                .foregroundColor(.primary)
-
-                            Button(action: {
-                                selectedDate = Date()
-                                showingDatePicker = false
-                            }) {
-                                Text("Today")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(.blue)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .fill(Color.blue.opacity(0.1))
-                                    )
-                            }
-
-                            Spacer()
-
-                            HStack(spacing: 12) {
-                                Button(action: {
-                                    selectedDate = Calendar.current.date(byAdding: .month, value: -1, to: selectedDate) ?? selectedDate
-                                }) {
-                                    Image(systemName: "chevron.left")
-                                        .font(.system(size: 16, weight: .semibold))
-                                        .foregroundColor(.blue)
-                                }
-
-                                Button(action: {
-                                    selectedDate = Calendar.current.date(byAdding: .month, value: 1, to: selectedDate) ?? selectedDate
-                                }) {
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 16, weight: .semibold))
-                                        .foregroundColor(.blue)
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 24)
-                        .padding(.top, 16)
-                    }
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .symbolRenderingMode(.hierarchical)
                 }
+            }
+            .buttonStyle(SpringyButtonStyle())
+        }
+    }
+
+    // MARK: - Date Picker Section
+    @ViewBuilder
+    private var datePickerSection: some View {
+        if showingDatePicker {
+            ZStack(alignment: .top) {
+                // Native iOS calendar (with its header hidden by overlay)
+                DatePicker(
+                    "Select Date",
+                    selection: $selectedDate,
+                    displayedComponents: .date
+                )
+                .datePickerStyle(GraphicalDatePickerStyle())
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 8)
+
+                VStack(spacing: 0) {
+                    Color(UIColor.systemBackground)
+                        .frame(height: 50)
+                    Spacer()
+                }
+                .allowsHitTesting(false)
+
+                datePickerHeader
+            }
+        }
+    }
+
+    private var datePickerHeader: some View {
+        HStack {
+            Text(formatMonthYear(selectedDate))
+                .font(.system(size: 20, weight: .bold))
+                .foregroundColor(.primary)
+
+            Button(action: {
+                selectedDate = Date()
+                showingDatePicker = false
+            }) {
+                Text("Today")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.blue)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.blue.opacity(0.1))
+                    )
+            }
+
+            Spacer()
+
+            HStack(spacing: 12) {
+                Button(action: {
+                    selectedDate = Calendar.current.date(byAdding: .month, value: -1, to: selectedDate) ?? selectedDate
+                }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.blue)
+                }
+
+                Button(action: {
+                    selectedDate = Calendar.current.date(byAdding: .month, value: 1, to: selectedDate) ?? selectedDate
+                }) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.blue)
+                }
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 16)
+    }
+
+    // MARK: - Calendar Header Section
+    @ViewBuilder
+    private var calendarHeaderSection: some View {
+        if diarySubTab == .overview {
+            VStack(spacing: 8) {
+                diaryHeaderView
+                datePickerSection
             }
             .padding(.horizontal, 16)
             .padding(.top, 8)
-            }
+        }
+    }
 
-            Picker("", selection: $diarySubTab) {
-                ForEach(DiarySubTab.allCases, id: \.self) { tab in
-                    Text(tab.rawValue).tag(tab)
-                }
+    // MARK: - Tab Picker Section
+    private var tabPickerSection: some View {
+        Picker("", selection: $diarySubTab) {
+            ForEach(DiarySubTab.allCases, id: \.self) { tab in
+                Text(tab.rawValue).tag(tab)
             }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+    }
 
-            // Loading state or content
-            if isLoadingData && !hasLoadedOnce {
-                // Initial loading state
-                VStack(spacing: 16) {
-                    Spacer()
-                    ProgressView()
-                        .scaleEffect(1.2)
-                        .progressViewStyle(.circular)
-                    Text("Loading your diary...")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.secondary)
-                    Spacer()
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.adaptiveBackground)
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 16) {
-                        if diarySubTab == .overview {
-                            overviewTabContent
-                        } else {
-                            nutrientsTabContent
-                        }
+    // MARK: - Loading State View
+    @ViewBuilder
+    private var loadingStateView: some View {
+        if isLoadingData && !hasLoadedOnce {
+            VStack(spacing: 16) {
+                Spacer()
+                ProgressView()
+                    .scaleEffect(1.2)
+                    .progressViewStyle(.circular)
+                Text("Loading your diary...")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.secondary)
+                Spacer()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.adaptiveBackground)
+        }
+    }
+
+    // MARK: - Main Content Section
+    @ViewBuilder
+    private var mainContentSection: some View {
+        if !(isLoadingData && !hasLoadedOnce) {
+            ScrollView {
+                LazyVStack(spacing: 16) {
+                    if diarySubTab == .overview {
+                        overviewTabContent
+                    } else {
+                        nutrientsTabContent
                     }
                 }
-                .id(diarySubTab) // Force new scroll view when tab changes
-                .background(Color.adaptiveBackground)
-                .navigationBarHidden(true)
             }
+            .id(diarySubTab)
+            .background(Color.adaptiveBackground)
+            .navigationBarHidden(true)
         }
-        .onChange(of: selectedDate) { _ in
-            loadFoodData()
-        }
-        .onAppear {
-            // PERFORMANCE: Skip if already loaded - prevents redundant Firebase calls on tab switches
-            guard !hasLoadedOnce else {
-        // DEBUG LOG: print("⚡️ DiaryTabView: Skipping load - data already loaded")
-                return
+    }
+
+    var body: some View {
+        contentWithLifecycleModifiers
+            .sheet(isPresented: $showingMoveSheet) {
+                moveFoodSheet
             }
-            hasLoadedOnce = true
-            loadFoodData()
-        }
-        .onChange(of: selectedTab) { newTab in
-            // Unselect when leaving diary; reset overview when returning
-            if newTab == .diary {
-                diarySubTab = .overview
-            } else {
+            .sheet(isPresented: $showingCopySheet) {
+                copyFoodSheet
+            }
+            .sheet(item: $editingFood, onDismiss: {
+                // DEBUG LOG: print("📝 Edit sheet dismissed, resetting editingFood")
+                editingFood = nil
+            }) { food in
+                let _ = print("📝 Presenting edit sheet for: \(food.name)")
+                FoodDetailViewFromSearch(
+                    food: food.toFoodSearchResult(),
+                    sourceType: .diary,
+                    selectedTab: $selectedTab,
+                    diaryEntryId: food.id,
+                    diaryMealType: food.time
+                )
+            }
+    }
+
+    // MARK: - Content with Lifecycle Modifiers
+    private var contentWithLifecycleModifiers: some View {
+        mainContent
+            .onChange(of: selectedDate) { _ in
+                loadFoodData()
+            }
+            .onAppear {
+                // PERFORMANCE: Skip if already loaded - prevents redundant Firebase calls on tab switches
+                guard !hasLoadedOnce else {
+                    // DEBUG LOG: print("⚡️ DiaryTabView: Skipping load - data already loaded")
+                    return
+                }
+                hasLoadedOnce = true
+                loadFoodData()
+            }
+            .onChange(of: selectedTab) { newTab in
+                handleSelectedTabChange(newTab)
+            }
+            .onChange(of: diarySubTab) { newTab in
+                handleDiarySubTabChange(newTab)
+            }
+            .onChange(of: refreshTrigger) { _ in
+                loadFoodData()
+            }
+            .onChange(of: diaryDataManager.dataReloadTrigger) { _ in
+                loadFoodData()
+            }
+            .onChange(of: editTrigger) { newValue in
+                handleEditTrigger(newValue)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .diaryFoodDetailOpened)) { _ in
                 selectedFoodItems.removeAll()
             }
-        }
-        .onChange(of: diarySubTab) { newTab in
-            if newTab == .nutrients && !(subscriptionManager.isSubscribed || subscriptionManager.isInTrial || subscriptionManager.isPremiumOverride) {
-                diarySubTab = .overview
-                let generator = UINotificationFeedbackGenerator()
-                generator.notificationOccurred(.warning)
-                onBlockedNutrientsAttempt?()
-            }
-        }
-        .onChange(of: refreshTrigger) { _ in
-            loadFoodData()
-        }
-        .onChange(of: diaryDataManager.dataReloadTrigger) { _ in
-            loadFoodData()
-        }
-        .onChange(of: editTrigger) { newValue in
-            guard newValue else { return }
-        // DEBUG LOG: print("📝 Edit trigger fired. Selected items: \(selectedFoodItems)")
-
-            if let foodId = selectedFoodItems.first {
-                // DEBUG LOG: print("📝 Looking for food with ID: \(foodId)")
-                if let itemToEdit = findFood(byId: foodId) {
-                    // DEBUG LOG: print("📝 Found food to edit: \(itemToEdit.name)")
-                    // DEBUG LOG: print("📝 Setting editingFood to trigger sheet...")
-                    editingFood = itemToEdit
-                    // Clear selection once user enters edit flow
-                    selectedFoodItems.removeAll()
-                } else {
-                    #if DEBUG
-                    print("❌ Could not find food with ID: \(foodId)")
-                    #endif
+            .onChange(of: moveTrigger) { newValue in
+                if newValue {
+                    showMoveOptions()
+                    moveTrigger = false
                 }
-            } else {
-                #if DEBUG
-                print("❌ No food ID in selectedFoodItems")
-                #endif
             }
+            .onChange(of: copyTrigger) { newValue in
+                if newValue {
+                    showCopyOptions()
+                    copyTrigger = false
+                }
+            }
+            .onChange(of: deleteTrigger) { newValue in
+                guard newValue else { return }
+                deleteSelectedFoods()
+                deleteTrigger = false
+            }
+    }
 
-            editTrigger = false
+    // MARK: - Main Content
+    private var mainContent: some View {
+        VStack(spacing: 0) {
+            calendarHeaderSection
+            tabPickerSection
+
+            // Loading state or content
+            ZStack {
+                loadingStateView
+                mainContentSection
+            }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .diaryFoodDetailOpened)) { _ in
+    }
+
+    // MARK: - Helper Methods for onChange Handlers
+    private func handleSelectedTabChange(_ newTab: TabItem) {
+        // Unselect when leaving diary; reset overview when returning
+        if newTab == .diary {
+            diarySubTab = .overview
+        } else {
             selectedFoodItems.removeAll()
         }
-        .onChange(of: moveTrigger) { newValue in
-            if newValue {
-                showMoveOptions()
-                moveTrigger = false
+    }
+
+    private func handleDiarySubTabChange(_ newTab: DiarySubTab) {
+        let hasAccess = subscriptionManager.isSubscribed ||
+                        subscriptionManager.isInTrial ||
+                        subscriptionManager.isPremiumOverride
+
+        if newTab == .nutrients && !hasAccess {
+            diarySubTab = .overview
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(.warning)
+            onBlockedNutrientsAttempt?()
+        }
+    }
+
+    private func handleEditTrigger(_ newValue: Bool) {
+        guard newValue else { return }
+        // DEBUG LOG: print("📝 Edit trigger fired. Selected items: \(selectedFoodItems)")
+
+        if let foodId = selectedFoodItems.first {
+            // DEBUG LOG: print("📝 Looking for food with ID: \(foodId)")
+            if let itemToEdit = findFood(byId: foodId) {
+                // DEBUG LOG: print("📝 Found food to edit: \(itemToEdit.name)")
+                // DEBUG LOG: print("📝 Setting editingFood to trigger sheet...")
+                editingFood = itemToEdit
+                // Clear selection once user enters edit flow
+                selectedFoodItems.removeAll()
+            } else {
+                #if DEBUG
+                print("❌ Could not find food with ID: \(foodId)")
+                #endif
             }
+        } else {
+            #if DEBUG
+            print("❌ No food ID in selectedFoodItems")
+            #endif
         }
-        .onChange(of: copyTrigger) { newValue in
-            if newValue {
-                showCopyOptions()
-                copyTrigger = false
-            }
-        }
-        .onChange(of: deleteTrigger) { newValue in
-            guard newValue else { return }
-            deleteSelectedFoods()
-            deleteTrigger = false
-        }
-        .sheet(isPresented: $showingMoveSheet) {
-            moveFoodSheet
-        }
-        .sheet(isPresented: $showingCopySheet) {
-            copyFoodSheet
-        }
-        .sheet(item: $editingFood, onDismiss: {
-        // DEBUG LOG: print("📝 Edit sheet dismissed, resetting editingFood")
-            editingFood = nil
-        }) { food in
-            let _ = print("📝 Presenting edit sheet for: \(food.name)")
-            FoodDetailViewFromSearch(
-                food: food.toFoodSearchResult(),
-                sourceType: .diary,
-                selectedTab: $selectedTab,
-                destination: .diary,
-                diaryEntryId: food.id,
-                diaryMealType: food.time
-            )
-        }
+
+        editTrigger = false
     }
 
     @ViewBuilder
