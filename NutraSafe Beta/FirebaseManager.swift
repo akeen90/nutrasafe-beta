@@ -957,7 +957,7 @@ class FirebaseManager: ObservableObject {
 
         // Use Algolia for all searches - it already searches all indices (user-added, AI-enhanced, AI-manual, foods)
         // This is MUCH faster than making 4 separate Firestore queries
-        let limitedResults = await searchMainDatabase(query: query)
+        let limitedResults = try await searchMainDatabase(query: query)
 
         // Store in cache for next time (NSCache auto-manages memory)
         searchCache.setObject(

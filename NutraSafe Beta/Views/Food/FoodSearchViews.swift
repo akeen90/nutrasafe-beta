@@ -576,13 +576,14 @@ struct AddFoodSearchView: View {
 
             // OPTIONAL: Check for pending verifications in background (non-blocking)
             // This enriches results with pending ingredient data but doesn't delay the UI
+            let capturedResults = results // Capture immutable copy for Swift 6 concurrency
             Task.detached(priority: .background) {
                 do {
                     let pendingVerifications = try await FirebaseManager.shared.getPendingVerifications()
 
                     if Task.isCancelled { return }
 
-                    var enrichedResults = results
+                    var enrichedResults = capturedResults
                     var hasChanges = false
 
                     // Find matching foods and add pending ingredients
