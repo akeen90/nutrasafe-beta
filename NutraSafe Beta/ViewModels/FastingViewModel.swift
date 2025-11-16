@@ -217,18 +217,24 @@ class FastingViewModel: ObservableObject {
 
         // Deactivate current plan if exists
         if let currentPlan = activePlan {
+            print("   📋 Deactivating current plan: \(currentPlan.name)")
             var deactivatedPlan = currentPlan
             deactivatedPlan.active = false
             do {
                 try await firebaseManager.updateFastingPlan(deactivatedPlan)
+                print("   ✅ Current plan deactivated")
             } catch {
+                print("   ❌ Failed to deactivate current plan: \(error.localizedDescription)")
                 self.error = error
                 self.showError = true
                 return
             }
+        } else {
+            print("   📋 No active plan to deactivate")
         }
 
         // Create new plan
+        print("   📝 Creating new plan...")
         let newPlan = FastingPlan(
             userId: userId,
             name: name,
@@ -241,11 +247,17 @@ class FastingViewModel: ObservableObject {
             createdAt: Date()
         )
 
+        print("   💾 Saving plan to Firebase...")
         do {
             try await firebaseManager.saveFastingPlan(newPlan)
+            print("   ✅ Plan saved to Firebase successfully")
+            print("   🔄 Loading active plan...")
             await loadActivePlan()
+            print("   🔄 Loading all plans...")
             await loadAllPlans()
+            print("   ✅ All plans loaded - createFastingPlan complete")
         } catch {
+            print("   ❌ Failed to save plan to Firebase: \(error.localizedDescription)")
             self.error = error
             self.showError = true
         }
