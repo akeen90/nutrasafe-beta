@@ -386,17 +386,31 @@ export const searchFoods = functions
     const withIngredients = filteredResults.filter(r => r.ingredients && r.ingredients.length > 0);
     console.log(`${withIngredients.length} foods have ingredients data`);
 
-    // If no results found in internal database, try OpenFoodFacts
-    if (filteredResults.length === 0) {
-      console.log(`No internal results found. Trying OpenFoodFacts for: "${query}"`);
+    // Always search OpenFoodFacts to find products we don't have
+    console.log(`Searching OpenFoodFacts for additional products: "${query}"`);
+    const offProducts = await searchOpenFoodFacts(query);
 
-      const offProducts = await searchOpenFoodFacts(query);
+    if (offProducts.length > 0) {
+      console.log(`Found ${offProducts.length} products from OpenFoodFacts`);
 
-      if (offProducts.length > 0) {
-        console.log(`Found ${offProducts.length} products from OpenFoodFacts`);
+      // Get all barcodes from internal results to avoid duplicates
+      const internalBarcodes = new Set(
+        filteredResults
+          .map(r => r.barcode)
+          .filter(b => b && b.length > 0)
+      );
 
-        // Transform and analyze OpenFoodFacts products
-        const offResults = offProducts.map(offProduct => {
+      // Transform and analyze OpenFoodFacts products, filtering out duplicates
+      const offResults = offProducts
+        .filter(offProduct => {
+          const barcode = offProduct.code || offProduct._id || '';
+          const isDuplicate = barcode && internalBarcodes.has(barcode);
+          if (isDuplicate) {
+            console.log(`Skipping duplicate barcode from OpenFoodFacts: ${barcode}`);
+          }
+          return !isDuplicate;
+        })
+        .map(offProduct => {
           const transformed = transformOpenFoodFactsProduct(offProduct);
 
           // Analyze ingredients for additives if available (ingredients is now a string)
@@ -424,17 +438,21 @@ export const searchFoods = functions
           return transformed;
         });
 
-        console.log(`✅ Returning ${offResults.length} UK English products from OpenFoodFacts`);
+      console.log(`✅ Found ${offResults.length} unique UK English products from OpenFoodFacts (${offProducts.length - offResults.length} duplicates filtered)`);
 
-        // Return OpenFoodFacts results
-        res.json({
-          foods: offResults
-        });
-        return;
-      }
+      // Merge results: internal results first (verified/trusted), then OpenFoodFacts
+      const mergedResults = [...filteredResults, ...offResults].slice(0, 20);
 
-      console.log(`❌ No UK English products found anywhere for: "${query}"`);
+      console.log(`📊 Returning ${mergedResults.length} total results (${filteredResults.length} internal + ${offResults.length} OpenFoodFacts)`);
+
+      // Return merged results
+      res.json({
+        foods: mergedResults
+      });
+      return;
     }
+
+    console.log(`No additional products found on OpenFoodFacts`);
 
     // Return in the exact format iOS app expects
     res.json({

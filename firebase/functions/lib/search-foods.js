@@ -333,42 +333,56 @@ exports.searchFoods = functions
         // Also check if any results have ingredients
         const withIngredients = filteredResults.filter(r => r.ingredients && r.ingredients.length > 0);
         console.log(`${withIngredients.length} foods have ingredients data`);
-        // If no results found in internal database, try OpenFoodFacts
-        if (filteredResults.length === 0) {
-            console.log(`No internal results found. Trying OpenFoodFacts for: "${query}"`);
-            const offProducts = await searchOpenFoodFacts(query);
-            if (offProducts.length > 0) {
-                console.log(`Found ${offProducts.length} products from OpenFoodFacts`);
-                // Transform and analyze OpenFoodFacts products
-                const offResults = offProducts.map(offProduct => {
-                    const transformed = transformOpenFoodFactsProduct(offProduct);
-                    // Analyze ingredients for additives if available (ingredients is now a string)
-                    if (transformed.ingredients && transformed.ingredients.length > 0) {
-                        try {
-                            const ingredientsString = transformed.ingredients; // Already a string
-                            const analysisResult = (0, additive_analyzer_enhanced_1.analyzeIngredientsForAdditives)(ingredientsString);
-                            const processingScore = (0, additive_analyzer_enhanced_1.calculateProcessingScore)(analysisResult.detectedAdditives, ingredientsString);
-                            const grade = (0, additive_analyzer_enhanced_1.determineGrade)(processingScore.totalScore, analysisResult.hasRedFlags);
-                            transformed.additives = analysisResult.detectedAdditives.map(additive => (Object.assign(Object.assign({}, additive), { id: additive.code, consumerInfo: additive.consumer_guide })));
-                            transformed.processingScore = processingScore.totalScore;
-                            transformed.processingGrade = grade.grade;
-                            transformed.processingLabel = grade.label;
-                        }
-                        catch (error) {
-                            console.log(`Additive analysis failed for OpenFoodFacts product:`, error);
-                        }
+        // Always search OpenFoodFacts to find products we don't have
+        console.log(`Searching OpenFoodFacts for additional products: "${query}"`);
+        const offProducts = await searchOpenFoodFacts(query);
+        if (offProducts.length > 0) {
+            console.log(`Found ${offProducts.length} products from OpenFoodFacts`);
+            // Get all barcodes from internal results to avoid duplicates
+            const internalBarcodes = new Set(filteredResults
+                .map(r => r.barcode)
+                .filter(b => b && b.length > 0));
+            // Transform and analyze OpenFoodFacts products, filtering out duplicates
+            const offResults = offProducts
+                .filter(offProduct => {
+                const barcode = offProduct.code || offProduct._id || '';
+                const isDuplicate = barcode && internalBarcodes.has(barcode);
+                if (isDuplicate) {
+                    console.log(`Skipping duplicate barcode from OpenFoodFacts: ${barcode}`);
+                }
+                return !isDuplicate;
+            })
+                .map(offProduct => {
+                const transformed = transformOpenFoodFactsProduct(offProduct);
+                // Analyze ingredients for additives if available (ingredients is now a string)
+                if (transformed.ingredients && transformed.ingredients.length > 0) {
+                    try {
+                        const ingredientsString = transformed.ingredients; // Already a string
+                        const analysisResult = (0, additive_analyzer_enhanced_1.analyzeIngredientsForAdditives)(ingredientsString);
+                        const processingScore = (0, additive_analyzer_enhanced_1.calculateProcessingScore)(analysisResult.detectedAdditives, ingredientsString);
+                        const grade = (0, additive_analyzer_enhanced_1.determineGrade)(processingScore.totalScore, analysisResult.hasRedFlags);
+                        transformed.additives = analysisResult.detectedAdditives.map(additive => (Object.assign(Object.assign({}, additive), { id: additive.code, consumerInfo: additive.consumer_guide })));
+                        transformed.processingScore = processingScore.totalScore;
+                        transformed.processingGrade = grade.grade;
+                        transformed.processingLabel = grade.label;
                     }
-                    return transformed;
-                });
-                console.log(`✅ Returning ${offResults.length} UK English products from OpenFoodFacts`);
-                // Return OpenFoodFacts results
-                res.json({
-                    foods: offResults
-                });
-                return;
-            }
-            console.log(`❌ No UK English products found anywhere for: "${query}"`);
+                    catch (error) {
+                        console.log(`Additive analysis failed for OpenFoodFacts product:`, error);
+                    }
+                }
+                return transformed;
+            });
+            console.log(`✅ Found ${offResults.length} unique UK English products from OpenFoodFacts (${offProducts.length - offResults.length} duplicates filtered)`);
+            // Merge results: internal results first (verified/trusted), then OpenFoodFacts
+            const mergedResults = [...filteredResults, ...offResults].slice(0, 20);
+            console.log(`📊 Returning ${mergedResults.length} total results (${filteredResults.length} internal + ${offResults.length} OpenFoodFacts)`);
+            // Return merged results
+            res.json({
+                foods: mergedResults
+            });
+            return;
         }
+        console.log(`No additional products found on OpenFoodFacts`);
         // Return in the exact format iOS app expects
         res.json({
             foods: filteredResults
