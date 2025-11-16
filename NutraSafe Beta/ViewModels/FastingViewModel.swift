@@ -120,9 +120,19 @@ class FastingViewModel: ObservableObject {
 
     func loadActivePlan() async {
         do {
+            print("   📥 Fetching plans from Firebase...")
             let plans = try await firebaseManager.getFastingPlans()
-            self.activePlan = plans.first(where: { $0.active })
+            print("   📊 Received \(plans.count) total plans from Firebase")
+            let activePlan = plans.first(where: { $0.active })
+            if let active = activePlan {
+                print("   ✅ Found active plan: '\(active.name)' (ID: \(active.id ?? "nil"))")
+                self.activePlan = active
+            } else {
+                print("   ⚠️ No active plan found in \(plans.count) plans")
+                self.activePlan = nil
+            }
         } catch {
+            print("   ❌ Failed to load active plan: \(error.localizedDescription)")
             self.error = error
             self.showError = true
         }
@@ -130,8 +140,16 @@ class FastingViewModel: ObservableObject {
 
     func loadAllPlans() async {
         do {
-            self.allPlans = try await firebaseManager.getFastingPlans()
+            print("   📥 Fetching all plans from Firebase...")
+            let plans = try await firebaseManager.getFastingPlans()
+            print("   📊 Received \(plans.count) total plans")
+            for (index, plan) in plans.enumerated() {
+                print("      Plan \(index + 1): '\(plan.name)' - Active: \(plan.active) - ID: \(plan.id ?? "nil")")
+            }
+            self.allPlans = plans
+            print("   ✅ Updated allPlans array with \(plans.count) plans")
         } catch {
+            print("   ❌ Failed to load all plans: \(error.localizedDescription)")
             self.error = error
             self.showError = true
         }
