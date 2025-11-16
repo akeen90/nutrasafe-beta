@@ -19,7 +19,9 @@ func navigationContainer<Content: View>(@ViewBuilder content: () -> Content) -> 
 struct FoodTabView: View {
     @Binding var showingSettings: Bool
     @State private var selectedFoodSubTab: FoodSubTab = .reactions
-    
+    @EnvironmentObject var firebaseManager: FirebaseManager
+    @State private var fastingViewModel: FastingViewModel?
+
     enum FoodSubTab: String, CaseIterable {
         case reactions = "Reactions"
         case fasting = "Fasting"
@@ -31,7 +33,11 @@ struct FoodTabView: View {
             }
         }
     }
-    
+
+    init(showingSettings: Binding<Bool>) {
+        self._showingSettings = showingSettings
+    }
+
     var body: some View {
         navigationContainer {
             VStack(spacing: 0) {
@@ -80,7 +86,11 @@ struct FoodTabView: View {
                     case .reactions:
                         FoodReactionsView()
                     case .fasting:
-                        FastingTimerView()
+                        if let viewModel = fastingViewModel {
+                            FastingMainView(viewModel: viewModel)
+                        } else {
+                            ProgressView()
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -88,7 +98,11 @@ struct FoodTabView: View {
             .background(Color.adaptiveBackground)
             .navigationBarHidden(true)
         }
-        
+        .onAppear {
+            if fastingViewModel == nil, let userId = firebaseManager.currentUser?.uid {
+                fastingViewModel = FastingViewModel(firebaseManager: firebaseManager, userId: userId)
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToFasting)) { _ in
             selectedFoodSubTab = .fasting
         }

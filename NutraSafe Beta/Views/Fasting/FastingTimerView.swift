@@ -15,19 +15,18 @@ import UserNotifications
 struct FastingTimerView: View {
     @EnvironmentObject var firebaseManager: FirebaseManager
 
-    @State private var isFasting = false
-    @State private var fastingStartTime: Date?
+    @State private var currentSession: FastingSession? = nil
+    @State private var currentPlan: FastingPlan? = nil
+    @State private var sessions: [FastingSession] = []
     @State private var fastingGoal = 16
     @State private var notificationsEnabled = false
     @State private var currentTime = Date()
     @State private var showingSettings = false
     @State private var isLoading = true
-    @State private var streakSettings = FastingStreakSettings.default
     @State private var showStopConfirm = false
     @State private var stopConfirmText = ""
     @State private var showStopError = false
     @State private var stopErrorText = ""
-    @State private var fastHistory: [FastRecord] = []
     @State private var showingCitations = false
 
     // Live Activity
@@ -35,17 +34,26 @@ struct FastingTimerView: View {
 
     // Fast Session ID for notification validation
     @AppStorage("activeFastSessionId") private var activeFastSessionId: String = ""
-    
-    private var fastingDuration: TimeInterval {
-        guard isFasting, let startTime = fastingStartTime else { return 0 }
-        return currentTime.timeIntervalSince(startTime)
+
+    private var isFasting: Bool {
+        currentSession?.isActive ?? false
     }
-    
+
+    private var fastingStartTime: Date? {
+        currentSession?.startTime
+    }
+
+    private var fastingDuration: TimeInterval {
+        guard let session = currentSession, session.isActive else { return 0 }
+        return currentTime.timeIntervalSince(session.startTime)
+    }
+
     private var fastingProgress: Double {
-        let goalSeconds = Double(fastingGoal) * 3600 // Convert hours to seconds
+        guard let session = currentSession else { return 0 }
+        let goalSeconds = Double(session.targetDurationHours) * 3600
         return min(fastingDuration / goalSeconds, 1.0)
     }
-    
+
     private var formattedDuration: String {
         let hours = Int(fastingDuration) / 3600
         let minutes = (Int(fastingDuration) % 3600) / 60
@@ -54,274 +62,287 @@ struct FastingTimerView: View {
     }
 
     private var remainingText: String {
-        let remaining = max(0, Double(fastingGoal) * 3600 - fastingDuration)
+        guard let session = currentSession else { return "0h 0m" }
+        let remaining = max(0, Double(session.targetDurationHours) * 3600 - fastingDuration)
         let remainingHours = Int(remaining) / 3600
         let remainingMinutes = (Int(remaining) % 3600) / 60
         return "\(remainingHours)h \(remainingMinutes)m"
     }
     
-    private var analytics: FastingAnalyticsSummary {
-        FastingManager.analytics(from: fastHistory, settings: streakSettings)
+    private var analytics: FastingAnalytics {
+        FastingManager.calculateAnalytics(from: sessions)
     }
-    
+
+    private var timerCard: some View {
+        VStack(spacing: 24) {
+            HStack {
+                Text("Intermittent Fasting")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.primary)
+
+                Spacer()
+
+                Button(action: {
+                    showingSettings = true
+                }) {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.secondary)
+                }
+            }
+                    
+
+
+            // Circular Progress Timer
+            ZStack {
+                Circle()
+                    .stroke(Color(.systemGray5), lineWidth: 12)
+                    .frame(width: 200, height: 200)
+
+                Circle()
+                    .trim(from: 0, to: fastingProgress)
+                    .stroke(
+                        LinearGradient(
+                            colors: [.orange, .red, .purple],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        style: StrokeStyle(lineWidth: 12, lineCap: .round)
+                    )
+                    .frame(width: 200, height: 200)
+                    .rotationEffect(.degrees(-90))
+                    .animation(.easeInOut(duration: 1.0), value: fastingProgress)
+
+                VStack(spacing: 4) {
+                    if isFasting {
+                        Text(formattedDuration)
+                            .font(.system(size: 32, weight: .bold, design: .monospaced))
+                            .foregroundColor(.primary)
+                            .fixedSize()
+
+                        Text("Fasting")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.secondary)
+                    } else {
+                        Image(systemName: "clock")
+                            .font(.system(size: 40))
+                            .foregroundColor(.orange)
+
+                        Text("Not Fasting")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .frame(minHeight: 80)
+            }
+
+
+
+            // Progress Stats
+            HStack(spacing: 40) {
+                VStack(spacing: 4) {
+                    Text("Goal")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                    Text("\(fastingGoal)h")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.orange)
+                }
+
+                VStack(spacing: 4) {
+                    Text("Progress")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                    Text("\(Int(fastingProgress * 100))%")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.blue)
+                }
+
+                VStack(spacing: 4) {
+                    Text("Remaining")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                    Text(remainingText)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.green)
+                }
+            }
+
+
+
+            // Action Buttons
+            HStack(spacing: 16) {
+                if isFasting {
+                    Button(action: prepareStopFasting) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "stop.circle.fill")
+                                .font(.system(size: 18))
+                            Text("Stop Fasting")
+                                .font(.system(size: 16, weight: .semibold))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(.red)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                } else {
+                    Button(action: startFasting) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "play.circle.fill")
+                                .font(.system(size: 18))
+                            Text("Start Fasting")
+                                .font(.system(size: 16, weight: .semibold))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(.green)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+        }
+        .padding(20)
+        .background(Color(.systemGray6))
+        .cornerRadius(24)
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+    }
+
+    private var streakSummary: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Fasting Streak")
+                .font(.system(size: 24, weight: .semibold))
+                .foregroundColor(.primary)
+
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                metricChip(title: "Current", value: "\(analytics.currentWeeklyStreak)")
+                metricChip(title: "Best", value: "\(analytics.bestWeeklyStreak)")
+                metricChip(title: "Plans", value: "\(sessions.count) completed")
+                metricChip(title: "Total Fasts", value: "\(sessions.count)")
+                metricChip(title: "Average", value: String(format: "%.1f h", analytics.averageDurationHours))
+                metricChip(title: "Longest", value: String(format: "%.1f h", analytics.longestFastHours))
+            }
+        }
+        .padding(24)
+        .background(Color(.systemBackground))
+        .cornerRadius(16)
+        .padding(.horizontal, 16)
+    }
+
+    private var stagesCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Fasting Stages")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundColor(.primary)
+
+                Spacer()
+
+                Button(action: {
+                    showingCitations = true
+                }) {
+                    Text("View Sources")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.blue)
+                }
+            }
+
+            VStack(spacing: 12) {
+                FastingStageRow(
+                    hours: "0-4h",
+                    title: "Digestion",
+                    description: "Body processes last meal",
+                    color: .orange,
+                    isActive: fastingDuration < 4 * 3600
+                )
+
+                FastingStageRow(
+                    hours: "4-8h",
+                    title: "Early Fat Burning",
+                    description: "Glycogen stores depleting",
+                    color: .yellow,
+                    isActive: fastingDuration >= 4 * 3600 && fastingDuration < 8 * 3600
+                )
+
+                FastingStageRow(
+                    hours: "8-12h",
+                    title: "Fat Burning",
+                    description: "Body switches to fat for energy",
+                    color: .blue,
+                    isActive: fastingDuration >= 8 * 3600 && fastingDuration < 12 * 3600
+                )
+
+                FastingStageRow(
+                    hours: "12-16h",
+                    title: "Ketosis Begins",
+                    description: "Enhanced fat burning and mental clarity",
+                    color: .purple,
+                    isActive: fastingDuration >= 12 * 3600 && fastingDuration < 16 * 3600
+                )
+
+                FastingStageRow(
+                    hours: "16+h",
+                    title: "Deep Ketosis",
+                    description: "Autophagy and cellular repair",
+                    color: .indigo,
+                    isActive: fastingDuration >= 16 * 3600
+                )
+            }
+        }
+        .padding(24)
+        .background(Color(.systemBackground))
+        .cornerRadius(16)
+        .padding(.horizontal, 16)
+    }
+
+    private var presetsCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Popular Fasting Plans")
+                .font(.system(size: 24, weight: .semibold))
+                .foregroundColor(.primary)
+
+            HStack(spacing: 12) {
+                FastingPresetButton(hours: 12, title: "12:12", subtitle: "Beginner") {
+                    setFastingGoal(12)
+                }
+
+                FastingPresetButton(hours: 16, title: "16:8", subtitle: "Popular") {
+                    setFastingGoal(16)
+                }
+
+                FastingPresetButton(hours: 18, title: "18:6", subtitle: "Advanced") {
+                    setFastingGoal(18)
+                }
+
+                FastingPresetButton(hours: 20, title: "20:4", subtitle: "Expert") {
+                    setFastingGoal(20)
+                }
+            }
+        }
+        .padding(24)
+        .background(Color(.systemBackground))
+        .cornerRadius(16)
+        .padding(.horizontal, 16)
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
-                
-                // Fasting Timer Main Card
-                VStack(spacing: 24) {
-                    HStack {
-                        Text("Intermittent Fasting")
-                            .font(.system(size: 20, weight: .bold))
-                            .foregroundColor(.primary)
-                        
-                        Spacer()
-                        
-                        Button(action: {
-                            showingSettings = true
-                        }) {
-                            Image(systemName: "gearshape.fill")
-                                .font(.system(size: 20))
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    
-                    // Circular Progress Timer
-                    ZStack {
-                        Circle()
-                            .stroke(Color(.systemGray5), lineWidth: 12)
-                            .frame(width: 200, height: 200)
-                        
-                        Circle()
-                            .trim(from: 0, to: fastingProgress)
-                            .stroke(
-                                LinearGradient(
-                                    colors: [.orange, .red, .purple],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                style: StrokeStyle(lineWidth: 12, lineCap: .round)
-                            )
-                            .frame(width: 200, height: 200)
-                            .rotationEffect(.degrees(-90))
-                            .animation(.easeInOut(duration: 1.0), value: fastingProgress)
-                        
-                        VStack(spacing: 4) {
-                            if isFasting {
-                                Text(formattedDuration)
-                                    .font(.system(size: 32, weight: .bold, design: .monospaced))
-                                    .foregroundColor(.primary)
-                                    .fixedSize()
+                timerCard
 
-                                Text("Fasting")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(.secondary)
-                            } else {
-                                Image(systemName: "clock")
-                                    .font(.system(size: 40))
-                                    .foregroundColor(.orange)
-
-                                Text("Not Fasting")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        .frame(minHeight: 80)
-                    }
-                    
-                    // Progress Stats
-                    HStack(spacing: 40) {
-                        VStack(spacing: 4) {
-                            Text("Goal")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                            Text("\(fastingGoal)h")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(.orange)
-                        }
-                        
-                        VStack(spacing: 4) {
-                            Text("Progress")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                            Text("\(Int(fastingProgress * 100))%")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(.blue)
-                        }
-                        
-                        VStack(spacing: 4) {
-                            Text("Remaining")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                            Text(remainingText)
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(.green)
-                        }
-                    }
-                    
-                    // Action Buttons
-                    HStack(spacing: 16) {
-                        if isFasting {
-                            Button(action: prepareStopFasting) {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "stop.circle.fill")
-                                        .font(.system(size: 18))
-                                    Text("Stop Fasting")
-                                        .font(.system(size: 16, weight: .semibold))
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                                .background(.red)
-                                .foregroundColor(.white)
-                                .cornerRadius(12)
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                        } else {
-                            Button(action: startFasting) {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "play.circle.fill")
-                                        .font(.system(size: 18))
-                                    Text("Start Fasting")
-                                        .font(.system(size: 16, weight: .semibold))
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                                .background(.green)
-                                .foregroundColor(.white)
-                                .cornerRadius(12)
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                        }
-                    }
-                }
-                .padding(20)
-                .background(Color(.systemGray6))
-                .cornerRadius(24)
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
-                
-                // Fasting History Dropdown
                 FastingHistoryDropdown()
                     .environmentObject(firebaseManager)
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
-                
-                // Fasting Streak Summary
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Fasting Streak")
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundColor(.primary)
-                    
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                        metricChip(title: "Current", value: "\(analytics.currentWeeklyStreak)")
-                        metricChip(title: "Best", value: "\(analytics.bestWeeklyStreak)")
-                        metricChip(title: "Goal", value: "\(streakSettings.daysPerWeekGoal) days per week")
-                        metricChip(title: "Total Fasts", value: "\(fastHistory.count)")
-                        metricChip(title: "Average", value: String(format: "%.1f h", analytics.averageDurationHours))
-                        metricChip(title: "Longest", value: String(format: "%.1f h", analytics.longestFastHours))
-                    }
-                }
-                .padding(24)
-                .background(Color(.systemBackground))
-                .cornerRadius(16)
-                .padding(.horizontal, 16)
-                
-                // Fasting Benefits Card
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack {
-                        Text("Fasting Stages")
-                            .font(.system(size: 24, weight: .semibold))
-                            .foregroundColor(.primary)
 
-                        Spacer()
+                streakSummary
+                stagesCard
+                presetsCard
 
-                        Button(action: {
-                            showingCitations = true
-                        }) {
-                            Text("View Sources")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(.blue)
-                        }
-                    }
-
-                    VStack(spacing: 12) {
-                        FastingStageRow(
-                            hours: "0-4h",
-                            title: "Digestion",
-                            description: "Body processes last meal",
-                            color: .orange,
-                            isActive: fastingDuration < 4 * 3600
-                        )
-                        
-                        FastingStageRow(
-                            hours: "4-8h",
-                            title: "Early Fat Burning",
-                            description: "Glycogen stores depleting",
-                            color: .yellow,
-                            isActive: fastingDuration >= 4 * 3600 && fastingDuration < 8 * 3600
-                        )
-                        
-                        FastingStageRow(
-                            hours: "8-12h",
-                            title: "Fat Burning",
-                            description: "Body switches to fat for energy",
-                            color: .blue,
-                            isActive: fastingDuration >= 8 * 3600 && fastingDuration < 12 * 3600
-                        )
-                        
-                        FastingStageRow(
-                            hours: "12-16h",
-                            title: "Ketosis Begins",
-                            description: "Enhanced fat burning and mental clarity",
-                            color: .purple,
-                            isActive: fastingDuration >= 12 * 3600 && fastingDuration < 16 * 3600
-                        )
-                        
-                        FastingStageRow(
-                            hours: "16+h",
-                            title: "Deep Ketosis",
-                            description: "Autophagy and cellular repair",
-                            color: .indigo,
-                            isActive: fastingDuration >= 16 * 3600
-                        )
-                    }
-                }
-                .padding(24)
-                .background(Color(.systemBackground))
-                .cornerRadius(16)
-                .padding(.horizontal, 16)
-                
-                // History moved above stages; duplicate removed
-                
-                // Quick Goal Presets
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Popular Fasting Plans")
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundColor(.primary)
-                    
-                    HStack(spacing: 12) {
-                        FastingPresetButton(hours: 12, title: "12:12", subtitle: "Beginner") {
-                            setFastingGoal(12)
-                        }
-                        
-                        FastingPresetButton(hours: 16, title: "16:8", subtitle: "Popular") {
-                            setFastingGoal(16)
-                        }
-                        
-                        FastingPresetButton(hours: 18, title: "18:6", subtitle: "Advanced") {
-                            setFastingGoal(18)
-                        }
-                        
-                        FastingPresetButton(hours: 20, title: "20:4", subtitle: "Expert") {
-                            setFastingGoal(20)
-                        }
-                    }
-                }
-                .padding(24)
-                .background(Color(.systemBackground))
-                .cornerRadius(16)
-                .padding(.horizontal, 16)
-                
                 Rectangle()
                     .fill(Color.clear)
                     .frame(height: 100)
@@ -329,29 +350,16 @@ struct FastingTimerView: View {
         }
         .onAppear {
             Task {
-                await loadFastingState()
-                do {
-                    let settings = try await firebaseManager.getFastingStreakSettings()
-                    await MainActor.run { streakSettings = settings }
-                } catch {
-                    // keep defaults if load fails
-                    print("⚠️ Failed to load fasting streak settings: \(error.localizedDescription)")
-                }
-                do {
-                    let records = try await firebaseManager.getFastHistory()
-                    await MainActor.run { fastHistory = records }
-                } catch {
-                    print("⚠️ Failed to load fast history: \(error.localizedDescription)")
-                }
+                await loadFastingData()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .fastHistoryUpdated)) { _ in
             Task {
                 do {
-                    let records = try await firebaseManager.getFastHistory()
-                    await MainActor.run { fastHistory = records }
+                    let sessions = try await firebaseManager.getFastingSessions()
+                    await MainActor.run { self.sessions = sessions }
                 } catch {
-                    print("⚠️ Failed to refresh fast history: \(error.localizedDescription)")
+                    print("⚠️ Failed to refresh fasting sessions: \(error.localizedDescription)")
                 }
             }
         }
@@ -384,7 +392,6 @@ struct FastingTimerView: View {
             FastingSettingsView(
                 fastingGoal: $fastingGoal,
                 notificationsEnabled: $notificationsEnabled,
-                streakSettings: $streakSettings,
                 onSave: saveFastingSettings
             )
             .environmentObject(firebaseManager)
@@ -396,26 +403,38 @@ struct FastingTimerView: View {
 
     // MARK: - Private Methods
 
-    private func loadFastingState() async {
+    private func loadFastingData() async {
         do {
-            let state = try await firebaseManager.getFastingState()
+            let plans = try await firebaseManager.getFastingPlans()
+            let allSessions = try await firebaseManager.getFastingSessions()
+
+            // Find active session
+            let activeSession = allSessions.first { $0.isActive }
+
             await MainActor.run {
-                isFasting = state.isFasting
-                fastingStartTime = state.startTime
-                fastingGoal = state.goal
-                notificationsEnabled = state.notificationsEnabled
-                isLoading = false
+                self.sessions = allSessions
+                self.currentPlan = plans.first(where: { $0.isActive })
+                self.currentSession = activeSession
+
+                // Set goal from active session or plan
+                if let session = activeSession {
+                    self.fastingGoal = session.targetDurationHours
+                } else if let plan = self.currentPlan {
+                    self.fastingGoal = plan.durationHours
+                }
+
+                self.isLoading = false
             }
 
-            // Restart Live Activity and notifications if user was fasting
-            if state.isFasting {
+            // Restart Live Activity and notifications if user has active session
+            if activeSession != nil {
                 if #available(iOS 16.1, *) {
                     await startLiveActivity()
                 }
                 await scheduleFastingNotifications()
             }
         } catch {
-            print("❌ Error loading fasting state: \(error.localizedDescription)")
+            print("❌ Error loading fasting data: \(error.localizedDescription)")
             await MainActor.run {
                 isLoading = false
             }
@@ -423,24 +442,26 @@ struct FastingTimerView: View {
     }
 
     private func startFasting() {
-        isFasting = true
-        fastingStartTime = Date()
-
         // Generate unique session ID for this fast
         activeFastSessionId = UUID().uuidString
         print("🆔 Started fast session: \(activeFastSessionId)")
 
+        // Create new session
+        let newSession = FastingManager.createSession(
+            plan: currentPlan,
+            targetDurationHours: fastingGoal,
+            startTime: Date()
+        )
+
         Task {
             do {
-                try await firebaseManager.saveFastingState(
-                    isFasting: true,
-                    startTime: fastingStartTime,
-                    goal: fastingGoal,
-                    notificationsEnabled: notificationsEnabled,
-                    reminderInterval: 0  // No longer used - stage-based only
-                )
+                let sessionId = try await firebaseManager.saveFastingSession(newSession)
+                print("✅ Session saved with ID: \(sessionId)")
+
+                // Reload to get the saved session with ID
+                await loadFastingData()
             } catch {
-                print("❌ Error saving fasting start: \(error.localizedDescription)")
+                print("❌ Error saving fasting session: \(error.localizedDescription)")
             }
 
             // Start Live Activity for Dynamic Island
@@ -457,9 +478,6 @@ struct FastingTimerView: View {
     }
 
     private func stopFasting() {
-        isFasting = false
-        fastingStartTime = nil
-
         // Clear session ID immediately to prevent notifications
         print("🛑 Stopping fast session: \(activeFastSessionId)")
         activeFastSessionId = ""
@@ -467,19 +485,10 @@ struct FastingTimerView: View {
         // Cancel all fasting notifications IMMEDIATELY (synchronous)
         cancelFastingNotifications()
 
-        Task {
-            do {
-                try await firebaseManager.saveFastingState(
-                    isFasting: false,
-                    startTime: nil,
-                    goal: fastingGoal,
-                    notificationsEnabled: notificationsEnabled,
-                    reminderInterval: 0  // No longer used - stage-based only
-                )
-            } catch {
-                print("❌ Error saving fasting stop: \(error.localizedDescription)")
-            }
+        // Clear current session locally
+        currentSession = nil
 
+        Task {
             // End Live Activity
             if #available(iOS 16.1, *) {
                 await endLiveActivity()
@@ -493,38 +502,13 @@ struct FastingTimerView: View {
     private func setFastingGoal(_ hours: Int) {
         fastingGoal = hours
 
-        Task {
-            do {
-                try await firebaseManager.saveFastingState(
-                    isFasting: isFasting,
-                    startTime: fastingStartTime,
-                    goal: hours,
-                    notificationsEnabled: notificationsEnabled,
-                    reminderInterval: 0  // No longer used - stage-based only
-                )
-            } catch {
-                print("❌ Error saving fasting goal: \(error.localizedDescription)")
-            }
-        }
-
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
         impactFeedback.impactOccurred()
     }
 
     private func saveFastingSettings() {
-        Task {
-            do {
-                try await firebaseManager.saveFastingState(
-                    isFasting: isFasting,
-                    startTime: fastingStartTime,
-                    goal: fastingGoal,
-                    notificationsEnabled: notificationsEnabled,
-                    reminderInterval: 0  // No longer used - stage-based only
-                )
-            } catch {
-                print("❌ Error saving fasting settings: \(error.localizedDescription)")
-            }
-        }
+        // Settings are now saved with the session
+        print("ℹ️ Settings updated: goal=\(fastingGoal)h, notifications=\(notificationsEnabled)")
     }
 
     // MARK: - Live Activities (Dynamic Island)
@@ -769,47 +753,39 @@ struct FastingTimerView: View {
             return
         }
         let end = Date()
-        let result = FastingManager.buildRecord(startTime: start,
-                                                endTime: end,
-                                                settings: streakSettings,
-                                                goalHours: fastingGoal)
-        switch result {
-        case .failure(let err):
-            stopErrorText = err.reason
-            showStopError = true
-        case .success(let record):
-            let within = record.withinTarget ? "within target" : "outside target"
-            stopConfirmText = String(format: "Duration: %.1f h (%@). Save to NutraSafe history?",
-                                     record.durationHours, within)
-            showStopConfirm = true
-        }
+        let duration = end.timeIntervalSince(start) / 3600.0
+        let withinTarget = duration >= Double(fastingGoal)
+
+        stopConfirmText = String(format: "Duration: %.1f h (%@). Save to NutraSafe history?",
+                                 duration, withinTarget ? "within target" : "outside target")
+        showStopConfirm = true
     }
 
     private func stopFastingAndRecord() {
-        guard let start = fastingStartTime else {
-            stopErrorText = "No start time found."
+        guard let session = currentSession else {
+            stopErrorText = "No active session found."
             showStopError = true
             return
         }
+
         let end = Date()
-        let result = FastingManager.buildRecord(startTime: start,
-                                                endTime: end,
-                                                settings: streakSettings,
-                                                goalHours: fastingGoal)
-        switch result {
-        case .failure(let err):
-            stopErrorText = err.reason
-            showStopError = true
-        case .success(let record):
-            Task {
-                do {
-                    _ = try await firebaseManager.saveFastRecord(record)
-                } catch {
-                    print("❌ Error saving fast record: \(error.localizedDescription)")
-                }
+        let completedSession = FastingManager.endSession(session, endTime: end)
+
+        Task {
+            do {
+                _ = try await firebaseManager.saveFastingSession(completedSession)
+                print("✅ Fasting session completed and saved")
+
+                // Reload sessions to update history
+                await loadFastingData()
+
+                // Post notification to update history dropdown
+                NotificationCenter.default.post(name: .fastHistoryUpdated, object: nil)
+            } catch {
+                print("❌ Error saving fasting session: \(error.localizedDescription)")
             }
-            stopFasting()
         }
+        stopFasting()
     }
 }
 
@@ -899,21 +875,13 @@ struct FastingSettingsView: View {
     @EnvironmentObject var firebaseManager: FirebaseManager
     @Binding var fastingGoal: Int
     @Binding var notificationsEnabled: Bool
-    @Binding var streakSettings: FastingStreakSettings
     @State private var customGoal: Int
-    @State private var daysGoal: Int
-    @State private var minHours: Int
-    @State private var maxHours: Int
     let onSave: () -> Void
 
-    init(fastingGoal: Binding<Int>, notificationsEnabled: Binding<Bool>, streakSettings: Binding<FastingStreakSettings>, onSave: @escaping () -> Void) {
+    init(fastingGoal: Binding<Int>, notificationsEnabled: Binding<Bool>, onSave: @escaping () -> Void) {
         self._fastingGoal = fastingGoal
         self._notificationsEnabled = notificationsEnabled
-        self._streakSettings = streakSettings
         self._customGoal = State(initialValue: fastingGoal.wrappedValue)
-        self._daysGoal = State(initialValue: streakSettings.wrappedValue.daysPerWeekGoal)
-        self._minHours = State(initialValue: streakSettings.wrappedValue.targetMinHours)
-        self._maxHours = State(initialValue: streakSettings.wrappedValue.targetMaxHours)
         self.onSave = onSave
     }
     
@@ -955,15 +923,6 @@ struct FastingSettingsView: View {
                         .tint(.blue)
                 }
 
-                Section(header: Text("Streak Settings"), footer: Text("Used to compute weekly streaks and target window.")) {
-                    Stepper("Days per week goal: \(daysGoal)/wk", value: $daysGoal, in: 1...7)
-                    Stepper("Min hours: \(minHours)h", value: $minHours, in: 12...36, step: 1)
-                    Stepper("Max hours: \(maxHours)h", value: $maxHours, in: max(minHours, 12)...48, step: 1)
-                    Text("Target window: \(minHours)–\(maxHours) h")
-                        .font(.footnote)
-                        .foregroundColor(.secondary)
-                }
-
                 Section(header: Text("About Intermittent Fasting")) {
                     VStack(alignment: .leading, spacing: 12) {
                         InfoRow(icon: "clock.fill", color: .orange, title: "12:12", description: "Good for beginners, gentle fasting")
@@ -991,19 +950,8 @@ struct FastingSettingsView: View {
 
     private func saveSettings() {
         fastingGoal = customGoal
-        streakSettings.daysPerWeekGoal = daysGoal
-        streakSettings.targetMinHours = minHours
-        streakSettings.targetMaxHours = maxHours
         onSave()
         
-        Task {
-            do {
-                try await firebaseManager.saveFastingStreakSettings(streakSettings)
-            } catch {
-                print("❌ Error saving streak settings: \(error.localizedDescription)")
-            }
-        }
-
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
     }

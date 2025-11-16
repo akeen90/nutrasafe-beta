@@ -52,5 +52,34 @@ service cloud.firestore {
       allow read: if true;
       allow write: if false;
     }
+
+    // Fasting plans - users can only access their own plans
+    match /fasting_plans/{planId} {
+      allow read, write: if request.auth != null &&
+                          request.resource.data.user_id == request.auth.uid;
+      allow read: if request.auth != null &&
+                    resource.data.user_id == request.auth.uid;
+    }
+
+    // Fasting sessions - users can only access their own sessions
+    match /fasting_sessions/{sessionId} {
+      allow read, write: if request.auth != null &&
+                          request.resource.data.user_id == request.auth.uid;
+      allow read: if request.auth != null &&
+                    resource.data.user_id == request.auth.uid;
+    }
+
+    // Fasting notifications - users can only access notifications for their sessions
+    match /fasting_notifications/{notificationId} {
+      allow read, write: if request.auth != null &&
+                          request.resource.data.session_id != null;
+      allow read: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+
+    // Fasting settings - users can only access their own settings
+    match /fasting_settings/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
   }
 }

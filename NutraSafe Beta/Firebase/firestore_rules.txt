@@ -1,0 +1,189 @@
+// Firebase Security Rules for Fasting Feature
+// Place this in your Firestore security rules
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+    
+    function validTimestamp(timestamp) {
+      return timestamp is timestamp && timestamp > timestamp.date(2020, 1, 1);
+    }
+    
+    function validEndTime(startTime, endTime) {
+      return endTime == null || endTime > startTime;
+    }
+    
+    // Fasting Plans Collection
+    match /fasting_plans/{planId} {
+      allow read: if isOwner(resource.data.user_id);
+      
+      allow create: if isAuthenticated() 
+        && request.auth.uid == request.resource.data.user_id
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 50
+        && request.resource.data.duration_hours is int
+        && request.resource.data.duration_hours >= 1
+        && request.resource.data.duration_hours <= 168
+        && request.resource.data.days_of_week is list
+        && request.resource.data.days_of_week.size() >= 1
+        && request.resource.data.days_of_week.size() <= 7
+        && request.resource.data.allowed_drinks in ['strict', 'practical', 'lenient']
+        && request.resource.data.reminder_enabled is bool
+        && request.resource.data.reminder_minutes_before_end is int
+        && request.resource.data.reminder_minutes_before_end >= 0
+        && request.resource.data.reminder_minutes_before_end <= 1440
+        && request.resource.data.active is bool
+        && validTimestamp(request.resource.data.created_at);
+      
+      allow update: if isOwner(resource.data.user_id)
+        && (!request.resource.data.diff(resource.data).hasAny(['user_id']) || resource.data.user_id == request.resource.data.user_id)
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 50
+        && request.resource.data.duration_hours is int
+        && request.resource.data.duration_hours >= 1
+        && request.resource.data.duration_hours <= 168
+        && request.resource.data.days_of_week is list
+        && request.resource.data.days_of_week.size() >= 1
+        && request.resource.data.days_of_week.size() <= 7
+        && request.resource.data.allowed_drinks in ['strict', 'practical', 'lenient']
+        && request.resource.data.reminder_enabled is bool
+        && request.resource.data.reminder_minutes_before_end is int
+        && request.resource.data.reminder_minutes_before_end >= 0
+        && request.resource.data.reminder_minutes_before_end <= 1440
+        && request.resource.data.active is bool
+        && validTimestamp(request.resource.data.created_at);
+      
+      allow delete: if isOwner(resource.data.user_id)
+        && !resource.data.active; // Cannot delete active plans
+    }
+    
+    // Fasting Sessions Collection
+    match /fasting_sessions/{sessionId} {
+      allow read: if isOwner(resource.data.user_id);
+      
+      allow create: if isAuthenticated()
+        && request.auth.uid == request.resource.data.user_id
+        && (request.resource.data.plan_id == null || 
+            exists(/databases/$(database)/documents/fasting_plans/$(request.resource.data.plan_id)) &&
+            get(/databases/$(database)/documents/fasting_plans/$(request.resource.data.plan_id)).data.user_id == request.auth.uid)
+        && request.resource.data.start_time is timestamp
+        && request.resource.data.start_time <= request.time
+        && request.resource.data.end_time is timestamp || request.resource.data.end_time == null
+        && validEndTime(request.resource.data.start_time, request.resource.data.end_time)
+        && request.resource.data.manually_edited is bool
+        && request.resource.data.skipped is bool
+        && request.resource.data.completion_status in ['active', 'completed', 'earlyEnd', 'overGoal', 'failed', 'skipped']
+        && request.resource.data.target_duration_hours is int
+        && request.resource.data.target_duration_hours >= 1
+        && request.resource.data.target_duration_hours <= 168
+        && (request.resource.data.notes is string || request.resource.data.notes == null)
+        && request.resource.data.archived is bool
+        && validTimestamp(request.resource.data.created_at);
+      
+      allow update: if isOwner(resource.data.user_id)
+        && (!request.resource.data.diff(resource.data).hasAny(['user_id']) || resource.data.user_id == request.resource.data.user_id)
+        && (request.resource.data.plan_id == null || 
+            exists(/databases/$(database)/documents/fasting_plans/$(request.resource.data.plan_id)) &&
+            get(/databases/$(database)/documents/fasting_plans/$(request.resource.data.plan_id)).data.user_id == request.auth.uid)
+        && request.resource.data.start_time is timestamp
+        && request.resource.data.start_time <= request.time
+        && (request.resource.data.end_time is timestamp || request.resource.data.end_time == null)
+        && validEndTime(request.resource.data.start_time, request.resource.data.end_time)
+        && request.resource.data.manually_edited is bool
+        && request.resource.data.skipped is bool
+        && request.resource.data.completion_status in ['active', 'completed', 'earlyEnd', 'overGoal', 'failed', 'skipped']
+        && request.resource.data.target_duration_hours is int
+        && request.resource.data.target_duration_hours >= 1
+        && request.resource.data.target_duration_hours <= 168
+        && (request.resource.data.notes is string || request.resource.data.notes == null)
+        && request.resource.data.archived is bool
+        && validTimestamp(request.resource.data.created_at)
+        && (resource.data.manually_edited == true || !request.resource.data.diff(resource.data).hasAny(['start_time', 'end_time'])); // Only manually edited sessions can have times changed
+      
+      allow delete: if isOwner(resource.data.user_id)
+        && resource.data.archived == true; // Can only delete archived sessions
+    }
+    
+    // User Fasting Settings
+    match /fasting_settings/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
+    }
+    
+    // Fasting Notifications Collection
+    match /fasting_notifications/{notificationId} {
+      allow read: if isOwner(resource.data.user_id);
+      
+      allow create: if isAuthenticated()
+        && request.auth.uid == request.resource.data.user_id
+        && request.resource.data.session_id is string
+        && exists(/databases/$(database)/documents/fasting_sessions/$(request.resource.data.session_id)) &&
+            get(/databases/$(database)/documents/fasting_sessions/$(request.resource.data.session_id)).data.user_id == request.auth.uid
+        && request.resource.data.type in ['fast_start', 'midway_check_in', 'phase_transition', 'reminder_before_end', 'goal_reached', 'over_goal_encouragement']
+        && request.resource.data.title is string
+        && request.resource.data.body is string
+        && request.resource.data.scheduled_date is timestamp
+        && validTimestamp(request.resource.data.scheduled_date);
+      
+      allow update: if isOwner(resource.data.user_id);
+      allow delete: if isOwner(resource.data.user_id);
+    }
+  }
+}
+
+// Firestore Indexes Configuration
+// Add these to your firebase.json or create manually in Firebase Console
+
+/*
+{
+  "firestore": {
+    "indexes": [
+      {
+        "collectionGroup": "fasting_plans",
+        "queryScope": "COLLECTION",
+        "fields": [
+          { "fieldPath": "user_id", "order": "ASCENDING" },
+          { "fieldPath": "active", "order": "DESCENDING" },
+          { "fieldPath": "created_at", "order": "DESCENDING" }
+        ]
+      },
+      {
+        "collectionGroup": "fasting_sessions",
+        "queryScope": "COLLECTION",
+        "fields": [
+          { "fieldPath": "user_id", "order": "ASCENDING" },
+          { "fieldPath": "completion_status", "order": "ASCENDING" },
+          { "fieldPath": "start_time", "order": "DESCENDING" }
+        ]
+      },
+      {
+        "collectionGroup": "fasting_sessions",
+        "queryScope": "COLLECTION",
+        "fields": [
+          { "fieldPath": "user_id", "order": "ASCENDING" },
+          { "fieldPath": "start_time", "order": "DESCENDING" }
+        ]
+      },
+      {
+        "collectionGroup": "fasting_notifications",
+        "queryScope": "COLLECTION",
+        "fields": [
+          { "fieldPath": "user_id", "order": "ASCENDING" },
+          { "fieldPath": "scheduled_date", "order": "ASCENDING" }
+        ]
+      }
+    ]
+  }
+}
+*/

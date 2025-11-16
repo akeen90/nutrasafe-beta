@@ -1,0 +1,85 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Foods collection - main collection
+    // Allow unauthenticated access for database manager tool
+    match /foods/{foodId} {
+      allow read, write: if true;
+    }
+
+    // Users can only access their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // Allow access to user's subcollections
+      match /{subcollection=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // User-added foods collection (manually entered foods)
+    // Allow unauthenticated access for database manager tool
+    match /userAdded/{foodId} {
+      allow read, write: if true;
+    }
+
+    // AI manually added foods collection (foods found via "Find with AI" feature)
+    // Allow unauthenticated access for database manager tool
+    match /aiManuallyAdded/{foodId} {
+      allow read, write: if true;
+    }
+
+    // AI enhanced foods collection (foods enhanced from detail page)
+    // Allow unauthenticated access for database manager tool
+    match /aiEnhanced/{foodId} {
+      allow read, write: if true;
+    }
+
+    // Verified foods collection (admin-managed, high-quality verified foods)
+    // Allow unauthenticated access for database manager tool
+    match /verifiedFoods/{foodId} {
+      allow read, write: if true;
+    }
+
+    // Cleansed foods collection (foods that have been cleaned/validated)
+    // Allow unauthenticated access for database manager tool
+    match /cleansedFoods/{foodId} {
+      allow read, write: if true;
+    }
+
+    // Public read access for app configuration
+    match /config/{document} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Fasting plans - users can only access their own plans
+    match /fasting_plans/{planId} {
+      allow read, write: if request.auth != null &&
+                          request.resource.data.user_id == request.auth.uid;
+      allow read: if request.auth != null &&
+                    resource.data.user_id == request.auth.uid;
+    }
+
+    // Fasting sessions - users can only access their own sessions
+    match /fasting_sessions/{sessionId} {
+      allow read, write: if request.auth != null &&
+                          request.resource.data.user_id == request.auth.uid;
+      allow read: if request.auth != null &&
+                    resource.data.user_id == request.auth.uid;
+    }
+
+    // Fasting notifications - users can only access notifications for their sessions
+    match /fasting_notifications/{notificationId} {
+      allow read, write: if request.auth != null &&
+                          request.resource.data.session_id != null;
+      allow read: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+
+    // Fasting settings - users can only access their own settings
+    match /fasting_settings/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

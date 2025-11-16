@@ -2558,55 +2558,65 @@ class FirebaseManager: ObservableObject {
     }
  
 
-    func saveFastRecord(_ record: FastRecord) async throws -> String {
-        ensureAuthStateLoaded()
-        guard let userId = currentUser?.uid else {
-            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save fast records"])
+    // MARK: - Legacy Fasting Methods (Replaced by New Session-Based System)
+    
+    @available(*, deprecated, message: "Use saveFastingSession instead")
+    func saveFastRecord(_ record: [String: Any]) async throws -> String {
+        // Convert old FastRecord format to new FastingSession
+        guard let id = record["id"] as? String,
+              let startTime = record["startTime"] as? Date,
+              let endTime = record["endTime"] as? Date,
+              let durationHours = record["durationHours"] as? Double,
+              let goalHours = record["goalHours"] as? Double else {
+            throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid FastRecord format"])
         }
-        let docRef = db.collection("users").document(userId)
-            .collection("fasts").document(record.id)
-        try await docRef.setData(record.firestoreData, merge: true)
-        NotificationCenter.default.post(name: .fastHistoryUpdated, object: nil)
-        return docRef.documentID
+        
+        let session = FastingSession(
+            userId: "", // Will be set by saveFastingSession
+            planId: nil,
+            startTime: startTime,
+            endTime: endTime,
+            manuallyEdited: false,
+            skipped: false,
+            completionStatus: .completed,
+            targetDurationHours: Int(goalHours),
+            notes: record["notes"] as? String,
+            createdAt: Date(),
+            archived: false
+        )
+        return try await saveFastingSession(session)
     }
 
-    func getFastHistory() async throws -> [FastRecord] {
-        ensureAuthStateLoaded()
-        guard let userId = currentUser?.uid else {
-            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view fast history"])
+    @available(*, deprecated, message: "Use getFastingSessions instead")
+    func getFastHistory() async throws -> [[String: Any]] {
+        let sessions = try await getFastingSessions()
+        return sessions.map { session in
+            [
+                "id": session.id ?? UUID().uuidString,
+                "startTime": session.startTime,
+                "endTime": session.endTime ?? Date(),
+                "durationHours": session.actualDurationHours,
+                "goalHours": Double(session.targetDurationHours),
+                "withinTarget": session.completionStatus == .completed && session.actualDurationHours >= Double(session.targetDurationHours),
+                "notes": session.notes ?? ""
+            ]
         }
-        let snapshot = try await db.collection("users").document(userId)
-            .collection("fasts").order(by: "startTime", descending: true).getDocuments()
-        var result: [FastRecord] = []
-        for doc in snapshot.documents {
-            if let record = FastRecord(id: doc.documentID, data: doc.data()) {
-                result.append(record)
-            }
-        }
-        return result
     }
 
+    @available(*, deprecated, message: "Use deleteFastingSession instead")
     func deleteFastRecord(id: String) async throws {
-        ensureAuthStateLoaded()
-        guard let userId = currentUser?.uid else {
-            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to delete fast records"])
-        }
-        try await db.collection("users").document(userId)
-            .collection("fasts").document(id).delete()
-        await MainActor.run {
-            NotificationCenter.default.post(name: .fastHistoryUpdated, object: nil)
-        }
+        try await deleteFastingSession(id: id)
     }
 
-    func saveFastingStreakSettings(_ settings: FastingStreakSettings) async throws {
+    func saveFastingStreakSettings(_ settings: [String: Any]) async throws {
         ensureAuthStateLoaded()
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save fasting settings"])
         }
         let data: [String: Any] = [
-            "daysPerWeekGoal": settings.daysPerWeekGoal,
-            "targetMinHours": settings.targetMinHours,
-            "targetMaxHours": settings.targetMaxHours
+            "daysPerWeekGoal": settings["daysPerWeekGoal"] as? Int ?? 3,
+            "targetMinHours": settings["targetMinHours"] as? Int ?? 14,
+            "targetMaxHours": settings["targetMaxHours"] as? Int ?? 18
         ]
         try await db.collection("users").document(userId)
             .collection("settings").document("fasting_streak").setData(data, merge: true)
@@ -2615,18 +2625,125 @@ class FirebaseManager: ObservableObject {
         }
     }
 
-    func getFastingStreakSettings() async throws -> FastingStreakSettings {
+    func getFastingStreakSettings() async throws -> [String: Any] {
         ensureAuthStateLoaded()
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view fasting settings"])
         }
         let document = try await db.collection("users").document(userId)
             .collection("settings").document("fasting_streak").getDocument()
-        guard let data = document.data() else { return .default }
-        let daysPerWeekGoal = data["daysPerWeekGoal"] as? Int ?? FastingStreakSettings.default.daysPerWeekGoal
-        let targetMinHours = data["targetMinHours"] as? Int ?? FastingStreakSettings.default.targetMinHours
-        let targetMaxHours = data["targetMaxHours"] as? Int ?? FastingStreakSettings.default.targetMaxHours
-        return FastingStreakSettings(daysPerWeekGoal: daysPerWeekGoal, targetMinHours: targetMinHours, targetMaxHours: targetMaxHours)
+        guard let data = document.data() else { 
+            return [
+                "daysPerWeekGoal": 3,
+                "targetMinHours": 14,
+                "targetMaxHours": 18
+            ]
+        }
+        let daysPerWeekGoal = data["daysPerWeekGoal"] as? Int ?? 3
+        let targetMinHours = data["targetMinHours"] as? Int ?? 14
+        let targetMaxHours = data["targetMaxHours"] as? Int ?? 18
+        return [
+            "daysPerWeekGoal": daysPerWeekGoal,
+            "targetMinHours": targetMinHours,
+            "targetMaxHours": targetMaxHours
+        ]
+    }
+
+    // MARK: - New Fasting System Methods
+
+    func saveFastingPlan(_ plan: FastingPlan) async throws -> String {
+        ensureAuthStateLoaded()
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save fasting plans"])
+        }
+        let docRef = db.collection("users").document(userId)
+            .collection("fastingPlans").document(plan.id ?? UUID().uuidString)
+        try await docRef.setData(from: plan, merge: true)
+        return docRef.documentID
+    }
+
+    func getFastingPlans() async throws -> [FastingPlan] {
+        ensureAuthStateLoaded()
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view fasting plans"])
+        }
+        let snapshot = try await db.collection("users").document(userId)
+            .collection("fastingPlans").order(by: "createdAt", descending: true).getDocuments()
+        return snapshot.documents.compactMap { try? $0.data(as: FastingPlan.self) }
+    }
+
+    func updateFastingPlan(_ plan: FastingPlan) async throws {
+        ensureAuthStateLoaded()
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to update fasting plans"])
+        }
+        guard let planId = plan.id else {
+            throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Plan ID is required for updates"])
+        }
+        let docRef = db.collection("users").document(userId)
+            .collection("fastingPlans").document(planId)
+        try await docRef.setData(from: plan, merge: true)
+    }
+
+    func deleteFastingPlan(id: String) async throws {
+        ensureAuthStateLoaded()
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to delete fasting plans"])
+        }
+        try await db.collection("users").document(userId)
+            .collection("fastingPlans").document(id).delete()
+    }
+
+    func saveFastingSession(_ session: FastingSession) async throws -> String {
+        ensureAuthStateLoaded()
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save fasting sessions"])
+        }
+        let docRef = db.collection("users").document(userId)
+            .collection("fastingSessions").document(session.id ?? UUID().uuidString)
+        try await docRef.setData(from: session, merge: true)
+        await MainActor.run {
+            NotificationCenter.default.post(name: .fastHistoryUpdated, object: nil)
+        }
+        return docRef.documentID
+    }
+
+    func getFastingSessions() async throws -> [FastingSession] {
+        ensureAuthStateLoaded()
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view fasting sessions"])
+        }
+        let snapshot = try await db.collection("users").document(userId)
+            .collection("fastingSessions").order(by: "startTime", descending: true).getDocuments()
+        return snapshot.documents.compactMap { try? $0.data(as: FastingSession.self) }
+    }
+
+    func updateFastingSession(_ session: FastingSession) async throws {
+        ensureAuthStateLoaded()
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to update fasting sessions"])
+        }
+        guard let sessionId = session.id else {
+            throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Session ID is required for updates"])
+        }
+        let docRef = db.collection("users").document(userId)
+            .collection("fastingSessions").document(sessionId)
+        try await docRef.setData(from: session, merge: true)
+        await MainActor.run {
+            NotificationCenter.default.post(name: .fastHistoryUpdated, object: nil)
+        }
+    }
+
+    func deleteFastingSession(id: String) async throws {
+        ensureAuthStateLoaded()
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to delete fasting sessions"])
+        }
+        try await db.collection("users").document(userId)
+            .collection("fastingSessions").document(id).delete()
+        await MainActor.run {
+            NotificationCenter.default.post(name: .fastHistoryUpdated, object: nil)
+        }
     }
 }
 

@@ -12,8 +12,8 @@ struct FastingHistoryDropdown: View {
 
     @State private var isExpanded = false
     @State private var isLoading = false
-    @State private var history: [FastRecord] = []
-    @State private var selectedRecord: FastRecord?
+    @State private var sessions: [FastingSession] = []
+    @State private var selectedSession: FastingSession?
     @State private var errorText: String?
 
     var body: some View {
@@ -23,29 +23,29 @@ struct FastingHistoryDropdown: View {
                     if isLoading {
                         ProgressView("Loading history…")
                             .padding(.vertical, 8)
-                    } else if history.isEmpty {
+                    } else if sessions.isEmpty {
                         Text("No fasting history yet")
                             .foregroundColor(.secondary)
                             .padding(.vertical, 8)
                     } else {
                         VStack(spacing: 8) {
-                            ForEach(history.prefix(10)) { record in
-                                FastingHistoryRow(record: record, onTap: {
-                                    selectedRecord = record
+                            ForEach(sessions.prefix(10)) { session in
+                                FastingHistoryRow(session: session, onTap: {
+                                    selectedSession = session
                                     // Auto close dropdown on tap
                                     isExpanded = false
                                 }, onDelete: {
-                                    delete(record)
+                                    delete(session)
                                 })
                                  .contentShape(Rectangle())
                                  .contextMenu {
-                                     Button(role: .destructive) { delete(record) } label: {
+                                     Button(role: .destructive) { delete(session) } label: {
                                          Label("Delete", systemImage: "trash")
                                      }
                                  }
                             }
 
-                            if history.count > 10 {
+                            if sessions.count > 10 {
                                 Text("Showing most recent 10 fasts")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -84,12 +84,12 @@ struct FastingHistoryDropdown: View {
             reload()
         }
         .onChange(of: isExpanded) { expanded in
-            if expanded && history.isEmpty {
+            if expanded && sessions.isEmpty {
                 reload()
             }
         }
-        .sheet(item: $selectedRecord, onDismiss: { selectedRecord = nil }) { rec in
-            FastingHistoryDetailSheet(record: rec) { updated in
+        .sheet(item: $selectedSession, onDismiss: { selectedSession = nil }) { session in
+            FastingHistoryDetailSheet(session: session) { updated in
                 Task { await save(updated) }
             }
             .environmentObject(firebaseManager)
@@ -103,9 +103,9 @@ struct FastingHistoryDropdown: View {
                 errorText = nil
             }
             do {
-                let records = try await firebaseManager.getFastHistory()
+                let sessions = try await firebaseManager.getFastingSessions()
                 await MainActor.run {
-                    history = records.sorted { $0.endTime > $1.endTime }
+                    self.sessions = sessions.sorted { $0.endTime ?? Date() > $1.endTime ?? Date() }
                     isLoading = false
                 }
             } catch {
@@ -117,12 +117,12 @@ struct FastingHistoryDropdown: View {
         }
     }
 
-    private func delete(_ record: FastRecord) {
+    private func delete(_ session: FastingSession) {
         Task {
             do {
-                try await firebaseManager.deleteFastRecord(id: record.id)
+                try await firebaseManager.deleteFastingSession(id: session.id ?? "")
                 await MainActor.run {
-                    history.removeAll { $0.id == record.id }
+                    sessions.removeAll { $0.id == session.id }
                 }
             } catch {
                 await MainActor.run {
@@ -132,10 +132,10 @@ struct FastingHistoryDropdown: View {
         }
     }
 
-    private func save(_ record: FastRecord) async {
+    private func save(_ session: FastingSession) async {
         do {
-            _ = try await firebaseManager.saveFastRecord(record)
-            await MainActor.run { selectedRecord = nil }
+            _ = try await firebaseManager.saveFastingSession(session)
+            await MainActor.run { selectedSession = nil }
         } catch {
             await MainActor.run { errorText = error.localizedDescription }
         }
@@ -143,7 +143,7 @@ struct FastingHistoryDropdown: View {
 }
 
 private struct FastingHistoryRow: View {
-    let record: FastRecord
+    let session: FastingSession
     let onTap: () -> Void
     let onDelete: () -> Void
 
@@ -151,21 +151,21 @@ private struct FastingHistoryRow: View {
         HStack(spacing: 12) {
             // Date badge
             VStack(alignment: .leading, spacing: 2) {
-                Text(dateString(record.endTime))
+                Text(dateString(session.endTime ?? Date()))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.secondary)
-                Text(durationString(record.durationHours))
+                Text(durationString(session.actualDurationHours))
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.primary)
             }
             .frame(width: 120, alignment: .leading)
 
-            // Stage / within target
+            // Stage / completion status
             VStack(alignment: .leading, spacing: 4) {
-                Text(stageName(for: record.durationHours))
+                Text(completionStatus(for: session))
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(record.withinTarget ? .green : .orange)
-                if let notes = record.notes, !notes.isEmpty {
+                    .foregroundColor(session.completionStatus == .completed ? .green : .orange)
+                if let notes = session.notes, !notes.isEmpty {
                     Text(notes)
                         .font(.system(size: 13))
                         .foregroundColor(.secondary)
@@ -202,13 +202,20 @@ private struct FastingHistoryRow: View {
         String(format: "%.1f h", hours)
     }
 
-    private func stageName(for hours: Double) -> String {
-        switch hours {
-        case ..<4: return "Digestion"
-        case 4..<8: return "Early Fat Burning"
-        case 8..<12: return "Fat Burning"
-        case 12..<16: return "Ketosis Begins"
-        default: return "Deep Ketosis"
+    private func completionStatus(for session: FastingSession) -> String {
+        switch session.completionStatus {
+        case .completed:
+            return "Completed"
+        case .active:
+            return "In Progress"
+        case .earlyEnd:
+            return "Ended Early"
+        case .overGoal:
+            return "Over Goal"
+        case .failed:
+            return "Not Completed"
+        case .skipped:
+            return "Skipped"
         }
     }
 }
@@ -217,15 +224,15 @@ struct FastingHistoryDetailSheet: View {
     @EnvironmentObject var firebaseManager: FirebaseManager
     @Environment(\.dismiss) private var dismiss
 
-    let record: FastRecord
-    var onSave: (FastRecord) -> Void
+    let session: FastingSession
+    var onSave: (FastingSession) -> Void
 
     @State private var notesText: String
 
-    init(record: FastRecord, onSave: @escaping (FastRecord) -> Void) {
-        self.record = record
+    init(session: FastingSession, onSave: @escaping (FastingSession) -> Void) {
+        self.session = session
         self.onSave = onSave
-        _notesText = State(initialValue: record.notes ?? "")
+        _notesText = State(initialValue: session.notes ?? "")
     }
 
     var body: some View {
@@ -235,25 +242,25 @@ struct FastingHistoryDetailSheet: View {
                     HStack {
                         Text("Duration")
                         Spacer()
-                        Text(String(format: "%.1f h", record.durationHours))
+                        Text(String(format: "%.1f h", session.actualDurationHours))
                             .foregroundColor(.primary)
                     }
                     HStack {
-                        Text("Stage")
+                        Text("Status")
                         Spacer()
-                        Text(stageName(for: record.durationHours))
-                            .foregroundColor(.primary)
+                        Text(completionStatus(for: session))
+                            .foregroundColor(session.completionStatus == .completed ? .green : .orange)
                     }
                     HStack {
                         Text("Target")
                         Spacer()
-                        Text(record.withinTarget ? "Within target" : "Outside target")
-                            .foregroundColor(record.withinTarget ? .green : .orange)
+                        Text("\(session.targetDurationHours) hours")
+                            .foregroundColor(.primary)
                     }
                     HStack {
                         Text("Ended")
                         Spacer()
-                        Text(dateString(record.endTime))
+                        Text(dateString(session.endTime ?? Date()))
                             .foregroundColor(.secondary)
                     }
                 }
@@ -277,10 +284,27 @@ struct FastingHistoryDetailSheet: View {
     }
 
     private func save() {
-        var updated = record
+        var updated = session
         updated.notes = notesText.trimmingCharacters(in: .whitespacesAndNewlines)
         onSave(updated)
         dismiss()
+    }
+
+    private func completionStatus(for session: FastingSession) -> String {
+        switch session.completionStatus {
+        case .completed:
+            return "Completed"
+        case .active:
+            return "In Progress"
+        case .earlyEnd:
+            return "Ended Early"
+        case .overGoal:
+            return "Over Goal"
+        case .failed:
+            return "Not Completed"
+        case .skipped:
+            return "Skipped"
+        }
     }
 
     private func dateString(_ date: Date) -> String {
