@@ -299,6 +299,13 @@ struct DiaryFoodRow: View {
                         Text(food.servingDescription)
                             .font(.system(size: 11, weight: .regular))
                             .foregroundColor(.secondary)
+                            .onAppear {
+                                #if DEBUG
+                                print("📋 Diary displaying: \(food.name)")
+                                print("   - servingDescription: '\(food.servingDescription)'")
+                                print("   - isPerUnit: \(String(describing: food.isPerUnit))")
+                                #endif
+                            }
 
                         if food.quantity > 1 {
                             Text("× \(String(format: "%.0f", food.quantity))")

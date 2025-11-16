@@ -278,8 +278,9 @@ struct ManualFoodDetailEntryView: View {
     // Serving
     @State private var servingSize = "100"
     @State private var servingUnit = "g"
+    @State private var isPerUnit = false  // Toggle between per 100g and per unit (for restaurant foods)
 
-    // Core Macros (per 100g)
+    // Core Macros (per 100g or per unit based on isPerUnit)
     @State private var calories = ""
     @State private var protein = ""
     @State private var carbs = ""
@@ -501,44 +502,84 @@ struct ManualFoodDetailEntryView: View {
 
                     // Serving Size Section
                         VStack(alignment: .leading, spacing: 16) {
-                            SectionHeader(title: "Serving Size")
+                            SectionHeader(title: isPerUnit ? "Unit Name" : "Serving Size")
 
-                            Text("Enter nutrition values per 100g/100ml below")
+                            Text(isPerUnit ? "Enter nutrition values for 1 complete unit below" : "Enter nutrition values per 100g/100ml below")
                                 .font(.system(size: 14))
                                 .foregroundColor(.secondary)
 
-                            HStack(spacing: 12) {
+                            if isPerUnit {
+                                // Per-unit mode: just enter the unit name (e.g., "burger", "pizza")
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text("Default Serving")
+                                    Text("What is this unit called?")
                                         .font(.system(size: 14, weight: .medium))
-                                    TextField("Amount", text: $servingSize)
+                                    TextField("e.g., burger, pizza, sandwich", text: $servingUnit)
                                         .textFieldStyle(RoundedBorderTextFieldStyle())
-                                        .keyboardType(.decimalPad)
+                                        .autocapitalization(.none)
                                 }
-
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Unit")
-                                        .font(.system(size: 14, weight: .medium))
-                                    Picker("Unit", selection: $servingUnit) {
-                                        ForEach(servingUnits, id: \.self) { unit in
-                                            Text(unit).tag(unit)
-                                        }
+                            } else {
+                                // Per-100g mode: standard serving size picker
+                                HStack(spacing: 12) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Default Serving")
+                                            .font(.system(size: 14, weight: .medium))
+                                        TextField("Amount", text: $servingSize)
+                                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                                            .keyboardType(.decimalPad)
                                     }
-                                    .pickerStyle(MenuPickerStyle())
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
-                                    .background(Color(.systemGray6))
-                                    .cornerRadius(8)
+
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Unit")
+                                            .font(.system(size: 14, weight: .medium))
+                                        Picker("Unit", selection: $servingUnit) {
+                                            ForEach(servingUnits, id: \.self) { unit in
+                                                Text(unit).tag(unit)
+                                            }
+                                        }
+                                        .pickerStyle(MenuPickerStyle())
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(Color(.systemGray6))
+                                        .cornerRadius(8)
+                                    }
                                 }
                             }
                         }
 
                         Divider()
 
+                        // Nutrition Mode Toggle
+                        VStack(alignment: .leading, spacing: 12) {
+                            Toggle(isOn: $isPerUnit) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Per Unit Nutrition")
+                                        .font(.system(size: 15, weight: .medium))
+                                    Text(isPerUnit ? "Values are for 1 complete item (e.g., 1 burger)" : "Values are per 100g/100ml (standard)")
+                                        .font(.system(size: 13))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .tint(.purple)
+                            .onChange(of: isPerUnit) { newValue in
+                                if newValue {
+                                    // Switching to per-unit: set serving size to 1
+                                    servingSize = "1"
+                                    servingUnit = "" // Clear unit so user can enter custom name
+                                } else {
+                                    // Switching to per-100g: reset to default
+                                    servingSize = "100"
+                                    servingUnit = "g"
+                                }
+                            }
+                        }
+                        .padding(.vertical, 8)
+
+                        Divider()
+
                         // Core Nutrition Section
                         VStack(alignment: .leading, spacing: 16) {
-                            SectionHeader(title: "Core Nutrition (per 100g)")
+                            SectionHeader(title: isPerUnit ? "Core Nutrition (per unit)" : "Core Nutrition (per 100g)")
 
                             VStack(spacing: 12) {
                                 ManualNutritionInputRow(label: "Energy", value: $calories, unit: "kcal", isRequired: true, showError: shouldShowError(for: "calories"))
@@ -944,25 +985,45 @@ struct ManualFoodDetailEntryView: View {
             $0.trimmingCharacters(in: .whitespaces).capitalized
         }
 
-        // Parse nutrition values (all per 100g as entered)
-        let caloriesPer100g = Double(calories) ?? 0
-        let proteinPer100g = Double(protein) ?? 0
-        let carbsPer100g = Double(carbs) ?? 0
-        let fatPer100g = Double(fat) ?? 0
-        let fiberPer100g = Double(fiber) ?? 0
-        let sugarPer100g = Double(sugar) ?? 0
-        let sodiumPer100g = Double(sodium) ?? 0
+        // Parse nutrition values
+        let caloriesInput = Double(calories) ?? 0
+        let proteinInput = Double(protein) ?? 0
+        let carbsInput = Double(carbs) ?? 0
+        let fatInput = Double(fat) ?? 0
+        let fiberInput = Double(fiber) ?? 0
+        let sugarInput = Double(sugar) ?? 0
+        let sodiumInput = Double(sodium) ?? 0
         let servingSizeValue = Double(servingSize) ?? 100
 
-        // Convert per-100g values to per-serving values
-        let ratio = servingSizeValue / 100.0
-        let caloriesValue = caloriesPer100g * ratio
-        let proteinValue = proteinPer100g * ratio
-        let carbsValue = carbsPer100g * ratio
-        let fatValue = fatPer100g * ratio
-        let fiberValue = fiberPer100g * ratio
-        let sugarValue = sugarPer100g * ratio
-        let sodiumValue = sodiumPer100g * ratio
+        // Calculate actual values based on mode
+        let caloriesValue: Double
+        let proteinValue: Double
+        let carbsValue: Double
+        let fatValue: Double
+        let fiberValue: Double
+        let sugarValue: Double
+        let sodiumValue: Double
+
+        if isPerUnit {
+            // Per unit mode: values are already per unit, use as-is
+            caloriesValue = caloriesInput
+            proteinValue = proteinInput
+            carbsValue = carbsInput
+            fatValue = fatInput
+            fiberValue = fiberInput
+            sugarValue = sugarInput
+            sodiumValue = sodiumInput
+        } else {
+            // Per 100g mode: convert per-100g values to per-serving values
+            let ratio = servingSizeValue / 100.0
+            caloriesValue = caloriesInput * ratio
+            proteinValue = proteinInput * ratio
+            carbsValue = carbsInput * ratio
+            fatValue = fatInput * ratio
+            fiberValue = fiberInput * ratio
+            sugarValue = sugarInput * ratio
+            sodiumValue = sodiumInput * ratio
+        }
 
         do {
             // Prepare food data for userAdded collection with capitalized names
@@ -973,7 +1034,8 @@ struct ManualFoodDetailEntryView: View {
                 "calories": caloriesValue,
                 "protein": proteinValue,
                 "carbohydrates": carbsValue,
-                "fat": fatValue
+                "fat": fatValue,
+                "isPerUnit": isPerUnit  // Flag to indicate per-unit vs per-100g values
             ]
 
             // Add optional fields
@@ -996,6 +1058,16 @@ struct ManualFoodDetailEntryView: View {
                 foodData["barcode"] = barcode
             }
 
+            // Add serving description based on mode
+            if isPerUnit {
+                // Per-unit: show "1 burger", "1 pizza", etc.
+                let unitName = servingUnit.isEmpty ? "unit" : servingUnit
+                foodData["servingDescription"] = "1 \(unitName)"
+            } else {
+                // Per-100g: show standard serving description
+                foodData["servingDescription"] = "\(servingSizeValue)\(servingUnit)"
+            }
+
             // Check if AI was used to find ingredients
             let usedAI = foundIngredients != nil
             let foodId: String
@@ -1015,6 +1087,24 @@ struct ManualFoodDetailEntryView: View {
             }
 
             // Now add to user's diary with capitalized values
+            // Create appropriate serving description based on mode
+            let servingDesc: String
+            if isPerUnit {
+                // Per-unit: show "1 burger serving", "1 pizza serving", etc.
+                let unitName = servingUnit.isEmpty ? "unit" : servingUnit
+                servingDesc = "1 \(unitName) serving"
+            } else {
+                // Per-100g: show standard format
+                servingDesc = "\(servingSizeValue)\(servingUnit) serving"
+            }
+
+            #if DEBUG
+            print("💾 Creating DiaryFoodItem for manual entry:")
+            print("  - isPerUnit: \(isPerUnit)")
+            print("  - servingDesc: '\(servingDesc)'")
+            print("  - foodName: \(capitalizedFoodName)")
+            #endif
+
             let diaryEntry = DiaryFoodItem(
                 id: UUID(),
                 name: capitalizedFoodName,
@@ -1027,7 +1117,7 @@ struct ManualFoodDetailEntryView: View {
                 sugar: sugarValue,
                 sodium: sodiumValue,
                 calcium: 0,
-                servingDescription: "\(servingSizeValue)\(servingUnit) serving",
+                servingDescription: servingDesc,
                 quantity: 1.0,
                 time: nil,
                 processedScore: nil,
@@ -1035,7 +1125,8 @@ struct ManualFoodDetailEntryView: View {
                 ingredients: ingredients,
                 additives: nil,
                 barcode: barcode.isEmpty ? nil : barcode,
-                micronutrientProfile: nil
+                micronutrientProfile: nil,
+                isPerUnit: isPerUnit
             )
 
             // Add to diary via DiaryDataManager using selected meal time
@@ -1043,11 +1134,15 @@ struct ManualFoodDetailEntryView: View {
                 let mealType = selectedMealTime.lowercased() // Convert to lowercase for storage
                 diaryDataManager.addFoodItem(diaryEntry, to: mealType, for: Date())
                 print("✅ Food added to user's diary (\(selectedMealTime))")
-            }
 
-            // Switch to diary tab to show the added food
-            // REMOVED: tab switch here to avoid race with sheet dismissal
-            // selectedTab = .diary
+                // Dismiss the sheet after successful save
+                dismiss()
+
+                // Switch to diary tab after a short delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    selectedTab = .diary
+                }
+            }
 
         } catch {
             // Show error to user and re-throw to prevent dismissal

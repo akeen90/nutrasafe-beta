@@ -64,30 +64,78 @@ struct FoodDetailViewFromSearch: View {
 
         // CRITICAL FIX: Initialize serving size from food data immediately
         var initialServingSize = "100"  // Default fallback
-        let initialUnit = "g"
+        var initialUnit = "g"
 
-        // Priority 1: Use servingSizeG if available (most reliable)
-        if let sizeG = food.servingSizeG, sizeG > 0 {
-            initialServingSize = String(format: "%.0f", sizeG)
-        // DEBUG LOG: print("🔧 INIT: Using servingSizeG: \(sizeG)g for \(food.name)")
-        } else if let servingDesc = food.servingDescription {
-            // Priority 2: Extract from serving description
-        // DEBUG LOG: print("🔧 INIT: Parsing serving description: '\(servingDesc)' for \(food.name)")
+        // Check if this is a per-unit food first
+        if food.isPerUnit == true {
+            // Per-unit food: extract unit name from serving description (e.g., "1 burger")
+            initialServingSize = "1"
+            if let servingDesc = food.servingDescription {
+                // Extract unit name after "1 " (e.g., "1 burger" -> "burger")
+                let components = servingDesc.components(separatedBy: " ")
+                if components.count >= 2 {
+                    initialUnit = components.dropFirst().joined(separator: " ")
+                } else {
+                    // Extract from food name as last resort (e.g., "Test Pizza 1" -> "pizza")
+                    let nameWords = food.name.lowercased().components(separatedBy: " ")
+                    if let foodType = nameWords.first(where: { ["burger", "pizza", "sandwich", "wrap", "taco", "burrito"].contains($0) }) {
+                        initialUnit = foodType
+                    } else {
+                        initialUnit = "unit"
+                    }
+                }
+            } else {
+                // No serving description - try to extract from food name
+                let nameWords = food.name.lowercased().components(separatedBy: " ")
+                if let foodType = nameWords.first(where: { ["burger", "pizza", "sandwich", "wrap", "taco", "burrito"].contains($0) }) {
+                    initialUnit = foodType
+                } else {
+                    initialUnit = "unit"
+                }
+            }
+        } else {
+            // Per-100g food: Use standard logic
+            // Priority 1: Use servingSizeG if available (most reliable)
+            if let sizeG = food.servingSizeG, sizeG > 0 {
+                initialServingSize = String(format: "%.0f", sizeG)
+            // DEBUG LOG: print("🔧 INIT: Using servingSizeG: \(sizeG)g for \(food.name)")
+            } else if let servingDesc = food.servingDescription {
+                // Priority 2: Extract from serving description
+            // DEBUG LOG: print("🔧 INIT: Parsing serving description: '\(servingDesc)' for \(food.name)")
 
-            let patterns = [
-                #"(\d+(?:\.\d+)?)\s*g\s+serving"#,  // Match "150g serving"
-                #"\((\d+(?:\.\d+)?)\s*g\)"#,         // Match "(345 g)"
-                #"^(\d+(?:\.\d+)?)\s*g$"#,           // Match "345g"
-                #"^(\d+(?:\.\d+)?)\s+g$"#            // Match "345 g"
-            ]
+                let patterns = [
+                    #"(\d+(?:\.\d+)?)\s*g\s+serving"#,  // Match "150g serving"
+                    #"\((\d+(?:\.\d+)?)\s*g\)"#,         // Match "(345 g)"
+                    #"^(\d+(?:\.\d+)?)\s*g$"#,           // Match "345g"
+                    #"^(\d+(?:\.\d+)?)\s+g$"#            // Match "345 g"
+                ]
 
-            for pattern in patterns {
-                if let regex = try? NSRegularExpression(pattern: pattern, options: []),
-                   let match = regex.firstMatch(in: servingDesc, options: [], range: NSRange(location: 0, length: servingDesc.count)),
-                   let range = Range(match.range(at: 1), in: servingDesc) {
-                    initialServingSize = String(servingDesc[range])
-        // DEBUG LOG: print("🔧 INIT: Extracted \(initialServingSize)g from '\(servingDesc)'")
-                    break
+                for pattern in patterns {
+                    if let regex = try? NSRegularExpression(pattern: pattern, options: []),
+                       let match = regex.firstMatch(in: servingDesc, options: [], range: NSRange(location: 0, length: servingDesc.count)),
+                       let range = Range(match.range(at: 1), in: servingDesc) {
+                        initialServingSize = String(servingDesc[range])
+            // DEBUG LOG: print("🔧 INIT: Extracted \(initialServingSize)g from '\(servingDesc)'")
+                        break
+                    }
+                }
+                // Fallback: description like "1 burger" → treat as per-unit
+                if initialServingSize == "100" {
+                    let lower = servingDesc.lowercased()
+                    if lower.hasPrefix("1 ") {
+                        let unitCandidate = lower.split(separator: " ").dropFirst().joined(separator: " ")
+                        if !unitCandidate.isEmpty {
+                            initialServingSize = "1"
+                            initialUnit = String(unitCandidate)
+                        }
+                    } else {
+                        // If description mentions a unit keyword and no grams were found
+                        let unitWords = ["serving","piece","slice","burger","wrap","taco","burrito","sandwich","portion"]
+                        if let found = unitWords.first(where: { lower.contains($0) }) {
+                            initialServingSize = "1"
+                            initialUnit = found
+                        }
+                    }
                 }
             }
         }
@@ -108,10 +156,14 @@ struct FoodDetailViewFromSearch: View {
         // Debug logging
         #if DEBUG
         print("🔧 DEBUG FoodDetailViewFromSearch init:")
+        print("  - food.name: \(food.name)")
+        print("  - food.isPerUnit: \(String(describing: food.isPerUnit))")
+        print("  - food.servingDescription: \(String(describing: food.servingDescription))")
         print("  - diaryEntryId: \(String(describing: diaryEntryId))")
         print("  - diaryMealType: \(String(describing: diaryMealType))")
         print("  - diaryQuantity: \(String(describing: diaryQuantity))")
         print("  - initialServingSize: \(initialServingSize)")
+        print("  - initialUnit: \(initialUnit)")
         print("  - isEditingMode will be: \(diaryEntryId != nil)")
         print("  - selectedMeal will be: \(diaryMealType ?? "Breakfast")")
         #endif
@@ -180,6 +232,11 @@ struct FoodDetailViewFromSearch: View {
     @State private var servingSizeText: String = "" // Editable serving size (legacy)
     @State private var servingAmount: String // Split serving size - amount only
     @State private var servingUnit: String // Split serving size - unit only
+    private var isPerUnit: Bool {
+        if let flag = food.isPerUnit { return flag }
+        let u = servingUnit.lowercased()
+        return !(u == "g" || u == "ml" || u == "oz" || u == "kg" || u == "lb")
+    }
     @State private var showingUseByAddSheet: Bool = false
     @State private var showingNutraSafeInfo: Bool = false
     @State private var showingSugarInfo: Bool = false
@@ -264,7 +321,7 @@ struct FoodDetailViewFromSearch: View {
     
     private let mealOptions = ["Breakfast", "Lunch", "Dinner", "Snacks"]
     private let quantityOptions: [Double] = [0.5, 1.0, 2.0, 3.0, 4.0, 5.0]
-    private let servingUnitOptions = ["g", "ml", "cup", "tbsp", "tsp", "oz"]
+    private let servingUnitOptions = ["g", "ml", "cup", "tbsp", "tsp", "oz", "serving", "piece", "slice", "burger"]
 
     // Convert between units (all conversions to/from grams)
     private func convertUnit(value: Double, from: String, to: String) -> Double {
@@ -303,7 +360,12 @@ struct FoodDetailViewFromSearch: View {
     
     // Extract the actual serving size from split serving amount and unit
     private var actualServingSize: Double {
-        // Get the amount and unit
+        // For per-unit foods, don't convert - just return 1.0
+        if food.isPerUnit == true {
+            return 1.0
+        }
+
+        // For per-100g foods, convert to grams
         let amount = Double(servingAmount) ?? 1.0
         let unit = servingUnit
 
@@ -410,7 +472,8 @@ struct FoodDetailViewFromSearch: View {
     }
 
     private var perServingMultiplier: Double {
-        actualServingSize / 100
+        if isPerUnit { return 1.0 }
+        return actualServingSize / 100
     }
     
     private var adjustedCalories: Double {
@@ -1300,7 +1363,8 @@ struct FoodDetailViewFromSearch: View {
                     // Serving and Meal Controls Section
                     servingControlsSection
                         .onAppear {
-                            if servingAmount == "1" && servingUnit == "g" {
+                            // Only auto-detect grams for non per-unit foods
+                            if !isPerUnit, servingAmount == "1" && servingUnit == "g" {
                                 // PRIORITY 1: Use servingSizeG if available (most reliable)
                                 if let sizeG = food.servingSizeG, sizeG > 0 {
         // DEBUG LOG: print("🔧 Using servingSizeG: \(sizeG)g")
@@ -1335,14 +1399,43 @@ struct FoodDetailViewFromSearch: View {
                                         }
                                     }
 
-                                    // PRIORITY 3: Default to 100g only if nothing found
+                                    // PRIORITY 3: If nothing found, attempt per-unit detection before defaulting to grams
                                     if !found {
                                         #if DEBUG
-                                        print("⚠️ No serving size found, defaulting to 100g")
+                                        print("⚠️ No serving size found in grams, attempting per-unit detection")
                                         #endif
-                                        servingAmount = "100"
-                                        servingUnit = "g"
-                                        gramsAmount = "100"
+                                        let lower = description.lowercased()
+                                        let unitWords = ["serving","piece","slice","burger","wrap","taco","burrito","sandwich","portion"]
+                                        var setUnit = false
+                                        if lower.hasPrefix("1 ") {
+                                            let unitCandidate = lower.split(separator: " ").dropFirst().joined(separator: " ")
+                                            if !unitCandidate.isEmpty {
+                                                servingAmount = "1"
+                                                servingUnit = String(unitCandidate)
+                                                gramsAmount = ""
+                                                setUnit = true
+                                            }
+                                        }
+                                        if !setUnit, let foundWord = unitWords.first(where: { lower.contains($0) }) {
+                                            servingAmount = "1"
+                                            servingUnit = foundWord
+                                            gramsAmount = ""
+                                            setUnit = true
+                                        }
+                                        if !setUnit {
+                                            let nameLower = food.name.lowercased()
+                                            if let fromName = unitWords.first(where: { nameLower.contains($0) }) {
+                                                servingAmount = "1"
+                                                servingUnit = fromName
+                                                gramsAmount = ""
+                                                setUnit = true
+                                            }
+                                        }
+                                        if !setUnit {
+                                            servingAmount = "100"
+                                            servingUnit = "g"
+                                            gramsAmount = "100"
+                                        }
                                     }
                                 }
                             }
@@ -1701,26 +1794,28 @@ struct FoodDetailViewFromSearch: View {
     }
 
 
-    private var nutritionFactsSection: some View {
-        NutritionFactsSectionView(
-            adjustedCalories: adjustedCalories,
-            quantityMultiplier: quantityMultiplier,
-            servingSizeText: servingSizeText.isEmpty ? (food.servingDescription ?? "serving") : servingSizeText,
-            per100Calories: displayFood.calories,
-            adjustedProtein: adjustedProtein,
-            adjustedCarbs: adjustedCarbs,
-            adjustedFat: adjustedFat,
-            adjustedFiber: adjustedFiber,
-            adjustedSugar: adjustedSugar,
-            adjustedSalt: adjustedSalt,
-            per100Protein: displayFood.protein,
-            per100Carbs: displayFood.carbs,
-            per100Fat: displayFood.fat,
-            per100Fiber: displayFood.fiber,
-            per100Sugar: displayFood.sugar,
-            per100Salt: saltPer100g
-        )
-    }
+private var nutritionFactsSection: some View {
+    NutritionFactsSectionView(
+        adjustedCalories: adjustedCalories,
+        quantityMultiplier: quantityMultiplier,
+        servingSizeText: servingSizeText.isEmpty ? (food.servingDescription ?? "serving") : servingSizeText,
+        per100Calories: displayFood.calories,
+        adjustedProtein: adjustedProtein,
+        adjustedCarbs: adjustedCarbs,
+        adjustedFat: adjustedFat,
+        adjustedFiber: adjustedFiber,
+        adjustedSugar: adjustedSugar,
+        adjustedSalt: adjustedSalt,
+        per100Protein: displayFood.protein,
+        per100Carbs: displayFood.carbs,
+        per100Fat: displayFood.fat,
+        per100Fiber: displayFood.fiber,
+        per100Sugar: displayFood.sugar,
+        per100Salt: saltPer100g,
+        isPerUnit: isPerUnit,
+        servingUnitLabel: servingUnit
+    )
+}
     
     private func nutritionRowModern(_ label: String, perServing: Double, per100g: Double, unit: String) -> some View {
         HStack(spacing: 8) {
@@ -1749,12 +1844,13 @@ struct FoodDetailViewFromSearch: View {
             
             Spacer()
             
-            // Right section: Per 100g (completely separate)
+            // Right section: Per 100g or per unit (dynamic)
             HStack(spacing: 2) {
-                Text(String(format: unit == "mg" ? "%.0f" : "%.1f", per100g))
+                let rightValue = isPerUnit ? perServing : per100g
+                Text(String(format: unit == "mg" ? "%.0f" : "%.1f", rightValue))
                     .font(.system(size: 14, weight: .medium, design: .rounded))
                     .foregroundColor(.secondary)
-                Text(unit + "/100g")
+                Text(isPerUnit ? unit + "/\(servingUnit)" : unit + "/100g")
                     .font(.system(size: 11, weight: .regular))
                     .foregroundColor(.secondary)
             }
@@ -1789,17 +1885,43 @@ struct FoodDetailViewFromSearch: View {
         print("🍔 servingAmount: '\(servingAmount)', servingUnit: '\(servingUnit)'")
         print("🍔 actualServingSize: \(servingSize)g")
         print("🍔 quantityMultiplier: \(quantityMultiplier)")
+        print("🍔 isPerUnit: \(food.isPerUnit ?? false)")
         #endif
-        let totalCalories = displayFood.calories * (servingSize / 100) * quantityMultiplier
-        let totalProtein = displayFood.protein * (servingSize / 100) * quantityMultiplier
-        let totalCarbs = displayFood.carbs * (servingSize / 100) * quantityMultiplier
-        let totalFat = displayFood.fat * (servingSize / 100) * quantityMultiplier
-        let totalFiber = displayFood.fiber * (servingSize / 100) * quantityMultiplier
-        let totalSugar = displayFood.sugar * (servingSize / 100) * quantityMultiplier
-        let totalSodium = displayFood.sodium * (servingSize / 100) * quantityMultiplier
+
+        // Calculate totals based on whether values are per-unit or per-100g
+        let totalCalories: Double
+        let totalProtein: Double
+        let totalCarbs: Double
+        let totalFat: Double
+        let totalFiber: Double
+        let totalSugar: Double
+        let totalSodium: Double
+        let quantityForMicronutrients: Double
+
+        if food.isPerUnit == true {
+            // Per-unit mode: values are already per unit, just multiply by quantity
+            totalCalories = displayFood.calories * quantityMultiplier
+            totalProtein = displayFood.protein * quantityMultiplier
+            totalCarbs = displayFood.carbs * quantityMultiplier
+            totalFat = displayFood.fat * quantityMultiplier
+            totalFiber = displayFood.fiber * quantityMultiplier
+            totalSugar = displayFood.sugar * quantityMultiplier
+            totalSodium = displayFood.sodium * quantityMultiplier
+            quantityForMicronutrients = quantityMultiplier
+        } else {
+            // Per-100g mode: convert to serving size first, then multiply by quantity
+            totalCalories = displayFood.calories * (servingSize / 100) * quantityMultiplier
+            totalProtein = displayFood.protein * (servingSize / 100) * quantityMultiplier
+            totalCarbs = displayFood.carbs * (servingSize / 100) * quantityMultiplier
+            totalFat = displayFood.fat * (servingSize / 100) * quantityMultiplier
+            totalFiber = displayFood.fiber * (servingSize / 100) * quantityMultiplier
+            totalSugar = displayFood.sugar * (servingSize / 100) * quantityMultiplier
+            totalSodium = displayFood.sodium * (servingSize / 100) * quantityMultiplier
+            quantityForMicronutrients = (servingSize / 100) * quantityMultiplier
+        }
 
         // Generate micronutrient profile from food data
-        let micronutrientProfile = MicronutrientManager.shared.getMicronutrientProfile(for: displayFood, quantity: (servingSize / 100) * quantityMultiplier)
+        let micronutrientProfile = MicronutrientManager.shared.getMicronutrientProfile(for: displayFood, quantity: quantityForMicronutrients)
 
         // Create diary entry
         // DEBUG LOG: print("📝 Creating DiaryFoodItem:")
@@ -1811,6 +1933,16 @@ struct FoodDetailViewFromSearch: View {
 
         // Use existing diary entry ID if replacing, otherwise create new ID
         #endif
+        // Create appropriate serving description based on food type
+        let servingDesc: String
+        if food.isPerUnit == true {
+            // Per-unit food: show "1 burger", "1 pizza", etc.
+            servingDesc = "1 \(servingUnit) serving"
+        } else {
+            // Per-100g food: show "Xg serving"
+            servingDesc = "\(String(format: "%.0f", servingSize))g serving"
+        }
+
         let diaryEntry = DiaryFoodItem(
             id: diaryEntryId ?? UUID(),
             name: displayFood.name,
@@ -1822,7 +1954,7 @@ struct FoodDetailViewFromSearch: View {
             fiber: totalFiber,
             sugar: totalSugar,
             sodium: totalSodium,
-            servingDescription: "\(String(format: "%.0f", servingSize))g serving",
+            servingDescription: servingDesc,
             quantity: quantityMultiplier,
             time: selectedMeal,
             processedScore: nutraSafeGrade.grade,
@@ -1830,7 +1962,8 @@ struct FoodDetailViewFromSearch: View {
             ingredients: displayFood.ingredients,
             additives: displayFood.additives,
             barcode: displayFood.barcode,
-            micronutrientProfile: micronutrientProfile
+            micronutrientProfile: micronutrientProfile,
+            isPerUnit: food.isPerUnit
         )
 
         #if DEBUG
@@ -1949,6 +2082,8 @@ struct FoodDetailViewFromSearch: View {
         let per100Fiber: Double
         let per100Sugar: Double
         let per100Salt: Double
+        let isPerUnit: Bool
+        let servingUnitLabel: String
 
         var body: some View {
             VStack(alignment: .leading, spacing: 24) {
@@ -1978,11 +2113,12 @@ struct FoodDetailViewFromSearch: View {
                         }
                         Spacer()
                         VStack(alignment: .trailing, spacing: 4) {
-                            Text("Per 100g")
+                            Text(isPerUnit ? "Per \(servingUnitLabel)" : "Per 100g")
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundColor(.primary)
                             HStack(alignment: .bottom, spacing: 4) {
-                                Text(String(format: "%.0f", per100Calories))
+                                let rightCalories = isPerUnit ? adjustedCalories : per100Calories
+                                Text(String(format: "%.0f", rightCalories))
                                     .font(.system(size: 24, weight: .bold, design: .rounded))
                                     .foregroundColor(.secondary)
                                 Text("kcal")
@@ -2047,7 +2183,7 @@ struct FoodDetailViewFromSearch: View {
                     .foregroundColor(.secondary)
                     .padding(.horizontal, 4)
                 Spacer()
-                Text(String(format: unit == "mg" ? "%.0f" : "%.1f", per100) + " \(unit)/100g")
+                Text(String(format: unit == "mg" ? "%.0f" : "%.1f", isPerUnit ? perServing : per100) + " \(unit)/" + (isPerUnit ? servingUnitLabel : "100g"))
                     .font(.system(size: 13, weight: .medium))
                     .monospacedDigit()
                     .foregroundColor(.secondary)
@@ -2955,139 +3091,112 @@ struct FoodDetailViewFromSearch: View {
     // MARK: - Serving Controls Section
     private var servingControlsSection: some View {
         VStack(spacing: 16) {
-            // Editable Serving Size and Quantity Controls
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("SERVING SIZE")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .foregroundColor(.secondary)
-                            .tracking(0.5)
-
-                        // Serving size: Number + Unit selector
-                        HStack(spacing: 8) {
-                            // Number input (just the number)
-                            TextField("100", text: $servingAmount)
-                                .keyboardType(.decimalPad)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
+            VStack(alignment: .leading, spacing: 8) {
+                Text("SERVING SIZE")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundColor(.secondary)
+                    .tracking(0.5)
+                HStack(spacing: 8) {
+                    TextField("100", text: $servingAmount)
+                        .keyboardType(.decimalPad)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .font(.system(size: 14, weight: .medium))
+                        .frame(maxWidth: 80)
+                    Menu {
+                        ForEach(servingUnitOptions, id: \.self) { unit in
+                            Button(unit) {
+                                if let currentValue = Double(servingAmount) {
+                                    let convertedValue = convertUnit(value: currentValue, from: servingUnit, to: unit)
+                                    servingAmount = String(format: "%.1f", convertedValue)
+                                }
+                                servingUnit = unit
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(servingUnit)
                                 .font(.system(size: 14, weight: .medium))
-                                .frame(maxWidth: 80)
-
-                            // Unit picker
-                            Menu {
-                                ForEach(servingUnitOptions, id: \.self) { unit in
-                                    Button(unit) {
-                                        // Convert the current value to the new unit
-                                        if let currentValue = Double(servingAmount) {
-                                            let convertedValue = convertUnit(value: currentValue, from: servingUnit, to: unit)
-                                            servingAmount = String(format: "%.1f", convertedValue)
-                                        }
-                                        servingUnit = unit
-                                    }
-                                }
-                            } label: {
-                                HStack(spacing: 4) {
-                                    Text(servingUnit)
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(.primary)
-                                    Image(systemName: "chevron.down")
-                                        .font(.system(size: 10))
-                                        .foregroundColor(.secondary)
-                                }
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(Color.gray.opacity(0.15))
-                                .cornerRadius(8)
-                            }
+                                .foregroundColor(.primary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                                .fixedSize(horizontal: true, vertical: false)
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
                         }
-                    }
-                    
-                    Spacer()
-                    
-                    VStack(alignment: .trailing, spacing: 8) {
-                        Text("QUANTITY")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .foregroundColor(.secondary)
-                            .tracking(0.5)
-                        
-                        // Quantity Selector
-                        HStack(spacing: 6) {
-                            ForEach(quantityOptions, id: \.self) { option in
-                                Button(action: {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        quantityMultiplier = option
-                                    }
-                                }) {
-                                    Text(option == 0.5 ? "½" : "\(Int(option))")
-                                        .font(.system(size: 12, weight: quantityMultiplier == option ? .bold : .medium))
-                                        .foregroundColor(quantityMultiplier == option ? .white : .primary)
-                                        .frame(width: 24, height: 24)
-                                        .background(
-                                            Circle()
-                                                .fill(quantityMultiplier == option ? .blue : Color.gray.opacity(0.15))
-                                        )
-                                }
-                            }
-                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.gray.opacity(0.15))
+                        .cornerRadius(8)
                     }
                 }
-                
-                // Meal Time Selector (Diary only)
-                if sourceType != .useBy {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("MEAL TIME")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .foregroundColor(.secondary)
-                            .tracking(0.5)
-                        
-                        HStack(spacing: 8) {
-                            ForEach(mealOptions, id: \.self) { meal in
-                                Button(action: {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        selectedMeal = meal
-                                    }
-                                }) {
-                                    Text(meal)
-                                        .font(.system(size: 13, weight: selectedMeal == meal ? .semibold : .medium))
-                                        .foregroundColor(selectedMeal == meal ? .white : .primary)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 16)
-                                                .fill(selectedMeal == meal ? .blue : Color.gray.opacity(0.15))
-                                        )
-                                }
-                            }
-                            
-                            Spacer()
-                        }
-                    }
-                }
-                
-                // Add Button (diary-only)
-                Button(action: {
-                    addToFoodLog()
-                }) {
-                    HStack {
-                        Image(systemName: "plus.circle.fill")
-                        Text(buttonText)
-                            .font(.headline.weight(.semibold))
-                    }
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 16)
-                    .background(.green)
-                    .cornerRadius(12)
-                }
-                .padding(.top, 8)
             }
+            VStack(alignment: .leading, spacing: 8) {
+                Text("QUANTITY")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundColor(.secondary)
+                    .tracking(0.5)
+                HStack(spacing: 10) {
+                    ForEach(quantityOptions, id: \.self) { option in
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                quantityMultiplier = option
+                            }
+                        }) {
+                            Text(option == 0.5 ? "½" : "\(Int(option))")
+                                .font(.system(size: 13, weight: quantityMultiplier == option ? .bold : .medium))
+                                .foregroundColor(quantityMultiplier == option ? .white : .primary)
+                                .frame(width: 28, height: 28)
+                                .background(
+                                    Circle().fill(quantityMultiplier == option ? .blue : Color.gray.opacity(0.15))
+                                )
+                        }
+                    }
+                }
+            }
+            if sourceType != .useBy {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("MEAL TIME")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundColor(.secondary)
+                        .tracking(0.5)
+                    HStack(spacing: 8) {
+                        ForEach(mealOptions, id: \.self) { meal in
+                            Button(action: {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    selectedMeal = meal
+                                }
+                            }) {
+                                Text(meal)
+                                    .font(.system(size: 13, weight: selectedMeal == meal ? .semibold : .medium))
+                                    .foregroundColor(selectedMeal == meal ? .white : .primary)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 16).fill(selectedMeal == meal ? .blue : Color.gray.opacity(0.15))
+                                    )
+                            }
+                        }
+                        Spacer()
+                    }
+                }
+            }
+            Button(action: { addToFoodLog() }) {
+                HStack {
+                    Image(systemName: "plus.circle.fill")
+                    Text(buttonText).font(.headline.weight(.semibold))
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 16)
+                .background(.green)
+                .cornerRadius(12)
+            }
+            .padding(.top, 8)
         }
         .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemGray6))
-        )
+        .background(RoundedRectangle(cornerRadius: 16).fill(Color(.systemGray6)))
     }
     
     // MARK: - Food Scores Section

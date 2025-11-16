@@ -2411,7 +2411,9 @@ struct FoodReactionSearchView: View {
             fiber: entry.fiber ?? 0,
             sugar: entry.sugar ?? 0,
             sodium: entry.sodium ?? 0,
-            servingDescription: "\(entry.servingSize) \(entry.servingUnit)",
+            servingDescription: (entry.isPerUnit == true) ? "1 \(entry.servingUnit)" : "\(entry.servingSize) \(entry.servingUnit)",
+            servingSizeG: nil,
+            isPerUnit: entry.isPerUnit,
             ingredients: entry.ingredients,
             confidence: 1.0,
             isVerified: true
@@ -2522,7 +2524,7 @@ struct DiaryEntryRowForReaction: View {
                         .font(.system(size: 12))
                         .foregroundColor(.orange)
 
-                        Text("\(entry.servingSize.formatted()) \(entry.servingUnit)")
+                        Text(entry.isPerUnit == true ? "1 \(entry.servingUnit)" : "\(entry.servingSize.formatted()) \(entry.servingUnit)")
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
 

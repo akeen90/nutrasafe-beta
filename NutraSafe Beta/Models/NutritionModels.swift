@@ -25,6 +25,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     let sodium: Double
     let servingDescription: String?
     let servingSizeG: Double? // Numeric serving size in grams
+    let isPerUnit: Bool? // true = values are per unit (e.g., "1 burger"), false/nil = per 100g
     let ingredients: [String]?
     let confidence: Double? // For AI recognition results
     let isVerified: Bool // Indicates if food comes from internal verified database
@@ -36,7 +37,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     let barcode: String?
     let micronutrientProfile: MicronutrientProfile?
 
-    init(id: String, name: String, brand: String? = nil, calories: Double, protein: Double, carbs: Double, fat: Double, fiber: Double, sugar: Double, sodium: Double, servingDescription: String? = nil, servingSizeG: Double? = nil, ingredients: [String]? = nil, confidence: Double? = nil, isVerified: Bool = false, additives: [NutritionAdditiveInfo]? = nil, additivesDatabaseVersion: String? = nil, processingScore: Int? = nil, processingGrade: String? = nil, processingLabel: String? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil) {
+    init(id: String, name: String, brand: String? = nil, calories: Double, protein: Double, carbs: Double, fat: Double, fiber: Double, sugar: Double, sodium: Double, servingDescription: String? = nil, servingSizeG: Double? = nil, isPerUnit: Bool? = nil, ingredients: [String]? = nil, confidence: Double? = nil, isVerified: Bool = false, additives: [NutritionAdditiveInfo]? = nil, additivesDatabaseVersion: String? = nil, processingScore: Int? = nil, processingGrade: String? = nil, processingLabel: String? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil) {
         self.id = id
         self.name = name
         self.brand = brand
@@ -49,6 +50,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         self.sodium = sodium
         self.servingDescription = servingDescription
         self.servingSizeG = servingSizeG
+        self.isPerUnit = isPerUnit
         self.ingredients = ingredients
         self.confidence = confidence
         self.isVerified = isVerified
@@ -87,6 +89,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         case processingLabel
         case barcode
         case micronutrientProfile
+        case isPerUnit
     }
     
     // Helper structs for nested nutrition format from Firebase
@@ -188,10 +191,16 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         self.processingLabel = try? c.decode(String.self, forKey: .processingLabel)
         self.barcode = try? c.decode(String.self, forKey: .barcode)
         self.micronutrientProfile = try? c.decode(MicronutrientProfile.self, forKey: .micronutrientProfile)
+        self.isPerUnit = try? c.decode(Bool.self, forKey: .isPerUnit)
     }
     
     var servingSize: String {
-        return servingDescription ?? "per 100g"
+        // If we have a serving description, use it
+        if let desc = servingDescription {
+            return desc
+        }
+        // Otherwise, show "per unit" or "per 100g" based on flag
+        return (isPerUnit == true) ? "per unit" : "per 100g"
     }
 }
 
@@ -742,6 +751,7 @@ struct FoodEntry: Identifiable, Codable {
     let additives: [NutritionAdditiveInfo]?
     let barcode: String?
     let micronutrientProfile: MicronutrientProfile?
+    let isPerUnit: Bool?  // true = per unit (e.g., "1 burger"), false/nil = per 100g
     let mealType: MealType
     let date: Date
     let dateLogged: Date
@@ -749,7 +759,7 @@ struct FoodEntry: Identifiable, Codable {
     init(id: String = UUID().uuidString, userId: String, foodName: String, brandName: String? = nil,
          servingSize: Double, servingUnit: String, calories: Double, protein: Double,
          carbohydrates: Double, fat: Double, fiber: Double? = nil, sugar: Double? = nil,
-         sodium: Double? = nil, calcium: Double? = nil, ingredients: [String]? = nil, additives: [NutritionAdditiveInfo]? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, mealType: MealType, date: Date, dateLogged: Date = Date()) {
+         sodium: Double? = nil, calcium: Double? = nil, ingredients: [String]? = nil, additives: [NutritionAdditiveInfo]? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, isPerUnit: Bool? = nil, mealType: MealType, date: Date, dateLogged: Date = Date()) {
         self.id = id
         self.userId = userId
         self.foodName = foodName
@@ -768,6 +778,7 @@ struct FoodEntry: Identifiable, Codable {
         self.additives = additives
         self.barcode = barcode
         self.micronutrientProfile = micronutrientProfile
+        self.isPerUnit = isPerUnit
         self.mealType = mealType
         self.date = date
         self.dateLogged = dateLogged
@@ -791,7 +802,8 @@ struct FoodEntry: Identifiable, Codable {
             "calcium": calcium ?? 0.0,
             "mealType": mealType.rawValue,
             "date": FirebaseFirestore.Timestamp(date: date),
-            "dateLogged": FirebaseFirestore.Timestamp(date: dateLogged)
+            "dateLogged": FirebaseFirestore.Timestamp(date: dateLogged),
+            "isPerUnit": isPerUnit ?? false
         ]
 
         // Add ingredients if available
@@ -930,6 +942,7 @@ struct FoodEntry: Identifiable, Codable {
             additives: additives,
             barcode: data["barcode"] as? String,
             micronutrientProfile: micronutrientProfile,
+            isPerUnit: data["isPerUnit"] as? Bool,
             mealType: mealType,
             date: dateTimestamp.dateValue(),
             dateLogged: dateLoggedTimestamp.dateValue()
@@ -1081,8 +1094,9 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
     let additives: [NutritionAdditiveInfo]?
     let barcode: String?
     let micronutrientProfile: MicronutrientProfile?
+    let isPerUnit: Bool?  // true = per unit (e.g., "1 burger"), false/nil = per 100g
 
-    init(id: UUID = UUID(), name: String, brand: String? = nil, calories: Int, protein: Double, carbs: Double, fat: Double, fiber: Double = 0, sugar: Double = 0, sodium: Double = 0, calcium: Double = 0, servingDescription: String = "100g serving", quantity: Double = 1.0, time: String? = nil, processedScore: String? = nil, sugarLevel: String? = nil, ingredients: [String]? = nil, additives: [NutritionAdditiveInfo]? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil) {
+    init(id: UUID = UUID(), name: String, brand: String? = nil, calories: Int, protein: Double, carbs: Double, fat: Double, fiber: Double = 0, sugar: Double = 0, sodium: Double = 0, calcium: Double = 0, servingDescription: String = "100g serving", quantity: Double = 1.0, time: String? = nil, processedScore: String? = nil, sugarLevel: String? = nil, ingredients: [String]? = nil, additives: [NutritionAdditiveInfo]? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, isPerUnit: Bool? = nil) {
         self.id = id
         self.name = name
         self.brand = brand
@@ -1103,6 +1117,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
         self.additives = additives
         self.barcode = barcode
         self.micronutrientProfile = micronutrientProfile
+        self.isPerUnit = isPerUnit
     }
 
     static func == (lhs: DiaryFoodItem, rhs: DiaryFoodItem) -> Bool {
@@ -1111,14 +1126,12 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
 
     // Convert DiaryFoodItem back to FoodSearchResult for full feature access
     func toFoodSearchResult() -> FoodSearchResult {
-        // DEBUG LOG: print("🔄 toFoodSearchResult called for: \(self.name)")
-        // DEBUG LOG: print("🔄 DiaryFoodItem.servingDescription: '\(self.servingDescription)'")
-        // DEBUG LOG: print("🔄 DiaryFoodItem.quantity: \(self.quantity)")
-        // DEBUG LOG: print("🔄 DiaryFoodItem.calories: \(self.calories)")
-        // DEBUG LOG: print("🔄 DiaryFoodItem.protein: \(self.protein)")
-        // DEBUG LOG: print("🔄 DiaryFoodItem.ingredients: \(self.ingredients?.count ?? 0) items")
-        // DEBUG LOG: print("🔄 DiaryFoodItem.additives: \(self.additives?.count ?? 0) items")
-        // DEBUG LOG: print("🔄 DiaryFoodItem.barcode: \(self.barcode ?? "nil")")
+        #if DEBUG
+        print("🔄 toFoodSearchResult called for: \(self.name)")
+        print("🔄 DiaryFoodItem.isPerUnit: \(String(describing: self.isPerUnit))")
+        print("🔄 DiaryFoodItem.servingDescription: '\(self.servingDescription)'")
+        print("🔄 DiaryFoodItem.quantity: \(self.quantity)")
+        #endif
 
         // Extract serving size from servingDescription (e.g., "150g serving" -> 150)
         let servingSize = extractServingSize(from: servingDescription)
@@ -1156,6 +1169,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
             sodium: per100gSodium,
             servingDescription: "\(servingSize.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(servingSize)) : String(servingSize))g",
             servingSizeG: servingSize,
+            isPerUnit: self.isPerUnit,
             ingredients: self.ingredients,
             confidence: 1.0, // High confidence for saved items
             isVerified: true,
@@ -1211,9 +1225,19 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
 
     private func extractServingUnit(from servingDesc: String?) -> String {
         guard let servingDesc = servingDesc?.lowercased() else { return "g" }
-
-        // Only preserve ml explicitly; otherwise standardize to grams
         if servingDesc.contains("ml") { return "ml" }
+        // Preserve unit words for per‑unit descriptions like "1 burger serving"
+        if servingDesc.hasPrefix("1 ") {
+            let cleaned = servingDesc.replacingOccurrences(of: "serving", with: "").trimmingCharacters(in: .whitespaces)
+            let parts = cleaned.split(separator: " ")
+            if parts.count >= 2 {
+                return String(parts[1])
+            }
+        }
+        let unitWords = ["piece","slice","burger","wrap","taco","burrito","sandwich","portion","serving"]
+        if let found = unitWords.first(where: { servingDesc.contains($0) }) {
+            return found == "serving" ? "g" : found
+        }
         return "g"
     }
 
@@ -1240,6 +1264,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
             additives: self.additives,
             barcode: self.barcode,
             micronutrientProfile: self.micronutrientProfile,
+            isPerUnit: self.isPerUnit,
             mealType: mealType,
             date: date,
             dateLogged: Date()
@@ -1268,7 +1293,8 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
             ingredients: entry.ingredients,
             additives: entry.additives,
             barcode: entry.barcode,
-            micronutrientProfile: entry.micronutrientProfile
+            micronutrientProfile: entry.micronutrientProfile,
+            isPerUnit: entry.isPerUnit
         )
     }
 }
