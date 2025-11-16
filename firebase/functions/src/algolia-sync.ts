@@ -71,14 +71,28 @@ async function searchOpenFoodFacts(query: string): Promise<any[]> {
   }
 }
 
+// Helper function to capitalize each word for consistent formatting
+function capitalizeWords(text: string): string {
+  if (!text) return text;
+  return text
+    .split(" ")
+    .map((word) => {
+      if (!word) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(" ");
+}
+
 function transformOpenFoodFactsToAlgoliaFormat(offProduct: any): any {
   const nutriments = offProduct.nutriments || {};
   const ingredientsText = offProduct.ingredients_text_en || offProduct.ingredients_text || "";
   const barcode = offProduct.code || offProduct._id || "";
+  const rawName = offProduct.product_name || offProduct.product_name_en || "Unknown Product";
+  const rawBrand = offProduct.brands || "";
   return {
     objectID: `off-${barcode}`,
-    name: offProduct.product_name || offProduct.product_name_en || "Unknown Product",
-    brandName: offProduct.brands || "",
+    name: capitalizeWords(rawName),
+    brandName: rawBrand ? capitalizeWords(rawBrand) : "",
     ingredients: ingredientsText,
     barcode: barcode,
     calories: nutriments["energy-kcal_100g"] || nutriments["energy-kcal"] || 0,
@@ -435,32 +449,51 @@ export const searchFoodsAlgolia = functions.https.onRequest({
     ...searchResults[3].hits, // Main foods
   ];
 
-  // If no results found in Algolia, try OpenFoodFacts
-  if (combinedHits.length === 0) {
-    console.log(`No Algolia results found. Trying OpenFoodFacts for: "${query}"`);
+  // Always search OpenFoodFacts to find products we don't have
+  console.log(`Searching OpenFoodFacts for additional products: "${query}"`);
 
-    try {
-      const offProducts = await searchOpenFoodFacts(query);
+  try {
+    const offProducts = await searchOpenFoodFacts(query);
 
-      if (offProducts.length > 0) {
-        console.log(`Found ${offProducts.length} products from OpenFoodFacts`);
+    if (offProducts.length > 0) {
+      console.log(`Found ${offProducts.length} products from OpenFoodFacts`);
 
-        // Transform OpenFoodFacts products to Algolia format
-        const offResults = offProducts.map((offProduct) => transformOpenFoodFactsToAlgoliaFormat(offProduct));
+      // Get all barcodes from Algolia results to avoid duplicates
+      const algoliaBarcodes = new Set(
+        combinedHits
+          .map((hit: any) => hit.barcode)
+          .filter((b) => b && b.length > 0)
+      );
 
-        console.log(`✅ Returning ${offResults.length} UK English products from OpenFoodFacts`);
+      // Transform and filter out duplicates
+      const offResults = offProducts
+        .filter((offProduct) => {
+          const barcode = offProduct.code || offProduct._id || "";
+          const isDuplicate = barcode && algoliaBarcodes.has(barcode);
+          if (isDuplicate) {
+            console.log(`Skipping duplicate barcode from OpenFoodFacts: ${barcode}`);
+          }
+          return !isDuplicate;
+        })
+        .map((offProduct) => transformOpenFoodFactsToAlgoliaFormat(offProduct));
 
-        response.json({
-          hits: offResults.slice(0, hitsPerPage),
-          nbHits: offResults.length,
-        });
-        return;
-      }
+      console.log(`✅ Found ${offResults.length} unique UK English products from OpenFoodFacts (${offProducts.length - offResults.length} duplicates filtered)`);
 
-      console.log(`❌ No UK English products found anywhere for: "${query}"`);
-    } catch (error) {
-      console.error("Error fetching from OpenFoodFacts:", error);
+      // Merge results: Algolia results first (verified/trusted), then OpenFoodFacts
+      const mergedHits = [...combinedHits, ...offResults].slice(0, hitsPerPage);
+
+      console.log(`📊 Returning ${mergedHits.length} total results (${combinedHits.length} Algolia + ${offResults.length} OpenFoodFacts)`);
+
+      response.json({
+        hits: mergedHits,
+        nbHits: mergedHits.length,
+      });
+      return;
     }
+
+    console.log(`No additional products found on OpenFoodFacts`);
+  } catch (error) {
+    console.error("Error fetching from OpenFoodFacts:", error);
   }
 
   response.json({
