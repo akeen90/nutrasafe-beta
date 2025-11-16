@@ -20,8 +20,11 @@ struct AdditiveWatchView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Show content directly without collapsible header
-            if let result = additiveResult {
+            // Check if ingredients are empty first
+            if ingredients.isEmpty {
+                emptyIngredientsContent
+                    .transition(.opacity)
+            } else if let result = additiveResult {
                 additiveContent(result: result)
                     .transition(.opacity)
             } else {
@@ -38,11 +41,14 @@ struct AdditiveWatchView: View {
             SourcesAndCitationsView()
         }
         .onAppear {
-            // PERFORMANCE: Only re-analyze if ingredients have changed
-            let currentHash = ingredients.hashValue
-            if additiveResult == nil || lastAnalyzedHash != currentHash {
-                lastAnalyzedHash = currentHash
-                analyzeAdditives()
+            // Only analyze if we have ingredients
+            if !ingredients.isEmpty {
+                // PERFORMANCE: Only re-analyze if ingredients have changed
+                let currentHash = ingredients.hashValue
+                if additiveResult == nil || lastAnalyzedHash != currentHash {
+                    lastAnalyzedHash = currentHash
+                    analyzeAdditives()
+                }
             }
         }
     }
@@ -61,6 +67,23 @@ struct AdditiveWatchView: View {
         .cornerRadius(8)
     }
     
+    private var emptyIngredientsContent: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "info.circle.fill")
+                    .foregroundColor(.secondary)
+                    .font(.system(size: 16))
+                Text("No ingredient data available - unable to analyze additives and allergens")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .lineLimit(nil)
+            }
+        }
+        .padding(12)
+        .background(Color.secondary.opacity(0.1))
+        .cornerRadius(8)
+    }
+
     private var loadingContent: some View {
         HStack {
             ProgressView()

@@ -2149,61 +2149,80 @@ struct FoodDetailViewFromSearch: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Allergen & Safety Information")
                 .font(.system(size: 18, weight: .semibold))
-            
-            let detectedAllergens = detectAllergens(in: food.ingredients)
-            let additiveAnalysis: AdditiveDetectionResult? = nil // Placeholder for now
 
-            VStack(alignment: .leading, spacing: 12) {
-                // Show child warnings from additives first
-                if additiveAnalysis != nil {
-                    HStack(alignment: .top, spacing: 8) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(.orange)
-                            .font(.system(size: 14))
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Child Activity Warning")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.orange)
-                            Text("Contains additives that may affect activity and attention in children")
-                                .font(.system(size: 12))
-                                .foregroundColor(.orange)
-                                .lineLimit(nil)
-                        }
-                        Spacer()
-                    }
-                    .padding(10)
-                    .background(Color.orange.opacity(0.05))
-                    .cornerRadius(8)
-                }
-                
-                // Show allergen warnings
-                if !detectedAllergens.isEmpty {
-                    ForEach(detectedAllergens.sorted(by: { $0.displayName < $1.displayName }), id: \.rawValue) { allergen in
-                        HStack {
+            // Check if ingredients exist first
+            if let ingredients = food.ingredients, !ingredients.isEmpty {
+                let detectedAllergens = detectAllergens(in: ingredients)
+                let additiveAnalysis: AdditiveDetectionResult? = nil // Placeholder for now
+
+                VStack(alignment: .leading, spacing: 12) {
+                    // Show child warnings from additives first
+                    if additiveAnalysis != nil {
+                        HStack(alignment: .top, spacing: 8) {
                             Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(.red)
-                            Text("Contains \(allergen.displayName)")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.red)
+                                .foregroundColor(.orange)
+                                .font(.system(size: 14))
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Child Activity Warning")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(.orange)
+                                Text("Contains additives that may affect activity and attention in children")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.orange)
+                                    .lineLimit(nil)
+                            }
                             Spacer()
                         }
+                        .padding(10)
+                        .background(Color.orange.opacity(0.05))
+                        .cornerRadius(8)
                     }
-                } else {
-                    if additiveAnalysis?.hasChildConcernAdditives != true {
-                        HStack {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.green)
-                            Text("No allergens or child-concern additives detected")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.green)
-                            Spacer()
+
+                    // Show allergen warnings
+                    if !detectedAllergens.isEmpty {
+                        ForEach(detectedAllergens.sorted(by: { $0.displayName < $1.displayName }), id: \.rawValue) { allergen in
+                            HStack {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.red)
+                                Text("Contains \(allergen.displayName)")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.red)
+                                Spacer()
+                            }
                         }
                     } else {
-                        Text("No common allergens detected")
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
+                        if additiveAnalysis?.hasChildConcernAdditives != true {
+                            HStack {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.green)
+                                Text("No allergens or child-concern additives detected")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.green)
+                                Spacer()
+                            }
+                        } else {
+                            Text("No common allergens detected")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
+            } else {
+                // No ingredients available
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "info.circle.fill")
+                            .foregroundColor(.secondary)
+                            .font(.system(size: 16))
+                        Text("No ingredient data available - unable to analyze additives and allergens")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .lineLimit(nil)
+                    }
+                }
+                .padding(12)
+                .background(Color.secondary.opacity(0.1))
+                .cornerRadius(8)
             }
         }
         .padding(.horizontal, 16)
@@ -2216,9 +2235,7 @@ struct FoodDetailViewFromSearch: View {
     // REMOVED: Old fake micronutrient functions that relied on currentMicronutrients variable
     // Now we use NutrientDetector to detect from ingredients instead of fake math
     
-    private func detectAllergens(in ingredients: [String]?) -> [Allergen] {
-        guard let ingredients = ingredients else { return [] }
-
+    private func detectAllergens(in ingredients: [String]) -> [Allergen] {
         let combinedIngredients = ingredients.joined(separator: " ").lowercased()
         var detectedAllergens: [Allergen] = []
 
@@ -3080,7 +3097,11 @@ struct FoodDetailViewFromSearch: View {
     
     // MARK: - Food Scores Section
     private var foodScoresSection: some View {
-        FoodScoresSectionView(ns: nutraSafeGrade, sugarScore: sugarScore, showingInfo: $showingNutraSafeInfo, showingSugarInfo: $showingSugarInfo)
+        // Only show NutraSafe grade if ingredients exist
+        let hasIngredients = cachedIngredients != nil && !(cachedIngredients?.isEmpty ?? true)
+        let gradeToShow = hasIngredients ? nutraSafeGrade : nil
+
+        return FoodScoresSectionView(ns: gradeToShow, sugarScore: sugarScore, showingInfo: $showingNutraSafeInfo, showingSugarInfo: $showingSugarInfo)
     }
     
     private func getSimplifiedProcessingLevel() -> String {
@@ -3310,66 +3331,94 @@ struct FoodDetailViewFromSearch: View {
             if let ingredientsList = cachedIngredients, !ingredientsList.isEmpty {
                 AdditiveWatchView(ingredients: ingredientsList)
             } else {
-                Text("No ingredients available for analysis")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 24)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "info.circle.fill")
+                            .foregroundColor(.secondary)
+                            .font(.system(size: 16))
+                        Text("No ingredient data available - unable to analyze additives and allergens")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .lineLimit(nil)
+                    }
+                }
+                .padding(12)
+                .background(Color.secondary.opacity(0.1))
+                .cornerRadius(8)
             }
         }
         .padding(16)
     }
     
-    // MARK: - Allergens Watch Content  
+    // MARK: - Allergens Watch Content
     private var allergensContent: some View {
         VStack(alignment: .leading, spacing: 12) {
-            let potentialAllergens = getPotentialAllergens()
+            // Check if ingredients exist first
+            if let ingredients = cachedIngredients, !ingredients.isEmpty {
+                let potentialAllergens = getPotentialAllergens()
 
-            if !potentialAllergens.isEmpty {
-                VStack(alignment: .leading, spacing: 12) {
-                    ForEach(potentialAllergens.sorted(), id: \.self) { allergen in
-                        AllergenWarningCard(allergenName: allergen)
+                if !potentialAllergens.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(potentialAllergens.sorted(), id: \.self) { allergen in
+                            AllergenWarningCard(allergenName: allergen)
+                        }
+                    }
+                } else {
+                    VStack(spacing: 12) {
+                        Image(systemName: "checkmark.shield.fill")
+                            .font(.system(size: 40))
+                            .foregroundColor(.green)
+
+                        Text("No Common Allergens Detected")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.primary)
+
+                        Text("Based on the ingredient list, no common allergens were found")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 32)
+                }
+
+                // Citations for allergen detection
+                if !potentialAllergens.isEmpty {
+                    Divider()
+                        .padding(.vertical, 8)
+
+                    HStack(spacing: 4) {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Text("Based on UK FSA and EU food safety regulations")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Button(action: {
+                            showingAllergenCitations = true
+                        }) {
+                            Text("Sources")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(.blue)
+                        }
                     }
                 }
             } else {
-                VStack(spacing: 12) {
-                    Image(systemName: "checkmark.shield.fill")
-                        .font(.system(size: 40))
-                        .foregroundColor(.green)
-
-                    Text("No Common Allergens Detected")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.primary)
-
-                    Text("Based on the ingredient list, no common allergens were found")
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 32)
-            }
-
-            // Citations for allergen detection
-            if !potentialAllergens.isEmpty {
-                Divider()
-                    .padding(.vertical, 8)
-
-                HStack(spacing: 4) {
-                    Image(systemName: "info.circle")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                    Text("Based on UK FSA and EU food safety regulations")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                    Button(action: {
-                        showingAllergenCitations = true
-                    }) {
-                        Text("Sources")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.blue)
+                // No ingredients available
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "info.circle.fill")
+                            .foregroundColor(.secondary)
+                            .font(.system(size: 16))
+                        Text("No ingredient data available - unable to analyze additives and allergens")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .lineLimit(nil)
                     }
                 }
+                .padding(12)
+                .background(Color.secondary.opacity(0.1))
+                .cornerRadius(8)
             }
         }
         .padding(16)
