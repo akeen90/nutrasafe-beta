@@ -63,6 +63,38 @@ class FastingViewModel: ObservableObject {
         return String(format: "%d:%02d:%02d", hours, minutes, seconds)
     }
 
+    var timeUntilEnd: String {
+        guard let session = activeSession else { return "0:00:00" }
+        let targetSeconds = Double(session.targetDurationHours) * 3600
+        let elapsedSeconds = session.actualDurationHours * 3600
+        let remainingSeconds = max(0, Int(targetSeconds - elapsedSeconds))
+        let hours = remainingSeconds / 3600
+        let minutes = (remainingSeconds % 3600) / 60
+        let seconds = remainingSeconds % 60
+        return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+    }
+
+    var previousEatingWindowDuration: String {
+        guard let currentSession = activeSession else { return "0:00" }
+
+        // Find the most recent completed session before this one
+        let previousSession = recentSessions.first { session in
+            guard let endTime = session.endTime else { return false }
+            return endTime < currentSession.startTime && session.id != currentSession.id
+        }
+
+        guard let lastFastEnd = previousSession?.endTime else {
+            return "0:00"
+        }
+
+        // Calculate time between last fast ending and current fast starting
+        let eatingWindowSeconds = currentSession.startTime.timeIntervalSince(lastFastEnd)
+        let totalSeconds = Int(eatingWindowSeconds)
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        return String(format: "%d:%02d", hours, minutes)
+    }
+
     var currentPhase: FastingPhase? {
         return activeSession?.currentPhase
     }
@@ -398,6 +430,7 @@ class FastingViewModel: ObservableObject {
 
         print("   📝 Creating session...")
         let session = FastingManager.createSession(
+            userId: userId,
             plan: plan,
             targetDurationHours: plan.durationHours
         )
@@ -421,8 +454,8 @@ class FastingViewModel: ObservableObject {
         }
     }
 
-    func endFastingSession() async {
-        guard let session = activeSession else { return }
+    func endFastingSession() async -> FastingSession? {
+        guard let session = activeSession else { return nil }
 
         isLoading = true
         defer { isLoading = false }
@@ -435,9 +468,15 @@ class FastingViewModel: ObservableObject {
             self.activeSession = nil
             await loadRecentSessions()
             await loadAnalytics()
+
+            // Post notification to refresh history dropdown
+            NotificationCenter.default.post(name: .fastHistoryUpdated, object: nil)
+
+            return endedSession
         } catch {
             self.error = error
             self.showError = true
+            return nil
         }
     }
 
@@ -457,6 +496,38 @@ class FastingViewModel: ObservableObject {
         } catch {
             self.error = error
             self.showError = true
+        }
+    }
+
+    func endFastingRegime() async {
+        isLoading = true
+        defer { isLoading = false }
+
+        // End current session if active
+        if let session = activeSession {
+            let endedSession = FastingManager.endSession(session)
+            do {
+                try await firebaseManager.updateFastingSession(endedSession)
+            } catch {
+                self.error = error
+                self.showError = true
+                return
+            }
+        }
+
+        // Deactivate the current plan
+        if var plan = activePlan {
+            plan.active = false
+            do {
+                _ = try await firebaseManager.saveFastingPlan(plan)
+                self.activePlan = nil
+                self.activeSession = nil
+                await loadRecentSessions()
+                await loadAnalytics()
+            } catch {
+                self.error = error
+                self.showError = true
+            }
         }
     }
 

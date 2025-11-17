@@ -66,6 +66,23 @@ struct IdleStateView: View {
     @State private var showingPlanCreation = false
 
     var body: some View {
+        if let plan = viewModel.activePlan {
+            // Has active plan - show Plan Dashboard
+            PlanDashboardView(viewModel: viewModel, plan: plan)
+        } else {
+            // No plan - show onboarding
+            NoPlanView(viewModel: viewModel, showingEducation: $showingEducation, showingPlanCreation: $showingPlanCreation)
+        }
+    }
+}
+
+// MARK: - No Plan View
+struct NoPlanView: View {
+    @ObservedObject var viewModel: FastingViewModel
+    @Binding var showingEducation: Bool
+    @Binding var showingPlanCreation: Bool
+
+    var body: some View {
         VStack(spacing: 24) {
             // Welcome Card
             VStack(spacing: 16) {
@@ -73,13 +90,11 @@ struct IdleStateView: View {
                     .font(.system(size: 60))
                     .foregroundColor(.blue)
 
-                Text(viewModel.activePlan == nil ? "Create Your First Plan" : "Ready to Begin")
+                Text("Create Your First Plan")
                     .font(.title2)
                     .fontWeight(.semibold)
 
-                Text(viewModel.activePlan == nil ?
-                     "Set up a fasting schedule that fits your lifestyle" :
-                     "Start your fasting journey with a personalized plan")
+                Text("Set up a fasting schedule that fits your lifestyle")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -89,46 +104,24 @@ struct IdleStateView: View {
             .background(Color.blue.opacity(0.1))
             .cornerRadius(16)
 
-            // Primary Action Button
-            if viewModel.activePlan == nil {
-                // No plan yet - show plan creation button
-                Button {
-                    showingPlanCreation = true
-                } label: {
-                    HStack {
-                        Image(systemName: "clock.badge.checkmark")
-                        Text("Create Fasting Plan")
-                            .fontWeight(.semibold)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
+            // Create Plan Button
+            Button {
+                showingPlanCreation = true
+            } label: {
+                HStack {
+                    Image(systemName: "clock.badge.checkmark")
+                    Text("Create Fasting Plan")
+                        .fontWeight(.semibold)
                 }
-                .buttonStyle(.plain)
-            } else {
-                // Has plan - show start/resume button
-                Button {
-                    Task {
-                        await viewModel.startFastingSession()
-                    }
-                } label: {
-                    HStack {
-                        Image(systemName: "play.fill")
-                        Text(viewModel.recentSessions.isEmpty ? "Start Fasting" : "Resume Fasting")
-                            .fontWeight(.semibold)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-                }
-                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.blue)
+                .foregroundColor(.white)
+                .cornerRadius(12)
             }
+            .buttonStyle(.plain)
 
-            // Secondary Action - Education
+            // Education Button
             Button {
                 showingEducation = true
             } label: {
@@ -145,58 +138,6 @@ struct IdleStateView: View {
                 .cornerRadius(12)
             }
             .buttonStyle(.plain)
-            
-            // Active Plan Info
-            if let plan = viewModel.activePlan {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Image(systemName: "clock.badge.checkmark")
-                            .foregroundColor(.green)
-                        Text("Your Active Plan")
-                            .font(.headline)
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(plan.name)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                        
-                        HStack {
-                            Text(plan.durationDisplay)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            
-                            if !plan.daysOfWeek.isEmpty {
-                                Text("•")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                
-                                Text("\(plan.daysOfWeek.count) days/week")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                    
-                    if let nextDate = plan.nextScheduledDate {
-                        HStack {
-                            Image(systemName: "calendar.badge.clock")
-                                .font(.caption)
-                            Text("Next: \(nextDate.formatted(date: .abbreviated, time: .omitted))")
-                                .font(.caption)
-                        }
-                        .foregroundColor(.blue)
-                    }
-                }
-                .padding()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.green.opacity(0.1))
-                .cornerRadius(12)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.green.opacity(0.3), lineWidth: 1)
-                )
-            }
         }
         .sheet(isPresented: $showingEducation) {
             FastingEducationView()
@@ -207,11 +148,218 @@ struct IdleStateView: View {
     }
 }
 
+// MARK: - Plan Dashboard View
+struct PlanDashboardView: View {
+    @ObservedObject var viewModel: FastingViewModel
+    let plan: FastingPlan
+
+    // Filter sessions for this plan
+    private var planSessions: [FastingSession] {
+        viewModel.recentSessions.filter { $0.planId == plan.id }
+    }
+
+    // Plan statistics
+    private var totalFasts: Int {
+        planSessions.count
+    }
+
+    private var completedFasts: Int {
+        planSessions.filter { $0.completionStatus == .completed || $0.completionStatus == .overGoal }.count
+    }
+
+    private var completionRate: Int {
+        guard totalFasts > 0 else { return 0 }
+        return Int((Double(completedFasts) / Double(totalFasts)) * 100)
+    }
+
+    private var averageDuration: Double {
+        guard !planSessions.isEmpty else { return 0 }
+        let total = planSessions.reduce(0.0) { $0 + $1.actualDurationHours }
+        return total / Double(planSessions.count)
+    }
+
+    var body: some View {
+        VStack(spacing: 20) {
+            // Plan Header Card
+            VStack(spacing: 12) {
+                HStack {
+                    Image(systemName: "clock.badge.checkmark")
+                        .foregroundColor(.green)
+                    Text(plan.name)
+                        .font(.headline)
+                    Spacer()
+                }
+
+                HStack {
+                    Text(plan.durationDisplay)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    if !plan.daysOfWeek.isEmpty {
+                        Text("•")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        Text("\(plan.daysOfWeek.count) days/week")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding()
+            .background(Color.green.opacity(0.1))
+            .cornerRadius(12)
+
+            // Stats Grid
+            HStack(spacing: 12) {
+                FastingStatCard(title: "Total Fasts", value: "\(totalFasts)", icon: "calendar")
+                FastingStatCard(title: "Completed", value: "\(completionRate)%", icon: "checkmark.circle.fill")
+                FastingStatCard(title: "Avg Duration", value: String(format: "%.1fh", averageDuration), icon: "clock.fill")
+            }
+
+            // Start Fasting Button
+            Button {
+                Task {
+                    await viewModel.startFastingSession()
+                }
+            } label: {
+                HStack {
+                    Image(systemName: "play.fill")
+                    Text("Start New Fast")
+                        .fontWeight(.semibold)
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.blue)
+                .foregroundColor(.white)
+                .cornerRadius(12)
+            }
+            .buttonStyle(.plain)
+
+            // Session History
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Recent Fasts")
+                        .font(.headline)
+                    Spacer()
+                    if totalFasts > 5 {
+                        Text("\(totalFasts) total")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                if planSessions.isEmpty {
+                    Text("No fasts recorded yet")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(8)
+                } else {
+                    VStack(spacing: 8) {
+                        ForEach(planSessions.prefix(5)) { session in
+                            SessionHistoryRow(session: session)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Fasting Stat Card Component
+struct FastingStatCard: View {
+    let title: String
+    let value: String
+    let icon: String
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 20))
+                .foregroundColor(.blue)
+
+            Text(value)
+                .font(.title3)
+                .fontWeight(.bold)
+
+            Text(title)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding()
+        .background(Color.blue.opacity(0.1))
+        .cornerRadius(12)
+    }
+}
+
+// MARK: - Session History Row Component
+struct SessionHistoryRow: View {
+    let session: FastingSession
+
+    private var statusColor: Color {
+        switch session.completionStatus {
+        case .completed: return .green
+        case .overGoal: return .blue
+        case .earlyEnd: return .orange
+        case .active: return .purple
+        case .failed, .skipped: return .gray
+        }
+    }
+
+    private var statusText: String {
+        switch session.completionStatus {
+        case .completed: return "Completed"
+        case .overGoal: return "Over Goal"
+        case .earlyEnd: return "Early End"
+        case .active: return "Active"
+        case .failed: return "Failed"
+        case .skipped: return "Skipped"
+        }
+    }
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(session.endTime?.formatted(date: .abbreviated, time: .shortened) ?? "In Progress")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+
+                Text(String(format: "%.1f hours", session.actualDurationHours))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            Text(statusText)
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundColor(statusColor)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(statusColor.opacity(0.15))
+                .cornerRadius(6)
+        }
+        .padding(12)
+        .background(Color(.systemGray6))
+        .cornerRadius(8)
+    }
+}
+
 struct ActiveSessionView: View {
     @ObservedObject var viewModel: FastingViewModel
     @State private var showingEditTimes = false
     @State private var showingEarlyEndModal = false
+    @State private var showingEndRegimeAlert = false
     @State private var endedSession: FastingSession?
+    @State private var successMessage: String?
+    @State private var showingSuccessMessage = false
 
     var body: some View {
         VStack(spacing: 20) {
@@ -224,36 +372,8 @@ struct ActiveSessionView: View {
             // Current Phase Info Card
             CurrentPhaseCard(viewModel: viewModel)
 
-            // Action Buttons
+            // Secondary Action Buttons
             VStack(spacing: 12) {
-                Button {
-                    Task {
-                        // Check if this will be an early end
-                        if viewModel.isEarlyEnd, let session = viewModel.activeSession {
-                            // End the session first
-                            await viewModel.endFastingSession()
-                            // Then show the early-end modal
-                            endedSession = session
-                            showingEarlyEndModal = true
-                        } else {
-                            // Normal end
-                            await viewModel.endFastingSession()
-                        }
-                    }
-                } label: {
-                    HStack {
-                        Image(systemName: "stop.fill")
-                        Text("End Fast")
-                            .fontWeight(.semibold)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.red)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-                }
-                .buttonStyle(.plain)
-
                 HStack(spacing: 12) {
                     Button {
                         showingEditTimes = true
@@ -287,6 +407,53 @@ struct ActiveSessionView: View {
                     }
                     .buttonStyle(.plain)
                 }
+
+                // End Fast for the Day Button
+                Button {
+                    Task {
+                        if let session = await viewModel.endFastingSession() {
+                            // Check completion status and show appropriate UI
+                            if session.completionStatus == .earlyEnd || session.attemptType == .warmup {
+                                // Show early-end modal with motivational message
+                                endedSession = session
+                                showingEarlyEndModal = true
+                            } else {
+                                // Show success message for completed fasts
+                                successMessage = "Fast completed successfully!"
+                                showingSuccessMessage = true
+                            }
+                        }
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                        Text("End Fast for the Day")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.green)
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
+                }
+                .buttonStyle(.plain)
+
+                // End Fasting Regime Button
+                Button {
+                    showingEndRegimeAlert = true
+                } label: {
+                    HStack {
+                        Image(systemName: "stop.circle.fill")
+                        Text("End Fasting Regime")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.red)
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
+                }
+                .buttonStyle(.plain)
             }
             .padding(.bottom, 30) // Add space above tab bar
         }
@@ -298,6 +465,23 @@ struct ActiveSessionView: View {
         .sheet(isPresented: $showingEarlyEndModal) {
             if let session = endedSession {
                 EarlyEndModal(viewModel: viewModel, session: session)
+            }
+        }
+        .alert("End Fasting Regime?", isPresented: $showingEndRegimeAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("End Regime", role: .destructive) {
+                Task {
+                    await viewModel.endFastingRegime()
+                }
+            }
+        } message: {
+            Text("This will end your current fast and deactivate your fasting plan. You'll need to create or activate a plan to continue fasting.")
+        }
+        .alert("Success", isPresented: $showingSuccessMessage) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            if let message = successMessage {
+                Text(message)
             }
         }
     }
@@ -327,9 +511,9 @@ struct ProgressRingCard: View {
                     .animation(.easeInOut(duration: 0.5), value: viewModel.currentProgress)
                 
                 VStack(spacing: 8) {
-                    // Time IN fast
+                    // Time IN fast (current)
                     VStack(spacing: 2) {
-                        Text("Fasting")
+                        Text("Time Fasting")
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .textCase(.uppercase)
@@ -348,19 +532,17 @@ struct ProgressRingCard: View {
                         .fill(Color.gray.opacity(0.3))
                         .frame(width: 60, height: 1)
 
-                    // Time OUT of fast (eating window)
-                    if viewModel.isInEatingWindow {
-                        VStack(spacing: 2) {
-                            Text("Eating Window")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .textCase(.uppercase)
+                    // Time OUT of fast (previous eating window)
+                    VStack(spacing: 2) {
+                        Text("Eating Window")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .textCase(.uppercase)
 
-                            Text(viewModel.eatingWindowTime)
-                                .font(.system(size: 20, weight: .semibold, design: .rounded))
-                                .monospacedDigit()
-                                .foregroundColor(.green)
-                        }
+                        Text(viewModel.previousEatingWindowDuration)
+                            .font(.system(size: 20, weight: .semibold, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundColor(.green)
                     }
                 }
             }

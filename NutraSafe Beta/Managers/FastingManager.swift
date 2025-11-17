@@ -16,12 +16,13 @@ class FastingManager {
     // MARK: - Session Management
     
     static func createSession(
+        userId: String,
         plan: FastingPlan? = nil,
         targetDurationHours: Int,
         startTime: Date = Date()
     ) -> FastingSession {
         return FastingSession(
-            userId: plan?.userId ?? "",
+            userId: userId,
             planId: plan?.id,
             startTime: startTime,
             endTime: nil,

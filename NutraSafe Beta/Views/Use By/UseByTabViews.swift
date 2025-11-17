@@ -753,8 +753,6 @@ struct UseByExpiryView: View {
                                 UserDefaults.standard.set("Use By", forKey: "preselectedDestination")
                                 selectedTab = .add
                             })
-
-                            ModernTipCard(tip: "Scan barcodes for instant details")
                         }
                         .padding(.horizontal, 24)
                         .padding(.bottom, 40)

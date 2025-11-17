@@ -38,6 +38,13 @@ struct FastingHistoryDropdown: View {
                                     delete(session)
                                 })
                                  .contentShape(Rectangle())
+                                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                     Button(role: .destructive) {
+                                         delete(session)
+                                     } label: {
+                                         Label("Delete", systemImage: "trash")
+                                     }
+                                 }
                                  .contextMenu {
                                      Button(role: .destructive) { delete(session) } label: {
                                          Label("Delete", systemImage: "trash")
@@ -162,9 +169,26 @@ private struct FastingHistoryRow: View {
 
             // Stage / completion status
             VStack(alignment: .leading, spacing: 4) {
-                Text(completionStatus(for: session))
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(session.completionStatus == .completed ? .green : .orange)
+                HStack(spacing: 6) {
+                    Text(completionStatus(for: session))
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(statusColor(for: session))
+
+                    // Early-end visual indicator
+                    if session.completionStatus == .earlyEnd {
+                        Image(systemName: "moon.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(.gray.opacity(0.5))
+                    }
+                }
+
+                // Warm-up attempt subtext for very early ends
+                if session.attemptType == .warmup {
+                    Text("Warm-up attempt")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary.opacity(0.8))
+                }
+
                 if let notes = session.notes, !notes.isEmpty {
                     Text(notes)
                         .font(.system(size: 13))
@@ -175,12 +199,6 @@ private struct FastingHistoryRow: View {
 
             Spacer()
 
-            Button(action: { onDelete() }) {
-                Image(systemName: "trash")
-                    .foregroundColor(.red)
-            }
-            .buttonStyle(.borderless)
-            .accessibilityLabel("Delete fast")
             Image(systemName: "chevron.right")
                 .foregroundColor(.secondary)
          }
@@ -216,6 +234,21 @@ private struct FastingHistoryRow: View {
             return "Not Completed"
         case .skipped:
             return "Skipped"
+        }
+    }
+
+    private func statusColor(for session: FastingSession) -> Color {
+        switch session.completionStatus {
+        case .completed:
+            return .green
+        case .overGoal:
+            return .blue
+        case .earlyEnd:
+            return .orange
+        case .active:
+            return .purple
+        case .failed, .skipped:
+            return .gray
         }
     }
 }

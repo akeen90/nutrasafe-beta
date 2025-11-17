@@ -45,7 +45,8 @@ struct FastingTimerView: View {
 
     private var fastingDuration: TimeInterval {
         guard let session = currentSession, session.isActive else { return 0 }
-        return currentTime.timeIntervalSince(session.startTime)
+        let elapsed = currentTime.timeIntervalSince(session.startTime)
+        return max(0, elapsed) // Ensure we never return negative duration
     }
 
     private var fastingProgress: Double {
@@ -62,10 +63,14 @@ struct FastingTimerView: View {
     }
 
     private var remainingText: String {
-        guard let session = currentSession else { return "0h 0m" }
-        let remaining = max(0, Double(session.targetDurationHours) * 3600 - fastingDuration)
-        let remainingHours = Int(remaining) / 3600
-        let remainingMinutes = (Int(remaining) % 3600) / 60
+        guard let session = currentSession, session.isActive else { return "0h 0m" }
+        let targetSeconds = Double(session.targetDurationHours) * 3600
+        let elapsedSeconds = fastingDuration
+        let remainingSeconds = max(0, targetSeconds - elapsedSeconds)
+        
+        let remainingHours = Int(remainingSeconds) / 3600
+        let remainingMinutes = (Int(remainingSeconds) % 3600) / 60
+        
         return "\(remainingHours)h \(remainingMinutes)m"
     }
     
@@ -377,10 +382,18 @@ struct FastingTimerView: View {
             Text(stopErrorText)
         }
         .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
+            // Safely update current time with session validation
             currentTime = Date()
-
-            // Update Live Activity every minute
-            if isFasting && Int(fastingDuration) % 60 == 0 {
+            
+            // Only proceed with fasting logic if we have a valid active session
+            guard let session = currentSession, session.isActive else { return }
+            
+            // Validate session timing to prevent edge cases
+            let elapsed = currentTime.timeIntervalSince(session.startTime)
+            guard elapsed >= 0 else { return } // Prevent negative elapsed time
+            
+            // Update Live Activity every minute for valid sessions
+            if isFasting && Int(elapsed) % 60 == 0 {
                 Task {
                     if #available(iOS 16.1, *) {
                         await updateLiveActivity()
@@ -448,6 +461,7 @@ struct FastingTimerView: View {
 
         // Create new session
         let newSession = FastingManager.createSession(
+            userId: firebaseManager.currentUser?.uid ?? "",
             plan: currentPlan,
             targetDurationHours: fastingGoal,
             startTime: Date()
