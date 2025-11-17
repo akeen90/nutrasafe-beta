@@ -2726,27 +2726,60 @@ class FirebaseManager: ObservableObject {
     }
 
     func saveFastingSession(_ session: FastingSession) async throws -> String {
+        print("🔥 FirebaseManager.saveFastingSession() called")
+        print("   📋 Session data - userId: '\(session.userId)', planId: '\(session.planId ?? "nil")', target: \(session.targetDurationHours)h")
+
         ensureAuthStateLoaded()
         guard let userId = currentUser?.uid else {
+            print("   ❌ currentUser?.uid is nil - user not authenticated!")
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save fasting sessions"])
         }
+
+        print("   ✅ Current authenticated userId: '\(userId)'")
+
         let docRef = db.collection("users").document(userId)
             .collection("fastingSessions").document(session.id ?? UUID().uuidString)
+
+        print("   📍 Firestore path: users/\(userId)/fastingSessions/\(docRef.documentID)")
+        print("   💾 Writing to Firestore...")
+
         try await docRef.setData(from: session, merge: true)
+
+        print("   ✅ Firestore write successful!")
+
         await MainActor.run {
             NotificationCenter.default.post(name: .fastHistoryUpdated, object: nil)
         }
+
+        print("   📢 Posted .fastHistoryUpdated notification")
+
         return docRef.documentID
     }
 
     func getFastingSessions() async throws -> [FastingSession] {
+        print("📥 getFastingSessions() called")
         ensureAuthStateLoaded()
         guard let userId = currentUser?.uid else {
+            print("   ❌ No authenticated user")
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view fasting sessions"])
         }
+
+        print("   👤 Fetching sessions for userId: '\(userId)'")
+        print("   📍 Path: users/\(userId)/fastingSessions")
+
         let snapshot = try await db.collection("users").document(userId)
-            .collection("fastingSessions").order(by: "startTime", descending: true).getDocuments()
-        return snapshot.documents.compactMap { try? $0.data(as: FastingSession.self) }
+            .collection("fastingSessions").order(by: "start_time", descending: true).getDocuments()
+
+        print("   📊 Raw documents retrieved: \(snapshot.documents.count)")
+
+        let sessions = snapshot.documents.compactMap { try? $0.data(as: FastingSession.self) }
+
+        print("   ✅ Successfully decoded \(sessions.count) sessions")
+        for (index, session) in sessions.enumerated() {
+            print("      Session \(index + 1): ID=\(session.id ?? "nil"), userId=\(session.userId), status=\(session.completionStatus)")
+        }
+
+        return sessions
     }
 
     func updateFastingSession(_ session: FastingSession) async throws {
