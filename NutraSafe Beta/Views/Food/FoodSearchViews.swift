@@ -531,8 +531,12 @@ struct AddFoodSearchView: View {
             return
         }
 
+        // Normalize query: remove apostrophes so "mcdonald's" and "mcdonalds" search the same
+        let normalizedQuery = query.replacingOccurrences(of: "'", with: "")
+                                   .replacingOccurrences(of: "'", with: "") // Also handle curly apostrophe
+
         #if DEBUG
-        print("🔎 AddFoodSearchView: Starting search for '\(query)' (length: \(query.count))")
+        print("🔎 AddFoodSearchView: Starting search for '\(query)' → normalized: '\(normalizedQuery)' (length: \(normalizedQuery.count))")
         #endif
 
         isSearching = true
@@ -541,7 +545,7 @@ struct AddFoodSearchView: View {
         searchTask = Task {
             if Task.isCancelled {
                 #if DEBUG
-                print("⚠️ AddFoodSearchView: Search cancelled for '\(query)'")
+                print("⚠️ AddFoodSearchView: Search cancelled for '\(normalizedQuery)'")
                 #endif
                 return
             }
@@ -550,7 +554,7 @@ struct AddFoodSearchView: View {
             var results: [FoodSearchResult] = []
 
             do {
-                results = try await FirebaseManager.shared.searchFoods(query: query)
+                results = try await FirebaseManager.shared.searchFoods(query: normalizedQuery)
 
                 #if DEBUG
                 print("✅ Search complete: Found \(results.count) results")
