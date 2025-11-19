@@ -1020,6 +1020,7 @@ class FirebaseManager: ObservableObject {
                     sodium: (hit["sodium"] as? Double) ?? 0,
                     servingDescription: hit["servingSize"] as? String,
                     servingSizeG: hit["servingSizeG"] as? Double,
+                    isPerUnit: hit["per_unit_nutrition"] as? Bool,
                     ingredients: (hit["ingredients"] as? String).map { [$0] },
                     isVerified: (hit["verified"] as? Bool) ?? false,
                     barcode: hit["barcode"] as? String
@@ -2094,6 +2095,7 @@ class FirebaseManager: ObservableObject {
             let processingScore = data["processingScore"] as? Int
             let processingGrade = data["processingGrade"] as? String
             let processingLabel = data["processingLabel"] as? String
+            let isPerUnit = data["per_unit_nutrition"] as? Bool
 
             return FoodSearchResult(
                 id: id,
@@ -2107,6 +2109,7 @@ class FirebaseManager: ObservableObject {
                 sugar: sugars,
                 sodium: sodium,
                 servingDescription: "\(servingSize)\(servingUnit)",
+                isPerUnit: isPerUnit,
                 ingredients: ingredients,
                 confidence: nil,
                 isVerified: false, // User-added foods are unverified by default
@@ -2174,6 +2177,7 @@ class FirebaseManager: ObservableObject {
             let processingScore = data["processingScore"] as? Int
             let processingGrade = data["processingGrade"] as? String
             let processingLabel = data["processingLabel"] as? String
+            let isPerUnit = data["per_unit_nutrition"] as? Bool
 
             return FoodSearchResult(
                 id: id,
@@ -2187,6 +2191,7 @@ class FirebaseManager: ObservableObject {
                 sugar: sugar,
                 sodium: sodium,
                 servingDescription: servingSize,
+                isPerUnit: isPerUnit,
                 ingredients: ingredients,
                 confidence: nil,
                 isVerified: true, // AI-enhanced foods are verified
@@ -2242,6 +2247,7 @@ class FirebaseManager: ObservableObject {
             let processingScore = data["processingScore"] as? Int
             let processingGrade = data["processingGrade"] as? String
             let processingLabel = data["processingLabel"] as? String
+            let isPerUnit = data["per_unit_nutrition"] as? Bool
 
             return FoodSearchResult(
                 id: id,
@@ -2255,6 +2261,7 @@ class FirebaseManager: ObservableObject {
                 sugar: sugar,
                 sodium: sodium,
                 servingDescription: servingDescription,
+                isPerUnit: isPerUnit,
                 ingredients: ingredients,
                 confidence: nil,
                 isVerified: true, // AI-found foods are verified
@@ -2323,6 +2330,8 @@ class FirebaseManager: ObservableObject {
                 $0.trimmingCharacters(in: .whitespaces)
             }
 
+            let isPerUnit = foodDict["per_unit_nutrition"] as? Bool
+
             return FoodSearchResult(
                 id: id,
                 name: name,
@@ -2336,6 +2345,7 @@ class FirebaseManager: ObservableObject {
                 sodium: sodium,
                 servingDescription: servingDescription,
                 servingSizeG: nil,
+                isPerUnit: isPerUnit,
                 ingredients: ingredients,
                 confidence: nil,
                 isVerified: false,

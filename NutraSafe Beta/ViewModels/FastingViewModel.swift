@@ -621,7 +621,8 @@ class FastingViewModel: ObservableObject {
             }
 
             // Record partial fast if currently in fasting window (regime mode)
-            if case .fasting(let windowStart, let windowEnd) = activePlan?.currentRegimeState {
+            // Use self.currentRegimeState to check for already-ended windows, not activePlan?.currentRegimeState
+            if case .fasting(let windowStart, let windowEnd) = self.currentRegimeState {
                 let session = FastingSession(
                     userId: userId,
                     planId: plan.id,
@@ -641,6 +642,8 @@ class FastingViewModel: ObservableObject {
                 // Mark this window as already ended so it won't be reused if regime is restarted
                 lastEndedWindowEnd = windowEnd
                 print("📝 Marked window ending at \(windowEnd) as already used")
+            } else {
+                print("ℹ️ Not in fasting window - no session to record")
             }
 
             // Clear regime tracking state
