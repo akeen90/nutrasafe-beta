@@ -89,7 +89,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         case processingLabel
         case barcode
         case micronutrientProfile
-        case isPerUnit
+        case isPerUnit = "per_unit_nutrition"
     }
     
     // Helper structs for nested nutrition format from Firebase

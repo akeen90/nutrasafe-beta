@@ -35,6 +35,22 @@ class FastingViewModel: ObservableObject {
     private var previousRegimeState: FastingPlan.RegimeState?
     private var lastRecordedFastWindowEnd: Date?
 
+    // Persisted storage for ended windows (survives app restart)
+    private static let endedWindowKey = "lastEndedFastingWindowEnd"
+
+    private var lastEndedWindowEnd: Date? {
+        get {
+            return UserDefaults.standard.object(forKey: Self.endedWindowKey) as? Date
+        }
+        set {
+            if let date = newValue {
+                UserDefaults.standard.set(date, forKey: Self.endedWindowKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: Self.endedWindowKey)
+            }
+        }
+    }
+
     // MARK: - Motivational Messages
 
     private let motivationalMessages = [
@@ -605,7 +621,7 @@ class FastingViewModel: ObservableObject {
             }
 
             // Record partial fast if currently in fasting window (regime mode)
-            if case .fasting(let windowStart, _) = currentRegimeState {
+            if case .fasting(let windowStart, let windowEnd) = activePlan?.currentRegimeState {
                 let session = FastingSession(
                     userId: userId,
                     planId: plan.id,
@@ -621,6 +637,10 @@ class FastingViewModel: ObservableObject {
 
                 let savedId = try await firebaseManager.saveFastingSession(session)
                 print("✅ Recorded partial regime fast: \(savedId)")
+
+                // Mark this window as already ended so it won't be reused if regime is restarted
+                lastEndedWindowEnd = windowEnd
+                print("📝 Marked window ending at \(windowEnd) as already used")
             }
 
             // Clear regime tracking state
@@ -653,7 +673,37 @@ class FastingViewModel: ObservableObject {
 
     /// Current regime state (inactive, fasting, or eating)
     var currentRegimeState: FastingPlan.RegimeState {
-        return activePlan?.currentRegimeState ?? .inactive
+        guard let planState = activePlan?.currentRegimeState else {
+            return .inactive
+        }
+
+        // Check if we're in a fasting window that was already ended early
+        if case .fasting(_, let windowEnd) = planState,
+           let endedWindow = lastEndedWindowEnd,
+           abs(windowEnd.timeIntervalSince(endedWindow)) < 60 {
+            // This window was already ended - find next fast
+            if let nextFast = activePlan?.nextScheduledFastingWindow() {
+                return .eating(nextFastStart: nextFast)
+            }
+            return .inactive
+        }
+
+        // Clear ended window marker if we've moved past that window
+        if let endedWindow = lastEndedWindowEnd {
+            if case .fasting(_, let windowEnd) = planState {
+                // Different window - clear the marker
+                if abs(windowEnd.timeIntervalSince(endedWindow)) >= 60 {
+                    lastEndedWindowEnd = nil
+                }
+            } else if case .eating = planState {
+                // In eating mode - clear if we've passed the ended window
+                if Date() > endedWindow {
+                    lastEndedWindowEnd = nil
+                }
+            }
+        }
+
+        return planState
     }
 
     /// Whether the regime is currently active
