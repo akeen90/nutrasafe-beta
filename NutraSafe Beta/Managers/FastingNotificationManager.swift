@@ -8,21 +8,76 @@
 import Foundation
 import UserNotifications
 
+// MARK: - Notification Settings Model
+
+struct FastingNotificationSettings: Codable {
+    var startNotificationEnabled: Bool = true
+    var endNotificationEnabled: Bool = true
+    var stageNotificationsEnabled: Bool = true
+
+    // Individual stage toggles
+    var stage4hEnabled: Bool = true   // Post-meal processing complete
+    var stage8hEnabled: Bool = true   // Fuel switching
+    var stage12hEnabled: Bool = true  // Fat mobilisation
+    var stage16hEnabled: Bool = true  // Mild ketosis
+    var stage20hEnabled: Bool = true  // Autophagy potential
+
+    static var `default`: FastingNotificationSettings {
+        FastingNotificationSettings()
+    }
+
+    // UserDefaults key
+    private static let storageKey = "fastingNotificationSettings"
+
+    static func load() -> FastingNotificationSettings {
+        guard let data = UserDefaults.standard.data(forKey: storageKey),
+              let settings = try? JSONDecoder().decode(FastingNotificationSettings.self, from: data) else {
+            return .default
+        }
+        return settings
+    }
+
+    func save() {
+        if let data = try? JSONEncoder().encode(self) {
+            UserDefaults.standard.set(data, forKey: FastingNotificationSettings.storageKey)
+        }
+    }
+}
+
+// MARK: - Notification Manager
+
 class FastingNotificationManager {
     static let shared = FastingNotificationManager()
 
     private let notificationCenter = UNUserNotificationCenter.current()
 
+    // Settings
+    var settings: FastingNotificationSettings {
+        didSet {
+            settings.save()
+        }
+    }
+
     // Notification category identifiers
     private let fastStartCategoryId = "FAST_START"
     private let fastEndCategoryId = "FAST_END"
+    private let fastStageCategoryId = "FAST_STAGE"
 
     // Action identifiers
-    private let confirmActionId = "CONFIRM_FAST"
-    private let skipActionId = "SKIP_FAST"
-    private let adjustActionId = "ADJUST_FAST"
+    private let snooze15ActionId = "SNOOZE_15"
+    private let snooze30ActionId = "SNOOZE_30"
+    private let snooze60ActionId = "SNOOZE_60"
+    private let startNowActionId = "START_NOW"
+
+    private let extend15ActionId = "EXTEND_15"
+    private let extend30ActionId = "EXTEND_30"
+    private let extend60ActionId = "EXTEND_60"
+    private let endNowActionId = "END_NOW"
+
+    private let viewProgressActionId = "VIEW_PROGRESS"
 
     private init() {
+        settings = FastingNotificationSettings.load()
         registerNotificationCategories()
     }
 
@@ -30,50 +85,145 @@ class FastingNotificationManager {
 
     /// Register notification categories with actions
     private func registerNotificationCategories() {
-        // Actions for start notification
-        let confirmStartAction = UNNotificationAction(
-            identifier: confirmActionId,
-            title: "Confirm",
-            options: [.foreground]
+        // Actions for start notification - snooze options
+        let snooze15Action = UNNotificationAction(
+            identifier: snooze15ActionId,
+            title: "Snooze 15 min",
+            options: []
         )
-        let skipTodayAction = UNNotificationAction(
-            identifier: skipActionId,
-            title: "Skip Today",
-            options: [.destructive]
+        let snooze30Action = UNNotificationAction(
+            identifier: snooze30ActionId,
+            title: "Snooze 30 min",
+            options: []
         )
-        let adjustStartAction = UNNotificationAction(
-            identifier: adjustActionId,
-            title: "Adjust Time",
+        let snooze60Action = UNNotificationAction(
+            identifier: snooze60ActionId,
+            title: "Snooze 1 hour",
+            options: []
+        )
+        let startNowAction = UNNotificationAction(
+            identifier: startNowActionId,
+            title: "Start Now",
             options: [.foreground]
         )
 
         let startCategory = UNNotificationCategory(
             identifier: fastStartCategoryId,
-            actions: [confirmStartAction, skipTodayAction, adjustStartAction],
+            actions: [startNowAction, snooze15Action, snooze30Action, snooze60Action],
             intentIdentifiers: [],
             options: []
         )
 
-        // Actions for end notification
-        let confirmEndAction = UNNotificationAction(
-            identifier: confirmActionId,
-            title: "Completed!",
-            options: [.foreground]
+        // Actions for end notification - extend options
+        let extend15Action = UNNotificationAction(
+            identifier: extend15ActionId,
+            title: "Extend 15 min",
+            options: []
         )
-        let endedEarlyAction = UNNotificationAction(
-            identifier: "ENDED_EARLY",
-            title: "Ended Early",
+        let extend30Action = UNNotificationAction(
+            identifier: extend30ActionId,
+            title: "Extend 30 min",
+            options: []
+        )
+        let extend60Action = UNNotificationAction(
+            identifier: extend60ActionId,
+            title: "Extend 1 hour",
+            options: []
+        )
+        let endNowAction = UNNotificationAction(
+            identifier: endNowActionId,
+            title: "End Fast",
             options: [.foreground]
         )
 
         let endCategory = UNNotificationCategory(
             identifier: fastEndCategoryId,
-            actions: [confirmEndAction, endedEarlyAction],
+            actions: [endNowAction, extend15Action, extend30Action, extend60Action],
             intentIdentifiers: [],
             options: []
         )
 
-        notificationCenter.setNotificationCategories([startCategory, endCategory])
+        // Actions for stage notification
+        let viewProgressAction = UNNotificationAction(
+            identifier: viewProgressActionId,
+            title: "View Progress",
+            options: [.foreground]
+        )
+
+        let stageCategory = UNNotificationCategory(
+            identifier: fastStageCategoryId,
+            actions: [viewProgressAction],
+            intentIdentifiers: [],
+            options: []
+        )
+
+        notificationCenter.setNotificationCategories([startCategory, endCategory, stageCategory])
+    }
+
+    // MARK: - Handle Notification Actions
+
+    /// Handle notification action response
+    func handleNotificationAction(identifier: String, userInfo: [AnyHashable: Any]) {
+        guard let planId = userInfo["planId"] as? String else { return }
+
+        switch identifier {
+        case snooze15ActionId:
+            scheduleSnoozeNotification(planId: planId, userInfo: userInfo, minutes: 15)
+        case snooze30ActionId:
+            scheduleSnoozeNotification(planId: planId, userInfo: userInfo, minutes: 30)
+        case snooze60ActionId:
+            scheduleSnoozeNotification(planId: planId, userInfo: userInfo, minutes: 60)
+        case extend15ActionId:
+            scheduleExtendNotification(planId: planId, userInfo: userInfo, minutes: 15)
+        case extend30ActionId:
+            scheduleExtendNotification(planId: planId, userInfo: userInfo, minutes: 30)
+        case extend60ActionId:
+            scheduleExtendNotification(planId: planId, userInfo: userInfo, minutes: 60)
+        default:
+            break
+        }
+    }
+
+    private func scheduleSnoozeNotification(planId: String, userInfo: [AnyHashable: Any], minutes: Int) {
+        let content = UNMutableNotificationContent()
+        content.title = "Time to start your fast"
+        content.body = "Snoozed reminder - your fast is ready to begin"
+        content.sound = .default
+        content.categoryIdentifier = fastStartCategoryId
+        content.userInfo = userInfo as! [String: Any]
+
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: TimeInterval(minutes * 60), repeats: false)
+        let identifier = "fast_start_snooze_\(planId)_\(Date().timeIntervalSince1970)"
+        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+
+        notificationCenter.add(request) { error in
+            if let error = error {
+                print("❌ Failed to schedule snooze notification: \(error)")
+            } else {
+                print("✅ Scheduled snooze notification for \(minutes) minutes")
+            }
+        }
+    }
+
+    private func scheduleExtendNotification(planId: String, userInfo: [AnyHashable: Any], minutes: Int) {
+        let content = UNMutableNotificationContent()
+        content.title = "Extended fast complete!"
+        content.body = "You've extended your fast by \(minutes) minutes. Great willpower!"
+        content.sound = .default
+        content.categoryIdentifier = fastEndCategoryId
+        content.userInfo = userInfo as! [String: Any]
+
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: TimeInterval(minutes * 60), repeats: false)
+        let identifier = "fast_end_extend_\(planId)_\(Date().timeIntervalSince1970)"
+        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+
+        notificationCenter.add(request) { error in
+            if let error = error {
+                print("❌ Failed to schedule extend notification: \(error)")
+            } else {
+                print("✅ Scheduled extend notification for \(minutes) minutes")
+            }
+        }
     }
 
     // MARK: - Schedule Notifications
@@ -87,12 +237,19 @@ class FastingNotificationManager {
         let scheduledDates = getNextScheduledDates(for: plan, weeksAhead: 4)
 
         for date in scheduledDates {
-            try await scheduleStartNotification(for: plan, on: date)
-            try await scheduleEndNotification(for: plan, startingOn: date)
+            if settings.startNotificationEnabled {
+                try await scheduleStartNotification(for: plan, on: date)
+            }
+            if settings.endNotificationEnabled {
+                try await scheduleEndNotification(for: plan, startingOn: date)
+            }
+            if settings.stageNotificationsEnabled {
+                try await scheduleStageNotifications(for: plan, startingOn: date)
+            }
         }
 
         #if DEBUG
-        print("📅 Scheduled \(scheduledDates.count) notification pairs for plan: \(plan.name)")
+        print("📅 Scheduled notifications for \(scheduledDates.count) days for plan: \(plan.name)")
         #endif
     }
 
@@ -131,8 +288,8 @@ class FastingNotificationManager {
         let endDate = startDate.addingTimeInterval(TimeInterval(plan.durationHours * 3600))
 
         let content = UNMutableNotificationContent()
-        content.title = "Fast complete!"
-        content.body = "You've completed your \(plan.durationDisplay) fast. How did it go?"
+        content.title = "Fast complete! 🎉"
+        content.body = "You've completed your \(plan.durationDisplay) fast. Well done!"
         content.sound = .default
         content.categoryIdentifier = fastEndCategoryId
 
@@ -157,6 +314,47 @@ class FastingNotificationManager {
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
 
         try await notificationCenter.add(request)
+    }
+
+    /// Schedule stage notifications throughout the fast
+    private func scheduleStageNotifications(for plan: FastingPlan, startingOn startDate: Date) async throws {
+        let stages: [(hours: Int, title: String, body: String, settingEnabled: Bool)] = [
+            (4, "4 hours in", "Post-meal processing complete. Your body is transitioning.", settings.stage4hEnabled),
+            (8, "8 hours in", "Fuel switching activated. Fat burning is ramping up!", settings.stage8hEnabled),
+            (12, "12 hours in", "Fat mobilisation underway. Your body is using fat stores.", settings.stage12hEnabled),
+            (16, "16 hours in", "Mild ketosis reached. Ketone production increasing.", settings.stage16hEnabled),
+            (20, "20 hours in", "Autophagy potential. Cellular cleanup may begin.", settings.stage20hEnabled)
+        ]
+
+        for stage in stages where stage.settingEnabled && stage.hours < plan.durationHours {
+            let stageDate = startDate.addingTimeInterval(TimeInterval(stage.hours * 3600))
+
+            // Only schedule if the stage time is in the future
+            guard stageDate > Date() else { continue }
+
+            let content = UNMutableNotificationContent()
+            content.title = stage.title
+            content.body = stage.body
+            content.sound = .default
+            content.categoryIdentifier = fastStageCategoryId
+
+            content.userInfo = [
+                "type": "fasting",
+                "fastingType": "stage",
+                "planId": plan.id ?? "",
+                "planName": plan.name,
+                "stageHours": stage.hours
+            ]
+
+            let calendar = Calendar.current
+            let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: stageDate)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+
+            let identifier = "fast_stage_\(plan.id ?? "")_\(stage.hours)h_\(startDate.timeIntervalSince1970)"
+            let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+
+            try await notificationCenter.add(request)
+        }
     }
 
     // MARK: - Cancel Notifications

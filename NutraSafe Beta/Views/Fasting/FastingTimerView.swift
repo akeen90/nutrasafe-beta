@@ -890,15 +890,17 @@ struct FastingSettingsView: View {
     @Binding var fastingGoal: Int
     @Binding var notificationsEnabled: Bool
     @State private var customGoal: Int
+    @State private var notificationSettings: FastingNotificationSettings
     let onSave: () -> Void
 
     init(fastingGoal: Binding<Int>, notificationsEnabled: Binding<Bool>, onSave: @escaping () -> Void) {
         self._fastingGoal = fastingGoal
         self._notificationsEnabled = notificationsEnabled
         self._customGoal = State(initialValue: fastingGoal.wrappedValue)
+        self._notificationSettings = State(initialValue: FastingNotificationManager.shared.settings)
         self.onSave = onSave
     }
-    
+
     var body: some View {
         NavigationView {
             Form {
@@ -932,9 +934,35 @@ struct FastingSettingsView: View {
                     .padding(.vertical, 8)
                 }
 
-                Section(header: Text("Notifications"), footer: Text("Receive notifications when you reach each fasting stage (4h, 8h, 12h, 16h) and when you complete your goal")) {
+                Section(header: Text("Notifications")) {
                     Toggle("Enable Notifications", isOn: $notificationsEnabled)
                         .tint(.blue)
+                }
+
+                if notificationsEnabled {
+                    Section(header: Text("Notification Types"), footer: Text("Choose which notifications you'd like to receive")) {
+                        Toggle("Fast Starting", isOn: $notificationSettings.startNotificationEnabled)
+                            .tint(.blue)
+                        Toggle("Fast Ending", isOn: $notificationSettings.endNotificationEnabled)
+                            .tint(.blue)
+                        Toggle("Stage Progress", isOn: $notificationSettings.stageNotificationsEnabled)
+                            .tint(.blue)
+                    }
+
+                    if notificationSettings.stageNotificationsEnabled {
+                        Section(header: Text("Stage Notifications"), footer: Text("Get notified as you reach each fasting milestone")) {
+                            Toggle("4h - Post-meal complete", isOn: $notificationSettings.stage4hEnabled)
+                                .tint(.orange)
+                            Toggle("8h - Fuel switching", isOn: $notificationSettings.stage8hEnabled)
+                                .tint(.orange)
+                            Toggle("12h - Fat mobilisation", isOn: $notificationSettings.stage12hEnabled)
+                                .tint(.orange)
+                            Toggle("16h - Mild ketosis", isOn: $notificationSettings.stage16hEnabled)
+                                .tint(.purple)
+                            Toggle("20h - Autophagy potential", isOn: $notificationSettings.stage20hEnabled)
+                                .tint(.purple)
+                        }
+                    }
                 }
 
                 Section(header: Text("About Intermittent Fasting")) {
@@ -964,8 +992,9 @@ struct FastingSettingsView: View {
 
     private func saveSettings() {
         fastingGoal = customGoal
+        FastingNotificationManager.shared.settings = notificationSettings
         onSave()
-        
+
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
     }
