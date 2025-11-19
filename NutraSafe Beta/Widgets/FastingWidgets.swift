@@ -105,7 +105,7 @@ struct FastingSmallStatusWidgetEntryView: View {
         VStack(spacing: 8) {
             // Header
             HStack {
-                Image(systemName: "moon.stars.fill")
+                Image(systemName: "timer")
                     .font(.caption)
                     .foregroundColor(.blue)
                 
@@ -200,7 +200,7 @@ struct FastingMediumProgressWidgetEntryView: View {
                         }
                     }
                 } else {
-                    Image(systemName: "moon.stars.fill")
+                    Image(systemName: "timer")
                         .font(.largeTitle)
                         .foregroundColor(.blue)
                         .frame(width: 60, height: 60)
@@ -308,7 +308,7 @@ struct FastingQuickActionWidgetEntryView: View {
         VStack(spacing: 16) {
             // Header
             HStack {
-                Image(systemName: "moon.stars.fill")
+                Image(systemName: "timer")
                     .font(.caption)
                     .foregroundColor(.blue)
                 
@@ -431,7 +431,7 @@ struct FastingQuickActionWidgetEntryView: View {
 struct IdleStateView: View {
     var body: some View {
         VStack(spacing: 8) {
-            Image(systemName: "moon.stars.fill")
+            Image(systemName: "timer")
                 .font(.title2)
                 .foregroundColor(.blue)
             

@@ -478,7 +478,7 @@ struct TipsSection: View {
                 description: "Drink plenty of water throughout your fast. Hydration helps reduce hunger and supports your body's natural processes."
             ),
             Tip(
-                icon: "moon.stars.fill",
+                icon: "timer",
                 title: "Start Slow",
                 description: "If you're new to fasting, begin with shorter durations (12-14 hours) and gradually increase as your body adapts."
             ),

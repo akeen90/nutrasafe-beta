@@ -2684,7 +2684,7 @@ class FirebaseManager: ObservableObject {
         print("         Fetching from path: \(path)")
 
         let snapshot = try await db.collection("users").document(userId)
-            .collection("fastingPlans").order(by: "createdAt", descending: true).getDocuments()
+            .collection("fastingPlans").order(by: "created_at", descending: true).getDocuments()
 
         print("         Raw document count: \(snapshot.documents.count)")
 

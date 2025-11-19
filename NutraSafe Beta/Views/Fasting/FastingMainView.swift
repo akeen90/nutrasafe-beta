@@ -53,6 +53,11 @@ struct FastingMainView: View {
                     EditSessionTimesView(viewModel: viewModel, session: session)
                 }
             }
+            .onAppear {
+                Task {
+                    await viewModel.refreshActivePlan()
+                }
+            }
         }
     }
 }
@@ -83,7 +88,7 @@ struct NoPlanView: View {
         VStack(spacing: 24) {
             // Welcome Card
             VStack(spacing: 16) {
-                Image(systemName: "moon.stars.fill")
+                Image(systemName: "timer")
                     .font(.system(size: 60))
                     .foregroundColor(.blue)
 
@@ -149,6 +154,7 @@ struct NoPlanView: View {
 struct PlanDashboardView: View {
     @ObservedObject var viewModel: FastingViewModel
     let plan: FastingPlan
+    @State private var showRegimeDetails = false
 
     // Use all recent sessions (since typically only one plan is active at a time)
     private var planSessions: [FastingSession] {
@@ -219,17 +225,30 @@ struct PlanDashboardView: View {
             if viewModel.isRegimeActive {
                 // Show regime state info
                 VStack(spacing: 12) {
-                    HStack {
-                        Image(systemName: "bolt.circle.fill")
-                            .foregroundColor(.green)
-                        Text("Regime Active")
-                            .font(.headline)
-                            .foregroundColor(.green)
-                        Spacer()
+                    Button {
+                        showRegimeDetails = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "bolt.circle.fill")
+                                .foregroundColor(.green)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Regime Active")
+                                    .font(.headline)
+                                    .foregroundColor(.green)
+                                Text("Tap for timer & stages")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                        }
+                        .padding()
+                        .background(Color.green.opacity(0.1))
+                        .cornerRadius(12)
                     }
-                    .padding()
-                    .background(Color.green.opacity(0.1))
-                    .cornerRadius(12)
+                    .buttonStyle(.plain)
 
                     // Show current state
                     switch viewModel.currentRegimeState {
@@ -339,14 +358,268 @@ struct PlanDashboardView: View {
                         .background(Color.gray.opacity(0.1))
                         .cornerRadius(8)
                 } else {
-                    VStack(spacing: 8) {
-                        ForEach(planSessions.prefix(5)) { session in
+                    List {
+                        ForEach(Array(planSessions.prefix(5))) { session in
                             SessionHistoryRow(session: session)
+                                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                                .listRowBackground(Color.clear)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button(role: .destructive) {
+                                        Task { @MainActor in
+                                            await viewModel.deleteSession(session)
+                                        }
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
                         }
+                    }
+                    .listStyle(.plain)
+                    .frame(minHeight: CGFloat(min(planSessions.count, 5)) * 70)
+                }
+            }
+        }
+        .sheet(isPresented: $showRegimeDetails) {
+            RegimeDetailView(viewModel: viewModel, plan: plan)
+        }
+    }
+}
+
+// MARK: - Regime Detail View
+struct RegimeDetailView: View {
+    @ObservedObject var viewModel: FastingViewModel
+    let plan: FastingPlan
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Timer Ring (simplified for regime view)
+                    RegimeTimerCard(viewModel: viewModel)
+
+                    // Phase Timeline
+                    RegimePhaseTimeline(viewModel: viewModel)
+
+                    // Current state info
+                    RegimeStateInfo(viewModel: viewModel)
+                }
+                .padding()
+            }
+            .navigationTitle("Fasting Timer")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") {
+                        dismiss()
                     }
                 }
             }
         }
+    }
+}
+
+// MARK: - Regime Timer Card
+struct RegimeTimerCard: View {
+    @ObservedObject var viewModel: FastingViewModel
+
+    var body: some View {
+        VStack(spacing: 16) {
+            // Current state indicator
+            switch viewModel.currentRegimeState {
+            case .fasting(_, let ends):
+                VStack(spacing: 12) {
+                    Text("Currently Fasting")
+                        .font(.headline)
+                        .foregroundColor(.blue)
+
+                    Text(viewModel.timeUntilFastEnds)
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundColor(.blue)
+
+                    Text("until eating window")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    Text("Ends at \(ends.formatted(date: .omitted, time: .shortened))")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+            case .eating(let nextFastStart):
+                VStack(spacing: 12) {
+                    Text("Eating Window")
+                        .font(.headline)
+                        .foregroundColor(.green)
+
+                    Text(viewModel.timeUntilNextFast)
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundColor(.green)
+
+                    Text("until next fast")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    Text("Fast starts at \(nextFastStart.formatted(date: .omitted, time: .shortened))")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+            case .inactive:
+                Text("Regime not active")
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity)
+        .background(Color.blue.opacity(0.05))
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.blue.opacity(0.2), lineWidth: 1)
+        )
+    }
+}
+
+// MARK: - Regime Phase Timeline
+struct RegimePhaseTimeline: View {
+    @ObservedObject var viewModel: FastingViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Image(systemName: "timeline.selection")
+                    .foregroundColor(.purple)
+                Text("Fasting Stages")
+                    .font(.headline)
+            }
+
+            VStack(spacing: 8) {
+                ForEach(FastingPhase.allCases, id: \.self) { phase in
+                    RegimePhaseRow(phase: phase, viewModel: viewModel)
+                }
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.purple.opacity(0.05))
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.purple.opacity(0.2), lineWidth: 1)
+        )
+    }
+}
+
+// MARK: - Regime Phase Row
+struct RegimePhaseRow: View {
+    let phase: FastingPhase
+    @ObservedObject var viewModel: FastingViewModel
+
+    private var isCurrentPhase: Bool {
+        guard case .fasting = viewModel.currentRegimeState else { return false }
+        // Calculate current fasting hours from regime state
+        let hoursInFast = viewModel.hoursIntoCurrentFast
+        return phase.timeRange.contains(Int(hoursInFast)) ||
+               (hoursInFast >= Double(phase.timeRange.lowerBound) && hoursInFast < Double(phase.timeRange.upperBound))
+    }
+
+    private var isPastPhase: Bool {
+        guard case .fasting = viewModel.currentRegimeState else { return false }
+        let hoursInFast = viewModel.hoursIntoCurrentFast
+        return hoursInFast >= Double(phase.timeRange.upperBound)
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Status indicator
+            Circle()
+                .fill(statusColor)
+                .frame(width: 10, height: 10)
+
+            // Phase info
+            VStack(alignment: .leading, spacing: 2) {
+                Text(phase.displayName)
+                    .font(.subheadline)
+                    .fontWeight(isCurrentPhase ? .semibold : .regular)
+                    .foregroundColor(isCurrentPhase ? .primary : .secondary)
+
+                Text(phase.description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
+            }
+
+            Spacer()
+
+            // Time range
+            Text("\(phase.timeRange.lowerBound)-\(phase.timeRange.upperBound)h")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 4)
+        .opacity(isPastPhase || isCurrentPhase ? 1.0 : 0.6)
+    }
+
+    private var statusColor: Color {
+        if isPastPhase {
+            return .green
+        } else if isCurrentPhase {
+            return .blue
+        } else {
+            return .gray
+        }
+    }
+}
+
+// MARK: - Regime State Info
+struct RegimeStateInfo: View {
+    @ObservedObject var viewModel: FastingViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "info.circle.fill")
+                    .foregroundColor(.orange)
+                Text("About Your Regime")
+                    .font(.headline)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                if case .fasting(let started, _) = viewModel.currentRegimeState {
+                    Text("Fast started: \(started.formatted(date: .abbreviated, time: .shortened))")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    if let plan = viewModel.activePlan {
+                        Text("Target: \(plan.durationHours)h fast / \(24 - plan.durationHours)h eating window")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                } else if case .eating = viewModel.currentRegimeState {
+                    Text("Enjoy your eating window!")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    if let plan = viewModel.activePlan {
+                        Text("Plan: \(plan.durationHours):\(24 - plan.durationHours) (\(plan.name))")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.orange.opacity(0.05))
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.orange.opacity(0.2), lineWidth: 1)
+        )
     }
 }
 

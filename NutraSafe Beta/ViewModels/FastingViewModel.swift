@@ -204,6 +204,15 @@ class FastingViewModel: ObservableObject {
             return
         }
 
+        await fetchActivePlanFromFirebase()
+    }
+
+    /// Force refresh the active plan from Firebase - used when returning from background
+    func refreshActivePlan() async {
+        await fetchActivePlanFromFirebase()
+    }
+
+    private func fetchActivePlanFromFirebase() async {
         do {
             print("   📥 Fetching plans from Firebase...")
             let plans = try await firebaseManager.getFastingPlans()
@@ -264,6 +273,21 @@ class FastingViewModel: ObservableObject {
         do {
             let sessions = try await firebaseManager.getFastingSessions()
             self.analytics = FastingManager.calculateAnalytics(from: Array(sessions.prefix(100)))
+        } catch {
+            self.error = error
+            self.showError = true
+        }
+    }
+
+    // MARK: - Session Management
+
+    func deleteSession(_ session: FastingSession) async {
+        guard let sessionId = session.id else { return }
+
+        do {
+            try await firebaseManager.deleteFastingSession(id: sessionId)
+            // Remove from local array
+            self.recentSessions.removeAll { $0.id == sessionId }
         } catch {
             self.error = error
             self.showError = true
@@ -592,6 +616,14 @@ class FastingViewModel: ObservableObject {
         let seconds = totalSeconds % 60
 
         return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+    }
+
+    /// Hours into current fast for regime mode (used for phase tracking)
+    var hoursIntoCurrentFast: Double {
+        guard case .fasting(let started, _) = currentRegimeState else {
+            return 0
+        }
+        return Date().timeIntervalSince(started) / 3600
     }
 
     // MARK: - Session Management
