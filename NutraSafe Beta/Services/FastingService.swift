@@ -109,14 +109,14 @@ class FastingService: ObservableObject {
     // MARK: - Regime Control
 
     func startRegime(planId: String) async throws {
-        try await db.collection("fasting_plans").document(planId).updateData([
+        try await db.collection("users").document(userId).collection("fastingPlans").document(planId).updateData([
             "regime_active": true,
             "regime_started_at": Timestamp(date: Date())
         ])
     }
 
     func stopRegime(planId: String) async throws {
-        try await db.collection("fasting_plans").document(planId).updateData([
+        try await db.collection("users").document(userId).collection("fastingPlans").document(planId).updateData([
             "regime_active": false,
             "regime_started_at": FieldValue.delete()
         ])
