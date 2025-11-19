@@ -556,7 +556,9 @@ struct RegimePhaseRow: View {
             Spacer()
 
             // Time range
-            Text("\(phase.timeRange.lowerBound)-\(phase.timeRange.upperBound)h")
+            Text(phase.timeRange.upperBound == Int.max
+                 ? "\(phase.timeRange.lowerBound)h+"
+                 : "\(phase.timeRange.lowerBound)-\(phase.timeRange.upperBound)h")
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
