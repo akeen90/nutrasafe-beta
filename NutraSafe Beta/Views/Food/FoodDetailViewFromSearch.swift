@@ -1798,7 +1798,7 @@ private var nutritionFactsSection: some View {
     NutritionFactsSectionView(
         adjustedCalories: adjustedCalories,
         quantityMultiplier: quantityMultiplier,
-        servingSizeText: servingSizeText.isEmpty ? (food.servingDescription ?? "serving") : servingSizeText,
+        servingSizeText: isPerUnit ? servingUnit : "\(servingAmount)\(servingUnit)",
         per100Calories: displayFood.calories,
         adjustedProtein: adjustedProtein,
         adjustedCarbs: adjustedCarbs,
@@ -1936,8 +1936,9 @@ private var nutritionFactsSection: some View {
         // Create appropriate serving description based on food type
         let servingDesc: String
         if food.isPerUnit == true {
-            // Per-unit food: show "1 burger", "1 pizza", etc.
-            servingDesc = "1 \(servingUnit) serving"
+            // Per-unit food: show unit name (e.g., "medium drink", "burger")
+            // The quantity is stored separately in the DiaryFoodItem.quantity field
+            servingDesc = servingUnit
         } else {
             // Per-100g food: show "Xg serving"
             servingDesc = "\(String(format: "%.0f", servingSize))g serving"

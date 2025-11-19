@@ -31,6 +31,10 @@ class FastingViewModel: ObservableObject {
     private let userId: String
     private let fastingService = FastingService()
 
+    // MARK: - Regime State Tracking
+    private var previousRegimeState: FastingPlan.RegimeState?
+    private var lastRecordedFastWindowEnd: Date?
+
     // MARK: - Motivational Messages
 
     private let motivationalMessages = [
@@ -301,6 +305,65 @@ class FastingViewModel: ObservableObject {
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.objectWillChange.send()
+                self?.checkRegimeStateTransition()
+            }
+        }
+    }
+
+    /// Check for regime state transitions and record completed fasts
+    private func checkRegimeStateTransition() {
+        guard isRegimeActive else {
+            previousRegimeState = nil
+            return
+        }
+
+        let currentState = currentRegimeState
+
+        // Check if we transitioned from fasting to eating
+        if case .fasting(let windowStart, let windowEnd) = previousRegimeState,
+           case .eating = currentState {
+            // Transition detected - record the completed fast
+            recordCompletedRegimeFast(windowStart: windowStart, windowEnd: windowEnd)
+        }
+
+        previousRegimeState = currentState
+    }
+
+    /// Record a completed fasting session from regime mode
+    private func recordCompletedRegimeFast(windowStart: Date, windowEnd: Date) {
+        // Prevent duplicate recordings for the same window
+        if let lastRecorded = lastRecordedFastWindowEnd,
+           abs(lastRecorded.timeIntervalSince(windowEnd)) < 60 {
+            return
+        }
+
+        guard let plan = activePlan else { return }
+
+        let session = FastingSession(
+            userId: userId,
+            planId: plan.id,
+            startTime: windowStart,
+            endTime: windowEnd,
+            manuallyEdited: false,
+            skipped: false,
+            completionStatus: .completed,
+            targetDurationHours: plan.durationHours,
+            notes: "Auto-recorded from regime",
+            createdAt: Date()
+        )
+
+        lastRecordedFastWindowEnd = windowEnd
+
+        Task {
+            do {
+                let savedId = try await firebaseManager.saveFastingSession(session)
+                print("✅ Auto-recorded regime fast: \(savedId)")
+
+                // Refresh sessions and analytics
+                await loadRecentSessions()
+                await loadAnalytics()
+            } catch {
+                print("❌ Failed to auto-record regime fast: \(error)")
             }
         }
     }
