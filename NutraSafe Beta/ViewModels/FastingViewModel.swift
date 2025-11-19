@@ -28,6 +28,7 @@ class FastingViewModel: ObservableObject {
     let firebaseManager: FirebaseManager // Exposed for early-end modal
     private var timer: Timer?
     private let userId: String
+    private let fastingService = FastingService()
 
     // MARK: - Motivational Messages
 
@@ -160,6 +161,20 @@ class FastingViewModel: ObservableObject {
         self.firebaseManager = firebaseManager
         self.userId = userId
 
+        // Listen for session updates
+        NotificationCenter.default.addObserver(
+            forName: .fastHistoryUpdated,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            print("🔔 Received .fastHistoryUpdated notification - refreshing sessions")
+            Task {
+                await self?.loadRecentSessions()
+                await self?.loadActiveSession()
+                await self?.loadAnalytics()
+            }
+        }
+
         Task {
             await loadInitialData()
             startTimer()
@@ -168,6 +183,7 @@ class FastingViewModel: ObservableObject {
 
     deinit {
         timer?.invalidate()
+        NotificationCenter.default.removeObserver(self, name: .fastHistoryUpdated, object: nil)
     }
 
     // MARK: - Data Loading
@@ -180,6 +196,13 @@ class FastingViewModel: ObservableObject {
     }
 
     func loadActivePlan() async {
+        // If we already have an active plan set locally (e.g., just created one),
+        // skip the Firestore fetch to avoid race condition with eventual consistency
+        if self.activePlan != nil {
+            print("   ℹ️  Active plan already set locally - skipping Firestore fetch to avoid race condition")
+            return
+        }
+
         do {
             print("   📥 Fetching plans from Firebase...")
             let plans = try await firebaseManager.getFastingPlans()
@@ -263,6 +286,7 @@ class FastingViewModel: ObservableObject {
         name: String,
         durationHours: Int,
         daysOfWeek: [String],
+        preferredStartTime: Date,
         allowedDrinks: AllowedDrinksPhilosophy,
         reminderEnabled: Bool,
         reminderMinutesBeforeEnd: Int
@@ -319,10 +343,13 @@ class FastingViewModel: ObservableObject {
             name: name,
             durationHours: durationHours,
             daysOfWeek: daysOfWeek,
+            preferredStartTime: preferredStartTime,
             allowedDrinks: allowedDrinks,
             reminderEnabled: reminderEnabled,
             reminderMinutesBeforeEnd: reminderMinutesBeforeEnd,
             active: true,
+            regimeActive: false,
+            regimeStartedAt: nil,
             createdAt: Date()
         )
 
@@ -403,6 +430,9 @@ class FastingViewModel: ObservableObject {
             try await firebaseManager.deleteFastingPlan(id: planId)
             await loadAllPlans()
 
+            // Cancel notifications for this plan
+            await FastingNotificationManager.shared.cancelPlanNotifications(planId: planId)
+
             // If deleted plan was active, clear it
             if plan.id == activePlan?.id {
                 activePlan = nil
@@ -413,10 +443,140 @@ class FastingViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Regime Management
+
+    /// Activate the regime for the active plan
+    func startRegime() async {
+        print("🔵 startRegime() called")
+        print("   Active plan exists: \(activePlan != nil)")
+        print("   Active plan ID: \(activePlan?.id ?? "nil")")
+        print("   Active plan name: \(activePlan?.name ?? "N/A")")
+
+        guard let plan = activePlan, let planId = plan.id else {
+            print("❌ startRegime() guard failed - plan or planId is nil")
+            print("   activePlan: \(activePlan != nil ? "exists" : "nil")")
+            print("   activePlan.id: \(activePlan?.id ?? "nil")")
+            self.error = NSError(domain: "FastingViewModel", code: 1, userInfo: [NSLocalizedDescriptionKey: "No active plan found"])
+            self.showError = true
+            print("   showError set to: \(self.showError)")
+            return
+        }
+
+        print("✅ Starting regime for plan: '\(plan.name)' (ID: \(planId))")
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            try await fastingService.startRegime(planId: planId)
+
+            // Update local state immediately for instant UI feedback
+            var updatedPlan = plan
+            updatedPlan.regimeActive = true
+            updatedPlan.regimeStartedAt = Date()
+            self.activePlan = updatedPlan
+            print("✅ Regime started successfully and local state updated for plan: \(plan.name)")
+            print("   regimeActive is now: \(self.activePlan?.regimeActive ?? false)")
+        } catch {
+            self.error = error
+            self.showError = true
+            print("❌ Failed to start regime: \(error.localizedDescription)")
+        }
+    }
+
+    /// Deactivate the regime for the active plan
+    func stopRegime() async {
+        guard let plan = activePlan, let planId = plan.id else {
+            self.error = NSError(domain: "FastingViewModel", code: 1, userInfo: [NSLocalizedDescriptionKey: "No active plan found"])
+            self.showError = true
+            return
+        }
+
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            // End current session if active
+            if let session = activeSession {
+                let endedSession = FastingManager.endSession(session)
+                try await firebaseManager.updateFastingSession(endedSession)
+                self.activeSession = nil
+            }
+
+            // Stop the regime
+            try await fastingService.stopRegime(planId: planId)
+
+            // Update local state immediately for instant UI feedback
+            var updatedPlan = plan
+            updatedPlan.regimeActive = false
+            updatedPlan.regimeStartedAt = nil
+            self.activePlan = updatedPlan
+
+            await loadRecentSessions()
+            await loadAnalytics()
+            print("✅ Regime stopped successfully and local state updated for plan: \(plan.name)")
+            print("   regimeActive is now: \(self.activePlan?.regimeActive ?? false)")
+        } catch {
+            self.error = error
+            self.showError = true
+            print("❌ Failed to stop regime: \(error.localizedDescription)")
+        }
+    }
+
+    /// Current regime state (inactive, fasting, or eating)
+    var currentRegimeState: FastingPlan.RegimeState {
+        return activePlan?.currentRegimeState ?? .inactive
+    }
+
+    /// Whether the regime is currently active
+    var isRegimeActive: Bool {
+        return activePlan?.regimeActive ?? false
+    }
+
+    /// Time until next fasting window starts (for UI display)
+    var timeUntilNextFast: String {
+        guard case .eating(let nextFastStart) = currentRegimeState else {
+            return ""
+        }
+
+        let timeInterval = nextFastStart.timeIntervalSinceNow
+        guard timeInterval > 0 else { return "Starting soon" }
+
+        let totalSeconds = Int(timeInterval)
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+
+        if hours > 24 {
+            let days = hours / 24
+            return "\(days)d \(hours % 24)h"
+        } else if hours > 0 {
+            return "\(hours)h \(minutes)m"
+        } else {
+            return "\(minutes)m"
+        }
+    }
+
+    /// Time until current fasting window ends (for UI display)
+    var timeUntilFastEnds: String {
+        guard case .fasting(_, let windowEnd) = currentRegimeState else {
+            return ""
+        }
+
+        let timeInterval = windowEnd.timeIntervalSinceNow
+        guard timeInterval > 0 else { return "Ending now" }
+
+        let totalSeconds = Int(timeInterval)
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+
+        return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+    }
+
     // MARK: - Session Management
 
     func startFastingSession() async {
         print("🚀 startFastingSession() called")
+        print("   📌 Current userId: '\(userId)'")
         guard let plan = activePlan else {
             print("   ❌ No active plan found")
             self.error = NSError(domain: "FastingViewModel", code: 1, userInfo: [NSLocalizedDescriptionKey: "No active plan found"])
@@ -428,12 +588,14 @@ class FastingViewModel: ObservableObject {
         isLoading = true
         defer { isLoading = false }
 
-        print("   📝 Creating session...")
+        print("   📝 Creating session with userId: '\(userId)'")
         let session = FastingManager.createSession(
             userId: userId,
             plan: plan,
             targetDurationHours: plan.durationHours
         )
+
+        print("   📋 Session created - userId: '\(session.userId)', planId: '\(session.planId ?? "nil")', target: \(session.targetDurationHours)h")
 
         print("   💾 Saving session to Firebase...")
         do {
@@ -617,10 +779,13 @@ class FastingViewModel: ObservableObject {
             name: "16:8 Intermittent Fast",
             durationHours: 16,
             daysOfWeek: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+            preferredStartTime: Calendar.current.date(bySettingHour: 20, minute: 0, second: 0, of: Date()) ?? Date(),
             allowedDrinks: .practical,
             reminderEnabled: true,
             reminderMinutesBeforeEnd: 30,
             active: true,
+            regimeActive: false,
+            regimeStartedAt: nil,
             createdAt: Date()
         )
 

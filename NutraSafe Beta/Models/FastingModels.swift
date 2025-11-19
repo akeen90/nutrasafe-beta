@@ -156,26 +156,32 @@ struct FastingPlan: Identifiable, Codable {
     var name: String
     var durationHours: Int
     var daysOfWeek: [String] // ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    var preferredStartTime: Date // Time when fasts should start (e.g., 8:00 PM)
     var allowedDrinks: AllowedDrinksPhilosophy
     var reminderEnabled: Bool
     var reminderMinutesBeforeEnd: Int
     var active: Bool
+    var regimeActive: Bool // Whether the regime is currently running
+    var regimeStartedAt: Date? // When the regime was activated
     var createdAt: Date
 
     var isActive: Bool {
         return active
     }
-    
+
     enum CodingKeys: String, CodingKey {
         case id
         case userId = "user_id"
         case name
         case durationHours = "duration_hours"
         case daysOfWeek = "days_of_week"
+        case preferredStartTime = "preferred_start_time"
         case allowedDrinks = "allowed_drinks"
         case reminderEnabled = "reminder_enabled"
         case reminderMinutesBeforeEnd = "reminder_minutes_before_end"
         case active
+        case regimeActive = "regime_active"
+        case regimeStartedAt = "regime_started_at"
         case createdAt = "created_at"
     }
     
@@ -196,17 +202,104 @@ struct FastingPlan: Identifiable, Codable {
     var nextScheduledDate: Date? {
         let calendar = Calendar.current
         let today = Date()
-        
+
         for dayOffset in 0...7 {
             guard let date = calendar.date(byAdding: .day, value: dayOffset, to: today) else { continue }
             let weekday = calendar.component(.weekday, from: date)
             let weekdaySymbols = calendar.shortWeekdaySymbols
             let dayName = weekdaySymbols[weekday - 1]
-            
+
             if daysOfWeek.contains(dayName) {
                 return date
             }
         }
+        return nil
+    }
+
+    var startTimeDisplay: String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter.string(from: preferredStartTime)
+    }
+
+    var endTimeDisplay: String {
+        let endTime = preferredStartTime.addingTimeInterval(TimeInterval(durationHours * 3600))
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter.string(from: endTime)
+    }
+
+    // MARK: - Regime State Calculation
+
+    enum RegimeState {
+        case inactive
+        case fasting(windowStart: Date, windowEnd: Date)
+        case eating(nextFastStart: Date)
+    }
+
+    var currentRegimeState: RegimeState {
+        guard regimeActive else { return .inactive }
+
+        let calendar = Calendar.current
+        let now = Date()
+
+        // Get current weekday
+        let currentWeekday = calendar.component(.weekday, from: now)
+        let weekdaySymbols = calendar.shortWeekdaySymbols
+        let currentDayName = weekdaySymbols[currentWeekday - 1]
+
+        // Check if today is a scheduled fasting day
+        if daysOfWeek.contains(currentDayName) {
+            // Calculate today's fasting window
+            let startHour = calendar.component(.hour, from: preferredStartTime)
+            let startMinute = calendar.component(.minute, from: preferredStartTime)
+
+            if let todayWindowStart = calendar.date(bySettingHour: startHour, minute: startMinute, second: 0, of: now),
+               let todayWindowEnd = calendar.date(byAdding: .hour, value: durationHours, to: todayWindowStart) {
+
+                // Check if we're currently in the fasting window
+                if now >= todayWindowStart && now < todayWindowEnd {
+                    return .fasting(windowStart: todayWindowStart, windowEnd: todayWindowEnd)
+                } else if now < todayWindowStart {
+                    // Before today's window - in eating phase
+                    return .eating(nextFastStart: todayWindowStart)
+                }
+            }
+        }
+
+        // Not in a fasting window - find the next scheduled fast
+        if let nextFastDate = nextScheduledFastingWindow() {
+            return .eating(nextFastStart: nextFastDate)
+        }
+
+        return .inactive
+    }
+
+    func nextScheduledFastingWindow() -> Date? {
+        let calendar = Calendar.current
+        let now = Date()
+
+        // Check next 14 days to find the next scheduled fast
+        for dayOffset in 0...14 {
+            guard let checkDate = calendar.date(byAdding: .day, value: dayOffset, to: now) else { continue }
+
+            let weekday = calendar.component(.weekday, from: checkDate)
+            let weekdaySymbols = calendar.shortWeekdaySymbols
+            let dayName = weekdaySymbols[weekday - 1]
+
+            if daysOfWeek.contains(dayName) {
+                let startHour = calendar.component(.hour, from: preferredStartTime)
+                let startMinute = calendar.component(.minute, from: preferredStartTime)
+
+                if let windowStart = calendar.date(bySettingHour: startHour, minute: startMinute, second: 0, of: checkDate) {
+                    // Only return if it's in the future
+                    if windowStart > now {
+                        return windowStart
+                    }
+                }
+            }
+        }
+
         return nil
     }
 }

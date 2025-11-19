@@ -218,24 +218,107 @@ struct PlanDashboardView: View {
                 FastingStatCard(title: "Avg Duration", value: String(format: "%.1fh", averageDuration), icon: "clock.fill")
             }
 
-            // Start Fasting Button
-            Button {
-                Task {
-                    await viewModel.startFastingSession()
+            // Regime Control Button
+            if viewModel.isRegimeActive {
+                // Show regime state info
+                VStack(spacing: 12) {
+                    HStack {
+                        Image(systemName: "bolt.circle.fill")
+                            .foregroundColor(.green)
+                        Text("Regime Active")
+                            .font(.headline)
+                            .foregroundColor(.green)
+                        Spacer()
+                    }
+                    .padding()
+                    .background(Color.green.opacity(0.1))
+                    .cornerRadius(12)
+
+                    // Show current state
+                    switch viewModel.currentRegimeState {
+                    case .fasting(let started, let ends):
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Currently Fasting")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Text("Ends: \(ends.formatted(date: .omitted, time: .shortened))")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Text(viewModel.timeUntilFastEnds)
+                                .font(.title3)
+                                .fontWeight(.bold)
+                                .monospacedDigit()
+                        }
+                        .padding()
+                        .background(Color.blue.opacity(0.1))
+                        .cornerRadius(8)
+
+                    case .eating(let nextFastStart):
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Eating Window")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Text("Next fast: \(nextFastStart.formatted(date: .omitted, time: .shortened))")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Text(viewModel.timeUntilNextFast)
+                                .font(.title3)
+                                .fontWeight(.bold)
+                                .monospacedDigit()
+                        }
+                        .padding()
+                        .background(Color.green.opacity(0.1))
+                        .cornerRadius(8)
+
+                    case .inactive:
+                        EmptyView()
+                    }
+
+                    // Stop Regime Button
+                    Button {
+                        Task {
+                            await viewModel.stopRegime()
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "stop.circle.fill")
+                            Text("Stop Regime")
+                                .fontWeight(.semibold)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.red)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                    }
+                    .buttonStyle(.plain)
                 }
-            } label: {
-                HStack {
-                    Image(systemName: "play.fill")
-                    Text("Start New Fast")
-                        .fontWeight(.semibold)
+            } else {
+                // Start Regime Button
+                Button {
+                    Task {
+                        await viewModel.startRegime()
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "bolt.circle.fill")
+                        Text("Start Regime")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
                 }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.blue)
-                .foregroundColor(.white)
-                .cornerRadius(12)
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
 
             // Session History
             VStack(alignment: .leading, spacing: 12) {

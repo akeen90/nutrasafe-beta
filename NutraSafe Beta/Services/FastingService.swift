@@ -20,27 +20,31 @@ class FastingService: ObservableObject {
         name: String,
         durationHours: Int,
         daysOfWeek: [String],
+        preferredStartTime: Date,
         allowedDrinks: AllowedDrinksPhilosophy,
         reminderEnabled: Bool,
         reminderMinutesBeforeEnd: Int
     ) async throws -> FastingPlan {
-        
+
         // Deactivate all existing plans for this user
         try await deactivateAllPlans()
-        
+
         let plan = FastingPlan(
             userId: userId,
             name: name,
             durationHours: durationHours,
             daysOfWeek: daysOfWeek,
+            preferredStartTime: preferredStartTime,
             allowedDrinks: allowedDrinks,
             reminderEnabled: reminderEnabled,
             reminderMinutesBeforeEnd: reminderMinutesBeforeEnd,
             active: true,
+            regimeActive: false,
+            regimeStartedAt: nil,
             createdAt: Date()
         )
         
-        let docRef = try await db.collection("fasting_plans").addDocument(from: plan)
+        let docRef = try db.collection("fasting_plans").addDocument(from: plan)
         var newPlan = plan
         newPlan.id = docRef.documentID
         
@@ -74,7 +78,7 @@ class FastingService: ObservableObject {
             try await deactivateAllPlans(excluding: planId)
         }
         
-        try await db.collection("fasting_plans").document(planId).setData(from: plan)
+        try db.collection("fasting_plans").document(planId).setData(from: plan)
     }
     
     func deletePlan(_ plan: FastingPlan) async throws {
@@ -90,18 +94,34 @@ class FastingService: ObservableObject {
     
     private func deactivateAllPlans(excluding planId: String? = nil) async throws {
         let query = db.collection("fasting_plans").whereField("user_id", isEqualTo: userId)
-        
+
         let snapshot = try await query.getDocuments()
-        
+
         for document in snapshot.documents {
             if let excludeId = planId, document.documentID == excludeId {
                 continue
             }
-            
+
             try await document.reference.updateData(["active": false])
         }
     }
-    
+
+    // MARK: - Regime Control
+
+    func startRegime(planId: String) async throws {
+        try await db.collection("users").document(userId).collection("fastingPlans").document(planId).updateData([
+            "regime_active": true,
+            "regime_started_at": Timestamp(date: Date())
+        ])
+    }
+
+    func stopRegime(planId: String) async throws {
+        try await db.collection("users").document(userId).collection("fastingPlans").document(planId).updateData([
+            "regime_active": false,
+            "regime_started_at": FieldValue.delete()
+        ])
+    }
+
     // MARK: - Fasting Sessions
     
     func startFastingSession(plan: FastingPlan?) async throws -> FastingSession {
@@ -123,7 +143,7 @@ class FastingService: ObservableObject {
             createdAt: Date()
         )
         
-        let docRef = try await db.collection("fasting_sessions").addDocument(from: session)
+        let docRef = try db.collection("fasting_sessions").addDocument(from: session)
         var newSession = session
         newSession.id = docRef.documentID
         
@@ -137,13 +157,13 @@ class FastingService: ObservableObject {
     
     func endFastingSession(_ session: FastingSession, completionStatus: FastingCompletionStatus) async throws {
         guard let sessionId = session.id else { throw FastingError.invalidSessionId }
-        
+
         var updatedSession = session
         updatedSession.endTime = Date()
         updatedSession.completionStatus = completionStatus
-        
-        try await db.collection("fasting_sessions").document(sessionId).setData(from: updatedSession)
-        
+
+        try db.collection("fasting_sessions").document(sessionId).setData(from: updatedSession)
+
         // Cancel all pending notifications for this session
         try await cancelNotifications(for: sessionId)
     }
@@ -156,12 +176,12 @@ class FastingService: ObservableObject {
         updatedSession.completionStatus = .skipped
         updatedSession.endTime = Date()
         
-        try await db.collection("fasting_sessions").document(sessionId).setData(from: updatedSession)
-        
+        try db.collection("fasting_sessions").document(sessionId).setData(from: updatedSession)
+
         // Cancel all pending notifications for this session
         try await cancelNotifications(for: sessionId)
     }
-    
+
     func editSessionTimes(_ session: FastingSession, startTime: Date, endTime: Date?) async throws {
         guard let sessionId = session.id else { throw FastingError.invalidSessionId }
         
@@ -191,9 +211,9 @@ class FastingService: ObservableObject {
             updatedSession.completionStatus = .active
         }
         
-        try await db.collection("fasting_sessions").document(sessionId).setData(from: updatedSession)
+        try db.collection("fasting_sessions").document(sessionId).setData(from: updatedSession)
     }
-    
+
     func getActiveSession() async throws -> FastingSession? {
         let snapshot = try await db.collection("fasting_sessions")
             .whereField("user_id", isEqualTo: userId)
@@ -306,7 +326,7 @@ class FastingService: ObservableObject {
         let notifications = createNotificationSchedule(for: session, plan: plan)
         
         for notification in notifications {
-            try await db.collection("fasting_notifications").addDocument(from: notification)
+            try db.collection("fasting_notifications").addDocument(from: notification)
             
             // Schedule local notification
             let content = UNMutableNotificationContent()

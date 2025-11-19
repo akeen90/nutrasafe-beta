@@ -8,6 +8,7 @@ struct FastingPlanCreationView: View {
     @State private var selectedDuration = FastingPlanDuration.sixteenHours
     @State private var customDurationHours = 16
     @State private var selectedDays: Set<String> = []
+    @State private var preferredStartTime = Calendar.current.date(bySettingHour: 20, minute: 0, second: 0, of: Date()) ?? Date() // Default to 8:00 PM
     @State private var selectedDrinksPhilosophy = AllowedDrinksPhilosophy.practical
     @State private var reminderEnabled = true
     @State private var reminderMinutes = 30
@@ -55,7 +56,15 @@ struct FastingPlanCreationView: View {
                         ))
                     }
                 }
-                
+
+                Section {
+                    DatePicker("Start Time", selection: $preferredStartTime, displayedComponents: .hourAndMinute)
+                } header: {
+                    Text("Scheduled Start Time")
+                } footer: {
+                    Text("Your fast will automatically start at this time on selected days")
+                }
+
                 Section(header: Text("Allowed Drinks Philosophy")) {
                     Picker("Philosophy", selection: $selectedDrinksPhilosophy) {
                         ForEach(AllowedDrinksPhilosophy.allCases, id: \.self) { philosophy in
@@ -147,6 +156,7 @@ struct FastingPlanCreationView: View {
                 name: finalName,
                 durationHours: durationHours,
                 daysOfWeek: sortedDays,
+                preferredStartTime: preferredStartTime,
                 allowedDrinks: selectedDrinksPhilosophy,
                 reminderEnabled: reminderEnabled,
                 reminderMinutesBeforeEnd: reminderMinutes

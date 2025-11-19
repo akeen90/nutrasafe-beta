@@ -55,10 +55,14 @@ service cloud.firestore {
 
     // Fasting plans - users can only access their own plans
     match /fasting_plans/{planId} {
-      allow read, write: if request.auth != null &&
-                          request.resource.data.user_id == request.auth.uid;
-      allow read: if request.auth != null &&
-                    resource.data.user_id == request.auth.uid;
+      // Allow create if the user_id matches the authenticated user
+      allow create: if request.auth != null &&
+                     request.resource.data.user_id == request.auth.uid;
+      // Allow read, update, delete if the user owns the existing document
+      // For legacy documents without user_id (where it's null), allow any authenticated user
+      allow read, update, delete: if request.auth != null &&
+                                    (resource.data.user_id == null ||
+                                     resource.data.user_id == request.auth.uid);
     }
 
     // Fasting sessions - users can only access their own sessions

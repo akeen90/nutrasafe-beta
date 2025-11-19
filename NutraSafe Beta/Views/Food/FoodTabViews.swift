@@ -1,6 +1,7 @@
 import SwiftUI
 import Foundation
 import FirebaseFirestore
+import Combine
 
 @ViewBuilder
 func navigationContainer<Content: View>(@ViewBuilder content: () -> Content) -> some View {
@@ -20,7 +21,7 @@ struct FoodTabView: View {
     @Binding var showingSettings: Bool
     @State private var selectedFoodSubTab: FoodSubTab = .reactions
     @EnvironmentObject var firebaseManager: FirebaseManager
-    @State private var fastingViewModel: FastingViewModel?
+    @StateObject private var fastingViewModelWrapper = FastingViewModelWrapper()
 
     enum FoodSubTab: String, CaseIterable {
         case reactions = "Reactions"
@@ -86,7 +87,7 @@ struct FoodTabView: View {
                     case .reactions:
                         FoodReactionsView()
                     case .fasting:
-                        if let viewModel = fastingViewModel {
+                        if let viewModel = fastingViewModelWrapper.viewModel {
                             FastingMainView(viewModel: viewModel)
                         } else {
                             ProgressView()
@@ -99,8 +100,8 @@ struct FoodTabView: View {
             .navigationBarHidden(true)
         }
         .onAppear {
-            if fastingViewModel == nil, let userId = firebaseManager.currentUser?.uid {
-                fastingViewModel = FastingViewModel(firebaseManager: firebaseManager, userId: userId)
+            if fastingViewModelWrapper.viewModel == nil, let userId = firebaseManager.currentUser?.uid {
+                fastingViewModelWrapper.viewModel = FastingViewModel(firebaseManager: firebaseManager, userId: userId)
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToFasting)) { _ in
@@ -3117,6 +3118,29 @@ struct MultipleFoodReactionsPDFExportSheet: View {
                     self.isGenerating = false
                 }
             }
+        }
+    }
+}
+
+// MARK: - FastingViewModel Wrapper
+// ObservableObject wrapper to properly manage optional FastingViewModel with @StateObject
+class FastingViewModelWrapper: ObservableObject {
+    @Published var viewModel: FastingViewModel? {
+        didSet {
+            // When viewModel changes, forward its objectWillChange to our objectWillChange
+            setupForwarding()
+        }
+    }
+
+    private var cancellable: AnyCancellable?
+
+    init() {
+        setupForwarding()
+    }
+
+    private func setupForwarding() {
+        cancellable = viewModel?.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
         }
     }
 }

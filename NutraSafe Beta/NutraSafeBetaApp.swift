@@ -4,9 +4,10 @@ import UserNotifications
 import WidgetKit
 import ActivityKit
 import StoreKit
-#if DEBUG && canImport(StoreKitTest)
-import StoreKitTest
-#endif
+// TEMPORARILY DISABLED: StoreKitTest framework linking issue in simulator builds
+// #if DEBUG && canImport(StoreKitTest)
+// import StoreKitTest
+// #endif
 
 // Explicit app delegate for proper Firebase initialization and to satisfy swizzler expectations
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
@@ -68,31 +69,46 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 
         // Check if this is a fasting notification
         if let type = userInfo["type"] as? String, type == "fasting" {
-            // Validate session ID before acting on notification
-            let activeFastSessionId = UserDefaults.standard.string(forKey: "activeFastSessionId") ?? ""
-            let notificationSessionId = userInfo["sessionId"] as? String ?? ""
+            let fastingType = userInfo["fastingType"] as? String ?? ""
 
-            if activeFastSessionId.isEmpty || notificationSessionId != activeFastSessionId {
+            // Handle scheduled fasting notifications (end)
+            if fastingType == "end" {
                 #if DEBUG
-                print("🚫 Ignoring tap on stale fasting notification")
+                print("📱 User tapped fasting END notification - navigating to completion screen")
                 #endif
-                #if DEBUG
-                print("   - Active session: \(activeFastSessionId)")
-                #endif
-                #if DEBUG
-                print("   - Notification session: \(notificationSessionId)")
-                #endif
-                completionHandler()
-                return
-            }
 
-            #if DEBUG
-            print("📱 User tapped valid fasting notification - navigating to Fasting tab")
-            #endif
+                // Navigate to Fasting tab to show completion
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: .navigateToFasting, object: nil)
+                }
+            } else {
+                // Legacy notification handling (for existing manual sessions)
+                // Validate session ID before acting on notification
+                let activeFastSessionId = UserDefaults.standard.string(forKey: "activeFastSessionId") ?? ""
+                let notificationSessionId = userInfo["sessionId"] as? String ?? ""
 
-            // Post notification to trigger navigation to Fasting
-            DispatchQueue.main.async {
-                NotificationCenter.default.post(name: .navigateToFasting, object: nil)
+                if activeFastSessionId.isEmpty || notificationSessionId != activeFastSessionId {
+                    #if DEBUG
+                    print("🚫 Ignoring tap on stale fasting notification")
+                    #endif
+                    #if DEBUG
+                    print("   - Active session: \(activeFastSessionId)")
+                    #endif
+                    #if DEBUG
+                    print("   - Notification session: \(notificationSessionId)")
+                    #endif
+                    completionHandler()
+                    return
+                }
+
+                #if DEBUG
+                print("📱 User tapped valid fasting notification - navigating to Fasting tab")
+                #endif
+
+                // Post notification to trigger navigation to Fasting
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: .navigateToFasting, object: nil)
+                }
             }
         }
 
@@ -128,13 +144,15 @@ struct NutraSafeBetaApp: App {
     
     init() {
         // Initialize StoreKitTest session for reliable local testing in debug builds
+        // TEMPORARILY DISABLED: StoreKitTest framework linking issue in simulator builds
+        /*
         #if DEBUG && canImport(StoreKitTest)
         if #available(iOS 15.0, *) {
             if let storeKitURL = Bundle.main.url(forResource: "NutraSafe", withExtension: "storekit") {
                 do {
-                    let session = try SKTestSession(configurationFileURL: storeKitURL)
+                    let session = try SKTestSession(contentsOf: storeKitURL)
                     session.resetToDefaultState()
-                    SKTestSession.default = session
+                    session.clearTransactions()
                     #if DEBUG
                     print("StoreKitTest: Initialized session with NutraSafe.storekit at \(storeKitURL)")
                     #endif
@@ -150,6 +168,7 @@ struct NutraSafeBetaApp: App {
             }
         }
         #endif
+        */
     }
 
     // Add theme binding at the scene level so changes apply instantly across sheets and overlays

@@ -2563,10 +2563,10 @@ class FirebaseManager: ObservableObject {
     @available(*, deprecated, message: "Use saveFastingSession instead")
     func saveFastRecord(_ record: [String: Any]) async throws -> String {
         // Convert old FastRecord format to new FastingSession
-        guard let id = record["id"] as? String,
+        guard let _ = record["id"] as? String,
               let startTime = record["startTime"] as? Date,
               let endTime = record["endTime"] as? Date,
-              let durationHours = record["durationHours"] as? Double,
+              let _ = record["durationHours"] as? Double,
               let goalHours = record["goalHours"] as? Double else {
             throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid FastRecord format"])
         }
@@ -2668,7 +2668,7 @@ class FirebaseManager: ObservableObject {
         let path = "users/\(userId)/fastingPlans/\(docRef.documentID)"
         print("         Saving to path: \(path)")
 
-        try await docRef.setData(from: plan, merge: true)
+        try docRef.setData(from: plan, merge: true)
         print("         ✅ Successfully saved to Firebase")
         return docRef.documentID
     }
@@ -2713,7 +2713,7 @@ class FirebaseManager: ObservableObject {
         }
         let docRef = db.collection("users").document(userId)
             .collection("fastingPlans").document(planId)
-        try await docRef.setData(from: plan, merge: true)
+        try docRef.setData(from: plan, merge: true)
     }
 
     func deleteFastingPlan(id: String) async throws {
@@ -2743,7 +2743,7 @@ class FirebaseManager: ObservableObject {
         print("   📍 Firestore path: users/\(userId)/fastingSessions/\(docRef.documentID)")
         print("   💾 Writing to Firestore...")
 
-        try await docRef.setData(from: session, merge: true)
+        try docRef.setData(from: session, merge: true)
 
         print("   ✅ Firestore write successful!")
 
@@ -2792,7 +2792,7 @@ class FirebaseManager: ObservableObject {
         }
         let docRef = db.collection("users").document(userId)
             .collection("fastingSessions").document(sessionId)
-        try await docRef.setData(from: session, merge: true)
+        try docRef.setData(from: session, merge: true)
         await MainActor.run {
             NotificationCenter.default.post(name: .fastHistoryUpdated, object: nil)
         }
