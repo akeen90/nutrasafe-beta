@@ -8,6 +8,7 @@
 import Foundation
 import SwiftUI
 import Combine
+import UserNotifications
 
 @MainActor
 class FastingViewModel: ObservableObject {
@@ -476,6 +477,20 @@ class FastingViewModel: ObservableObject {
             self.activePlan = updatedPlan
             print("✅ Regime started successfully and local state updated for plan: \(plan.name)")
             print("   regimeActive is now: \(self.activePlan?.regimeActive ?? false)")
+
+            // Request notification permissions and schedule notifications
+            do {
+                let center = UNUserNotificationCenter.current()
+                let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
+                if granted {
+                    try await FastingNotificationManager.shared.schedulePlanNotifications(for: updatedPlan)
+                    print("📅 Notifications scheduled for plan: \(plan.name)")
+                } else {
+                    print("⚠️ Notification permissions not granted")
+                }
+            } catch {
+                print("⚠️ Failed to schedule notifications: \(error.localizedDescription)")
+            }
         } catch {
             self.error = error
             self.showError = true
@@ -511,6 +526,10 @@ class FastingViewModel: ObservableObject {
             updatedPlan.regimeStartedAt = nil
             self.activePlan = updatedPlan
 
+            // Cancel notifications for this plan
+            await FastingNotificationManager.shared.cancelPlanNotifications(planId: planId)
+            print("🗑️ Notifications cancelled for plan: \(plan.name)")
+
             await loadRecentSessions()
             await loadAnalytics()
             print("✅ Regime stopped successfully and local state updated for plan: \(plan.name)")
@@ -544,14 +563,17 @@ class FastingViewModel: ObservableObject {
         let totalSeconds = Int(timeInterval)
         let hours = totalSeconds / 3600
         let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
 
         if hours > 24 {
             let days = hours / 24
             return "\(days)d \(hours % 24)h"
         } else if hours > 0 {
-            return "\(hours)h \(minutes)m"
+            return "\(hours)h \(minutes)m \(seconds)s"
+        } else if minutes > 0 {
+            return "\(minutes)m \(seconds)s"
         } else {
-            return "\(minutes)m"
+            return "\(seconds)s"
         }
     }
 
