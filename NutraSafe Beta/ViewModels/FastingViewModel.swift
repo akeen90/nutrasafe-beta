@@ -597,12 +597,35 @@ class FastingViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            // End current session if active
+            // End current session if active (manual mode)
             if let session = activeSession {
                 let endedSession = FastingManager.endSession(session)
                 try await firebaseManager.updateFastingSession(endedSession)
                 self.activeSession = nil
             }
+
+            // Record partial fast if currently in fasting window (regime mode)
+            if case .fasting(let windowStart, _) = currentRegimeState {
+                let session = FastingSession(
+                    userId: userId,
+                    planId: plan.id,
+                    startTime: windowStart,
+                    endTime: Date(),
+                    manuallyEdited: false,
+                    skipped: false,
+                    completionStatus: .earlyEnd,
+                    targetDurationHours: plan.durationHours,
+                    notes: "Regime stopped early",
+                    createdAt: Date()
+                )
+
+                let savedId = try await firebaseManager.saveFastingSession(session)
+                print("✅ Recorded partial regime fast: \(savedId)")
+            }
+
+            // Clear regime tracking state
+            previousRegimeState = nil
+            lastRecordedFastWindowEnd = nil
 
             // Stop the regime
             try await fastingService.stopRegime(planId: planId)
