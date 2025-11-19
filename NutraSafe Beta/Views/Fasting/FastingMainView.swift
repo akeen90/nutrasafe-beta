@@ -15,13 +15,10 @@ struct FastingMainView: View {
                     } else {
                         ActiveSessionView(viewModel: viewModel)
                     }
-                    
-                    if let analytics = viewModel.analytics {
-                        QuickStatsView(analytics: analytics)
-                    }
-                    
-                    if let recentSessions = viewModel.recentSessions.first {
-                        LastSessionCard(session: recentSessions)
+
+                    // Last Session card (only show when no active session)
+                    if viewModel.activeSession == nil, let lastSession = viewModel.recentSessions.first {
+                        LastSessionCard(session: lastSession)
                     }
 
                     // Bottom spacer for tab bar
@@ -153,9 +150,9 @@ struct PlanDashboardView: View {
     @ObservedObject var viewModel: FastingViewModel
     let plan: FastingPlan
 
-    // Filter sessions for this plan
+    // Use all recent sessions (since typically only one plan is active at a time)
     private var planSessions: [FastingSession] {
-        viewModel.recentSessions.filter { $0.planId == plan.id }
+        viewModel.recentSessions
     }
 
     // Plan statistics
