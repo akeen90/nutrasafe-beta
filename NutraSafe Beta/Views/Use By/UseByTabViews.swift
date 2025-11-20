@@ -707,56 +707,70 @@ struct UseByExpiryView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if useByItems.isEmpty {
-                // Modern premium empty state with animations
+                // Clean empty state matching design
                 ZStack {
-                    // Animated gradient background
-                    ModernGradientBackground()
+                    // Subtle gradient background
+                    LinearGradient(
+                        colors: [
+                            Color(.systemBackground),
+                            Color.pink.opacity(0.03),
+                            Color.purple.opacity(0.03)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    .ignoresSafeArea()
 
                     VStack(spacing: 0) {
                         Spacer()
 
-                        VStack(spacing: 32) {
-                            // Animated 3D-style fridge icon
+                        VStack(spacing: 24) {
+                            // 3D-style fridge icon
                             AnimatedFridgeIcon()
-                                .scaleEffect(1.0)
-                                .padding(.bottom, 8)
+                                .frame(width: 200, height: 200)
 
-                            VStack(spacing: 16) {
-                                // Gradient title
-                                Text("No Items Yet")
-                                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                                    .foregroundStyle(
-                                        LinearGradient(
-                                            colors: [.primary, .primary.opacity(0.7)],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
+                            VStack(spacing: 12) {
+                                // Title
+                                Text("No items yet")
+                                    .font(.system(size: 28, weight: .bold))
+                                    .foregroundColor(.primary)
 
-                                Text("Start tracking your food to reduce waste\nand save money")
-                                    .font(.system(size: 17, weight: .medium, design: .rounded))
+                                // Description
+                                Text("Never forget your food again. Add items to keep track of use-by dates.")
+                                    .font(.system(size: 16))
                                     .foregroundColor(.secondary)
                                     .multilineTextAlignment(.center)
                                     .lineSpacing(4)
                                     .padding(.horizontal, 40)
-
-                                Text("Every item saved is money in your pocket")
-                                    .font(.system(size: 14, design: .rounded))
-                                    .foregroundColor(.secondary.opacity(0.8))
-                                    .italic()
                             }
                         }
 
                         Spacer()
 
-                        // Modern glassmorphic button and tip
-                        VStack(spacing: 16) {
-                            ModernAddButton(action: {
-                                showingAddSheet = true
-                            })
+                        // Add button with gradient
+                        Button(action: {
+                            showingAddSheet = true
+                        }) {
+                            Text("Add Your First Item")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 18)
+                                .background(
+                                    LinearGradient(
+                                        colors: [
+                                            Color(red: 1.0, green: 0.7, blue: 0.5),  // Peach/orange
+                                            Color(red: 1.0, green: 0.6, blue: 0.7),  // Pink
+                                            Color(red: 0.7, green: 0.6, blue: 1.0)   // Purple
+                                        ],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .cornerRadius(28)
                         }
-                        .padding(.horizontal, 24)
-                        .padding(.bottom, 40)
+                        .padding(.horizontal, 32)
+                        .padding(.bottom, 60)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
