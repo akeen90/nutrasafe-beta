@@ -5001,80 +5001,86 @@ struct ModernGradientBackground: View {
 struct AnimatedFridgeIcon: View {
     var body: some View {
         ZStack {
-            // Subtle shadow behind fridge
-            RoundedRectangle(cornerRadius: 20)
+            // Bottom shadow
+            RoundedRectangle(cornerRadius: 18)
                 .fill(
-                    Color.black.opacity(0.08)
+                    Color.black.opacity(0.12)
                 )
-                .frame(width: 165, height: 205)
-                .offset(x: 8, y: 8)
-                .blur(radius: 8)
+                .frame(width: 125, height: 200)
+                .offset(x: 6, y: 10)
+                .blur(radius: 12)
 
-            // Main fridge body
+            // Main fridge body with 3D effect
             ZStack {
-                // Back/shadow side (3D effect)
-                RoundedRectangle(cornerRadius: 18)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.65, green: 0.82, blue: 0.95),
-                                Color(red: 0.55, green: 0.75, blue: 0.90)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
+                // Left side panel (3D depth)
+                Path { path in
+                    path.move(to: CGPoint(x: 0, y: 15))
+                    path.addLine(to: CGPoint(x: 0, y: 185))
+                    path.addLine(to: CGPoint(x: 15, y: 195))
+                    path.addLine(to: CGPoint(x: 15, y: 5))
+                    path.closeSubpath()
+                }
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.55, green: 0.75, blue: 0.88),
+                            Color(red: 0.50, green: 0.70, blue: 0.85)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
                     )
-                    .frame(width: 145, height: 185)
-                    .offset(x: -8, y: 0)
+                )
+                .offset(x: -65, y: 0)
 
                 // Main fridge front
                 VStack(spacing: 1) {
                     // Top freezer door
                     ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 16)
+                        RoundedRectangle(cornerRadius: 14)
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        Color(red: 0.75, green: 0.88, blue: 0.98),
-                                        Color(red: 0.70, green: 0.85, blue: 0.96)
+                                        Color(red: 0.78, green: 0.90, blue: 0.98),
+                                        Color(red: 0.72, green: 0.86, blue: 0.96)
                                     ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
                             )
-                            .frame(width: 145, height: 80)
+                            .frame(width: 110, height: 75)
 
                         // Top door handle
                         RoundedRectangle(cornerRadius: 2)
-                            .fill(Color(red: 0.60, green: 0.78, blue: 0.92))
-                            .frame(width: 4, height: 32)
-                            .offset(x: 16)
+                            .fill(Color(red: 0.58, green: 0.76, blue: 0.90))
+                            .frame(width: 3, height: 28)
+                            .offset(x: 12)
                     }
 
                     // Bottom fridge door
                     ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 16)
+                        RoundedRectangle(cornerRadius: 14)
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        Color(red: 0.75, green: 0.88, blue: 0.98),
-                                        Color(red: 0.70, green: 0.85, blue: 0.96)
+                                        Color(red: 0.78, green: 0.90, blue: 0.98),
+                                        Color(red: 0.72, green: 0.86, blue: 0.96)
                                     ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
                             )
-                            .frame(width: 145, height: 104)
+                            .frame(width: 110, height: 120)
 
                         // Bottom door handle
                         RoundedRectangle(cornerRadius: 2)
-                            .fill(Color(red: 0.60, green: 0.78, blue: 0.92))
-                            .frame(width: 4, height: 40)
-                            .offset(x: 16)
+                            .fill(Color(red: 0.58, green: 0.76, blue: 0.90))
+                            .frame(width: 3, height: 36)
+                            .offset(x: 12)
                     }
                 }
+                .offset(x: -5, y: 0)
             }
-            .shadow(color: Color.blue.opacity(0.15), radius: 15, x: 0, y: 8)
+            .shadow(color: Color.blue.opacity(0.2), radius: 20, x: 4, y: 10)
         }
     }
 }
