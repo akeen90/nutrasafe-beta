@@ -35,63 +35,34 @@ struct DiaryDailySummaryCard: View {
     
     // MARK: - Body
     var body: some View {
-        VStack(spacing: 20) {
-            // 2 Rings in horizontal layout
-            HStack(spacing: 24) {
+        VStack(spacing: 16) {
+            // Calorie ring and micro macros
+            HStack(spacing: 20) {
                 calorieRingView
-                stepsRingView
+
+                Divider()
+                    .frame(height: 80)
+
+                microMacrosView
+            }
+            .padding(.vertical, 4)
+
+            // Separator line
+            Divider()
+                .padding(.horizontal, -AppSpacing.medium)
+
+            // Steps section (smaller)
+            VStack(spacing: 8) {
+                Text("Steps")
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                stepsProgressView
             }
 
-            // Labels row
-            Text("Cals consumed")
-                .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundColor(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 4)
-
-            // Macro summary (no progress bars)
-            VStack(spacing: 12) {
-                ForEach(macroGoals, id: \.macroType) { macroGoal in
-                    HStack(alignment: .center) {
-                        HStack(spacing: 6) {
-                            Circle()
-                                .fill(macroGoal.macroType.color)
-                                .frame(width: 8, height: 8)
-
-                            Text(macroGoal.macroType.displayName)
-                                .font(.system(size: 15, weight: .semibold, design: .rounded))
-                                .foregroundColor(.primary)
-                        }
-
-                        Spacer()
-
-                        VStack(alignment: .trailing, spacing: 1) {
-                            HStack(spacing: 3) {
-                                Text("\(Int(calculateMacroTotal(for: macroGoal.macroType).rounded()))")
-                                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                                    .foregroundColor(macroGoal.macroType.color)
-
-                                Text("/ \(Int(macroGoal.calculateGramGoal(from: calorieGoal)))")
-                                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                                    .foregroundColor(.secondary)
-
-                                Text(macroGoal.macroType.unit)
-                                    .font(.system(size: 11, weight: .medium, design: .rounded))
-                                    .foregroundColor(.secondary.opacity(0.9))
-                            }
-
-                            let remaining = max(0, macroGoal.calculateGramGoal(from: calorieGoal) - calculateMacroTotal(for: macroGoal.macroType))
-                            if remaining > 0 {
-                                Text("\(Int(remaining.rounded())) left")
-                                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                                    .foregroundColor(.secondary.opacity(0.7))
-                            }
-                        }
-                    }
-                }
-            }
         }
-        .padding(AppSpacing.xLarge)
+        .padding(AppSpacing.medium)
         .background(cardBackground)
         .cardShadow()
         .onAppear { handleOnAppear() }
@@ -114,29 +85,35 @@ struct DiaryDailySummaryCard: View {
     // MARK: - View Components (3 Rings)
 
     private var calorieRingView: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             ZStack {
                 // Background circle
                 Circle()
-                    .stroke(Color(.systemGray5), lineWidth: 10)
-                    .frame(width: 80, height: 80)
+                    .stroke(Color(.systemGray5), lineWidth: 14)
+                    .frame(width: 130, height: 130)
 
                 // Progress circle (teal)
                 Circle()
                     .trim(from: 0, to: min(1.0, Double(totalCalories) / calorieGoal))
                     .stroke(
                         Color(.systemTeal),
-                        style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                        style: StrokeStyle(lineWidth: 14, lineCap: .round)
                     )
-                    .frame(width: 80, height: 80)
+                    .frame(width: 130, height: 130)
                     .rotationEffect(.degrees(-90))
                     .animation(.spring(response: 1.0, dampingFraction: 0.7), value: totalCalories)
 
                 // Center text
-                VStack(spacing: 2) {
-                    Text("\(totalCalories)")
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
+                VStack(spacing: 1) {
+                    HStack(alignment: .firstTextBaseline, spacing: 2) {
+                        Text("\(totalCalories)")
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .foregroundColor(.primary)
+
+                        Text("/ \(Int(calorieGoal))")
+                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                            .foregroundColor(.secondary)
+                    }
 
                     Text("Cals")
                         .font(.system(size: 11, weight: .medium, design: .rounded))
@@ -146,36 +123,92 @@ struct DiaryDailySummaryCard: View {
         }
     }
 
-    private var stepsRingView: some View {
-        VStack(spacing: 8) {
-            ZStack {
-                // Background circle
-                Circle()
-                    .stroke(Color(.systemGray5), lineWidth: 10)
-                    .frame(width: 80, height: 80)
+    private var microMacrosView: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(macroGoals, id: \.macroType) { macroGoal in
+                HStack(spacing: 3) {
+                    Circle()
+                        .fill(macroGoal.macroType.color)
+                        .frame(width: 6, height: 6)
 
-                // Progress circle (green)
-                Circle()
-                    .trim(from: 0, to: min(1.0, healthKitManager.stepCount / stepGoal))
-                    .stroke(
-                        Color(.systemGreen),
-                        style: StrokeStyle(lineWidth: 10, lineCap: .round)
-                    )
-                    .frame(width: 80, height: 80)
-                    .rotationEffect(.degrees(-90))
-                    .animation(.spring(response: 1.0, dampingFraction: 0.7), value: healthKitManager.stepCount)
-
-                // Center text
-                VStack(spacing: 2) {
-                    Text(formatStepCount(healthKitManager.stepCount))
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                    Text(macroGoal.macroType.displayName)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
                         .foregroundColor(.primary)
+                        .lineLimit(1)
 
-                    Text("steps")
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                    Spacer()
+
+                    Text("\(Int(calculateMacroTotal(for: macroGoal.macroType).rounded()))")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundColor(macroGoal.macroType.color)
+
+                    Text("/\(Int(macroGoal.calculateGramGoal(from: calorieGoal)))")
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
                         .foregroundColor(.secondary)
+
+                    Text("g")
+                        .font(.system(size: 9, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary.opacity(0.8))
                 }
             }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var stepsProgressView: some View {
+        HStack(spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text(formatStepCount(healthKitManager.stepCount))
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+
+                Text("/ \(formatStepCount(stepGoal))")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            // Small progress bar
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color(.systemGray5))
+                        .frame(height: 4)
+
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color(.systemGreen))
+                        .frame(
+                            width: max(2, geometry.size.width * min(1.0, healthKitManager.stepCount / stepGoal)),
+                            height: 4
+                        )
+                        .animation(.spring(response: 0.5, dampingFraction: 0.7), value: healthKitManager.stepCount)
+                }
+            }
+            .frame(height: 4)
+        }
+    }
+
+    private var stepsTextView: some View {
+        VStack(spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 1) {
+                Text(formatStepCount(healthKitManager.stepCount))
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+
+                Text("/ \(formatStepCount(stepGoal))")
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .frame(minWidth: 100)
+
+            Text("steps")
+                .font(.system(size: 11, weight: .medium, design: .rounded))
+                .foregroundColor(.secondary)
         }
     }
 
