@@ -4999,97 +4999,82 @@ struct ModernGradientBackground: View {
 }
 
 struct AnimatedFridgeIcon: View {
-    @State private var isAnimating = false
-    @State private var particlesVisible = false
-
     var body: some View {
         ZStack {
-            // Background gradient glow
-            Circle()
+            // Subtle shadow behind fridge
+            RoundedRectangle(cornerRadius: 20)
                 .fill(
-                    RadialGradient(
-                        colors: [
-                            Color.blue.opacity(0.2),
-                            Color.purple.opacity(0.1),
-                            Color.clear
-                        ],
-                        center: .center,
-                        startRadius: 50,
-                        endRadius: 120
-                    )
+                    Color.black.opacity(0.08)
                 )
-                .frame(width: 240, height: 240)
-                .blur(radius: 20)
-                .scaleEffect(isAnimating ? 1.1 : 1.0)
+                .frame(width: 165, height: 205)
+                .offset(x: 8, y: 8)
+                .blur(radius: 8)
 
-            // Main icon container with gradient backdrop
+            // Main fridge body
             ZStack {
-                // Gradient circle backdrop
-                Circle()
+                // Back/shadow side (3D effect)
+                RoundedRectangle(cornerRadius: 18)
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.blue.opacity(0.15),
-                                Color.purple.opacity(0.12)
+                                Color(red: 0.65, green: 0.82, blue: 0.95),
+                                Color(red: 0.55, green: 0.75, blue: 0.90)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 140, height: 140)
+                    .frame(width: 145, height: 185)
+                    .offset(x: -8, y: 0)
 
-                // Inner glassmorphic circle
-                Circle()
-                    .fill(.ultraThinMaterial)
-                    .frame(width: 130, height: 130)
-
-                // Fridge icon with 3D effect
-                ZStack {
-                    // Shadow layer
-                    Image(systemName: "refrigerator.fill")
-                        .font(.system(size: 64, weight: .light))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [Color.black.opacity(0.1), Color.clear],
-                                startPoint: .top,
-                                endPoint: .bottom
+                // Main fridge front
+                VStack(spacing: 1) {
+                    // Top freezer door
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color(red: 0.75, green: 0.88, blue: 0.98),
+                                        Color(red: 0.70, green: 0.85, blue: 0.96)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
-                        )
-                        .offset(y: 2)
+                            .frame(width: 145, height: 80)
 
-                    // Main icon with gradient
-                    Image(systemName: "refrigerator.fill")
-                        .font(.system(size: 64, weight: .light))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [Color.blue, Color.purple.opacity(0.8)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
+                        // Top door handle
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color(red: 0.60, green: 0.78, blue: 0.92))
+                            .frame(width: 4, height: 32)
+                            .offset(x: 16)
+                    }
+
+                    // Bottom fridge door
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color(red: 0.75, green: 0.88, blue: 0.98),
+                                        Color(red: 0.70, green: 0.85, blue: 0.96)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
-                        )
-                        .symbolRenderingMode(.hierarchical)
+                            .frame(width: 145, height: 104)
+
+                        // Bottom door handle
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color(red: 0.60, green: 0.78, blue: 0.92))
+                            .frame(width: 4, height: 40)
+                            .offset(x: 16)
+                    }
                 }
             }
-            .shadow(color: Color.blue.opacity(0.2), radius: 20, x: 0, y: 10)
-
-            // Floating sparkle particles
-            if particlesVisible {
-                ForEach(0..<6, id: \.self) { index in
-                    FloatingParticle(index: index)
-                }
-            }
-        }
-        .onAppear {
-            withAnimation(
-                Animation.easeInOut(duration: 2.5)
-                    .repeatForever(autoreverses: true)
-            ) {
-                isAnimating = true
-            }
-
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.3)) {
-                particlesVisible = true
-            }
+            .shadow(color: Color.blue.opacity(0.15), radius: 15, x: 0, y: 8)
         }
     }
 }
