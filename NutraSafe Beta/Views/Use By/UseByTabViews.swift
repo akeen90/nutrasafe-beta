@@ -1780,166 +1780,51 @@ struct FilterPill: View {
 // MARK: - UseBy Empty State Component
 
 struct UseByEmptyStateView: View {
-    @State private var animateIcons = false
-    @State private var currentTip = 0
-    @State private var showingDemo = false
-
-    private let tips = [
-        "Store herbs with stems in water like flowers to keep them fresh longer",
-        "Keep bananas away from other fruits to prevent premature ripening",
-        "Store potatoes in a cool, dark place but never in the refrigerator",
-        "Wrap lettuce and leafy greens in paper towels to absorb excess moisture"
-    ]
+    var onAddFirstItem: (() -> Void)? = nil
 
     var body: some View {
-        VStack(spacing: 32) {
-            // Hero Animation
-            VStack(spacing: 16) {
-                ZStack {
-                    // Background glow
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [.green.opacity(0.3), .blue.opacity(0.2)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 100, height: 100)
-                        .scaleEffect(animateIcons ? 1.2 : 1.0)
-                        .opacity(animateIcons ? 0.7 : 0.4)
+        VStack(spacing: 24) {
+            AnimatedFridgeIcon()
+                .frame(width: 160, height: 160)
+                .accessibilityHidden(true)
 
-                    // Main icon
-                    Image(systemName: "leaf.circle.fill")
-                        .font(.system(size: 48, weight: .light))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [.green, .blue],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .scaleEffect(animateIcons ? 1.1 : 1.0)
-                        .rotationEffect(.degrees(animateIcons ? 5 : -5))
-                }
-
-                VStack(spacing: 8) {
-                    Text("Start Tracking Freshness")
-                        .font(.title2)
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.center)
-
-                    Text("Add your first item to begin reducing food waste and saving money")
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .lineSpacing(2)
-                }
-            }
-
-            // Rotating Tips
-            VStack(spacing: 16) {
-                HStack {
-                    Image(systemName: "lightbulb.fill")
-                        .foregroundColor(.orange)
-                        .font(.system(size: 16))
-
-                    Text("Smart Tip")
-                        .font(.callout.weight(.semibold))
-                        .foregroundColor(.primary)
-
-                    Spacer()
-                }
-
-                Text(tips[currentTip])
-                    .font(.callout)
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .transition(.asymmetric(
-                        insertion: .opacity.combined(with: .move(edge: .trailing)),
-                        removal: .opacity.combined(with: .move(edge: .leading))
-                    ))
-                    .id("tip-\(currentTip)")
-            }
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(.orange.opacity(0.1))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(.orange.opacity(0.2), lineWidth: 1)
-                    )
-            )
-
-            // Sample Items Preview
             VStack(spacing: 8) {
-                HStack {
-                    Text("Sample Items")
-                        .font(.callout.weight(.semibold))
-                        .foregroundColor(.primary)
-
-                    Spacer()
-
-                    Button("Try Demo") {
-                        showingDemo = true
-                    }
-                    .font(.caption.weight(.medium))
-                    .foregroundColor(.blue)
-                    .font(.callout.weight(.medium)).foregroundColor(.white).padding(.horizontal, 16).frame(height: 36).background(RoundedRectangle(cornerRadius: 8).fill(.blue))
-                }
-
-                VStack(spacing: 0) {
-                    SampleItemRow(name: "Greek Yogurt", daysLeft: 3, color: .orange)
-                    Divider().padding(.leading, 44)
-                    SampleItemRow(name: "Baby Spinach", daysLeft: 1, color: .red)
-                    Divider().padding(.leading, 44)
-                    SampleItemRow(name: "Chicken Breast", daysLeft: 5, color: .green)
-                }
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color(.secondarySystemBackground))
-                )
-                .opacity(0.7)
-            }
-
-            // Quick Start Actions
-            VStack(spacing: 8) {
-                Text("Get Started")
-                    .font(.callout.weight(.semibold))
+                Text("No items yet")
+                    .font(.system(size: 20, weight: .bold))
                     .foregroundColor(.primary)
 
-                HStack(spacing: 16) {
-                    QuickStartButton(
-                        icon: "barcode.viewfinder",
-                        title: "Scan",
-                        color: .blue
-                    )
-
-                    QuickStartButton(
-                        icon: "plus.circle.fill",
-                        title: "Add",
-                        color: .green
-                    )
-
-                    QuickStartButton(
-                        icon: "camera.fill",
-                        title: "Photo",
-                        color: .orange
-                    )
-                }
+                Text("Never forget your food again. Add items to keep track of use-by dates.")
+                    .font(.system(size: 16))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+                    .padding(.horizontal, 24)
             }
+
+            Button(action: { onAddFirstItem?() }) {
+                Text("Add Your First Item")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 1.0, green: 0.7, blue: 0.5),
+                                Color(red: 1.0, green: 0.6, blue: 0.7),
+                                Color(red: 0.7, green: 0.6, blue: 1.0)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(24)
+                    .accessibilityLabel("Add your first use-by item")
+            }
+            .padding(.horizontal, 16)
         }
+        .frame(maxWidth: .infinity)
         .padding(24)
-        .onAppear {
-            withAnimation(.easeInOut(duration: 2).repeatForever(autoreverses: true)) {
-                animateIcons = true
-            }
-        }
-        .onReceive(Timer.publish(every: 3, on: .main, in: .common).autoconnect()) { _ in
-            withAnimation(.easeInOut(duration: 0.5)) {
-                currentTip = (currentTip + 1) % tips.count
-            }
-        }
     }
 }
 
@@ -5001,87 +4886,139 @@ struct ModernGradientBackground: View {
 struct AnimatedFridgeIcon: View {
     var body: some View {
         ZStack {
-            // Bottom shadow
-            RoundedRectangle(cornerRadius: 18)
+            // Drop shadow
+            Ellipse()
                 .fill(
-                    Color.black.opacity(0.12)
-                )
-                .frame(width: 125, height: 200)
-                .offset(x: 6, y: 10)
-                .blur(radius: 12)
-
-            // Main fridge body with 3D effect
-            ZStack {
-                // Left side panel (3D depth)
-                Path { path in
-                    path.move(to: CGPoint(x: 0, y: 15))
-                    path.addLine(to: CGPoint(x: 0, y: 185))
-                    path.addLine(to: CGPoint(x: 15, y: 195))
-                    path.addLine(to: CGPoint(x: 15, y: 5))
-                    path.closeSubpath()
-                }
-                .fill(
-                    LinearGradient(
+                    RadialGradient(
                         colors: [
-                            Color(red: 0.55, green: 0.75, blue: 0.88),
-                            Color(red: 0.50, green: 0.70, blue: 0.85)
+                            Color.black.opacity(0.08),
+                            Color.clear
                         ],
-                        startPoint: .top,
-                        endPoint: .bottom
+                        center: .center,
+                        startRadius: 5,
+                        endRadius: 40
                     )
                 )
-                .offset(x: -65, y: 0)
+                .frame(width: 90, height: 15)
+                .offset(y: 95)
 
-                // Main fridge front
-                VStack(spacing: 1) {
-                    // Top freezer door
+            HStack(spacing: 0) {
+                // Left side panel (3D depth)
+                VStack(spacing: 0) {
+                    // Top part of left panel
+                    RoundedRectangle(cornerRadius: 0)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.60, green: 0.74, blue: 0.86),
+                                    Color(red: 0.56, green: 0.71, blue: 0.84)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .frame(width: 15, height: 75)
+                        .cornerRadius(25, corners: [.topLeft])
+
+                    // Divider area
+                    Rectangle()
+                        .fill(Color(red: 0.56, green: 0.71, blue: 0.84))
+                        .frame(width: 15, height: 2)
+
+                    // Bottom part of left panel
+                    RoundedRectangle(cornerRadius: 0)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.56, green: 0.71, blue: 0.84),
+                                    Color(red: 0.54, green: 0.69, blue: 0.82)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .frame(width: 15, height: 103)
+                        .cornerRadius(25, corners: [.bottomLeft])
+                }
+
+                // Main fridge body
+                VStack(spacing: 0) {
+                    // Top freezer compartment
                     ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 14)
+                        Rectangle()
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        Color(red: 0.78, green: 0.90, blue: 0.98),
-                                        Color(red: 0.72, green: 0.86, blue: 0.96)
+                                        Color(red: 0.76, green: 0.87, blue: 0.96),
+                                        Color(red: 0.73, green: 0.85, blue: 0.95)
                                     ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
                             )
-                            .frame(width: 110, height: 75)
+                            .frame(width: 95, height: 75)
+                            .cornerRadius(25, corners: [.topRight])
 
-                        // Top door handle
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(Color(red: 0.58, green: 0.76, blue: 0.90))
-                            .frame(width: 3, height: 28)
-                            .offset(x: 12)
+                        // Recessed handle
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color(red: 0.64, green: 0.77, blue: 0.88),
+                                        Color(red: 0.67, green: 0.79, blue: 0.90)
+                                    ],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .frame(width: 12, height: 40)
+                            .shadow(color: Color(red: 0.5, green: 0.65, blue: 0.8).opacity(0.4), radius: 2, x: 1, y: 1)
+                            .padding(.leading, 18)
                     }
 
-                    // Bottom fridge door
+                    // Divider line
+                    Rectangle()
+                        .fill(Color(red: 0.68, green: 0.81, blue: 0.92))
+                        .frame(height: 2)
+
+                    // Bottom fridge compartment
                     ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 14)
+                        Rectangle()
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        Color(red: 0.78, green: 0.90, blue: 0.98),
-                                        Color(red: 0.72, green: 0.86, blue: 0.96)
+                                        Color(red: 0.73, green: 0.85, blue: 0.95),
+                                        Color(red: 0.71, green: 0.84, blue: 0.94)
                                     ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
                             )
-                            .frame(width: 110, height: 120)
+                            .frame(width: 95, height: 103)
+                            .cornerRadius(25, corners: [.bottomRight])
 
-                        // Bottom door handle
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(Color(red: 0.58, green: 0.76, blue: 0.90))
-                            .frame(width: 3, height: 36)
-                            .offset(x: 12)
+                        // Recessed handle
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color(red: 0.64, green: 0.77, blue: 0.88),
+                                        Color(red: 0.67, green: 0.79, blue: 0.90)
+                                    ],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .frame(width: 12, height: 52)
+                            .shadow(color: Color(red: 0.5, green: 0.65, blue: 0.8).opacity(0.4), radius: 2, x: 1, y: 1)
+                            .padding(.leading, 18)
                     }
                 }
-                .offset(x: -5, y: 0)
             }
-            .shadow(color: Color.blue.opacity(0.2), radius: 20, x: 4, y: 10)
+            .clipShape(RoundedRectangle(cornerRadius: 25))
+            .shadow(color: Color.blue.opacity(0.12), radius: 12, x: 2, y: 4)
         }
+        .frame(width: 110, height: 180)
     }
 }
 
