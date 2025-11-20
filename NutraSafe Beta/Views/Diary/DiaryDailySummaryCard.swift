@@ -43,21 +43,53 @@ struct DiaryDailySummaryCard: View {
             }
 
             // Labels row
-            HStack(spacing: 12) {
-                Text("Cals consumed")
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundColor(.secondary)
+            Text("Cals consumed")
+                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .foregroundColor(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 4)
 
-                Spacer()
+            // Macro summary (no progress bars)
+            VStack(spacing: 12) {
+                ForEach(macroGoals, id: \.macroType) { macroGoal in
+                    HStack(alignment: .center) {
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(macroGoal.macroType.color)
+                                .frame(width: 8, height: 8)
 
-                Text("\(Int(totalProtein))g//\(Int(totalCarbs))g")
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundColor(.secondary)
+                            Text(macroGoal.macroType.displayName)
+                                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                .foregroundColor(.primary)
+                        }
+
+                        Spacer()
+
+                        VStack(alignment: .trailing, spacing: 1) {
+                            HStack(spacing: 3) {
+                                Text("\(Int(calculateMacroTotal(for: macroGoal.macroType).rounded()))")
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                                    .foregroundColor(macroGoal.macroType.color)
+
+                                Text("/ \(Int(macroGoal.calculateGramGoal(from: calorieGoal)))")
+                                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                                    .foregroundColor(.secondary)
+
+                                Text(macroGoal.macroType.unit)
+                                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                                    .foregroundColor(.secondary.opacity(0.9))
+                            }
+
+                            let remaining = max(0, macroGoal.calculateGramGoal(from: calorieGoal) - calculateMacroTotal(for: macroGoal.macroType))
+                            if remaining > 0 {
+                                Text("\(Int(remaining.rounded())) left")
+                                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                                    .foregroundColor(.secondary.opacity(0.7))
+                            }
+                        }
+                    }
+                }
             }
-            .padding(.horizontal, 4)
-
-            // Macro progress bars
-            macroProgressBarsView
         }
         .padding(AppSpacing.xLarge)
         .background(cardBackground)
