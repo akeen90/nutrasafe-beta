@@ -114,13 +114,26 @@ class HealthKitManager: ObservableObject {
     }
     
     func fetchExerciseCalories(for date: Date) async throws -> Double {
-        guard isAuthorized else { return 0 }
-        
+        guard isAuthorized else {
+            #if DEBUG
+            print("⚠️ HealthKit not authorized for exercise calories")
+            #endif
+            return 0
+        }
+
         // Fetch calories from all sources
         let activeEnergyCalories = try await fetchActiveEnergyBurned(for: date)
         let workoutCalories = try await fetchWorkoutCalories(for: date)
         let firebaseExerciseCalories = try await fetchFirebaseExerciseCalories(for: date)
-        
+
+        #if DEBUG
+        print("🔥 Exercise calories breakdown for \(date.formatted(.dateTime.day().month())):")
+        print("   - Active Energy: \(Int(activeEnergyCalories)) cal")
+        print("   - Workouts: \(Int(workoutCalories)) cal")
+        print("   - Firebase: \(Int(firebaseExerciseCalories)) cal")
+        print("   - Total (max): \(Int(max(activeEnergyCalories, workoutCalories, firebaseExerciseCalories))) cal")
+        #endif
+
         // Use the highest value to ensure all exercise is counted but avoid double counting
         return max(activeEnergyCalories, workoutCalories, firebaseExerciseCalories)
     }
