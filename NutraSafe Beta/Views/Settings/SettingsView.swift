@@ -434,6 +434,8 @@ struct NutritionGoalsSection: View {
     @EnvironmentObject var firebaseManager: FirebaseManager
 
     @State private var caloricGoal: Int = 2000
+    @State private var exerciseGoal: Int = 600
+    @State private var stepGoal: Int = 10000
     @State private var macroGoals: [MacroGoal] = MacroGoal.defaultMacros
 
     @State private var isLoading = true
@@ -477,6 +479,78 @@ struct NutritionGoalsSection: View {
                             }
                             .onChange(of: caloricGoal) { newValue in
                                 saveCaloricGoal(newValue)
+                            }
+
+                            Spacer()
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+
+                    Divider()
+                        .padding(.leading, 52)
+
+                    // Exercise Goal
+                    VStack(spacing: 8) {
+                        HStack {
+                            Image(systemName: "figure.run")
+                                .font(.system(size: 16))
+                                .foregroundColor(.orange)
+                                .frame(width: 24)
+
+                            Text("Exercise Goal")
+                                .font(.system(size: 16))
+                                .foregroundColor(.primary)
+
+                            Spacer()
+                        }
+
+                        HStack {
+                            Spacer()
+
+                            Stepper(value: $exerciseGoal, in: 100...2000, step: 50) {
+                                Text("\(formatNumber(exerciseGoal)) cal")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundColor(.orange)
+                            }
+                            .onChange(of: exerciseGoal) { newValue in
+                                saveExerciseGoal(newValue)
+                            }
+
+                            Spacer()
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+
+                    Divider()
+                        .padding(.leading, 52)
+
+                    // Step Goal
+                    VStack(spacing: 8) {
+                        HStack {
+                            Image(systemName: "figure.walk")
+                                .font(.system(size: 16))
+                                .foregroundColor(.green)
+                                .frame(width: 24)
+
+                            Text("Step Goal")
+                                .font(.system(size: 16))
+                                .foregroundColor(.primary)
+
+                            Spacer()
+                        }
+
+                        HStack {
+                            Spacer()
+
+                            Stepper(value: $stepGoal, in: 1000...30000, step: 500) {
+                                Text("\(formatNumber(stepGoal)) steps")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundColor(.green)
+                            }
+                            .onChange(of: stepGoal) { newValue in
+                                saveStepGoal(newValue)
                             }
 
                             Spacer()
@@ -544,10 +618,12 @@ struct NutritionGoalsSection: View {
 
             await MainActor.run {
                 caloricGoal = settings.caloricGoal ?? 2000
+                exerciseGoal = settings.exerciseGoal ?? 600
+                stepGoal = settings.stepGoal ?? 10000
                 macroGoals = loadedMacroGoals
                 isLoading = false
                 #if DEBUG
-                print("✅ Loaded \(macroGoals.count) macro goals for settings display")
+                print("✅ Loaded goals: \(caloricGoal) cal, \(exerciseGoal) exercise, \(stepGoal) steps")
                 #endif
             }
         } catch {
@@ -574,6 +650,52 @@ struct NutritionGoalsSection: View {
             } catch {
                 await MainActor.run {
                     errorMessage = "Failed to save caloric goal: \(error.localizedDescription)"
+                    showingError = true
+                }
+                // Reload on error to revert to saved value
+                await loadNutritionGoals()
+            }
+        }
+    }
+
+    private func saveExerciseGoal(_ goal: Int) {
+        Task {
+            do {
+                try await firebaseManager.saveUserSettings(height: nil, goalWeight: nil, exerciseGoal: goal)
+                #if DEBUG
+                print("✅ Exercise goal updated to \(goal)")
+                #endif
+
+                // Notify diary view to update immediately
+                await MainActor.run {
+                    NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Failed to save exercise goal: \(error.localizedDescription)"
+                    showingError = true
+                }
+                // Reload on error to revert to saved value
+                await loadNutritionGoals()
+            }
+        }
+    }
+
+    private func saveStepGoal(_ goal: Int) {
+        Task {
+            do {
+                try await firebaseManager.saveUserSettings(height: nil, goalWeight: nil, stepGoal: goal)
+                #if DEBUG
+                print("✅ Step goal updated to \(goal)")
+                #endif
+
+                // Notify diary view to update immediately
+                await MainActor.run {
+                    NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Failed to save step goal: \(error.localizedDescription)"
                     showingError = true
                 }
                 // Reload on error to revert to saved value
