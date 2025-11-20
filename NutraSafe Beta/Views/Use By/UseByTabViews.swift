@@ -750,8 +750,7 @@ struct UseByExpiryView: View {
                         // Modern glassmorphic button and tip
                         VStack(spacing: 16) {
                             ModernAddButton(action: {
-                                UserDefaults.standard.set("Use By", forKey: "preselectedDestination")
-                                selectedTab = .add
+                                showingAddSheet = true
                             })
                         }
                         .padding(.horizontal, 24)
