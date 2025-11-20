@@ -1516,7 +1516,7 @@ class FirebaseManager: ObservableObject {
 
     // MARK: - User Settings (Height, Goal Weight, Caloric Goal)
 
-    func saveUserSettings(height: Double?, goalWeight: Double?, caloricGoal: Int? = nil) async throws {
+    func saveUserSettings(height: Double?, goalWeight: Double?, caloricGoal: Int? = nil, exerciseGoal: Int? = nil, stepGoal: Int? = nil) async throws {
         ensureAuthStateLoaded()
 
         guard let userId = currentUser?.uid else {
@@ -1533,6 +1533,12 @@ class FirebaseManager: ObservableObject {
         if let caloricGoal = caloricGoal {
             data["caloricGoal"] = caloricGoal
         }
+        if let exerciseGoal = exerciseGoal {
+            data["exerciseGoal"] = exerciseGoal
+        }
+        if let stepGoal = stepGoal {
+            data["stepGoal"] = stepGoal
+        }
 
         try await db.collection("users").document(userId)
             .collection("settings").document("preferences").setData(data, merge: true)
@@ -1545,14 +1551,14 @@ class FirebaseManager: ObservableObject {
             if let goalWeight = goalWeight {
                 NotificationCenter.default.post(name: .goalWeightUpdated, object: nil, userInfo: ["goalWeight": goalWeight])
             }
-            if caloricGoal != nil {
+            if caloricGoal != nil || exerciseGoal != nil || stepGoal != nil {
                 NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
             }
             NotificationCenter.default.post(name: .userSettingsUpdated, object: nil)
         }
     }
 
-    func getUserSettings() async throws -> (height: Double?, goalWeight: Double?, caloricGoal: Int?, proteinPercent: Int?, carbsPercent: Int?, fatPercent: Int?, allergens: [Allergen]?) {
+    func getUserSettings() async throws -> (height: Double?, goalWeight: Double?, caloricGoal: Int?, proteinPercent: Int?, carbsPercent: Int?, fatPercent: Int?, allergens: [Allergen]?, exerciseGoal: Int?, stepGoal: Int?) {
         ensureAuthStateLoaded()
 
         guard let userId = currentUser?.uid else {
@@ -1563,7 +1569,7 @@ class FirebaseManager: ObservableObject {
             .collection("settings").document("preferences").getDocument()
 
         guard let data = document.data() else {
-            return (nil, nil, nil, nil, nil, nil, nil)
+            return (nil, nil, nil, nil, nil, nil, nil, nil, nil)
         }
 
         let height = data["height"] as? Double
@@ -1573,6 +1579,8 @@ class FirebaseManager: ObservableObject {
         let carbsPercent = data["carbsPercent"] as? Int
         let fatPercent = data["fatPercent"] as? Int
         let allergens = (data["allergens"] as? [String])?.compactMap { Allergen(rawValue: $0) }
+        let exerciseGoal = data["exerciseGoal"] as? Int
+        let stepGoal = data["stepGoal"] as? Int
 
         // Cache allergens for fast access
         if let allergens = allergens {
@@ -1582,7 +1590,7 @@ class FirebaseManager: ObservableObject {
             }
         }
 
-        return (height, goalWeight, caloricGoal, proteinPercent, carbsPercent, fatPercent, allergens)
+        return (height, goalWeight, caloricGoal, proteinPercent, carbsPercent, fatPercent, allergens, exerciseGoal, stepGoal)
     }
 
     // MARK: - Fast Allergen Access

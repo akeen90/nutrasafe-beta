@@ -27,6 +27,8 @@ struct DiaryDailySummaryCard: View {
 
     // MARK: - Daily Goals
     @State private var calorieGoal: Double = 1800
+    @State private var exerciseGoal: Double = 600
+    @State private var stepGoal: Double = 10000
     @State private var macroGoals: [MacroGoal] = MacroGoal.defaultMacros
 
     // MARK: - Weekly Summary Sheet
@@ -124,7 +126,7 @@ struct DiaryDailySummaryCard: View {
 
                 // Progress circle (orange)
                 Circle()
-                    .trim(from: 0, to: min(1.0, healthKitManager.exerciseCalories / 600.0))
+                    .trim(from: 0, to: min(1.0, healthKitManager.exerciseCalories / exerciseGoal))
                     .stroke(
                         Color(.systemOrange),
                         style: StrokeStyle(lineWidth: 10, lineCap: .round)
@@ -155,25 +157,39 @@ struct DiaryDailySummaryCard: View {
                     .stroke(Color(.systemGray5), lineWidth: 10)
                     .frame(width: 80, height: 80)
 
-                // Center content
-                VStack(spacing: 4) {
-                    Image(systemName: "figure.walk")
-                        .font(.system(size: 22, weight: .medium))
-                        .foregroundColor(.secondary.opacity(0.7))
+                // Progress circle (green)
+                Circle()
+                    .trim(from: 0, to: min(1.0, healthKitManager.stepCount / stepGoal))
+                    .stroke(
+                        Color(.systemGreen),
+                        style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                    )
+                    .frame(width: 80, height: 80)
+                    .rotationEffect(.degrees(-90))
+                    .animation(.spring(response: 1.0, dampingFraction: 0.7), value: healthKitManager.stepCount)
 
+                // Center text
+                VStack(spacing: 2) {
                     Text(formatStepCount(healthKitManager.stepCount))
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
                         .foregroundColor(.primary)
+
+                    Text("steps")
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
                 }
             }
         }
     }
 
     private func formatStepCount(_ steps: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: steps)) ?? "0"
+        if steps >= 10000 {
+            return String(format: "%.1fK", steps / 1000)
+        } else if steps >= 1000 {
+            return String(format: "%.1fK", steps / 1000)
+        } else {
+            return String(format: "%.0f", steps)
+        }
     }
 
     private var exerciseRingLabels: some View {
@@ -308,9 +324,13 @@ struct DiaryDailySummaryCard: View {
                 // Update calorie goal
                 calorieGoal = Double(settings.caloricGoal ?? 2000)
 
+                // Update exercise and step goals
+                exerciseGoal = Double(settings.exerciseGoal ?? 600)
+                stepGoal = Double(settings.stepGoal ?? 10000)
+
                 // Update macro goals from Firebase
                 macroGoals = loadedMacroGoals
-                print("✅ Loaded \(macroGoals.count) macro goals for diary display")
+                print("✅ Loaded nutrition goals: \(Int(calorieGoal)) cal, \(Int(exerciseGoal)) exercise, \(Int(stepGoal)) steps")
             }
         } catch {
             print("⚠️ Failed to load nutrition goals: \(error.localizedDescription)")
