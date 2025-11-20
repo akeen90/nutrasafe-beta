@@ -3,7 +3,7 @@ import SwiftUI
 struct FastingPlanCreationView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: FastingViewModel
-    
+
     @State private var planName = ""
     @State private var selectedDuration = FastingPlanDuration.sixteenHours
     @State private var customDurationHours = 16
@@ -12,9 +12,15 @@ struct FastingPlanCreationView: View {
     @State private var selectedDrinksPhilosophy = AllowedDrinksPhilosophy.practical
     @State private var reminderEnabled = true
     @State private var reminderMinutes = 30
-    
+    @State private var hasLoadedExistingPlan = false
+
     let allDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     let reminderOptions = [5, 15, 30, 60, 120]
+
+    /// Whether we're editing an existing plan
+    private var isEditing: Bool {
+        viewModel.activePlan != nil
+    }
     
     var body: some View {
         NavigationStack {
@@ -98,7 +104,7 @@ struct FastingPlanCreationView: View {
                         Button(action: createPlan) {
                             HStack {
                                 Spacer()
-                                Text("Create Plan")
+                                Text(isEditing ? "Update Plan" : "Create Plan")
                                     .fontWeight(.semibold)
                                 Spacer()
                             }
@@ -107,7 +113,7 @@ struct FastingPlanCreationView: View {
                     }
                 }
             }
-            .navigationTitle("Create Fasting Plan")
+            .navigationTitle(isEditing ? "Edit Fasting Plan" : "Create Fasting Plan")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -116,7 +122,42 @@ struct FastingPlanCreationView: View {
                     }
                 }
             }
+            .onAppear {
+                loadExistingPlan()
+            }
         }
+    }
+
+    private func loadExistingPlan() {
+        guard !hasLoadedExistingPlan, let plan = viewModel.activePlan else { return }
+        hasLoadedExistingPlan = true
+
+        // Load existing plan settings
+        planName = plan.name
+        selectedDays = Set(plan.daysOfWeek)
+        preferredStartTime = plan.preferredStartTime
+        selectedDrinksPhilosophy = plan.allowedDrinks
+        reminderEnabled = plan.reminderEnabled
+        reminderMinutes = plan.reminderMinutesBeforeEnd
+
+        // Map hours to duration enum
+        switch plan.durationHours {
+        case 12:
+            selectedDuration = .twelveHours
+        case 16:
+            selectedDuration = .sixteenHours
+        case 18:
+            selectedDuration = .eighteenHours
+        case 20:
+            selectedDuration = .twentyHours
+        case 24:
+            selectedDuration = .twentyFourHours
+        default:
+            selectedDuration = .custom
+            customDurationHours = plan.durationHours
+        }
+
+        print("📋 Loaded existing plan settings: \(plan.name)")
     }
     
     private func createPlan() {

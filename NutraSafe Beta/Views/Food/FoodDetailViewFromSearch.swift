@@ -68,22 +68,11 @@ struct FoodDetailViewFromSearch: View {
 
         // Check if this is a per-unit food first
         if food.isPerUnit == true {
-            // Per-unit food: extract unit name from serving description (e.g., "1 burger")
+            // Per-unit food: use serving description as unit name
             initialServingSize = "1"
-            if let servingDesc = food.servingDescription {
-                // Extract unit name after "1 " (e.g., "1 burger" -> "burger")
-                let components = servingDesc.components(separatedBy: " ")
-                if components.count >= 2 {
-                    initialUnit = components.dropFirst().joined(separator: " ")
-                } else {
-                    // Extract from food name as last resort (e.g., "Test Pizza 1" -> "pizza")
-                    let nameWords = food.name.lowercased().components(separatedBy: " ")
-                    if let foodType = nameWords.first(where: { ["burger", "pizza", "sandwich", "wrap", "taco", "burrito"].contains($0) }) {
-                        initialUnit = foodType
-                    } else {
-                        initialUnit = "unit"
-                    }
-                }
+            if let servingDesc = food.servingDescription, !servingDesc.isEmpty {
+                // Use the full serving description as the unit (e.g., "Large (take-out)", "Medium (drink-in)")
+                initialUnit = servingDesc
             } else {
                 // No serving description - try to extract from food name
                 let nameWords = food.name.lowercased().components(separatedBy: " ")
@@ -3097,38 +3086,51 @@ private var nutritionFactsSection: some View {
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundColor(.secondary)
                     .tracking(0.5)
-                HStack(spacing: 8) {
-                    TextField("100", text: $servingAmount)
-                        .keyboardType(.decimalPad)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
+
+                if isPerUnit {
+                    // Per-unit food: show fixed unit name (no editing)
+                    Text(servingUnit)
                         .font(.system(size: 14, weight: .medium))
-                        .frame(maxWidth: 80)
-                    Menu {
-                        ForEach(servingUnitOptions, id: \.self) { unit in
-                            Button(unit) {
-                                if let currentValue = Double(servingAmount) {
-                                    let convertedValue = convertUnit(value: currentValue, from: servingUnit, to: unit)
-                                    servingAmount = String(format: "%.1f", convertedValue)
-                                }
-                                servingUnit = unit
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(servingUnit)
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.primary)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
-                                .fixedSize(horizontal: true, vertical: false)
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 10))
-                                .foregroundColor(.secondary)
-                        }
+                        .foregroundColor(.primary)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                         .background(Color.gray.opacity(0.15))
                         .cornerRadius(8)
+                } else {
+                    // Per-100g food: show editable amount and unit picker
+                    HStack(spacing: 8) {
+                        TextField("100", text: $servingAmount)
+                            .keyboardType(.decimalPad)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .font(.system(size: 14, weight: .medium))
+                            .frame(maxWidth: 80)
+                        Menu {
+                            ForEach(servingUnitOptions, id: \.self) { unit in
+                                Button(unit) {
+                                    if let currentValue = Double(servingAmount) {
+                                        let convertedValue = convertUnit(value: currentValue, from: servingUnit, to: unit)
+                                        servingAmount = String(format: "%.1f", convertedValue)
+                                    }
+                                    servingUnit = unit
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(servingUnit)
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.primary)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
+                                    .fixedSize(horizontal: true, vertical: false)
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(Color.gray.opacity(0.15))
+                            .cornerRadius(8)
+                        }
                     }
                 }
             }

@@ -524,8 +524,9 @@ function prepareForAlgolia(data: any): any {
     sodium: data.sodium || 0,
 
     // Metadata
-    servingSize: data.servingSize || data.serving_size || "",
+    servingSize: data.servingSize || data.serving_size || data.servingDescription || data.serving_description || "",
     servingSizeG: data.servingSizeG || data.serving_size_g || 0,
+    per_unit_nutrition: data.per_unit_nutrition || false,
     category: data.category || "",
     source: data.source || "",
     verified: data.verified || false,
