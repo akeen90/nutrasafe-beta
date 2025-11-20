@@ -333,6 +333,9 @@ class FastingViewModel: ObservableObject {
             return
         }
 
+        // Clean up expired overrides
+        clearExpiredOverrides()
+
         let currentState = currentRegimeState
 
         // Check if we transitioned from fasting to eating
@@ -550,8 +553,9 @@ class FastingViewModel: ObservableObject {
     // MARK: - Regime Management
 
     /// Activate the regime for the active plan
-    func startRegime() async {
-        print("🔵 startRegime() called")
+    /// - Parameter startFromNow: If true, starts the fast from the current time instead of scheduled time
+    func startRegime(startFromNow: Bool = false) async {
+        print("🔵 startRegime(startFromNow: \(startFromNow)) called")
         print("   Active plan exists: \(activePlan != nil)")
         print("   Active plan ID: \(activePlan?.id ?? "nil")")
         print("   Active plan name: \(activePlan?.name ?? "N/A")")
@@ -578,6 +582,15 @@ class FastingViewModel: ObservableObject {
             updatedPlan.regimeActive = true
             updatedPlan.regimeStartedAt = Date()
             self.activePlan = updatedPlan
+
+            // Store custom start time if starting from now
+            if startFromNow {
+                customStartTimeOverride = Date()
+                print("📝 Custom start time override set to now: \(Date())")
+            } else {
+                customStartTimeOverride = nil
+            }
+
             print("✅ Regime started successfully and local state updated for plan: \(plan.name)")
             print("   regimeActive is now: \(self.activePlan?.regimeActive ?? false)")
 
@@ -649,6 +662,7 @@ class FastingViewModel: ObservableObject {
             // Clear regime tracking state
             previousRegimeState = nil
             lastRecordedFastWindowEnd = nil
+            customStartTimeOverride = nil
 
             // Stop the regime
             try await fastingService.stopRegime(planId: planId)
@@ -706,12 +720,98 @@ class FastingViewModel: ObservableObject {
             }
         }
 
+        // Apply custom start time override if set
+        if case .fasting(let scheduledStart, let scheduledEnd) = planState,
+           let customStart = customStartTimeOverride {
+            // Check if custom start is within this window
+            if customStart >= scheduledStart && customStart < scheduledEnd {
+                // Adjust the end time based on plan duration
+                if let plan = activePlan {
+                    let customEnd = customStart.addingTimeInterval(Double(plan.durationHours) * 3600)
+                    // Only use custom times if we're still within the custom window
+                    if Date() < customEnd {
+                        return .fasting(windowStart: customStart, windowEnd: customEnd)
+                    } else {
+                        // Custom window ended - find next fast
+                        if let nextFast = activePlan?.nextScheduledFastingWindow() {
+                            return .eating(nextFastStart: nextFast)
+                        }
+                    }
+                }
+            }
+        }
+
         return planState
+    }
+
+    /// Clear custom start time override when window changes
+    func clearExpiredOverrides() {
+        guard let customStart = customStartTimeOverride,
+              let plan = activePlan else { return }
+
+        let customEnd = customStart.addingTimeInterval(Double(plan.durationHours) * 3600)
+        if Date() >= customEnd {
+            customStartTimeOverride = nil
+            print("🧹 Cleared expired custom start time override")
+        }
     }
 
     /// Whether the regime is currently active
     var isRegimeActive: Bool {
         return activePlan?.regimeActive ?? false
+    }
+
+    /// Check if we're past today's scheduled start time on a fasting day
+    /// Returns (isPastStartTime, todaysStartTime) tuple
+    func checkIfPastTodaysStartTime() -> (isPast: Bool, startTime: Date?) {
+        guard let plan = activePlan else { return (false, nil) }
+
+        let calendar = Calendar.current
+        let now = Date()
+
+        // Get today's day name
+        let dayFormatter = DateFormatter()
+        dayFormatter.dateFormat = "EEE"
+        let todayName = dayFormatter.string(from: now)
+
+        // Check if today is a scheduled fasting day
+        guard plan.daysOfWeek.contains(todayName) else {
+            return (false, nil)
+        }
+
+        // Get today's scheduled start time
+        let startComponents = calendar.dateComponents([.hour, .minute], from: plan.preferredStartTime)
+        guard let todaysStartTime = calendar.date(bySettingHour: startComponents.hour ?? 0,
+                                                   minute: startComponents.minute ?? 0,
+                                                   second: 0,
+                                                   of: now) else {
+            return (false, nil)
+        }
+
+        // Calculate end of fasting window
+        let fastEndTime = todaysStartTime.addingTimeInterval(Double(plan.durationHours) * 3600)
+
+        // Check if we're past start time but before fast end time
+        let isPast = now > todaysStartTime && now < fastEndTime
+
+        return (isPast, todaysStartTime)
+    }
+
+    // MARK: - Custom Start Time Override
+    private static let customStartTimeKey = "customFastingStartTimeOverride"
+
+    /// Store a custom start time override for the current fasting window
+    private var customStartTimeOverride: Date? {
+        get {
+            return UserDefaults.standard.object(forKey: Self.customStartTimeKey) as? Date
+        }
+        set {
+            if let date = newValue {
+                UserDefaults.standard.set(date, forKey: Self.customStartTimeKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: Self.customStartTimeKey)
+            }
+        }
     }
 
     /// Time until next fasting window starts (for UI display)

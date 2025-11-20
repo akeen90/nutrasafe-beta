@@ -155,6 +155,9 @@ struct PlanDashboardView: View {
     @ObservedObject var viewModel: FastingViewModel
     let plan: FastingPlan
     @State private var showRegimeDetails = false
+    @State private var showStartTimeChoice = false
+    @State private var showFastSettings = false
+    @State private var scheduledStartTime: Date?
 
     // Use all recent sessions (since typically only one plan is active at a time)
     private var planSessions: [FastingSession] {
@@ -316,24 +319,51 @@ struct PlanDashboardView: View {
                     .buttonStyle(.plain)
                 }
             } else {
-                // Start Regime Button
-                Button {
-                    Task {
-                        await viewModel.startRegime()
+                // Start Regime and Fast Settings Buttons
+                VStack(spacing: 12) {
+                    // Start Regime Button
+                    Button {
+                        // Check if past today's start time
+                        let (isPast, startTime) = viewModel.checkIfPastTodaysStartTime()
+                        if isPast {
+                            scheduledStartTime = startTime
+                            showStartTimeChoice = true
+                        } else {
+                            Task {
+                                await viewModel.startRegime()
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "bolt.circle.fill")
+                            Text("Start Regime")
+                                .fontWeight(.semibold)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
                     }
-                } label: {
-                    HStack {
-                        Image(systemName: "bolt.circle.fill")
-                        Text("Start Regime")
-                            .fontWeight(.semibold)
+                    .buttonStyle(.plain)
+
+                    // Fast Settings Button
+                    Button {
+                        showFastSettings = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "gearshape.fill")
+                            Text("Fast Settings")
+                                .fontWeight(.medium)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.gray.opacity(0.2))
+                        .foregroundColor(.primary)
+                        .cornerRadius(12)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
 
             // Session History
@@ -381,6 +411,30 @@ struct PlanDashboardView: View {
         }
         .sheet(isPresented: $showRegimeDetails) {
             RegimeDetailView(viewModel: viewModel, plan: plan)
+        }
+        .sheet(isPresented: $showFastSettings) {
+            FastingPlanCreationView(viewModel: viewModel)
+        }
+        .confirmationDialog(
+            "Start Fasting",
+            isPresented: $showStartTimeChoice,
+            titleVisibility: .visible
+        ) {
+            Button("Start from now") {
+                Task {
+                    await viewModel.startRegime(startFromNow: true)
+                }
+            }
+
+            Button("Start from scheduled time (\(scheduledStartTime?.formatted(date: .omitted, time: .shortened) ?? ""))") {
+                Task {
+                    await viewModel.startRegime(startFromNow: false)
+                }
+            }
+
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("You're starting after your scheduled fast time. Would you like to start from now or from your scheduled time?")
         }
     }
 }
