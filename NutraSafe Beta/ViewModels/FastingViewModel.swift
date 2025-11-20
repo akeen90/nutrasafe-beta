@@ -599,7 +599,18 @@ class FastingViewModel: ObservableObject {
                 let center = UNUserNotificationCenter.current()
                 let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
                 if granted {
+                    // Schedule future plan notifications
                     try await FastingNotificationManager.shared.schedulePlanNotifications(for: updatedPlan)
+
+                    // If starting from now, also schedule immediate fast notifications
+                    if startFromNow {
+                        try await FastingNotificationManager.shared.scheduleImmediateFastNotifications(
+                            for: updatedPlan,
+                            startingAt: Date()
+                        )
+                        print("📅 Scheduled immediate fast notifications for plan: \(plan.name)")
+                    }
+
                     print("📅 Notifications scheduled for plan: \(plan.name)")
                 } else {
                     print("⚠️ Notification permissions not granted")

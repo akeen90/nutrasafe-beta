@@ -253,6 +253,53 @@ class FastingNotificationManager {
         #endif
     }
 
+    /// Schedule notifications for an immediate fast (when starting from now)
+    func scheduleImmediateFastNotifications(for plan: FastingPlan, startingAt startDate: Date) async throws {
+        // Schedule end notification
+        if settings.endNotificationEnabled {
+            try await scheduleEndNotification(for: plan, startingOn: startDate)
+        }
+
+        // Schedule stage notifications
+        if settings.stageNotificationsEnabled {
+            try await scheduleStageNotifications(for: plan, startingOn: startDate)
+        }
+
+        // Schedule reminder before end if enabled in plan
+        if plan.reminderEnabled && plan.reminderMinutesBeforeEnd > 0 {
+            let endDate = startDate.addingTimeInterval(TimeInterval(plan.durationHours * 3600))
+            let reminderDate = endDate.addingTimeInterval(-TimeInterval(plan.reminderMinutesBeforeEnd * 60))
+
+            if reminderDate > Date() {
+                let content = UNMutableNotificationContent()
+                content.title = "Fast Almost Complete"
+                content.body = "Your fast ends in \(plan.reminderMinutesBeforeEnd) minutes. Prepare to break gently."
+                content.sound = .default
+                content.categoryIdentifier = fastEndCategoryId
+
+                content.userInfo = [
+                    "type": "fasting",
+                    "fastingType": "reminder",
+                    "planId": plan.id ?? "",
+                    "planName": plan.name
+                ]
+
+                let calendar = Calendar.current
+                let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: reminderDate)
+                let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+
+                let identifier = "fast_reminder_\(plan.id ?? "")_\(startDate.timeIntervalSince1970)"
+                let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+
+                try await notificationCenter.add(request)
+            }
+        }
+
+        #if DEBUG
+        print("📅 Scheduled immediate fast notifications for plan: \(plan.name)")
+        #endif
+    }
+
     /// Schedule a notification for fast start
     private func scheduleStartNotification(for plan: FastingPlan, on date: Date) async throws {
         let content = UNMutableNotificationContent()
