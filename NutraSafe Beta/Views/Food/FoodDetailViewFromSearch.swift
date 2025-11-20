@@ -3081,7 +3081,7 @@ private var nutritionFactsSection: some View {
     // MARK: - Serving Controls Section
     private var servingControlsSection: some View {
         VStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(spacing: 8) {
                 Text("SERVING SIZE")
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundColor(.secondary)

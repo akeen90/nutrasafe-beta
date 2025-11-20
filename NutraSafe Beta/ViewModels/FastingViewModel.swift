@@ -721,22 +721,18 @@ class FastingViewModel: ObservableObject {
         }
 
         // Apply custom start time override if set
-        if case .fasting(let scheduledStart, let scheduledEnd) = planState,
-           let customStart = customStartTimeOverride {
-            // Check if custom start is within this window
-            if customStart >= scheduledStart && customStart < scheduledEnd {
-                // Adjust the end time based on plan duration
-                if let plan = activePlan {
-                    let customEnd = customStart.addingTimeInterval(Double(plan.durationHours) * 3600)
-                    // Only use custom times if we're still within the custom window
-                    if Date() < customEnd {
-                        return .fasting(windowStart: customStart, windowEnd: customEnd)
-                    } else {
-                        // Custom window ended - find next fast
-                        if let nextFast = activePlan?.nextScheduledFastingWindow() {
-                            return .eating(nextFastStart: nextFast)
-                        }
-                    }
+        if let customStart = customStartTimeOverride,
+           let plan = activePlan {
+            let customEnd = customStart.addingTimeInterval(Double(plan.durationHours) * 3600)
+
+            // If we're still within the custom fasting window
+            if Date() < customEnd {
+                return .fasting(windowStart: customStart, windowEnd: customEnd)
+            } else {
+                // Custom window ended - find next fast
+                customStartTimeOverride = nil
+                if let nextFast = plan.nextScheduledFastingWindow() {
+                    return .eating(nextFastStart: nextFast)
                 }
             }
         }
@@ -761,17 +757,36 @@ class FastingViewModel: ObservableObject {
         return activePlan?.regimeActive ?? false
     }
 
-    /// Check if we're past today's scheduled start time on a fasting day
-    /// Returns (isPastStartTime, todaysStartTime) tuple
+    /// Check if we're past a scheduled start time (today or yesterday's that extends into today)
+    /// Returns (isPastStartTime, startTime) tuple
     func checkIfPastTodaysStartTime() -> (isPast: Bool, startTime: Date?) {
         guard let plan = activePlan else { return (false, nil) }
 
         let calendar = Calendar.current
         let now = Date()
-
-        // Get today's day name
         let dayFormatter = DateFormatter()
         dayFormatter.dateFormat = "EEE"
+
+        let startComponents = calendar.dateComponents([.hour, .minute], from: plan.preferredStartTime)
+
+        // First, check if we're in a fasting window that started yesterday
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: now) {
+            let yesterdayName = dayFormatter.string(from: yesterday)
+            if plan.daysOfWeek.contains(yesterdayName) {
+                if let yesterdaysStartTime = calendar.date(bySettingHour: startComponents.hour ?? 0,
+                                                            minute: startComponents.minute ?? 0,
+                                                            second: 0,
+                                                            of: yesterday) {
+                    let fastEndTime = yesterdaysStartTime.addingTimeInterval(Double(plan.durationHours) * 3600)
+                    // If we're still in yesterday's fasting window
+                    if now > yesterdaysStartTime && now < fastEndTime {
+                        return (true, yesterdaysStartTime)
+                    }
+                }
+            }
+        }
+
+        // Then check today's scheduled start time
         let todayName = dayFormatter.string(from: now)
 
         // Check if today is a scheduled fasting day
@@ -780,7 +795,6 @@ class FastingViewModel: ObservableObject {
         }
 
         // Get today's scheduled start time
-        let startComponents = calendar.dateComponents([.hour, .minute], from: plan.preferredStartTime)
         guard let todaysStartTime = calendar.date(bySettingHour: startComponents.hour ?? 0,
                                                    minute: startComponents.minute ?? 0,
                                                    second: 0,
