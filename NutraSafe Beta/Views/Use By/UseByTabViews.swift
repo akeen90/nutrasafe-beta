@@ -200,7 +200,9 @@ struct UseByTabView: View {
             .background(Color.adaptiveBackground)
             .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
         .fullScreenCover(isPresented: $showingAddSheet) {
-            AddUseByItemSheet()
+            AddUseByItemSheet(onComplete: {
+                showingAddSheet = false
+            })
         }
         .sheet(isPresented: $showingScanner) {
             // Barcode scanner will be implemented
@@ -1001,7 +1003,9 @@ struct UseByExpiryView: View {
             Text("This will remove all items from your useBy inventory.")
         }
         .fullScreenCover(isPresented: $showingAddSheet) {
-            AddUseByItemSheet()
+            AddUseByItemSheet(onComplete: {
+                showingAddSheet = false
+            })
         }
     } // End of var body: some View
 
@@ -1180,7 +1184,9 @@ struct UseByExpiryAlertsCard: View {
         .background(Color(.systemGray6))
         .cornerRadius(12)
         .fullScreenCover(isPresented: $showingAddSheet) {
-            AddUseByItemSheet()
+            AddUseByItemSheet(onComplete: {
+                showingAddSheet = false
+            })
         }
     }
 }
@@ -2256,7 +2262,9 @@ struct UseByQuickAddCard: View {
                 .fill(Color(.systemGray6))
         )
         .fullScreenCover(isPresented: $showingAddSheet) {
-            AddUseByItemSheet()
+            AddUseByItemSheet(onComplete: {
+                showingAddSheet = false
+            })
         }
     }
 }
