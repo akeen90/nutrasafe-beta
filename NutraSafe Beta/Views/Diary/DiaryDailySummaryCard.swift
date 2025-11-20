@@ -34,11 +34,30 @@ struct DiaryDailySummaryCard: View {
     
     // MARK: - Body
     var body: some View {
-        VStack(spacing: 24) {
-            HStack(spacing: 20) {
-                ringStackView
-                progressBarsView
+        VStack(spacing: 20) {
+            // 3 Rings in horizontal layout
+            HStack(spacing: 24) {
+                calorieRingView
+                exerciseRingView
+                stepsRingView
             }
+
+            // Labels row
+            HStack(spacing: 12) {
+                Text("Cals consumed")
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundColor(.secondary)
+
+                Spacer()
+
+                Text("\(Int(totalProtein))g//\(Int(totalCarbs))g")
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 4)
+
+            // Macro progress bars
+            macroProgressBarsView
         }
         .padding(AppSpacing.xLarge)
         .background(cardBackground)
@@ -60,126 +79,101 @@ struct DiaryDailySummaryCard: View {
         }
     }
 
-    // MARK: - View Components
-    private var ringStackView: some View {
-        VStack(spacing: 16) {
-            calorieRingView
-            exerciseRingView
-        }
-    }
+    // MARK: - View Components (3 Rings)
 
     private var calorieRingView: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
             ZStack {
-                calorieRingBackground
-                calorieRingProgress
-                calorieRingInnerShadow
+                // Background circle
+                Circle()
+                    .stroke(Color(.systemGray5), lineWidth: 10)
+                    .frame(width: 80, height: 80)
+
+                // Progress circle (teal)
+                Circle()
+                    .trim(from: 0, to: min(1.0, Double(totalCalories) / calorieGoal))
+                    .stroke(
+                        Color(.systemTeal),
+                        style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                    )
+                    .frame(width: 80, height: 80)
+                    .rotationEffect(.degrees(-90))
+                    .animation(.spring(response: 1.0, dampingFraction: 0.7), value: totalCalories)
+
+                // Center text
+                VStack(spacing: 2) {
+                    Text("\(totalCalories)")
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+
+                    Text("Cals")
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
+                }
             }
-            calorieRingLabels
-        }
-    }
-
-    private var calorieRingBackground: some View {
-        Circle()
-            .stroke(
-                LinearGradient(
-                    gradient: Gradient(colors: [Color(.systemGray6), Color(.systemGray5)]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                lineWidth: 8
-            )
-            .frame(width: 72, height: 72)
-    }
-
-    private var calorieRingProgress: some View {
-        Circle()
-            .trim(from: 0, to: min(1.0, Double(totalCalories) / calorieGoal))
-            .stroke(
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color(.systemBlue),
-                        Color(.systemIndigo),
-                        Color(.systemPurple)
-                    ]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                style: StrokeStyle(lineWidth: 8, lineCap: .round)
-            )
-            .frame(width: 72, height: 72)
-            .rotationEffect(.degrees(-90))
-            .shadow(color: Color(.systemBlue).opacity(0.3), radius: 4, x: 0, y: 2)
-            .animation(.spring(response: 1.0, dampingFraction: 0.7), value: totalCalories)
-    }
-
-    private var calorieRingInnerShadow: some View {
-        Circle()
-            .stroke(Color(.systemBackground), lineWidth: 1)
-            .frame(width: 56, height: 56)
-            .opacity(0.9)
-    }
-
-    private var calorieRingLabels: some View {
-        VStack(spacing: 1) {
-            Text("\(totalCalories)")
-                .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundColor(.primary)
-                .animation(.easeInOut(duration: 1.0), value: totalCalories)
-
-            Text("cal")
-                .font(.system(size: 10, weight: .medium, design: .rounded))
-                .foregroundColor(.secondary)
-
-            Text("FOOD")
-                .font(.system(size: 8, weight: .semibold, design: .rounded))
-                .foregroundColor(.secondary.opacity(0.9))
-                .tracking(0.8)
         }
     }
 
     private var exerciseRingView: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 8) {
             ZStack {
-                exerciseRingBackground
-                exerciseRingProgress
+                // Background circle
+                Circle()
+                    .stroke(Color(.systemGray5), lineWidth: 10)
+                    .frame(width: 80, height: 80)
+
+                // Progress circle (orange)
+                Circle()
+                    .trim(from: 0, to: min(1.0, healthKitManager.exerciseCalories / 600.0))
+                    .stroke(
+                        Color(.systemOrange),
+                        style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                    )
+                    .frame(width: 80, height: 80)
+                    .rotationEffect(.degrees(-90))
+                    .animation(.spring(response: 1.0, dampingFraction: 0.7), value: healthKitManager.exerciseCalories)
+
+                // Center text
+                VStack(spacing: 2) {
+                    Text("\(Int(healthKitManager.exerciseCalories))")
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+
+                    Text("burned")
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
+                }
             }
-            exerciseRingLabels
         }
     }
 
-    private var exerciseRingBackground: some View {
-        Circle()
-            .stroke(
-                LinearGradient(
-                    gradient: Gradient(colors: [Color(.systemGray6), Color(.systemGray5)]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                lineWidth: 5
-            )
-            .frame(width: 44, height: 44)
+    private var stepsRingView: some View {
+        VStack(spacing: 8) {
+            ZStack {
+                // Background circle
+                Circle()
+                    .stroke(Color(.systemGray5), lineWidth: 10)
+                    .frame(width: 80, height: 80)
+
+                // Center content
+                VStack(spacing: 4) {
+                    Image(systemName: "figure.walk")
+                        .font(.system(size: 22, weight: .medium))
+                        .foregroundColor(.secondary.opacity(0.7))
+
+                    Text(formatStepCount(healthKitManager.stepCount))
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+                }
+            }
+        }
     }
 
-    private var exerciseRingProgress: some View {
-        Circle()
-            .trim(from: 0, to: min(1.0, healthKitManager.exerciseCalories / 400.0))
-            .stroke(
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color(.systemGreen),
-                        Color(.systemMint),
-                        Color(.systemTeal)
-                    ]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                style: StrokeStyle(lineWidth: 5, lineCap: .round)
-            )
-            .frame(width: 44, height: 44)
-            .rotationEffect(.degrees(-90))
-            .shadow(color: Color(.systemGreen).opacity(0.3), radius: 3, x: 0, y: 1)
-            .animation(.spring(response: 1.0, dampingFraction: 0.7), value: healthKitManager.exerciseCalories)
+    private func formatStepCount(_ steps: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.maximumFractionDigits = 0
+        return formatter.string(from: NSNumber(value: steps)) ?? "0"
     }
 
     private var exerciseRingLabels: some View {
@@ -270,8 +264,12 @@ struct DiaryDailySummaryCard: View {
             await loadNutritionGoals()
             if healthKitRingsEnabled {
                 await healthKitManager.updateExerciseCalories(for: currentDate)
+                await healthKitManager.updateStepCount(for: currentDate)
             } else {
-                await MainActor.run { healthKitManager.exerciseCalories = 0 }
+                await MainActor.run {
+                    healthKitManager.exerciseCalories = 0
+                    healthKitManager.stepCount = 0
+                }
             }
         }
     }
@@ -281,6 +279,7 @@ struct DiaryDailySummaryCard: View {
             await loadNutritionGoals()
             if healthKitRingsEnabled {
                 await healthKitManager.updateExerciseCalories(for: currentDate)
+                await healthKitManager.updateStepCount(for: currentDate)
             }
         }
     }
@@ -289,8 +288,12 @@ struct DiaryDailySummaryCard: View {
         Task {
             if enabled {
                 await healthKitManager.updateExerciseCalories(for: currentDate)
+                await healthKitManager.updateStepCount(for: currentDate)
             } else {
-                await MainActor.run { healthKitManager.exerciseCalories = 0 }
+                await MainActor.run {
+                    healthKitManager.exerciseCalories = 0
+                    healthKitManager.stepCount = 0
+                }
             }
         }
     }

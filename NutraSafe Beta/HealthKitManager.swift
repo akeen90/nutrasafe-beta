@@ -61,6 +61,7 @@ class HealthKitManager: ObservableObject {
     
     @Published var isAuthorized = false
     @Published var exerciseCalories: Double = 0
+    @Published var stepCount: Double = 0
     @Published var userWeight: Double = 70.0 // Default weight in kg
     @Published var errorMessage: String?
     @Published var showError = false
@@ -294,7 +295,76 @@ class HealthKitManager: ObservableObject {
             }
         }
     }
-    
+
+    // MARK: - Step Count Methods
+
+    func fetchTodayStepCount() async throws -> Double {
+        return try await fetchStepCount(for: Date())
+    }
+
+    func fetchStepCount(for date: Date) async throws -> Double {
+        guard isAuthorized else { return 0 }
+
+        let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount)!
+
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else {
+            return 0
+        }
+
+        let predicate = HKQuery.predicateForSamples(
+            withStart: startOfDay,
+            end: endOfDay,
+            options: .strictStartDate
+        )
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKStatisticsQuery(
+                quantityType: stepType,
+                quantitySamplePredicate: predicate,
+                options: .cumulativeSum
+            ) { _, statistics, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                let steps = statistics?.sumQuantity()?.doubleValue(for: .count()) ?? 0
+                continuation.resume(returning: steps)
+            }
+
+            healthStore.execute(query)
+        }
+    }
+
+    func updateStepCount(for date: Date = Date()) async {
+        do {
+            let steps = try await fetchStepCount(for: date)
+            await MainActor.run {
+                self.stepCount = steps
+                self.errorMessage = nil
+                self.showError = false
+            }
+        } catch {
+            #if DEBUG
+            print("Failed to fetch step count: \(error)")
+            #endif
+
+            // Don't show error for "no data" case - just use 0
+            let nsError = error as NSError
+            if nsError.domain == "com.apple.healthkit" && nsError.code == 11 {
+                // No data - this is normal, not an error
+                return
+            }
+
+            await MainActor.run {
+                self.errorMessage = "Unable to load step count from HealthKit"
+                self.showError = true
+            }
+        }
+    }
+
     func fetchWorkouts(for date: Date) async throws -> [HKWorkout] {
         guard isAuthorized else { return [] }
         
