@@ -985,8 +985,14 @@ class FirebaseManager: ObservableObject {
             return []
         }
 
+        // Configure URLSession with 3-second timeout for fast failure
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 3.0
+        config.timeoutIntervalForResource = 3.0
+        let session = URLSession(configuration: config)
+
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
+            let (data, _) = try await session.data(from: url)
 
             guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let hits = json["hits"] as? [[String: Any]] else {

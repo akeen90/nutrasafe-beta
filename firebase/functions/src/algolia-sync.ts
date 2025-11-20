@@ -3,7 +3,7 @@ import {onDocumentWritten} from "firebase-functions/v2/firestore";
 import {defineSecret} from "firebase-functions/params";
 import * as admin from "firebase-admin";
 import {algoliasearch} from "algoliasearch";
-import axios from "axios";
+// import axios from "axios"; // ⚡ Disabled: No longer used after removing OpenFoodFacts
 
 // Algolia configuration
 const ALGOLIA_APP_ID = "WK0TIF84M2";
@@ -17,105 +17,107 @@ const USER_ADDED_INDEX = "user_added";
 const AI_ENHANCED_INDEX = "ai_enhanced";
 const AI_MANUALLY_ADDED_INDEX = "ai_manually_added";
 
-// OpenFoodFacts helper functions
-function isEnglishIngredients(ingredientsText: string): boolean {
-  if (!ingredientsText || ingredientsText.trim().length === 0) return false;
-  const nonLatinPattern = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF\u0400-\u04FF\u0370-\u03FF\u0E00-\u0E7F]/;
-  if (nonLatinPattern.test(ingredientsText)) return false;
-  const nonEnglishPattern = /[áàâäãåąčćęèéêëėįìíîïłńòóôöõøùúûüųūÿýżźñçčšž]/i;
-  if (nonEnglishPattern.test(ingredientsText)) return false;
-  const englishWords = ["water", "sugar", "salt", "flour", "oil", "butter", "milk", "wheat", "ingredients"];
-  return englishWords.some((word) => new RegExp(`\\b${word}\\b`, "i").test(ingredientsText.toLowerCase()));
-}
+// ⚡ DISABLED FOR PERFORMANCE: OpenFoodFacts helper functions no longer used
+// function isEnglishIngredients(ingredientsText: string): boolean {
+//   if (!ingredientsText || ingredientsText.trim().length === 0) return false;
+//   const nonLatinPattern = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF\u0400-\u04FF\u0370-\u03FF\u0E00-\u0E7F]/;
+//   if (nonLatinPattern.test(ingredientsText)) return false;
+//   const nonEnglishPattern = /[áàâäãåąčćęèéêëėįìíîïłńòóôöõøùúûüųūÿýżźñçčšž]/i;
+//   if (nonEnglishPattern.test(ingredientsText)) return false;
+//   const englishWords = ["water", "sugar", "salt", "flour", "oil", "butter", "milk", "wheat", "ingredients"];
+//   return englishWords.some((word) => new RegExp(`\\b${word}\\b`, "i").test(ingredientsText.toLowerCase()));
+// }
+//
+// function isUKEnglishProduct(product: any): boolean {
+//   const countries = product.countries_tags || product.countries || [];
+//   const countriesString = Array.isArray(countries) ? countries.join(",").toLowerCase() : String(countries).toLowerCase();
+//   const isUKProduct = countriesString.includes("united-kingdom") || countriesString.includes("uk") ||
+//                       countriesString.includes("great-britain") || countriesString.includes("england") ||
+//                       countriesString.includes("scotland") || countriesString.includes("wales") ||
+//                       countriesString.includes("northern-ireland");
+//   const languages = product.languages_tags || product.languages || [];
+//   const languagesString = Array.isArray(languages) ? languages.join(",").toLowerCase() : String(languages).toLowerCase();
+//   const hasEnglishLanguage = languagesString.includes("en") || languagesString.includes("english");
+//   const ingredientsText = product.ingredients_text_en || product.ingredients_text || "";
+//   const hasEnglishIngredients = isEnglishIngredients(ingredientsText);
+//   return (isUKProduct || hasEnglishLanguage) && hasEnglishIngredients;
+// }
 
-function isUKEnglishProduct(product: any): boolean {
-  const countries = product.countries_tags || product.countries || [];
-  const countriesString = Array.isArray(countries) ? countries.join(",").toLowerCase() : String(countries).toLowerCase();
-  const isUKProduct = countriesString.includes("united-kingdom") || countriesString.includes("uk") ||
-                      countriesString.includes("great-britain") || countriesString.includes("england") ||
-                      countriesString.includes("scotland") || countriesString.includes("wales") ||
-                      countriesString.includes("northern-ireland");
-  const languages = product.languages_tags || product.languages || [];
-  const languagesString = Array.isArray(languages) ? languages.join(",").toLowerCase() : String(languages).toLowerCase();
-  const hasEnglishLanguage = languagesString.includes("en") || languagesString.includes("english");
-  const ingredientsText = product.ingredients_text_en || product.ingredients_text || "";
-  const hasEnglishIngredients = isEnglishIngredients(ingredientsText);
-  return (isUKProduct || hasEnglishLanguage) && hasEnglishIngredients;
-}
+// ⚡ DISABLED FOR PERFORMANCE: This function added 2-5 seconds to every search
+// async function searchOpenFoodFacts(query: string): Promise<any[]> {
+//   try {
+//     console.log(`🌍 Searching OpenFoodFacts for: "${query}"`);
+//     const response = await axios.get("https://world.openfoodfacts.org/cgi/search.pl", {
+//       params: {
+//         search_terms: query,
+//         search_simple: 1,
+//         action: "process",
+//         json: 1,
+//         page_size: 10,
+//       },
+//       timeout: 5000,
+//       headers: {
+//         "User-Agent": "NutraSafe/1.0 (https://nutrasafe.co.uk)",
+//       },
+//     });
+//     if (response.data.products && response.data.products.length > 0) {
+//       const ukProducts = response.data.products.filter((product: any) => isUKEnglishProduct(product));
+//       console.log(`✅ Found ${ukProducts.length} UK English products out of ${response.data.products.length} total`);
+//       return ukProducts;
+//     }
+//     return [];
+//   } catch (error) {
+//     console.error("❌ OpenFoodFacts API error:", error);
+//     return [];
+//   }
+// }
 
-async function searchOpenFoodFacts(query: string): Promise<any[]> {
-  try {
-    console.log(`🌍 Searching OpenFoodFacts for: "${query}"`);
-    const response = await axios.get("https://world.openfoodfacts.org/cgi/search.pl", {
-      params: {
-        search_terms: query,
-        search_simple: 1,
-        action: "process",
-        json: 1,
-        page_size: 10,
-      },
-      timeout: 5000,
-      headers: {
-        "User-Agent": "NutraSafe/1.0 (https://nutrasafe.co.uk)",
-      },
-    });
-    if (response.data.products && response.data.products.length > 0) {
-      const ukProducts = response.data.products.filter((product: any) => isUKEnglishProduct(product));
-      console.log(`✅ Found ${ukProducts.length} UK English products out of ${response.data.products.length} total`);
-      return ukProducts;
-    }
-    return [];
-  } catch (error) {
-    console.error("❌ OpenFoodFacts API error:", error);
-    return [];
-  }
-}
+// ⚡ DISABLED FOR PERFORMANCE: Helper function no longer used after removing OpenFoodFacts
+// function capitalizeWords(text: string): string {
+//   if (!text) return text;
+//   return text
+//     .split(" ")
+//     .map((word) => {
+//       if (!word) return word;
+//       return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+//     })
+//     .join(" ");
+// }
 
-// Helper function to capitalize each word for consistent formatting
-function capitalizeWords(text: string): string {
-  if (!text) return text;
-  return text
-    .split(" ")
-    .map((word) => {
-      if (!word) return word;
-      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-    })
-    .join(" ");
-}
-
-function transformOpenFoodFactsToAlgoliaFormat(offProduct: any): any {
-  const nutriments = offProduct.nutriments || {};
-  const ingredientsText = offProduct.ingredients_text_en || offProduct.ingredients_text || "";
-  const barcode = offProduct.code || offProduct._id || "";
-  const rawName = offProduct.product_name || offProduct.product_name_en || "Unknown Product";
-  const rawBrand = offProduct.brands || "";
-  return {
-    objectID: `off-${barcode}`,
-    name: capitalizeWords(rawName),
-    brandName: rawBrand ? capitalizeWords(rawBrand) : "",
-    ingredients: ingredientsText,
-    barcode: barcode,
-    calories: nutriments["energy-kcal_100g"] || nutriments["energy-kcal"] || 0,
-    protein: nutriments.proteins_100g || nutriments.proteins || 0,
-    carbs: nutriments.carbohydrates_100g || nutriments.carbohydrates || 0,
-    fat: nutriments.fat_100g || nutriments.fat || 0,
-    fiber: nutriments.fiber_100g || nutriments.fiber || 0,
-    sugar: nutriments.sugars_100g || nutriments.sugars || 0,
-    sodium: nutriments.sodium_100g ? nutriments.sodium_100g * 1000 : (nutriments.salt_100g ? nutriments.salt_100g * 1000 : 0),
-    servingSize: "per 100g",
-    servingSizeG: 100,
-    category: "",
-    source: "OpenFoodFacts",
-    verified: false,
-    allergens: [],
-    additives: [],
-    createdAt: Date.now() / 1000,
-    updatedAt: Date.now() / 1000,
-    nutritionGrade: offProduct.nutrition_grade || "",
-    score: 0,
-    _isOpenFoodFacts: true,
-  };
-}
+// ⚡ DISABLED FOR PERFORMANCE: OpenFoodFacts integration removed
+// function transformOpenFoodFactsToAlgoliaFormat(offProduct: any): any {
+//   const nutriments = offProduct.nutriments || {};
+//   const ingredientsText = offProduct.ingredients_text_en || offProduct.ingredients_text || "";
+//   const barcode = offProduct.code || offProduct._id || "";
+//   const rawName = offProduct.product_name || offProduct.product_name_en || "Unknown Product";
+//   const rawBrand = offProduct.brands || "";
+//   return {
+//     objectID: `off-${barcode}`,
+//     name: capitalizeWords(rawName),
+//     brandName: rawBrand ? capitalizeWords(rawBrand) : "",
+//     ingredients: ingredientsText,
+//     barcode: barcode,
+//     calories: nutriments["energy-kcal_100g"] || nutriments["energy-kcal"] || 0,
+//     protein: nutriments.proteins_100g || nutriments.proteins || 0,
+//     carbs: nutriments.carbohydrates_100g || nutriments.carbohydrates || 0,
+//     fat: nutriments.fat_100g || nutriments.fat || 0,
+//     fiber: nutriments.fiber_100g || nutriments.fiber || 0,
+//     sugar: nutriments.sugars_100g || nutriments.sugars || 0,
+//     sodium: nutriments.sodium_100g ? nutriments.sodium_100g * 1000 : (nutriments.salt_100g ? nutriments.salt_100g * 1000 : 0),
+//     servingSize: "per 100g",
+//     servingSizeG: 100,
+//     category: "",
+//     source: "OpenFoodFacts",
+//     verified: false,
+//     allergens: [],
+//     additives: [],
+//     createdAt: Date.now() / 1000,
+//     updatedAt: Date.now() / 1000,
+//     nutritionGrade: offProduct.nutrition_grade || "",
+//     score: 0,
+//     _isOpenFoodFacts: true,
+//   };
+// }
 
 /**
  * Sync verified foods to Algolia when they're created/updated/deleted
@@ -449,53 +451,12 @@ export const searchFoodsAlgolia = functions.https.onRequest({
     ...searchResults[3].hits, // Main foods
   ];
 
-  // Always search OpenFoodFacts to find products we don't have
-  console.log(`Searching OpenFoodFacts for additional products: "${query}"`);
+  // ⚡ PERFORMANCE OPTIMIZATION: Removed blocking OpenFoodFacts API call
+  // Previously this added 2-5 seconds to every search request
+  // OpenFoodFacts enrichment can be done via separate background job if needed
+  console.log(`✅ Returning ${combinedHits.length} Algolia results (OpenFoodFacts disabled for performance)`);
 
-  try {
-    const offProducts = await searchOpenFoodFacts(query);
-
-    if (offProducts.length > 0) {
-      console.log(`Found ${offProducts.length} products from OpenFoodFacts`);
-
-      // Get all barcodes from Algolia results to avoid duplicates
-      const algoliaBarcodes = new Set(
-        combinedHits
-          .map((hit: any) => hit.barcode)
-          .filter((b) => b && b.length > 0)
-      );
-
-      // Transform and filter out duplicates
-      const offResults = offProducts
-        .filter((offProduct) => {
-          const barcode = offProduct.code || offProduct._id || "";
-          const isDuplicate = barcode && algoliaBarcodes.has(barcode);
-          if (isDuplicate) {
-            console.log(`Skipping duplicate barcode from OpenFoodFacts: ${barcode}`);
-          }
-          return !isDuplicate;
-        })
-        .map((offProduct) => transformOpenFoodFactsToAlgoliaFormat(offProduct));
-
-      console.log(`✅ Found ${offResults.length} unique UK English products from OpenFoodFacts (${offProducts.length - offResults.length} duplicates filtered)`);
-
-      // Merge results: Algolia results first (verified/trusted), then OpenFoodFacts
-      const mergedHits = [...combinedHits, ...offResults].slice(0, hitsPerPage);
-
-      console.log(`📊 Returning ${mergedHits.length} total results (${combinedHits.length} Algolia + ${offResults.length} OpenFoodFacts)`);
-
-      response.json({
-        hits: mergedHits,
-        nbHits: mergedHits.length,
-      });
-      return;
-    }
-
-    console.log(`No additional products found on OpenFoodFacts`);
-  } catch (error) {
-    console.error("Error fetching from OpenFoodFacts:", error);
-  }
-
+  // Return Algolia results immediately for fast search experience
   response.json({
     hits: combinedHits.slice(0, hitsPerPage),
     nbHits: combinedHits.length,
@@ -542,5 +503,10 @@ function prepareForAlgolia(data: any): any {
     // Nutrition score for ranking
     nutritionGrade: data.nutritionGrade || data.nutrition_grade || "",
     score: data.score || 0,
+
+    // TODO: Precompute processing grade here to eliminate 50-200ms frontend calculation
+    // Would require porting ProcessingScorer.swift logic to TypeScript
+    // Current implementation: Frontend computes on-demand with NSCache
+    processingGrade: data.processingGrade || "",
   };
 }
