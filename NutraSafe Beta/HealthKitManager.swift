@@ -128,21 +128,21 @@ class HealthKitManager: ObservableObject {
     private func fetchFirebaseExerciseCalories(for date: Date) async throws -> Double {
         do {
             let exerciseEntries = try await FirebaseManager.shared.getExerciseEntries(for: date)
-            
+
             // Sum calories from all logged exercises for the specified date
             let totalCalories = exerciseEntries.reduce(0.0) { total, entry in
                 // Only count entries from the specified date
                 if Calendar.current.isDate(entry.date, inSameDayAs: date) {
-                    return total + 100.0 // Stub: default 100 calories per exercise
+                    return total + Double(entry.caloriesBurned)
                 }
                 return total
             }
-            
+
             #if DEBUG
             print("🔥 Firebase exercise calories for \(date.formatted(.dateTime.day().month())): \(Int(totalCalories))")
             #endif
             return totalCalories
-            
+
         } catch {
             #if DEBUG
             print("⚠️ Error fetching Firebase exercise entries: \(error)")
