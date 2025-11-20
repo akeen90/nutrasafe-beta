@@ -80,9 +80,9 @@ class HealthKitManager: ObservableObject {
         }
 
         let typesToRead: Set<HKObjectType> = [
-            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
             HKObjectType.quantityType(forIdentifier: .bodyMass)!,
-            HKObjectType.quantityType(forIdentifier: .stepCount)!
+            HKObjectType.quantityType(forIdentifier: .stepCount)!,
+            HKObjectType.workoutType()
         ]
 
         let typesToWrite: Set<HKSampleType> = [
@@ -116,13 +116,12 @@ class HealthKitManager: ObservableObject {
     func fetchExerciseCalories(for date: Date) async throws -> Double {
         guard isAuthorized else { return 0 }
 
-        // Fetch calories from all sources
-        let activeEnergyCalories = try await fetchActiveEnergyBurned(for: date)
+        // Fetch calories from workouts and Firebase only (not active energy)
         let workoutCalories = try await fetchWorkoutCalories(for: date)
         let firebaseExerciseCalories = try await fetchFirebaseExerciseCalories(for: date)
 
         // Use the highest value to ensure all exercise is counted but avoid double counting
-        return max(activeEnergyCalories, workoutCalories, firebaseExerciseCalories)
+        return max(workoutCalories, firebaseExerciseCalories)
     }
     
     private func fetchFirebaseExerciseCalories(for date: Date) async throws -> Double {

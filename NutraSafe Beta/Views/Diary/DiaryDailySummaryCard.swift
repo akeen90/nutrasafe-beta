@@ -27,7 +27,6 @@ struct DiaryDailySummaryCard: View {
 
     // MARK: - Daily Goals
     @State private var calorieGoal: Double = 1800
-    @State private var exerciseGoal: Double = 600
     @State private var stepGoal: Double = 10000
     @State private var macroGoals: [MacroGoal] = MacroGoal.defaultMacros
 
@@ -37,10 +36,9 @@ struct DiaryDailySummaryCard: View {
     // MARK: - Body
     var body: some View {
         VStack(spacing: 20) {
-            // 3 Rings in horizontal layout
+            // 2 Rings in horizontal layout
             HStack(spacing: 24) {
                 calorieRingView
-                exerciseRingView
                 stepsRingView
             }
 
@@ -116,39 +114,6 @@ struct DiaryDailySummaryCard: View {
         }
     }
 
-    private var exerciseRingView: some View {
-        VStack(spacing: 8) {
-            ZStack {
-                // Background circle
-                Circle()
-                    .stroke(Color(.systemGray5), lineWidth: 10)
-                    .frame(width: 80, height: 80)
-
-                // Progress circle (orange)
-                Circle()
-                    .trim(from: 0, to: min(1.0, healthKitManager.exerciseCalories / exerciseGoal))
-                    .stroke(
-                        Color(.systemOrange),
-                        style: StrokeStyle(lineWidth: 10, lineCap: .round)
-                    )
-                    .frame(width: 80, height: 80)
-                    .rotationEffect(.degrees(-90))
-                    .animation(.spring(response: 1.0, dampingFraction: 0.7), value: healthKitManager.exerciseCalories)
-
-                // Center text
-                VStack(spacing: 2) {
-                    Text("\(Int(healthKitManager.exerciseCalories))")
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
-
-                    Text("burned")
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary)
-                }
-            }
-        }
-    }
-
     private var stepsRingView: some View {
         VStack(spacing: 8) {
             ZStack {
@@ -189,24 +154,6 @@ struct DiaryDailySummaryCard: View {
             return String(format: "%.1fK", steps / 1000)
         } else {
             return String(format: "%.0f", steps)
-        }
-    }
-
-    private var exerciseRingLabels: some View {
-        VStack(spacing: 1) {
-            Text("\(Int(healthKitManager.exerciseCalories))")
-                .font(.system(size: 12, weight: .bold, design: .rounded))
-                .foregroundColor(.primary)
-                .animation(.easeInOut(duration: 1.0), value: healthKitManager.exerciseCalories)
-
-            Text("cal")
-                .font(.system(size: 8, weight: .medium, design: .rounded))
-                .foregroundColor(.secondary)
-
-            Text("EXERCISE")
-                .font(.system(size: 7, weight: .semibold, design: .rounded))
-                .foregroundColor(.secondary.opacity(0.9))
-                .tracking(0.6)
         }
     }
 
@@ -279,11 +226,9 @@ struct DiaryDailySummaryCard: View {
         Task {
             await loadNutritionGoals()
             if healthKitRingsEnabled {
-                await healthKitManager.updateExerciseCalories(for: currentDate)
                 await healthKitManager.updateStepCount(for: currentDate)
             } else {
                 await MainActor.run {
-                    healthKitManager.exerciseCalories = 0
                     healthKitManager.stepCount = 0
                 }
             }
@@ -294,7 +239,6 @@ struct DiaryDailySummaryCard: View {
         Task {
             await loadNutritionGoals()
             if healthKitRingsEnabled {
-                await healthKitManager.updateExerciseCalories(for: currentDate)
                 await healthKitManager.updateStepCount(for: currentDate)
             }
         }
@@ -303,11 +247,9 @@ struct DiaryDailySummaryCard: View {
     private func handleHealthKitToggle(_ enabled: Bool) {
         Task {
             if enabled {
-                await healthKitManager.updateExerciseCalories(for: currentDate)
                 await healthKitManager.updateStepCount(for: currentDate)
             } else {
                 await MainActor.run {
-                    healthKitManager.exerciseCalories = 0
                     healthKitManager.stepCount = 0
                 }
             }
@@ -324,13 +266,12 @@ struct DiaryDailySummaryCard: View {
                 // Update calorie goal
                 calorieGoal = Double(settings.caloricGoal ?? 2000)
 
-                // Update exercise and step goals
-                exerciseGoal = Double(settings.exerciseGoal ?? 600)
+                // Update step goal
                 stepGoal = Double(settings.stepGoal ?? 10000)
 
                 // Update macro goals from Firebase
                 macroGoals = loadedMacroGoals
-                print("✅ Loaded nutrition goals: \(Int(calorieGoal)) cal, \(Int(exerciseGoal)) exercise, \(Int(stepGoal)) steps")
+                print("✅ Loaded nutrition goals: \(Int(calorieGoal)) cal, \(Int(stepGoal)) steps")
             }
         } catch {
             print("⚠️ Failed to load nutrition goals: \(error.localizedDescription)")
