@@ -189,6 +189,12 @@ struct FoodSearchResultRowEnhanced: View {
                             .font(.system(size: 13, weight: .medium, design: .rounded))
                             .foregroundColor(.secondary)
                     }
+
+                    if let servingDesc = food.servingDescription, !servingDesc.isEmpty {
+                        Text(servingDesc)
+                            .font(.system(size: 12, weight: .regular, design: .rounded))
+                            .foregroundColor(.secondary.opacity(0.8))
+                    }
                 }
 
                 Spacer()
