@@ -51,15 +51,8 @@ struct DiaryDailySummaryCard: View {
             Divider()
                 .padding(.horizontal, -AppSpacing.medium)
 
-            // Steps section (smaller)
-            VStack(spacing: 8) {
-                Text("Steps")
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                stepsProgressView
-            }
+            // Steps section with overlay text
+            stepsProgressView
 
         }
         .padding(AppSpacing.medium)
@@ -103,21 +96,20 @@ struct DiaryDailySummaryCard: View {
                     .rotationEffect(.degrees(-90))
                     .animation(.spring(response: 1.0, dampingFraction: 0.7), value: totalCalories)
 
-                // Center text
-                VStack(spacing: 3) {
-                    HStack(alignment: .firstTextBaseline, spacing: 2) {
-                        Text("\(totalCalories)")
-                            .font(.system(size: 24, weight: .bold, design: .rounded))
-                            .foregroundColor(.primary)
+                // Center text - stacked vertically
+                VStack(spacing: 0) {
+                    Text("\(totalCalories)")
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
 
-                        Text("/ \(Int(calorieGoal))")
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
-                            .foregroundColor(.secondary)
-                    }
+                    Text("/\(Int(calorieGoal))")
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
 
                     Text("Cals")
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundColor(.secondary)
+                        .padding(.top, 2)
                 }
             }
         }
@@ -156,37 +148,44 @@ struct DiaryDailySummaryCard: View {
     }
 
     private var stepsProgressView: some View {
-        HStack(spacing: 8) {
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
-                Text(formatStepCount(healthKitManager.stepCount))
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundColor(.primary)
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                // Background bar (fully rounded)
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.systemGray5))
+                    .frame(height: 24)
 
-                Text("/ \(formatStepCount(stepGoal))")
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundColor(.secondary)
-            }
+                // Progress bar (fully rounded)
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.systemGreen))
+                    .frame(
+                        width: max(24, geometry.size.width * min(1.0, healthKitManager.stepCount / stepGoal)),
+                        height: 24
+                    )
+                    .animation(.spring(response: 0.5, dampingFraction: 0.7), value: healthKitManager.stepCount)
 
-            Spacer()
+                // Text overlay on top of bar
+                HStack {
+                    Text("Steps")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
 
-            // Small progress bar
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(Color(.systemGray5))
-                        .frame(height: 8)
+                    Spacer()
 
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(Color(.systemGreen))
-                        .frame(
-                            width: max(2, geometry.size.width * min(1.0, healthKitManager.stepCount / stepGoal)),
-                            height: 8
-                        )
-                        .animation(.spring(response: 0.5, dampingFraction: 0.7), value: healthKitManager.stepCount)
+                    HStack(alignment: .firstTextBaseline, spacing: 2) {
+                        Text(formatStepCount(healthKitManager.stepCount))
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundColor(.primary)
+
+                        Text("/\(formatStepCount(stepGoal))")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundColor(.secondary)
+                    }
                 }
+                .padding(.horizontal, 12)
             }
-            .frame(height: 8)
         }
+        .frame(height: 24)
     }
 
     private var stepsTextView: some View {
@@ -283,7 +282,7 @@ struct DiaryDailySummaryCard: View {
 
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: AppRadius.medium)
-            .fill(Color.white)
+            .fill(.ultraThinMaterial)
     }
 
     // MARK: - Event Handlers
