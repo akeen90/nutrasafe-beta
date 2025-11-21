@@ -304,6 +304,12 @@ struct DiaryTabView: View {
         .pickerStyle(.segmented)
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: AppRadius.medium)
+                .fill(.ultraThinMaterial)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
+        )
     }
 
     // MARK: - Loading State View
@@ -514,6 +520,48 @@ struct DiaryTabView: View {
                 selectedDate = date
             }
         )
+        .padding(.horizontal, 16)
+
+        // Standalone column headers in glass card
+        HStack {
+            HStack(spacing: 8) {
+                // Spacer to match the plus button width (20pt icon + 8pt spacing)
+                Spacer()
+                    .frame(width: 28)
+
+                Text("FOOD/DRINK")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            HStack(spacing: 0) {
+                Text("KCAL")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .frame(width: 50, alignment: .trailing)
+                Text("PROT")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .frame(width: 50, alignment: .trailing)
+                Text("CARB")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .frame(width: 50, alignment: .trailing)
+                Text("FAT")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .frame(width: 50, alignment: .trailing)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: AppRadius.medium)
+                .fill(.ultraThinMaterial)
+        )
+        .cardShadow()
         .padding(.horizontal, 16)
 
         VStack(spacing: 8) {
