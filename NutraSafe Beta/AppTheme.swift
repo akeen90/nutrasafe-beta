@@ -26,12 +26,12 @@ extension Color {
         Color(red: 0.18, green: 0.22, blue: 0.32) // #2E3851 - lighter
     }
 
-    /// Adaptive background that switches between white and midnight blue
+    /// Adaptive background that switches between light blue and midnight blue
     static var adaptiveBackground: Color {
         Color(uiColor: .init { traitCollection in
             traitCollection.userInterfaceStyle == .dark
                 ? UIColor(red: 0.10, green: 0.14, blue: 0.24, alpha: 1.0)
-                : UIColor.systemBackground
+                : UIColor(red: 0.88, green: 0.93, blue: 0.97, alpha: 1.0) // Light blue-gray
         })
     }
 
@@ -40,7 +40,7 @@ extension Color {
         Color(uiColor: .init { traitCollection in
             traitCollection.userInterfaceStyle == .dark
                 ? UIColor(red: 0.14, green: 0.18, blue: 0.28, alpha: 1.0)
-                : UIColor.secondarySystemGroupedBackground
+                : UIColor.white
         })
     }
 
@@ -49,7 +49,7 @@ extension Color {
         Color(uiColor: .init { traitCollection in
             traitCollection.userInterfaceStyle == .dark
                 ? UIColor(red: 0.18, green: 0.22, blue: 0.32, alpha: 1.0)
-                : UIColor.tertiarySystemGroupedBackground
+                : UIColor.white
         })
     }
 }
