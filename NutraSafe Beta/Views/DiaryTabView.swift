@@ -127,8 +127,8 @@ struct DiaryTabView: View {
         HStack(alignment: .center) {
             Text("Diary")
                 .font(.system(size: 38, weight: .bold, design: .rounded))
+                .frame(height: 44, alignment: .center)
                 .foregroundColor(.primary)
-                .fixedSize()
 
             Spacer()
 
@@ -276,8 +276,8 @@ struct DiaryTabView: View {
                 }
             }
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 16)
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
     }
 
     // MARK: - Calendar Header Section
@@ -289,7 +289,8 @@ struct DiaryTabView: View {
                 datePickerSection
             }
             .padding(.horizontal, 16)
-            .padding(.top, 24)
+            .padding(.top, 8)
+            .padding(.bottom, 12)
         }
     }
 
@@ -365,7 +366,6 @@ struct DiaryTabView: View {
                 )
             }
             .background(Color.adaptiveBackground)
-            .ignoresSafeArea()
     }
 
     // MARK: - Content with Lifecycle Modifiers
