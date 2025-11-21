@@ -289,7 +289,7 @@ struct DiaryTabView: View {
                 datePickerSection
             }
             .padding(.horizontal, 16)
-            .padding(.top, 16)
+            .padding(.top, 24)
         }
     }
 
