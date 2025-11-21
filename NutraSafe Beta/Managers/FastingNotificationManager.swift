@@ -281,7 +281,7 @@ class FastingNotificationManager {
                     "type": "fasting",
                     "fastingType": "reminder",
                     "planId": plan.id ?? "",
-                    "planName": plan.name
+                    "planName": plan.displayName
                 ]
 
                 let calendar = Calendar.current
@@ -304,7 +304,7 @@ class FastingNotificationManager {
     private func scheduleStartNotification(for plan: FastingPlan, on date: Date) async throws {
         let content = UNMutableNotificationContent()
         content.title = "Time to start your fast"
-        content.body = "\(plan.name) • \(plan.durationDisplay)"
+        content.body = "\(plan.displayName) • \(plan.durationDisplay)"
         content.sound = .default
         content.categoryIdentifier = fastStartCategoryId
 
@@ -313,7 +313,7 @@ class FastingNotificationManager {
             "type": "fasting",
             "fastingType": "start",
             "planId": plan.id ?? "",
-            "planName": plan.name,
+            "planName": plan.displayName,
             "durationHours": plan.durationHours,
             "scheduledStartTime": date.timeIntervalSince1970
         ]
@@ -345,7 +345,7 @@ class FastingNotificationManager {
             "type": "fasting",
             "fastingType": "end",
             "planId": plan.id ?? "",
-            "planName": plan.name,
+            "planName": plan.displayName,
             "durationHours": plan.durationHours,
             "scheduledStartTime": startDate.timeIntervalSince1970,
             "scheduledEndTime": endDate.timeIntervalSince1970
@@ -389,7 +389,7 @@ class FastingNotificationManager {
                 "type": "fasting",
                 "fastingType": "stage",
                 "planId": plan.id ?? "",
-                "planName": plan.name,
+                "planName": plan.displayName,
                 "stageHours": stage.hours
             ]
 

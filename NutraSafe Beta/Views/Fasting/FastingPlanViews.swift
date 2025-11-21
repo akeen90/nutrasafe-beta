@@ -309,7 +309,7 @@ struct ActivePlanCard: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(plan.name)
+                    Text(plan.displayName)
                         .font(.headline)
                         .foregroundColor(.primary)
                     
@@ -377,7 +377,7 @@ struct PlanRow: View {
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(plan.name)
+                Text(plan.displayName)
                     .font(.headline)
                     .foregroundColor(.primary)
                 

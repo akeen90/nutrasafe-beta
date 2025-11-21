@@ -191,7 +191,7 @@ struct PlanDashboardView: View {
                 HStack {
                     Image(systemName: "clock.badge.checkmark")
                         .foregroundColor(.green)
-                    Text(plan.name)
+                    Text(plan.displayName)
                         .font(.headline)
                     Spacer()
                 }
@@ -661,7 +661,7 @@ struct RegimeStateInfo: View {
                         .foregroundColor(.secondary)
 
                     if let plan = viewModel.activePlan {
-                        Text("Plan: \(plan.durationHours):\(24 - plan.durationHours) (\(plan.name))")
+                        Text("Plan: \(plan.durationHours):\(24 - plan.durationHours) (\(plan.displayName))")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }

@@ -198,6 +198,24 @@ struct FastingPlan: Identifiable, Codable {
             }
         }
     }
+
+    /// Display name that dynamically updates based on current duration
+    var displayName: String {
+        // Auto-generate name based on duration
+        if durationHours == 16 {
+            return "16:8 Fasting Plan"
+        } else if durationHours == 12 {
+            return "12:12 Fasting Plan"
+        } else if durationHours == 18 {
+            return "18:6 Fasting Plan"
+        } else if durationHours == 20 {
+            return "20:4 Fasting Plan"
+        } else if durationHours == 24 {
+            return "OMAD Plan"
+        } else {
+            return "\(durationHours)-Hour Fast"
+        }
+    }
     
     var nextScheduledDate: Date? {
         let calendar = Calendar.current
