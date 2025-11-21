@@ -104,19 +104,19 @@ struct DiaryDailySummaryCard: View {
                     .animation(.spring(response: 1.0, dampingFraction: 0.7), value: totalCalories)
 
                 // Center text
-                VStack(spacing: 1) {
+                VStack(spacing: 3) {
                     HStack(alignment: .firstTextBaseline, spacing: 2) {
                         Text("\(totalCalories)")
-                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .font(.system(size: 24, weight: .bold, design: .rounded))
                             .foregroundColor(.primary)
 
                         Text("/ \(Int(calorieGoal))")
-                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
                             .foregroundColor(.secondary)
                     }
 
                     Text("Cals")
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
                         .foregroundColor(.secondary)
                 }
             }
@@ -129,25 +129,25 @@ struct DiaryDailySummaryCard: View {
                 HStack(spacing: 3) {
                     Circle()
                         .fill(macroGoal.macroType.color)
-                        .frame(width: 6, height: 6)
+                        .frame(width: 8, height: 8)
 
                     Text(macroGoal.macroType.displayName)
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
                         .foregroundColor(.primary)
                         .lineLimit(1)
 
                     Spacer()
 
                     Text("\(Int(calculateMacroTotal(for: macroGoal.macroType).rounded()))")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundColor(macroGoal.macroType.color)
 
                     Text("/\(Int(macroGoal.calculateGramGoal(from: calorieGoal)))")
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
                         .foregroundColor(.secondary)
 
                     Text("g")
-                        .font(.system(size: 9, weight: .medium, design: .rounded))
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundColor(.secondary.opacity(0.8))
                 }
             }
@@ -172,20 +172,20 @@ struct DiaryDailySummaryCard: View {
             // Small progress bar
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 2)
+                    RoundedRectangle(cornerRadius: 3)
                         .fill(Color(.systemGray5))
-                        .frame(height: 4)
+                        .frame(height: 8)
 
-                    RoundedRectangle(cornerRadius: 2)
+                    RoundedRectangle(cornerRadius: 3)
                         .fill(Color(.systemGreen))
                         .frame(
                             width: max(2, geometry.size.width * min(1.0, healthKitManager.stepCount / stepGoal)),
-                            height: 4
+                            height: 8
                         )
                         .animation(.spring(response: 0.5, dampingFraction: 0.7), value: healthKitManager.stepCount)
                 }
             }
-            .frame(height: 4)
+            .frame(height: 8)
         }
     }
 
@@ -283,7 +283,7 @@ struct DiaryDailySummaryCard: View {
 
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: AppRadius.medium)
-            .fill(AppColors.cardBackgroundElevated)
+            .fill(Color.white)
     }
 
     // MARK: - Event Handlers

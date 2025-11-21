@@ -20,17 +20,33 @@ struct DiaryMealCard: View {
     let onEditFood: () -> Void
     let onSaveNeeded: () -> Void
     let onDelete: (DiaryFoodItem) -> Void
-    
+    let onAdd: () -> Void
+
+    @State private var calorieGoal: Double = 1800
+    @State private var macroGoals: [MacroGoal] = MacroGoal.defaultMacros
+
     private var totalProtein: Double {
         foods.reduce(0) { $0 + $1.protein }
     }
-    
+
     private var totalCarbs: Double {
         foods.reduce(0) { $0 + $1.carbs }
     }
-    
+
     private var totalFat: Double {
         foods.reduce(0) { $0 + $1.fat }
+    }
+
+    private func getMacroGoal(for macroType: MacroType) -> Double {
+        if let goal = macroGoals.first(where: { $0.macroType == macroType }) {
+            return goal.calculateGramGoal(from: calorieGoal)
+        }
+        return 0
+    }
+
+    private func getMacroProgress(current: Double, goal: Double) -> Double {
+        guard goal > 0 else { return 0 }
+        return min(1.0, current / goal)
     }
     
     var body: some View {
@@ -70,36 +86,42 @@ struct DiaryMealCard: View {
             // Rounded pill-style meal header like MyFitnessPal
             HStack {
                 HStack(spacing: 8) {
-                    Circle()
-                        .fill(color)
-                        .frame(width: 12, height: 12)
+                    // Add button replaces colored dot
+                    Button(action: onAdd) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(color)
+                    }
+                    .buttonStyle(PlainButtonStyle())
 
                     Text(mealType.uppercased())
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(.primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                 }
 
                 Spacer()
 
-                // Calories and macros in header like MyFitnessPal
+                // Calories and macros in header
                 HStack(spacing: 0) {
                     Text("\(currentCalories)")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundColor(.primary)
                         .frame(width: 50, alignment: .trailing)
 
                     Text("\(String(format: "%.1f", totalProtein))")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(.secondary)
                         .frame(width: 50, alignment: .trailing)
 
                     Text("\(String(format: "%.1f", totalCarbs))")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(.secondary)
                         .frame(width: 50, alignment: .trailing)
 
                     Text("\(String(format: "%.1f", totalFat))")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(.secondary)
                         .frame(width: 50, alignment: .trailing)
                 }
@@ -148,84 +170,12 @@ struct DiaryMealCard: View {
                                 .padding(.horizontal, 16)
                         }
                     }
-
-                    // Add more button
-                    Button(action: {
-                        // Store the selected meal type and date, then navigate to add tab
-                        UserDefaults.standard.set(mealType, forKey: "preselectedMealType")
-                        UserDefaults.standard.set(currentDate.timeIntervalSince1970, forKey: "preselectedDate")
-                        // Ensure destination defaults to Diary when coming from Diary
-                        UserDefaults.standard.removeObject(forKey: "preselectedDestination")
-                        selectedTab = .add
-                    }) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "plus")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.blue)
-
-                            Text("Add more")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.blue)
-
-                            Spacer()
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                    }
-                    .buttonStyle(SpringyButtonStyle())
                 }
-            } else {
-                // Enhanced empty state with helpful guidance
-                VStack(spacing: 16) {
-                    Image(systemName: getMealIcon())
-                        .font(.system(size: 40))
-                        .foregroundColor(.secondary.opacity(0.4))
-                        .padding(.top, 20)
-
-                    VStack(spacing: 4) {
-                        Text("No \(mealType.lowercased()) logged")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(.primary)
-
-                        Text("Tap to add your first item")
-                            .font(.system(size: 13))
-                            .foregroundColor(.secondary)
-                    }
-
-                    Button(action: {
-                        // Store the selected meal type and date, then navigate to add tab
-                        UserDefaults.standard.set(mealType, forKey: "preselectedMealType")
-                        UserDefaults.standard.set(currentDate.timeIntervalSince1970, forKey: "preselectedDate")
-                        // Ensure destination defaults to Diary when coming from Diary
-                        UserDefaults.standard.removeObject(forKey: "preselectedDestination")
-                        selectedTab = .add
-                    }) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.system(size: 14, weight: .semibold))
-                            Text("Add \(mealType)")
-                                .font(.system(size: 15, weight: .semibold))
-                        }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 10)
-                        .background(
-                            LinearGradient(
-                                colors: [color, color.opacity(0.8)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .cornerRadius(10)
-                    }
-                    .padding(.bottom, 20)
-                }
-                .frame(maxWidth: .infinity)
             }
         }
         .background(
             RoundedRectangle(cornerRadius: AppRadius.medium)
-                .fill(AppColors.cardBackgroundElevated)
+                .fill(Color.white)
         )
         .cardShadow()
     }
