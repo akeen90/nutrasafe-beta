@@ -51,38 +51,6 @@ struct DiaryMealCard: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Column headers (only show once at the top)
-            if mealType == "Breakfast" {
-                HStack {
-                    Text("ITEM")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.secondary)
-
-                    Spacer()
-
-                    HStack(spacing: 0) {
-                        Text("KCAL")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.secondary)
-                            .frame(width: 50, alignment: .trailing)
-                        Text("PROT")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.secondary)
-                            .frame(width: 50, alignment: .trailing)
-                        Text("CARB")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.secondary)
-                            .frame(width: 50, alignment: .trailing)
-                        Text("FAT")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.secondary)
-                            .frame(width: 50, alignment: .trailing)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-            }
-
             // Rounded pill-style meal header like MyFitnessPal
             HStack {
                 HStack(spacing: 8) {

@@ -155,14 +155,16 @@ struct DiaryDailySummaryCard: View {
                     .fill(Color(.systemGray5))
                     .frame(height: 24)
 
-                // Progress bar (fully rounded)
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemGreen))
-                    .frame(
-                        width: max(24, geometry.size.width * min(1.0, healthKitManager.stepCount / stepGoal)),
-                        height: 24
-                    )
-                    .animation(.spring(response: 0.5, dampingFraction: 0.7), value: healthKitManager.stepCount)
+                // Progress bar (fully rounded) - only show green if there are steps
+                if healthKitManager.stepCount > 0 {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color(.systemGreen))
+                        .frame(
+                            width: max(24, geometry.size.width * min(1.0, healthKitManager.stepCount / stepGoal)),
+                            height: 24
+                        )
+                        .animation(.spring(response: 0.5, dampingFraction: 0.7), value: healthKitManager.stepCount)
+                }
 
                 // Text overlay on top of bar
                 HStack {

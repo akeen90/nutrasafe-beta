@@ -302,14 +302,9 @@ struct DiaryTabView: View {
             }
         }
         .pickerStyle(.segmented)
+        .backgroundStyle(.ultraThinMaterial)
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.medium)
-                .fill(.ultraThinMaterial)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 4)
-        )
     }
 
     // MARK: - Loading State View
@@ -525,9 +520,9 @@ struct DiaryTabView: View {
         // Standalone column headers in glass card
         HStack {
             HStack(spacing: 8) {
-                // Spacer to match the plus button width (20pt icon + 8pt spacing)
+                // Spacer for alignment with food items
                 Spacer()
-                    .frame(width: 28)
+                    .frame(width: 12)
 
                 Text("FOOD/DRINK")
                     .font(.system(size: 11, weight: .medium))
