@@ -430,6 +430,7 @@ struct DiaryTabView: View {
                 mainContentSection
             }
         }
+        .background(Color.adaptiveBackground)
     }
 
     // MARK: - Helper Methods for onChange Handlers
@@ -512,7 +513,8 @@ struct DiaryTabView: View {
                 currentDate: selectedDate,
                 onEditFood: onEditFood,
                 onSaveNeeded: saveFoodData,
-                onDelete: deleteSingleFood
+                onDelete: deleteSingleFood,
+                onAdd: { addFoodToMeal("Breakfast") }
             )
 
             DiaryMealCard(
@@ -526,7 +528,8 @@ struct DiaryTabView: View {
                 currentDate: selectedDate,
                 onEditFood: onEditFood,
                 onSaveNeeded: saveFoodData,
-                onDelete: deleteSingleFood
+                onDelete: deleteSingleFood,
+                onAdd: { addFoodToMeal("Lunch") }
             )
 
             DiaryMealCard(
@@ -540,7 +543,8 @@ struct DiaryTabView: View {
                 currentDate: selectedDate,
                 onEditFood: onEditFood,
                 onSaveNeeded: saveFoodData,
-                onDelete: deleteSingleFood
+                onDelete: deleteSingleFood,
+                onAdd: { addFoodToMeal("Dinner") }
             )
 
             DiaryMealCard(
@@ -554,7 +558,8 @@ struct DiaryTabView: View {
                 currentDate: selectedDate,
                 onEditFood: onEditFood,
                 onSaveNeeded: saveFoodData,
-                onDelete: deleteSingleFood
+                onDelete: deleteSingleFood,
+                onAdd: { addFoodToMeal("Snacks") }
             )
         }
         .padding(.horizontal, 16)
@@ -790,6 +795,16 @@ struct DiaryTabView: View {
     private func deleteSingleFood(_ food: DiaryFoodItem) {
         diaryDataManager.deleteFoodItems([food], for: selectedDate)
         recalculateNutrition()
+    }
+
+    private func addFoodToMeal(_ mealType: String) {
+        // Store the selected meal type and date for the add flow
+        UserDefaults.standard.set(mealType, forKey: "preselectedMealType")
+        UserDefaults.standard.set(selectedDate.timeIntervalSince1970, forKey: "preselectedDate")
+        UserDefaults.standard.set("diary", forKey: "preselectedDestination")
+
+        // Switch to the Add tab
+        selectedTab = .add
     }
 
     private func deleteSelectedFoods() {

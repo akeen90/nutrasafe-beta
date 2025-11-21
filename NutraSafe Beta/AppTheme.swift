@@ -31,7 +31,7 @@ extension Color {
         Color(uiColor: .init { traitCollection in
             traitCollection.userInterfaceStyle == .dark
                 ? UIColor(red: 0.10, green: 0.14, blue: 0.24, alpha: 1.0)
-                : UIColor(red: 0.88, green: 0.93, blue: 0.97, alpha: 1.0) // Light blue-gray
+                : UIColor(red: 0.82, green: 0.95, blue: 0.99, alpha: 1.0) // #D0F2FD
         })
     }
 
