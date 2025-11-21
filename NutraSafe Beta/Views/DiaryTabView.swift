@@ -124,11 +124,11 @@ struct DiaryTabView: View {
 
     // Extracted to reduce compiler complexity
     private var diaryHeaderView: some View {
-        HStack {
+        HStack(alignment: .center) {
             Text("Diary")
                 .font(.system(size: 38, weight: .bold, design: .rounded))
-                .frame(height: 44, alignment: .center)
                 .foregroundColor(.primary)
+                .fixedSize()
 
             Spacer()
 
@@ -289,7 +289,7 @@ struct DiaryTabView: View {
                 datePickerSection
             }
             .padding(.horizontal, 16)
-            .padding(.top, 8)
+            .padding(.top, 16)
         }
     }
 
@@ -320,7 +320,7 @@ struct DiaryTabView: View {
                 Spacer()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.adaptiveBackground)
+            .background(diaryBlueBackground)
         }
     }
 
@@ -338,7 +338,7 @@ struct DiaryTabView: View {
                 }
             }
             .id(diarySubTab)
-            .background(Color.adaptiveBackground)
+            .background(diaryBlueBackground)
             .navigationBarHidden(true)
         }
     }
@@ -364,6 +364,8 @@ struct DiaryTabView: View {
                     diaryMealType: food.time
                 )
             }
+            .background(Color.adaptiveBackground)
+            .ignoresSafeArea()
     }
 
     // MARK: - Content with Lifecycle Modifiers
@@ -430,7 +432,20 @@ struct DiaryTabView: View {
                 mainContentSection
             }
         }
-        .background(Color.adaptiveBackground)
+        .background(diaryBlueBackground)
+    }
+
+    // MARK: - Blue Background Gradient
+    private var diaryBlueBackground: some View {
+        LinearGradient(
+            colors: [
+                Color(red: 0.88, green: 0.96, blue: 1.0),
+                Color(red: 0.78, green: 0.92, blue: 1.0)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .ignoresSafeArea()
     }
 
     // MARK: - Helper Methods for onChange Handlers
