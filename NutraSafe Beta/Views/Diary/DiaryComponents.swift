@@ -128,7 +128,7 @@ struct DiaryMealCard: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
-            .background(Color(.systemGray6))
+            .background(.ultraThinMaterial)
             .cornerRadius(8)
 
             // Food items section - directly under header
@@ -175,7 +175,7 @@ struct DiaryMealCard: View {
         }
         .background(
             RoundedRectangle(cornerRadius: AppRadius.medium)
-                .fill(Color.white)
+                .fill(.ultraThinMaterial)
         )
         .cardShadow()
     }
