@@ -1905,7 +1905,7 @@ struct WeightTrackingView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
                 .padding(.bottom, 12)
-                .background(Color.adaptiveBackground)
+                .background(progressPeachBackground)
 
                 // Loading overlay
                 if isLoadingData {
@@ -2230,7 +2230,7 @@ struct WeightTrackingView: View {
                 }
                 } // End of loading else block
             }
-            .background(Color.adaptiveBackground)
+            .background(progressPeachBackground)
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .sheet(isPresented: $showingAddWeight) {
@@ -2305,6 +2305,19 @@ struct WeightTrackingView: View {
                 loadWeightHistory()
             }
         }
+    }
+
+    // MARK: - Peach Background Gradient
+    private var progressPeachBackground: some View {
+        LinearGradient(
+            colors: [
+                Color(red: 1.0, green: 0.97, blue: 0.95),
+                Color(red: 1.0, green: 0.94, blue: 0.90)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .ignoresSafeArea()
     }
 
     private func loadWeightHistory() {
@@ -2415,11 +2428,17 @@ struct WeightEntryRow: View {
         }
     }
 
+    private var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd/MM/yy"
+        return formatter.string(from: entry.date)
+    }
+
     var body: some View {
         HStack(spacing: 16) {
             // Date
             VStack(alignment: .leading, spacing: 2) {
-                Text(entry.date, style: .date)
+                Text(formattedDate)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(.primary)
                 Text(entry.date, style: .time)
@@ -2478,8 +2497,7 @@ struct WeightEntryRow: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
+                .fill(.ultraThinMaterial)
         )
         .padding(.bottom, 8)
     }

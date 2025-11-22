@@ -155,10 +155,10 @@ struct DiaryDailySummaryCard: View {
                     .fill(Color(.systemGray5))
                     .frame(height: 24)
 
-                // Progress bar (fully rounded) - only show green if there are steps
+                // Progress bar (fully rounded) - only show sky blue if there are steps
                 if healthKitManager.stepCount > 0 {
                     RoundedRectangle(cornerRadius: 12)
-                        .fill(Color(.systemGreen))
+                        .fill(Color(red: 0.4, green: 0.7, blue: 1.0))
                         .frame(
                             width: max(24, geometry.size.width * min(1.0, healthKitManager.stepCount / stepGoal)),
                             height: 24

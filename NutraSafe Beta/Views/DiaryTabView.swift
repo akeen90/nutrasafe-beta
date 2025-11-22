@@ -305,6 +305,7 @@ struct DiaryTabView: View {
         .backgroundStyle(.ultraThinMaterial)
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
+        .padding(.bottom, 12)
     }
 
     // MARK: - Loading State View
@@ -551,13 +552,14 @@ struct DiaryTabView: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: AppRadius.medium)
                 .fill(.ultraThinMaterial)
         )
         .cardShadow()
         .padding(.horizontal, 16)
+        .padding(.bottom, -8)
 
         VStack(spacing: 8) {
             DiaryMealCard(
@@ -1216,13 +1218,6 @@ struct CategoricalNutrientTrackingView: View {
                     .stroke(Color.black.opacity(0.05), lineWidth: 1)
             )
             .padding(.horizontal, 16)
-
-            // Premium insight card
-            if let insight = vm.generateAdaptiveInsight() {
-                premiumInsightCard(text: insight)
-                    .padding(.top, 16)
-                    .padding(.horizontal, 16)
-            }
         }
         .padding(.bottom, 24)
     }
@@ -1349,65 +1344,6 @@ struct CategoricalNutrientTrackingView: View {
         case .trace: return 24
         case .none: return 8
         }
-    }
-
-    private func premiumInsightCard(text: String) -> some View {
-        Button {
-            let generator = UIImpactFeedbackGenerator(style: .medium)
-            generator.impactOccurred()
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                showingGaps = true
-            }
-        } label: {
-            HStack(alignment: .top, spacing: 14) {
-                // Warning icon with prominent orange colour
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundColor(.orange)
-
-                // Insight text with full visibility
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Areas That Need Attention")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(.secondary)
-
-                    Text(text)
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .lineLimit(nil)
-
-                    // Citation note
-                    HStack(spacing: 4) {
-                        Image(systemName: "info.circle")
-                            .font(.system(size: 10))
-                            .foregroundColor(.secondary)
-                        Text("Based on NHS/EFSA nutrient guidelines")
-                            .font(.system(size: 10))
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.top, 4)
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.secondary.opacity(0.4))
-            }
-            .padding(18)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color.orange.opacity(0.08))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.orange.opacity(0.25), lineWidth: 1.5)
-            )
-            .shadow(color: Color.orange.opacity(0.1), radius: 8, x: 0, y: 2)
-        }
-        .buttonStyle(ScaleButtonStyle())
     }
 
     struct ScaleButtonStyle: ButtonStyle {

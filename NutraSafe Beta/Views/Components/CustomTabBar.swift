@@ -62,7 +62,7 @@ struct CustomTabBar: View {
                             notif.notificationOccurred(.warning)
                         }
                     }) {
-                        VStack(spacing: 4) {
+                        VStack(alignment: .center, spacing: 4) {
                             Image(systemName: tab.icon)
                                 .font(.system(size: 22, weight: selectedTab == tab ? .semibold : .regular))
                                 .foregroundColor(selectedTab == tab ? .blue : Color.gray)
@@ -73,9 +73,12 @@ struct CustomTabBar: View {
                                 Text(tab.title)
                                     .font(.system(size: 10, weight: selectedTab == tab ? .semibold : .medium))
                                     .foregroundColor(selectedTab == tab ? .blue : Color.gray)
+                                    .lineLimit(1)
+                                    .fixedSize()
+                                    .offset(y: tab == .useBy ? -3 : 0)
                             }
                         }
-                        .frame(maxWidth: .infinity)
+                        .frame(maxWidth: .infinity, minHeight: 44)
                         .padding(.vertical, 8)
                         .padding(.horizontal, 4)
                         // No surrounding shade — highlight is icon + label tint only
@@ -86,9 +89,7 @@ struct CustomTabBar: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .background(
-            Color(.systemBackground)
-                .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: -5)
-        )
+        .background(.ultraThinMaterial)
+        .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: -5)
     }
 }

@@ -45,7 +45,7 @@ struct FoodTabView: View {
                 // Header - Simplified Clean Design
                 VStack(spacing: 16) {
                     HStack(spacing: 16) {
-                        Text("Food")
+                        Text("Health")
                             .font(.system(size: 38, weight: .bold, design: .rounded))
                             .frame(height: 44, alignment: .center)
                             .foregroundColor(.primary)
@@ -161,7 +161,7 @@ struct SegmentedControlView<Tab: Hashable & CaseIterable & RawRepresentable>: Vi
         .padding(4)
         .background(
             RoundedRectangle(cornerRadius: 10)
-                .fill(Color(.systemGray6))
+                .fill(.regularMaterial)
         )
         .frame(height: 40)
     }
@@ -343,7 +343,7 @@ struct FoodReactionSummaryCard: View {
         .padding(AppSpacing.large)
         .background(
             RoundedRectangle(cornerRadius: AppRadius.medium)
-                .fill(AppColors.cardBackgroundElevated)
+                .fill(.regularMaterial)
         )
         .cardShadow()
         .sheet(isPresented: $showingLogReaction) {
@@ -376,13 +376,8 @@ struct StatMiniCard: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
         .background(
-            ZStack {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(color.opacity(0.08))
-
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(color.opacity(0.15), lineWidth: 1)
-            }
+            RoundedRectangle(cornerRadius: 16)
+                .fill(.regularMaterial)
         )
         .shadow(color: color.opacity(0.1), radius: 4, x: 0, y: 2)
     }
@@ -457,7 +452,7 @@ struct FoodReactionListCard: View {
         .padding(AppSpacing.large)
         .background(
             RoundedRectangle(cornerRadius: AppRadius.medium)
-                .fill(AppColors.cardBackgroundElevated)
+                .fill(.regularMaterial)
         )
         .cardShadow()
         .sheet(isPresented: $showingPDFExportSheet) {
@@ -888,7 +883,7 @@ struct FoodPatternAnalysisCard: View {
         .padding(AppSpacing.large)
         .background(
             RoundedRectangle(cornerRadius: AppRadius.medium)
-                .fill(AppColors.cardBackgroundElevated)
+                .fill(.regularMaterial)
         )
         .cardShadow()
     }

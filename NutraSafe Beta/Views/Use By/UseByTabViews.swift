@@ -96,7 +96,8 @@ struct UseByTabView: View {
     private var expiringSoonCount: Int { 0 }
 
     var body: some View {
-        VStack(spacing: 0) {
+        navigationContainer {
+            VStack(spacing: 0) {
                 // Header - AAA Modern Design
                 HStack(spacing: 16) {
                     Text("Use By")
@@ -175,14 +176,7 @@ struct UseByTabView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
-
-                // Subtitle description
-                Text("Track items and monitor expiry dates")
-                    .font(.system(size: 14))
-                    .foregroundColor(.white.opacity(0.7))
-                    .padding(.horizontal, 16)
-                    .padding(.top, 4)
-                    .padding(.bottom, 8)
+                .padding(.bottom, 8)
 
                 ScrollView {
                     LazyVStack(spacing: 0) {
@@ -197,8 +191,18 @@ struct UseByTabView: View {
                     .padding(.bottom, 80) // Space for tab bar
                 }
             }
-            .background(Color.adaptiveBackground)
-            .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
+            .background(
+                LinearGradient(
+                    colors: [
+                        Color.blue.opacity(0.15),
+                        Color.purple.opacity(0.15)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .navigationBarHidden(true)
+        }
         .fullScreenCover(isPresented: $showingAddSheet) {
             AddUseByItemSheet(onComplete: {
                 showingAddSheet = false
@@ -708,20 +712,7 @@ struct UseByExpiryView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if useByItems.isEmpty {
                 // Clean empty state matching design
-                ZStack {
-                    // Subtle gradient background
-                    LinearGradient(
-                        colors: [
-                            Color(.systemBackground),
-                            Color.pink.opacity(0.03),
-                            Color.purple.opacity(0.03)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    .ignoresSafeArea()
-
-                    VStack(spacing: 0) {
+                VStack(spacing: 0) {
                         Spacer()
 
                         VStack(spacing: 24) {
@@ -772,7 +763,6 @@ struct UseByExpiryView: View {
                         .padding(.horizontal, 32)
                         .padding(.bottom, 60)
                     }
-                }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 // Modern premium design with gradients and depth
@@ -806,9 +796,9 @@ struct UseByExpiryView: View {
                         .padding(.vertical, 14)
                         .background {
                             ZStack {
-                                // Glassmorphic background
+                                // Transparent background to show page gradient
                                 RoundedRectangle(cornerRadius: 16)
-                                    .fill(.ultraThinMaterial)
+                                    .fill(Color.white.opacity(0.1))
 
                                 // Gradient border
                                 RoundedRectangle(cornerRadius: 16)
@@ -913,16 +903,6 @@ struct UseByExpiryView: View {
                             .padding(.horizontal, 18)
                             .padding(.top, 18)
                             .padding(.bottom, 14)
-                            .background {
-                                LinearGradient(
-                                    colors: [
-                                        Color(.systemBackground),
-                                        Color(.systemBackground).opacity(0.95)
-                                    ],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                            }
 
                             // Items list
                             if sortedItems.isEmpty {
@@ -966,30 +946,25 @@ struct UseByExpiryView: View {
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 40)
-                                .background(Color.adaptiveCard)
                             } else {
-                                LazyVStack(spacing: 0) {
+                                LazyVStack(spacing: 12) {
                                     ForEach(sortedItems, id: \.id) { item in
                                         CleanUseByRow(item: item)
-
-                                        if item.id != sortedItems.last?.id {
-                                            Divider()
-                                                .padding(.leading, 76)
-                                        }
                                     }
                                 }
                                 .padding(.vertical, 8)
-                                .background(Color.adaptiveCard)
                             }
                         }
-                        .background(Color.white)
-                        .cornerRadius(16)
-                        .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 16)
+                        .background {
+                            RoundedRectangle(cornerRadius: 28)
+                                .fill(.ultraThinMaterial)
+                                .shadow(color: .black.opacity(0.08), radius: 16, x: 0, y: 4)
+                        }
+                        .clipShape(RoundedRectangle(cornerRadius: 28))
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 20)
                     }
                 }
-                .background(Color(.systemGroupedBackground))
             }
         }
         .onAppear {
@@ -4338,7 +4313,26 @@ struct CleanUseByRow: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 16)
-            .background(Color(.systemBackground))
+            .background(
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(.ultraThinMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 18)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.35),
+                                Color.white.opacity(0.15)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            )
+            .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 4)
+            .clipShape(RoundedRectangle(cornerRadius: 18))
             .offset(x: offset)
             .highPriorityGesture(
                 DragGesture(minimumDistance: 20)
@@ -5273,22 +5267,9 @@ struct CompactStatPill: View {
         .frame(maxWidth: .infinity)
         .background {
             ZStack {
-                // Glassmorphic background
+                // Transparent background to show page gradient
                 RoundedRectangle(cornerRadius: 14)
-                    .fill(.ultraThinMaterial)
-
-                // Gradient overlay
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                gradient[0].opacity(0.08),
-                                gradient[1].opacity(0.04)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                    .fill(Color.white.opacity(0.1))
 
                 // Gradient border
                 RoundedRectangle(cornerRadius: 14)
