@@ -1060,7 +1060,7 @@ struct ReactionDetailView: View {
                     .padding(20)
                     .background(
                         RoundedRectangle(cornerRadius: 20)
-                            .fill(AppColors.cardBackgroundElevated)
+                            .fill(.regularMaterial)
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 20)
@@ -1091,7 +1091,7 @@ struct ReactionDetailView: View {
                         .padding(16)
                         .background(
                             RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.blue.opacity(0.06))
+                                .fill(.regularMaterial)
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
@@ -1129,7 +1129,7 @@ struct ReactionDetailView: View {
                         .padding(16)
                         .background(
                             RoundedRectangle(cornerRadius: 16)
-                                .fill(severityColor(for: reaction.severity).opacity(0.06))
+                                .fill(.regularMaterial)
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
@@ -1168,7 +1168,7 @@ struct ReactionDetailView: View {
                     .padding(20)
                     .background(
                         RoundedRectangle(cornerRadius: 20)
-                            .fill(AppColors.cardBackgroundElevated)
+                            .fill(.regularMaterial)
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 20)
