@@ -1905,7 +1905,7 @@ struct WeightTrackingView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
                 .padding(.bottom, 12)
-                .background(progressPeachBackground)
+                .background(progressGlassBackground)
 
                 // Loading overlay
                 if isLoadingData {
@@ -1957,9 +1957,20 @@ struct WeightTrackingView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(16)
                             .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(Color(.systemBackground))
-                                    .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+                                RoundedRectangle(cornerRadius: 20)
+                                    .fill(.ultraThinMaterial)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 20)
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                ),
+                                                lineWidth: 1
+                                            )
+                                    )
+                                    .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
                             )
 
                             // Goal Weight
@@ -1979,12 +1990,23 @@ struct WeightTrackingView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(16)
                             .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(Color(.systemBackground))
-                                    .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+                                RoundedRectangle(cornerRadius: 20)
+                                    .fill(.ultraThinMaterial)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 20)
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                ),
+                                                lineWidth: 1
+                                            )
+                                    )
+                                    .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
                             )
                         }
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, 16)
 
                         HStack(spacing: 12) {
                             // Progress
@@ -2006,9 +2028,20 @@ struct WeightTrackingView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(16)
                             .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(Color(.systemBackground))
-                                    .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+                                RoundedRectangle(cornerRadius: 20)
+                                    .fill(.ultraThinMaterial)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 20)
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                ),
+                                                lineWidth: 1
+                                            )
+                                    )
+                                    .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
                             )
 
                             // Remaining
@@ -2029,12 +2062,23 @@ struct WeightTrackingView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(16)
                             .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(Color(.systemBackground))
-                                    .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+                                RoundedRectangle(cornerRadius: 20)
+                                    .fill(.ultraThinMaterial)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 20)
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                ),
+                                                lineWidth: 1
+                                            )
+                                    )
+                                    .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
                             )
                         }
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, 16)
                     }
                     .padding(.top, 12)
 
@@ -2049,7 +2093,17 @@ struct WeightTrackingView: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(Color.orange)
+                        .background(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 1.0, green: 0.7, blue: 0.5),
+                                    Color(red: 1.0, green: 0.6, blue: 0.7),
+                                    Color(red: 0.7, green: 0.6, blue: 1.0)
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
                         .cornerRadius(30)
                     }
                     .padding(.horizontal, 40)
@@ -2157,6 +2211,24 @@ struct WeightTrackingView: View {
                             .padding(.horizontal, 20)
                         }
                         .padding(.top, 12)
+                        .padding(12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 22)
+                                .fill(.ultraThinMaterial)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 22)
+                                        .stroke(
+                                            LinearGradient(
+                                                colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            ),
+                                            lineWidth: 1
+                                        )
+                                )
+                        )
+                        .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
+                            .padding(.horizontal, 0)
                     } else {
                         // Empty State
                         VStack(spacing: 16) {
@@ -2204,23 +2276,21 @@ struct WeightTrackingView: View {
                         .frame(height: 280)
                         .frame(maxWidth: .infinity)
                         .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color(.systemGray6).opacity(0.5))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(
-                                    LinearGradient(
-                                        colors: [
-                                            Color(red: 0.3, green: 0.5, blue: 1.0).opacity(0.2),
-                                            Color(red: 0.5, green: 0.3, blue: 0.9).opacity(0.2)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
-                                    lineWidth: 1
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(.ultraThinMaterial)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 20)
+                                        .stroke(
+                                            LinearGradient(
+                                                colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            ),
+                                            lineWidth: 1
+                                        )
                                 )
                         )
+                        .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 4)
                         .padding(.horizontal, 16)
                         .padding(.top, 20)
                     }
@@ -2230,7 +2300,7 @@ struct WeightTrackingView: View {
                 }
                 } // End of loading else block
             }
-            .background(progressPeachBackground)
+            .background(progressGlassBackground)
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .sheet(isPresented: $showingAddWeight) {
@@ -2308,15 +2378,29 @@ struct WeightTrackingView: View {
     }
 
     // MARK: - Peach Background Gradient
-    private var progressPeachBackground: some View {
-        LinearGradient(
-            colors: [
-                Color(red: 1.0, green: 0.97, blue: 0.95),
-                Color(red: 1.0, green: 0.94, blue: 0.90)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+    private var progressGlassBackground: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.92, green: 0.96, blue: 1.0),
+                    Color(red: 0.93, green: 0.88, blue: 1.0)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            RadialGradient(
+                colors: [Color.blue.opacity(0.10), Color.clear],
+                center: .topLeading,
+                startRadius: 0,
+                endRadius: 300
+            )
+            RadialGradient(
+                colors: [Color.purple.opacity(0.08), Color.clear],
+                center: .bottomTrailing,
+                startRadius: 0,
+                endRadius: 280
+            )
+        }
         .ignoresSafeArea()
     }
 
@@ -2453,9 +2537,13 @@ struct WeightEntryRow: View {
                     Text(formatWeight(entry.weight))
                         .font(.system(size: 22, weight: .bold))
                         .foregroundColor(.primary)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
                     Text(weightUnit)
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
                 }
 
                 if let bmi = entry.bmi {
@@ -2474,6 +2562,8 @@ struct WeightEntryRow: View {
                         .font(.system(size: 12, weight: .bold))
                     Text("\(formatWeight(abs(change))) \(weightUnit)")
                         .font(.system(size: 14, weight: .bold))
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
                 }
                 .foregroundColor(change < 0 ? .green : .red)
                 .padding(.horizontal, 10)

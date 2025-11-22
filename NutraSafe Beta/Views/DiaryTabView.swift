@@ -437,16 +437,30 @@ struct DiaryTabView: View {
         .background(diaryBlueBackground)
     }
 
-    // MARK: - Blue Background Gradient
+    // MARK: - Glass Background (matches Health)
     private var diaryBlueBackground: some View {
-        LinearGradient(
-            colors: [
-                Color(red: 0.88, green: 0.96, blue: 1.0),
-                Color(red: 0.78, green: 0.92, blue: 1.0)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.92, green: 0.96, blue: 1.0),
+                    Color(red: 0.93, green: 0.88, blue: 1.0)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            RadialGradient(
+                colors: [Color.blue.opacity(0.10), Color.clear],
+                center: .topLeading,
+                startRadius: 0,
+                endRadius: 300
+            )
+            RadialGradient(
+                colors: [Color.purple.opacity(0.08), Color.clear],
+                center: .bottomTrailing,
+                startRadius: 0,
+                endRadius: 280
+            )
+        }
         .ignoresSafeArea()
     }
 

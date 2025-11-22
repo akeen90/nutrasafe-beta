@@ -73,7 +73,7 @@ struct FoodTabView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 8)
                 }
-                .background(Color.adaptiveBackground)
+                .background(foodGlassBackground)
                 
                 // MARK: - Fasting Components have been extracted to Views/Fasting/FastingTimerView.swift
                 // The following components were moved as part of Phase 13 ContentView.swift modularization effort:
@@ -96,7 +96,7 @@ struct FoodTabView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .background(Color.adaptiveBackground)
+            .background(foodGlassBackground)
             .navigationBarHidden(true)
         }
         .onAppear {
@@ -108,6 +108,33 @@ struct FoodTabView: View {
             selectedFoodSubTab = .fasting
         }
     }
+}
+
+// MARK: - Food Tab Glass Background
+private var foodGlassBackground: some View {
+    ZStack {
+        LinearGradient(
+            colors: [
+                Color(red: 0.92, green: 0.96, blue: 1.0),
+                Color(red: 0.93, green: 0.88, blue: 1.0)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        RadialGradient(
+            colors: [Color.blue.opacity(0.10), Color.clear],
+            center: .topLeading,
+            startRadius: 0,
+            endRadius: 300
+        )
+        RadialGradient(
+            colors: [Color.purple.opacity(0.08), Color.clear],
+            center: .bottomTrailing,
+            startRadius: 0,
+            endRadius: 280
+        )
+    }
+    .ignoresSafeArea()
 }
 
 // MARK: - Native Segmented Control
@@ -147,9 +174,20 @@ struct SegmentedControlView<Tab: Hashable & CaseIterable & RawRepresentable>: Vi
                         .background(
                             ZStack {
                                 if selectedTab == tab {
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(Color(.systemBackground))
-                                        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(.ultraThinMaterial)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .stroke(
+                                                    LinearGradient(
+                                                        colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
+                                                        startPoint: .topLeading,
+                                                        endPoint: .bottomTrailing
+                                                    ),
+                                                    lineWidth: 1
+                                                )
+                                        )
+                                        .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
                                         .matchedGeometryEffect(id: "segmentedControl", in: animation)
                                 }
                             }
@@ -161,7 +199,18 @@ struct SegmentedControlView<Tab: Hashable & CaseIterable & RawRepresentable>: Vi
         .padding(4)
         .background(
             RoundedRectangle(cornerRadius: 10)
-                .fill(.regularMaterial)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                )
         )
         .frame(height: 40)
     }
@@ -336,16 +385,27 @@ struct FoodReactionSummaryCard: View {
                         endPoint: .trailing
                     )
                 )
-                .cornerRadius(12)
+                .cornerRadius(18)
             }
             .buttonStyle(SpringyButtonStyle())
         }
         .padding(AppSpacing.large)
         .background(
-            RoundedRectangle(cornerRadius: AppRadius.medium)
-                .fill(.regularMaterial)
+            RoundedRectangle(cornerRadius: 22)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22)
+                        .stroke(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                )
         )
-        .cardShadow()
+        .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
         .sheet(isPresented: $showingLogReaction) {
             navigationContainer { LogReactionView(reactionManager: reactionManager) }
         }
@@ -377,9 +437,20 @@ struct StatMiniCard: View {
         .padding(.vertical, 16)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(.regularMaterial)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                )
         )
-        .shadow(color: color.opacity(0.1), radius: 4, x: 0, y: 2)
+        .shadow(color: color.opacity(0.08), radius: 6, x: 0, y: 3)
     }
 }
 
@@ -408,8 +479,19 @@ struct FoodReactionListCard: View {
                             .font(.system(size: 20, weight: .medium))
                             .foregroundColor(.blue)
                             .frame(width: 40, height: 40)
-                            .background(Color.blue.opacity(0.1))
+                            .background(.ultraThinMaterial)
                             .clipShape(Circle())
+                            .overlay(
+                                Circle().stroke(
+                                    LinearGradient(
+                                        colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 1
+                                )
+                            )
+                            .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 3)
                     }
                 }
             }
@@ -451,10 +533,21 @@ struct FoodReactionListCard: View {
         }
         .padding(AppSpacing.large)
         .background(
-            RoundedRectangle(cornerRadius: AppRadius.medium)
-                .fill(.regularMaterial)
+            RoundedRectangle(cornerRadius: 22)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22)
+                        .stroke(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                )
         )
-        .cardShadow()
+        .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
         .sheet(isPresented: $showingPDFExportSheet) {
             MultipleFoodReactionsPDFExportSheet(reactions: reactions)
         }
@@ -882,10 +975,21 @@ struct FoodPatternAnalysisCard: View {
         }
         .padding(AppSpacing.large)
         .background(
-            RoundedRectangle(cornerRadius: AppRadius.medium)
-                .fill(.regularMaterial)
+            RoundedRectangle(cornerRadius: 22)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22)
+                        .stroke(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                )
         )
-        .cardShadow()
+        .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
     }
 }
 
