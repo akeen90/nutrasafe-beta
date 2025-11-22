@@ -44,6 +44,30 @@ struct NutrientActivityDashboard: View {
                 dormantSectionView
             }
         }
+        .background(
+            ZStack {
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.92, green: 0.96, blue: 1.0),
+                        Color(red: 0.93, green: 0.88, blue: 1.0)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                RadialGradient(
+                    colors: [Color.blue.opacity(0.10), Color.clear],
+                    center: .topLeading,
+                    startRadius: 0,
+                    endRadius: 300
+                )
+                RadialGradient(
+                    colors: [Color.purple.opacity(0.08), Color.clear],
+                    center: .bottomTrailing,
+                    startRadius: 0,
+                    endRadius: 280
+                )
+            }
+        )
         .sheet(isPresented: $showingDetailView) {
             if let nutrient = selectedNutrient {
                 NutrientDetailView(nutrient: nutrient)
