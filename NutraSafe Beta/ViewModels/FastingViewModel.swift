@@ -1072,16 +1072,38 @@ class FastingViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            // Stop the regime and restart it to skip to eating window
-            try await fastingService.stopRegime(planId: plan.id!)
+            // Create a skipped session for today
+            let now = Date()
 
-            // Update local state
-            var updatedPlan = plan
-            updatedPlan.regimeActive = false
-            self.activePlan = updatedPlan
+            // Determine start time (either regime start or today's scheduled start)
+            let startTime: Date
+            if let regimeStarted = plan.regimeStartedAt {
+                startTime = regimeStarted
+            } else if let nextWindow = plan.nextScheduledFastingWindow() {
+                startTime = nextWindow
+            } else {
+                startTime = now
+            }
 
-            // Refresh to get the updated plan
-            await refreshActivePlan()
+            // Create a skipped session
+            var skippedSession = FastingManager.createSession(
+                userId: userId,
+                plan: plan,
+                targetDurationHours: plan.durationHours,
+                startTime: startTime
+            )
+            skippedSession = FastingManager.skipSession(skippedSession)
+
+            // Save the skipped session
+            try await firebaseManager.saveFastingSession(skippedSession)
+
+            print("✅ Skipped today's fast - regime continues")
+
+            // Refresh sessions to show the skipped fast
+            await loadRecentSessions()
+            await loadAnalytics()
+
+            // The regime stays active and will start the next scheduled fast
         } catch {
             self.error = error
             self.showError = true
