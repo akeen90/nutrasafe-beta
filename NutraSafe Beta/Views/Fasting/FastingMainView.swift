@@ -217,6 +217,8 @@ struct PlanDashboardView: View {
     @State private var showStartTimeChoice = false
     @State private var showFastSettings = false
     @State private var scheduledStartTime: Date?
+    @State private var showSnoozePicker = false
+    @State private var snoozeUntilTime = Date()
 
     // PERFORMANCE: Cache average duration to prevent redundant calculations on every render
     // Pattern from Clay's production app: move expensive operations to cached state
@@ -364,13 +366,13 @@ struct PlanDashboardView: View {
                             // Snooze and Skip buttons
                             HStack(spacing: 12) {
                                 Button {
-                                    Task {
-                                        await viewModel.snoozeCurrentRegimeFast(minutes: 30)
-                                    }
+                                    // Set default snooze time to 30 minutes from now
+                                    snoozeUntilTime = Date().addingTimeInterval(30 * 60)
+                                    showSnoozePicker = true
                                 } label: {
                                     HStack {
                                         Image(systemName: "bell.zzz.fill")
-                                        Text("Snooze 30m")
+                                        Text("Snooze Fast")
                                     }
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 12)
@@ -538,6 +540,53 @@ struct PlanDashboardView: View {
         }
         .sheet(isPresented: $showFastSettings) {
             FastingPlanCreationView(viewModel: viewModel)
+        }
+        .sheet(isPresented: $showSnoozePicker) {
+            NavigationStack {
+                VStack(spacing: 20) {
+                    Text("Resume fasting at:")
+                        .font(.headline)
+                        .padding(.top)
+
+                    DatePicker(
+                        "Resume Time",
+                        selection: $snoozeUntilTime,
+                        in: Date()...,
+                        displayedComponents: [.date, .hourAndMinute]
+                    )
+                    .datePickerStyle(.wheel)
+                    .labelsHidden()
+                    .padding()
+
+                    Button {
+                        Task {
+                            await viewModel.snoozeCurrentRegimeFast(until: snoozeUntilTime)
+                            showSnoozePicker = false
+                        }
+                    } label: {
+                        Text("Confirm Snooze")
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                    }
+                    .padding(.horizontal)
+
+                    Spacer()
+                }
+                .navigationTitle("Snooze Fast")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") {
+                            showSnoozePicker = false
+                        }
+                    }
+                }
+            }
+            .presentationDetents([.medium])
         }
         .confirmationDialog(
             "Start Fasting",

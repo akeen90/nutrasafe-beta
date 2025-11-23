@@ -1110,22 +1110,47 @@ class FastingViewModel: ObservableObject {
         }
     }
 
-    func snoozeCurrentRegimeFast(minutes: Int) async {
+    func snoozeCurrentRegimeFast(until snoozeUntil: Date) async {
         guard let plan = activePlan, plan.regimeActive else { return }
+
+        // Get current regime state to find the window end time
+        guard case .fasting(let started, let ends) = currentRegimeState else {
+            print("⚠️ Not currently in a fasting window")
+            return
+        }
 
         isLoading = true
         defer { isLoading = false }
 
-        // Store snooze time in UserDefaults
-        let snoozeUntil = Date().addingTimeInterval(TimeInterval(minutes * 60))
-        UserDefaults.standard.set(snoozeUntil, forKey: "regimeSnoozedUntil_\(plan.id ?? "")")
-
-        print("⏰ Snoozed regime fast until \(snoozeUntil.formatted(date: .omitted, time: .shortened))")
-
-        // Request notification permission and schedule notification
-        let center = UNUserNotificationCenter.current()
-
         do {
+            // Create an ended session for the partial fast
+            let partialSession = FastingSession(
+                userId: userId,
+                planId: plan.id,
+                startTime: started,
+                endTime: Date(),
+                manuallyEdited: false,
+                skipped: false,
+                completionStatus: .earlyEnd,
+                targetDurationHours: plan.durationHours,
+                notes: "Snoozed until \(snoozeUntil.formatted(date: .omitted, time: .shortened))",
+                createdAt: Date()
+            )
+
+            // Save the partial session
+            try await firebaseManager.saveFastingSession(partialSession)
+
+            // Mark this fasting window as ended
+            lastEndedWindowEnd = ends
+
+            // Store snooze time in UserDefaults
+            UserDefaults.standard.set(snoozeUntil, forKey: "regimeSnoozedUntil_\(plan.id ?? "")")
+
+            print("⏰ Snoozed regime fast until \(snoozeUntil.formatted(date: .abbreviated, time: .shortened))")
+            print("   Fast window: \(started.formatted(date: .omitted, time: .shortened)) - \(ends.formatted(date: .omitted, time: .shortened))")
+
+            // Request notification permission and schedule notification
+            let center = UNUserNotificationCenter.current()
             let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
 
             if granted {
@@ -1136,9 +1161,16 @@ class FastingViewModel: ObservableObject {
                 content.sound = .default
                 content.categoryIdentifier = "FASTING_SNOOZE"
 
+                // Calculate time interval until snooze ends
+                let timeInterval = snoozeUntil.timeIntervalSinceNow
+                guard timeInterval > 0 else {
+                    print("⚠️ Snooze time is in the past, skipping notification")
+                    return
+                }
+
                 // Create trigger
                 let trigger = UNTimeIntervalNotificationTrigger(
-                    timeInterval: TimeInterval(minutes * 60),
+                    timeInterval: timeInterval,
                     repeats: false
                 )
 
@@ -1151,14 +1183,22 @@ class FastingViewModel: ObservableObject {
 
                 // Schedule notification
                 try await center.add(request)
-                print("✅ Snooze notification scheduled for \(minutes) minutes from now")
+                print("✅ Snooze notification scheduled for \(snoozeUntil.formatted(date: .abbreviated, time: .shortened))")
             }
-        } catch {
-            print("❌ Failed to schedule snooze notification: \(error)")
-        }
 
-        // Refresh UI
-        objectWillChange.send()
+            // Refresh sessions to show the partial fast
+            await loadRecentSessions()
+            await loadAnalytics()
+
+            // Trigger UI refresh to show eating window
+            objectWillChange.send()
+
+            print("✅ Fast snoozed - transitioned to eating window")
+        } catch {
+            print("❌ Failed to snooze regime fast: \(error)")
+            self.error = error
+            self.showError = true
+        }
     }
 
     private func scheduleSnoozeNotification(for session: FastingSession, at date: Date) async {
