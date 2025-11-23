@@ -84,7 +84,7 @@ struct FastingMainView: View {
                             actionSheetSession = nil
                         }
                     )
-                    .presentationDetents([.medium, .large])
+                    .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
                 }
             }

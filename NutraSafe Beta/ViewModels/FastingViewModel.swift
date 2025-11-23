@@ -28,7 +28,7 @@ class FastingViewModel: ObservableObject {
 
     let firebaseManager: FirebaseManager // Exposed for early-end modal
     private var timer: Timer?
-    private let userId: String
+    let userId: String
     private let fastingService = FastingService()
 
     // MARK: - Regime State Tracking
