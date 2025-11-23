@@ -613,91 +613,102 @@ struct UseByExpiryView: View {
     @Binding var showingCamera: Bool
     @Binding var selectedTab: TabItem
 
-    @State private var useByItems: [UseByInventoryItem] = []
-    @State private var isLoading: Bool = false
+    // PERFORMANCE: Use shared manager to persist data between tab switches
+    @ObservedObject private var dataManager = UseByDataManager.shared
+
     @State private var isRefreshing: Bool = false
     @State private var showClearAlert: Bool = false
     @State private var showingAddSheet: Bool = false
     @State private var selectedFoodForUseBy: FoodSearchResult? // Hoisted to avoid nested presentations
     @State private var searchText: String = ""
-    @State private var hasLoadedOnce = false // PERFORMANCE: Guard flag to prevent redundant loads
 
+    // PERFORMANCE: Cached computed values - only recalculate when data changes
+    @State private var cachedSortedItems: [UseByInventoryItem] = []
+    @State private var cachedUrgentCount: Int = 0
+    @State private var cachedThisWeekCount: Int = 0
+    @State private var cachedAdaptiveTitle: String = "All Good"
+    @State private var cachedAdaptiveValue: String = "0"
+    @State private var cachedAdaptiveIcon: String = "checkmark.circle.fill"
+    @State private var cachedAdaptiveColor: Color = .green
+    @State private var cachedAdaptiveSubtitle: String = "Nothing expiring soon"
+
+    // PERFORMANCE: Fast O(1) accessors to cached values instead of O(n) computed properties
     private var sortedItems: [UseByInventoryItem] {
-        let filtered = searchText.isEmpty ? useByItems : useByItems.filter { item in
-            item.name.localizedCaseInsensitiveContains(searchText) ||
-            (item.brand?.localizedCaseInsensitiveContains(searchText) ?? false)
-        }
-        return filtered.sorted { $0.expiryDate < $1.expiryDate }
+        cachedSortedItems
     }
 
-    // Adaptive expiry card - shows most relevant information
     private var urgentCount: Int {
-        useByItems.filter { $0.daysUntilExpiry <= 2 }.count
+        cachedUrgentCount
     }
 
     private var thisWeekCount: Int {
-        useByItems.filter { (3...7).contains($0.daysUntilExpiry) }.count
+        cachedThisWeekCount
     }
 
     private var adaptiveTitle: String {
-        if urgentCount > 0 {
-            return "Urgent"
-        } else if thisWeekCount > 0 {
-            return "This Week"
-        } else {
-            return "All Good"
-        }
+        cachedAdaptiveTitle
     }
 
     private var adaptiveValue: String {
-        if urgentCount > 0 {
-            return "\(urgentCount)"
-        } else if thisWeekCount > 0 {
-            return "\(thisWeekCount)"
-        } else {
-            return "0"
-        }
+        cachedAdaptiveValue
     }
 
     private var adaptiveIcon: String {
-        if urgentCount > 0 {
-            return "exclamationmark.triangle.fill"
-        } else if thisWeekCount > 0 {
-            return "clock.fill"
-        } else {
-            return "checkmark.circle.fill"
-        }
+        cachedAdaptiveIcon
     }
 
     private var adaptiveColor: Color {
-        if urgentCount > 0 {
-            return .red
-        } else if thisWeekCount > 0 {
-            return .orange
-        } else {
-            return .green
-        }
+        cachedAdaptiveColor
     }
 
     private var adaptiveSubtitle: String {
-        if urgentCount > 0 {
-            // Check the minimum days in urgent items for more accurate messaging
-            let minDays = useByItems.filter { $0.daysUntilExpiry <= 2 }.map { $0.daysUntilExpiry }.min() ?? 0
+        cachedAdaptiveSubtitle
+    }
+
+    // PERFORMANCE: Recalculate all cached values only when data actually changes
+    private func recalculateCache() {
+        // Filter and sort items
+        let filtered = searchText.isEmpty ? dataManager.items : dataManager.items.filter { item in
+            item.name.localizedCaseInsensitiveContains(searchText) ||
+            (item.brand?.localizedCaseInsensitiveContains(searchText) ?? false)
+        }
+        cachedSortedItems = filtered.sorted { $0.expiryDate < $1.expiryDate }
+
+        // Count urgent and this week items
+        cachedUrgentCount = dataManager.items.filter { $0.daysUntilExpiry <= 2 }.count
+        cachedThisWeekCount = dataManager.items.filter { (3...7).contains($0.daysUntilExpiry) }.count
+
+        // Update adaptive card properties
+        if cachedUrgentCount > 0 {
+            cachedAdaptiveTitle = "Urgent"
+            cachedAdaptiveValue = "\(cachedUrgentCount)"
+            cachedAdaptiveIcon = "exclamationmark.triangle.fill"
+            cachedAdaptiveColor = .red
+
+            let minDays = dataManager.items.filter { $0.daysUntilExpiry <= 2 }.map { $0.daysUntilExpiry }.min() ?? 0
             if minDays <= 1 {
-                return urgentCount == 1 ? "Use today" : "Use very soon"
+                cachedAdaptiveSubtitle = cachedUrgentCount == 1 ? "Use today" : "Use very soon"
             } else {
-                return "Within 2 days"
+                cachedAdaptiveSubtitle = "Within 2 days"
             }
-        } else if thisWeekCount > 0 {
-            return "Plan to use soon"
+        } else if cachedThisWeekCount > 0 {
+            cachedAdaptiveTitle = "This Week"
+            cachedAdaptiveValue = "\(cachedThisWeekCount)"
+            cachedAdaptiveIcon = "clock.fill"
+            cachedAdaptiveColor = .orange
+            cachedAdaptiveSubtitle = "Plan to use soon"
         } else {
-            return "Nothing expiring soon"
+            cachedAdaptiveTitle = "All Good"
+            cachedAdaptiveValue = "0"
+            cachedAdaptiveIcon = "checkmark.circle.fill"
+            cachedAdaptiveColor = .green
+            cachedAdaptiveSubtitle = "Nothing expiring soon"
         }
     }
 
     var body: some View {
         Group {
-            if isLoading {
+            if dataManager.isLoading {
                 // Loading state
                 VStack(spacing: 16) {
                     Spacer()
@@ -710,7 +721,7 @@ struct UseByExpiryView: View {
                     Spacer()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if useByItems.isEmpty {
+            } else if dataManager.items.isEmpty {
                 // Clean empty state matching design
                 VStack(spacing: 0) {
                         Spacer()
@@ -968,23 +979,28 @@ struct UseByExpiryView: View {
             }
         }
         .onAppear {
-            // PERFORMANCE: Skip if already loaded - prevents redundant Firebase calls on tab switches
-            guard !hasLoadedOnce else {
-        // DEBUG LOG: print("⚡️ UseByExpiryView: Skipping load - data already loaded (count: \(useByItems.count))")
-                return
+            // PERFORMANCE: Load data from manager (will skip if already loaded)
+            Task {
+                await dataManager.loadItems()
+                recalculateCache() // Initial cache population
             }
-            hasLoadedOnce = true
-            Task { await reloadUseBy() }
         }
         .onReceive(NotificationCenter.default.publisher(for: .useByInventoryUpdated)) { _ in
-            hasLoadedOnce = false // Force reload when inventory changes
-            Task { await reloadUseBy() }
+            // Force reload when inventory changes
+            Task { await dataManager.forceReload() }
+        }
+        // PERFORMANCE: Recalculate cached values only when data actually changes
+        .onChange(of: dataManager.items) { _ in
+            recalculateCache()
+        }
+        .onChange(of: searchText) { _ in
+            recalculateCache()
         }
         .alert("Clear all Use By items?", isPresented: $showClearAlert) {
             Button("Delete All", role: .destructive) {
                 Task {
                     try? await FirebaseManager.shared.clearUseByInventory()
-                    await reloadUseBy()
+                    await dataManager.forceReload()
                 }
             }
             Button("Cancel", role: .cancel) {}
@@ -997,30 +1013,6 @@ struct UseByExpiryView: View {
             })
         }
     } // End of var body: some View
-
-    private func reloadUseBy() async {
-        await MainActor.run { self.isLoading = true }
-        do {
-            let items: [UseByInventoryItem] = try await FirebaseManager.shared.getUseByItems()
-        // DEBUG LOG: print("🍳 UseByView: Loaded \(items.count) items from Firebase")
-            for item in items {
-                #if DEBUG
-                print("  - \(item.name): \(item.daysUntilExpiry) days left")
-                #endif
-            }
-            await MainActor.run {
-                self.useByItems = items
-                self.isLoading = false
-        // DEBUG LOG: print("🍳 UseByView: useByItems set to \(self.useByItems.count) items")
-        // DEBUG LOG: print("🍳 UseByView: sortedItems has \(self.sortedItems.count) items")
-            }
-        } catch {
-            #if DEBUG
-            print("❌ UseByView: Error loading items: \(error)")
-            #endif
-            await MainActor.run { self.isLoading = false }
-        }
-    }
 }
 
 // MARK: - UseBy Expiry Alert Cards

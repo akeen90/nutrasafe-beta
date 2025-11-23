@@ -28,6 +28,7 @@ struct DiaryDailySummaryCard: View {
     // MARK: - Daily Goals
     @State private var calorieGoal: Double = 1800
     @State private var stepGoal: Double = 10000
+    @State private var exerciseGoal: Double = 400
     @State private var macroGoals: [MacroGoal] = MacroGoal.defaultMacros
 
     // MARK: - Weekly Summary Sheet
@@ -53,6 +54,9 @@ struct DiaryDailySummaryCard: View {
 
             // Steps section with overlay text
             stepsProgressView
+
+            // Calories burned section
+            caloriesBurnedProgressView
 
         }
         .padding(AppSpacing.medium)
@@ -190,6 +194,49 @@ struct DiaryDailySummaryCard: View {
         .frame(height: 24)
     }
 
+    private var caloriesBurnedProgressView: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                // Background bar (fully rounded)
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.systemGray5))
+                    .frame(height: 24)
+
+                // Progress bar (fully rounded) - only show orange if calories burned
+                if healthKitManager.activeEnergyBurned > 0 {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color(red: 1.0, green: 0.4, blue: 0.3))
+                        .frame(
+                            width: max(24, geometry.size.width * min(1.0, healthKitManager.activeEnergyBurned / exerciseGoal)),
+                            height: 24
+                        )
+                        .animation(.spring(response: 0.5, dampingFraction: 0.7), value: healthKitManager.activeEnergyBurned)
+                }
+
+                // Text overlay on top of bar
+                HStack {
+                    Text("Calories Burned")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
+
+                    Spacer()
+
+                    HStack(alignment: .firstTextBaseline, spacing: 2) {
+                        Text("\(Int(healthKitManager.activeEnergyBurned))")
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundColor(.primary)
+
+                        Text("/\(Int(exerciseGoal))")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(.horizontal, 12)
+            }
+        }
+        .frame(height: 24)
+    }
+
     private var stepsTextView: some View {
         VStack(spacing: 2) {
             HStack(alignment: .firstTextBaseline, spacing: 1) {
@@ -293,9 +340,11 @@ struct DiaryDailySummaryCard: View {
             await loadNutritionGoals()
             if healthKitRingsEnabled {
                 await healthKitManager.updateStepCount(for: currentDate)
+                await healthKitManager.updateActiveEnergy(for: currentDate)
             } else {
                 await MainActor.run {
                     healthKitManager.stepCount = 0
+                    healthKitManager.activeEnergyBurned = 0
                 }
             }
         }
@@ -306,6 +355,7 @@ struct DiaryDailySummaryCard: View {
             await loadNutritionGoals()
             if healthKitRingsEnabled {
                 await healthKitManager.updateStepCount(for: currentDate)
+                await healthKitManager.updateActiveEnergy(for: currentDate)
             }
         }
     }
@@ -314,9 +364,11 @@ struct DiaryDailySummaryCard: View {
         Task {
             if enabled {
                 await healthKitManager.updateStepCount(for: currentDate)
+                await healthKitManager.updateActiveEnergy(for: currentDate)
             } else {
                 await MainActor.run {
                     healthKitManager.stepCount = 0
+                    healthKitManager.activeEnergyBurned = 0
                 }
             }
         }
@@ -335,9 +387,12 @@ struct DiaryDailySummaryCard: View {
                 // Update step goal
                 stepGoal = Double(settings.stepGoal ?? 10000)
 
+                // Update exercise goal
+                exerciseGoal = Double(settings.exerciseGoal ?? 400)
+
                 // Update macro goals from Firebase
                 macroGoals = loadedMacroGoals
-                print("✅ Loaded nutrition goals: \(Int(calorieGoal)) cal, \(Int(stepGoal)) steps")
+                print("✅ Loaded nutrition goals: \(Int(calorieGoal)) cal, \(Int(stepGoal)) steps, \(Int(exerciseGoal)) cal burned")
             }
         } catch {
             print("⚠️ Failed to load nutrition goals: \(error.localizedDescription)")

@@ -1436,36 +1436,58 @@ struct ContentView: View {
     @State private var useBySelectedFood: FoodSearchResult? = nil
     @State private var previousTabBeforeAdd: TabItem = .diary
 
-    // PERFORMANCE: Track which tabs have been visited for lazy initialization
-    @State private var visitedTabs: Set<TabItem> = [.diary] // Diary loads on startup
+    // MARK: - Persistent Tab Views (Performance Fix)
+    // Keep tabs alive to preserve state and prevent redundant loading
+    // Only the selected tab is visible, but all maintain their loaded data
+    @State private var visitedTabs: Set<TabItem> = [.diary] // Diary pre-loaded
 
-    // MARK: - Lazy Tab Views (Performance Optimization)
-    // Only create tab views when first visited, then keep in memory for instant switching
-    @ViewBuilder
-    private var lazyTabViews: some View {
+    private var persistentTabViews: some View {
         ZStack {
-            // Diary Tab - Always loaded on startup
-            if visitedTabs.contains(.diary) {
-                DiaryTabView(
-                    selectedFoodItems: $selectedFoodItems,
-                    showingSettings: $showingSettings,
-                    selectedTab: $selectedTab,
-                    editTrigger: $editTrigger,
-                    moveTrigger: $moveTrigger,
-                    copyTrigger: $copyTrigger,
-                    deleteTrigger: $deleteTrigger,
-                    onEditFood: editSelectedFood,
-                    onDeleteFoods: deleteSelectedFoods,
-                    onBlockedNutrientsAttempt: { showingPaywall = true }
-                )
-                .environmentObject(diaryDataManager)
-                .environmentObject(healthKitManager)
-                .opacity(selectedTab == .diary ? 1 : 0)
-                .zIndex(selectedTab == .diary ? 1 : 0)
+            // Diary Tab - always rendered (most frequently used)
+            DiaryTabView(
+                selectedFoodItems: $selectedFoodItems,
+                showingSettings: $showingSettings,
+                selectedTab: $selectedTab,
+                editTrigger: $editTrigger,
+                moveTrigger: $moveTrigger,
+                copyTrigger: $copyTrigger,
+                deleteTrigger: $deleteTrigger,
+                onEditFood: editSelectedFood,
+                onDeleteFoods: deleteSelectedFoods,
+                onBlockedNutrientsAttempt: { showingPaywall = true }
+            )
+            .environmentObject(diaryDataManager)
+            .environmentObject(healthKitManager)
+            .opacity(selectedTab == .diary ? 1 : 0)
+            .allowsHitTesting(selectedTab == .diary)
+
+            // Weight Tab - lazy loaded on first visit
+            if selectedTab == .weight || visitedTabs.contains(.weight) {
+                WeightTrackingView(showingSettings: $showingSettings)
+                    .environmentObject(healthKitManager)
+                    .opacity(selectedTab == .weight ? 1 : 0)
+                    .allowsHitTesting(selectedTab == .weight)
+                    .onAppear { visitedTabs.insert(.weight) }
             }
 
-            // Add Tab - Lazy load on first visit
-            if visitedTabs.contains(.add) {
+            // Food Tab - lazy loaded on first visit
+            if selectedTab == .food || visitedTabs.contains(.food) {
+                FoodTabView(showingSettings: $showingSettings)
+                    .opacity(selectedTab == .food ? 1 : 0)
+                    .allowsHitTesting(selectedTab == .food)
+                    .onAppear { visitedTabs.insert(.food) }
+            }
+
+            // Use By Tab - lazy loaded on first visit
+            if selectedTab == .useBy || visitedTabs.contains(.useBy) {
+                UseByTabView(showingSettings: $showingSettings, selectedTab: $selectedTab)
+                    .opacity(selectedTab == .useBy ? 1 : 0)
+                    .allowsHitTesting(selectedTab == .useBy)
+                    .onAppear { visitedTabs.insert(.useBy) }
+            }
+
+            // Add Tab - only shown when selected (modal behavior)
+            if selectedTab == .add {
                 AddTabView(
                     selectedTab: $selectedTab,
                     isPresented: Binding(
@@ -1473,31 +1495,8 @@ struct ContentView: View {
                         set: { if !$0 { selectedTab = previousTabBeforeAdd } }
                     )
                 )
-                    .environmentObject(diaryDataManager)
-                    .opacity(selectedTab == .add ? 1 : 0)
-                    .zIndex(selectedTab == .add ? 1 : 0)
-            }
-
-            // Weight Tab - Lazy load on first visit
-            if visitedTabs.contains(.weight) {
-                WeightTrackingView(showingSettings: $showingSettings)
-                    .environmentObject(healthKitManager)
-                    .opacity(selectedTab == .weight ? 1 : 0)
-                    .zIndex(selectedTab == .weight ? 1 : 0)
-            }
-
-            // Food Tab - Lazy load on first visit
-            if visitedTabs.contains(.food) {
-                FoodTabView(showingSettings: $showingSettings)
-                    .opacity(selectedTab == .food ? 1 : 0)
-                    .zIndex(selectedTab == .food ? 1 : 0)
-            }
-
-            // Use By Tab - Lazy load on first visit
-            if visitedTabs.contains(.useBy) {
-                UseByTabView(showingSettings: $showingSettings, selectedTab: $selectedTab)
-                    .opacity(selectedTab == .useBy ? 1 : 0)
-                    .zIndex(selectedTab == .useBy ? 1 : 0)
+                .environmentObject(diaryDataManager)
+                .transition(.opacity)
             }
         }
     }
@@ -1521,7 +1520,7 @@ struct ContentView: View {
 
                 // Main Content with padding for tab bar and potential workout progress bar
                 VStack {
-                    lazyTabViews
+                    persistentTabViews
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             
@@ -1665,14 +1664,11 @@ struct ContentView: View {
                 #endif
             }
 
-            // PERFORMANCE: Mark tab as visited for lazy initialization
-            visitedTabs.insert(newTab)
             #if DEBUG
             print("[Tab] selectedTab changed -> \(newTab)")
-        // DEBUG LOG: print("⚡️ Tab switched to \(newTab) - Total visited: \(visitedTabs.count)/5")
+            #endif
 
             // Enforce subscription gating for programmatic tab changes
-            #endif
             if !(subscriptionManager.isSubscribed || subscriptionManager.isInTrial || subscriptionManager.isPremiumOverride) {
                 if !(newTab == .diary || newTab == .add) {
                     // Revert and show paywall
@@ -1905,7 +1901,7 @@ struct WeightTrackingView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
                 .padding(.bottom, 12)
-                .background(progressGlassBackground)
+                .background(Color.adaptiveBackground)
 
                 // Loading overlay
                 if isLoadingData {
@@ -2300,7 +2296,7 @@ struct WeightTrackingView: View {
                 }
                 } // End of loading else block
             }
-            .background(progressGlassBackground)
+            .background(Color.adaptiveBackground)
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .sheet(isPresented: $showingAddWeight) {

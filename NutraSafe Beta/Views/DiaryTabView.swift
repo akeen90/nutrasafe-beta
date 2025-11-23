@@ -531,6 +531,7 @@ struct DiaryTabView: View {
             }
         )
         .padding(.horizontal, 16)
+        .padding(.top, 8)
 
         // Standalone column headers in glass card
         HStack {

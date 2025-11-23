@@ -62,6 +62,7 @@ class HealthKitManager: ObservableObject {
     @Published var isAuthorized = false
     @Published var exerciseCalories: Double = 0
     @Published var stepCount: Double = 0
+    @Published var activeEnergyBurned: Double = 0
     @Published var userWeight: Double = 70.0 // Default weight in kg
     @Published var errorMessage: String?
     @Published var showError = false
@@ -82,6 +83,7 @@ class HealthKitManager: ObservableObject {
         let typesToRead: Set<HKObjectType> = [
             HKObjectType.quantityType(forIdentifier: .bodyMass)!,
             HKObjectType.quantityType(forIdentifier: .stepCount)!,
+            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
             HKObjectType.workoutType()
         ]
 
@@ -359,6 +361,33 @@ class HealthKitManager: ObservableObject {
 
             await MainActor.run {
                 self.errorMessage = "Unable to load step count from HealthKit"
+                self.showError = true
+            }
+        }
+    }
+
+    func updateActiveEnergy(for date: Date = Date()) async {
+        do {
+            let energy = try await fetchActiveEnergyBurned(for: date)
+            await MainActor.run {
+                self.activeEnergyBurned = energy
+                self.errorMessage = nil
+                self.showError = false
+            }
+        } catch {
+            #if DEBUG
+            print("Failed to fetch active energy: \(error)")
+            #endif
+
+            // Don't show error for "no data" case - just use 0
+            let nsError = error as NSError
+            if nsError.domain == "com.apple.healthkit" && nsError.code == 11 {
+                // No data - this is normal, not an error
+                return
+            }
+
+            await MainActor.run {
+                self.errorMessage = "Unable to load active energy from HealthKit"
                 self.showError = true
             }
         }

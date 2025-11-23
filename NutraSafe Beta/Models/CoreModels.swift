@@ -16,7 +16,7 @@ struct BoundingBox: Codable {
 }
 
 // MARK: - Use By Inventory Models
-struct UseByInventoryItem: Codable, Identifiable {
+struct UseByInventoryItem: Codable, Identifiable, Equatable {
     let id: String
     let name: String
     let brand: String?
@@ -1203,5 +1203,47 @@ extension MacroGoal {
         MacroGoal(macroType: .fat, percentage: 30),
         MacroGoal(macroType: .fiber, directTarget: 30.0) // UK recommended daily fiber intake
     ]
+}
+
+// MARK: - Use By Data Manager
+class UseByDataManager: ObservableObject {
+    static let shared = UseByDataManager()
+
+    @Published var items: [UseByInventoryItem] = []
+    @Published var isLoading: Bool = false
+    private var hasLoadedOnce: Bool = false
+
+    private init() {}
+
+    func loadItems() async {
+        // PERFORMANCE: Skip if already loaded
+        guard !hasLoadedOnce else {
+            print("⚡️ UseByDataManager: Skipping load - data already cached (count: \(items.count))")
+            return
+        }
+
+        await MainActor.run { self.isLoading = true }
+
+        do {
+            let loadedItems: [UseByInventoryItem] = try await FirebaseManager.shared.getUseByItems()
+            await MainActor.run {
+                self.items = loadedItems
+                self.hasLoadedOnce = true
+                self.isLoading = false
+                print("✅ UseByDataManager: Loaded \(loadedItems.count) items from Firebase")
+            }
+        } catch {
+            await MainActor.run {
+                self.items = []
+                self.isLoading = false
+                print("❌ UseByDataManager: Error loading items: \(error)")
+            }
+        }
+    }
+
+    func forceReload() async {
+        hasLoadedOnce = false
+        await loadItems()
+    }
 }
 

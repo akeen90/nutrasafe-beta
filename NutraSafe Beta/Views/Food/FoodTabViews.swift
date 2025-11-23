@@ -73,7 +73,7 @@ struct FoodTabView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 8)
                 }
-                .background(foodGlassBackground)
+                .background(Color.adaptiveBackground)
                 
                 // MARK: - Fasting Components have been extracted to Views/Fasting/FastingTimerView.swift
                 // The following components were moved as part of Phase 13 ContentView.swift modularization effort:
@@ -96,7 +96,7 @@ struct FoodTabView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .background(foodGlassBackground)
+            .background(Color.adaptiveBackground)
             .navigationBarHidden(true)
         }
         .onAppear {

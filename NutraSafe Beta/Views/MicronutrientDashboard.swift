@@ -122,13 +122,35 @@ struct MicronutrientDashboard: View {
             // Process today's foods FIRST to ensure we have fresh data
             await processTodaysFoods()
 
-            // Then load the summaries with the updated data
-            nutrientSummaries = await trackingManager.getAllNutrientSummaries()
-            insights = await trackingManager.generateTodayInsights()
-            await recommendationEngine.generateRecommendations(for: nutrientSummaries)
+            // PERFORMANCE: Load all data in parallel using TaskGroup
+            await withTaskGroup(of: Void.self) { group in
+                // Parallel task 1: Get nutrient summaries
+                group.addTask {
+                    let summaries = await self.trackingManager.getAllNutrientSummaries()
+                    await MainActor.run {
+                        self.nutrientSummaries = summaries
+                    }
+                }
 
-            // Load rhythm data for last 7 days
-            await loadRhythmData()
+                // Parallel task 2: Generate insights
+                group.addTask {
+                    let newInsights = await self.trackingManager.generateTodayInsights()
+                    await MainActor.run {
+                        self.insights = newInsights
+                    }
+                }
+
+                // Parallel task 3: Load rhythm data
+                group.addTask {
+                    await self.loadRhythmData()
+                }
+
+                // Wait for all parallel tasks to complete
+                await group.waitForAll()
+            }
+
+            // Generate recommendations after summaries are loaded
+            await recommendationEngine.generateRecommendations(for: nutrientSummaries)
 
             hasLoadedData = true
             isLoading = false
