@@ -366,8 +366,20 @@ struct PlanDashboardView: View {
                             // Snooze and Skip buttons
                             HStack(spacing: 12) {
                                 Button {
-                                    // Set default snooze time to 30 minutes from now
-                                    snoozeUntilTime = Date().addingTimeInterval(30 * 60)
+                                    // Set default snooze time to 30 minutes from now, ensuring date is today
+                                    let now = Date()
+                                    let calendar = Calendar.current
+                                    let futureTime = now.addingTimeInterval(30 * 60)
+
+                                    // Explicitly set to today's date with the future time
+                                    var components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: futureTime)
+                                    // Ensure we're using today's date
+                                    let todayComponents = calendar.dateComponents([.year, .month, .day], from: now)
+                                    components.year = todayComponents.year
+                                    components.month = todayComponents.month
+                                    components.day = todayComponents.day
+
+                                    snoozeUntilTime = calendar.date(from: components) ?? futureTime
                                     showSnoozePicker = true
                                 } label: {
                                     HStack {
@@ -551,12 +563,24 @@ struct PlanDashboardView: View {
                     DatePicker(
                         "Resume Time",
                         selection: $snoozeUntilTime,
-                        in: Date()...,
-                        displayedComponents: [.date, .hourAndMinute]
+                        displayedComponents: [.hourAndMinute]
                     )
                     .datePickerStyle(.wheel)
                     .labelsHidden()
                     .padding()
+                    .onChange(of: snoozeUntilTime) { newValue in
+                        // If the selected time is in the past, move it to tomorrow
+                        if newValue < Date() {
+                            let calendar = Calendar.current
+                            if let tomorrow = calendar.date(byAdding: .day, value: 1, to: newValue) {
+                                snoozeUntilTime = tomorrow
+                            }
+                        }
+                    }
+
+                    Text("Snooze until: \(snoozeUntilTime.formatted(date: .abbreviated, time: .shortened))")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
 
                     Button {
                         Task {
