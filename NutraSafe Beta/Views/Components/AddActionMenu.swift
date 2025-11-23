@@ -17,15 +17,17 @@ struct AddActionMenu: View {
 
     var body: some View {
         ZStack {
-            // Transparent tap area to dismiss (no dark overlay)
-            Color.clear
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                        isPresented = false
+            // Transparent tap area to dismiss (no dark overlay) - only when presented
+            if isPresented {
+                Color.clear
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            isPresented = false
+                        }
                     }
-                }
+            }
 
             VStack {
                 Spacer()
@@ -87,11 +89,12 @@ struct AddActionMenu: View {
                     )
                     .padding(.horizontal, 40)
                 }
-                .padding(.bottom, 80) // Position higher above the tab bar
-                .offset(y: isPresented ? 0 : 300) // Slide up from bottom
+                .padding(.bottom, 50) // Position above the tab bar
+                .offset(y: isPresented ? 0 : 500) // Slide up from bottom, fully hidden when dismissed
                 .animation(.spring(response: 0.45, dampingFraction: 0.82), value: isPresented)
             }
         }
+        .allowsHitTesting(isPresented) // Disable touch interception when dismissed
     }
 
     private func dismissAndExecute(_ action: @escaping () -> Void) {

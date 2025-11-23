@@ -48,6 +48,7 @@ struct DiaryTabView: View {
         var totalProtein: Double = 0
         var totalCarbs: Double = 0
         var totalFat: Double = 0
+        var totalFiber: Double = 0
         var breakfastCalories: Int = 0
         var lunchCalories: Int = 0
         var dinnerCalories: Int = 0
@@ -69,6 +70,10 @@ struct DiaryTabView: View {
 
     private var totalFat: Double {
         cachedNutrition.totalFat
+    }
+
+    private var totalFiber: Double {
+        cachedNutrition.totalFiber
     }
 
     private var breakfastCalories: Int {
@@ -99,6 +104,7 @@ struct DiaryTabView: View {
             totalProtein: breakfast.protein + lunch.protein + dinner.protein + snacks.protein,
             totalCarbs: breakfast.carbs + lunch.carbs + dinner.carbs + snacks.carbs,
             totalFat: breakfast.fat + lunch.fat + dinner.fat + snacks.fat,
+            totalFiber: breakfast.fiber + lunch.fiber + dinner.fiber + snacks.fiber,
             breakfastCalories: breakfast.calories,
             lunchCalories: lunch.calories,
             dinnerCalories: dinner.calories,
@@ -106,20 +112,22 @@ struct DiaryTabView: View {
         )
     }
 
-    private func calculateMealNutrition(_ foods: [DiaryFoodItem]) -> (calories: Int, protein: Double, carbs: Double, fat: Double) {
+    private func calculateMealNutrition(_ foods: [DiaryFoodItem]) -> (calories: Int, protein: Double, carbs: Double, fat: Double, fiber: Double) {
         var calories = 0
         var protein = 0.0
         var carbs = 0.0
         var fat = 0.0
+        var fiber = 0.0
 
         for food in foods {
             calories += food.calories
             protein += food.protein
             carbs += food.carbs
             fat += food.fat
+            fiber += food.fiber
         }
 
-        return (calories, protein, carbs, fat)
+        return (calories, protein, carbs, fat, fiber)
     }
 
     // Extracted to reduce compiler complexity
@@ -520,6 +528,7 @@ struct DiaryTabView: View {
             totalProtein: totalProtein,
             totalCarbs: totalCarbs,
             totalFat: totalFat,
+            totalFiber: totalFiber,
             currentDate: selectedDate,
             breakfastFoods: breakfastFoods,
             lunchFoods: lunchFoods,
@@ -640,7 +649,7 @@ struct DiaryTabView: View {
         .padding(.horizontal, 16)
 
         Spacer()
-            .frame(height: 100)
+            .frame(height: 150)
     }
 
     @ViewBuilder
@@ -654,7 +663,7 @@ struct DiaryTabView: View {
         }
 
         Spacer()
-            .frame(height: 100)
+            .frame(height: 150)
     }
 
     @ViewBuilder
@@ -869,7 +878,6 @@ struct DiaryTabView: View {
 
     private func deleteSingleFood(_ food: DiaryFoodItem) {
         diaryDataManager.deleteFoodItems([food], for: selectedDate)
-        recalculateNutrition()
     }
 
     private func addFoodToMeal(_ mealType: String) {
@@ -893,7 +901,6 @@ struct DiaryTabView: View {
             diaryDataManager.deleteFoodItems(itemsToDelete, for: selectedDate)
         }
         selectedFoodItems.removeAll()
-        recalculateNutrition()
     }
 
     private func saveFoodData() {
