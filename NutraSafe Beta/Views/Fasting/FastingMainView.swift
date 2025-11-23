@@ -85,7 +85,6 @@ struct FastingMainView: View {
                         }
                     )
                     .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
                 }
             }
             .onAppear {
