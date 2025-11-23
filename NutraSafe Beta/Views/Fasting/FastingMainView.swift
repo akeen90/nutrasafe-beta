@@ -875,13 +875,34 @@ struct ActiveSessionView: View {
                     .buttonStyle(.plain)
 
                     Button {
+                        if let session = viewModel.activeSession {
+                            Task {
+                                await viewModel.snoozeSession(session, minutes: 30)
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "bell.zzz.fill")
+                            Text("Snooze 30m")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue.opacity(0.2))
+                        .foregroundColor(.blue)
+                        .cornerRadius(12)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                HStack(spacing: 12) {
+                    Button {
                         Task {
                             await viewModel.skipCurrentSession()
                         }
                     } label: {
                         HStack {
                             Image(systemName: "forward.fill")
-                            Text("Skip Today")
+                            Text("Skip Fast")
                         }
                         .frame(maxWidth: .infinity)
                         .padding()
@@ -890,6 +911,9 @@ struct ActiveSessionView: View {
                         .cornerRadius(12)
                     }
                     .buttonStyle(.plain)
+
+                    Spacer()
+                        .frame(maxWidth: .infinity)
                 }
 
                 // End Fast for the Day Button

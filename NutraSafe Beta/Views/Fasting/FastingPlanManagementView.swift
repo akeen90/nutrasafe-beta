@@ -212,7 +212,6 @@ struct FastingPlanEditView: View {
     let plan: FastingPlan
     @Environment(\.dismiss) private var dismiss
 
-    @State private var name: String
     @State private var selectedDuration: FastingPlanDuration
     @State private var customDurationHours: Int
     @State private var selectedDays: Set<String>
@@ -223,8 +222,6 @@ struct FastingPlanEditView: View {
     init(viewModel: FastingViewModel, plan: FastingPlan) {
         self.viewModel = viewModel
         self.plan = plan
-
-        _name = State(initialValue: plan.name)
 
         // Determine duration type
         if let duration = FastingPlanDuration.allCases.first(where: { $0.hours == plan.durationHours }) {
@@ -245,8 +242,6 @@ struct FastingPlanEditView: View {
         NavigationStack {
             Form {
                 Section(header: Text("Plan Details")) {
-                    TextField("Plan Name", text: $name)
-
                     Picker("Fasting Duration", selection: $selectedDuration) {
                         ForEach(FastingPlanDuration.allCases, id: \.self) { duration in
                             VStack(alignment: .leading, spacing: 2) {
@@ -315,7 +310,7 @@ struct FastingPlanEditView: View {
                             Spacer()
                         }
                     }
-                    .disabled(name.isEmpty || selectedDays.isEmpty)
+                    .disabled(selectedDays.isEmpty)
                 }
             }
             .navigationTitle("Edit Plan")
@@ -332,7 +327,6 @@ struct FastingPlanEditView: View {
 
     private func savePlan() async {
         var updatedPlan = plan
-        updatedPlan.name = name
         updatedPlan.durationHours = selectedDuration == .custom ? customDurationHours : selectedDuration.hours
         updatedPlan.daysOfWeek = Array(selectedDays)
         updatedPlan.allowedDrinks = allowedDrinks

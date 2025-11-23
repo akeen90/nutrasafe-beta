@@ -4,7 +4,6 @@ struct FastingPlanCreationView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: FastingViewModel
 
-    @State private var planName = ""
     @State private var selectedDuration = FastingPlanDuration.sixteenHours
     @State private var customDurationHours = 16
     @State private var selectedDays: Set<String> = []
@@ -26,9 +25,6 @@ struct FastingPlanCreationView: View {
         NavigationStack {
             Form {
                 Section(header: Text("Plan Details")) {
-                    TextField("Plan Name (Optional)", text: $planName, prompt: Text("Auto-generated if empty"))
-                        .textInputAutocapitalization(.words)
-
                     Picker("Fasting Duration", selection: $selectedDuration) {
                         ForEach(FastingPlanDuration.allCases, id: \.self) { duration in
                             VStack(alignment: .leading, spacing: 2) {
@@ -133,7 +129,6 @@ struct FastingPlanCreationView: View {
         hasLoadedExistingPlan = true
 
         // Load existing plan settings
-        planName = plan.name
         selectedDays = Set(plan.daysOfWeek)
         preferredStartTime = plan.preferredStartTime
         selectedDrinksPhilosophy = plan.allowedDrinks
@@ -167,28 +162,22 @@ struct FastingPlanCreationView: View {
         print("   Duration: \(durationHours) hours")
         print("   Days: \(sortedDays)")
 
-        // Generate default name if empty
+        // Auto-generate name based on duration
         let finalName: String
-        if planName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            // Auto-generate name based on duration
-            if durationHours == 16 {
-                finalName = "16:8 Fasting Plan"
-            } else if durationHours == 12 {
-                finalName = "12:12 Fasting Plan"
-            } else if durationHours == 18 {
-                finalName = "18:6 Fasting Plan"
-            } else if durationHours == 20 {
-                finalName = "20:4 Fasting Plan"
-            } else if durationHours == 24 {
-                finalName = "OMAD Plan"
-            } else {
-                finalName = "\(durationHours)-Hour Fast"
-            }
-            print("   Generated name: '\(finalName)'")
+        if durationHours == 16 {
+            finalName = "16:8 Fasting Plan"
+        } else if durationHours == 12 {
+            finalName = "12:12 Fasting Plan"
+        } else if durationHours == 18 {
+            finalName = "18:6 Fasting Plan"
+        } else if durationHours == 20 {
+            finalName = "20:4 Fasting Plan"
+        } else if durationHours == 24 {
+            finalName = "OMAD Plan"
         } else {
-            finalName = planName
-            print("   Using custom name: '\(finalName)'")
+            finalName = "\(durationHours)-Hour Fast"
         }
+        print("   Generated name: '\(finalName)'")
 
         print("   Creating plan with name: '\(finalName)'")
         Task {
