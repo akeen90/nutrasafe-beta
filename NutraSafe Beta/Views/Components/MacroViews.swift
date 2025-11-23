@@ -15,13 +15,19 @@ struct MacroProgressView: View {
     @State private var trackedFoods: [DiaryFoodItem] = []
     @State private var trackedExercises: [ExerciseEntry] = []
     @State private var userCaloricGoal: Int = 2000
-    
-    private var totalCaloriesConsumed: Int {
-        trackedFoods.reduce(0) { $0 + $1.calories }
-    }
-    
-    private var totalCaloriesBurned: Int {
-        trackedExercises.reduce(0) { $0 + $1.caloriesBurned }
+
+    // PERFORMANCE: Cache calorie totals to prevent redundant calculations on every render
+    // Pattern from Clay's production app: move expensive operations to cached state
+    @State private var cachedCaloriesConsumed: Int = 0
+    @State private var cachedCaloriesBurned: Int = 0
+
+    private var totalCaloriesConsumed: Int { cachedCaloriesConsumed }
+    private var totalCaloriesBurned: Int { cachedCaloriesBurned }
+
+    // Update cached calorie totals when data changes
+    private func updateCachedCalories() {
+        cachedCaloriesConsumed = trackedFoods.reduce(0) { $0 + $1.calories }
+        cachedCaloriesBurned = trackedExercises.reduce(0) { $0 + $1.caloriesBurned }
     }
     
     private var netCalories: Int {
@@ -74,10 +80,16 @@ struct MacroProgressView: View {
         .background(Color(.systemGray6))
         .cornerRadius(12)
         .onAppear {
+            // PERFORMANCE: Initialize cached calorie totals
+            updateCachedCalories()
+
             Task {
                 await loadCaloricGoal()
             }
         }
+        // PERFORMANCE: Update cached totals when data changes
+        .onChange(of: trackedFoods) { _ in updateCachedCalories() }
+        .onChange(of: trackedExercises) { _ in updateCachedCalories() }
     }
 
     private func loadCaloricGoal() async {

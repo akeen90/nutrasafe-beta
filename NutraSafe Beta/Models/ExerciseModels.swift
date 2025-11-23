@@ -38,7 +38,7 @@ enum ExerciseIntensity: String, Codable, CaseIterable {
     }
 }
 
-struct ExerciseEntry: Identifiable {
+struct ExerciseEntry: Identifiable, Equatable {
     let id: UUID
     let userId: String
     let exerciseName: String

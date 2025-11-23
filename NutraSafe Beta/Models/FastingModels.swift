@@ -322,7 +322,7 @@ struct FastingPlan: Identifiable, Codable {
     }
 }
 
-struct FastingSession: Identifiable, Codable {
+struct FastingSession: Identifiable, Codable, Equatable {
     @DocumentID var id: String?
     var userId: String
     var planId: String? // Nullable for manual sessions
@@ -341,6 +341,11 @@ struct FastingSession: Identifiable, Codable {
     var mergedFromEarlyEnd: Bool = false
     var earlyEndReason: String? = nil
     var lastEarlyEndTime: Date? = nil
+
+    // MARK: - Equatable conformance for SwiftUI's .onChange() modifier
+    static func == (lhs: FastingSession, rhs: FastingSession) -> Bool {
+        lhs.id == rhs.id
+    }
 
     enum AttemptType: String, Codable {
         case normal = "normal"

@@ -968,7 +968,7 @@ struct NutritionValue {
     }
 }
 
-struct DiaryExerciseItem: Identifiable, Codable {
+struct DiaryExerciseItem: Identifiable, Codable, Equatable {
     let id: UUID
     let name: String
     let duration: Int // minutes
@@ -976,7 +976,7 @@ struct DiaryExerciseItem: Identifiable, Codable {
     let calories: Double
     let time: String
     let exerciseType: ExerciseType
-    
+
     init(name: String, duration: Int, intensity: ExerciseIntensity, calories: Double, time: String, exerciseType: ExerciseType) {
         self.id = UUID()
         self.name = name
@@ -985,6 +985,11 @@ struct DiaryExerciseItem: Identifiable, Codable {
         self.calories = calories
         self.time = time
         self.exerciseType = exerciseType
+    }
+
+    // MARK: - Equatable conformance for SwiftUI's .onChange() modifier
+    static func == (lhs: DiaryExerciseItem, rhs: DiaryExerciseItem) -> Bool {
+        lhs.id == rhs.id
     }
     
     // Calculate calories based on bodyweight, exercise type, duration and intensity

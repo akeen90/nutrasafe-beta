@@ -695,9 +695,36 @@ struct CombinedMealView: View {
     @State private var servingSizes: [String: Double] = [:]
     @State private var selectedMealType: MealType = .lunch
     @State private var showingSuccessAlert = false
-    
+
+    // PERFORMANCE: Cache nutrition totals to prevent redundant calculations on every render
+    // Pattern from Clay's production app: move expensive operations to cached state
+    @State private var cachedTotalCalories: Double = 0
+    @State private var cachedTotalProtein: Double = 0
+    @State private var cachedTotalCarbs: Double = 0
+    @State private var cachedTotalFat: Double = 0
+
     @EnvironmentObject var firebaseManager: FirebaseManager
-    
+
+    // Update cached nutrition totals when data changes
+    private func updateCachedNutritionTotals() {
+        cachedTotalCalories = foods.reduce(0) { total, food in
+            let multiplier = servingSizes[food.id] ?? 1.0
+            return total + (food.calories * multiplier)
+        }
+        cachedTotalProtein = foods.reduce(0) { total, food in
+            let multiplier = servingSizes[food.id] ?? 1.0
+            return total + (food.protein * multiplier)
+        }
+        cachedTotalCarbs = foods.reduce(0) { total, food in
+            let multiplier = servingSizes[food.id] ?? 1.0
+            return total + (food.carbs * multiplier)
+        }
+        cachedTotalFat = foods.reduce(0) { total, food in
+            let multiplier = servingSizes[food.id] ?? 1.0
+            return total + (food.fat * multiplier)
+        }
+    }
+
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
@@ -806,36 +833,17 @@ struct CombinedMealView: View {
                     servingSizes[food.id] = 1.0
                 }
             }
+            // PERFORMANCE: Initialize cached nutrition totals on first appearance
+            updateCachedNutritionTotals()
         }
+        // PERFORMANCE: Update cached totals only when serving sizes change
+        .onChange(of: servingSizes) { _ in updateCachedNutritionTotals() }
     }
     
-    private var totalCalories: Double {
-        foods.reduce(0) { total, food in
-            let multiplier = servingSizes[food.id] ?? 1.0
-            return total + (food.calories * multiplier)
-        }
-    }
-    
-    private var totalProtein: Double {
-        foods.reduce(0) { total, food in
-            let multiplier = servingSizes[food.id] ?? 1.0
-            return total + (food.protein * multiplier)
-        }
-    }
-    
-    private var totalCarbs: Double {
-        foods.reduce(0) { total, food in
-            let multiplier = servingSizes[food.id] ?? 1.0
-            return total + (food.carbs * multiplier)
-        }
-    }
-    
-    private var totalFat: Double {
-        foods.reduce(0) { total, food in
-            let multiplier = servingSizes[food.id] ?? 1.0
-            return total + (food.fat * multiplier)
-        }
-    }
+    private var totalCalories: Double { cachedTotalCalories }
+    private var totalProtein: Double { cachedTotalProtein }
+    private var totalCarbs: Double { cachedTotalCarbs }
+    private var totalFat: Double { cachedTotalFat }
     
     private func saveCombinedMeal() {
         Task {

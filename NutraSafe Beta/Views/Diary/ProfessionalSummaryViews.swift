@@ -184,6 +184,10 @@ struct ProfessionalMealCard: View {
     let mealType: MealType
     let items: [MealItem]
     let onAddTapped: () -> Void
+
+    // PERFORMANCE: Cache total calories to prevent redundant calculations on every render
+    // Pattern from Clay's production app: move expensive operations to cached state
+    @State private var cachedTotalCalories: Int = 0
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) { // 12px vertical spacing (research standard)
@@ -241,10 +245,19 @@ struct ProfessionalMealCard: View {
                 .fill(Color(.systemBackground))
                 .shadow(color: .black.opacity(0.05), radius: 4, y: 2)
         )
+        .onAppear {
+            // PERFORMANCE: Initialize cached calories on first appearance
+            updateCachedCalories()
+        }
+        // PERFORMANCE: Update cached calories only when items change
+        .onChange(of: items) { _ in updateCachedCalories() }
     }
     
-    private var totalCalories: Int {
-        items.reduce(0) { $0 + $1.calories }
+    private var totalCalories: Int { cachedTotalCalories }
+
+    // Update cached calories when items change
+    private func updateCachedCalories() {
+        cachedTotalCalories = items.reduce(0) { $0 + $1.calories }
     }
 }
 
@@ -363,7 +376,7 @@ struct ProfessionalEmptyMealState: View {
 
 // DailyNutrition and NutrientTarget are now defined in NutritionModels.swift
 
-struct MealItem: Identifiable {
+struct MealItem: Identifiable, Equatable {
     let id = UUID()
     let name: String
     let brand: String?
@@ -372,6 +385,11 @@ struct MealItem: Identifiable {
     let carbs: Double
     let fat: Double
     let qualityScore: Int?
+
+    // Equatable conformance for SwiftUI's .onChange() modifier
+    static func == (lhs: MealItem, rhs: MealItem) -> Bool {
+        lhs.id == rhs.id
+    }
 }
 
 // MARK: - Color Extension for Hex Colors

@@ -159,6 +159,10 @@ struct PlanDashboardView: View {
     @State private var showFastSettings = false
     @State private var scheduledStartTime: Date?
 
+    // PERFORMANCE: Cache average duration to prevent redundant calculations on every render
+    // Pattern from Clay's production app: move expensive operations to cached state
+    @State private var cachedAverageDuration: Double = 0
+
     // Use all recent sessions (since typically only one plan is active at a time)
     private var planSessions: [FastingSession] {
         viewModel.recentSessions
@@ -178,10 +182,16 @@ struct PlanDashboardView: View {
         return Int((Double(completedFasts) / Double(totalFasts)) * 100)
     }
 
-    private var averageDuration: Double {
-        guard !planSessions.isEmpty else { return 0 }
+    private var averageDuration: Double { cachedAverageDuration }
+
+    // Update cached average duration when data changes
+    private func updateCachedAverageDuration() {
+        guard !planSessions.isEmpty else {
+            cachedAverageDuration = 0
+            return
+        }
         let total = planSessions.reduce(0.0) { $0 + $1.actualDurationHours }
-        return total / Double(planSessions.count)
+        cachedAverageDuration = total / Double(planSessions.count)
     }
 
     var body: some View {
@@ -436,6 +446,12 @@ struct PlanDashboardView: View {
         } message: {
             Text("You're starting after your scheduled fast time. Would you like to start from now or from your scheduled time?")
         }
+        .onAppear {
+            // PERFORMANCE: Initialize cached average duration on first appearance
+            updateCachedAverageDuration()
+        }
+        // PERFORMANCE: Update cached average duration only when sessions change
+        .onChange(of: viewModel.recentSessions) { _ in updateCachedAverageDuration() }
     }
 }
 

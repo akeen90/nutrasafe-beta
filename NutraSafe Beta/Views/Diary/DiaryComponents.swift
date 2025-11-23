@@ -25,17 +25,15 @@ struct DiaryMealCard: View {
     @State private var calorieGoal: Double = 1800
     @State private var macroGoals: [MacroGoal] = MacroGoal.defaultMacros
 
-    private var totalProtein: Double {
-        foods.reduce(0) { $0 + $1.protein }
-    }
+    // PERFORMANCE: Cache macro totals to prevent redundant calculations on every render
+    // Pattern from Clay's production app: move expensive operations to cached state
+    @State private var cachedProtein: Double = 0
+    @State private var cachedCarbs: Double = 0
+    @State private var cachedFat: Double = 0
 
-    private var totalCarbs: Double {
-        foods.reduce(0) { $0 + $1.carbs }
-    }
-
-    private var totalFat: Double {
-        foods.reduce(0) { $0 + $1.fat }
-    }
+    private var totalProtein: Double { cachedProtein }
+    private var totalCarbs: Double { cachedCarbs }
+    private var totalFat: Double { cachedFat }
 
     private func getMacroGoal(for macroType: MacroType) -> Double {
         if let goal = macroGoals.first(where: { $0.macroType == macroType }) {
@@ -146,6 +144,19 @@ struct DiaryMealCard: View {
                 .fill(.ultraThinMaterial)
         )
         .cardShadow()
+        .onChange(of: foods) { newFoods in
+            // PERFORMANCE: Update cached totals only when foods array changes
+            // Prevents recalculation on every render cycle
+            cachedProtein = newFoods.reduce(0) { $0 + $1.protein }
+            cachedCarbs = newFoods.reduce(0) { $0 + $1.carbs }
+            cachedFat = newFoods.reduce(0) { $0 + $1.fat }
+        }
+        .onAppear {
+            // Initialize cached values on first appearance
+            cachedProtein = foods.reduce(0) { $0 + $1.protein }
+            cachedCarbs = foods.reduce(0) { $0 + $1.carbs }
+            cachedFat = foods.reduce(0) { $0 + $1.fat }
+        }
     }
 
     // Get meal-specific icon

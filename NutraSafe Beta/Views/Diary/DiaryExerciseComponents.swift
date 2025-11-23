@@ -14,19 +14,25 @@ struct DiaryExerciseSummaryCard: View {
     let workouts: [HKWorkout]
     let manualExercises: [DiaryExerciseItem]
     @EnvironmentObject var healthKitManager: HealthKitManager
-    
-    private var totalDuration: Int {
-        let healthKitDuration = Int(workouts.reduce(0) { $0 + $1.duration })
-        let manualDuration = manualExercises.reduce(0) { $0 + $1.duration }
-        return healthKitDuration + manualDuration
-    }
-    
-    private var totalManualCalories: Double {
-        manualExercises.reduce(0) { $0 + $1.calories }
-    }
-    
+
+    // PERFORMANCE: Cache duration and calories to prevent redundant calculations on every render
+    // Pattern from Clay's production app: move expensive operations to cached state
+    @State private var cachedTotalDuration: Int = 0
+    @State private var cachedManualCalories: Double = 0
+
+    private var totalDuration: Int { cachedTotalDuration }
+    private var totalManualCalories: Double { cachedManualCalories }
+
     private var combinedTotalCalories: Double {
         totalCalories + totalManualCalories
+    }
+
+    // Update cached values when data changes
+    private func updateCachedValues() {
+        let healthKitDuration = Int(workouts.reduce(0) { $0 + $1.duration })
+        let manualDuration = manualExercises.reduce(0) { $0 + $1.duration }
+        cachedTotalDuration = healthKitDuration + manualDuration
+        cachedManualCalories = manualExercises.reduce(0) { $0 + $1.calories }
     }
     
     private var workoutCount: Int {
@@ -68,6 +74,13 @@ struct DiaryExerciseSummaryCard: View {
         .padding(16)
         .background(Color(.systemGray6))
         .cornerRadius(12)
+        .onAppear {
+            // PERFORMANCE: Initialize cached values on first appearance
+            updateCachedValues()
+        }
+        // PERFORMANCE: Update cached values only when data changes
+        .onChange(of: workouts) { _ in updateCachedValues() }
+        .onChange(of: manualExercises) { _ in updateCachedValues() }
     }
 }
 
@@ -98,7 +111,18 @@ struct DiaryExerciseCard: View {
     @State var exercises: [DiaryExerciseItem]
     let color: Color
     @State private var showingExerciseSelector = false
-    
+
+    // PERFORMANCE: Cache total calories to prevent redundant calculations on every render
+    // Pattern from Clay's production app: move expensive operations to cached state
+    @State private var cachedTotalCalories: Int = 0
+
+    private var totalCalories: Int { cachedTotalCalories }
+
+    // Update cached calories when exercises change
+    private func updateCachedCalories() {
+        cachedTotalCalories = Int(exercises.reduce(0) { $0 + $1.calories })
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -113,9 +137,9 @@ struct DiaryExerciseCard: View {
                 }
                 
                 Spacer()
-                
+
                 if !exercises.isEmpty {
-                    Text("\(Int(exercises.reduce(0) { $0 + $1.calories }))) cal")
+                    Text("\(totalCalories) cal")
                         .font(.system(size: 14))
                         .foregroundColor(.secondary)
                 }
@@ -208,6 +232,12 @@ struct DiaryExerciseCard: View {
         .padding(16)
         .background(Color(.systemGray6))
         .cornerRadius(12)
+        .onAppear {
+            // PERFORMANCE: Initialize cached calories on first appearance
+            updateCachedCalories()
+        }
+        // PERFORMANCE: Update cached calories only when exercises change
+        .onChange(of: exercises) { _ in updateCachedCalories() }
         // Exercise selector removed - feature deprecated
     }
 }

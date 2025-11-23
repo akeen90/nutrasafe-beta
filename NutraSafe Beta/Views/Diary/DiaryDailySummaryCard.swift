@@ -31,6 +31,10 @@ struct DiaryDailySummaryCard: View {
     @State private var exerciseGoal: Double = 400
     @State private var macroGoals: [MacroGoal] = MacroGoal.defaultMacros
 
+    // PERFORMANCE: Cache macro totals to prevent redundant calculations on every render
+    // Pattern from Clay's production app: move expensive operations to cached state
+    @State private var cachedMacroTotals: [MacroType: Double] = [:]
+
     // MARK: - Weekly Summary Sheet
     @State private var showWeeklySummary = false
     
@@ -65,6 +69,11 @@ struct DiaryDailySummaryCard: View {
         .onAppear { handleOnAppear() }
         .onChange(of: currentDate) { _ in handleDateChange() }
         .onChange(of: healthKitRingsEnabled) { enabled in handleHealthKitToggle(enabled) }
+        // PERFORMANCE: Update cached macro totals when any food array changes
+        .onChange(of: breakfastFoods) { _ in updateCachedMacroTotals() }
+        .onChange(of: lunchFoods) { _ in updateCachedMacroTotals() }
+        .onChange(of: dinnerFoods) { _ in updateCachedMacroTotals() }
+        .onChange(of: snackFoods) { _ in updateCachedMacroTotals() }
         .onReceive(NotificationCenter.default.publisher(for: .nutritionGoalsUpdated)) { _ in
             Task { await loadNutritionGoals() }
         }
@@ -336,6 +345,9 @@ struct DiaryDailySummaryCard: View {
 
     // MARK: - Event Handlers
     private func handleOnAppear() {
+        // PERFORMANCE: Initialize cached macro totals on first appearance
+        updateCachedMacroTotals()
+
         Task {
             await loadNutritionGoals()
             if healthKitRingsEnabled {
@@ -400,11 +412,18 @@ struct DiaryDailySummaryCard: View {
         }
     }
 
-    // Calculate total for a specific macro type from all food items
+    // PERFORMANCE: Use cached macro totals instead of recalculating on every render
     private func calculateMacroTotal(for macroType: MacroType) -> Double {
+        return cachedMacroTotals[macroType] ?? 0.0
+    }
+
+    // Update all cached macro totals when food data changes
+    private func updateCachedMacroTotals() {
         let allFoods = breakfastFoods + lunchFoods + dinnerFoods + snackFoods
-        return allFoods.reduce(0.0) { total, food in
-            total + macroType.getValue(from: food)
+        for macroGoal in macroGoals {
+            cachedMacroTotals[macroGoal.macroType] = allFoods.reduce(0.0) { total, food in
+                total + macroGoal.macroType.getValue(from: food)
+            }
         }
     }
     
