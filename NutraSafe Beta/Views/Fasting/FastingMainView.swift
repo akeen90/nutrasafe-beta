@@ -568,23 +568,24 @@ struct PlanDashboardView: View {
                     .datePickerStyle(.wheel)
                     .labelsHidden()
                     .padding()
-                    .onChange(of: snoozeUntilTime) { newValue in
-                        // If the selected time is in the past, move it to tomorrow
-                        if newValue < Date() {
-                            let calendar = Calendar.current
-                            if let tomorrow = calendar.date(byAdding: .day, value: 1, to: newValue) {
-                                snoozeUntilTime = tomorrow
-                            }
-                        }
-                    }
 
-                    Text("Snooze until: \(snoozeUntilTime.formatted(date: .abbreviated, time: .shortened))")
+                    Text(snoozeUntilTime < Date() ?
+                        "Will snooze until tomorrow at \(snoozeUntilTime.formatted(date: .omitted, time: .shortened))" :
+                        "Will snooze until today at \(snoozeUntilTime.formatted(date: .omitted, time: .shortened))")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
 
                     Button {
                         Task {
-                            await viewModel.snoozeCurrentRegimeFast(until: snoozeUntilTime)
+                            // Calculate the correct date: if time has passed, use tomorrow
+                            var finalSnoozeTime = snoozeUntilTime
+                            if snoozeUntilTime < Date() {
+                                let calendar = Calendar.current
+                                if let tomorrow = calendar.date(byAdding: .day, value: 1, to: snoozeUntilTime) {
+                                    finalSnoozeTime = tomorrow
+                                }
+                            }
+                            await viewModel.snoozeCurrentRegimeFast(until: finalSnoozeTime)
                             showSnoozePicker = false
                         }
                     } label: {
