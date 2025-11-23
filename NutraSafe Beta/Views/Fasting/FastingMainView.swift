@@ -348,10 +348,8 @@ struct PlanDashboardView: View {
                             // Snooze and Skip buttons
                             HStack(spacing: 12) {
                                 Button {
-                                    if let session = viewModel.activeSession {
-                                        Task {
-                                            await viewModel.snoozeSession(session, minutes: 30)
-                                        }
+                                    Task {
+                                        await viewModel.snoozeCurrentRegimeFast(minutes: 30)
                                     }
                                 } label: {
                                     HStack {
@@ -368,7 +366,7 @@ struct PlanDashboardView: View {
 
                                 Button {
                                     Task {
-                                        await viewModel.skipCurrentSession()
+                                        await viewModel.skipCurrentRegimeFast()
                                     }
                                 } label: {
                                     HStack {

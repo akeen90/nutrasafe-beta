@@ -1049,6 +1049,45 @@ class FastingViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Regime-specific Skip and Snooze
+
+    func skipCurrentRegimeFast() async {
+        guard let plan = activePlan, plan.regimeActive else { return }
+
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            // Stop the regime and restart it to skip to eating window
+            try await fastingService.stopRegime(planId: plan.id!)
+
+            // Update local state
+            var updatedPlan = plan
+            updatedPlan.regimeActive = false
+            self.activePlan = updatedPlan
+
+            // Refresh to get the updated plan
+            await refreshActivePlan()
+        } catch {
+            self.error = error
+            self.showError = true
+        }
+    }
+
+    func snoozeCurrentRegimeFast(minutes: Int) async {
+        guard let plan = activePlan, plan.regimeActive else { return }
+
+        // For now, just schedule a notification for later
+        // A full implementation would adjust the regime schedule
+        print("⏰ Snoozing regime fast for \(minutes) minutes")
+
+        // TODO: Implement proper snooze by adjusting the next window start time
+        // For now, just show a message
+        await MainActor.run {
+            // You could add a toast/notification here
+        }
+    }
+
     private func scheduleSnoozeNotification(for session: FastingSession, at date: Date) async {
         // TODO: Implement notification scheduling
         // This would use UNUserNotificationCenter to schedule a local notification
