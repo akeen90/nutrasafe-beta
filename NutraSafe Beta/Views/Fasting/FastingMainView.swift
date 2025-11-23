@@ -326,6 +326,22 @@ struct PlanDashboardView: View {
                     switch viewModel.currentRegimeState {
                     case .fasting(let started, let ends):
                         VStack(spacing: 12) {
+                            // Snooze indicator (if snoozed)
+                            if viewModel.isRegimeSnoozed, let snoozeUntil = viewModel.regimeSnoozedUntil {
+                                HStack {
+                                    Image(systemName: "bell.zzz.fill")
+                                        .foregroundColor(.orange)
+                                    Text("Snoozed until \(snoozeUntil.formatted(date: .omitted, time: .shortened))")
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(Color.orange.opacity(0.15))
+                                .cornerRadius(8)
+                            }
+
                             HStack {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("Currently Fasting")

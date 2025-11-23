@@ -35,6 +35,20 @@ class FastingViewModel: ObservableObject {
     private var previousRegimeState: FastingPlan.RegimeState?
     private var lastRecordedFastWindowEnd: Date?
 
+    // Computed property to check if regime is snoozed
+    var isRegimeSnoozed: Bool {
+        guard let plan = activePlan, let planId = plan.id else { return false }
+        guard let snoozeUntil = UserDefaults.standard.object(forKey: "regimeSnoozedUntil_\(planId)") as? Date else {
+            return false
+        }
+        return snoozeUntil > Date()
+    }
+
+    var regimeSnoozedUntil: Date? {
+        guard let plan = activePlan, let planId = plan.id else { return nil }
+        return UserDefaults.standard.object(forKey: "regimeSnoozedUntil_\(planId)") as? Date
+    }
+
     // Persisted storage for ended windows (survives app restart)
     private static let endedWindowKey = "lastEndedFastingWindowEnd"
 
@@ -1077,15 +1091,52 @@ class FastingViewModel: ObservableObject {
     func snoozeCurrentRegimeFast(minutes: Int) async {
         guard let plan = activePlan, plan.regimeActive else { return }
 
-        // For now, just schedule a notification for later
-        // A full implementation would adjust the regime schedule
-        print("⏰ Snoozing regime fast for \(minutes) minutes")
+        isLoading = true
+        defer { isLoading = false }
 
-        // TODO: Implement proper snooze by adjusting the next window start time
-        // For now, just show a message
-        await MainActor.run {
-            // You could add a toast/notification here
+        // Store snooze time in UserDefaults
+        let snoozeUntil = Date().addingTimeInterval(TimeInterval(minutes * 60))
+        UserDefaults.standard.set(snoozeUntil, forKey: "regimeSnoozedUntil_\(plan.id ?? "")")
+
+        print("⏰ Snoozed regime fast until \(snoozeUntil.formatted(date: .omitted, time: .shortened))")
+
+        // Request notification permission and schedule notification
+        let center = UNUserNotificationCenter.current()
+
+        do {
+            let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
+
+            if granted {
+                // Create notification content
+                let content = UNMutableNotificationContent()
+                content.title = "Fasting Reminder"
+                content.body = "Your snooze period is over. Resume your fast?"
+                content.sound = .default
+                content.categoryIdentifier = "FASTING_SNOOZE"
+
+                // Create trigger
+                let trigger = UNTimeIntervalNotificationTrigger(
+                    timeInterval: TimeInterval(minutes * 60),
+                    repeats: false
+                )
+
+                // Create request
+                let request = UNNotificationRequest(
+                    identifier: "regime_snooze_\(plan.id ?? "")",
+                    content: content,
+                    trigger: trigger
+                )
+
+                // Schedule notification
+                try await center.add(request)
+                print("✅ Snooze notification scheduled for \(minutes) minutes from now")
+            }
+        } catch {
+            print("❌ Failed to schedule snooze notification: \(error)")
         }
+
+        // Refresh UI
+        objectWillChange.send()
     }
 
     private func scheduleSnoozeNotification(for session: FastingSession, at date: Date) async {
