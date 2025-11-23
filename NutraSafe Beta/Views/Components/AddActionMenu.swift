@@ -70,8 +70,8 @@ struct AddActionMenu: View {
                                 dismissAndExecute(onSelectUseBy)
                             }
 
-                            SquareMenuButton(
-                                icon: "scalemass",
+                            SquareMenuButtonCustomIcon(
+                                icon: AnyView(BalanceScaleIcon(color: .gray, size: 32)),
                                 label: "Weigh In",
                                 color: .gray,
                                 delay: 0.15,
@@ -123,6 +123,47 @@ struct SquareMenuButton: View {
                 Image(systemName: icon)
                     .font(.system(size: 32, weight: .regular))
                     .foregroundColor(color)
+                    .frame(height: 40)
+
+                // Label
+                Text(label)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.primary)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 120)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.systemBackground))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color(.systemGray4), lineWidth: 0.5)
+            )
+        }
+        .buttonStyle(SquareButtonStyle())
+        .scaleEffect(isPresented ? 1 : 0.8)
+        .opacity(isPresented ? 1 : 0)
+        .animation(
+            .spring(response: 0.5, dampingFraction: 0.75).delay(delay),
+            value: isPresented
+        )
+    }
+}
+
+struct SquareMenuButtonCustomIcon: View {
+    let icon: AnyView
+    let label: String
+    let color: Color
+    let delay: Double
+    let isPresented: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 12) {
+                // Custom Icon
+                icon
                     .frame(height: 40)
 
                 // Label
