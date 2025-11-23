@@ -325,24 +325,65 @@ struct PlanDashboardView: View {
                     // Show current state
                     switch viewModel.currentRegimeState {
                     case .fasting(let started, let ends):
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Currently Fasting")
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                Text("Ends: \(ends.formatted(date: .omitted, time: .shortened))")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                        VStack(spacing: 12) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Currently Fasting")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                    Text("Ends: \(ends.formatted(date: .omitted, time: .shortened))")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Text(viewModel.timeUntilFastEnds)
+                                    .font(.title3)
+                                    .fontWeight(.bold)
+                                    .monospacedDigit()
                             }
-                            Spacer()
-                            Text(viewModel.timeUntilFastEnds)
-                                .font(.title3)
-                                .fontWeight(.bold)
-                                .monospacedDigit()
+                            .padding()
+                            .background(Color.blue.opacity(0.1))
+                            .cornerRadius(8)
+
+                            // Snooze and Skip buttons
+                            HStack(spacing: 12) {
+                                Button {
+                                    if let session = viewModel.activeSession {
+                                        Task {
+                                            await viewModel.snoozeSession(session, minutes: 30)
+                                        }
+                                    }
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "bell.zzz.fill")
+                                        Text("Snooze 30m")
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background(Color.blue.opacity(0.2))
+                                    .foregroundColor(.blue)
+                                    .cornerRadius(8)
+                                }
+                                .buttonStyle(.plain)
+
+                                Button {
+                                    Task {
+                                        await viewModel.skipCurrentSession()
+                                    }
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "forward.fill")
+                                        Text("Skip Fast")
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background(Color.orange.opacity(0.2))
+                                    .foregroundColor(.orange)
+                                    .cornerRadius(8)
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
-                        .padding()
-                        .background(Color.blue.opacity(0.1))
-                        .cornerRadius(8)
 
                     case .eating(let nextFastStart):
                         HStack {
