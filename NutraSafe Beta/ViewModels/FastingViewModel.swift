@@ -1068,40 +1068,40 @@ class FastingViewModel: ObservableObject {
     func skipCurrentRegimeFast() async {
         guard let plan = activePlan, plan.regimeActive else { return }
 
+        // Get current regime state to find the window end time
+        guard case .fasting(let started, let ends) = currentRegimeState else {
+            print("⚠️ Not currently in a fasting window")
+            return
+        }
+
         isLoading = true
         defer { isLoading = false }
 
         do {
-            // Create a skipped session for today
-            let now = Date()
-
-            // Determine start time (either regime start or today's scheduled start)
-            let startTime: Date
-            if let regimeStarted = plan.regimeStartedAt {
-                startTime = regimeStarted
-            } else if let nextWindow = plan.nextScheduledFastingWindow() {
-                startTime = nextWindow
-            } else {
-                startTime = now
-            }
-
-            // Create a skipped session
+            // Create a skipped session for the current fasting window
             var skippedSession = FastingManager.createSession(
                 userId: userId,
                 plan: plan,
                 targetDurationHours: plan.durationHours,
-                startTime: startTime
+                startTime: started
             )
             skippedSession = FastingManager.skipSession(skippedSession)
 
             // Save the skipped session
             try await firebaseManager.saveFastingSession(skippedSession)
 
-            print("✅ Skipped today's fast - regime continues")
+            // Mark this fasting window as ended
+            lastEndedWindowEnd = ends
+
+            print("✅ Skipped current fast - regime continues")
+            print("   Fast window: \(started.formatted(date: .omitted, time: .shortened)) - \(ends.formatted(date: .omitted, time: .shortened))")
 
             // Refresh sessions to show the skipped fast
             await loadRecentSessions()
             await loadAnalytics()
+
+            // Trigger UI refresh
+            objectWillChange.send()
 
             // The regime stays active and will start the next scheduled fast
         } catch {
