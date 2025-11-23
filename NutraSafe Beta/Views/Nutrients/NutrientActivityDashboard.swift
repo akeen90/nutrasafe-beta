@@ -367,42 +367,59 @@ struct NutrientActivityDashboard: View {
     private func processCurrentDiaryData() {
         // DEBUG LOG: print("🔄 Processing nutrients from diary...")
         Task {
-            // Get food data for the last 30 days
+            // Get food data for the last 30 days in parallel
             let calendar = Calendar.current
             let today = Date()
             var totalNutrientsTracked = 0
 
-            for daysAgo in 0..<30 {
-                guard let date = calendar.date(byAdding: .day, value: -daysAgo, to: today) else { continue }
+            // Create array of dates to process
+            let dates = (0..<30).compactMap { daysAgo -> Date? in
+                calendar.date(byAdding: .day, value: -daysAgo, to: today)
+            }
 
-                let (breakfast, lunch, dinner, snacks) = try await diaryDataManager.getFoodDataAsync(for: date)
-                let allFoods = breakfast + lunch + dinner + snacks
+            // Process all dates in parallel using TaskGroup
+            await withTaskGroup(of: (Date, Set<String>)?.self) { group in
+                for date in dates {
+                    group.addTask {
+                        do {
+                            let (breakfast, lunch, dinner, snacks) = try await self.diaryDataManager.getFoodDataAsync(for: date)
+                            let allFoods = breakfast + lunch + dinner + snacks
 
-                if !allFoods.isEmpty {
-                    var nutrientsPresent: Set<String> = []
+                            guard !allFoods.isEmpty else { return nil }
 
-                    // Process all foods for this date
-                    for food in allFoods {
-                        if let micronutrients = food.micronutrientProfile {
-                            // Process vitamins
-                            for (vitaminKey, amount) in micronutrients.vitamins where amount > 0 {
-                                let nutrientId = mapVitaminKey(vitaminKey)
-                                if !nutrientId.isEmpty {
-                                    nutrientsPresent.insert(nutrientId)
+                            var nutrientsPresent: Set<String> = []
+
+                            // Process all foods for this date
+                            for food in allFoods {
+                                if let micronutrients = food.micronutrientProfile {
+                                    // Process vitamins
+                                    for (vitaminKey, amount) in micronutrients.vitamins where amount > 0 {
+                                        let nutrientId = self.mapVitaminKey(vitaminKey)
+                                        if !nutrientId.isEmpty {
+                                            nutrientsPresent.insert(nutrientId)
+                                        }
+                                    }
+
+                                    // Process minerals
+                                    for (mineralKey, amount) in micronutrients.minerals where amount > 0 {
+                                        let nutrientId = self.mapMineralKey(mineralKey)
+                                        if !nutrientId.isEmpty {
+                                            nutrientsPresent.insert(nutrientId)
+                                        }
+                                    }
                                 }
                             }
 
-                            // Process minerals
-                            for (mineralKey, amount) in micronutrients.minerals where amount > 0 {
-                                let nutrientId = mapMineralKey(mineralKey)
-                                if !nutrientId.isEmpty {
-                                    nutrientsPresent.insert(nutrientId)
-                                }
-                            }
+                            return nutrientsPresent.isEmpty ? nil : (date, nutrientsPresent)
+                        } catch {
+                            return nil
                         }
                     }
+                }
 
-                    if !nutrientsPresent.isEmpty {
+                // Collect all results and update tracking manager
+                for await result in group {
+                    if let (date, nutrientsPresent) = result {
                         totalNutrientsTracked += nutrientsPresent.count
                         await trackingManager.updateNutrientsForDate(date: date, nutrients: Array(nutrientsPresent))
                     }
