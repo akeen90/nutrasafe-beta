@@ -17,11 +17,10 @@ struct AddActionMenu: View {
 
     var body: some View {
         ZStack {
-            // Darker overlay for focus without blur
-            Color.black.opacity(0.6)
+            // Transparent tap area to dismiss (no dark overlay)
+            Color.clear
                 .ignoresSafeArea()
-                .opacity(isPresented ? 1 : 0)
-                .animation(.easeOut(duration: 0.25), value: isPresented)
+                .contentShape(Rectangle())
                 .onTapGesture {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                         isPresented = false
@@ -32,9 +31,9 @@ struct AddActionMenu: View {
                 Spacer()
 
                 // Menu container - slides up from bottom with square grid
-                VStack(spacing: 16) {
+                VStack(spacing: 12) {
                     // 2x2 Grid of square buttons
-                    VStack(spacing: 16) {
+                    VStack(spacing: 12) {
                         // Top row
                         HStack(spacing: 16) {
                             SquareMenuButton(
@@ -71,7 +70,7 @@ struct AddActionMenu: View {
                             }
 
                             SquareMenuButtonCustomIcon(
-                                icon: AnyView(BalanceScaleIcon(color: .gray, size: 32)),
+                                icon: AnyView(BathroomScaleIcon(color: .gray, size: 28)),
                                 label: "Weigh In",
                                 color: .gray,
                                 delay: 0.15,
@@ -81,14 +80,14 @@ struct AddActionMenu: View {
                             }
                         }
                     }
-                    .padding(20)
+                    .padding(16)
                     .background(
-                        RoundedRectangle(cornerRadius: 24)
+                        RoundedRectangle(cornerRadius: 20)
                             .fill(Color(.systemGray5))
                     )
-                    .padding(.horizontal, 32)
+                    .padding(.horizontal, 40)
                 }
-                .padding(.bottom, 50) // Position above the + button and tab bar
+                .padding(.bottom, 80) // Position higher above the tab bar
                 .offset(y: isPresented ? 0 : 300) // Slide up from bottom
                 .animation(.spring(response: 0.45, dampingFraction: 0.82), value: isPresented)
             }
@@ -118,26 +117,26 @@ struct SquareMenuButton: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 12) {
+            VStack(spacing: 10) {
                 // Icon
                 Image(systemName: icon)
-                    .font(.system(size: 32, weight: .regular))
+                    .font(.system(size: 28, weight: .regular))
                     .foregroundColor(color)
-                    .frame(height: 40)
+                    .frame(height: 32)
 
                 // Label
                 Text(label)
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.primary)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 120)
+            .frame(height: 100)
             .background(
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: 14)
                     .fill(Color(.systemBackground))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: 14)
                     .stroke(Color(.systemGray4), lineWidth: 0.5)
             )
         }
@@ -161,34 +160,21 @@ struct SquareMenuButtonCustomIcon: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 12) {
-                // Custom Icon
-                icon
-                    .frame(height: 40)
-
-                // Label
+            VStack(spacing: 10) {
+                icon.frame(height: 32)
                 Text(label)
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.primary)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 120)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.systemBackground))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color(.systemGray4), lineWidth: 0.5)
-            )
+            .frame(height: 100)
+            .background(RoundedRectangle(cornerRadius: 14).fill(Color(.systemBackground)))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(.systemGray4), lineWidth: 0.5))
         }
         .buttonStyle(SquareButtonStyle())
         .scaleEffect(isPresented ? 1 : 0.8)
         .opacity(isPresented ? 1 : 0)
-        .animation(
-            .spring(response: 0.5, dampingFraction: 0.75).delay(delay),
-            value: isPresented
-        )
+        .animation(.spring(response: 0.5, dampingFraction: 0.75).delay(delay), value: isPresented)
     }
 }
 
@@ -198,6 +184,56 @@ struct SquareButtonStyle: ButtonStyle {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: configuration.isPressed)
+    }
+}
+
+/// Analogue bathroom scale icon matching Salter 145 design
+struct BathroomScaleIcon: View {
+    var color: Color
+    var size: CGFloat
+
+    var body: some View {
+        ZStack {
+            // Platform base (rounded top like arch)
+            UnevenRoundedRectangle(
+                topLeadingRadius: size * 0.35,
+                bottomLeadingRadius: size * 0.15,
+                bottomTrailingRadius: size * 0.15,
+                topTrailingRadius: size * 0.35
+            )
+            .fill(color)
+            .frame(width: size * 0.85, height: size * 0.85)
+
+            // Circular dial at top
+            Circle()
+                .fill(Color.white.opacity(0.95))
+                .frame(width: size * 0.48, height: size * 0.48)
+                .overlay(
+                    Circle()
+                        .stroke(color.opacity(0.7), lineWidth: 2)
+                )
+                .offset(y: -size * 0.15)
+
+            // Inner dial ring
+            Circle()
+                .stroke(color.opacity(0.4), lineWidth: 1)
+                .frame(width: size * 0.4, height: size * 0.4)
+                .offset(y: -size * 0.15)
+
+            // Needle/pointer
+            Rectangle()
+                .fill(Color.red)
+                .frame(width: 1.5, height: size * 0.15)
+                .offset(y: -size * 0.22)
+                .rotationEffect(.degrees(25))
+
+            // Center dot
+            Circle()
+                .fill(color.opacity(0.6))
+                .frame(width: size * 0.08, height: size * 0.08)
+                .offset(y: -size * 0.15)
+        }
+        .frame(width: size, height: size)
     }
 }
 
