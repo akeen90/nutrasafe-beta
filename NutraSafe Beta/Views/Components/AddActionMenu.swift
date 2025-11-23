@@ -3,7 +3,7 @@
 //  NutraSafe Beta
 //
 //  Floating action buttons for adding items to diary, use by, or logging reactions
-//  Modern bottom-slide menu with glass/visionOS styling
+//  Modern bottom-slide menu with square grid layout
 //
 
 import SwiftUI
@@ -13,6 +13,7 @@ struct AddActionMenu: View {
     var onSelectDiary: () -> Void
     var onSelectUseBy: () -> Void
     var onSelectReaction: () -> Void
+    var onSelectWeighIn: () -> Void
 
     var body: some View {
         ZStack {
@@ -30,48 +31,61 @@ struct AddActionMenu: View {
             VStack {
                 Spacer()
 
-                // Menu container - slides up from bottom
-                VStack(spacing: 0) {
-                    // Triangle formation of buttons
-                    VStack(spacing: 20) {
-                        // Top button (Reaction - center)
-                        HStack {
-                            Spacer()
-                            ModernFloatingButton(
-                                icon: "heart.fill",
-                                label: "Log Reaction",
-                                color: .red,
-                                delay: 0.0,
-                                isPresented: isPresented
-                            ) {
-                                dismissAndExecute(onSelectReaction)
-                            }
-                            Spacer()
-                        }
-
-                        // Bottom row (Diary left, Use By right)
-                        HStack(spacing: 70) {
-                            ModernFloatingButton(
+                // Menu container - slides up from bottom with square grid
+                VStack(spacing: 16) {
+                    // 2x2 Grid of square buttons
+                    VStack(spacing: 16) {
+                        // Top row
+                        HStack(spacing: 16) {
+                            SquareMenuButton(
                                 icon: "fork.knife",
-                                label: "Add to Diary",
+                                label: "Add Food",
                                 color: .blue,
-                                delay: 0.05,
+                                delay: 0.0,
                                 isPresented: isPresented
                             ) {
                                 dismissAndExecute(onSelectDiary)
                             }
 
-                            ModernFloatingButton(
-                                icon: "calendar.badge.clock",
-                                label: "Add to Use By",
-                                color: .orange,
+                            SquareMenuButton(
+                                icon: "heart.fill",
+                                label: "Log Reaction",
+                                color: .red,
+                                delay: 0.05,
+                                isPresented: isPresented
+                            ) {
+                                dismissAndExecute(onSelectReaction)
+                            }
+                        }
+
+                        // Bottom row
+                        HStack(spacing: 16) {
+                            SquareMenuButton(
+                                icon: "calendar",
+                                label: "Use By",
+                                color: .gray,
                                 delay: 0.1,
                                 isPresented: isPresented
                             ) {
                                 dismissAndExecute(onSelectUseBy)
                             }
+
+                            SquareMenuButton(
+                                icon: "scalemass",
+                                label: "Weigh In",
+                                color: .gray,
+                                delay: 0.15,
+                                isPresented: isPresented
+                            ) {
+                                dismissAndExecute(onSelectWeighIn)
+                            }
                         }
                     }
+                    .padding(20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 24)
+                            .fill(Color(.systemGray5))
+                    )
                     .padding(.horizontal, 32)
                 }
                 .padding(.bottom, 50) // Position above the + button and tab bar
@@ -94,7 +108,7 @@ struct AddActionMenu: View {
     }
 }
 
-struct ModernFloatingButton: View {
+struct SquareMenuButton: View {
     let icon: String
     let label: String
     let color: Color
@@ -104,70 +118,44 @@ struct ModernFloatingButton: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 10) {
-                // Glass button with shadow
-                ZStack {
-                    // Shadow layer
-                    Circle()
-                        .fill(color.opacity(0.3))
-                        .frame(width: 56, height: 56)
-                        .blur(radius: 8)
-                        .offset(y: 4)
+            VStack(spacing: 12) {
+                // Icon
+                Image(systemName: icon)
+                    .font(.system(size: 32, weight: .regular))
+                    .foregroundColor(color)
+                    .frame(height: 40)
 
-                    // Main button with gradient and glass effect
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                gradient: Gradient(colors: [
-                                    color.opacity(0.95),
-                                    color.opacity(0.85)
-                                ]),
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 56, height: 56)
-                        .overlay(
-                            Circle()
-                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                        )
-                        .shadow(color: color.opacity(0.4), radius: 12, x: 0, y: 6)
-
-                    // Icon
-                    Image(systemName: icon)
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundColor(.white)
-                }
-                .scaleEffect(isPresented ? 1 : 0.5)
-                .opacity(isPresented ? 1 : 0)
-                .animation(
-                    .spring(response: 0.5, dampingFraction: 0.7).delay(delay),
-                    value: isPresented
-                )
-
-                // Label (only show if not empty)
-                if !label.isEmpty {
-                    Text(label)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.white.opacity(0.9))
-                        .opacity(isPresented ? 1 : 0)
-                        .offset(y: isPresented ? 0 : 5)
-                        .animation(
-                            .spring(response: 0.5, dampingFraction: 0.75).delay(delay + 0.05),
-                            value: isPresented
-                        )
-                }
+                // Label
+                Text(label)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.primary)
             }
+            .frame(maxWidth: .infinity)
+            .frame(height: 120)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.systemBackground))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color(.systemGray4), lineWidth: 0.5)
+            )
         }
-        .buttonStyle(ScaleButtonStyle())
+        .buttonStyle(SquareButtonStyle())
+        .scaleEffect(isPresented ? 1 : 0.8)
+        .opacity(isPresented ? 1 : 0)
+        .animation(
+            .spring(response: 0.5, dampingFraction: 0.75).delay(delay),
+            value: isPresented
+        )
     }
 }
 
-// Custom button style for subtle press effect
-struct ScaleButtonStyle: ButtonStyle {
+// Custom button style for square buttons
+struct SquareButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.92 : 1.0)
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: configuration.isPressed)
     }
 }
@@ -177,6 +165,7 @@ struct ScaleButtonStyle: ButtonStyle {
         isPresented: .constant(true),
         onSelectDiary: {},
         onSelectUseBy: {},
-        onSelectReaction: {}
+        onSelectReaction: {},
+        onSelectWeighIn: {}
     )
 }

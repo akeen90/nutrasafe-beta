@@ -1438,8 +1438,14 @@ struct ContentView: View {
     @State private var showingDiaryAdd = false
     @State private var showingUseByAdd = false
     @State private var showingReactionLog = false
+    @State private var showingWeightAdd = false
     @State private var useBySelectedFood: FoodSearchResult? = nil
     @State private var previousTabBeforeAdd: TabItem = .diary
+
+    // Weight tracking state for AddWeightView
+    @State private var currentWeight: Double = 0
+    @State private var weightHistory: [WeightEntry] = []
+    @State private var userHeight: Double = 0
 
     // MARK: - Persistent Tab Views (Performance Fix)
     // Keep tabs alive to preserve state and prevent redundant loading
@@ -1553,6 +1559,10 @@ struct ContentView: View {
                     onSelectReaction: {
                         previousTabBeforeAdd = selectedTab
                         showingReactionLog = true
+                    },
+                    onSelectWeighIn: {
+                        previousTabBeforeAdd = selectedTab
+                        showingWeightAdd = true
                     }
                 )
                 .zIndex(1000)
@@ -1642,6 +1652,15 @@ struct ContentView: View {
                 // Clean up when sheet is dismissed
                 showingReactionLog = false
             }
+        }
+        .sheet(isPresented: $showingWeightAdd) {
+            AddWeightView(currentWeight: $currentWeight, weightHistory: $weightHistory, userHeight: $userHeight)
+                .environmentObject(FirebaseManager.shared)
+                .onDisappear {
+                    showingWeightAdd = false
+                    // Switch to weight tab after adding weight
+                    selectedTab = .weight
+                }
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToUseBy)) { _ in
             #if DEBUG

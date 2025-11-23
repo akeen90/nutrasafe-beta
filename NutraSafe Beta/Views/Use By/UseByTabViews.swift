@@ -2402,12 +2402,9 @@ struct AddUseByItemSheet: View {
                     .zIndex(0)
                 }
             }
+            .navigationTitle("Add to Use By")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Text("Add to Use By")
-                        .font(.system(size: 20, weight: .bold))
-                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
                         print("🔴 [UseBy] Close button tapped")
