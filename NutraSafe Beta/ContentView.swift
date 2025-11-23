@@ -1717,6 +1717,20 @@ struct ContentView: View {
 
             // PRIORITY 2: Background preload other tabs IN PARALLEL (non-blocking)
             Task(priority: .utility) {
+                // Load user height for weight tracking
+                do {
+                    let settings = try await FirebaseManager.shared.getUserSettings()
+                    if let height = settings.height {
+                        await MainActor.run {
+                            userHeight = height
+                        }
+                    }
+                } catch {
+                    #if DEBUG
+                    print("⚠️ Error loading user height: \(error.localizedDescription)")
+                    #endif
+                }
+
                 // All requests run in parallel using async let
                 async let weightsTask = FirebaseManager.shared.getWeightHistory()
                 async let useByTask: [UseByInventoryItem] = FirebaseManager.shared.getUseByItems()

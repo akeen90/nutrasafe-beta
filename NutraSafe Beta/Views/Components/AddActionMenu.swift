@@ -220,12 +220,15 @@ struct BathroomScaleIcon: View {
                 .frame(width: size * 0.4, height: size * 0.4)
                 .offset(y: -size * 0.15)
 
-            // Needle/pointer
-            Rectangle()
-                .fill(Color.red)
-                .frame(width: 1.5, height: size * 0.15)
-                .offset(y: -size * 0.22)
-                .rotationEffect(.degrees(25))
+            // Needle/pointer - positioned to rotate from dial center
+            ZStack {
+                Rectangle()
+                    .fill(Color.red)
+                    .frame(width: 1.5, height: size * 0.15)
+                    .offset(y: -size * 0.075) // Offset half the needle height upward
+            }
+            .rotationEffect(.degrees(25)) // Rotate the entire ZStack
+            .offset(y: -size * 0.15) // Position at dial center
 
             // Center dot
             Circle()
