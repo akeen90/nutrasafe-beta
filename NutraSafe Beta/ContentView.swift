@@ -1544,29 +1544,27 @@ struct ContentView: View {
                 }
             }
 
-            // Add Action Menu - appears above everything when shown
-            if showingAddMenu {
-                AddActionMenu(
-                    isPresented: $showingAddMenu,
-                    onSelectDiary: {
-                        previousTabBeforeAdd = selectedTab
-                        showingDiaryAdd = true
-                    },
-                    onSelectUseBy: {
-                        previousTabBeforeAdd = selectedTab
-                        showingUseByAdd = true
-                    },
-                    onSelectReaction: {
-                        previousTabBeforeAdd = selectedTab
-                        showingReactionLog = true
-                    },
-                    onSelectWeighIn: {
-                        previousTabBeforeAdd = selectedTab
-                        showingWeightAdd = true
-                    }
-                )
-                .zIndex(1000)
-            }
+            // Add Action Menu - always rendered but controls its own visibility
+            AddActionMenu(
+                isPresented: $showingAddMenu,
+                onSelectDiary: {
+                    previousTabBeforeAdd = selectedTab
+                    showingDiaryAdd = true
+                },
+                onSelectUseBy: {
+                    previousTabBeforeAdd = selectedTab
+                    showingUseByAdd = true
+                },
+                onSelectReaction: {
+                    previousTabBeforeAdd = selectedTab
+                    showingReactionLog = true
+                },
+                onSelectWeighIn: {
+                    previousTabBeforeAdd = selectedTab
+                    showingWeightAdd = true
+                }
+            )
+            .zIndex(1000)
             
             // Persistent bottom menu when food items are selected - properly overlays tab bar
             if selectedTab == .diary && !selectedFoodItems.isEmpty {

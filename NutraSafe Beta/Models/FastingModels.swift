@@ -342,6 +342,12 @@ struct FastingSession: Identifiable, Codable, Equatable {
     var earlyEndReason: String? = nil
     var lastEarlyEndTime: Date? = nil
 
+    // Snooze and adjustment fields
+    var snoozedUntil: Date? = nil
+    var snoozeCount: Int = 0
+    var originalScheduledStart: Date? = nil // For tracking when fast was originally scheduled
+    var adjustedStartTime: Date? = nil // For tracking manual adjustments to start time
+
     // MARK: - Equatable conformance for SwiftUI's .onChange() modifier
     static func == (lhs: FastingSession, rhs: FastingSession) -> Bool {
         lhs.id == rhs.id
@@ -376,6 +382,10 @@ struct FastingSession: Identifiable, Codable, Equatable {
         case mergedFromEarlyEnd = "merged_from_early_end"
         case earlyEndReason = "early_end_reason"
         case lastEarlyEndTime = "last_early_end_time"
+        case snoozedUntil = "snoozed_until"
+        case snoozeCount = "snooze_count"
+        case originalScheduledStart = "original_scheduled_start"
+        case adjustedStartTime = "adjusted_start_time"
     }
     
     var actualDurationHours: Double {

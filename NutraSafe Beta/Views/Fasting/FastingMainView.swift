@@ -5,7 +5,9 @@ struct FastingMainView: View {
     @ObservedObject var viewModel: FastingViewModel
     @State private var showingEditTimes = false
     @State private var showingEducation = false
-    
+    @State private var showingActionSheet = false
+    @State private var actionSheetSession: FastingSession?
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -53,11 +55,69 @@ struct FastingMainView: View {
                     EditSessionTimesView(viewModel: viewModel, session: session)
                 }
             }
+            .sheet(isPresented: $showingActionSheet) {
+                if let session = actionSheetSession {
+                    FastingActionSheet(
+                        session: session,
+                        onSnooze: { minutes in
+                            Task {
+                                await viewModel.snoozeSession(session, minutes: minutes)
+                            }
+                        },
+                        onSkip: {
+                            Task {
+                                await viewModel.skipSession(session)
+                            }
+                        },
+                        onStartNow: {
+                            Task {
+                                await viewModel.startSessionNow(session)
+                            }
+                        },
+                        onAdjustTime: { newStartTime in
+                            Task {
+                                await viewModel.adjustSessionStartTime(session, newTime: newStartTime)
+                            }
+                        },
+                        onDismiss: {
+                            showingActionSheet = false
+                            actionSheetSession = nil
+                        }
+                    )
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+                }
+            }
             .onAppear {
                 Task {
                     await viewModel.refreshActivePlan()
+                    checkForMissedScheduledFast()
                 }
             }
+        }
+    }
+
+    // Check if a fast was scheduled but user hasn't started yet
+    private func checkForMissedScheduledFast() {
+        guard let plan = viewModel.activePlan,
+              plan.regimeActive,
+              viewModel.activeSession == nil else { return }
+
+        // Check if we're past a scheduled fast start time
+        if let nextFastStart = plan.nextScheduledFastingWindow(),
+           nextFastStart < Date(),
+           abs(nextFastStart.timeIntervalSinceNow) < 7200 { // Within 2 hours of scheduled start
+
+            // Show action sheet
+            let missedSession = FastingManager.createSession(
+                userId: viewModel.userId,
+                plan: plan,
+                targetDurationHours: plan.durationHours,
+                startTime: nextFastStart
+            )
+
+            actionSheetSession = missedSession
+            showingActionSheet = true
         }
     }
 }

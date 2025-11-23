@@ -76,7 +76,36 @@ class FastingManager {
         updatedSession.endTime = Date()
         return updatedSession
     }
-    
+
+    static func snoozeSession(_ session: FastingSession, snoozeDurationMinutes: Int = 30) -> FastingSession {
+        var updatedSession = session
+        let snoozeUntil = Date().addingTimeInterval(TimeInterval(snoozeDurationMinutes * 60))
+        updatedSession.snoozedUntil = snoozeUntil
+        updatedSession.snoozeCount += 1
+
+        // If this is the first snooze, save the original scheduled start
+        if updatedSession.originalScheduledStart == nil {
+            updatedSession.originalScheduledStart = session.startTime
+        }
+
+        return updatedSession
+    }
+
+    static func adjustSessionStartTime(_ session: FastingSession, newStartTime: Date) -> FastingSession {
+        var updatedSession = session
+
+        // Save original scheduled start if not already saved
+        if updatedSession.originalScheduledStart == nil {
+            updatedSession.originalScheduledStart = session.startTime
+        }
+
+        updatedSession.startTime = newStartTime
+        updatedSession.adjustedStartTime = newStartTime
+        updatedSession.manuallyEdited = true
+
+        return updatedSession
+    }
+
     // MARK: - Plan Validation
     
     static func validatePlan(

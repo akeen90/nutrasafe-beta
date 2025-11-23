@@ -979,6 +979,81 @@ class FastingViewModel: ObservableObject {
         }
     }
 
+    func skipSession(_ session: FastingSession) async {
+        isLoading = true
+        defer { isLoading = false }
+
+        let skippedSession = FastingManager.skipSession(session)
+
+        do {
+            try await firebaseManager.updateFastingSession(skippedSession)
+            await loadRecentSessions()
+            await loadAnalytics()
+        } catch {
+            self.error = error
+            self.showError = true
+        }
+    }
+
+    func snoozeSession(_ session: FastingSession, minutes: Int) async {
+        isLoading = true
+        defer { isLoading = false }
+
+        let snoozedSession = FastingManager.snoozeSession(session, snoozeDurationMinutes: minutes)
+
+        do {
+            try await firebaseManager.updateFastingSession(snoozedSession)
+            await loadRecentSessions()
+            // Schedule a notification for when snooze ends
+            if let snoozeUntil = snoozedSession.snoozedUntil {
+                await scheduleSnoozeNotification(for: snoozedSession, at: snoozeUntil)
+            }
+        } catch {
+            self.error = error
+            self.showError = true
+        }
+    }
+
+    func startSessionNow(_ session: FastingSession) async {
+        isLoading = true
+        defer { isLoading = false }
+
+        var newSession = session
+        newSession.startTime = Date()
+
+        do {
+            try await firebaseManager.saveFastingSession(newSession)
+            self.activeSession = newSession
+            await loadRecentSessions()
+            await loadAnalytics()
+        } catch {
+            self.error = error
+            self.showError = true
+        }
+    }
+
+    func adjustSessionStartTime(_ session: FastingSession, newTime: Date) async {
+        isLoading = true
+        defer { isLoading = false }
+
+        let adjustedSession = FastingManager.adjustSessionStartTime(session, newStartTime: newTime)
+
+        do {
+            try await firebaseManager.updateFastingSession(adjustedSession)
+            self.activeSession = adjustedSession
+            await loadRecentSessions()
+            await loadAnalytics()
+        } catch {
+            self.error = error
+            self.showError = true
+        }
+    }
+
+    private func scheduleSnoozeNotification(for session: FastingSession, at date: Date) async {
+        // TODO: Implement notification scheduling
+        // This would use UNUserNotificationCenter to schedule a local notification
+    }
+
     func endFastingRegime() async {
         isLoading = true
         defer { isLoading = false }
