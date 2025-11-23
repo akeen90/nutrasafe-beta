@@ -597,6 +597,10 @@ class FastingViewModel: ObservableObject {
             updatedPlan.regimeStartedAt = Date()
             self.activePlan = updatedPlan
 
+            // Clear any previous ended window markers to start fresh
+            lastEndedWindowEnd = nil
+            print("🧹 Cleared lastEndedWindowEnd marker")
+
             // Store custom start time if starting from now
             if startFromNow {
                 customStartTimeOverride = Date()
