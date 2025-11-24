@@ -2204,7 +2204,7 @@ struct LogReactionView: View {
 struct FoodReactionSearchView: View {
     @Binding var selectedFood: FoodSearchResult?
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var fatSecretService = FatSecretService.shared
+    @StateObject private var foodSearchManager = FoodSearchManager.shared
     @State private var searchText = ""
     @State private var searchResults: [FoodSearchResult] = []
     @State private var isSearching = false
@@ -2574,7 +2574,7 @@ struct FoodReactionSearchView: View {
         isSearching = true
 
         Task {
-            let results = await SQLiteFoodDatabase.shared.searchFoods(query: query, limit: 25)
+            let results = await foodSearchManager.search(query: query)
             await MainActor.run {
                 self.searchResults = results
                 self.isSearching = false
