@@ -3213,22 +3213,12 @@ private var nutritionFactsSection: some View {
             return !clean.isEmpty
         }()
 
-        // CONSERVATIVE FIX: Hide NutraSafe grade ONLY for very small candy/sweet items (individual pieces)
-        // Must be both: very small serving (≤3g) AND explicitly candy/sweet-related
-        let isPerUnitItem: Bool = {
-            guard let servingSizeG = displayFood.servingSizeG, servingSizeG <= 3 else {
-                return false
-            }
-            // Only hide for explicitly candy/sweet items
-            if let servingDesc = displayFood.servingDescription?.lowercased() {
-                let candyKeywords = ["candy", "sweet", "bonbon", "lolly", "lollipop", "gummy", "gum"]
-                return candyKeywords.contains(where: { servingDesc.contains($0) })
-            }
-            return false
-        }()
+        // Hide NutraSafe Processing Grade when user has selected per-unit mode
+        // Per-unit nutrition is for individual items (candy, burger, etc.) where overall processing grade isn't meaningful
+        let isPerUnitMode = displayFood.isPerUnit == true
 
-        // Show grade only if has ingredients AND not a tiny candy item
-        let gradeToShow = (hasIngredients && !isPerUnitItem) ? nutraSafeGrade : nil
+        // Show grade only if has ingredients AND not in per-unit mode
+        let gradeToShow = (hasIngredients && !isPerUnitMode) ? nutraSafeGrade : nil
 
         return FoodScoresSectionView(ns: gradeToShow, sugarScore: sugarScore, showingInfo: $showingNutraSafeInfo, showingSugarInfo: $showingSugarInfo)
     }
