@@ -698,6 +698,7 @@ struct ManualFoodDetailEntryView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
             }
+            .hideKeyboard()
             .navigationTitle("Add to Diary")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

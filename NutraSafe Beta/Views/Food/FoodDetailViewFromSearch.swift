@@ -1524,6 +1524,7 @@ struct FoodDetailViewFromSearch: View {
                 }
                 .padding(.horizontal, 16)
             }
+            .hideKeyboard()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {

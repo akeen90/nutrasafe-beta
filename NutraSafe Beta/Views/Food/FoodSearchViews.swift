@@ -469,7 +469,7 @@ struct AddFoodSearchView: View {
                         .padding(.top, searchText.isEmpty ? 0 : 16)
                     }
                     .frame(maxHeight: .infinity)
-                    .modifier(ScrollDismissModifier())
+                    .hideKeyboard()
                     .onChange(of: searchResults.count) { newCount in
                         // Auto-scroll to show first result when results appear
                         if newCount > 0 {
@@ -1007,6 +1007,7 @@ struct FoodDetailView: View {
                     
                 }
             }
+            .hideKeyboard()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
