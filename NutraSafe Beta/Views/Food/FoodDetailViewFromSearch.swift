@@ -1545,6 +1545,18 @@ struct FoodDetailViewFromSearch: View {
             cachedNutraSafeGrade = nil
             hasInitialized = false
         }
+        .onChange(of: enhancedIngredientsText) { _ in
+            // Invalidate caches when enhanced ingredients data changes
+            cachedIngredients = nil
+            cachedIngredientsStatus = nil
+            cachedAdditives = nil
+            cachedNutraSafeGrade = nil  // Grade depends on ingredients
+        }
+        .onChange(of: enhancedNutrition?.calories) { _ in
+            // Invalidate caches when enhanced nutrition data changes
+            cachedNutritionScore = nil
+            cachedNutraSafeGrade = nil  // Grade may depend on nutrition completeness
+        }
         .id("\(enhancedIngredientsText ?? "")\(enhancedNutrition?.calories ?? 0)")
         .alert("Team Notified", isPresented: $showingNotificationSuccess) {
             Button("OK") { }
