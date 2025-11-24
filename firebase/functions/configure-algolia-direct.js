@@ -58,21 +58,30 @@ const indexSettings = {
     'custom',     // Custom ranking attributes above
   ],
 
-  // Typo tolerance settings
-  minWordSizefor1Typo: 4,  // Require 4+ chars before allowing 1 typo
-  minWordSizefor2Typos: 8, // Require 8+ chars before allowing 2 typos
-  typoTolerance: 'min',    // Minimum typo tolerance (strict matching)
+  // Typo tolerance settings - more lenient like leading nutrition apps
+  minWordSizefor1Typo: 3,  // Allow 1 typo for words 3+ chars
+  minWordSizefor2Typos: 7, // Allow 2 typos for words 7+ chars
+  typoTolerance: true,     // Enable full typo tolerance
 
   // Exact matching settings
   exactOnSingleWordQuery: 'word', // Boost exact word matches on single-word queries
 
   // Query word handling
-  removeWordsIfNoResults: 'lastWords', // Remove last words if no results
+  removeWordsIfNoResults: 'allOptional', // Make all words optional if no results
+
+  // Prefix matching - allows partial word searches
+  queryType: 'prefixLast', // Enable prefix search on last word (e.g., "las" finds "lasagne")
 
   // Advanced settings
   attributeForDistinct: 'name', // Deduplicate by name
   distinct: true,               // Enable deduplication
-  removeStopWords: true,        // Remove common stop words
+  removeStopWords: ['en'],      // Remove English stop words
+
+  // Alternative words/synonyms for common food variations
+  alternativesAsExact: ['ignorePlurals', 'singleWordSynonym'],
+
+  // Ignore plurals
+  ignorePlurals: ['en'],
 
   // Highlighting for UI display
   attributesToHighlight: ['name', 'brandName'],
@@ -99,10 +108,12 @@ async function configureIndex(indexName) {
 
 async function main() {
   console.log('🚀 Starting Algolia Index Configuration...\n');
-  console.log('This will fix search ranking issues:');
-  console.log('  - "apple" will show before "applewood"');
-  console.log('  - "costa" will find "costa coffee"');
-  console.log('  - Exact matches prioritized\n');
+  console.log('Enhanced search features like leading nutrition apps:');
+  console.log('  ✓ Intelligent typo tolerance (lasagne/lasagna)');
+  console.log('  ✓ Prefix matching ("las" finds "lasagne")');
+  console.log('  ✓ Plural handling (apple/apples)');
+  console.log('  ✓ Brand + product matching ("charlie bigham lasagne")');
+  console.log('  ✓ Exact matches prioritized\n');
 
   const results = [];
 
@@ -126,11 +137,13 @@ async function main() {
 
   if (successful.length === indices.length) {
     console.log('🎉 All indices configured successfully!');
-    console.log('\n📝 Next Steps:');
-    console.log('1. Test search in your iOS app');
-    console.log('   - Search "apple" - should show "Apple" before "Applewood"');
-    console.log('   - Search "costa" - should show "Costa Coffee"');
-    console.log('2. The improvements are now active!\n');
+    console.log('\n📝 Test these search improvements in your iOS app:');
+    console.log('   ✓ "lasagne" → finds Charlie Bigham\'s Lasagne');
+    console.log('   ✓ "las" → prefix matches lasagne products');
+    console.log('   ✓ "apple" → shows "Apple" before "Applewood"');
+    console.log('   ✓ "costa" → finds Costa Coffee');
+    console.log('   ✓ "apples" → finds "apple" products (plural handling)');
+    console.log('\n🚀 Smart search is now active!\n');
   } else {
     console.log('⚠️  Some indices failed to configure.');
     console.log('Please check the errors above.\n');
