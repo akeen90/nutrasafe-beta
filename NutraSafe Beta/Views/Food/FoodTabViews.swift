@@ -2722,9 +2722,12 @@ struct FoodSearchResultRowForReaction: View {
                     }
 
                     if let ingredients = food.ingredients, !ingredients.isEmpty {
-                        Text("\(ingredients.count) ingredients")
+                        let displayText = ingredients.prefix(3).joined(separator: ", ")
+                        let suffix = ingredients.count > 3 ? "..." : ""
+                        Text("Ingredients: \(displayText)\(suffix)")
                             .font(.system(size: 12))
-                            .foregroundColor(.blue)
+                            .foregroundColor(.secondary)
+                            .lineLimit(2)
                     }
                 }
 
