@@ -233,6 +233,7 @@ struct PlanDashboardView: View {
     @State private var snoozeUntilTime = Date()
     @State private var selectedWeek: WeekSummary?
     @State private var showWeekDetail = false
+    @State private var showingCitations = false
 
     // PERFORMANCE: Cache average duration to prevent redundant calculations on every render
     // Pattern from Clay's production app: move expensive operations to cached state
@@ -464,6 +465,23 @@ struct PlanDashboardView: View {
                         .cornerRadius(12)
                     }
                     .buttonStyle(.plain)
+
+                    // View Sources Button (always visible)
+                    Button {
+                        showingCitations = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "doc.text.fill")
+                            Text("View Sources")
+                                .fontWeight(.medium)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue.opacity(0.1))
+                        .foregroundColor(.blue)
+                        .cornerRadius(12)
+                    }
+                    .buttonStyle(.plain)
                 }
             } else {
                 // Start Regime and Fast Settings Buttons
@@ -554,6 +572,9 @@ struct PlanDashboardView: View {
         }
         .sheet(isPresented: $showFastSettings) {
             FastingPlanCreationView(viewModel: viewModel)
+        }
+        .sheet(isPresented: $showingCitations) {
+            FastingCitationsView()
         }
         .sheet(isPresented: $showSnoozePicker) {
             NavigationStack {
@@ -685,6 +706,7 @@ struct RegimeDetailView: View {
     @ObservedObject var viewModel: FastingViewModel
     let plan: FastingPlan
     @Environment(\.dismiss) private var dismiss
+    @State private var showingCitations = false
 
     var body: some View {
         NavigationStack {
@@ -698,6 +720,23 @@ struct RegimeDetailView: View {
 
                     // Current state info
                     RegimeStateInfo(viewModel: viewModel)
+
+                    // View Sources Button
+                    Button {
+                        showingCitations = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "doc.text.fill")
+                            Text("View Sources")
+                                .fontWeight(.medium)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue.opacity(0.1))
+                        .foregroundColor(.blue)
+                        .cornerRadius(12)
+                    }
+                    .buttonStyle(.plain)
                 }
                 .padding()
             }
@@ -709,6 +748,9 @@ struct RegimeDetailView: View {
                         dismiss()
                     }
                 }
+            }
+            .sheet(isPresented: $showingCitations) {
+                FastingCitationsView()
             }
         }
     }
@@ -1021,6 +1063,7 @@ struct ActiveSessionView: View {
     @State private var showingEditTimes = false
     @State private var showingEarlyEndModal = false
     @State private var showingEndRegimeAlert = false
+    @State private var showingCitations = false
     @State private var endedSession: FastingSession?
     @State private var successMessage: String?
     @State private var showingSuccessMessage = false
@@ -1035,6 +1078,23 @@ struct ActiveSessionView: View {
 
             // Current Phase Info Card
             CurrentPhaseCard(viewModel: viewModel)
+
+            // View Sources Button
+            Button {
+                showingCitations = true
+            } label: {
+                HStack {
+                    Image(systemName: "doc.text.fill")
+                    Text("View Sources")
+                        .fontWeight(.medium)
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.blue.opacity(0.1))
+                .foregroundColor(.blue)
+                .cornerRadius(12)
+            }
+            .buttonStyle(.plain)
 
             // Secondary Action Buttons
             VStack(spacing: 12) {
@@ -1154,6 +1214,9 @@ struct ActiveSessionView: View {
             if let session = endedSession {
                 EarlyEndModal(viewModel: viewModel, session: session)
             }
+        }
+        .sheet(isPresented: $showingCitations) {
+            FastingCitationsView()
         }
         .alert("End Fasting Regime?", isPresented: $showingEndRegimeAlert) {
             Button("Cancel", role: .cancel) { }
