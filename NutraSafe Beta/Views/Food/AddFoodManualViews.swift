@@ -698,7 +698,9 @@ struct ManualFoodDetailEntryView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
             }
-            .hideKeyboard()
+            .onTapGesture {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
             .navigationTitle("Add to Diary")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
