@@ -1610,7 +1610,10 @@ struct ContentView: View {
             OnboardingView(onComplete: {
                 OnboardingManager.shared.completeOnboarding()
                 showOnboarding = false
-                showingPaywall = true
+                // Only show paywall if not already subscribed
+                if !(subscriptionManager.isSubscribed || subscriptionManager.isInTrial || subscriptionManager.isPremiumOverride) {
+                    showingPaywall = true
+                }
             })
         }
         .fullScreenCover(isPresented: $showingDiaryAdd) {
