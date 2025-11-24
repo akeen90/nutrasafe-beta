@@ -5,6 +5,7 @@ struct FastingMainView: View {
     @ObservedObject var viewModel: FastingViewModel
     @State private var showingEditTimes = false
     @State private var showingEducation = false
+    @State private var showingCitations = false
     @State private var showingActionSheet = false
     @State private var actionSheetSession: FastingSession?
 
@@ -31,6 +32,14 @@ struct FastingMainView: View {
             }
             .navigationTitle("Fasting")
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        showingCitations = true
+                    } label: {
+                        Image(systemName: "doc.text.fill")
+                    }
+                }
+
                 ToolbarItem(placement: .primaryAction) {
                     NavigationLink {
                         FastingPlanManagementView(viewModel: viewModel)
@@ -38,7 +47,7 @@ struct FastingMainView: View {
                         Image(systemName: "clock.badge.checkmark")
                     }
                 }
-                
+
                 ToolbarItem(placement: .navigationBarTrailing) {
                     NavigationLink {
                         FastingInsightsView(viewModel: viewModel)
@@ -49,6 +58,9 @@ struct FastingMainView: View {
             }
             .sheet(isPresented: $showingEducation) {
                 FastingEducationView()
+            }
+            .sheet(isPresented: $showingCitations) {
+                FastingCitationsView()
             }
             .sheet(isPresented: $showingEditTimes) {
                 if let session = viewModel.activeSession {
