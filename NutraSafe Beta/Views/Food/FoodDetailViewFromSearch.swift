@@ -1442,6 +1442,7 @@ struct FoodDetailViewFromSearch: View {
                     
                     // Food Scores Section (moved from header)
                     foodScoresSection
+                        .id(servingAmount) // Force re-render when serving amount changes (for real-time sugar score updates)
                     
                     // Combined Watch Sections with Tabs
                     watchTabsSection
@@ -3230,7 +3231,6 @@ private var nutritionFactsSection: some View {
         let gradeToShow = (hasIngredients && !isPerUnitMode) ? nutraSafeGrade : nil
 
         return FoodScoresSectionView(ns: gradeToShow, sugarScore: sugarScore, showingInfo: $showingNutraSafeInfo, showingSugarInfo: $showingSugarInfo)
-            .id(servingAmount) // Force re-render when serving amount changes (for real-time sugar score updates)
     }
     
     private func getSimplifiedProcessingLevel() -> String {
