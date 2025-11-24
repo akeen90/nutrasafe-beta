@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		ONBVIEW0001BUILD /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONBVIEW0001FILE /* OnboardingView.swift */; };
+		ONBSCREEN0001BUILD /* OnboardingScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONBSCREEN0001FILE /* OnboardingScreens.swift */; };
+		ONBMGR0001BUILD /* Managers/OnboardingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONBMGR0001FILE /* Managers/OnboardingManager.swift */; };
 		013A7F75B09C430AB1EE40154700DAAB /* DiaryDailySummaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE1E506F81E64504BA776F466B03D0BC /* DiaryDailySummaryCard.swift */; };
 		053A05A52E60FD20C626C633 /* NutrientTrendChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24ED2B63CEA2D1DEA6011858 /* NutrientTrendChart.swift */; };
 		170B8500767E821043D1D6E5 /* FastingPlanViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4CC825B3113A674F68A6B62 /* FastingPlanViews.swift */; };
@@ -69,9 +72,6 @@
 		AB9A79F32ECA769D00F7354A /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 953245696D9904535E8F08F2 /* Core */; };
 		AB9A79F42ECA769D00F7354A /* Search in Frameworks */ = {isa = PBXBuildFile; productRef = F8B093B13F95948B176C38A4 /* Search */; };
 		AB9A79F62ECA773F00F7354A /* FastingSourcesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB9A79F52ECA773F00F7354A /* FastingSourcesView.swift */; };
-		ABB0AEF32EA8CCA3009F044D /* OnboardingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABB0AEF22EA8CCA3009F044D /* OnboardingManager.swift */; };
-		ABB0AEF72EA8CCD1009F044D /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABB0AEF52EA8CCD1009F044D /* OnboardingView.swift */; };
-		ABB0AEF82EA8CCD1009F044D /* OnboardingScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABB0AEF42EA8CCD1009F044D /* OnboardingScreens.swift */; };
 		ABB0AEFA2EAC3F14009F044D /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ABB0AEF92EAC3F13009F044D /* StoreKit.framework */; };
 		ABC1D3B02EAD665E00518F41 /* NutraSafe.storekit in Resources */ = {isa = PBXBuildFile; fileRef = ABC1D3AF2EAD665E00518F41 /* NutraSafe.storekit */; };
 		ABCDD6892EB51DEE0085890E /* WeeklySummarySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCDD6882EB51DEE0085890E /* WeeklySummarySheet.swift */; };
@@ -119,6 +119,9 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		ONBVIEW0001FILE /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		ONBSCREEN0001FILE /* OnboardingScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingScreens.swift; sourceTree = "<group>"; };
+		ONBMGR0001FILE /* Managers/OnboardingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/OnboardingManager.swift; sourceTree = "<group>"; };
 		025E4F9F2ED6507377598194 /* UseByNotificationManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UseByNotificationManager.swift; sourceTree = "<group>"; };
 		034F60AA8BCB4662A86709D4 /* FastingTimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastingTimerView.swift; sourceTree = "<group>"; };
 		062BCEAA60197405CFED2ACE /* NutrientActivityDashboard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NutrientActivityDashboard.swift; sourceTree = "<group>"; };
@@ -171,9 +174,6 @@
 		AB1BF6482ED3B3E6004EA968 /* FastingActionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastingActionSheet.swift; sourceTree = "<group>"; };
 		AB77ABAB2E686D0E00857409 /* NutraSafe BetaDebug.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "NutraSafe BetaDebug.entitlements"; sourceTree = "<group>"; };
 		AB9A79F52ECA773F00F7354A /* FastingSourcesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastingSourcesView.swift; sourceTree = "<group>"; };
-		ABB0AEF22EA8CCA3009F044D /* OnboardingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingManager.swift; sourceTree = "<group>"; };
-		ABB0AEF42EA8CCD1009F044D /* OnboardingScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingScreens.swift; sourceTree = "<group>"; };
-		ABB0AEF52EA8CCD1009F044D /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		ABB0AEF92EAC3F13009F044D /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		ABB0AEFB2EAC4FA5009F044D /* NutraSafe Beta.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "NutraSafe Beta.entitlements"; sourceTree = "<group>"; };
 		ABC1D3AF2EAD665E00518F41 /* NutraSafe.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = NutraSafe.storekit; sourceTree = "<group>"; };
@@ -351,7 +351,8 @@
 		956ECB7D602D71885046D54F /* Managers */ = {
 			isa = PBXGroup;
 			children = (
-			);
+			
+				ONBMGR0001FILE /* Managers/OnboardingManager.swift */,);
 			name = Managers;
 			sourceTree = "<group>";
 		};
@@ -395,7 +396,6 @@
 				AB13BC182EAE215A00C7B892 /* IngredientMicronutrientParser.swift */,
 				ABB0AEFB2EAC4FA5009F044D /* NutraSafe Beta.entitlements */,
 				ABB0AEF62EA8CCD1009F044D /* Onboarding */,
-				ABB0AEF22EA8CCA3009F044D /* OnboardingManager.swift */,
 				AB77ABAB2E686D0E00857409 /* NutraSafe BetaDebug.entitlements */,
 				A1234567890123456789012001 /* NutraSafeBetaApp.swift */,
 				AUTH1234567890123456789002 /* AuthenticationView.swift */,
@@ -460,10 +460,10 @@
 		ABB0AEF62EA8CCD1009F044D /* Onboarding */ = {
 			isa = PBXGroup;
 			children = (
-				ABB0AEF42EA8CCD1009F044D /* OnboardingScreens.swift */,
-				ABB0AEF52EA8CCD1009F044D /* OnboardingView.swift */,
-			);
-			path = Onboarding;
+			
+				ONBVIEW0001FILE /* OnboardingView.swift */,
+				ONBSCREEN0001FILE /* OnboardingScreens.swift */,);
+			path = Views/Onboarding;
 			sourceTree = "<group>";
 		};
 		D076EFF139B57BE85EDAEE04 /* Services */ = {
@@ -604,7 +604,6 @@
 				A1234567890123456789012307 /* HealthKitManager.swift in Sources */,
 				SUBS0001BUILD /* Managers/SubscriptionManager.swift in Sources */,
 				FASTMGR0001BUILD /* Managers/FastingManager.swift in Sources */,
-				ABB0AEF32EA8CCA3009F044D /* OnboardingManager.swift in Sources */,
 				IMGCACHE001BUILD /* Managers/ImageCacheManager.swift in Sources */,
 				26E954E4A2634655AB0F1224 /* FoodDetailViewFromSearch.swift in Sources */,
 				99C873C9DCA241B8B3F6C5CA /* FoodSearchViews.swift in Sources */,
@@ -639,8 +638,6 @@
 				355701060BA04A179DB1DA38 /* NutraSafe Beta/Views/Diary/DiaryExerciseComponents.swift in Sources */,
 				5455055A957A44D1801768B3 /* NutraSafe Beta/Views/Components/NutritionScoreViews.swift in Sources */,
 				B8C6385939B44D77AA09BE43 /* NutraSafe Beta/Views/Components/ActionButtons.swift in Sources */,
-				ABB0AEF72EA8CCD1009F044D /* OnboardingView.swift in Sources */,
-				ABB0AEF82EA8CCD1009F044D /* OnboardingScreens.swift in Sources */,
 				75337286195F467FA2A082D1 /* NutraSafe Beta/Views/Components/MacroViews.swift in Sources */,
 				5ACAC92CF0C24FA7A04AEB4F /* NutraSafe Beta/Views/Components/CustomTabBar.swift in Sources */,
 				7B541C601DBA40B089B6FB04 /* NutraSafe Beta/Views/Components/AddActionMenu.swift in Sources */,
@@ -676,7 +673,10 @@
 				170B8500767E821043D1D6E5 /* FastingPlanViews.swift in Sources */,
 				7FDF9EAC1D6C21BCED86078E /* FastingEducationView.swift in Sources */,
 				F30EE587A7676BDEA5D95EC6 /* FastingInsightsView.swift in Sources */,
-			);
+			
+				ONBMGR0001BUILD /* Managers/OnboardingManager.swift in Sources */,
+				ONBVIEW0001BUILD /* OnboardingView.swift in Sources */,
+				ONBSCREEN0001BUILD /* OnboardingScreens.swift in Sources */,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */

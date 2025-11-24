@@ -2,99 +2,612 @@
 //  OnboardingScreens.swift
 //  NutraSafe Beta
 //
-//  All 9 onboarding screens with UK English
-//  Created by Claude on 2025-10-22.
+//  Modern onboarding pages with integrated screenshots
 //
 
 import SwiftUI
 
-// MARK: - Screen 1: Welcome
-
-struct WelcomeScreen: View {
-    @Binding var currentPage: Int
-
+// MARK: - Diary Page with Screenshot
+struct DiaryPage: View {
     var body: some View {
-        VStack(spacing: 40) {
-            Spacer()
+        ScrollView {
+            VStack(spacing: 24) {
+                Spacer().frame(height: 20)
 
-            Image(systemName: "heart.text.square.fill")
-                .font(.system(size: 100))
-                .foregroundColor(.blue)
+                // Title
+                VStack(spacing: 8) {
+                    Text("Your Food Diary")
+                        .font(.system(size: 36, weight: .bold))
+                        .foregroundColor(.primary)
 
-            VStack(spacing: 16) {
-                Text("Welcome to NutraSafe")
-                    .font(.system(size: 34, weight: .bold))
-                    .multilineTextAlignment(.center)
+                    Text("Where everything starts")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
 
-                Text("Your Complete Nutrition &\nFood Safety Companion")
-                    .font(.system(size: 18))
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            }
+                // Screenshot mockup
+                ScreenshotContainer(imageName: "onboarding-diary")
 
-            Spacer()
+                // Content
+                VStack(alignment: .leading, spacing: 16) {
+                    InfoBullet(
+                        icon: "magnifyingglass",
+                        color: .blue,
+                        title: "Add food easily",
+                        description: "Search, scan barcodes, or use Manual/AI tools"
+                    )
 
-            ContinueButton(currentPage: $currentPage)
+                    InfoBullet(
+                        icon: "slider.horizontal.3",
+                        color: .green,
+                        title: "Choose your serving",
+                        description: "Select portion size, pick mealtime, and add instantly"
+                    )
+
+                    InfoBullet(
+                        icon: "chart.pie.fill",
+                        color: .orange,
+                        title: "Track automatically",
+                        description: "Calories, carbs, fat, protein & one extra macro update live"
+                    )
+
+                    WarningCard(
+                        text: "Always double-check serving sizes. Different products use different measures, and accurate tracking depends on choosing the right portion."
+                    )
+
+                    InfoCard(
+                        icon: "gift.fill",
+                        text: "The Diary is completely free and built to be fast, simple and reliable."
+                    )
+                }
                 .padding(.horizontal, 24)
-                .padding(.bottom, 40)
+
+                Spacer().frame(height: 80)
+            }
         }
     }
 }
 
-// MARK: - Screen 2: Health Disclaimer
-
-struct DisclaimerScreen: View {
-    @Binding var currentPage: Int
-    @State private var hasAccepted = false
-
+// MARK: - Food Detail Page
+struct FoodDetailPage: View {
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                VStack(spacing: 16) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 60))
-                        .foregroundColor(.orange)
+            VStack(spacing: 24) {
+                Spacer().frame(height: 20)
 
-                    Text("Important Health Information")
-                        .font(.system(size: 28, weight: .bold))
-                        .multilineTextAlignment(.center)
+                VStack(spacing: 8) {
+                    Text("Food Detail Page")
+                        .font(.system(size: 36, weight: .bold))
+                        .foregroundColor(.primary)
+
+                    Text("See everything about what you eat")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(.secondary)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.top, 40)
+
+                // Screenshot mockup
+                ScreenshotContainer(imageName: "onboarding-food-detail")
 
                 VStack(alignment: .leading, spacing: 16) {
-                    DisclaimerPoint(text: "NutraSafe is designed to help you track nutrition and identify potential food safety concerns.")
-                    DisclaimerPoint(text: "This app is NOT a substitute for professional medical advice, diagnosis, or treatment.")
-                    DisclaimerPoint(text: "Always verify food labels yourself and consult healthcare professionals for medical decisions.")
-                    DisclaimerPoint(text: "Results cannot be guaranteed to be 100% accurate.")
+                    InfoBullet(
+                        icon: "info.circle.fill",
+                        color: .blue,
+                        title: "Complete nutrition",
+                        description: "Tap any food to see calories, macros and full ingredients"
+                    )
+
+                    InfoBullet(
+                        icon: "sparkles",
+                        color: .purple,
+                        title: "Additive information",
+                        description: "We highlight additives and explain what they are and why they're used"
+                    )
+
+                    InfoBullet(
+                        icon: "exclamationmark.triangle.fill",
+                        color: .red,
+                        title: "Allergen alerts",
+                        description: "Clear warnings if we detect your allergens (set in Settings)"
+                    )
+
+                    InfoBullet(
+                        icon: "leaf.fill",
+                        color: .green,
+                        title: "Vitamins & minerals",
+                        description: "View natural vitamins and minerals in each food"
+                    )
+
+                    WarningCard(
+                        text: "Important: This is an additional tool only. Always read packaging yourself, especially if you have allergies or medical conditions. Technology is never 100% reliable."
+                    )
                 }
                 .padding(.horizontal, 24)
 
+                Spacer().frame(height: 80)
+            }
+        }
+    }
+}
+
+// MARK: - Nutrients Page
+struct NutrientsPage: View {
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                Spacer().frame(height: 20)
+
+                VStack(spacing: 8) {
+                    Text("Nutrients")
+                        .font(.system(size: 36, weight: .bold))
+                        .foregroundColor(.primary)
+
+                    Text("7-day overview of your nutrition")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+
+                // Screenshot mockup
+                ScreenshotContainer(imageName: "onboarding-nutrients")
+
+                VStack(alignment: .leading, spacing: 16) {
+                    InfoBullet(
+                        icon: "chart.bar.fill",
+                        color: .green,
+                        title: "Weekly tracking",
+                        description: "See which vitamins and minerals regularly appear in your diet over 7 days"
+                    )
+
+                    InfoBullet(
+                        icon: "circle.fill",
+                        color: .blue,
+                        title: "Visual indicators",
+                        description: "Low, moderate or strong presence shown with clear color coding"
+                    )
+
+                    InfoCard(
+                        icon: "info.circle.fill",
+                        text: "This is a helpful awareness tool, not a medical assessment. Most foods don't publish exact vitamin/mineral amounts, so this feature focuses on presence and patterns rather than precise quantities."
+                    )
+                }
+                .padding(.horizontal, 24)
+
+                Spacer().frame(height: 80)
+            }
+        }
+    }
+}
+
+// MARK: - Reactions Page
+struct ReactionsPage: View {
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                Spacer().frame(height: 20)
+
+                VStack(spacing: 8) {
+                    Text("Track Reactions")
+                        .font(.system(size: 36, weight: .bold))
+                        .foregroundColor(.primary)
+
+                    Text("Monitor how foods affect you")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+
+                // Screenshot mockup
+                ScreenshotContainer(imageName: "onboarding-reactions")
+
+                VStack(alignment: .leading, spacing: 16) {
+                    InfoBullet(
+                        icon: "note.text",
+                        color: .orange,
+                        title: "Log symptoms",
+                        description: "Record the food, symptoms, severity and any notes"
+                    )
+
+                    InfoBullet(
+                        icon: "list.bullet",
+                        color: .blue,
+                        title: "Automatic ingredient tracking",
+                        description: "We pull the food's ingredients to help identify potential links"
+                    )
+
+                    WarningCard(
+                        text: "Warning: This feature can guide you toward possible patterns but cannot diagnose allergies or intolerances. If you experience serious or ongoing symptoms, always speak to a healthcare professional."
+                    )
+                }
+                .padding(.horizontal, 24)
+
+                Spacer().frame(height: 80)
+            }
+        }
+    }
+}
+
+// MARK: - Patterns Page
+struct PatternsPage: View {
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                Spacer().frame(height: 20)
+
+                VStack(spacing: 8) {
+                    Text("Pattern Analysis")
+                        .font(.system(size: 36, weight: .bold))
+                        .foregroundColor(.primary)
+
+                    Text("Identify problem ingredients")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+
+                // Screenshot mockup
+                ScreenshotContainer(imageName: "onboarding-patterns")
+
+                VStack(alignment: .leading, spacing: 16) {
+                    InfoBullet(
+                        icon: "sparkles",
+                        color: .purple,
+                        title: "Smart detection",
+                        description: "After 3+ reactions, we highlight ingredients that repeatedly appear"
+                    )
+
+                    InfoBullet(
+                        icon: "doc.text.fill",
+                        color: .blue,
+                        title: "Reaction Report",
+                        description: "Generate PDF with recent reaction, 7-day diary, last 5 reactions & patterns"
+                    )
+
+                    InfoBullet(
+                        icon: "person.2.fill",
+                        color: .green,
+                        title: "Share with professionals",
+                        description: "Useful to show GP, dietitian or allergy specialist"
+                    )
+
+                    InfoCard(
+                        icon: "info.circle.fill",
+                        text: "This can be useful to share with healthcare professionals — but it should never replace professional medical advice or testing."
+                    )
+                }
+                .padding(.horizontal, 24)
+
+                Spacer().frame(height: 80)
+            }
+        }
+    }
+}
+
+// MARK: - Fasting Page with Screenshot
+struct FastingPage: View {
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                Spacer().frame(height: 20)
+
+                VStack(spacing: 8) {
+                    Text("Fasting")
+                        .font(.system(size: 36, weight: .bold))
+                        .foregroundColor(.primary)
+
+                    Text("Structured fasting support")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+
+                // Screenshot mockup
+                ScreenshotContainer(imageName: "onboarding-fasting")
+
+                VStack(alignment: .leading, spacing: 16) {
+                    InfoBullet(
+                        icon: "calendar",
+                        color: .blue,
+                        title: "Set your plan",
+                        description: "Choose fasting days, start time and reminder preferences"
+                    )
+
+                    InfoBullet(
+                        icon: "bell.fill",
+                        color: .orange,
+                        title: "Auto-start & notifications",
+                        description: "Your fast starts automatically and you'll get stage updates"
+                    )
+
+                    WarningCard(
+                        text: "NutraSafe is here to support structured fasting, but if you have health conditions or concerns, check with a professional before starting any fasting routine."
+                    )
+                }
+                .padding(.horizontal, 24)
+
+                Spacer().frame(height: 80)
+            }
+        }
+    }
+}
+
+// MARK: - Progress Page
+struct ProgressPage: View {
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                Spacer().frame(height: 20)
+
+                VStack(spacing: 8) {
+                    Text("Progress")
+                        .font(.system(size: 36, weight: .bold))
+                        .foregroundColor(.primary)
+
+                    Text("Track real change over time")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+
+                // Screenshot mockup
+                ScreenshotContainer(imageName: "onboarding-progress")
+
+                VStack(alignment: .leading, spacing: 16) {
+                    InfoBullet(
+                        icon: "scalemass.fill",
+                        color: .blue,
+                        title: "Weight tracking",
+                        description: "Log your weight regularly to see trends"
+                    )
+
+                    InfoBullet(
+                        icon: "ruler.fill",
+                        color: .purple,
+                        title: "Body measurements",
+                        description: "Record measurements for complete tracking"
+                    )
+
+                    InfoBullet(
+                        icon: "camera.fill",
+                        color: .green,
+                        title: "Progress photos",
+                        description: "Build a visual timeline of your transformation"
+                    )
+
+                    InfoCard(
+                        icon: "heart.fill",
+                        text: "This is your personal space to understand your journey at your own pace."
+                    )
+                }
+                .padding(.horizontal, 24)
+
+                Spacer().frame(height: 80)
+            }
+        }
+    }
+}
+
+// MARK: - Use By Page
+struct UseByPage: View {
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                Spacer().frame(height: 20)
+
+                VStack(spacing: 8) {
+                    Text("Use By")
+                        .font(.system(size: 36, weight: .bold))
+                        .foregroundColor(.primary)
+
+                    Text("Never waste food again")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+
+                // Screenshot mockup
+                ScreenshotContainer(imageName: "onboarding-useby")
+
+                VStack(alignment: .leading, spacing: 16) {
+                    InfoBullet(
+                        icon: "calendar.badge.clock",
+                        color: .orange,
+                        title: "Track opened items",
+                        description: "Add items when you open them with their \"use within\" timeframe"
+                    )
+
+                    InfoBullet(
+                        icon: "bell.fill",
+                        color: .red,
+                        title: "Smart reminders",
+                        description: "Get notified before food becomes unsafe"
+                    )
+
+                    InfoBullet(
+                        icon: "camera.fill",
+                        color: .blue,
+                        title: "Photo identification",
+                        description: "Add photos for quick visual reference"
+                    )
+
+                    WarningCard(
+                        text: "Important: Always follow packaging instructions and food safety guidelines. This feature supports you, but it is not a replacement for proper storage or common-sense checks."
+                    )
+                }
+                .padding(.horizontal, 24)
+
+                Spacer().frame(height: 80)
+            }
+        }
+    }
+}
+
+// MARK: - Final Message Page
+struct FinalMessagePage: View {
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 32) {
+                Spacer().frame(height: 40)
+
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 80))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.green, .mint],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+
+                VStack(spacing: 16) {
+                    Text("You're Ready!")
+                        .font(.system(size: 42, weight: .bold))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.blue, .purple],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+
+                    Text("You now know how NutraSafe works")
+                        .font(.system(size: 18, weight: .regular))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+
+                VStack(alignment: .leading, spacing: 16) {
+                    CheckItem(text: "Log food with multiple methods")
+                    CheckItem(text: "View detailed nutrition & allergen info")
+                    CheckItem(text: "Track vitamins and minerals automatically")
+                    CheckItem(text: "Monitor food reactions & patterns")
+                    CheckItem(text: "Time fasts & track progress")
+                    CheckItem(text: "Manage food expiry dates")
+                }
+                .padding(.horizontal, 32)
+
+                InfoCard(
+                    icon: "exclamationmark.triangle.fill",
+                    text: "Before you start, there's one important health disclaimer you need to review and accept."
+                )
+                .padding(.horizontal, 24)
+
+                Spacer()
+            }
+        }
+    }
+}
+
+// MARK: - Disclaimer Page (Dedicated Final Page)
+struct DisclaimerPage: View {
+    @State private var hasAccepted = false
+    let onAccept: () -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 32) {
+                Spacer().frame(height: 40)
+
+                // Warning icon
+                ZStack {
+                    Circle()
+                        .fill(Color.orange.opacity(0.15))
+                        .frame(width: 120, height: 120)
+
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(.orange)
+                }
+
+                VStack(spacing: 16) {
+                    Text("Important Health Information")
+                        .font(.system(size: 32, weight: .bold))
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.center)
+
+                    Text("Please read carefully")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+
+                // Disclaimer points
+                VStack(alignment: .leading, spacing: 20) {
+                    DisclaimerBullet(
+                        number: "1",
+                        text: "NutraSafe is designed to help you track nutrition and identify potential food safety concerns."
+                    )
+
+                    DisclaimerBullet(
+                        number: "2",
+                        text: "This app is NOT a substitute for professional medical advice, diagnosis, or treatment.",
+                        isImportant: true
+                    )
+
+                    DisclaimerBullet(
+                        number: "3",
+                        text: "Always verify food labels yourself and consult healthcare professionals for medical decisions."
+                    )
+
+                    DisclaimerBullet(
+                        number: "4",
+                        text: "Results cannot be guaranteed to be 100% accurate."
+                    )
+                }
+                .padding(.horizontal, 24)
+
+                // Acceptance checkbox
                 Button(action: { hasAccepted.toggle() }) {
-                    HStack(spacing: 12) {
-                        Image(systemName: hasAccepted ? "checkmark.square.fill" : "square")
-                            .font(.system(size: 24))
-                            .foregroundColor(hasAccepted ? .blue : .gray)
+                    HStack(spacing: 16) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(hasAccepted ? Color.blue : Color.gray.opacity(0.3), lineWidth: 2)
+                                .frame(width: 32, height: 32)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(hasAccepted ? Color.blue : Color.clear)
+                                )
+
+                            if hasAccepted {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundColor(.white)
+                            }
+                        }
 
                         Text("I understand and agree to use this app as an informational tool only")
-                            .font(.system(size: 16))
+                            .font(.system(size: 16, weight: .medium))
                             .foregroundColor(.primary)
                             .multilineTextAlignment(.leading)
                     }
                 }
+                .padding(20)
+                .background(Color.white)
+                .cornerRadius(16)
+                .shadow(color: Color.black.opacity(0.05), radius: 10, y: 4)
                 .padding(.horizontal, 24)
 
+                // Get Started button
                 Button(action: {
-                    OnboardingManager.shared.acceptDisclaimer()
-                    currentPage += 1
+                    if hasAccepted {
+                        onAccept()
+                    }
                 }) {
-                    Text("Continue")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(hasAccepted ? .white : .gray)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(hasAccepted ? Color.blue : Color.gray.opacity(0.3))
-                        .cornerRadius(16)
+                    HStack {
+                        Text("Get Started")
+                        Image(systemName: "arrow.right.circle.fill")
+                    }
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(hasAccepted ? .white : .gray)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .background(
+                        Group {
+                            if hasAccepted {
+                                LinearGradient(
+                                    colors: [.blue, .purple],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            } else {
+                                Color.gray.opacity(0.2)
+                            }
+                        }
+                    )
+                    .cornerRadius(16)
+                    .shadow(color: hasAccepted ? Color.blue.opacity(0.3) : Color.clear, radius: 15, y: 8)
                 }
                 .disabled(!hasAccepted)
                 .padding(.horizontal, 24)
@@ -104,798 +617,174 @@ struct DisclaimerScreen: View {
     }
 }
 
-struct DisclaimerPoint: View {
-    let text: String
+// MARK: - Reusable Components
 
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "circle.fill")
-                .font(.system(size: 8))
-                .foregroundColor(.orange)
-                .padding(.top, 6)
-
-            Text(text)
-                .font(.system(size: 16))
-                .foregroundColor(.primary)
-        }
-    }
-}
-
-// MARK: - Screen 3: Adding Food
-
-struct AddingFoodScreen: View {
-    @Binding var currentPage: Int
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Text("4 Ways to Find Food")
-                    .font(.system(size: 32, weight: .bold))
-                    .padding(.horizontal, 24)
-                    .padding(.top, 40)
-
-                VStack(spacing: 16) {
-                    FeatureCard(
-                        icon: "barcode.viewfinder",
-                        title: "Barcode Scanner",
-                        description: "Point at product barcode for instant results"
-                    )
-
-                    FeatureCard(
-                        icon: "magnifyingglass",
-                        title: "Search",
-                        description: "Type food name, tap result, adjust serving"
-                    )
-
-                    FeatureCard(
-                        icon: "camera.fill",
-                        title: "AI Scanner",
-                        description: "Take photo of meal, AI detects foods automatically"
-                    )
-
-                    FeatureCard(
-                        icon: "pencil",
-                        title: "Manual Entry",
-                        description: "Create custom foods from scratch"
-                    )
-                }
-                .padding(.horizontal, 24)
-
-                InfoBox(text: "Every food shows nutrition score, allergens, and full ingredient analysis")
-                    .padding(.horizontal, 24)
-
-                HStack(spacing: 12) {
-                    SkipButton(currentPage: $currentPage)
-                    ContinueButton(currentPage: $currentPage)
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 40)
-            }
-        }
-    }
-}
-
-// MARK: - Screen 4: Food Detail Page
-
-struct FoodDetailScreen: View {
-    @Binding var currentPage: Int
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Text("Complete Food Information")
-                    .font(.system(size: 32, weight: .bold))
-                    .padding(.horizontal, 24)
-                    .padding(.top, 40)
-
-                Text("On every food detail page, you'll see:")
-                    .font(.system(size: 18))
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 24)
-
-                VStack(spacing: 16) {
-                    DetailFeature(
-                        icon: "chart.bar.fill",
-                        colour: .green,
-                        title: "Nutrition Score (A+ to F)",
-                        description: "Colour-coded health rating at a glance"
-                    )
-
-                    DetailFeature(
-                        icon: "exclamationmark.triangle.fill",
-                        colour: .red,
-                        title: "Allergen Warnings",
-                        description: "RED BANNER if any of your 14 allergens detected"
-                    )
-
-                    DetailFeature(
-                        icon: "flask.fill",
-                        colour: .orange,
-                        title: "Additive Analysis",
-                        description: "400+ food additives with safety ratings"
-                    )
-
-                    DetailFeature(
-                        icon: "list.bullet",
-                        colour: .blue,
-                        title: "Ingredient List",
-                        description: "Every ingredient analysed with risk levels"
-                    )
-
-                    DetailFeature(
-                        icon: "chart.pie.fill",
-                        colour: .purple,
-                        title: "Essential Micronutrients",
-                        description: "Track vitamins, minerals, and daily value percentages"
-                    )
-                }
-                .padding(.horizontal, 24)
-
-                HStack(spacing: 12) {
-                    SkipButton(currentPage: $currentPage)
-                    ContinueButton(currentPage: $currentPage)
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 40)
-            }
-        }
-    }
-}
-
-// MARK: - Screen 5: Tracking Nutrients
-
-struct TrackingNutrientsScreen: View {
-    @Binding var currentPage: Int
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Text("Track Essential Micronutrients")
-                    .font(.system(size: 32, weight: .bold))
-                    .padding(.horizontal, 24)
-                    .padding(.top, 40)
-
-                Text("Diary Tab → Nutrients Sub-tab")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.blue)
-                    .padding(.horizontal, 24)
-
-                VStack(spacing: 16) {
-                    NutrientFeature(
-                        title: "Nutrient Activity Rings",
-                        description: "See how often you eat each nutrient over 30 days",
-                        details: [
-                            "Green: Strong (70-100% of days)",
-                            "Orange: Moderate (40-69%)",
-                            "Red: Needs attention (0-39%)"
-                        ]
-                    )
-
-                    NutrientFeature(
-                        title: "7-Day Timeline",
-                        description: "Tap any nutrient to see:",
-                        details: [
-                            "Which foods provided it",
-                            "Daily value percentages",
-                            "Trend arrows (improving/declining)"
-                        ]
-                    )
-
-                    NutrientFeature(
-                        title: "Smart Recommendations",
-                        description: "AI suggests foods to fill your gaps",
-                        details: [
-                            "Low on Vitamin C? Get orange suggestions",
-                            "Missing iron? See spinach & lentils"
-                        ]
-                    )
-                }
-                .padding(.horizontal, 24)
-
-                InfoBox(text: "Nutrients track automatically - just log your meals!")
-                    .padding(.horizontal, 24)
-
-                HStack(spacing: 12) {
-                    SkipButton(currentPage: $currentPage)
-                    ContinueButton(currentPage: $currentPage)
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 40)
-            }
-        }
-    }
-}
-
-// MARK: - Screen 6: Food Reactions
-
-struct FoodReactionsScreen: View {
-    @Binding var currentPage: Int
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Text("Track Food Reactions")
-                    .font(.system(size: 32, weight: .bold))
-                    .padding(.horizontal, 24)
-                    .padding(.top, 40)
-
-                Text("Food Tab → Reactions Sub-tab")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.blue)
-                    .padding(.horizontal, 24)
-
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("How to Log a Reaction:")
-                        .font(.system(size: 20, weight: .semibold))
-
-                    StepItem(number: "1", text: "Tap 'Log Reaction'")
-                    StepItem(number: "2", text: "Select food from recent diary")
-                    StepItem(number: "3", text: "Choose symptoms (nausea, bloating, etc.)")
-                    StepItem(number: "4", text: "Select severity: Mild/Moderate/Severe")
-                    StepItem(number: "5", text: "Save - app analyses patterns")
-                }
-                .padding(.horizontal, 24)
-
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Pattern Analysis")
-                        .font(.system(size: 20, weight: .semibold))
-
-                    Text("After logging reactions, the app identifies:")
-                        .font(.system(size: 16))
-                        .foregroundColor(.secondary)
-
-                    BulletPoint(text: "Problematic ingredients (e.g., 'Lactose appears in 4/5 reactions')")
-                    BulletPoint(text: "Time-based patterns")
-                    BulletPoint(text: "Severity trends")
-                }
-                .padding(.horizontal, 24)
-
-                WarningBox(text: "For personal tracking only - not medical advice. Consult a doctor for allergies.")
-                    .padding(.horizontal, 24)
-
-                HStack(spacing: 12) {
-                    SkipButton(currentPage: $currentPage)
-                    ContinueButton(currentPage: $currentPage)
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 40)
-            }
-        }
-    }
-}
-
-// MARK: - Screen 7: Fasting Timer
-
-struct FastingTimerScreen: View {
-    @Binding var currentPage: Int
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Text("Intermittent Fasting Timer")
-                    .font(.system(size: 32, weight: .bold))
-                    .padding(.horizontal, 24)
-                    .padding(.top, 40)
-
-                Text("Food Tab → Fasting Sub-tab")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.blue)
-                    .padding(.horizontal, 24)
-
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("How to Use:")
-                        .font(.system(size: 20, weight: .semibold))
-
-                    StepItem(number: "1", text: "Choose preset: 16h, 18h, 20h, or 24h")
-                    StepItem(number: "2", text: "Tap 'Start Fasting'")
-                    StepItem(number: "3", text: "Watch circular progress ring")
-                    StepItem(number: "4", text: "Track fasting stages with benefits")
-                }
-                .padding(.horizontal, 24)
-
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("8 Fasting Stages:")
-                        .font(.system(size: 20, weight: .semibold))
-
-                    FastingStage(hours: "0-4h", name: "Digestion", icon: "fork.knife")
-                    FastingStage(hours: "4-8h", name: "Glucose Depletion", icon: "bolt.fill")
-                    FastingStage(hours: "8-12h", name: "Fat Burning Begins", icon: "flame.fill")
-                    FastingStage(hours: "12-16h", name: "Ketosis Initiation", icon: "sparkles")
-                    FastingStage(hours: "16-24h", name: "Deep Ketosis", icon: "star.fill")
-                    FastingStage(hours: "24-48h", name: "Autophagy Peaks", icon: "wand.and.stars")
-                }
-                .padding(.horizontal, 24)
-
-                InfoBox(text: "Fasting timer appears in Dynamic Island - check progress anytime!")
-                    .padding(.horizontal, 24)
-
-                HStack(spacing: 12) {
-                    SkipButton(currentPage: $currentPage)
-                    ContinueButton(currentPage: $currentPage)
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 40)
-            }
-        }
-    }
-}
-
-// MARK: - Screen 8: Use By Tracker
-
-struct UseByTrackerScreen: View {
-    @Binding var currentPage: Int
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Text("Never Waste Food")
-                    .font(.system(size: 32, weight: .bold))
-                    .padding(.horizontal, 24)
-                    .padding(.top, 40)
-
-                Text("Use By Tab")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.blue)
-                    .padding(.horizontal, 24)
-
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("How to Use:")
-                        .font(.system(size: 20, weight: .semibold))
-
-                    StepItem(number: "1", text: "Tap + to add food item")
-                    StepItem(number: "2", text: "Set expiry date")
-                    StepItem(number: "3", text: "Mark as 'Unopened' or 'Opened'")
-                    StepItem(number: "4", text: "Get reminders before it spoils")
-                }
-                .padding(.horizontal, 24)
-
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Smart Countdown:")
-                        .font(.system(size: 20, weight: .semibold))
-
-                    ExpiryStatus(colour: .gray, label: "Unopened", description: "Shows 'Unopened' (no countdown)")
-                    ExpiryStatus(colour: .green, label: "Fresh", description: "7+ days remaining")
-                    ExpiryStatus(colour: .yellow, label: "This Week", description: "4-7 days")
-                    ExpiryStatus(colour: .orange, label: "Soon", description: "1-3 days")
-                    ExpiryStatus(colour: .red, label: "Today", description: "Last day!")
-                }
-                .padding(.horizontal, 24)
-
-                InfoBox(text: "Example: Opened milk on Monday → '5 days left' → Reminder Friday → Use by Saturday!")
-                    .padding(.horizontal, 24)
-
-                HStack(spacing: 12) {
-                    SkipButton(currentPage: $currentPage)
-                    ContinueButton(currentPage: $currentPage)
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 40)
-            }
-        }
-    }
-}
-
-// MARK: - Screen 9: Optional Features
-
-struct OptionalFeaturesScreen: View {
-    @Binding var currentPage: Int
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Text("Optional Features")
-                    .font(.system(size: 32, weight: .bold))
-                    .padding(.horizontal, 24)
-                    .padding(.top, 40)
-
-                Text("Enable these features later in Settings whenever you're ready")
-                    .font(.system(size: 16))
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 24)
-
-                VStack(spacing: 16) {
-                    OptionalFeatureCard(
-                        icon: "bell.badge.fill",
-                        title: "Use-By Notifications",
-                        description: "Get reminders before food expires so nothing goes to waste",
-                        location: "Enable in: Settings → Notifications"
-                    )
-
-                    OptionalFeatureCard(
-                        icon: "heart.circle.fill",
-                        title: "Apple Health Integration",
-                        description: "Sync exercise calories to see accurate daily targets in your diary",
-                        location: "Enable in: Settings → Apple Health"
-                    )
-                }
-                .padding(.horizontal, 24)
-
-                InfoBox(text: "We won't ask for permissions now - enable them yourself when you're ready and understand why they're useful")
-                    .padding(.horizontal, 24)
-
-                WarningBox(text: "Both features are entirely optional - NutraSafe works perfectly without them!")
-                    .padding(.horizontal, 24)
-
-                HStack(spacing: 12) {
-                    SkipButton(currentPage: $currentPage)
-                    ContinueButton(currentPage: $currentPage)
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 40)
-            }
-        }
-    }
-}
-
-struct OptionalFeatureCard: View {
+struct InfoBullet: View {
     let icon: String
+    let color: Color
     let title: String
     let description: String
-    let location: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.system(size: 28))
-                    .foregroundColor(.blue)
-                    .frame(width: 40)
+        HStack(alignment: .top, spacing: 16) {
+            Image(systemName: icon)
+                .font(.system(size: 22))
+                .foregroundColor(.white)
+                .frame(width: 44, height: 44)
+                .background(
+                    LinearGradient(
+                        colors: [color, color.opacity(0.7)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .cornerRadius(12)
 
+            VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(.primary)
+
+                Text(description)
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-
-            Text(description)
-                .font(.system(size: 14))
-                .foregroundColor(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Text(location)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.blue)
-                .padding(.top, 4)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(.thinMaterial)
+        .background(Color.white)
         .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.1), radius: 12, y: 6)
+        .shadow(color: Color.black.opacity(0.05), radius: 10, y: 4)
     }
 }
 
-// MARK: - Screen 10: Completion
-
-struct CompletionScreen: View {
-    let onComplete: () -> Void
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 32) {
-                Spacer()
-
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 100))
-                    .foregroundColor(.green)
-
-                Text("You're All Set!")
-                    .font(.system(size: 34, weight: .bold))
-
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("You Now Know How To:")
-                        .font(.system(size: 20, weight: .semibold))
-
-                    CheckmarkItem(text: "Add food using 4 methods")
-                    CheckmarkItem(text: "View detailed nutrition & allergen info")
-                    CheckmarkItem(text: "Track essential vitamins and minerals automatically")
-                    CheckmarkItem(text: "Log food reactions and spot patterns")
-                    CheckmarkItem(text: "Time intermittent fasts")
-                    CheckmarkItem(text: "Track food expiry dates")
-                }
-                .padding(.horizontal, 24)
-
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Quick Start Guide:")
-                        .font(.system(size: 20, weight: .semibold))
-
-                    QuickTip(number: "1", text: "Set up your allergens: Settings → Health & Safety")
-                    QuickTip(number: "2", text: "Enable notifications/Apple Health if desired: Settings")
-                    QuickTip(number: "3", text: "Add your first meal: Tap + → Search or Scan")
-                }
-                .padding(.horizontal, 24)
-
-                Text("Restart this guide anytime:\nSettings → About → Restart Onboarding")
-                    .font(.system(size: 14))
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
-
-                Spacer()
-
-                Button(action: {
-                    OnboardingManager.shared.completeOnboarding()
-                    onComplete()
-                }) {
-                    Text("Get Started")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(Color.blue)
-                        .cornerRadius(16)
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 40)
-            }
-        }
-    }
-}
-
-// MARK: - Reusable Components
-
-struct FeatureCard: View {
+struct InfoCard: View {
     let icon: String
-    let title: String
-    let description: String
-
-    var body: some View {
-        HStack(spacing: 16) {
-            Image(systemName: icon)
-                .font(.system(size: 32))
-                .foregroundColor(.blue)
-                .frame(width: 50)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.system(size: 18, weight: .semibold))
-                Text(description)
-                    .font(.system(size: 14))
-                    .foregroundColor(.secondary)
-            }
-        }
-        .padding(16)
-        .background(.thinMaterial)
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.12), radius: 14, y: 8)
-    }
-}
-
-struct DetailFeature: View {
-    let icon: String
-    let colour: Color
-    let title: String
-    let description: String
+    let text: String
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: icon)
-                .font(.system(size: 24))
-                .foregroundColor(colour)
-                .frame(width: 40)
+                .font(.system(size: 20))
+                .foregroundColor(.blue)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.system(size: 16, weight: .semibold))
-                Text(description)
-                    .font(.system(size: 14))
-                    .foregroundColor(.secondary)
-            }
+            Text(text)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundColor(.primary)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(14)
-        .background(.thinMaterial)
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.1), radius: 12, y: 6)
-    }
-}
-
-struct NutrientFeature: View {
-    let title: String
-    let description: String
-    let details: [String]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.system(size: 18, weight: .semibold))
-            Text(description)
-                .font(.system(size: 14))
-                .foregroundColor(.secondary)
-
-            ForEach(details, id: \.self) { detail in
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(Color.blue)
-                        .frame(width: 6, height: 6)
-                    Text(detail)
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
-                }
-            }
-        }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(.thinMaterial)
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.1), radius: 12, y: 6)
+        .background(Color.blue.opacity(0.08))
+        .cornerRadius(12)
     }
 }
 
-struct StepItem: View {
-    let number: String
-    let text: String
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Text(number)
-                .font(.system(size: 16, weight: .bold))
-                .foregroundColor(.white)
-                .frame(width: 32, height: 32)
-                .background(Color.blue)
-                .clipShape(Circle())
-
-            Text(text)
-                .font(.system(size: 16))
-        }
-    }
-}
-
-struct FastingStage: View {
-    let hours: String
-    let name: String
-    let icon: String
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 16))
-                .foregroundColor(.orange)
-                .frame(width: 24)
-
-            Text(hours)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(.blue)
-                .frame(width: 60, alignment: .leading)
-
-            Text(name)
-                .font(.system(size: 14))
-                .foregroundColor(.primary)
-        }
-    }
-}
-
-struct ExpiryStatus: View {
-    let colour: Color
-    let label: String
-    let description: String
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Circle()
-                .fill(colour)
-                .frame(width: 12, height: 12)
-
-            Text(label)
-                .font(.system(size: 14, weight: .semibold))
-                .frame(width: 80, alignment: .leading)
-
-            Text(description)
-                .font(.system(size: 14))
-                .foregroundColor(.secondary)
-        }
-    }
-}
-
-struct BulletPoint: View {
-    let text: String
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Text("•")
-                .font(.system(size: 16, weight: .bold))
-            Text(text)
-                .font(.system(size: 14))
-                .foregroundColor(.secondary)
-        }
-    }
-}
-
-struct CheckmarkItem: View {
-    let text: String
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundColor(.green)
-            Text(text)
-                .font(.system(size: 16))
-        }
-    }
-}
-
-struct QuickTip: View {
-    let number: String
-    let text: String
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Text(number)
-                .font(.system(size: 14, weight: .bold))
-                .foregroundColor(.blue)
-                .frame(width: 24)
-
-            Text(text)
-                .font(.system(size: 14))
-                .foregroundColor(.primary)
-        }
-    }
-}
-
-struct InfoBox: View {
-    let text: String
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "info.circle.fill")
-                .foregroundColor(.blue)
-            Text(text)
-                .font(.system(size: 14))
-        }
-        .padding(12)
-        .background(Color.blue.opacity(0.1))
-        .cornerRadius(8)
-    }
-}
-
-struct WarningBox: View {
+struct WarningCard: View {
     let text: String
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 20))
                 .foregroundColor(.orange)
+
             Text(text)
-                .font(.system(size: 14))
-        }
-        .padding(12)
-        .background(Color.orange.opacity(0.1))
-        .cornerRadius(8)
-    }
-}
-
-struct SkipButton: View {
-    @Binding var currentPage: Int
-
-    var body: some View {
-        Button(action: { currentPage += 1 }) {
-            Text("Skip")
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: 15, weight: .medium))
                 .foregroundColor(.primary)
-                .frame(maxWidth: .infinity)
-                .frame(height: 56)
-                .background(.ultraThinMaterial)
-                .cornerRadius(28)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 28)
-                        .stroke(Color.white.opacity(0.25), lineWidth: 1)
-                )
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Color.orange.opacity(0.08))
+        .cornerRadius(12)
     }
 }
 
-struct ContinueButton: View {
-    @Binding var currentPage: Int
+struct CheckItem: View {
+    let text: String
 
     var body: some View {
-        Button(action: { currentPage += 1 }) {
-            Text("Continue")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 56)
-                .background(
-                    LinearGradient(colors: [Color.blue, Color.purple], startPoint: .leading, endPoint: .trailing)
-                )
-                .cornerRadius(28)
-                .shadow(color: Color.purple.opacity(0.35), radius: 12, y: 8)
+        HStack(spacing: 12) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 24))
+                .foregroundColor(.green)
+
+            Text(text)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(.primary)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+struct DisclaimerBullet: View {
+    let number: String
+    let text: String
+    var isImportant: Bool = false
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
+            Text(number)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(.white)
+                .frame(width: 40, height: 40)
+                .background(
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: isImportant ? [.red, .orange] : [.blue, .blue.opacity(0.7)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                )
+
+            Text(text)
+                .font(.system(size: 16, weight: isImportant ? .semibold : .regular))
+                .foregroundColor(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Color.white)
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.05), radius: 10, y: 4)
+    }
+}
+
+struct ScreenshotContainer: View {
+    let imageName: String
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 32)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.15), radius: 30, y: 15)
+
+            // Try to load image, show placeholder if not found
+            if UIImage(named: imageName) != nil {
+                Image(imageName)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .cornerRadius(28)
+                    .padding(12)
+            } else {
+                // Placeholder when image not yet added
+                VStack(spacing: 12) {
+                    Image(systemName: "photo")
+                        .font(.system(size: 70))
+                        .foregroundColor(.gray.opacity(0.3))
+                    Text("Add '\(imageName)' to Assets")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                .frame(height: 520)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 540)
+        .padding(.horizontal, 20)
     }
 }

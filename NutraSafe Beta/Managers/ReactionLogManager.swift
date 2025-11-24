@@ -83,9 +83,11 @@ class ReactionLogManager: ObservableObject {
         // Save to Firebase
         let savedEntry = try await FirebaseManager.shared.saveReactionLog(entry)
 
-        // Add to local array
-        reactionLogs.append(savedEntry)
-        reactionLogs.sort { $0.reactionDate > $1.reactionDate }
+        // Add to local array and sort in a single update to prevent double-publish
+        var updatedLogs = reactionLogs
+        updatedLogs.append(savedEntry)
+        updatedLogs.sort { $0.reactionDate > $1.reactionDate }
+        reactionLogs = updatedLogs
 
         return savedEntry
     }

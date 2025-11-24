@@ -1013,6 +1013,16 @@ class FirebaseManager: ObservableObject {
                     return nil
                 }
 
+                // Debug: Check what ingredients data looks like
+                let ingredients = hit["ingredients"] as? [String]
+                #if DEBUG
+                if let ing = ingredients, !ing.isEmpty {
+                    print("🥗 [Algolia] '\(name)' has \(ing.count) ingredients: \(ing.prefix(3).joined(separator: ", "))")
+                } else {
+                    print("⚠️ [Algolia] '\(name)' has NO ingredients data")
+                }
+                #endif
+
                 return FoodSearchResult(
                     id: objectID,
                     name: name,
@@ -1027,7 +1037,7 @@ class FirebaseManager: ObservableObject {
                     servingDescription: hit["servingSize"] as? String,
                     servingSizeG: hit["servingSizeG"] as? Double,
                     isPerUnit: hit["per_unit_nutrition"] as? Bool,
-                    ingredients: hit["ingredients"] as? [String],
+                    ingredients: ingredients,
                     isVerified: (hit["verified"] as? Bool) ?? false,
                     barcode: hit["barcode"] as? String
                 )

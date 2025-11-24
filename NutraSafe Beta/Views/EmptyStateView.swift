@@ -101,7 +101,11 @@ struct CompactEmptyStateView: View {
         title: "No meals logged today",
         message: "Tap the + button to add your first meal and start tracking your nutrition",
         actionText: "Add First Meal",
-        action: { print("Add meal tapped") }
+        action: {
+            #if DEBUG
+            print("Add meal tapped")
+            #endif
+        }
     )
 }
 

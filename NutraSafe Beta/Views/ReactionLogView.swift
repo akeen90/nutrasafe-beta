@@ -514,6 +514,7 @@ struct LogReactionSheet: View {
     @State private var manualFoodName: String = ""
     @State private var recentMeals: [FoodEntry] = []
     @State private var isLoadingMeals = false
+    @State private var showMealSelection = false
 
     init(selectedDayRange: ReactionLogView.DayRange) {
         self.selectedDayRange = selectedDayRange
@@ -620,6 +621,57 @@ struct LogReactionSheet: View {
                 }
             }
         }
+        .sheet(isPresented: $showMealSelection) {
+            NavigationView {
+                List {
+                    Button(action: {
+                        selectedFoodId = nil
+                        showMealSelection = false
+                    }) {
+                        HStack {
+                            Text("None")
+                                .foregroundColor(.primary)
+                            Spacer()
+                            if selectedFoodId == nil {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                    }
+
+                    ForEach(recentMeals) { meal in
+                        Button(action: {
+                            selectedFoodId = meal.id
+                            showMealSelection = false
+                        }) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(meal.foodName)
+                                        .foregroundColor(.primary)
+                                    Text(meal.date, style: .date)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                if selectedFoodId == meal.id {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                        }
+                    }
+                }
+                .navigationTitle("Select Meal")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Done") {
+                            showMealSelection = false
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private func loadRecentMeals() {
@@ -697,11 +749,24 @@ struct LogReactionSheet: View {
                     .foregroundColor(.secondary)
                     .padding(.vertical, 8)
             } else {
-                Picker("Select Food", selection: $selectedFoodId) {
-                    Text("Choose from recent meals").tag(nil as String?)
-                    ForEach(recentMeals) { meal in
-                        Text(meal.foodName).tag(meal.id as String?)
+                Button(action: {
+                    showMealSelection = true
+                }) {
+                    HStack {
+                        if let selectedId = selectedFoodId,
+                           let selectedMeal = recentMeals.first(where: { $0.id == selectedId }) {
+                            Text(selectedMeal.foodName)
+                                .foregroundColor(.primary)
+                        } else {
+                            Text("Choose from recent meals")
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
                     }
+                    .padding(.vertical, 8)
                 }
             }
         } else if foodLoggedInDiary == false {

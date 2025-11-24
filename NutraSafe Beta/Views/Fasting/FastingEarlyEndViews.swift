@@ -155,7 +155,9 @@ struct EarlyEndModal: View {
         do {
             try await viewModel.firebaseManager.updateFastingSession(updatedSession)
         } catch {
+            #if DEBUG
             print("Failed to update session with early end reason: \(error)")
+            #endif
         }
 
         dismiss()

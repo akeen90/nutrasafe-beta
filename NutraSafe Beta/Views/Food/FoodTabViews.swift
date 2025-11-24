@@ -2714,6 +2714,15 @@ struct FoodSearchResultRowForReaction: View {
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.primary)
                         .multilineTextAlignment(.leading)
+                        .onAppear {
+                            #if DEBUG
+                            if let ing = food.ingredients, !ing.isEmpty {
+                                print("✅ [UI] '\(food.name)' showing \(ing.count) ingredients")
+                            } else {
+                                print("❌ [UI] '\(food.name)' has no ingredients to display")
+                            }
+                            #endif
+                        }
 
                     if let brand = food.brand {
                         Text(brand)
