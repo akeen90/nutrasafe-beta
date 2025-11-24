@@ -526,7 +526,7 @@ function prepareForAlgolia(data) {
         // Searchable fields
         name,
         brandName,
-        ingredients: data.ingredients || "",
+        ingredients: Array.isArray(data.ingredients) ? data.ingredients : (data.ingredients ? [data.ingredients] : []),
         barcode: data.barcode || "",
         // Nutrition data for filtering
         calories: data.calories || 0,
