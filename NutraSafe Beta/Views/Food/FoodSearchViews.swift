@@ -469,7 +469,9 @@ struct AddFoodSearchView: View {
                         .padding(.top, searchText.isEmpty ? 0 : 16)
                     }
                     .frame(maxHeight: .infinity)
-                    .hideKeyboard()
+                    .onTapGesture {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
                     .onChange(of: searchResults.count) { newCount in
                         // Auto-scroll to show first result when results appear
                         if newCount > 0 {
@@ -1007,7 +1009,9 @@ struct FoodDetailView: View {
                     
                 }
             }
-            .hideKeyboard()
+            .onTapGesture {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
