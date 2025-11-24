@@ -601,6 +601,10 @@ class FastingViewModel: ObservableObject {
             lastEndedWindowEnd = nil
             print("🧹 Cleared lastEndedWindowEnd marker")
 
+            // Clear any old snooze data from previous regime
+            UserDefaults.standard.removeObject(forKey: "regimeSnoozedUntil_\(planId)")
+            print("🧹 Cleared any old snooze data")
+
             // Store custom start time if starting from now
             if startFromNow {
                 customStartTimeOverride = Date()
@@ -693,6 +697,10 @@ class FastingViewModel: ObservableObject {
             lastRecordedFastWindowEnd = nil
             customStartTimeOverride = nil
 
+            // Clear any snooze data
+            UserDefaults.standard.removeObject(forKey: "regimeSnoozedUntil_\(planId)")
+            print("🧹 Cleared snooze data for stopped regime")
+
             // Stop the regime
             try await fastingService.stopRegime(planId: planId)
 
@@ -723,33 +731,61 @@ class FastingViewModel: ObservableObject {
             return .inactive
         }
 
-        // Check if we're in a fasting window that was already ended early
-        if case .fasting(_, let windowEnd) = planState,
-           let endedWindow = lastEndedWindowEnd,
-           abs(windowEnd.timeIntervalSince(endedWindow)) < 60 {
-            // This window was already ended - find next fast
-            if let nextFast = activePlan?.nextScheduledFastingWindow() {
-                return .eating(nextFastStart: nextFast)
+        // Check if there's a snooze that just expired - auto-resume the fast
+        if let plan = activePlan,
+           let snoozeUntil = regimeSnoozedUntil,
+           !isRegimeSnoozed { // Snooze time has passed
+            let now = Date()
+
+            // If the snooze just expired (within last 5 minutes), auto-resume fasting
+            if now.timeIntervalSince(snoozeUntil) < 300 && now.timeIntervalSince(snoozeUntil) >= 0 {
+                print("⏰ Snooze expired at \(snoozeUntil.formatted(date: .omitted, time: .shortened)) - auto-resuming fast")
+
+                // Start a new custom fast from now
+                customStartTimeOverride = now
+                let customEnd = now.addingTimeInterval(Double(plan.durationHours) * 3600)
+
+                // Clear the expired snooze marker
+                if let planId = plan.id {
+                    UserDefaults.standard.removeObject(forKey: "regimeSnoozedUntil_\(planId)")
+                }
+                lastEndedWindowEnd = nil
+
+                return .fasting(windowStart: now, windowEnd: customEnd)
             }
-            return .inactive
+
+            // Clear old expired snooze data (more than 5 minutes old)
+            if now.timeIntervalSince(snoozeUntil) >= 300 {
+                if let planId = plan.id {
+                    UserDefaults.standard.removeObject(forKey: "regimeSnoozedUntil_\(planId)")
+                    print("🧹 Cleared old expired snooze data")
+                }
+            }
         }
 
-        // Clear ended window marker if we've moved past that window
+        // If there's a manually ended window marker, we're in eating mode until next scheduled fast
         if let endedWindow = lastEndedWindowEnd {
-            if case .fasting(_, let windowEnd) = planState {
-                // Different window - clear the marker
-                if abs(windowEnd.timeIntervalSince(endedWindow)) >= 60 {
-                    lastEndedWindowEnd = nil
+            let now = Date()
+
+            // If the marker is recent (within last hour), we're definitely in eating window
+            if now.timeIntervalSince(endedWindow) < 3600 {
+                if let nextFast = activePlan?.nextScheduledFastingWindow() {
+                    print("🍽️ In eating window due to recent manual end at \(endedWindow.formatted(date: .omitted, time: .shortened))")
+                    return .eating(nextFastStart: nextFast)
                 }
-            } else if case .eating = planState {
-                // In eating mode - clear if we've passed the ended window
-                if Date() > endedWindow {
+            }
+
+            // Clear old markers (more than an hour old and we've moved to a new window)
+            if case .fasting(let windowStart, _) = planState {
+                // If the plan's current window started after the marker, clear it
+                if windowStart > endedWindow {
+                    print("🧹 Clearing old ended window marker - moved to new window")
                     lastEndedWindowEnd = nil
                 }
             }
         }
 
-        // Apply custom start time override if set
+        // Apply custom start time override if set (for manual starts)
         if let customStart = customStartTimeOverride,
            let plan = activePlan {
             let customEnd = customStart.addingTimeInterval(Double(plan.durationHours) * 3600)
@@ -859,6 +895,26 @@ class FastingViewModel: ObservableObject {
 
     /// Time until next fasting window starts (for UI display)
     var timeUntilNextFast: String {
+        // If snoozed, show time until snooze resume instead
+        if isRegimeSnoozed, let snoozeUntil = regimeSnoozedUntil {
+            let timeInterval = snoozeUntil.timeIntervalSinceNow
+            guard timeInterval > 0 else { return "Resuming now" }
+
+            let totalSeconds = Int(timeInterval)
+            let hours = totalSeconds / 3600
+            let minutes = (totalSeconds % 3600) / 60
+            let seconds = totalSeconds % 60
+
+            if hours > 0 {
+                return "\(hours)h \(minutes)m \(seconds)s"
+            } else if minutes > 0 {
+                return "\(minutes)m \(seconds)s"
+            } else {
+                return "\(seconds)s"
+            }
+        }
+
+        // Otherwise, show time until next scheduled fast
         guard case .eating(let nextFastStart) = currentRegimeState else {
             return ""
         }
@@ -1070,13 +1126,22 @@ class FastingViewModel: ObservableObject {
     // MARK: - Regime-specific Skip and Snooze
 
     func skipCurrentRegimeFast() async {
-        guard let plan = activePlan, plan.regimeActive else { return }
+        guard let plan = activePlan, plan.regimeActive else {
+            print("❌ Skip failed: No active plan or regime not active")
+            return
+        }
 
         // Get current regime state to find the window end time
         guard case .fasting(let started, let ends) = currentRegimeState else {
-            print("⚠️ Not currently in a fasting window")
+            print("⚠️ Not currently in a fasting window - cannot skip")
             return
         }
+
+        print("🔍 SKIP FAST DEBUG:")
+        print("   Started: \(started.formatted(date: .abbreviated, time: .complete))")
+        print("   Ends: \(ends.formatted(date: .abbreviated, time: .complete))")
+        print("   Plan ID: \(plan.id ?? "nil")")
+        print("   User ID: \(userId)")
 
         isLoading = true
         defer { isLoading = false }
@@ -1089,10 +1154,26 @@ class FastingViewModel: ObservableObject {
                 targetDurationHours: plan.durationHours,
                 startTime: started
             )
+
+            print("   Created session - before skip:")
+            print("      userId: \(skippedSession.userId)")
+            print("      planId: \(skippedSession.planId ?? "nil")")
+            print("      startTime: \(skippedSession.startTime.formatted(date: .abbreviated, time: .complete))")
+            print("      endTime: \(skippedSession.endTime?.formatted(date: .abbreviated, time: .complete) ?? "nil")")
+            print("      skipped: \(skippedSession.skipped)")
+            print("      completionStatus: \(skippedSession.completionStatus)")
+
             skippedSession = FastingManager.skipSession(skippedSession)
 
+            print("   After skipSession():")
+            print("      endTime: \(skippedSession.endTime?.formatted(date: .abbreviated, time: .complete) ?? "nil")")
+            print("      skipped: \(skippedSession.skipped)")
+            print("      completionStatus: \(skippedSession.completionStatus)")
+            print("      actualDurationHours: \(skippedSession.actualDurationHours)")
+
             // Save the skipped session
-            try await firebaseManager.saveFastingSession(skippedSession)
+            let savedId = try await firebaseManager.saveFastingSession(skippedSession)
+            print("   ✅ Skipped session SAVED to Firebase with ID: \(savedId)")
 
             // Mark this fasting window as ended
             lastEndedWindowEnd = ends
@@ -1101,7 +1182,17 @@ class FastingViewModel: ObservableObject {
             print("   Fast window: \(started.formatted(date: .omitted, time: .shortened)) - \(ends.formatted(date: .omitted, time: .shortened))")
 
             // Refresh sessions to show the skipped fast
+            print("   Refreshing sessions...")
             await loadRecentSessions()
+            print("   📊 After refresh: recentSessions count = \(recentSessions.count)")
+            print("   Recent sessions:")
+            for (index, session) in recentSessions.enumerated() {
+                print("      \(index + 1). ID: \(session.id ?? "nil"), status: \(session.completionStatus), skipped: \(session.skipped), duration: \(String(format: "%.1f", session.actualDurationHours))h")
+            }
+
+            let skippedCount = recentSessions.filter { $0.skipped }.count
+            print("   🔢 Total skipped sessions in recent: \(skippedCount)")
+
             await loadAnalytics()
 
             // Trigger UI refresh
@@ -1109,6 +1200,7 @@ class FastingViewModel: ObservableObject {
 
             // The regime stays active and will start the next scheduled fast
         } catch {
+            print("❌ SKIP FAST ERROR: \(error.localizedDescription)")
             self.error = error
             self.showError = true
         }
