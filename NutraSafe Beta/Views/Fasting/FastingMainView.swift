@@ -219,6 +219,8 @@ struct PlanDashboardView: View {
     @State private var scheduledStartTime: Date?
     @State private var showSnoozePicker = false
     @State private var snoozeUntilTime = Date()
+    @State private var selectedWeek: WeekSummary?
+    @State private var showWeekDetail = false
 
     // PERFORMANCE: Cache average duration to prevent redundant calculations on every render
     // Pattern from Clay's production app: move expensive operations to cached state
@@ -366,8 +368,8 @@ struct PlanDashboardView: View {
                             // Snooze and Skip buttons
                             HStack(spacing: 12) {
                                 Button {
-                                    // Set default snooze time to 30 minutes from now (simple approach)
-                                    snoozeUntilTime = Date().addingTimeInterval(30 * 60)
+                                    // Initialize with current time TODAY (not 30 min in future which might roll to tomorrow)
+                                    snoozeUntilTime = Date()
                                     showSnoozePicker = true
                                 } label: {
                                     HStack {
@@ -407,9 +409,16 @@ struct PlanDashboardView: View {
                                 Text("Eating Window")
                                     .font(.subheadline)
                                     .fontWeight(.medium)
-                                Text("Next fast: \(nextFastStart.formatted(date: .omitted, time: .shortened))")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                                // Show snooze time if snoozed, otherwise next scheduled fast
+                                if viewModel.isRegimeSnoozed, let snoozeUntil = viewModel.regimeSnoozedUntil {
+                                    Text("Resume fasting: \(snoozeUntil.formatted(date: .omitted, time: .shortened))")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                } else {
+                                    Text("Next fast: \(nextFastStart.formatted(date: .omitted, time: .shortened))")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
                             }
                             Spacer()
                             Text(viewModel.timeUntilNextFast)
@@ -492,20 +501,22 @@ struct PlanDashboardView: View {
                 }
             }
 
-            // Session History
+            // Weekly History
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text("Recent Fasts")
+                    Text("Recent Weeks")
                         .font(.headline)
                     Spacer()
-                    if totalFasts > 5 {
-                        Text("\(totalFasts) total")
+                    if totalFasts > 0 {
+                        Text("\(totalFasts) total fasts")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                 }
 
-                if planSessions.isEmpty {
+                let weeks = viewModel.weekSummaries.prefix(5)
+
+                if weeks.isEmpty {
                     Text("No fasts recorded yet")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
@@ -514,24 +525,15 @@ struct PlanDashboardView: View {
                         .background(Color.gray.opacity(0.1))
                         .cornerRadius(8)
                 } else {
-                    List {
-                        ForEach(Array(planSessions.prefix(5))) { session in
-                            SessionHistoryRow(session: session)
-                                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
-                                .listRowBackground(Color.clear)
-                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                    Button(role: .destructive) {
-                                        Task { @MainActor in
-                                            await viewModel.deleteSession(session)
-                                        }
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
-                                    }
+                    VStack(spacing: 12) {
+                        ForEach(Array(weeks)) { week in
+                            WeekSummaryCard(week: week)
+                                .onTapGesture {
+                                    selectedWeek = week
+                                    showWeekDetail = true
                                 }
                         }
                     }
-                    .listStyle(.plain)
-                    .frame(minHeight: CGFloat(min(planSessions.count, 5)) * 70)
                 }
             }
         }
@@ -566,23 +568,42 @@ struct PlanDashboardView: View {
                     Button {
                         Task {
                             let now = Date()
+                            let calendar = Calendar.current
+
+                            // Extract hour and minute from the picker
+                            let components = calendar.dateComponents([.hour, .minute], from: snoozeUntilTime)
+
+                            // Build a date for TODAY at the selected time
+                            guard let todayAtSelectedTime = calendar.date(
+                                bySettingHour: components.hour ?? 0,
+                                minute: components.minute ?? 0,
+                                second: 0,
+                                of: now
+                            ) else {
+                                print("❌ Failed to create snooze time")
+                                showSnoozePicker = false
+                                return
+                            }
+
                             print("🕐 Snooze Confirm Debug:")
                             print("   Current time: \(now.formatted(date: .abbreviated, time: .complete))")
-                            print("   Selected time: \(snoozeUntilTime.formatted(date: .abbreviated, time: .complete))")
-                            print("   Time interval: \(snoozeUntilTime.timeIntervalSince(now)) seconds")
+                            print("   Selected time components: \(components.hour ?? 0):\(components.minute ?? 0)")
+                            print("   Today at selected time: \(todayAtSelectedTime.formatted(date: .abbreviated, time: .complete))")
 
-                            // Calculate the correct date: if time has passed, use tomorrow
-                            var finalSnoozeTime = snoozeUntilTime
-                            if snoozeUntilTime < now {
-                                print("   ⚠️ Selected time is in the past, moving to tomorrow")
-                                let calendar = Calendar.current
-                                if let tomorrow = calendar.date(byAdding: .day, value: 1, to: snoozeUntilTime) {
+                            // If the time is in the past, move to tomorrow
+                            var finalSnoozeTime = todayAtSelectedTime
+                            if todayAtSelectedTime <= now {
+                                print("   ⚠️ Selected time has passed today, moving to tomorrow")
+                                if let tomorrow = calendar.date(byAdding: .day, value: 1, to: todayAtSelectedTime) {
                                     finalSnoozeTime = tomorrow
                                     print("   ✅ Adjusted to: \(finalSnoozeTime.formatted(date: .abbreviated, time: .complete))")
                                 }
                             } else {
-                                print("   ✅ Selected time is in the future, using as-is")
+                                print("   ✅ Selected time is later today")
                             }
+
+                            print("   Final snooze time: \(finalSnoozeTime.formatted(date: .abbreviated, time: .complete))")
+                            print("   Time until snooze: \(finalSnoozeTime.timeIntervalSince(now)) seconds")
 
                             await viewModel.snoozeCurrentRegimeFast(until: finalSnoozeTime)
                             showSnoozePicker = false
@@ -611,6 +632,11 @@ struct PlanDashboardView: View {
                 }
             }
             .presentationDetents([.medium])
+        }
+        .sheet(isPresented: $showWeekDetail) {
+            if let week = selectedWeek {
+                WeekDetailView(week: week, viewModel: viewModel)
+            }
         }
         .confirmationDialog(
             "Start Fasting",
@@ -715,13 +741,27 @@ struct RegimeTimerCard: View {
                         .monospacedDigit()
                         .foregroundColor(.green)
 
-                    Text("until next fast")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                    // Show snooze text if snoozed, otherwise regular text
+                    if viewModel.isRegimeSnoozed {
+                        Text("until fasting resumes")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("until next fast")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
 
-                    Text("Fast starts at \(nextFastStart.formatted(date: .omitted, time: .shortened))")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    // Show snooze time if snoozed, otherwise next scheduled fast
+                    if viewModel.isRegimeSnoozed, let snoozeUntil = viewModel.regimeSnoozedUntil {
+                        Text("Resumes at \(snoozeUntil.formatted(date: .omitted, time: .shortened))")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("Fast starts at \(nextFastStart.formatted(date: .omitted, time: .shortened))")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
 
             case .inactive:
@@ -1505,6 +1545,315 @@ struct LastSessionCard: View {
         )
     }
     
+    private func statusColor(for status: FastingCompletionStatus) -> Color {
+        switch status {
+        case .completed, .overGoal:
+            return .green
+        case .earlyEnd:
+            return .orange
+        case .failed:
+            return .red
+        case .skipped:
+            return .gray
+        case .active:
+            return .blue
+        }
+    }
+}
+
+// MARK: - Week Summary Card
+struct WeekSummaryCard: View {
+    let week: WeekSummary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: week.isCurrentWeek ? "calendar.badge.clock" : "calendar")
+                    .foregroundColor(.purple)
+                Text(week.dateRangeText)
+                    .font(.headline)
+
+                if week.isCurrentWeek {
+                    Spacer()
+                    Text("This Week")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.purple)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.purple.opacity(0.15))
+                        .cornerRadius(6)
+                }
+            }
+
+            HStack(spacing: 20) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(week.totalFasts)")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.purple)
+                    Text("Total Fasts")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                if week.totalFasts > 0 {
+                    Divider()
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("\(week.completedCount)")
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.green)
+                        Text("Completed")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    if week.skippedCount > 0 {
+                        Divider()
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("\(week.skippedCount)")
+                                .font(.title3)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.orange)
+                            Text("Skipped")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    if week.averageDuration > 0 {
+                        Divider()
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("\(week.averageDuration, specifier: "%.1f")h")
+                                .font(.title3)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.blue)
+                            Text("Avg Duration")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+            }
+
+            if week.totalFasts == 0 {
+                Text("No fasts recorded yet")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.purple.opacity(0.05))
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.purple.opacity(0.2), lineWidth: 1)
+        )
+    }
+}
+
+// MARK: - Week Detail View
+struct WeekDetailView: View {
+    let week: WeekSummary
+    @ObservedObject var viewModel: FastingViewModel
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Week Summary Header
+                    VStack(spacing: 12) {
+                        Text(week.dateRangeText)
+                            .font(.title2)
+                            .fontWeight(.bold)
+
+                        if week.isCurrentWeek {
+                            Text("This Week")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(.purple)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.purple.opacity(0.15))
+                                .cornerRadius(8)
+                        }
+
+                        // Summary Stats
+                        HStack(spacing: 30) {
+                            VStack {
+                                Text("\(week.totalFasts)")
+                                    .font(.title)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.purple)
+                                Text("Total")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+
+                            if week.totalFasts > 0 {
+                                VStack {
+                                    Text("\(week.completedCount)")
+                                        .font(.title)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.green)
+                                    Text("Completed")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+
+                                if week.skippedCount > 0 {
+                                    VStack {
+                                        Text("\(week.skippedCount)")
+                                            .font(.title)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.orange)
+                                        Text("Skipped")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                            }
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.gray.opacity(0.05))
+                        .cornerRadius(12)
+                    }
+                    .padding(.horizontal)
+
+                    // Daily Breakdown
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Daily Breakdown")
+                            .font(.headline)
+                            .padding(.horizontal)
+
+                        ForEach(1...7, id: \.self) { weekday in
+                            DaySessionRow(
+                                weekday: weekday,
+                                sessions: week.sessionsByDay[weekday] ?? [],
+                                weekStart: week.weekStart
+                            )
+                        }
+                    }
+                }
+                .padding(.vertical)
+            }
+            .navigationTitle("Week Details")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Day Session Row
+struct DaySessionRow: View {
+    let weekday: Int // 1 = Sunday, 2 = Monday, etc.
+    let sessions: [FastingSession]
+    let weekStart: Date
+
+    private var dayName: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE" // Full day name
+
+        // Calculate the actual date for this weekday
+        let calendar = Calendar.current
+        let daysToAdd = weekday == 1 ? 6 : (weekday - 2) // Adjust for Monday as week start
+        guard let date = calendar.date(byAdding: .day, value: daysToAdd, to: weekStart) else {
+            return ""
+        }
+        return formatter.string(from: date)
+    }
+
+    private var dayDate: String {
+        let calendar = Calendar.current
+        let daysToAdd = weekday == 1 ? 6 : (weekday - 2)
+        guard let date = calendar.date(byAdding: .day, value: daysToAdd, to: weekStart) else {
+            return ""
+        }
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d MMM"
+        return formatter.string(from: date)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(dayName)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    Text(dayDate)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                if sessions.isEmpty {
+                    Text("No fast")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } else {
+                    VStack(alignment: .trailing, spacing: 4) {
+                        ForEach(sessions) { session in
+                            HStack(spacing: 8) {
+                                if session.skipped {
+                                    Image(systemName: "moon.zzz.fill")
+                                        .font(.caption)
+                                        .foregroundColor(.orange)
+                                    Text("Skipped")
+                                        .font(.caption)
+                                        .foregroundColor(.orange)
+                                } else {
+                                    Image(systemName: statusIcon(for: session.completionStatus))
+                                        .font(.caption)
+                                        .foregroundColor(statusColor(for: session.completionStatus))
+                                    Text("\(session.actualDurationHours, specifier: "%.1f")h")
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(statusColor(for: session.completionStatus))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 12)
+            .background(sessions.isEmpty ? Color.gray.opacity(0.05) : Color.blue.opacity(0.05))
+            .cornerRadius(10)
+        }
+        .padding(.horizontal)
+    }
+
+    private func statusIcon(for status: FastingCompletionStatus) -> String {
+        switch status {
+        case .completed, .overGoal:
+            return "checkmark.circle.fill"
+        case .earlyEnd:
+            return "exclamationmark.circle.fill"
+        case .failed:
+            return "xmark.circle.fill"
+        case .skipped:
+            return "moon.zzz.fill"
+        case .active:
+            return "clock.fill"
+        }
+    }
+
     private func statusColor(for status: FastingCompletionStatus) -> Color {
         switch status {
         case .completed, .overGoal:

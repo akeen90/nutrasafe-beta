@@ -24,6 +24,41 @@ class FastingViewModel: ObservableObject {
     @Published var error: Error?
     @Published var isLoading = false
 
+    // Group sessions by week (Monday to Sunday)
+    var weekSummaries: [WeekSummary] {
+        let calendar = Calendar.current
+        var weekMap: [Date: [FastingSession]] = [:]
+
+        // Group sessions by their week start (Monday)
+        for session in recentSessions {
+            let weekStart = getWeekStart(for: session.startTime, calendar: calendar)
+            if weekMap[weekStart] == nil {
+                weekMap[weekStart] = []
+            }
+            weekMap[weekStart]?.append(session)
+        }
+
+        // Include current week even if no sessions yet
+        let currentWeekStart = getWeekStart(for: Date(), calendar: calendar)
+        if weekMap[currentWeekStart] == nil {
+            weekMap[currentWeekStart] = []
+        }
+
+        // Convert to WeekSummary array and sort by week start (most recent first)
+        let summaries = weekMap.map { weekStart, sessions in
+            let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart)!
+            return WeekSummary(weekStart: weekStart, weekEnd: weekEnd, sessions: sessions)
+        }.sorted { $0.weekStart > $1.weekStart }
+
+        return summaries
+    }
+
+    private func getWeekStart(for date: Date, calendar: Calendar) -> Date {
+        var components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
+        components.weekday = 2 // Monday (1 = Sunday, 2 = Monday in Gregorian calendar)
+        return calendar.date(from: components)!
+    }
+
     // MARK: - Private Properties
 
     let firebaseManager: FirebaseManager // Exposed for early-end modal

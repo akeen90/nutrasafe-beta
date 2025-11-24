@@ -438,6 +438,95 @@ struct FastingSession: Identifiable, Codable, Equatable {
     }
 }
 
+// MARK: - Week Summary
+
+struct WeekSummary: Identifiable, Equatable {
+    let id = UUID()
+    let weekStart: Date // Monday
+    let weekEnd: Date // Sunday
+    let sessions: [FastingSession]
+
+    // Helper: Group sessions by calendar date (not just weekday)
+    private var sessionsByDate: [Date: [FastingSession]] {
+        let calendar = Calendar.current
+        var grouped: [Date: [FastingSession]] = [:]
+
+        for session in sessions {
+            let dayStart = calendar.startOfDay(for: session.startTime)
+            if grouped[dayStart] == nil {
+                grouped[dayStart] = []
+            }
+            grouped[dayStart]?.append(session)
+        }
+
+        return grouped
+    }
+
+    // Computed properties for summary stats
+    var dateRangeText: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d MMM"
+        return "\(formatter.string(from: weekStart)) - \(formatter.string(from: weekEnd))"
+    }
+
+    var completedCount: Int {
+        // Count distinct DAYS where the overall fast was completed
+        sessionsByDate.values.filter { daySessions in
+            // Check if any session that day was completed or over goal
+            daySessions.contains { $0.completionStatus == .completed || $0.completionStatus == .overGoal }
+        }.count
+    }
+
+    var skippedCount: Int {
+        // Count distinct DAYS where the fast was skipped
+        sessionsByDate.values.filter { daySessions in
+            daySessions.contains { $0.skipped }
+        }.count
+    }
+
+    var totalFasts: Int {
+        // Count distinct DAYS with fasting sessions (one fast per day, regardless of stop/restart)
+        sessionsByDate.count
+    }
+
+    var averageDuration: Double {
+        // Calculate average duration per DAY (summing all sessions for that day)
+        guard !sessionsByDate.isEmpty else { return 0 }
+
+        let totalDuration = sessionsByDate.values.reduce(0.0) { totalForAllDays, daySessions in
+            let dayTotal = daySessions.reduce(0.0) { $0 + $1.actualDurationHours }
+            return totalForAllDays + dayTotal
+        }
+
+        return totalDuration / Double(sessionsByDate.count)
+    }
+
+    var isCurrentWeek: Bool {
+        let now = Date()
+        return now >= weekStart && now <= weekEnd
+    }
+
+    // Group sessions by day of week
+    var sessionsByDay: [Int: [FastingSession]] {
+        let calendar = Calendar.current
+        var grouped: [Int: [FastingSession]] = [:]
+
+        for session in sessions {
+            let weekday = calendar.component(.weekday, from: session.startTime)
+            if grouped[weekday] == nil {
+                grouped[weekday] = []
+            }
+            grouped[weekday]?.append(session)
+        }
+
+        return grouped
+    }
+
+    static func == (lhs: WeekSummary, rhs: WeekSummary) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
 // MARK: - Analytics Models
 
 struct FastingAnalytics {
