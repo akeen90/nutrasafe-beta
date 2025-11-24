@@ -524,27 +524,55 @@ class DiaryDataManager: ObservableObject {
                 let (breakfast, lunch, dinner, snacks) = try await getFoodDataAsync(for: date)
                 print("DiaryDataManager: Loaded current counts from Firebase - Breakfast: \(breakfast.count), Lunch: \(lunch.count), Dinner: \(dinner.count), Snacks: \(snacks.count)")
 
-                // Add new item to appropriate meal
+                // Helper function to check if an item matches (same food)
+                func itemMatches(_ existingItem: DiaryFoodItem) -> Bool {
+                    // Match by barcode first (most reliable)
+                    if let barcode = item.barcode, !barcode.isEmpty,
+                       let existingBarcode = existingItem.barcode, !existingBarcode.isEmpty {
+                        return barcode == existingBarcode
+                    }
+
+                    // Otherwise match by name and brand
+                    let nameMatches = existingItem.name.lowercased() == item.name.lowercased()
+                    let brandMatches = (existingItem.brand?.lowercased() ?? "") == (item.brand?.lowercased() ?? "")
+                    return nameMatches && brandMatches
+                }
+
+                // Helper function to update or append item
+                func updateOrAppend(items: [DiaryFoodItem]) -> [DiaryFoodItem] {
+                    var updated = items
+                    if let index = updated.firstIndex(where: itemMatches) {
+                        // Food already exists - replace it with fresh data while preserving user-specific fields
+                        var updatedItem = item
+                        updatedItem.id = updated[index].id  // Keep the original ID
+                        updated[index] = updatedItem
+                        print("DiaryDataManager: ✨ Updated existing food '\(item.name)' with fresh data (ID: \(updatedItem.id))")
+                        return updated
+                    } else {
+                        // New food - append it
+                        updated.append(item)
+                        print("DiaryDataManager: ➕ Added new food '\(item.name)' to meal")
+                        return updated
+                    }
+                }
+
+                // Update or append item to appropriate meal
                 switch meal.lowercased() {
                 case "breakfast":
-                    var updatedBreakfast = breakfast
-                    updatedBreakfast.append(item)
-                    print("DiaryDataManager: Adding to breakfast. New count: \(updatedBreakfast.count)")
+                    let updatedBreakfast = updateOrAppend(items: breakfast)
+                    print("DiaryDataManager: Breakfast count: \(updatedBreakfast.count)")
                     saveFoodData(for: date, breakfast: updatedBreakfast, lunch: lunch, dinner: dinner, snacks: snacks)
                 case "lunch":
-                    var updatedLunch = lunch
-                    updatedLunch.append(item)
-                    print("DiaryDataManager: Adding to lunch. New count: \(updatedLunch.count)")
+                    let updatedLunch = updateOrAppend(items: lunch)
+                    print("DiaryDataManager: Lunch count: \(updatedLunch.count)")
                     saveFoodData(for: date, breakfast: breakfast, lunch: updatedLunch, dinner: dinner, snacks: snacks)
                 case "dinner":
-                    var updatedDinner = dinner
-                    updatedDinner.append(item)
-                    print("DiaryDataManager: Adding to dinner. New count: \(updatedDinner.count)")
+                    let updatedDinner = updateOrAppend(items: dinner)
+                    print("DiaryDataManager: Dinner count: \(updatedDinner.count)")
                     saveFoodData(for: date, breakfast: breakfast, lunch: lunch, dinner: updatedDinner, snacks: snacks)
                 case "snacks":
-                    var updatedSnacks = snacks
-                    updatedSnacks.append(item)
-                    print("DiaryDataManager: Adding to snacks. New count: \(updatedSnacks.count)")
+                    let updatedSnacks = updateOrAppend(items: snacks)
+                    print("DiaryDataManager: Snacks count: \(updatedSnacks.count)")
                     saveFoodData(for: date, breakfast: breakfast, lunch: lunch, dinner: dinner, snacks: updatedSnacks)
                 default:
                     print("DiaryDataManager: ERROR - Unknown meal type: \(meal)")
