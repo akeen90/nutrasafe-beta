@@ -490,12 +490,27 @@ struct WeekSummary: Identifiable, Equatable {
     }
 
     var averageDuration: Double {
-        // Calculate average duration per DAY (summing all sessions for that day)
+        // Calculate average duration per DAY
+        // For regime sessions with stop/restart, calculate elapsed time from first start to last end
         guard !sessionsByDate.isEmpty else { return 0 }
 
         let totalDuration = sessionsByDate.values.reduce(0.0) { totalForAllDays, daySessions in
-            let dayTotal = daySessions.reduce(0.0) { $0 + $1.actualDurationHours }
-            return totalForAllDays + dayTotal
+            guard !daySessions.isEmpty else { return totalForAllDays }
+
+            // Sort sessions by start time
+            let sorted = daySessions.sorted { $0.startTime < $1.startTime }
+
+            // Get first start and last end for this day
+            let firstStart = sorted.first!.startTime
+            let lastEnd = sorted.last!.endTime ?? Date()
+
+            // Calculate elapsed time from first start to last end
+            let elapsedHours = lastEnd.timeIntervalSince(firstStart) / 3600
+
+            // Cap at 24 hours maximum per day (defensive against bad data)
+            let cappedHours = min(24.0, max(0, elapsedHours))
+
+            return totalForAllDays + cappedHours
         }
 
         return totalDuration / Double(sessionsByDate.count)
