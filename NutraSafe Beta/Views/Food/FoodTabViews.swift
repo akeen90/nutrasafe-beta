@@ -19,6 +19,7 @@ func navigationContainer<Content: View>(@ViewBuilder content: () -> Content) -> 
 
 struct FoodTabView: View {
     @Binding var showingSettings: Bool
+    @Binding var selectedTab: TabItem
     @State private var selectedFoodSubTab: FoodSubTab = .reactions
     @EnvironmentObject var firebaseManager: FirebaseManager
     @StateObject private var fastingViewModelWrapper = FastingViewModelWrapper()
@@ -35,8 +36,9 @@ struct FoodTabView: View {
         }
     }
 
-    init(showingSettings: Binding<Bool>) {
+    init(showingSettings: Binding<Bool>, selectedTab: Binding<TabItem>) {
         self._showingSettings = showingSettings
+        self._selectedTab = selectedTab
     }
 
     var body: some View {
@@ -85,7 +87,7 @@ struct FoodTabView: View {
                 Group {
                     switch selectedFoodSubTab {
                     case .reactions:
-                        FoodReactionsView()
+                        FoodReactionsView(selectedTab: $selectedTab)
                     case .fasting:
                         if let viewModel = fastingViewModelWrapper.viewModel {
                             FastingMainView(viewModel: viewModel)
@@ -218,6 +220,7 @@ struct SegmentedControlView<Tab: Hashable & CaseIterable & RawRepresentable>: Vi
 
 // MARK: - Food Sub Views
 struct FoodReactionsView: View {
+    @Binding var selectedTab: TabItem
     @ObservedObject private var reactionManager = ReactionManager.shared
     @State private var hasLoadedOnce = false // PERFORMANCE: Guard flag to prevent redundant loads
 
@@ -233,7 +236,7 @@ struct FoodReactionsView: View {
         ScrollView(.vertical, showsIndicators: true) {
             VStack(spacing: 12) {
                 // Reaction Summary
-                FoodReactionSummaryCard()
+                FoodReactionSummaryCard(selectedTab: $selectedTab)
                     .environmentObject(reactionManager)
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
@@ -338,6 +341,7 @@ struct RecipesView: View {
 
 // MARK: - Food Tab Component Cards
 struct FoodReactionSummaryCard: View {
+    @Binding var selectedTab: TabItem
     @State private var showingLogReaction = false
     @EnvironmentObject var reactionManager: ReactionManager
 
@@ -407,7 +411,7 @@ struct FoodReactionSummaryCard: View {
         )
         .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
         .sheet(isPresented: $showingLogReaction) {
-            navigationContainer { LogReactionView(reactionManager: reactionManager) }
+            navigationContainer { LogReactionView(reactionManager: reactionManager, selectedTab: $selectedTab) }
         }
     }
 }
@@ -1713,6 +1717,7 @@ class ReactionManager: ObservableObject {
 // MARK: - Log Reaction View
 struct LogReactionView: View {
     @ObservedObject var reactionManager: ReactionManager
+    @Binding var selectedTab: TabItem
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedFood: FoodSearchResult?
@@ -1724,6 +1729,7 @@ struct LogReactionView: View {
     @State private var ingredientInput = ""
     @State private var notes = ""
     @State private var reactionTime = Date()
+    @State private var isLoadingIngredients = false
 
     let availableSymptoms = [
         "Bloating", "Nausea", "Stomach pain", "Diarrhea", "Constipation",
@@ -1781,8 +1787,23 @@ struct LogReactionView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                     .onChange(of: selectedFood) { newFood in
-                        if let food = newFood, let ingredients = food.ingredients {
+                        #if DEBUG
+                        print("🔄 [Reaction] Food changed: \(newFood?.name ?? "nil")")
+                        print("🔄 [Reaction] Ingredients count: \(newFood?.ingredients?.count ?? 0)")
+                        if let ings = newFood?.ingredients {
+                            print("🔄 [Reaction] First 3 ingredients: \(ings.prefix(3).joined(separator: ", "))")
+                        }
+                        #endif
+
+                        if let food = newFood, let ingredients = food.ingredients, !ingredients.isEmpty {
+                            #if DEBUG
+                            print("✅ [Reaction] Auto-loading \(ingredients.count) ingredients")
+                            #endif
                             autoLoadIngredientsFromFood(ingredients)
+                        } else {
+                            #if DEBUG
+                            print("⚠️ [Reaction] No ingredients to load")
+                            #endif
                         }
                     }
                 }
@@ -1871,45 +1892,32 @@ struct LogReactionView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Suspected Ingredients")
-                            .font(.headline)
-
-                        Spacer()
-
-                        if let food = selectedFood,
-                           let ingredients = food.ingredients,
-                           !ingredients.isEmpty,
-                           !hasLoadedFoodIngredients(ingredients) {
-                            Button("Load from Food") {
-                                loadIngredientsFromFood()
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .font(.system(size: 14))
-                            .foregroundColor(.blue)
-                        }
-                    }
+                    Text("Suspected Ingredients")
+                        .font(.headline)
 
                     if !suspectedIngredients.isEmpty {
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
-                            ForEach(suspectedIngredients, id: \.self) { ingredient in
-                                HStack {
-                                    Text(ingredient)
-                                        .font(.system(size: 12))
-                                    Button(action: {
-                                        suspectedIngredients.removeAll { $0 == ingredient }
-                                    }) {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .foregroundColor(.red)
+                        ScrollView {
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
+                                ForEach(suspectedIngredients, id: \.self) { ingredient in
+                                    HStack {
+                                        Text(ingredient)
                                             .font(.system(size: 12))
+                                        Button(action: {
+                                            suspectedIngredients.removeAll { $0 == ingredient }
+                                        }) {
+                                            Image(systemName: "xmark.circle.fill")
+                                                .foregroundColor(.red)
+                                                .font(.system(size: 12))
+                                        }
                                     }
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color(.systemGray6))
+                                    .cornerRadius(20)
                                 }
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color(.systemGray6))
-                                .cornerRadius(20)
                             }
                         }
+                        .frame(maxHeight: 200)
                     }
 
                     HStack {
@@ -1983,32 +1991,52 @@ struct LogReactionView: View {
 
         Task {
             await reactionManager.addReaction(reaction)
+            // Switch to Health tab to show reactions
+            selectedTab = .food
             dismiss()
         }
     }
 
     private func autoLoadIngredientsFromFood(_ ingredients: [String]) {
-        // Apply instant client-side standardization
-        let standardized = standardizeIngredients(ingredients)
-        suspectedIngredients = standardized
+        // Prevent concurrent calls
+        guard !isLoadingIngredients else {
+            #if DEBUG
+            print("⚠️ [Reaction] Already loading ingredients, skipping")
+            #endif
+            return
+        }
 
-        // Then try AI refinement in background
-        Task {
-            do {
-                let aiRefined = try await standardizeIngredientsWithAI(standardized)
-                await MainActor.run {
-                    suspectedIngredients = aiRefined
-                    #if DEBUG
-                    print("✨ AI refined to: \(aiRefined.joined(separator: ", "))")
-                    #endif
-                }
-            } catch {
+        isLoadingIngredients = true
+
+        // First, handle case where ingredients might be stored as one big string
+        var expandedIngredients: [String] = []
+        for ingredient in ingredients {
+            // If an ingredient is very long (>200 chars), it's likely a comma-separated list
+            if ingredient.count > 200 {
                 #if DEBUG
-                print("ℹ️ AI refinement unavailable, using client-side filter: \(error.localizedDescription)")
+                print("📝 [Reaction] Splitting long ingredient string (\(ingredient.count) chars)")
                 #endif
-                // Keep the client-side results, which are already pretty good
+                // Split by commas and clean up
+                expandedIngredients.append(contentsOf: ingredient.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) })
+            } else {
+                expandedIngredients.append(ingredient)
             }
         }
+
+        #if DEBUG
+        print("📝 [Reaction] Expanded \(ingredients.count) items to \(expandedIngredients.count) individual ingredients")
+        #endif
+
+        // Apply client-side standardization ONLY (skip AI to prevent layout issues)
+        let standardized = standardizeIngredients(expandedIngredients)
+
+        // Update UI immediately with standardized results
+        suspectedIngredients = standardized
+        isLoadingIngredients = false
+
+        #if DEBUG
+        print("✅ [Reaction] Loaded \(standardized.count) ingredients")
+        #endif
     }
 
     private func standardizeIngredients(_ ingredients: [String]) -> [String] {

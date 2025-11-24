@@ -1486,7 +1486,7 @@ struct ContentView: View {
 
             // Food Tab - lazy loaded on first visit
             if selectedTab == .food || visitedTabs.contains(.food) {
-                FoodTabView(showingSettings: $showingSettings)
+                FoodTabView(showingSettings: $showingSettings, selectedTab: $selectedTab)
                     .opacity(selectedTab == .food ? 1 : 0)
                     .allowsHitTesting(selectedTab == .food)
                     .onAppear { visitedTabs.insert(.food) }
@@ -1650,7 +1650,7 @@ struct ContentView: View {
         }
         .fullScreenCover(isPresented: $showingReactionLog) {
             NavigationView {
-                LogReactionView(reactionManager: ReactionManager.shared)
+                LogReactionView(reactionManager: ReactionManager.shared, selectedTab: $selectedTab)
             }
             .onDisappear {
                 // Clean up when sheet is dismissed
