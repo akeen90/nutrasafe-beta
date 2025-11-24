@@ -3228,6 +3228,9 @@ struct NotificationSettingsView: View {
     @State private var showingPermissionAlert = false
     @State private var isCheckingPermissions = true
 
+    // Fasting notification settings
+    @State private var fastingSettings = FastingNotificationSettings.load()
+
     var body: some View {
         NavigationView {
             List {
@@ -3319,25 +3322,140 @@ struct NotificationSettingsView: View {
                         }
                     }
 
-                    // Fasting Notifications
-                    Toggle(isOn: $fastingNotificationsEnabled) {
+                }
+
+                // Fasting Notifications Section
+                Section(header: Text("Fasting Notifications")) {
+                    // Start Notifications
+                    Toggle(isOn: $fastingSettings.startNotificationEnabled) {
                         VStack(alignment: .leading, spacing: 4) {
                             HStack(spacing: 8) {
-                                Image(systemName: "clock.badge.checkmark")
-                                    .foregroundColor(.blue)
-                                Text("Fasting Tracker")
+                                Image(systemName: "play.circle.fill")
+                                    .foregroundColor(.green)
+                                Text("Start Notifications")
                                     .font(.system(size: 16))
                             }
 
-                            Text("Persistent notifications for fasting progress")
+                            Text("Notify when it's time to start your fast")
                                 .font(.system(size: 13))
                                 .foregroundColor(.secondary)
                         }
                     }
                     .disabled(permissionStatus != .authorized && permissionStatus != .provisional)
-                    .onChange(of: fastingNotificationsEnabled) { newValue in
-                        if newValue && permissionStatus == .notDetermined {
-                            requestNotificationPermission()
+                    .onChange(of: fastingSettings.startNotificationEnabled) { _ in
+                        saveFastingSettings()
+                    }
+
+                    // End Notifications
+                    Toggle(isOn: $fastingSettings.endNotificationEnabled) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "stop.circle.fill")
+                                    .foregroundColor(.red)
+                                Text("End Notifications")
+                                    .font(.system(size: 16))
+                            }
+
+                            Text("Notify when your fast is complete")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .disabled(permissionStatus != .authorized && permissionStatus != .provisional)
+                    .onChange(of: fastingSettings.endNotificationEnabled) { _ in
+                        saveFastingSettings()
+                    }
+
+                    // Stage Notifications (Master Toggle)
+                    Toggle(isOn: $fastingSettings.stageNotificationsEnabled) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "chart.line.uptrend.xyaxis")
+                                    .foregroundColor(.purple)
+                                Text("Stage Notifications")
+                                    .font(.system(size: 16))
+                            }
+
+                            Text("Notify at key fasting milestones")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .disabled(permissionStatus != .authorized && permissionStatus != .provisional)
+                    .onChange(of: fastingSettings.stageNotificationsEnabled) { _ in
+                        saveFastingSettings()
+                    }
+
+                    // Individual Stage Toggles (shown when stage notifications enabled)
+                    if fastingSettings.stageNotificationsEnabled {
+                        Toggle(isOn: $fastingSettings.stage4hEnabled) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("4 Hours")
+                                    .font(.system(size: 15))
+                                Text("Post-meal processing complete")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .disabled(permissionStatus != .authorized && permissionStatus != .provisional)
+                        .onChange(of: fastingSettings.stage4hEnabled) { _ in
+                            saveFastingSettings()
+                        }
+
+                        Toggle(isOn: $fastingSettings.stage8hEnabled) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("8 Hours")
+                                    .font(.system(size: 15))
+                                Text("Fuel switching activated")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .disabled(permissionStatus != .authorized && permissionStatus != .provisional)
+                        .onChange(of: fastingSettings.stage8hEnabled) { _ in
+                            saveFastingSettings()
+                        }
+
+                        Toggle(isOn: $fastingSettings.stage12hEnabled) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("12 Hours")
+                                    .font(.system(size: 15))
+                                Text("Fat mobilisation underway")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .disabled(permissionStatus != .authorized && permissionStatus != .provisional)
+                        .onChange(of: fastingSettings.stage12hEnabled) { _ in
+                            saveFastingSettings()
+                        }
+
+                        Toggle(isOn: $fastingSettings.stage16hEnabled) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("16 Hours")
+                                    .font(.system(size: 15))
+                                Text("Mild ketosis reached")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .disabled(permissionStatus != .authorized && permissionStatus != .provisional)
+                        .onChange(of: fastingSettings.stage16hEnabled) { _ in
+                            saveFastingSettings()
+                        }
+
+                        Toggle(isOn: $fastingSettings.stage20hEnabled) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("20 Hours")
+                                    .font(.system(size: 15))
+                                Text("Autophagy potential")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .disabled(permissionStatus != .authorized && permissionStatus != .provisional)
+                        .onChange(of: fastingSettings.stage20hEnabled) { _ in
+                            saveFastingSettings()
                         }
                     }
                 }
@@ -3435,6 +3553,15 @@ struct NotificationSettingsView: View {
         if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
             UIApplication.shared.open(settingsUrl)
         }
+    }
+
+    private func saveFastingSettings() {
+        fastingSettings.save()
+        FastingNotificationManager.shared.settings = fastingSettings
+
+        #if DEBUG
+        print("✅ Saved fasting notification settings")
+        #endif
     }
 }
 import SwiftUI

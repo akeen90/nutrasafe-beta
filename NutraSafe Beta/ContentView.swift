@@ -1447,6 +1447,9 @@ struct ContentView: View {
     @State private var weightHistory: [WeightEntry] = []
     @State private var userHeight: Double = 0
 
+    // Track notification-triggered navigation to bypass subscription gate
+    @State private var isNavigatingFromNotification = false
+
     // MARK: - Persistent Tab Views (Performance Fix)
     // Keep tabs alive to preserve state and prevent redundant loading
     // Only the selected tab is visible, but all maintain their loaded data
@@ -1664,12 +1667,14 @@ struct ContentView: View {
             #if DEBUG
             print("[Nav] Received navigateToUseBy")
             #endif
+            isNavigatingFromNotification = true
             selectedTab = .useBy
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToFasting)) { _ in
             #if DEBUG
             print("[Nav] Received navigateToFasting -> switching to Food tab")
             #endif
+            isNavigatingFromNotification = true
             selectedTab = .food
         }
         .onReceive(NotificationCenter.default.publisher(for: .restartOnboarding)) { _ in
@@ -1691,14 +1696,23 @@ struct ContentView: View {
             #endif
 
             // Enforce subscription gating for programmatic tab changes
+            // BUT allow notification-triggered navigation to proceed
             if !(subscriptionManager.isSubscribed || subscriptionManager.isInTrial || subscriptionManager.isPremiumOverride) {
-                if !(newTab == .diary || newTab == .add) {
+                if !(newTab == .diary || newTab == .add) && !isNavigatingFromNotification {
                     // Revert and show paywall
                     selectedTab = .diary
                     let generator = UINotificationFeedbackGenerator()
                     generator.notificationOccurred(.warning)
                     showingPaywall = true
                 }
+            }
+
+            // Reset the notification flag after navigation is handled
+            if isNavigatingFromNotification {
+                isNavigatingFromNotification = false
+                #if DEBUG
+                print("[Nav] Reset notification flag after navigation")
+                #endif
             }
         }
         .onAppear {
