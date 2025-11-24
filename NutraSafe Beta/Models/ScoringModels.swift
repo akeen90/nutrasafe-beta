@@ -1850,8 +1850,8 @@ class SugarContentScorer {
 
     private init() {}
 
-    /// Calculate sugar score considering both density (per 100g) and actual serving size
-    /// Returns the worse of the two scores to warn about large servings with moderate density
+    /// Calculate sugar score based on per-serving amount (preferred) or per-100g density (fallback)
+    /// Uses realistic thresholds based on WHO 30g/day guideline
     func calculateSugarScore(sugarPer100g: Double?, sugarPerServing: Double? = nil, servingSizeG: Double? = nil) -> SugarContentScore {
         guard let sugar = sugarPer100g, sugar >= 0 else {
             return SugarContentScore(
@@ -1867,58 +1867,41 @@ class SugarContentScorer {
             )
         }
 
-        // Calculate density grade (per 100g)
-        let densityGrade = getGradeForSugarAmount(sugar)
-
-        // Calculate serving grade if we have serving data
+        // SIMPLIFIED APPROACH: Score per-serving when available, otherwise use per-100g
+        var finalGrade: SugarGrade
+        var densityGrade: SugarGrade
         var servingGrade: SugarGrade? = nil
-        var finalGrade = densityGrade
         var explanation = ""
         var healthImpact = ""
         var recommendation = ""
 
         if let perServing = sugarPerServing, let servingSize = servingSizeG, servingSize > 0 {
-            // CRITICAL FIX: Detect per-unit items where servingSizeG is encoded as "1g" meaning "1 unit"
-            // Indicator: servingSizeG is very small (≤5g) but sugarPerServing is much larger (>servingSizeG * 2)
-            // This means the actual weight is encoded in the sugarPerServing, not the servingSizeG
+            // PRIORITY: Score based on per-serving amount (what user actually consumes)
+
+            // Detect per-unit items (serving size ≤5g means "1 unit" encoding)
             let isPerUnitItem = servingSize <= 5 && perServing > (servingSize * 2)
 
             if isPerUnitItem {
-                // For per-unit items, use sugarPerServing directly for grading (it represents actual sugar in the unit)
-                let actualSugarGrade = getGradeForSugarAmount(perServing)
-                servingGrade = actualSugarGrade
-                finalGrade = actualSugarGrade
-
-                explanation = "\(String(format: "%.1f", perServing))g sugar per unit (\(String(format: "%.1f", sugar))g per 100g)"
-                healthImpact = getHealthImpact(for: actualSugarGrade)
-                recommendation = getRecommendation(for: actualSugarGrade)
+                // Per-unit item: score the actual sugar content in the unit
+                servingGrade = getGradeForServingAmount(perServing)
+                finalGrade = servingGrade!
+                explanation = "\(String(format: "%.1f", perServing))g sugar per unit"
             } else {
-                // Standard scoring for regular foods
-                let calculatedServingGrade = getGradeForSugarAmount(perServing)
-                servingGrade = calculatedServingGrade
-
-                // Use the WORSE of the two grades (lower numericValue = worse)
-                if calculatedServingGrade.numericValue < densityGrade.numericValue {
-                    finalGrade = calculatedServingGrade
-                    // Large serving causing high sugar despite moderate density
-                    explanation = "High per-serving (\(String(format: "%.1f", perServing))g in \(String(format: "%.0f", servingSize))g serving) despite moderate density (\(String(format: "%.1f", sugar))g per 100g)"
-                    healthImpact = getHealthImpact(for: calculatedServingGrade)
-                    recommendation = "Large serving size. " + getRecommendation(for: calculatedServingGrade)
-                } else if densityGrade.numericValue < calculatedServingGrade.numericValue {
-                    finalGrade = densityGrade
-                    // High density even though serving might be small
-                    explanation = "High sugar density (\(String(format: "%.1f", sugar))g per 100g) - \(String(format: "%.1f", perServing))g in \(String(format: "%.0f", servingSize))g serving"
-                    healthImpact = getHealthImpact(for: densityGrade)
-                    recommendation = getRecommendation(for: densityGrade)
-                } else {
-                    // Both grades are the same
-                    explanation = "\(String(format: "%.1f", perServing))g sugar in \(String(format: "%.0f", servingSize))g serving (\(String(format: "%.1f", sugar))g per 100g)"
-                    healthImpact = getHealthImpact(for: finalGrade)
-                    recommendation = getRecommendation(for: finalGrade)
-                }
+                // Regular food: score per-serving amount
+                servingGrade = getGradeForServingAmount(perServing)
+                finalGrade = servingGrade!
+                explanation = "\(String(format: "%.1f", perServing))g sugar per \(String(format: "%.0f", servingSize))g serving"
             }
+
+            // Calculate density grade for reference only
+            densityGrade = getGradeForDensity(sugar)
+
+            healthImpact = getHealthImpact(for: finalGrade)
+            recommendation = getRecommendation(for: finalGrade)
         } else {
-            // Only have per-100g data
+            // FALLBACK: Only have per-100g data, score based on density
+            densityGrade = getGradeForDensity(sugar)
+            finalGrade = densityGrade
             explanation = "\(String(format: "%.1f", sugar))g per 100g"
             healthImpact = getHealthImpact(for: densityGrade)
             recommendation = getRecommendation(for: densityGrade)
@@ -1937,7 +1920,27 @@ class SugarContentScorer {
         )
     }
 
-    private func getGradeForSugarAmount(_ sugar: Double) -> SugarGrade {
+    /// Grade sugar based on per-serving amount (realistic daily intake thresholds)
+    /// Based on WHO guideline: max 30g free sugars per day for adults
+    private func getGradeForServingAmount(_ sugar: Double) -> SugarGrade {
+        switch sugar {
+        case 0..<3:      // <10% daily limit
+            return .excellent
+        case 3..<6:      // 10-20% daily limit
+            return .veryGood
+        case 6..<10:     // 20-33% daily limit (moderate)
+            return .good
+        case 10..<15:    // 33-50% daily limit (moderately high)
+            return .moderate
+        case 15..<24:    // 50-80% daily limit (high)
+            return .high
+        default:         // 80%+ daily limit (very high)
+            return .veryHigh
+        }
+    }
+
+    /// Grade sugar based on density (per 100g) - fallback when no serving data
+    private func getGradeForDensity(_ sugar: Double) -> SugarGrade {
         switch sugar {
         case 0..<5:
             return .excellent
