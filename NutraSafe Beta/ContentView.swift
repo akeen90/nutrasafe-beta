@@ -1681,7 +1681,12 @@ struct ContentView: View {
             selectedTab = .food
         }
         .onReceive(NotificationCenter.default.publisher(for: .restartOnboarding)) { _ in
-            showOnboarding = true
+            // First dismiss Settings if it's showing
+            showingSettings = false
+            // Wait for Settings dismiss animation to complete, then show onboarding
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                showOnboarding = true
+            }
         }
         
         .onChange(of: selectedTab) { newTab in

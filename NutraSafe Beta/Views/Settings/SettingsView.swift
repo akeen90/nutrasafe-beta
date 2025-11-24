@@ -320,14 +320,10 @@ struct AboutSection: View {
                 iconColor: .green,
                 action: {
                     OnboardingManager.shared.resetOnboarding()
-                    // Dismiss Settings first so root can present onboarding immediately
-                    dismiss()
-                    // Trigger onboarding after sheet dismiss animation completes
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                        NotificationCenter.default.post(name: .restartOnboarding, object: nil)
-                        let generator = UINotificationFeedbackGenerator()
-                        generator.notificationOccurred(.success)
-                    }
+                    // Notify ContentView to dismiss Settings and show onboarding
+                    NotificationCenter.default.post(name: .restartOnboarding, object: nil)
+                    let generator = UINotificationFeedbackGenerator()
+                    generator.notificationOccurred(.success)
                 }
             )
         }
