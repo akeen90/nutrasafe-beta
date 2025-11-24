@@ -97,7 +97,7 @@ struct FastingEducationView: View {
                 }
             }
             .sheet(isPresented: $showingSources) {
-                FastingSourcesView()
+                FastingCitationsView()
             }
         }
     }
