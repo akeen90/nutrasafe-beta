@@ -1027,7 +1027,7 @@ class FirebaseManager: ObservableObject {
                     servingDescription: hit["servingSize"] as? String,
                     servingSizeG: hit["servingSizeG"] as? Double,
                     isPerUnit: hit["per_unit_nutrition"] as? Bool,
-                    ingredients: (hit["ingredients"] as? String).map { [$0] },
+                    ingredients: hit["ingredients"] as? [String],
                     isVerified: (hit["verified"] as? Bool) ?? false,
                     barcode: hit["barcode"] as? String
                 )
