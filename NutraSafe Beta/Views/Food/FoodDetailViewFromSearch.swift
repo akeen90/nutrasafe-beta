@@ -16,6 +16,58 @@ import Foundation
 import Vision
 import AVFoundation
 
+// MARK: - Fraction Model
+
+struct Fraction: Identifiable, Hashable {
+    let id = UUID()
+    let whole: Int
+    let numerator: Int
+    let denominator: Int
+
+    var decimalValue: Double {
+        return Double(whole) + (Double(numerator) / Double(denominator))
+    }
+
+    var displayString: String {
+        if numerator == 0 {
+            return "\(whole)"
+        } else if whole == 0 {
+            return "\(numerator)/\(denominator)"
+        } else {
+            return "\(whole) \(numerator)/\(denominator)"
+        }
+    }
+
+    static let commonFractions: [Fraction] = [
+        Fraction(whole: 0, numerator: 1, denominator: 4),  // 1/4
+        Fraction(whole: 0, numerator: 1, denominator: 3),  // 1/3
+        Fraction(whole: 0, numerator: 1, denominator: 2),  // 1/2
+        Fraction(whole: 0, numerator: 2, denominator: 3),  // 2/3
+        Fraction(whole: 0, numerator: 3, denominator: 4),  // 3/4
+        Fraction(whole: 1, numerator: 0, denominator: 1),  // 1
+        Fraction(whole: 1, numerator: 1, denominator: 4),  // 1 1/4
+        Fraction(whole: 1, numerator: 1, denominator: 3),  // 1 1/3
+        Fraction(whole: 1, numerator: 1, denominator: 2),  // 1 1/2
+        Fraction(whole: 1, numerator: 2, denominator: 3),  // 1 2/3
+        Fraction(whole: 1, numerator: 3, denominator: 4),  // 1 3/4
+        Fraction(whole: 2, numerator: 0, denominator: 1),  // 2
+        Fraction(whole: 2, numerator: 1, denominator: 4),  // 2 1/4
+        Fraction(whole: 2, numerator: 1, denominator: 3),  // 2 1/3
+        Fraction(whole: 2, numerator: 1, denominator: 2),  // 2 1/2
+        Fraction(whole: 2, numerator: 2, denominator: 3),  // 2 2/3
+        Fraction(whole: 2, numerator: 3, denominator: 4),  // 2 3/4
+        Fraction(whole: 3, numerator: 0, denominator: 1),  // 3
+        Fraction(whole: 3, numerator: 1, denominator: 2),  // 3 1/2
+        Fraction(whole: 4, numerator: 0, denominator: 1),  // 4
+        Fraction(whole: 5, numerator: 0, denominator: 1),  // 5
+    ]
+
+    // Find the closest fraction from common fractions
+    static func closestFraction(to decimal: Double) -> Fraction {
+        return commonFractions.min(by: { abs($0.decimalValue - decimal) < abs($1.decimalValue - decimal) }) ?? Fraction(whole: 1, numerator: 0, denominator: 1)
+    }
+}
+
 // MARK: - Food Detail View From Search (DIARY-ONLY)
 struct FoodDetailViewFromSearch: View {
     let food: FoodSearchResult
@@ -228,6 +280,14 @@ struct FoodDetailViewFromSearch: View {
     }
     @State private var showingUseByAddSheet: Bool = false
     @State private var showingNutraSafeInfo: Bool = false
+
+    // Serving size input mode
+    enum ServingSizeInputMode: String, CaseIterable {
+        case decimal = "Decimal"
+        case fraction = "Fraction"
+    }
+    @State private var servingSizeInputMode: ServingSizeInputMode = .decimal
+    @State private var selectedFraction: Fraction = Fraction(whole: 1, numerator: 0, denominator: 1)
     @State private var showingSugarInfo: Bool = false
 
     // Allergen warning
@@ -3119,39 +3179,86 @@ private var nutritionFactsSection: some View {
                         .background(Color.gray.opacity(0.15))
                         .cornerRadius(8)
                 } else {
-                    // Per-100g food: show editable amount and unit picker
-                    HStack(spacing: 8) {
-                        TextField("100", text: $servingAmount)
-                            .keyboardType(.decimalPad)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .font(.system(size: 14, weight: .medium))
-                            .frame(maxWidth: 80)
-                        Menu {
-                            ForEach(servingUnitOptions, id: \.self) { unit in
-                                Button(unit) {
-                                    if let currentValue = Double(servingAmount) {
-                                        let convertedValue = convertUnit(value: currentValue, from: servingUnit, to: unit)
-                                        servingAmount = String(format: "%.1f", convertedValue)
+                    // Per-100g food: show decimal/fraction mode picker and inputs
+                    VStack(spacing: 12) {
+                        // Mode picker
+                        Picker("Input Mode", selection: $servingSizeInputMode) {
+                            ForEach(ServingSizeInputMode.allCases, id: \.self) { mode in
+                                Text(mode.rawValue).tag(mode)
+                            }
+                        }
+                        .pickerStyle(SegmentedPickerStyle())
+                        .onChange(of: servingSizeInputMode) { newMode in
+                            // Convert between modes
+                            if newMode == .fraction {
+                                // Converting from decimal to fraction
+                                if let decimalValue = Double(servingAmount) {
+                                    selectedFraction = Fraction.closestFraction(to: decimalValue)
+                                }
+                            } else {
+                                // Converting from fraction to decimal
+                                servingAmount = String(format: "%.2f", selectedFraction.decimalValue)
+                            }
+                        }
+
+                        // Input controls based on mode
+                        HStack(spacing: 8) {
+                            if servingSizeInputMode == .decimal {
+                                // Decimal input with keypad
+                                TextField("100", text: $servingAmount)
+                                    .keyboardType(.decimalPad)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                    .font(.system(size: 14, weight: .medium))
+                                    .frame(maxWidth: 80)
+                            } else {
+                                // Fraction picker with roller
+                                Picker("Fraction", selection: $selectedFraction) {
+                                    ForEach(Fraction.commonFractions) { fraction in
+                                        Text(fraction.displayString).tag(fraction)
                                     }
-                                    servingUnit = unit
+                                }
+                                .pickerStyle(WheelPickerStyle())
+                                .frame(height: 100)
+                                .clipped()
+                                .onChange(of: selectedFraction) { newFraction in
+                                    // Update servingAmount when fraction changes
+                                    servingAmount = String(format: "%.2f", newFraction.decimalValue)
                                 }
                             }
-                        } label: {
-                            HStack(spacing: 4) {
-                                Text(servingUnit)
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(.primary)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.8)
-                                    .fixedSize(horizontal: true, vertical: false)
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.secondary)
+
+                            // Unit picker (always visible)
+                            Menu {
+                                ForEach(servingUnitOptions, id: \.self) { unit in
+                                    Button(unit) {
+                                        if let currentValue = Double(servingAmount) {
+                                            let convertedValue = convertUnit(value: currentValue, from: servingUnit, to: unit)
+                                            servingAmount = String(format: "%.1f", convertedValue)
+
+                                            // Update fraction if in fraction mode
+                                            if servingSizeInputMode == .fraction {
+                                                selectedFraction = Fraction.closestFraction(to: convertedValue)
+                                            }
+                                        }
+                                        servingUnit = unit
+                                    }
+                                }
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Text(servingUnit)
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(.primary)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.8)
+                                        .fixedSize(horizontal: true, vertical: false)
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(Color.gray.opacity(0.15))
+                                .cornerRadius(8)
                             }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(Color.gray.opacity(0.15))
-                            .cornerRadius(8)
                         }
                     }
                 }
