@@ -1535,6 +1535,15 @@ struct FoodDetailViewFromSearch: View {
                 }
             }
         }
+        .onChange(of: food.id) { _ in
+            // Invalidate all caches when food changes (e.g., switching between search and diary)
+            cachedIngredients = nil
+            cachedIngredientsStatus = nil
+            cachedAdditives = nil
+            cachedNutritionScore = nil
+            cachedNutraSafeGrade = nil
+            hasInitialized = false
+        }
         .id("\(enhancedIngredientsText ?? "")\(enhancedNutrition?.calories ?? 0)")
         .alert("Team Notified", isPresented: $showingNotificationSuccess) {
             Button("OK") { }
