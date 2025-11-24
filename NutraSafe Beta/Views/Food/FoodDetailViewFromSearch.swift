@@ -3212,7 +3212,22 @@ private var nutritionFactsSection: some View {
                 .filter { !$0.isEmpty }
             return !clean.isEmpty
         }()
-        let gradeToShow = hasIngredients ? nutraSafeGrade : nil
+
+        // CRITICAL FIX: Hide NutraSafe grade for per-unit items (scoring not meaningful for small single items)
+        // Detect per-unit items: servingSizeG <= 5g OR serving description contains unit keywords
+        let isPerUnitItem: Bool = {
+            if let servingSizeG = displayFood.servingSizeG, servingSizeG <= 5 {
+                return true
+            }
+            if let servingDesc = displayFood.servingDescription?.lowercased() {
+                let unitKeywords = ["unit", "piece", "slice", "item", "candy", "sweet", "biscuit", "cookie"]
+                return unitKeywords.contains(where: { servingDesc.contains($0) })
+            }
+            return false
+        }()
+
+        // Show grade only if has ingredients AND not a per-unit item
+        let gradeToShow = (hasIngredients && !isPerUnitItem) ? nutraSafeGrade : nil
 
         return FoodScoresSectionView(ns: gradeToShow, sugarScore: sugarScore, showingInfo: $showingNutraSafeInfo, showingSugarInfo: $showingSugarInfo)
     }

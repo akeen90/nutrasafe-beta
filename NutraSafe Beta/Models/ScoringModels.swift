@@ -1878,27 +1878,44 @@ class SugarContentScorer {
         var recommendation = ""
 
         if let perServing = sugarPerServing, let servingSize = servingSizeG, servingSize > 0 {
-            let calculatedServingGrade = getGradeForSugarAmount(perServing)
-            servingGrade = calculatedServingGrade
+            // CRITICAL FIX: Detect per-unit items where servingSizeG is encoded as "1g" meaning "1 unit"
+            // Indicator: servingSizeG is very small (≤5g) but sugarPerServing is much larger (>servingSizeG * 2)
+            // This means the actual weight is encoded in the sugarPerServing, not the servingSizeG
+            let isPerUnitItem = servingSize <= 5 && perServing > (servingSize * 2)
 
-            // Use the WORSE of the two grades (lower numericValue = worse)
-            if calculatedServingGrade.numericValue < densityGrade.numericValue {
-                finalGrade = calculatedServingGrade
-                // Large serving causing high sugar despite moderate density
-                explanation = "High per-serving (\(String(format: "%.1f", perServing))g in \(String(format: "%.0f", servingSize))g serving) despite moderate density (\(String(format: "%.1f", sugar))g per 100g)"
-                healthImpact = getHealthImpact(for: calculatedServingGrade)
-                recommendation = "Large serving size. " + getRecommendation(for: calculatedServingGrade)
-            } else if densityGrade.numericValue < calculatedServingGrade.numericValue {
-                finalGrade = densityGrade
-                // High density even though serving might be small
-                explanation = "High sugar density (\(String(format: "%.1f", sugar))g per 100g) - \(String(format: "%.1f", perServing))g in \(String(format: "%.0f", servingSize))g serving"
-                healthImpact = getHealthImpact(for: densityGrade)
-                recommendation = getRecommendation(for: densityGrade)
+            if isPerUnitItem {
+                // For per-unit items, use sugarPerServing directly for grading (it represents actual sugar in the unit)
+                let actualSugarGrade = getGradeForSugarAmount(perServing)
+                servingGrade = actualSugarGrade
+                finalGrade = actualSugarGrade
+
+                explanation = "\(String(format: "%.1f", perServing))g sugar per unit (\(String(format: "%.1f", sugar))g per 100g)"
+                healthImpact = getHealthImpact(for: actualSugarGrade)
+                recommendation = getRecommendation(for: actualSugarGrade)
             } else {
-                // Both grades are the same
-                explanation = "\(String(format: "%.1f", perServing))g sugar in \(String(format: "%.0f", servingSize))g serving (\(String(format: "%.1f", sugar))g per 100g)"
-                healthImpact = getHealthImpact(for: finalGrade)
-                recommendation = getRecommendation(for: finalGrade)
+                // Standard scoring for regular foods
+                let calculatedServingGrade = getGradeForSugarAmount(perServing)
+                servingGrade = calculatedServingGrade
+
+                // Use the WORSE of the two grades (lower numericValue = worse)
+                if calculatedServingGrade.numericValue < densityGrade.numericValue {
+                    finalGrade = calculatedServingGrade
+                    // Large serving causing high sugar despite moderate density
+                    explanation = "High per-serving (\(String(format: "%.1f", perServing))g in \(String(format: "%.0f", servingSize))g serving) despite moderate density (\(String(format: "%.1f", sugar))g per 100g)"
+                    healthImpact = getHealthImpact(for: calculatedServingGrade)
+                    recommendation = "Large serving size. " + getRecommendation(for: calculatedServingGrade)
+                } else if densityGrade.numericValue < calculatedServingGrade.numericValue {
+                    finalGrade = densityGrade
+                    // High density even though serving might be small
+                    explanation = "High sugar density (\(String(format: "%.1f", sugar))g per 100g) - \(String(format: "%.1f", perServing))g in \(String(format: "%.0f", servingSize))g serving"
+                    healthImpact = getHealthImpact(for: densityGrade)
+                    recommendation = getRecommendation(for: densityGrade)
+                } else {
+                    // Both grades are the same
+                    explanation = "\(String(format: "%.1f", perServing))g sugar in \(String(format: "%.0f", servingSize))g serving (\(String(format: "%.1f", sugar))g per 100g)"
+                    healthImpact = getHealthImpact(for: finalGrade)
+                    recommendation = getRecommendation(for: finalGrade)
+                }
             }
         } else {
             // Only have per-100g data

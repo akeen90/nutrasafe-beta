@@ -161,20 +161,20 @@ struct AdditiveWatchView: View {
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
+                        Image(systemName: "info.circle.fill")
+                            .foregroundColor(.secondary)
                             .font(.system(size: 16))
                         Text("No identifiable additives found")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.green)
+                            .foregroundColor(.secondary)
                     }
 
-                    Text("This food appears to contain only natural ingredients.")
+                    Text("No additives detected in available data - this does not guarantee the product is additive-free, as additives may be present but not identified.")
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
                 .padding(12)
-                .background(Color.green.opacity(0.1))
+                .background(Color.secondary.opacity(0.1))
                 .cornerRadius(8)
             }
 
