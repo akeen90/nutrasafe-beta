@@ -16,6 +16,58 @@ import Foundation
 import Vision
 import AVFoundation
 
+// MARK: - Fraction Model
+
+struct Fraction: Identifiable, Hashable {
+    let id = UUID()
+    let whole: Int
+    let numerator: Int
+    let denominator: Int
+
+    var decimalValue: Double {
+        return Double(whole) + (Double(numerator) / Double(denominator))
+    }
+
+    var displayString: String {
+        if numerator == 0 {
+            return "\(whole)"
+        } else if whole == 0 {
+            return "\(numerator)/\(denominator)"
+        } else {
+            return "\(whole) \(numerator)/\(denominator)"
+        }
+    }
+
+    static let commonFractions: [Fraction] = [
+        Fraction(whole: 0, numerator: 1, denominator: 4),  // 1/4
+        Fraction(whole: 0, numerator: 1, denominator: 3),  // 1/3
+        Fraction(whole: 0, numerator: 1, denominator: 2),  // 1/2
+        Fraction(whole: 0, numerator: 2, denominator: 3),  // 2/3
+        Fraction(whole: 0, numerator: 3, denominator: 4),  // 3/4
+        Fraction(whole: 1, numerator: 0, denominator: 1),  // 1
+        Fraction(whole: 1, numerator: 1, denominator: 4),  // 1 1/4
+        Fraction(whole: 1, numerator: 1, denominator: 3),  // 1 1/3
+        Fraction(whole: 1, numerator: 1, denominator: 2),  // 1 1/2
+        Fraction(whole: 1, numerator: 2, denominator: 3),  // 1 2/3
+        Fraction(whole: 1, numerator: 3, denominator: 4),  // 1 3/4
+        Fraction(whole: 2, numerator: 0, denominator: 1),  // 2
+        Fraction(whole: 2, numerator: 1, denominator: 4),  // 2 1/4
+        Fraction(whole: 2, numerator: 1, denominator: 3),  // 2 1/3
+        Fraction(whole: 2, numerator: 1, denominator: 2),  // 2 1/2
+        Fraction(whole: 2, numerator: 2, denominator: 3),  // 2 2/3
+        Fraction(whole: 2, numerator: 3, denominator: 4),  // 2 3/4
+        Fraction(whole: 3, numerator: 0, denominator: 1),  // 3
+        Fraction(whole: 3, numerator: 1, denominator: 2),  // 3 1/2
+        Fraction(whole: 4, numerator: 0, denominator: 1),  // 4
+        Fraction(whole: 5, numerator: 0, denominator: 1),  // 5
+    ]
+
+    // Find the closest fraction from common fractions
+    static func closestFraction(to decimal: Double) -> Fraction {
+        return commonFractions.min(by: { abs($0.decimalValue - decimal) < abs($1.decimalValue - decimal) }) ?? Fraction(whole: 1, numerator: 0, denominator: 1)
+    }
+}
+
 // MARK: - Food Detail View From Search (DIARY-ONLY)
 struct FoodDetailViewFromSearch: View {
     let food: FoodSearchResult
@@ -218,6 +270,16 @@ struct FoodDetailViewFromSearch: View {
     @State private var isEditingMode = false
     @State private var originalMealType = ""
     @State private var quantityMultiplier: Double = 1.0 // New quantity multiplier
+
+    // Quantity input mode
+    enum QuantityInputMode: String, CaseIterable {
+        case decimal = "Decimal"
+        case fraction = "Fraction"
+    }
+    @State private var quantityInputMode: QuantityInputMode = .decimal
+    @State private var quantityDecimalText: String = "1.0"
+    @State private var quantityFraction: Fraction = Fraction(whole: 1, numerator: 0, denominator: 1)
+
     @State private var servingSizeText: String = "" // Editable serving size (legacy)
     @State private var servingAmount: String // Split serving size - amount only
     @State private var servingUnit: String // Split serving size - unit only
@@ -3156,25 +3218,63 @@ private var nutritionFactsSection: some View {
                     }
                 }
             }
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 12) {
                 Text("QUANTITY")
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundColor(.secondary)
                     .tracking(0.5)
-                HStack(spacing: 10) {
-                    ForEach(quantityOptions, id: \.self) { option in
-                        Button(action: {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                quantityMultiplier = option
+
+                VStack(spacing: 12) {
+                    // Mode picker
+                    Picker("Input Mode", selection: $quantityInputMode) {
+                        ForEach(QuantityInputMode.allCases, id: \.self) { mode in
+                            Text(mode.rawValue).tag(mode)
+                        }
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                    .onChange(of: quantityInputMode) { newMode in
+                        // Convert between modes
+                        if newMode == .fraction {
+                            // Converting from decimal to fraction
+                            quantityFraction = Fraction.closestFraction(to: quantityMultiplier)
+                            quantityMultiplier = quantityFraction.decimalValue
+                        } else {
+                            // Converting from fraction to decimal
+                            quantityDecimalText = String(format: "%.2f", quantityMultiplier)
+                        }
+                    }
+
+                    // Input controls based on mode
+                    if quantityInputMode == .decimal {
+                        // Decimal input with keypad
+                        HStack(spacing: 8) {
+                            TextField("1.0", text: $quantityDecimalText)
+                                .keyboardType(.decimalPad)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .font(.system(size: 16, weight: .medium))
+                                .frame(maxWidth: 100)
+                                .onChange(of: quantityDecimalText) { newValue in
+                                    if let value = Double(newValue), value > 0 {
+                                        quantityMultiplier = value
+                                    }
+                                }
+                            Text("servings")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+                    } else {
+                        // Fraction picker with roller
+                        Picker("Quantity", selection: $quantityFraction) {
+                            ForEach(Fraction.commonFractions) { fraction in
+                                Text(fraction.displayString).tag(fraction)
                             }
-                        }) {
-                            Text(option == 0.5 ? "½" : "\(Int(option))")
-                                .font(.system(size: 13, weight: quantityMultiplier == option ? .bold : .medium))
-                                .foregroundColor(quantityMultiplier == option ? .white : .primary)
-                                .frame(width: 28, height: 28)
-                                .background(
-                                    Circle().fill(quantityMultiplier == option ? .blue : Color.gray.opacity(0.15))
-                                )
+                        }
+                        .pickerStyle(WheelPickerStyle())
+                        .frame(height: 100)
+                        .clipped()
+                        .onChange(of: quantityFraction) { newFraction in
+                            quantityMultiplier = newFraction.decimalValue
+                            quantityDecimalText = String(format: "%.2f", newFraction.decimalValue)
                         }
                     }
                 }
