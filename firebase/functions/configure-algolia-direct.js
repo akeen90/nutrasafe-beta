@@ -1,0 +1,144 @@
+#!/usr/bin/env node
+
+/**
+ * Direct Algolia Index Configuration Script
+ * This applies custom ranking settings to fix search ranking issues
+ */
+
+const { algoliasearch } = require('algoliasearch');
+
+const ALGOLIA_APP_ID = 'WK0TIF84M2';
+const ALGOLIA_ADMIN_KEY = process.env.ALGOLIA_ADMIN_API_KEY || process.argv[2];
+
+if (!ALGOLIA_ADMIN_KEY) {
+  console.error('❌ Error: ALGOLIA_ADMIN_API_KEY not provided');
+  console.log('\nUsage:');
+  console.log('  ALGOLIA_ADMIN_API_KEY=your_key node configure-algolia-direct.js');
+  console.log('  OR');
+  console.log('  node configure-algolia-direct.js YOUR_ADMIN_KEY');
+  process.exit(1);
+}
+
+const client = algoliasearch(ALGOLIA_APP_ID, ALGOLIA_ADMIN_KEY);
+
+const indices = [
+  'verified_foods',
+  'foods',
+  'manual_foods',
+  'user_added',
+  'ai_enhanced',
+  'ai_manually_added',
+];
+
+const indexSettings = {
+  // Searchable attributes with priority ordering
+  searchableAttributes: [
+    'name',        // Highest priority - product name
+    'brandName',   // Second - brand name
+    'barcode',     // Third - exact barcode match
+    'ingredients', // Lowest - ingredient text
+  ],
+
+  // Custom ranking attributes for tie-breaking
+  customRanking: [
+    'desc(isGeneric)',  // Boost generic/raw foods
+    'asc(nameLength)',  // Prefer shorter names
+    'desc(verified)',   // Verified foods rank higher
+    'desc(score)',      // Nutrition score
+  ],
+
+  // Ranking criteria - controls the overall ranking formula
+  ranking: [
+    'typo',       // Typo tolerance
+    'words',      // Number of matched query words
+    'filters',    // Applied filters
+    'proximity',  // Proximity of matched words
+    'attribute',  // Searchable attribute order
+    'exact',      // Exact matches boost (critical for "apple" vs "applewood")
+    'custom',     // Custom ranking attributes above
+  ],
+
+  // Typo tolerance settings
+  minWordSizefor1Typo: 4,  // Require 4+ chars before allowing 1 typo
+  minWordSizefor2Typos: 8, // Require 8+ chars before allowing 2 typos
+  typoTolerance: 'min',    // Minimum typo tolerance (strict matching)
+
+  // Exact matching settings
+  exactOnSingleWordQuery: 'word', // Boost exact word matches on single-word queries
+
+  // Query word handling
+  removeWordsIfNoResults: 'lastWords', // Remove last words if no results
+
+  // Advanced settings
+  attributeForDistinct: 'name', // Deduplicate by name
+  distinct: true,               // Enable deduplication
+  removeStopWords: true,        // Remove common stop words
+
+  // Highlighting for UI display
+  attributesToHighlight: ['name', 'brandName'],
+  highlightPreTag: '<em>',
+  highlightPostTag: '</em>',
+};
+
+async function configureIndex(indexName) {
+  try {
+    console.log(`⚙️  Configuring index: ${indexName}...`);
+
+    await client.setSettings({
+      indexName,
+      indexSettings,
+    });
+
+    console.log(`✅ Successfully configured: ${indexName}`);
+    return { index: indexName, status: 'success' };
+  } catch (error) {
+    console.error(`❌ Failed to configure ${indexName}:`, error.message);
+    return { index: indexName, status: 'failed', error: error.message };
+  }
+}
+
+async function main() {
+  console.log('🚀 Starting Algolia Index Configuration...\n');
+  console.log('This will fix search ranking issues:');
+  console.log('  - "apple" will show before "applewood"');
+  console.log('  - "costa" will find "costa coffee"');
+  console.log('  - Exact matches prioritized\n');
+
+  const results = [];
+
+  for (const indexName of indices) {
+    const result = await configureIndex(indexName);
+    results.push(result);
+  }
+
+  console.log('\n📊 Configuration Results:');
+  console.log('═'.repeat(50));
+
+  const successful = results.filter(r => r.status === 'success');
+  const failed = results.filter(r => r.status === 'failed');
+
+  successful.forEach(r => console.log(`✅ ${r.index}`));
+  failed.forEach(r => console.log(`❌ ${r.index}: ${r.error}`));
+
+  console.log('═'.repeat(50));
+  console.log(`\n✅ Success: ${successful.length}/${indices.length}`);
+  console.log(`❌ Failed: ${failed.length}/${indices.length}\n`);
+
+  if (successful.length === indices.length) {
+    console.log('🎉 All indices configured successfully!');
+    console.log('\n📝 Next Steps:');
+    console.log('1. Test search in your iOS app');
+    console.log('   - Search "apple" - should show "Apple" before "Applewood"');
+    console.log('   - Search "costa" - should show "Costa Coffee"');
+    console.log('2. The improvements are now active!\n');
+  } else {
+    console.log('⚠️  Some indices failed to configure.');
+    console.log('Please check the errors above.\n');
+    process.exit(1);
+  }
+}
+
+main().catch(error => {
+  console.error('💥 Fatal error:', error);
+  process.exit(1);
+});

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.searchFoodsAlgolia = exports.bulkImportFoodsToAlgolia = exports.syncAIManuallyAddedFoodToAlgolia = exports.syncAIEnhancedFoodToAlgolia = exports.syncUserAddedFoodToAlgolia = exports.syncManualFoodToAlgolia = exports.syncFoodToAlgolia = exports.syncVerifiedFoodToAlgolia = void 0;
+exports.searchFoodsAlgolia = exports.bulkImportFoodsToAlgolia = exports.configureAlgoliaIndices = exports.syncAIManuallyAddedFoodToAlgolia = exports.syncAIEnhancedFoodToAlgolia = exports.syncUserAddedFoodToAlgolia = exports.syncManualFoodToAlgolia = exports.syncFoodToAlgolia = exports.syncVerifiedFoodToAlgolia = void 0;
 const functions = require("firebase-functions/v2");
 const firestore_1 = require("firebase-functions/v2/firestore");
 const params_1 = require("firebase-functions/params");
@@ -17,6 +17,72 @@ const MANUAL_FOODS_INDEX = "manual_foods";
 const USER_ADDED_INDEX = "user_added";
 const AI_ENHANCED_INDEX = "ai_enhanced";
 const AI_MANUALLY_ADDED_INDEX = "ai_manually_added";
+/**
+ * Configure Algolia index settings with custom ranking rules
+ * This ensures exact matches and word-start matches are prioritized
+ * Example: "apple" returns "apple" before "applewood"
+ */
+async function configureIndexSettings(client, indexName) {
+    try {
+        await client.setSettings({
+            indexName,
+            indexSettings: {
+                // Searchable attributes with priority ordering
+                // Higher priority = earlier in the array
+                searchableAttributes: [
+                    "name", // Highest priority - product name
+                    "brandName", // Second - brand name
+                    "barcode", // Third - exact barcode match
+                    "ingredients", // Lowest - ingredient text
+                ],
+                // Custom ranking attributes for tie-breaking
+                // These are used when relevance scores are equal
+                customRanking: [
+                    "desc(isGeneric)", // Boost generic/raw foods (e.g., "Apple" over "Apple Pie")
+                    "asc(nameLength)", // Prefer shorter names (e.g., "Apple" over "Apple & Cinnamon Cake")
+                    "desc(verified)", // Verified foods rank higher
+                    "desc(score)", // Nutrition score
+                ],
+                // Ranking criteria - controls the overall ranking formula
+                // Order matters: earlier criteria have higher weight
+                ranking: [
+                    "typo", // Typo tolerance
+                    "words", // Number of matched query words
+                    "filters", // Applied filters
+                    "proximity", // Proximity of matched words
+                    "attribute", // Searchable attribute order (name > brandName > etc)
+                    "exact", // Exact matches boost (critical for "apple" vs "applewood")
+                    "custom", // Custom ranking attributes above
+                ],
+                // Typo tolerance settings
+                // Prevent "applewood" from matching "apple" too strongly
+                minWordSizefor1Typo: 4, // Require 4+ chars before allowing 1 typo
+                minWordSizefor2Typos: 8, // Require 8+ chars before allowing 2 typos
+                typoTolerance: "min", // Minimum typo tolerance (strict matching)
+                // Exact matching settings
+                // Critical for single-word queries like "apple" or "costa"
+                exactOnSingleWordQuery: "word", // Boost exact word matches on single-word queries
+                // Query word handling
+                removeWordsIfNoResults: "lastWords", // Remove last words if no results (helps with "costa coffee")
+                disableTypoToleranceOnWords: [], // Can add specific words to disable typos
+                disableTypoToleranceOnAttributes: [], // Can add specific attributes
+                // Advanced settings
+                attributeForDistinct: "name", // Deduplicate by name
+                distinct: true, // Enable deduplication
+                removeStopWords: ["and", "or", "the"], // Remove common stop words
+                // Highlighting for UI display
+                attributesToHighlight: ["name", "brandName"],
+                highlightPreTag: "<em>",
+                highlightPostTag: "</em>",
+            },
+        });
+        console.log(`✅ Configured custom ranking for index: ${indexName}`);
+    }
+    catch (error) {
+        console.error(`❌ Error configuring index ${indexName}:`, error);
+        throw error;
+    }
+}
 // ⚡ DISABLED FOR PERFORMANCE: OpenFoodFacts helper functions no longer used
 // function isEnglishIngredients(ingredientsText: string): boolean {
 //   if (!ingredientsText || ingredientsText.trim().length === 0) return false;
@@ -289,6 +355,41 @@ exports.syncAIManuallyAddedFoodToAlgolia = (0, firestore_1.onDocumentWritten)({
     console.log(`Synced AI manually added food ${foodId} to Algolia`);
 });
 /**
+ * Configure custom ranking settings for all Algolia indices (HTTP endpoint)
+ * Call this once to set up proper search ranking
+ * This enables exact match prioritization and better search results
+ */
+exports.configureAlgoliaIndices = functions.https.onRequest({
+    secrets: [algoliaAdminKey],
+    cors: true,
+}, async (request, response) => {
+    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
+    const indices = [
+        VERIFIED_FOODS_INDEX,
+        FOODS_INDEX,
+        MANUAL_FOODS_INDEX,
+        USER_ADDED_INDEX,
+        AI_ENHANCED_INDEX,
+        AI_MANUALLY_ADDED_INDEX,
+    ];
+    const results = {};
+    for (const indexName of indices) {
+        try {
+            await configureIndexSettings(client, indexName);
+            results[indexName] = "success";
+        }
+        catch (error) {
+            results[indexName] = `failed: ${error.message}`;
+            console.error(`Failed to configure ${indexName}:`, error);
+        }
+    }
+    response.json({
+        success: true,
+        message: "Index configuration completed",
+        results,
+    });
+});
+/**
  * Bulk import all existing foods to Algolia
  * Call this once to migrate existing data
  */
@@ -341,8 +442,8 @@ exports.bulkImportFoodsToAlgolia = functions.https.onCall({
     };
 });
 /**
- * Search foods using Algolia
- * This provides a fast search endpoint for the iOS app
+ * Search foods using Algolia with enhanced ranking
+ * This provides a fast search endpoint for the iOS app with improved relevance
  */
 exports.searchFoodsAlgolia = functions.https.onRequest({
     secrets: [algoliaAdminKey],
@@ -358,6 +459,26 @@ exports.searchFoodsAlgolia = functions.https.onRequest({
         return;
     }
     const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
+    // Determine if this is a single-word query (affects exact matching)
+    const isSingleWord = query.trim().split(/\s+/).length === 1;
+    // Enhanced search parameters for better ranking
+    const searchParams = {
+        query,
+        hitsPerPage,
+        // Query strategy
+        // For single words like "apple" or "costa", prioritize exact matches
+        exactOnSingleWordQuery: (isSingleWord ? "word" : "attribute"),
+        // Typo tolerance - stricter for short queries
+        typoTolerance: (query.length <= 4 ? false : "min"),
+        // Remove last words if no results (helps with "costa coffee" vs "costa")
+        removeWordsIfNoResults: "lastWords",
+        // Optional words - treat all query words as optional
+        // This helps find "costa" even if "coffee" isn't in the name
+        optionalWords: query.split(/\s+/).filter((word) => word.length > 0),
+        // Advanced ranking
+        advancedSyntax: false, // Disable for simpler queries
+        removeStopWords: true, // Remove "and", "or", "the" automatically
+    };
     // Search across all food indices
     const indices = [
         USER_ADDED_INDEX, // User-added (highest priority)
@@ -367,10 +488,7 @@ exports.searchFoodsAlgolia = functions.https.onRequest({
     ];
     const searchResults = await Promise.all(indices.map((indexName) => client.searchSingleIndex({
         indexName,
-        searchParams: {
-            query,
-            hitsPerPage,
-        },
+        searchParams,
     }).catch((error) => {
         // Ignore errors from non-existent indices
         console.log(`Index ${indexName} not found or error: ${error.message}`);
@@ -386,7 +504,7 @@ exports.searchFoodsAlgolia = functions.https.onRequest({
     // ⚡ PERFORMANCE OPTIMIZATION: Removed blocking OpenFoodFacts API call
     // Previously this added 2-5 seconds to every search request
     // OpenFoodFacts enrichment can be done via separate background job if needed
-    console.log(`✅ Returning ${combinedHits.length} Algolia results (OpenFoodFacts disabled for performance)`);
+    console.log(`✅ Returning ${combinedHits.length} Algolia results for query "${query}" (single word: ${isSingleWord})`);
     // Return Algolia results immediately for fast search experience
     response.json({
         hits: combinedHits.slice(0, hitsPerPage),
@@ -399,10 +517,15 @@ exports.searchFoodsAlgolia = functions.https.onRequest({
  */
 function prepareForAlgolia(data) {
     var _a, _b;
+    const name = data.name || data.foodName || "";
+    const brandName = data.brandName || data.brand || "";
+    // Custom ranking attributes
+    const nameLength = name.length; // Shorter names rank higher (e.g., "Apple" > "Apple Pie")
+    const isGeneric = (brandName.toLowerCase() === "generic" || brandName === "") ? 1 : 0; // Generic/raw foods rank higher
     return {
         // Searchable fields
-        name: data.name || data.foodName || "",
-        brandName: data.brandName || data.brand || "",
+        name,
+        brandName,
         ingredients: data.ingredients || "",
         barcode: data.barcode || "",
         // Nutrition data for filtering
@@ -429,6 +552,9 @@ function prepareForAlgolia(data) {
         // Nutrition score for ranking
         nutritionGrade: data.nutritionGrade || data.nutrition_grade || "",
         score: data.score || 0,
+        // Custom ranking attributes for improved search results
+        nameLength, // Shorter names = better matches (e.g., "Apple" ranks before "Apple & Cinnamon Cake")
+        isGeneric, // Generic/raw foods = better matches (e.g., "Apple" ranks before "Applewood Cheese")
         // TODO: Precompute processing grade here to eliminate 50-200ms frontend calculation
         // Would require porting ProcessingScorer.swift logic to TypeScript
         // Current implementation: Frontend computes on-demand with NSCache
