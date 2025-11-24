@@ -2,99 +2,202 @@
 //  OnboardingView.swift
 //  NutraSafe Beta
 //
-//  Main onboarding container with TabView pagination
-//  Created by Claude on 2025-10-22.
+//  Modern button-based onboarding with integrated screenshots
 //
 
 import SwiftUI
 
 struct OnboardingView: View {
     @State private var currentPage = 0
+    let totalPages = 11 // 10 content pages + 1 disclaimer
     let onComplete: () -> Void
 
     var body: some View {
         ZStack {
-            AnimatedGradientBackground()
+            // Modern gradient background
+            LinearGradient(
+                colors: [
+                    Color(red: 0.95, green: 0.97, blue: 1.0),
+                    Color(red: 0.98, green: 0.96, blue: 1.0)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
 
-            TabView(selection: $currentPage) {
-                // Screen 1: Welcome
-                WelcomeScreen(currentPage: $currentPage)
-                    .tag(0)
+            VStack(spacing: 0) {
+                // Page content
+                Group {
+                    switch currentPage {
+                    case 0: WelcomePage()
+                    case 1: DiaryPage()
+                    case 2: FoodDetailPage()
+                    case 3: NutrientsPage()
+                    case 4: ReactionsPage()
+                    case 5: PatternsPage()
+                    case 6: FastingPage()
+                    case 7: ProgressPage()
+                    case 8: UseByPage()
+                    case 9: FinalMessagePage()
+                    case 10: DisclaimerPage(onAccept: {
+                        OnboardingManager.shared.acceptDisclaimer()
+                        OnboardingManager.shared.completeOnboarding()
+                        onComplete()
+                    })
+                    default: WelcomePage()
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .transition(.asymmetric(
+                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                    removal: .move(edge: .leading).combined(with: .opacity)
+                ))
 
-                // Screen 2: Health Disclaimer (Required)
-                DisclaimerScreen(currentPage: $currentPage)
-                    .tag(1)
+                // Navigation buttons
+                if currentPage < 10 {
+                    HStack(spacing: 16) {
+                        if currentPage > 0 {
+                            Button(action: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } }) {
+                                HStack {
+                                    Image(systemName: "chevron.left")
+                                    Text("Back")
+                                }
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundColor(.primary)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 54)
+                                .background(Color.white)
+                                .cornerRadius(16)
+                                .shadow(color: Color.black.opacity(0.05), radius: 10, y: 4)
+                            }
+                        }
 
-                // Screen 3: Adding Food
-                AddingFoodScreen(currentPage: $currentPage)
-                    .tag(2)
+                        Button(action: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }) {
+                            HStack {
+                                Text(currentPage == 9 ? "Continue to Disclaimer" : "Continue")
+                                Image(systemName: "chevron.right")
+                            }
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 54)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color.blue, Color.blue.opacity(0.8)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .cornerRadius(16)
+                            .shadow(color: Color.blue.opacity(0.3), radius: 15, y: 8)
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 32)
+                    .layoutPriority(1)
+                }
 
-                // Screen 4: Food Detail Page
-                FoodDetailScreen(currentPage: $currentPage)
-                    .tag(3)
-
-                // Screen 5: Tracking Nutrients
-                TrackingNutrientsScreen(currentPage: $currentPage)
-                    .tag(4)
-
-                // Screen 6: Food Reactions
-                FoodReactionsScreen(currentPage: $currentPage)
-                    .tag(5)
-
-                // Screen 7: Fasting Timer
-                FastingTimerScreen(currentPage: $currentPage)
-                    .tag(6)
-
-                // Screen 8: Use By Tracker
-                UseByTrackerScreen(currentPage: $currentPage)
-                    .tag(7)
-
-                // Screen 9: Optional Features (Notifications & Apple Health)
-                OptionalFeaturesScreen(currentPage: $currentPage)
-                    .tag(8)
-
-                // Screen 10: All Set!
-                CompletionScreen(onComplete: onComplete)
-                    .tag(9)
-            }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .indexViewStyle(.page(backgroundDisplayMode: .never))
-        }
-        .overlay(alignment: .bottom) {
-            ProgressCapsuleBar(current: currentPage, total: 10)
-                .padding(.horizontal, 24)
-                .padding(.bottom, 20)
-        }
-    }
-
-    struct AnimatedGradientBackground: View {
-        @State private var animate = false
-        var body: some View {
-            LinearGradient(colors: [Color.indigo, Color.blue, Color.purple, Color.cyan],
-                           startPoint: animate ? .topLeading : .bottomTrailing,
-                           endPoint: animate ? .bottomTrailing : .topLeading)
-                .ignoresSafeArea()
-                .animation(.linear(duration: 8).repeatForever(autoreverses: true), value: animate)
-                .onAppear { animate.toggle() }
-        }
-    }
-
-    struct ProgressCapsuleBar: View {
-        let current: Int
-        let total: Int
-        var body: some View {
-            GeometryReader { geo in
-                let progress = CGFloat(current + 1) / CGFloat(total)
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color.white.opacity(0.25))
-                        .frame(height: 8)
-                    Capsule()
-                        .fill(LinearGradient(colors: [Color.white, Color.white.opacity(0.7)], startPoint: .leading, endPoint: .trailing))
-                        .frame(width: geo.size.width * progress, height: 8)
+                // Progress indicator
+                if currentPage < 10 {
+                    HStack(spacing: 8) {
+                        ForEach(0..<10) { index in
+                            Capsule()
+                                .fill(index == currentPage ? Color.blue : Color.gray.opacity(0.3))
+                                .frame(width: index == currentPage ? 24 : 8, height: 8)
+                                .animation(.spring(response: 0.3), value: currentPage)
+                        }
+                    }
+                    .padding(.bottom, 20)
+                    .layoutPriority(1)
                 }
             }
-            .frame(height: 8)
         }
+    }
+}
+
+// MARK: - Welcome Page
+struct WelcomePage: View {
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 32) {
+                Spacer().frame(height: 40)
+
+                // App icon or logo
+                Image(systemName: "heart.text.square.fill")
+                    .font(.system(size: 80))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.blue, .purple],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+
+                VStack(spacing: 16) {
+                    Text("Welcome to")
+                        .font(.system(size: 24, weight: .medium))
+                        .foregroundColor(.secondary)
+
+                    Text("NutraSafe")
+                        .font(.system(size: 48, weight: .bold))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.blue, .purple],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+
+                    Text("Your complete nutrition & food safety companion")
+                        .font(.system(size: 18, weight: .regular))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 40)
+                }
+
+                Spacer().frame(height: 20)
+
+                VStack(alignment: .leading, spacing: 20) {
+                    FeatureRow(icon: "doc.text.fill", color: .blue, text: "Log food, understand ingredients")
+                    FeatureRow(icon: "chart.bar.fill", color: .green, text: "Track patterns & nutrition")
+                    FeatureRow(icon: "shield.fill", color: .orange, text: "Stay informed & safe")
+                }
+                .padding(.horizontal, 32)
+
+                Spacer()
+            }
+        }
+    }
+}
+
+struct FeatureRow: View {
+    let icon: String
+    let color: Color
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 16) {
+            Image(systemName: icon)
+                .font(.system(size: 24))
+                .foregroundColor(.white)
+                .frame(width: 50, height: 50)
+                .background(
+                    LinearGradient(
+                        colors: [color, color.opacity(0.7)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .cornerRadius(12)
+
+            Text(text)
+                .font(.system(size: 17, weight: .medium))
+                .foregroundColor(.primary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Color.white)
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.05), radius: 10, y: 4)
     }
 }
