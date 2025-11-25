@@ -336,43 +336,22 @@ struct DiaryDailySummaryCard: View {
     }
 
     // MARK: - Event Handlers
+    // NOTE: HealthKit data is fetched by DiaryTabView - this view only observes values
     private func handleOnAppear() {
         Task {
             await loadNutritionGoals()
-            if healthKitRingsEnabled {
-                await healthKitManager.updateStepCount(for: currentDate)
-                await healthKitManager.updateActiveEnergy(for: currentDate)
-            } else {
-                await MainActor.run {
-                    healthKitManager.stepCount = 0
-                    healthKitManager.activeEnergyBurned = 0
-                }
-            }
         }
     }
 
     private func handleDateChange() {
         Task {
             await loadNutritionGoals()
-            if healthKitRingsEnabled {
-                await healthKitManager.updateStepCount(for: currentDate)
-                await healthKitManager.updateActiveEnergy(for: currentDate)
-            }
         }
     }
 
     private func handleHealthKitToggle(_ enabled: Bool) {
-        Task {
-            if enabled {
-                await healthKitManager.updateStepCount(for: currentDate)
-                await healthKitManager.updateActiveEnergy(for: currentDate)
-            } else {
-                await MainActor.run {
-                    healthKitManager.stepCount = 0
-                    healthKitManager.activeEnergyBurned = 0
-                }
-            }
-        }
+        // HealthKit fetching is handled by DiaryTabView
+        // This just reacts to the toggle for UI purposes
     }
 
     // MARK: - Data Loading

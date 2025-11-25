@@ -68,8 +68,17 @@ class HealthKitManager: ObservableObject {
     @Published var showError = false
     
     private let healthStore = HKHealthStore()
-    
+
+    // Track which date the current HealthKit values represent (prevents race conditions)
+    private var currentDisplayDate: Date = Date()
+
     private init() {}
+
+    /// Set the currently displayed date before fetching HealthKit data
+    /// This prevents stale async responses from overwriting current data
+    func setCurrentDisplayDate(_ date: Date) {
+        currentDisplayDate = Calendar.current.startOfDay(for: date)
+    }
     
     func requestAuthorization() async {
         guard HKHealthStore.isHealthDataAvailable() else {
@@ -271,9 +280,12 @@ class HealthKitManager: ObservableObject {
     }
     
     func updateExerciseCalories(for date: Date = Date()) async {
+        let normalizedDate = Calendar.current.startOfDay(for: date)
         do {
             let calories = try await fetchExerciseCalories(for: date)
             await MainActor.run {
+                // Only update if this date is still the displayed date (prevents race condition)
+                guard normalizedDate == self.currentDisplayDate else { return }
                 self.exerciseCalories = calories
                 self.errorMessage = nil
                 self.showError = false
@@ -340,9 +352,12 @@ class HealthKitManager: ObservableObject {
     }
 
     func updateStepCount(for date: Date = Date()) async {
+        let normalizedDate = Calendar.current.startOfDay(for: date)
         do {
             let steps = try await fetchStepCount(for: date)
             await MainActor.run {
+                // Only update if this date is still the displayed date (prevents race condition)
+                guard normalizedDate == self.currentDisplayDate else { return }
                 self.stepCount = steps
                 self.errorMessage = nil
                 self.showError = false
@@ -367,9 +382,12 @@ class HealthKitManager: ObservableObject {
     }
 
     func updateActiveEnergy(for date: Date = Date()) async {
+        let normalizedDate = Calendar.current.startOfDay(for: date)
         do {
             let energy = try await fetchActiveEnergyBurned(for: date)
             await MainActor.run {
+                // Only update if this date is still the displayed date (prevents race condition)
+                guard normalizedDate == self.currentDisplayDate else { return }
                 self.activeEnergyBurned = energy
                 self.errorMessage = nil
                 self.showError = false

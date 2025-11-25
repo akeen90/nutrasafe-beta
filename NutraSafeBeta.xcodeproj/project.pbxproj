@@ -69,6 +69,7 @@
 		AB4B75AB2E72DF020058DCD3 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = AB4B75AA2E72DF020058DCD3 /* FirebaseFirestore */; };
 		AB4B75AD2E72DF080058DCD3 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = AB4B75AC2E72DF080058DCD3 /* FirebaseStorage */; };
 		AB6A8F070FF14DC49BA4BC80 /* NutraSafe Beta/Utils/ReactionPDFExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF1C3CB3424C495E9408953D /* NutraSafe Beta/Utils/ReactionPDFExporter.swift */; };
+		CACHEMGR001BUILD /* NutraSafe Beta/Utils/CacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CACHEMGR001FILE /* NutraSafe Beta/Utils/CacheManager.swift */; };
 		AB9A79F32ECA769D00F7354A /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 953245696D9904535E8F08F2 /* Core */; };
 		AB9A79F42ECA769D00F7354A /* Search in Frameworks */ = {isa = PBXBuildFile; productRef = F8B093B13F95948B176C38A4 /* Search */; };
 		AB9A79F62ECA773F00F7354A /* FastingSourcesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB9A79F52ECA773F00F7354A /* FastingSourcesView.swift */; };
@@ -199,6 +200,7 @@
 		C0D23EEA8C59479AB6188B94 /* NutraSafe Beta/Views/Components/ActionButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Components/ActionButtons.swift"; sourceTree = "<group>"; };
 		C9BF68D365EE4EFCAC81C56F /* NutraSafe Beta/Views/Diary/DiaryExerciseComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Diary/DiaryExerciseComponents.swift"; sourceTree = "<group>"; };
 		CF1C3CB3424C495E9408953D /* NutraSafe Beta/Utils/ReactionPDFExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Utils/ReactionPDFExporter.swift"; sourceTree = SOURCE_ROOT; };
+		CACHEMGR001FILE /* NutraSafe Beta/Utils/CacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Utils/CacheManager.swift"; sourceTree = SOURCE_ROOT; };
 		D0FEC9B4AA084ED5BF9A4E53858FE767 /* NutraSafe Beta/ultra_processed_ingredients.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "NutraSafe Beta/ultra_processed_ingredients.json"; sourceTree = SOURCE_ROOT; };
 		D2B222B37C6C811A1DA830D7 /* FastingLiveActivity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FastingLiveActivity.swift; sourceTree = "<group>"; };
 		D3F02B35EB79BB96AD3D3301 /* FastingEducationView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FastingEducationView.swift; sourceTree = "<group>"; };
@@ -424,6 +426,7 @@
 				2748185AC3934123A2EE1CEC /* NutraSafe Beta/Managers/ReactionLogManager.swift */,
 				E3D9EE3D5C7748EE8D793D2B /* NutraSafe Beta/Views/ReactionLogView.swift */,
 				CF1C3CB3424C495E9408953D /* NutraSafe Beta/Utils/ReactionPDFExporter.swift */,
+				CACHEMGR001FILE /* NutraSafe Beta/Utils/CacheManager.swift */,
 				9EA48F8E27E84D79BCB731AA447430AB /* ingredients_consolidated.json */,
 				ED24D7DC4CA54819A95C7D71C8EC119A /* additives_unified.json */,
 				956ECB7D602D71885046D54F /* Managers */,
@@ -665,6 +668,7 @@
 				57D39094D959418DBEA2559C /* NutraSafe Beta/Managers/ReactionLogManager.swift in Sources */,
 				FAA5308D615C46F7B48AEE78 /* NutraSafe Beta/Views/ReactionLogView.swift in Sources */,
 				AB6A8F070FF14DC49BA4BC80 /* NutraSafe Beta/Utils/ReactionPDFExporter.swift in Sources */,
+				CACHEMGR001BUILD /* NutraSafe Beta/Utils/CacheManager.swift in Sources */,
 				"9E5CB88F-07E2-4BD1-9C28-" /* FastingCitationsView.swift in Sources */,
 				4F8520E48696407F923B1DDE /* CitationManager.swift in Sources */,
 				5ECB934A5DD68AD8E7E741B0 /* FastingViewModel.swift in Sources */,

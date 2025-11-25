@@ -757,9 +757,15 @@ struct DiaryTabView: View {
             do {
                 let (breakfast, lunch, dinner, snacks) = try await diaryDataManager.getFoodDataAsync(for: selectedDate)
 
-                // Update HealthKit data for the selected date (steps and calories burned)
+                // Set current display date before fetching (prevents race condition when rapidly navigating)
+                healthKitManager.setCurrentDisplayDate(selectedDate)
+
+                // Update ALL HealthKit data for the selected date
+                // NOTE: This is the ONLY place that should fetch HealthKit data for the diary
+                // DiaryDailySummaryCard observes these values but does NOT fetch
                 await healthKitManager.updateExerciseCalories(for: selectedDate)
                 await healthKitManager.updateStepCount(for: selectedDate)
+                await healthKitManager.updateActiveEnergy(for: selectedDate)
 
                 await MainActor.run {
                     breakfastFoods = breakfast
@@ -1654,6 +1660,29 @@ final class CategoricalNutrientViewModel: ObservableObject {
     private let weekCache = WeekDataCache() // NEW: Cache for processed week data
     private var currentLoadingDate: Date?
     weak var diaryManager: DiaryDataManager?
+    private var versionChangeObserver: NSObjectProtocol?
+
+    init() {
+        // Listen for app version changes to clear caches
+        versionChangeObserver = NotificationCenter.default.addObserver(
+            forName: .appVersionDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.clearCache()
+                #if DEBUG
+                print("🗑️ CategoricalNutrientViewModel: Cleared caches due to app version change")
+                #endif
+            }
+        }
+    }
+
+    deinit {
+        if let observer = versionChangeObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
 
     func setDiaryManager(_ manager: DiaryDataManager) {
         self.diaryManager = manager
