@@ -27,13 +27,13 @@ async function configureIndexSettings(client: any, indexName: string): Promise<v
     await client.setSettings({
       indexName,
       indexSettings: {
-        // Searchable attributes with priority ordering
-        // Higher priority = earlier in the array
+        // Searchable attributes - unordered so word position doesn't affect ranking
+        // "big mac" and "mac big" will match equally
         searchableAttributes: [
-          "name", // Highest priority - product name
-          "brandName", // Second - brand name
-          "barcode", // Third - exact barcode match
-          "ingredients", // Lowest - ingredient text
+          "unordered(name)", // Highest priority - product name
+          "unordered(brandName)", // Second - brand name
+          "barcode", // Third - exact barcode match (keep ordered)
+          "unordered(ingredients)", // Lowest - ingredient text
         ],
 
         // Custom ranking attributes for tie-breaking
@@ -57,25 +57,31 @@ async function configureIndexSettings(client: any, indexName: string): Promise<v
           "custom", // Custom ranking attributes above
         ],
 
-        // Typo tolerance settings
-        // Prevent "applewood" from matching "apple" too strongly
-        minWordSizefor1Typo: 4, // Require 4+ chars before allowing 1 typo
-        minWordSizefor2Typos: 8, // Require 8+ chars before allowing 2 typos
-        typoTolerance: "min", // Minimum typo tolerance (strict matching)
+        // Typo tolerance settings - RELAXED for food names with short words
+        // "big mac" (3+3 chars) now gets typo tolerance
+        minWordSizefor1Typo: 3, // Allow 1 typo for 3+ char words (was 4)
+        minWordSizefor2Typos: 6, // Allow 2 typos for 6+ char words (was 8)
+        typoTolerance: true, // Full typo tolerance (was "min")
 
         // Exact matching settings
         // Critical for single-word queries like "apple" or "costa"
         exactOnSingleWordQuery: "word", // Boost exact word matches on single-word queries
 
-        // Query word handling
-        removeWordsIfNoResults: "lastWords", // Remove last words if no results (helps with "costa coffee")
-        disableTypoToleranceOnWords: [], // Can add specific words to disable typos
-        disableTypoToleranceOnAttributes: [], // Can add specific attributes
+        // Query word handling - CRITICAL FIX
+        // "allOptional" means if "big mac" has no exact match, try "big" OR "mac"
+        removeWordsIfNoResults: "allOptional", // Was "lastWords" - now tries all word combinations
+        queryType: "prefixLast", // Enable prefix matching - "big ma" finds "big mac"
+
+        // Language handling
+        ignorePlurals: ["en"], // "apple" matches "apples"
+        removeStopWords: ["en"], // Remove common stop words in English
+
+        // Alternative matching
+        alternativesAsExact: ["ignorePlurals", "singleWordSynonym"],
 
         // Advanced settings
         attributeForDistinct: "name", // Deduplicate by name
         distinct: true, // Enable deduplication
-        removeStopWords: ["and", "or", "the"], // Remove common stop words
 
         // Highlighting for UI display
         attributesToHighlight: ["name", "brandName"],
@@ -534,28 +540,33 @@ export const searchFoodsAlgolia = functions.https.onRequest({
   // Determine if this is a single-word query (affects exact matching)
   const isSingleWord = query.trim().split(/\s+/).length === 1;
 
-  // Enhanced search parameters for better ranking
+  // Enhanced search parameters - let index settings handle most config
+  // Don't override the carefully tuned index settings!
   const searchParams = {
     query,
-    hitsPerPage,
+    hitsPerPage: hitsPerPage * 2, // Fetch more to allow for proper cross-index ranking
 
     // Query strategy
     // For single words like "apple" or "costa", prioritize exact matches
     exactOnSingleWordQuery: (isSingleWord ? "word" : "attribute") as "word" | "attribute",
 
-    // Typo tolerance - stricter for short queries
-    typoTolerance: (query.length <= 4 ? false : "min") as "min" | "strict" | false,
+    // Typo tolerance - always enabled, let index settings control the details
+    // Previously this was disabled for short queries which broke "big mac"
+    typoTolerance: true as const,
 
-    // Remove last words if no results (helps with "costa coffee" vs "costa")
-    removeWordsIfNoResults: "lastWords" as const,
+    // CRITICAL: Use allOptional so "big mac" finds results even if only one word matches
+    // This is the key fix for the search problem
+    removeWordsIfNoResults: "allOptional" as const,
 
-    // Optional words - treat all query words as optional
-    // This helps find "costa" even if "coffee" isn't in the name
-    optionalWords: query.split(/\s+/).filter((word) => word.length > 0),
+    // Enable Query Rules for synonym expansion
+    enableRules: true,
 
-    // Advanced ranking
-    advancedSyntax: false, // Disable for simpler queries
+    // Advanced settings
+    advancedSyntax: false, // Keep simple for users
     removeStopWords: true, // Remove "and", "or", "the" automatically
+
+    // Get ranking info for cross-index sorting
+    getRankingInfo: true,
   };
 
   // Search across all food indices
@@ -579,13 +590,44 @@ export const searchFoodsAlgolia = functions.https.onRequest({
     )
   );
 
-  // Combine results with priority: user-added > AI-enhanced > AI-manual > foods
-  const combinedHits = [
-    ...searchResults[0].hits, // User-added first
-    ...searchResults[1].hits, // AI-enhanced
-    ...searchResults[2].hits, // AI manually added
-    ...searchResults[3].hits, // Main foods
+  // Combine all results from all indices
+  const allHits = [
+    ...searchResults[0].hits.map((h: any) => ({...h, _sourceIndex: "user_added", _sourcePriority: 0})),
+    ...searchResults[1].hits.map((h: any) => ({...h, _sourceIndex: "ai_enhanced", _sourcePriority: 1})),
+    ...searchResults[2].hits.map((h: any) => ({...h, _sourceIndex: "ai_manually_added", _sourcePriority: 2})),
+    ...searchResults[3].hits.map((h: any) => ({...h, _sourceIndex: "foods", _sourcePriority: 3})),
   ];
+
+  // Sort by Algolia's relevance ranking, NOT by index priority
+  // This ensures "Big Mac" (matching both words) ranks before "Huel" (matching one word)
+  const combinedHits = allHits.sort((a: any, b: any) => {
+    const rankA = a._rankingInfo || {};
+    const rankB = b._rankingInfo || {};
+
+    // 1. More matched query words = better (MOST IMPORTANT)
+    // "Big Mac" matching both "big" and "mac" beats Huel matching just one
+    const wordsA = rankA.words || 0;
+    const wordsB = rankB.words || 0;
+    if (wordsB !== wordsA) return wordsB - wordsA;
+
+    // 2. Fewer typos = better
+    const typosA = rankA.nbTypos || 0;
+    const typosB = rankB.nbTypos || 0;
+    if (typosA !== typosB) return typosA - typosB;
+
+    // 3. More exact words = better
+    const exactA = rankA.nbExactWords || 0;
+    const exactB = rankB.nbExactWords || 0;
+    if (exactB !== exactA) return exactB - exactA;
+
+    // 4. Closer proximity = better (for multi-word queries)
+    const proxA = rankA.proximityDistance || 0;
+    const proxB = rankB.proximityDistance || 0;
+    if (proxA !== proxB) return proxA - proxB;
+
+    // 5. Finally, use source priority as tiebreaker
+    return a._sourcePriority - b._sourcePriority;
+  });
 
   // ⚡ PERFORMANCE OPTIMIZATION: Removed blocking OpenFoodFacts API call
   // Previously this added 2-5 seconds to every search request

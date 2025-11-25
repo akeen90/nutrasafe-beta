@@ -328,8 +328,12 @@ class FirebaseManager: ObservableObject {
     func saveFoodEntry(_ entry: FoodEntry) async throws {
         guard let userId = currentUser?.uid else { return }
         let entryData = entry.toDictionary()
-        try await db.collection("users").document(userId)
-            .collection("foodEntries").document(entry.id).setData(entryData)
+
+        // Wrap with retry for network resilience
+        try await withRetry {
+            try await self.db.collection("users").document(userId)
+                .collection("foodEntries").document(entry.id).setData(entryData)
+        }
 
         // Invalidate cache for this date
         invalidateFoodEntriesCache(for: entry.date, userId: userId)

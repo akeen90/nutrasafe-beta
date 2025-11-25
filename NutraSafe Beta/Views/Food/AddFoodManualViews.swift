@@ -1133,12 +1133,12 @@ struct ManualFoodDetailEntryView: View {
             )
 
             // Add to diary via DiaryDataManager using selected meal time
-            await MainActor.run {
-                let mealType = selectedMealTime.lowercased() // Convert to lowercase for storage
-                diaryDataManager.addFoodItem(diaryEntry, to: mealType, for: Date())
-                print("✅ Food added to user's diary (\(selectedMealTime))")
+            let mealType = selectedMealTime.lowercased() // Convert to lowercase for storage
+            await diaryDataManager.addFoodItem(diaryEntry, to: mealType, for: Date())
+            print("✅ Food added to user's diary (\(selectedMealTime))")
 
-                // Dismiss the sheet after successful save
+            // Dismiss the sheet after successful save
+            await MainActor.run {
                 dismiss()
 
                 // Switch to diary tab after a short delay

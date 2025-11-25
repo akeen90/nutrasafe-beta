@@ -515,98 +515,93 @@ class DiaryDataManager: ObservableObject {
     }
     
     // Add a single food item to a specific meal
-    func addFoodItem(_ item: DiaryFoodItem, to meal: String, for date: Date) {
+    func addFoodItem(_ item: DiaryFoodItem, to meal: String, for date: Date) async {
         print("DiaryDataManager: Adding food item '\(item.name)' to meal '\(meal)' for date \(date)")
 
-        Task {
-            do {
-                // Load current data from Firebase (single source of truth)
-                let (breakfast, lunch, dinner, snacks) = try await getFoodDataAsync(for: date)
-                print("DiaryDataManager: Loaded current counts from Firebase - Breakfast: \(breakfast.count), Lunch: \(lunch.count), Dinner: \(dinner.count), Snacks: \(snacks.count)")
+        do {
+            // Load current data from Firebase (single source of truth)
+            let (breakfast, lunch, dinner, snacks) = try await getFoodDataAsync(for: date)
+            print("DiaryDataManager: Loaded current counts from Firebase - Breakfast: \(breakfast.count), Lunch: \(lunch.count), Dinner: \(dinner.count), Snacks: \(snacks.count)")
 
-                // Helper function to check if an item matches (same food)
-                func itemMatches(_ existingItem: DiaryFoodItem) -> Bool {
-                    // Match by barcode first (most reliable)
-                    if let barcode = item.barcode, !barcode.isEmpty,
-                       let existingBarcode = existingItem.barcode, !existingBarcode.isEmpty {
-                        return barcode == existingBarcode
-                    }
-
-                    // Otherwise match by name and brand
-                    let nameMatches = existingItem.name.lowercased() == item.name.lowercased()
-                    let brandMatches = (existingItem.brand?.lowercased() ?? "") == (item.brand?.lowercased() ?? "")
-                    return nameMatches && brandMatches
+            // Helper function to check if an item matches (same food)
+            func itemMatches(_ existingItem: DiaryFoodItem) -> Bool {
+                // Match by barcode first (most reliable)
+                if let barcode = item.barcode, !barcode.isEmpty,
+                   let existingBarcode = existingItem.barcode, !existingBarcode.isEmpty {
+                    return barcode == existingBarcode
                 }
 
-                // Helper function to update or append item
-                func updateOrAppend(items: [DiaryFoodItem]) -> [DiaryFoodItem] {
-                    var updated = items
-                    if let index = updated.firstIndex(where: itemMatches) {
-                        // Food already exists - replace it with fresh data while preserving user-specific fields
-                        var updatedItem = item
-                        updatedItem.id = updated[index].id  // Keep the original ID
-                        updated[index] = updatedItem
-                        print("DiaryDataManager: ✨ Updated existing food '\(item.name)' with fresh data (ID: \(updatedItem.id))")
-                        return updated
-                    } else {
-                        // New food - append it
-                        updated.append(item)
-                        print("DiaryDataManager: ➕ Added new food '\(item.name)' to meal")
-                        return updated
-                    }
+                // Otherwise match by name and brand
+                let nameMatches = existingItem.name.lowercased() == item.name.lowercased()
+                let brandMatches = (existingItem.brand?.lowercased() ?? "") == (item.brand?.lowercased() ?? "")
+                return nameMatches && brandMatches
+            }
+
+            // Helper function to update or append item
+            func updateOrAppend(items: [DiaryFoodItem]) -> [DiaryFoodItem] {
+                var updated = items
+                if let index = updated.firstIndex(where: itemMatches) {
+                    // Food already exists - replace it with fresh data while preserving user-specific fields
+                    var updatedItem = item
+                    updatedItem.id = updated[index].id  // Keep the original ID
+                    updated[index] = updatedItem
+                    print("DiaryDataManager: ✨ Updated existing food '\(item.name)' with fresh data (ID: \(updatedItem.id))")
+                    return updated
+                } else {
+                    // New food - append it
+                    updated.append(item)
+                    print("DiaryDataManager: ➕ Added new food '\(item.name)' to meal")
+                    return updated
                 }
+            }
 
-                // Update or append item to appropriate meal
-                switch meal.lowercased() {
-                case "breakfast":
-                    let updatedBreakfast = updateOrAppend(items: breakfast)
-                    print("DiaryDataManager: Breakfast count: \(updatedBreakfast.count)")
-                    saveFoodData(for: date, breakfast: updatedBreakfast, lunch: lunch, dinner: dinner, snacks: snacks)
-                case "lunch":
-                    let updatedLunch = updateOrAppend(items: lunch)
-                    print("DiaryDataManager: Lunch count: \(updatedLunch.count)")
-                    saveFoodData(for: date, breakfast: breakfast, lunch: updatedLunch, dinner: dinner, snacks: snacks)
-                case "dinner":
-                    let updatedDinner = updateOrAppend(items: dinner)
-                    print("DiaryDataManager: Dinner count: \(updatedDinner.count)")
-                    saveFoodData(for: date, breakfast: breakfast, lunch: lunch, dinner: updatedDinner, snacks: snacks)
-                case "snacks":
-                    let updatedSnacks = updateOrAppend(items: snacks)
-                    print("DiaryDataManager: Snacks count: \(updatedSnacks.count)")
-                    saveFoodData(for: date, breakfast: breakfast, lunch: lunch, dinner: dinner, snacks: updatedSnacks)
-                default:
-                    print("DiaryDataManager: ERROR - Unknown meal type: \(meal)")
-                }
+            // Update or append item to appropriate meal
+            switch meal.lowercased() {
+            case "breakfast":
+                let updatedBreakfast = updateOrAppend(items: breakfast)
+                print("DiaryDataManager: Breakfast count: \(updatedBreakfast.count)")
+                saveFoodData(for: date, breakfast: updatedBreakfast, lunch: lunch, dinner: dinner, snacks: snacks)
+            case "lunch":
+                let updatedLunch = updateOrAppend(items: lunch)
+                print("DiaryDataManager: Lunch count: \(updatedLunch.count)")
+                saveFoodData(for: date, breakfast: breakfast, lunch: updatedLunch, dinner: dinner, snacks: snacks)
+            case "dinner":
+                let updatedDinner = updateOrAppend(items: dinner)
+                print("DiaryDataManager: Dinner count: \(updatedDinner.count)")
+                saveFoodData(for: date, breakfast: breakfast, lunch: lunch, dinner: updatedDinner, snacks: snacks)
+            case "snacks":
+                let updatedSnacks = updateOrAppend(items: snacks)
+                print("DiaryDataManager: Snacks count: \(updatedSnacks.count)")
+                saveFoodData(for: date, breakfast: breakfast, lunch: lunch, dinner: dinner, snacks: updatedSnacks)
+            default:
+                print("DiaryDataManager: ERROR - Unknown meal type: \(meal)")
+            }
 
-                // Add to recent foods for quick access in search
-                await MainActor.run {
-                    addToRecentFoods(item)
-                }
+            // Add to recent foods for quick access in search
+            await MainActor.run {
+                addToRecentFoods(item)
+            }
 
-                // Sync to Firebase and wait for it to complete
-                await syncFoodItemToFirebase(item, meal: meal, date: date)
+            // Sync to Firebase and wait for it to complete
+            await syncFoodItemToFirebase(item, meal: meal, date: date)
 
-                // Small delay to ensure Firebase cache is updated
-                try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+            // Process micronutrients for this food item
+            await processMicronutrientsForFood(item, date: date)
 
-                // Process micronutrients for this food item
-                await processMicronutrientsForFood(item, date: date)
+            // Notify observers that data changed (triggers DiaryTabView to refresh)
+            await MainActor.run {
+                self.objectWillChange.send()
+                self.dataReloadTrigger = UUID() // Trigger DiaryTabView to reload from Firebase
+            }
 
-                // Notify observers that data changed (triggers DiaryTabView to refresh)
-                await MainActor.run {
-                    self.objectWillChange.send()
-                    self.dataReloadTrigger = UUID() // Trigger DiaryTabView to reload from Firebase
-                }
-
-            } catch {
-                print("DiaryDataManager: Error loading current data from Firebase: \(error.localizedDescription)")
-                // Fallback: just sync to Firebase
-                await syncFoodItemToFirebase(item, meal: meal, date: date)
-                await MainActor.run {
-                    addToRecentFoods(item)
-                    self.objectWillChange.send()
-                    self.dataReloadTrigger = UUID()
-                }
+        } catch {
+            print("DiaryDataManager: Error loading current data from Firebase: \(error.localizedDescription)")
+            // Fallback: just sync to Firebase
+            await syncFoodItemToFirebase(item, meal: meal, date: date)
+            await MainActor.run {
+                addToRecentFoods(item)
+                self.objectWillChange.send()
+                self.dataReloadTrigger = UUID()
             }
         }
     }

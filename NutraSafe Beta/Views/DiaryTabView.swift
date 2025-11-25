@@ -710,31 +710,35 @@ struct DiaryTabView: View {
 
     private func performMove() {
         let destinationMeal = moveToMeal.lowercased()
-        for id in selectedFoodItems {
-            if let food = findFood(byId: id) {
+        let itemsToMove = selectedFoodItems.compactMap { findFood(byId: $0) }
+        selectedFoodItems.removeAll()
+        showingMoveSheet = false
+
+        Task {
+            for food in itemsToMove {
                 // Remove from current date
                 diaryDataManager.deleteFoodItems([food], for: selectedDate)
                 // Add to destination date (new id to avoid collisions)
                 var moved = food
                 moved.id = UUID()
-                diaryDataManager.addFoodItem(moved, to: destinationMeal, for: moveToDate)
+                await diaryDataManager.addFoodItem(moved, to: destinationMeal, for: moveToDate)
             }
         }
-        selectedFoodItems.removeAll()
-        showingMoveSheet = false
     }
 
     private func performCopy() {
         let destinationMeal = copyToMeal.lowercased()
-        for id in selectedFoodItems {
-            if let food = findFood(byId: id) {
-                var copied = food
-                copied.id = UUID()
-                diaryDataManager.addFoodItem(copied, to: destinationMeal, for: copyToDate)
-            }
-        }
+        let itemsToCopy = selectedFoodItems.compactMap { findFood(byId: $0) }
         selectedFoodItems.removeAll()
         showingCopySheet = false
+
+        Task {
+            for food in itemsToCopy {
+                var copied = food
+                copied.id = UUID()
+                await diaryDataManager.addFoodItem(copied, to: destinationMeal, for: copyToDate)
+            }
+        }
     }
 
     private func findFood(byId id: String) -> DiaryFoodItem? {
@@ -752,6 +756,11 @@ struct DiaryTabView: View {
 
             do {
                 let (breakfast, lunch, dinner, snacks) = try await diaryDataManager.getFoodDataAsync(for: selectedDate)
+
+                // Update HealthKit data for the selected date (steps and calories burned)
+                await healthKitManager.updateExerciseCalories(for: selectedDate)
+                await healthKitManager.updateStepCount(for: selectedDate)
+
                 await MainActor.run {
                     breakfastFoods = breakfast
                     lunchFoods = lunch

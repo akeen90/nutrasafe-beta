@@ -26,6 +26,12 @@ struct AddTabViewFixed: View {
         .onAppear {
             // Clear the preselected destination after use to avoid leakage across sessions
             UserDefaults.standard.removeObject(forKey: "preselectedDestination")
+
+            // Clear stale preselectedDate if NOT coming from diary (no meal type selected)
+            // This prevents old dates from persisting when user opens Add tab directly
+            if UserDefaults.standard.string(forKey: "preselectedMealType") == nil {
+                UserDefaults.standard.removeObject(forKey: "preselectedDate")
+            }
         }
     }
 

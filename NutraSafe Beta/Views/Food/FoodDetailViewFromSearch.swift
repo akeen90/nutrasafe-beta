@@ -2058,7 +2058,8 @@ private var nutritionFactsSection: some View {
             let targetDate: Date
             if let preselectedTimestamp = UserDefaults.standard.object(forKey: "preselectedDate") as? Double {
                 targetDate = Date(timeIntervalSince1970: preselectedTimestamp)
-                // Don't clear yet - DiaryTabView needs to read it to navigate to the correct date
+                // Clear after reading to prevent stale dates from persisting across sessions
+                UserDefaults.standard.removeObject(forKey: "preselectedDate")
             } else {
                 targetDate = Date()
             }
@@ -2105,22 +2106,24 @@ private var nutritionFactsSection: some View {
                     }
                 }
             } else {
-        // DEBUG LOG: print("🔍 MEAL TIME DEBUG:")
+                // Adding new food item - await completion before dismissing
                 #if DEBUG
                 print("  - NO diaryEntryId (adding new)")
                 print("  - selectedMeal: '\(selectedMeal)'")
                 print("FoodDetailView: About to add food '\(diaryEntry.name)' to meal '\(selectedMeal)' on date '\(targetDate)'")
                 print("FoodDetailView: DiaryEntry details - Calories: \(diaryEntry.calories), Protein: \(diaryEntry.protein), Serving: \(diaryEntry.servingDescription), Quantity: \(diaryEntry.quantity)")
                 #endif
-                diaryDataManager.addFoodItem(diaryEntry, to: selectedMeal, for: targetDate)
-                #if DEBUG
-                print("FoodDetailView: Successfully added \(diaryEntry.name) to \(selectedMeal) on \(targetDate)")
 
-                // Dismiss immediately for new items (adds are faster)
-                #endif
-
-                dismiss()
-                onComplete?(.diary)
+                Task {
+                    await diaryDataManager.addFoodItem(diaryEntry, to: selectedMeal, for: targetDate)
+                    #if DEBUG
+                    print("FoodDetailView: Successfully added \(diaryEntry.name) to \(selectedMeal) on \(targetDate)")
+                    #endif
+                    await MainActor.run {
+                        dismiss()
+                        onComplete?(.diary)
+                    }
+                }
             }
     }
     

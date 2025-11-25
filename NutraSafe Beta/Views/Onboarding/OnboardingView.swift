@@ -7,8 +7,17 @@
 
 import SwiftUI
 
+// MARK: - Scroll Tracking
+struct ScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 struct OnboardingView: View {
     @State private var currentPage = 0
+    @State private var hasScrolledToBottom: [Int: Bool] = [0: true] // Welcome page always enabled
     let totalPages = 11 // 10 content pages + 1 disclaimer
     let onComplete: () -> Void
 
@@ -30,15 +39,15 @@ struct OnboardingView: View {
                 Group {
                     switch currentPage {
                     case 0: WelcomePage()
-                    case 1: DiaryPage()
-                    case 2: FoodDetailPage()
-                    case 3: NutrientsPage()
-                    case 4: ReactionsPage()
-                    case 5: PatternsPage()
-                    case 6: FastingPage()
-                    case 7: ProgressPage()
-                    case 8: UseByPage()
-                    case 9: FinalMessagePage()
+                    case 1: DiaryPage(onScrolledToBottom: { hasScrolledToBottom[1] = true })
+                    case 2: FoodDetailPage(onScrolledToBottom: { hasScrolledToBottom[2] = true })
+                    case 3: NutrientsPage(onScrolledToBottom: { hasScrolledToBottom[3] = true })
+                    case 4: ReactionsPage(onScrolledToBottom: { hasScrolledToBottom[4] = true })
+                    case 5: PatternsPage(onScrolledToBottom: { hasScrolledToBottom[5] = true })
+                    case 6: FastingPage(onScrolledToBottom: { hasScrolledToBottom[6] = true })
+                    case 7: ProgressPage(onScrolledToBottom: { hasScrolledToBottom[7] = true })
+                    case 8: UseByPage(onScrolledToBottom: { hasScrolledToBottom[8] = true })
+                    case 9: FinalMessagePage(onScrolledToBottom: { hasScrolledToBottom[9] = true })
                     case 10: DisclaimerPage(onAccept: {
                         OnboardingManager.shared.acceptDisclaimer()
                         OnboardingManager.shared.completeOnboarding()
@@ -53,8 +62,10 @@ struct OnboardingView: View {
                     removal: .move(edge: .leading).combined(with: .opacity)
                 ))
 
-                // Navigation buttons
+                // Navigation buttons (only appear when scrolled to bottom)
                 if currentPage < 10 {
+                    let isScrolledToBottom = hasScrolledToBottom[currentPage] ?? false
+
                     HStack(spacing: 16) {
                         if currentPage > 0 {
                             Button(action: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } }) {
@@ -95,6 +106,8 @@ struct OnboardingView: View {
                     .padding(.horizontal, 24)
                     .padding(.bottom, 32)
                     .layoutPriority(1)
+                    .opacity(isScrolledToBottom ? 1 : 0)
+                    .animation(.easeInOut(duration: 0.3), value: isScrolledToBottom)
                 }
 
                 // Progress indicator

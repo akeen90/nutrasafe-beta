@@ -9,6 +9,8 @@ import SwiftUI
 
 // MARK: - Diary Page with Screenshot
 struct DiaryPage: View {
+    let onScrolledToBottom: () -> Void
+
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
@@ -63,6 +65,11 @@ struct DiaryPage: View {
                 .padding(.horizontal, 24)
 
                 Spacer().frame(height: 80)
+
+                // Invisible scroll detector
+                Color.clear
+                    .frame(height: 1)
+                    .onAppear { onScrolledToBottom() }
             }
         }
     }
@@ -70,6 +77,8 @@ struct DiaryPage: View {
 
 // MARK: - Food Detail Page
 struct FoodDetailPage: View {
+    let onScrolledToBottom: () -> Void
+
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
@@ -124,6 +133,11 @@ struct FoodDetailPage: View {
                 .padding(.horizontal, 24)
 
                 Spacer().frame(height: 80)
+
+                // Invisible scroll detector
+                Color.clear
+                    .frame(height: 1)
+                    .onAppear { onScrolledToBottom() }
             }
         }
     }
@@ -131,6 +145,8 @@ struct FoodDetailPage: View {
 
 // MARK: - Nutrients Page
 struct NutrientsPage: View {
+    let onScrolledToBottom: () -> Void
+
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
@@ -172,6 +188,11 @@ struct NutrientsPage: View {
                 .padding(.horizontal, 24)
 
                 Spacer().frame(height: 80)
+
+                // Invisible scroll detector
+                Color.clear
+                    .frame(height: 1)
+                    .onAppear { onScrolledToBottom() }
             }
         }
     }
@@ -179,6 +200,8 @@ struct NutrientsPage: View {
 
 // MARK: - Reactions Page
 struct ReactionsPage: View {
+    let onScrolledToBottom: () -> Void
+
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
@@ -219,6 +242,11 @@ struct ReactionsPage: View {
                 .padding(.horizontal, 24)
 
                 Spacer().frame(height: 80)
+
+                // Invisible scroll detector
+                Color.clear
+                    .frame(height: 1)
+                    .onAppear { onScrolledToBottom() }
             }
         }
     }
@@ -226,6 +254,8 @@ struct ReactionsPage: View {
 
 // MARK: - Patterns Page
 struct PatternsPage: View {
+    let onScrolledToBottom: () -> Void
+
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
@@ -274,6 +304,11 @@ struct PatternsPage: View {
                 .padding(.horizontal, 24)
 
                 Spacer().frame(height: 80)
+
+                // Invisible scroll detector
+                Color.clear
+                    .frame(height: 1)
+                    .onAppear { onScrolledToBottom() }
             }
         }
     }
@@ -281,6 +316,8 @@ struct PatternsPage: View {
 
 // MARK: - Fasting Page with Screenshot
 struct FastingPage: View {
+    let onScrolledToBottom: () -> Void
+
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
@@ -321,6 +358,11 @@ struct FastingPage: View {
                 .padding(.horizontal, 24)
 
                 Spacer().frame(height: 80)
+
+                // Invisible scroll detector
+                Color.clear
+                    .frame(height: 1)
+                    .onAppear { onScrolledToBottom() }
             }
         }
     }
@@ -328,6 +370,8 @@ struct FastingPage: View {
 
 // MARK: - Progress Page
 struct ProgressPage: View {
+    let onScrolledToBottom: () -> Void
+
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
@@ -376,6 +420,11 @@ struct ProgressPage: View {
                 .padding(.horizontal, 24)
 
                 Spacer().frame(height: 80)
+
+                // Invisible scroll detector
+                Color.clear
+                    .frame(height: 1)
+                    .onAppear { onScrolledToBottom() }
             }
         }
     }
@@ -383,6 +432,8 @@ struct ProgressPage: View {
 
 // MARK: - Use By Page
 struct UseByPage: View {
+    let onScrolledToBottom: () -> Void
+
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
@@ -430,6 +481,11 @@ struct UseByPage: View {
                 .padding(.horizontal, 24)
 
                 Spacer().frame(height: 80)
+
+                // Invisible scroll detector
+                Color.clear
+                    .frame(height: 1)
+                    .onAppear { onScrolledToBottom() }
             }
         }
     }
@@ -437,6 +493,8 @@ struct UseByPage: View {
 
 // MARK: - Final Message Page
 struct FinalMessagePage: View {
+    let onScrolledToBottom: () -> Void
+
     var body: some View {
         ScrollView {
             VStack(spacing: 32) {
@@ -486,6 +544,11 @@ struct FinalMessagePage: View {
                 .padding(.horizontal, 24)
 
                 Spacer()
+
+                // Invisible scroll detector
+                Color.clear
+                    .frame(height: 1)
+                    .onAppear { onScrolledToBottom() }
             }
         }
     }

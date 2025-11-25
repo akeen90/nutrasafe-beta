@@ -35,4 +35,8 @@ export { findIngredients } from './find-ingredients';
 export { auditMissingIngredients } from './audit-missing-ingredients';
 
 // Algolia integration
-export { syncVerifiedFoodToAlgolia, syncFoodToAlgolia, syncManualFoodToAlgolia, syncUserAddedFoodToAlgolia, syncAIEnhancedFoodToAlgolia, syncAIManuallyAddedFoodToAlgolia, bulkImportFoodsToAlgolia, searchFoodsAlgolia } from './algolia-sync';
+export { syncVerifiedFoodToAlgolia, syncFoodToAlgolia, syncManualFoodToAlgolia, syncUserAddedFoodToAlgolia, syncAIEnhancedFoodToAlgolia, syncAIManuallyAddedFoodToAlgolia, bulkImportFoodsToAlgolia, searchFoodsAlgolia, configureAlgoliaIndices } from './algolia-sync';
+
+// Algolia synonyms and query rules
+export { syncSynonymsToAlgolia, getSynonymStats, clearSynonymsFromAlgolia } from './food-synonyms';
+export { configureQueryRules, getQueryRulesStats, clearQueryRules } from './algolia-query-rules';
