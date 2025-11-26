@@ -51,9 +51,8 @@ struct CustomTabBar: View {
                     Button(action: {
                         let allowed = subscriptionManager.isSubscribed || subscriptionManager.isInTrial || subscriptionManager.isPremiumOverride || tab == .diary
                         if allowed {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                selectedTab = tab
-                            }
+                            // PERFORMANCE: Instant tab switch - no animation delay
+                            selectedTab = tab
                             let impactFeedback = UIImpactFeedbackGenerator(style: .light)
                             impactFeedback.impactOccurred()
                         } else {
@@ -66,8 +65,8 @@ struct CustomTabBar: View {
                             Image(systemName: tab.icon)
                                 .font(.system(size: 22, weight: selectedTab == tab ? .semibold : .regular))
                                 .foregroundColor(selectedTab == tab ? .blue : Color.gray)
-                                .scaleEffect(selectedTab == tab ? 1.1 : 1.0)
-                                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selectedTab)
+                                .scaleEffect(selectedTab == tab ? 1.08 : 1.0)
+                                .animation(.easeOut(duration: 0.1), value: selectedTab)
 
                             if !tab.title.isEmpty {
                                 Text(tab.title)

@@ -3290,92 +3290,13 @@ private var nutritionFactsSection: some View {
     
     // MARK: - Fast Food Brand Detection
 
-    /// Recognised fast food brands where NutraSafe Processing Grade is not applicable
-    /// These items are known to be highly processed by nature
-    private static let fastFoodBrands: Set<String> = [
-        // Major UK/US Fast Food Chains
-        "mcdonald's", "mcdonalds", "mcd", "maccies",
-        "burger king", "bk",
-        "kfc", "kentucky fried chicken",
-        "subway",
-        "domino's", "dominos",
-        "pizza hut",
-        "papa john's", "papa johns",
-        "wendy's", "wendys",
-        "taco bell",
-        "popeyes", "popeye's",
-        "chick-fil-a", "chickfila",
-        "five guys",
-        "shake shack",
-        "chipotle",
-        "nando's", "nandos",
-        "greggs",
-        "pret", "pret a manger",
-        "costa", "costa coffee",
-        "starbucks",
-        "dunkin", "dunkin donuts", "dunkin'",
-        "krispy kreme",
-        "tim hortons",
-        "wetherspoon", "wetherspoons", "j d wetherspoon",
-        "harvester",
-        "toby carvery",
-        "beefeater",
-        "frankie & benny's", "frankie and bennys",
-        "pizza express",
-        "wagamama",
-        "yo! sushi", "yo sushi",
-        "itsu",
-        "leon",
-        "tortilla",
-        "gourmet burger kitchen", "gbk",
-        "byron",
-        "honest burgers",
-        "in-n-out", "in n out",
-        "jack in the box",
-        "sonic",
-        "arby's", "arbys",
-        "carl's jr", "carls jr",
-        "hardee's", "hardees",
-        "white castle",
-        "checkers", "rally's",
-        "whataburger",
-        "culver's", "culvers",
-        "del taco",
-        "el pollo loco",
-        "wingstop",
-        "buffalo wild wings", "bdubs",
-        "hooters",
-        "raising cane's", "raising canes",
-        "zaxby's", "zaxbys",
-        "bojangles",
-        "church's chicken", "churchs chicken",
-        "long john silver's", "long john silvers",
-        "captain d's", "captain ds",
-        "little caesars",
-        "hungry jack's", "hungry jacks",
-        "red rooster"
-    ]
-
-    /// Check if the current food is from a recognised fast food brand
+    /// Check if the current food is from a recognised fast food/processed food brand
+    /// Uses shared brand detection from AlgoliaSearchManager for consistency
     private var isFastFoodBrand: Bool {
-        guard let brand = displayFood.brand?.lowercased().trimmingCharacters(in: .whitespacesAndNewlines),
-              !brand.isEmpty else {
-            return false
-        }
-
-        // Check exact match first
-        if Self.fastFoodBrands.contains(brand) {
-            return true
-        }
-
-        // Check if brand contains any fast food brand name
-        for fastFoodBrand in Self.fastFoodBrands {
-            if brand.contains(fastFoodBrand) || fastFoodBrand.contains(brand) {
-                return true
-            }
-        }
-
-        return false
+        return isProcessedFoodBrand(
+            brand: displayFood.brand,
+            name: displayFood.name
+        )
     }
 
     // MARK: - Food Scores Section

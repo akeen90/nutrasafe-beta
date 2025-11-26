@@ -8,6 +8,253 @@
 
 import Foundation
 
+// MARK: - Brand Synonym Groups & Processed Food Detection
+
+/// Groups of brand synonyms - first item is the canonical name
+/// When searching for any synonym, results for all synonyms in the group are returned
+let brandSynonymGroups: [[String]] = [
+    // Coca-Cola variants
+    ["coca-cola", "coca cola", "cocacola", "coke", "diet coke", "coke zero", "cherry coke", "coca-cola zero", "coke classic"],
+    // Pepsi variants
+    ["pepsi", "pepsico", "pepsi-cola", "pepsi cola", "diet pepsi", "pepsi max", "pepsi zero"],
+    // McDonald's variants
+    ["mcdonald's", "mcdonalds", "mcd", "maccies", "mickey d's", "mickey ds", "maccas", "maccy d's", "maccy ds"],
+    // Burger King variants
+    ["burger king", "bk", "burgerking"],
+    // KFC variants
+    ["kfc", "kentucky fried chicken", "kentucky"],
+    // Domino's variants
+    ["domino's", "dominos", "domino", "domino's pizza"],
+    // Pizza Hut variants
+    ["pizza hut", "pizzahut"],
+    // Starbucks variants
+    ["starbucks", "starbuck's", "sbux"],
+    // Dunkin variants
+    ["dunkin", "dunkin donuts", "dunkin'", "dunkin doughnuts"],
+    // Krispy Kreme variants
+    ["krispy kreme", "krispykreme", "krispy kream"],
+    // Dr Pepper variants
+    ["dr pepper", "dr. pepper", "drpepper", "doctor pepper"],
+    // Mountain Dew variants
+    ["mountain dew", "mtn dew", "mountaindew"],
+    // Red Bull variants
+    ["red bull", "redbull"],
+    // Monster Energy variants
+    ["monster", "monster energy", "monster drink"],
+    // Sprite variants
+    ["sprite", "sprite zero"],
+    // Fanta variants
+    ["fanta", "fanta orange"],
+    // 7UP variants
+    ["7up", "7-up", "seven up", "sevenup"],
+    // Lucozade variants
+    ["lucozade", "lucozade energy", "lucozade sport"],
+    // Irn-Bru variants
+    ["irn-bru", "irn bru", "irnbru", "iron brew"],
+    // Cadbury variants
+    ["cadbury", "cadbury's", "cadburys"],
+    // Nestle variants
+    ["nestle", "nestlé", "nestle's"],
+    // Mars variants
+    ["mars", "mars bar"],
+    // Kit Kat variants
+    ["kit kat", "kitkat", "kit-kat"],
+    // M&Ms variants
+    ["m&m's", "m&ms", "mms", "m and ms"],
+    // Haribo variants
+    ["haribo", "haribo sweets"],
+    // Walkers variants
+    ["walkers", "walkers crisps", "walker's"],
+    // Lays variants
+    ["lays", "lay's"],
+    // Pringles variants
+    ["pringles", "pringle's"],
+    // Doritos variants
+    ["doritos", "dorito"],
+    // Nando's variants
+    ["nando's", "nandos", "nando"],
+    // Greggs variants
+    ["greggs", "gregg's"],
+    // Costa variants
+    ["costa", "costa coffee"],
+    // Pret variants
+    ["pret", "pret a manger"],
+    // Wendy's variants
+    ["wendy's", "wendys", "wendy"],
+    // Taco Bell variants
+    ["taco bell", "tacobell"],
+    // Five Guys variants
+    ["five guys", "fiveguys", "5 guys"],
+    // Shake Shack variants
+    ["shake shack", "shakeshack"],
+    // Chick-fil-A variants
+    ["chick-fil-a", "chickfila", "chick fil a"],
+    // Popeyes variants
+    ["popeyes", "popeye's", "popeye"],
+    // Tim Hortons variants
+    ["tim hortons", "tim horton's", "timhortons", "tims"],
+    // Wetherspoon variants
+    ["wetherspoon", "wetherspoons", "j d wetherspoon", "jd wetherspoon", "spoons"],
+    // In-N-Out variants
+    ["in-n-out", "in n out", "innout", "in and out"],
+    // Gatorade variants
+    ["gatorade", "gator aid"],
+    // Powerade variants
+    ["powerade", "power ade"],
+    // Prime variants
+    ["prime", "prime hydration", "prime drink"],
+    // Tropicana variants
+    ["tropicana", "tropicana juice"],
+    // Innocent variants
+    ["innocent", "innocent smoothies", "innocent drinks"],
+    // Subway
+    ["subway"],
+    // Chipotle
+    ["chipotle"],
+]
+
+/// All recognised fast food and processed food brands - NutraSafe grade hidden for these
+let processedFoodBrands: Set<String> = {
+    var brands = Set<String>()
+
+    // Add all synonyms from synonym groups
+    for group in brandSynonymGroups {
+        for brand in group {
+            brands.insert(brand)
+        }
+    }
+
+    // Add additional brands not in synonym groups
+    let additionalBrands = [
+        // Fast food chains
+        "papa john's", "papa johns", "papa john",
+        "little caesars", "little caesar's",
+        "harvester", "toby carvery", "beefeater",
+        "frankie & benny's", "frankie and bennys",
+        "pizza express", "pizzaexpress",
+        "wagamama", "wagamamas",
+        "yo! sushi", "yo sushi", "yosushi",
+        "itsu", "leon", "tortilla",
+        "gourmet burger kitchen", "gbk",
+        "byron", "honest burgers",
+        "jack in the box", "sonic",
+        "arby's", "arbys", "arby",
+        "carl's jr", "carls jr", "carlsjr",
+        "hardee's", "hardees", "hardee",
+        "white castle", "whitecastle",
+        "checkers", "rally's", "rallys",
+        "whataburger", "culver's", "culvers",
+        "del taco", "deltaco", "el pollo loco",
+        "wingstop", "buffalo wild wings", "bdubs", "bww",
+        "hooters", "raising cane's", "raising canes",
+        "zaxby's", "zaxbys", "bojangles", "bojangle's",
+        "church's chicken", "churchs chicken",
+        "long john silver's", "long john silvers",
+        "captain d's", "captain ds",
+        "hungry jack's", "hungry jacks", "red rooster",
+        // Energy drinks
+        "rockstar", "rockstar energy",
+        // Confectionery
+        "snickers", "twix", "milky way", "bounty", "maltesers",
+        "galaxy", "dairy milk",
+        "hershey", "hershey's", "hersheys",
+        "reese's", "reeses",
+        "skittles", "starburst", "swizzels",
+        "rowntree's", "rowntrees",
+        "fruit pastilles", "fruit gums", "wine gums", "jelly babies",
+        "smarties", "aero", "crunchie", "flake", "twirl", "wispa",
+        "double decker", "boost", "picnic", "curly wurly", "fudge",
+        "timeout", "yorkie", "lion bar", "toffee crisp", "drifter",
+        // Crisps/snacks
+        "cheetos", "wotsits", "quavers", "monster munch",
+        "hula hoops", "skips", "frazzles", "squares", "nik naks",
+        "kettle chips", "kettle", "tyrells", "tyrrells",
+        "sensations", "mccoys", "mccoy's",
+        // Other drinks
+        "ribena", "vimto", "tango", "oasis", "robinsons",
+        "snapple", "lipton", "lipton ice tea",
+        "arizona", "arizona iced tea", "vita coco",
+        "naked juice", "naked",
+    ]
+
+    for brand in additionalBrands {
+        brands.insert(brand)
+    }
+
+    return brands
+}()
+
+/// Maps any brand synonym to its canonical (first) name in the group
+private let synonymToCanonical: [String: String] = {
+    var mapping: [String: String] = [:]
+    for group in brandSynonymGroups {
+        guard let canonical = group.first else { continue }
+        for synonym in group {
+            mapping[synonym] = canonical
+        }
+    }
+    return mapping
+}()
+
+/// Maps canonical brand name to all its synonyms
+private let canonicalToSynonyms: [String: [String]] = {
+    var mapping: [String: [String]] = [:]
+    for group in brandSynonymGroups {
+        guard let canonical = group.first else { continue }
+        mapping[canonical] = group
+    }
+    return mapping
+}()
+
+/// Check if a brand/name is a recognised processed food brand
+func isProcessedFoodBrand(brand: String?, name: String) -> Bool {
+    let brandLower = brand?.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    let nameLower = name.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+
+    let textsToCheck = [brandLower, nameLower].filter { !$0.isEmpty }
+
+    for text in textsToCheck {
+        if processedFoodBrands.contains(text) {
+            return true
+        }
+        for brand in processedFoodBrands {
+            if text.contains(brand) {
+                return true
+            }
+        }
+    }
+    return false
+}
+
+/// Expand a search query to include brand synonyms
+func expandSearchQuery(_ query: String) -> [String] {
+    let queryLower = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+    var expandedQueries = [query]
+
+    if let canonical = synonymToCanonical[queryLower],
+       let synonyms = canonicalToSynonyms[canonical] {
+        for synonym in synonyms where synonym != queryLower {
+            expandedQueries.append(synonym)
+        }
+    } else {
+        for (synonym, canonical) in synonymToCanonical {
+            if queryLower.contains(synonym), let allSynonyms = canonicalToSynonyms[canonical] {
+                for otherSynonym in allSynonyms where otherSynonym != synonym {
+                    let expandedQuery = queryLower.replacingOccurrences(of: synonym, with: otherSynonym)
+                    if !expandedQueries.contains(expandedQuery) {
+                        expandedQueries.append(expandedQuery)
+                    }
+                }
+                break
+            }
+        }
+    }
+
+    return expandedQueries
+}
+
+// MARK: - Algolia Search Manager
+
 /// Manages direct Algolia search operations using REST API (no Cloud Function intermediary)
 final class AlgoliaSearchManager {
     static let shared = AlgoliaSearchManager()
@@ -74,21 +321,83 @@ final class AlgoliaSearchManager {
         print("🔍 Algolia Direct REST: Searching '\(query)'...")
         #endif
 
-        // Search all indices in parallel
-        let results = try await searchMultipleIndices(query: trimmedQuery, hitsPerPage: hitsPerPage)
+        // Expand query with brand synonyms (e.g., "coke" -> also search "coca-cola")
+        let expandedQueries = expandSearchQuery(trimmedQuery)
+
+        #if DEBUG
+        if expandedQueries.count > 1 {
+            print("🔀 Brand synonym expansion: \(expandedQueries)")
+        }
+        #endif
+
+        // Search all indices with all expanded queries in parallel
+        var allResults: [FoodSearchResult] = []
+        var seenIds = Set<String>()
+
+        for searchQuery in expandedQueries {
+            let results = try await searchMultipleIndices(query: searchQuery, hitsPerPage: hitsPerPage)
+            for result in results where !seenIds.contains(result.id) {
+                seenIds.insert(result.id)
+                allResults.append(result)
+            }
+        }
+
+        // Re-rank combined results
+        let rankedResults = rankResultsForSynonymSearch(allResults, originalQuery: trimmedQuery, hitsPerPage: hitsPerPage)
 
         #if DEBUG
         let elapsed = Date().timeIntervalSince(startTime) * 1000
-        print("⚡️ Algolia Direct REST: Found \(results.count) results in \(Int(elapsed))ms")
+        print("⚡️ Algolia Direct REST: Found \(rankedResults.count) results in \(Int(elapsed))ms")
         #endif
 
         // Cache results
         searchCache.setObject(
-            SearchCacheEntry(results: results, timestamp: Date()),
+            SearchCacheEntry(results: rankedResults, timestamp: Date()),
             forKey: cacheKey
         )
 
-        return results
+        return rankedResults
+    }
+
+    /// Re-rank results from synonym-expanded searches, prioritizing original query matches
+    private func rankResultsForSynonymSearch(_ results: [FoodSearchResult], originalQuery: String, hitsPerPage: Int) -> [FoodSearchResult] {
+        let queryLower = originalQuery.lowercased()
+
+        let scored = results.map { result -> (result: FoodSearchResult, score: Int) in
+            let nameLower = result.name.lowercased()
+            let brandLower = result.brand?.lowercased() ?? ""
+
+            var score = 0
+
+            // Exact match with original query (highest priority)
+            if nameLower == queryLower || brandLower == queryLower {
+                score += 10000
+            }
+            // Name/brand starts with original query
+            else if nameLower.hasPrefix(queryLower) || brandLower.hasPrefix(queryLower) {
+                score += 5000
+            }
+            // Name/brand contains original query
+            else if nameLower.contains(queryLower) || brandLower.contains(queryLower) {
+                score += 3000
+            }
+            // Matches via synonym (still good, but lower priority)
+            else {
+                score += 1000
+            }
+
+            // Bonus for shorter names (more specific)
+            score += max(0, 500 - result.name.count * 10)
+
+            // Bonus for verified items
+            if result.isVerified {
+                score += 200
+            }
+
+            return (result: result, score: score)
+        }
+
+        return Array(scored.sorted { $0.score > $1.score }.map { $0.result }.prefix(hitsPerPage))
     }
 
     /// Search multiple indices in parallel using TaskGroup
