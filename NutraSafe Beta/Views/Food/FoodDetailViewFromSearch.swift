@@ -1491,8 +1491,8 @@ struct FoodDetailViewFromSearch: View {
                                 }
                             }
 
-                            // Check for preselected meal type from diary
-                            if let preselectedMeal = UserDefaults.standard.string(forKey: "preselectedMealType") {
+                            // Check for preselected meal type from diary (only if not editing existing entry)
+                            if diaryMealType == nil, let preselectedMeal = UserDefaults.standard.string(forKey: "preselectedMealType") {
                                 selectedMeal = preselectedMeal
                                 // Clear the stored value after using it
                                 UserDefaults.standard.removeObject(forKey: "preselectedMealType")
@@ -1577,7 +1577,8 @@ struct FoodDetailViewFromSearch: View {
                 UserDefaults.standard.removeObject(forKey: "editingFoodId")
                 UserDefaults.standard.removeObject(forKey: "editingQuantity")
                 UserDefaults.standard.removeObject(forKey: "editingServingDescription")
-            } else if let preselectedMeal = UserDefaults.standard.string(forKey: "preselectedMealType") {
+            } else if diaryMealType == nil, let preselectedMeal = UserDefaults.standard.string(forKey: "preselectedMealType") {
+                // Only use preselected meal if not editing an existing diary entry
                 selectedMeal = preselectedMeal
                 // Clear the stored value after using it
                 UserDefaults.standard.removeObject(forKey: "preselectedMealType")
