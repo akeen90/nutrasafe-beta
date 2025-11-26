@@ -365,14 +365,15 @@ struct DiaryTabView: View {
             .sheet(item: $editingFood, onDismiss: {
                 // DEBUG LOG: print("📝 Edit sheet dismissed, resetting editingFood")
                 editingFood = nil
+                editingMealType = ""
             }) { food in
-                let _ = print("📝 Presenting edit sheet for: \(food.name)")
+                let _ = print("📝 Presenting edit sheet for: \(food.name) in meal: \(editingMealType)")
                 FoodDetailViewFromSearch(
                     food: food.toFoodSearchResult(),
                     sourceType: .diary,
                     selectedTab: $selectedTab,
                     diaryEntryId: food.id,
-                    diaryMealType: food.time
+                    diaryMealType: editingMealType.isEmpty ? food.time : editingMealType
                 )
             }
             .background(Color.adaptiveBackground)
@@ -501,10 +502,11 @@ struct DiaryTabView: View {
 
         if let foodId = selectedFoodItems.first {
             // DEBUG LOG: print("📝 Looking for food with ID: \(foodId)")
-            if let itemToEdit = findFood(byId: foodId) {
-                // DEBUG LOG: print("📝 Found food to edit: \(itemToEdit.name)")
+            if let result = findFoodWithMeal(byId: foodId) {
+                // DEBUG LOG: print("📝 Found food to edit: \(result.food.name) in \(result.meal)")
                 // DEBUG LOG: print("📝 Setting editingFood to trigger sheet...")
-                editingFood = itemToEdit
+                editingFood = result.food
+                editingMealType = result.meal
                 // Clear selection once user enters edit flow
                 selectedFoodItems.removeAll()
             } else {
@@ -748,6 +750,23 @@ struct DiaryTabView: View {
         return nil
     }
 
+    /// Find food and determine which meal it belongs to based on which array contains it
+    private func findFoodWithMeal(byId id: String) -> (food: DiaryFoodItem, meal: String)? {
+        for food in breakfastFoods {
+            if food.id.uuidString == id { return (food, "Breakfast") }
+        }
+        for food in lunchFoods {
+            if food.id.uuidString == id { return (food, "Lunch") }
+        }
+        for food in dinnerFoods {
+            if food.id.uuidString == id { return (food, "Dinner") }
+        }
+        for food in snackFoods {
+            if food.id.uuidString == id { return (food, "Snacks") }
+        }
+        return nil
+    }
+
     private func loadFoodData() {
         Task {
             await MainActor.run {
@@ -886,8 +905,9 @@ struct DiaryTabView: View {
     }
 
     private func editSelectedFood() {
-        if let foodId = selectedFoodItems.first, let itemToEdit = findFood(byId: foodId) {
-            editingFood = itemToEdit
+        if let foodId = selectedFoodItems.first, let result = findFoodWithMeal(byId: foodId) {
+            editingFood = result.food
+            editingMealType = result.meal
         }
     }
 
