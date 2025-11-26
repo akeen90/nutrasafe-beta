@@ -232,14 +232,34 @@ struct DiaryTabView: View {
                 .padding(.bottom, 8)
 
                 VStack(spacing: 0) {
-                    Color(UIColor.systemBackground)
-                        .frame(height: 50)
+                    // Match the diary's lavender gradient background
+                    // Height covers native DatePicker header + navigation arrows
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.92, green: 0.96, blue: 1.0),
+                            Color(red: 0.93, green: 0.90, blue: 1.0)
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .frame(height: 58)
                     Spacer()
                 }
                 .allowsHitTesting(false)
 
                 datePickerHeader
             }
+            .background(
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.92, green: 0.96, blue: 1.0),
+                        Color(red: 0.93, green: 0.88, blue: 1.0)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
     }
 
