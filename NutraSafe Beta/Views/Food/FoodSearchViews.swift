@@ -57,33 +57,35 @@ struct FoodSearchResultRow: View {
     }
     
     var body: some View {
-        HStack {
-            VStack(alignment: .leading) {
-                Text(food.name)
-                    .font(.headline)
-                if let brand = food.brand {
-                    Text(brand)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+        Button(action: onAdd) {
+            HStack {
+                VStack(alignment: .leading) {
+                    Text(food.name)
+                        .font(.headline)
+                    if let brand = food.brand {
+                        Text(brand)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
-            }
-            
-            Spacer()
-            
-            VStack {
-                Text("\(Int(perServingCalories))")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                Text("kcal")
-                    .font(.caption)
-            }
-            
-            Button(action: onAdd) {
+
+                Spacer()
+
+                VStack {
+                    Text("\(Int(perServingCalories))")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    Text("kcal")
+                        .font(.caption)
+                }
+
                 Image(systemName: "arrow.right.circle")
                     .font(.title2)
                     .foregroundColor(.blue)
             }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(PlainButtonStyle())
         .padding(16)
     }
 }
@@ -205,6 +207,7 @@ struct FoodSearchResultRowEnhanced: View {
             }
             .padding(.vertical, 14)
             .padding(.horizontal, 16)
+            .contentShape(Rectangle())
         }
         .background(
             RoundedRectangle(cornerRadius: 12)
@@ -215,7 +218,6 @@ struct FoodSearchResultRowEnhanced: View {
                 .strokeBorder(Color(.systemGray5), lineWidth: 1)
         )
         .shadow(color: Color.black.opacity(0.04), radius: 2, x: 0, y: 1)
-        .contentShape(Rectangle())
         .scaleEffect(isPressed ? 0.98 : 1.0)
         .animation(.easeInOut(duration: 0.1), value: isPressed)
         .buttonStyle(PlainButtonStyle())
