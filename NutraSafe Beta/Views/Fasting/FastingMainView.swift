@@ -240,8 +240,9 @@ struct PlanDashboardView: View {
     @State private var cachedAverageDuration: Double = 0
 
     // Use all recent sessions (since typically only one plan is active at a time)
+    // Filter out cleared sessions (where actualDurationHours == 0)
     private var planSessions: [FastingSession] {
-        viewModel.recentSessions
+        viewModel.recentSessions.filter { $0.actualDurationHours > 0 }
     }
 
     // Plan statistics
