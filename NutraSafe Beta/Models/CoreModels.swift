@@ -518,6 +518,31 @@ class DiaryDataManager: ObservableObject {
     func addFoodItem(_ item: DiaryFoodItem, to meal: String, for date: Date) async {
         print("DiaryDataManager: Adding food item '\(item.name)' to meal '\(meal)' for date \(date)")
 
+        // Create item with correct meal time (time property is immutable, so we need a new instance)
+        let itemWithCorrectTime = DiaryFoodItem(
+            id: item.id,
+            name: item.name,
+            brand: item.brand,
+            calories: item.calories,
+            protein: item.protein,
+            carbs: item.carbs,
+            fat: item.fat,
+            fiber: item.fiber,
+            sugar: item.sugar,
+            sodium: item.sodium,
+            calcium: item.calcium,
+            servingDescription: item.servingDescription,
+            quantity: item.quantity,
+            time: meal,  // Set time to match the meal being added to
+            processedScore: item.processedScore,
+            sugarLevel: item.sugarLevel,
+            ingredients: item.ingredients,
+            additives: item.additives,
+            barcode: item.barcode,
+            micronutrientProfile: item.micronutrientProfile,
+            isPerUnit: item.isPerUnit
+        )
+
         do {
             // Load current data from Firebase (single source of truth)
             let (breakfast, lunch, dinner, snacks) = try await getFoodDataAsync(for: date)
@@ -526,14 +551,14 @@ class DiaryDataManager: ObservableObject {
             // Helper function to check if an item matches (same food)
             func itemMatches(_ existingItem: DiaryFoodItem) -> Bool {
                 // Match by barcode first (most reliable)
-                if let barcode = item.barcode, !barcode.isEmpty,
+                if let barcode = itemWithCorrectTime.barcode, !barcode.isEmpty,
                    let existingBarcode = existingItem.barcode, !existingBarcode.isEmpty {
                     return barcode == existingBarcode
                 }
 
                 // Otherwise match by name and brand
-                let nameMatches = existingItem.name.lowercased() == item.name.lowercased()
-                let brandMatches = (existingItem.brand?.lowercased() ?? "") == (item.brand?.lowercased() ?? "")
+                let nameMatches = existingItem.name.lowercased() == itemWithCorrectTime.name.lowercased()
+                let brandMatches = (existingItem.brand?.lowercased() ?? "") == (itemWithCorrectTime.brand?.lowercased() ?? "")
                 return nameMatches && brandMatches
             }
 
@@ -542,15 +567,36 @@ class DiaryDataManager: ObservableObject {
                 var updated = items
                 if let index = updated.firstIndex(where: itemMatches) {
                     // Food already exists - replace it with fresh data while preserving user-specific fields
-                    var updatedItem = item
-                    updatedItem.id = updated[index].id  // Keep the original ID
+                    let updatedItem = DiaryFoodItem(
+                        id: updated[index].id,  // Keep the original ID
+                        name: itemWithCorrectTime.name,
+                        brand: itemWithCorrectTime.brand,
+                        calories: itemWithCorrectTime.calories,
+                        protein: itemWithCorrectTime.protein,
+                        carbs: itemWithCorrectTime.carbs,
+                        fat: itemWithCorrectTime.fat,
+                        fiber: itemWithCorrectTime.fiber,
+                        sugar: itemWithCorrectTime.sugar,
+                        sodium: itemWithCorrectTime.sodium,
+                        calcium: itemWithCorrectTime.calcium,
+                        servingDescription: itemWithCorrectTime.servingDescription,
+                        quantity: itemWithCorrectTime.quantity,
+                        time: itemWithCorrectTime.time,
+                        processedScore: itemWithCorrectTime.processedScore,
+                        sugarLevel: itemWithCorrectTime.sugarLevel,
+                        ingredients: itemWithCorrectTime.ingredients,
+                        additives: itemWithCorrectTime.additives,
+                        barcode: itemWithCorrectTime.barcode,
+                        micronutrientProfile: itemWithCorrectTime.micronutrientProfile,
+                        isPerUnit: itemWithCorrectTime.isPerUnit
+                    )
                     updated[index] = updatedItem
-                    print("DiaryDataManager: ✨ Updated existing food '\(item.name)' with fresh data (ID: \(updatedItem.id))")
+                    print("DiaryDataManager: ✨ Updated existing food '\(itemWithCorrectTime.name)' with fresh data (ID: \(updatedItem.id))")
                     return updated
                 } else {
                     // New food - append it
-                    updated.append(item)
-                    print("DiaryDataManager: ➕ Added new food '\(item.name)' to meal")
+                    updated.append(itemWithCorrectTime)
+                    print("DiaryDataManager: ➕ Added new food '\(itemWithCorrectTime.name)' to meal")
                     return updated
                 }
             }
@@ -714,38 +760,63 @@ class DiaryDataManager: ObservableObject {
             print("DiaryDataManager: WARNING - Unknown original meal type: \(originalMeal)")
         }
 
+        // Create updated item with new meal time
+        let updatedItem = DiaryFoodItem(
+            id: item.id,
+            name: item.name,
+            brand: item.brand,
+            calories: item.calories,
+            protein: item.protein,
+            carbs: item.carbs,
+            fat: item.fat,
+            fiber: item.fiber,
+            sugar: item.sugar,
+            sodium: item.sodium,
+            calcium: item.calcium,
+            servingDescription: item.servingDescription,
+            quantity: item.quantity,
+            time: newMeal,  // Update time to reflect new meal
+            processedScore: item.processedScore,
+            sugarLevel: item.sugarLevel,
+            ingredients: item.ingredients,
+            additives: item.additives,
+            barcode: item.barcode,
+            micronutrientProfile: item.micronutrientProfile,
+            isPerUnit: item.isPerUnit
+        )
+
         // Add to new meal (replace if same id already exists, otherwise append)
         switch newMeal.lowercased() {
         case "breakfast":
             if let index = updatedBreakfast.firstIndex(where: { $0.id == item.id }) {
-                updatedBreakfast[index] = item
+                updatedBreakfast[index] = updatedItem
                 print("DiaryDataManager: Replaced in breakfast at index \(index)")
             } else {
-                updatedBreakfast.append(item)
+                updatedBreakfast.append(updatedItem)
                 print("DiaryDataManager: Appended to breakfast. New count: \(updatedBreakfast.count)")
             }
         case "lunch":
             if let index = updatedLunch.firstIndex(where: { $0.id == item.id }) {
-                updatedLunch[index] = item
+                updatedLunch[index] = updatedItem
                 print("DiaryDataManager: Replaced in lunch at index \(index)")
             } else {
-                updatedLunch.append(item)
+                updatedLunch.append(updatedItem)
                 print("DiaryDataManager: Appended to lunch. New count: \(updatedLunch.count)")
             }
         case "dinner":
             if let index = updatedDinner.firstIndex(where: { $0.id == item.id }) {
-                updatedDinner[index] = item
+                updatedDinner[index] = updatedItem
                 print("DiaryDataManager: Replaced in dinner at index \(index)")
             } else {
-                updatedDinner.append(item)
+                updatedDinner.append(updatedItem)
                 print("DiaryDataManager: Appended to dinner. New count: \(updatedDinner.count)")
             }
         case "snacks":
             if let index = updatedSnacks.firstIndex(where: { $0.id == item.id }) {
-                updatedSnacks[index] = item
+                updatedSnacks[index] = updatedItem
                 print("DiaryDataManager: Replaced in snacks at index \(index)")
             } else {
-                updatedSnacks.append(item)
+                updatedSnacks.append(updatedItem)
                 print("DiaryDataManager: Appended to snacks. New count: \(updatedSnacks.count)")
             }
         default:

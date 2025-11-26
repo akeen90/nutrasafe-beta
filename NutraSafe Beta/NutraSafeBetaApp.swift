@@ -143,6 +143,9 @@ struct NutraSafeBetaApp: App {
     @StateObject private var subscriptionManager = SubscriptionManager()
     
     init() {
+        // Check for app version change and clear caches if needed
+        CacheManager.shared.checkAndClearCachesIfNeeded()
+
         // Initialize StoreKitTest session for reliable local testing in debug builds
         // TEMPORARILY DISABLED: StoreKitTest framework linking issue in simulator builds
         /*

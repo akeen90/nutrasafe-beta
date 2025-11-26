@@ -295,10 +295,14 @@ class HealthKitManager: ObservableObject {
             print("Failed to fetch exercise energy: \(error)")
             #endif
 
-            // Don't show error for "no data" case - just use 0
+            // Don't show error for "no data" case - set to 0
             let nsError = error as NSError
             if nsError.domain == "com.apple.healthkit" && nsError.code == 11 {
-                // No data - this is normal, not an error
+                // No data - set to 0 (common for future dates)
+                await MainActor.run {
+                    guard normalizedDate == self.currentDisplayDate else { return }
+                    self.exerciseCalories = 0
+                }
                 return
             }
 
@@ -367,10 +371,14 @@ class HealthKitManager: ObservableObject {
             print("Failed to fetch step count: \(error)")
             #endif
 
-            // Don't show error for "no data" case - just use 0
+            // Don't show error for "no data" case - set to 0
             let nsError = error as NSError
             if nsError.domain == "com.apple.healthkit" && nsError.code == 11 {
-                // No data - this is normal, not an error
+                // No data - set to 0 (common for future dates)
+                await MainActor.run {
+                    guard normalizedDate == self.currentDisplayDate else { return }
+                    self.stepCount = 0
+                }
                 return
             }
 
@@ -397,10 +405,14 @@ class HealthKitManager: ObservableObject {
             print("Failed to fetch active energy: \(error)")
             #endif
 
-            // Don't show error for "no data" case - just use 0
+            // Don't show error for "no data" case - set to 0
             let nsError = error as NSError
             if nsError.domain == "com.apple.healthkit" && nsError.code == 11 {
-                // No data - this is normal, not an error
+                // No data - set to 0 (common for future dates)
+                await MainActor.run {
+                    guard normalizedDate == self.currentDisplayDate else { return }
+                    self.activeEnergyBurned = 0
+                }
                 return
             }
 
