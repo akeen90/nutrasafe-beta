@@ -531,10 +531,10 @@ struct PlanDashboardView: View {
                 }
             }
 
-            // Weekly History
+            // Fasting History
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text("Recent Weeks")
+                    Text("Fasting History")
                         .font(.headline)
                     Spacer()
                     if totalFasts > 0 {
@@ -544,7 +544,8 @@ struct PlanDashboardView: View {
                     }
                 }
 
-                let weeks = viewModel.weekSummaries.prefix(5)
+                // Filter out weeks where all fasts have been cleared (averageDuration == 0)
+                let weeks = viewModel.weekSummaries.filter { $0.averageDuration > 0 }.prefix(5)
 
                 if weeks.isEmpty {
                     Text("No fasts recorded yet")

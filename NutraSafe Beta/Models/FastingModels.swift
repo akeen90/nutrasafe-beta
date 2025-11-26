@@ -462,6 +462,15 @@ struct WeekSummary: Identifiable, Equatable {
         return grouped
     }
 
+    // Helper: Sessions grouped by date, excluding cleared sessions (duration == 0)
+    private var activeDaysByDate: [Date: [FastingSession]] {
+        sessionsByDate.compactMapValues { daySessions in
+            // Filter out cleared sessions (where duration is 0)
+            let activeSessions = daySessions.filter { $0.actualDurationHours > 0 }
+            return activeSessions.isEmpty ? nil : activeSessions
+        }
+    }
+
     // Computed properties for summary stats
     var dateRangeText: String {
         let formatter = DateFormatter()
@@ -470,8 +479,8 @@ struct WeekSummary: Identifiable, Equatable {
     }
 
     var completedCount: Int {
-        // Count distinct DAYS where the overall fast was completed
-        sessionsByDate.values.filter { daySessions in
+        // Count distinct DAYS where the overall fast was completed (excluding cleared)
+        activeDaysByDate.values.filter { daySessions in
             // Check if any session that day was completed or over goal
             daySessions.contains { $0.completionStatus == .completed || $0.completionStatus == .overGoal }
         }.count
@@ -485,16 +494,15 @@ struct WeekSummary: Identifiable, Equatable {
     }
 
     var totalFasts: Int {
-        // Count distinct DAYS with fasting sessions (one fast per day, regardless of stop/restart)
-        sessionsByDate.count
+        // Count distinct DAYS with actual fasting (excluding cleared sessions)
+        activeDaysByDate.count
     }
 
     var averageDuration: Double {
-        // Calculate average duration per DAY
-        // For regime sessions with stop/restart, calculate elapsed time from first start to last end
-        guard !sessionsByDate.isEmpty else { return 0 }
+        // Calculate average duration per DAY (excluding cleared days)
+        guard !activeDaysByDate.isEmpty else { return 0 }
 
-        let totalDuration = sessionsByDate.values.reduce(0.0) { totalForAllDays, daySessions in
+        let totalDuration = activeDaysByDate.values.reduce(0.0) { totalForAllDays, daySessions in
             guard !daySessions.isEmpty else { return totalForAllDays }
 
             // Sort sessions by start time
@@ -513,7 +521,7 @@ struct WeekSummary: Identifiable, Equatable {
             return totalForAllDays + cappedHours
         }
 
-        return totalDuration / Double(sessionsByDate.count)
+        return totalDuration / Double(activeDaysByDate.count)
     }
 
     var isCurrentWeek: Bool {
