@@ -737,6 +737,9 @@ struct MicronutrientDashboard: View {
                 }
             }
 
+            // PERFORMANCE FIX: Save once after processing all foods instead of per-food
+            await trackingManager.saveAllScores()
+
             #if DEBUG
             print("✅ MicronutrientDashboard: Finished processing today's foods")
             #endif

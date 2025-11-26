@@ -1905,76 +1905,37 @@ final class CategoricalNutrientViewModel: ObservableObject {
                 // Generate 7 days starting from Monday
                 let dates = (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: mondayStart) }
 
-                // Fetch food entries for each day of the week
+                // PERFORMANCE FIX: Use single batch Firebase query instead of 7 individual calls
                 var allEntries: [FoodEntry] = []
 
-                for date in dates {
-                    // Check for task cancellation
-                    if Task.isCancelled {
-                        #if DEBUG
-                        print("⚠️ Task cancelled during data fetch")
-                        #endif
-                        return nil
-                    }
+                // Check for task cancellation
+                if Task.isCancelled {
+                    #if DEBUG
+                    print("⚠️ Task cancelled during data fetch")
+                    #endif
+                    return nil
+                }
 
-                    // CACHE CHECK: Try diary cache first for this date
-                    var breakfast: [DiaryFoodItem]
-                    var lunch: [DiaryFoodItem]
-                    var dinner: [DiaryFoodItem]
-                    var snacks: [DiaryFoodItem]
+                // Calculate week end date (Sunday 23:59:59)
+                guard let weekEndDate = calendar.date(byAdding: .day, value: 6, to: mondayStart),
+                      let weekEndWithTime = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: weekEndDate) else {
+                    return nil
+                }
 
-                    if let cachedDayData = await self.diaryCache.getData(for: date) {
-                        #if DEBUG
-                        print("✅ [DiaryCache] HIT - Using cached data for \(date)")
-                        #endif
-                        breakfast = cachedDayData.breakfast
-                        lunch = cachedDayData.lunch
-                        dinner = cachedDayData.dinner
-                        snacks = cachedDayData.snacks
-                    } else {
-                        #if DEBUG
-                        print("⚠️ [DiaryCache] MISS - Fetching from Firebase for \(date)")
-                        #endif
-                        do {
-                            let fetchedData = try await manager.getFoodDataAsync(for: date)
-                            breakfast = fetchedData.0
-                            lunch = fetchedData.1
-                            dinner = fetchedData.2
-                            snacks = fetchedData.3
-
-                            // Store in diary cache for future use
-                            await self.diaryCache.setData(
-                                breakfast: breakfast,
-                                lunch: lunch,
-                                dinner: dinner,
-                                snacks: snacks,
-                                for: date
-                            )
-                        } catch {
-                            #if DEBUG
-                            print("⚠️ Error fetching data for \(date): \(error)")
-                            // Use empty arrays if fetch fails
-                            #endif
-                            breakfast = []
-                            lunch = []
-                            dinner = []
-                            snacks = []
-                        }
-                    }
-
-                    // Convert each meal type to FoodEntries
-                    for food in breakfast {
-                        allEntries.append(food.toFoodEntry(userId: "", mealType: .breakfast, date: date))
-                    }
-                    for food in lunch {
-                        allEntries.append(food.toFoodEntry(userId: "", mealType: .lunch, date: date))
-                    }
-                    for food in dinner {
-                        allEntries.append(food.toFoodEntry(userId: "", mealType: .dinner, date: date))
-                    }
-                    for food in snacks {
-                        allEntries.append(food.toFoodEntry(userId: "", mealType: .snacks, date: date))
-                    }
+                // BATCH QUERY: Single Firebase call for entire week
+                do {
+                    #if DEBUG
+                    print("🚀 [BatchQuery] Fetching week \(mondayStart) to \(weekEndWithTime) in single query")
+                    #endif
+                    allEntries = try await FirebaseManager.shared.getFoodEntriesInRange(from: mondayStart, to: weekEndWithTime)
+                    #if DEBUG
+                    print("✅ [BatchQuery] Fetched \(allEntries.count) entries in 1 Firebase call (vs 7 calls before)")
+                    #endif
+                } catch {
+                    #if DEBUG
+                    print("⚠️ Error fetching week data: \(error)")
+                    #endif
+                    allEntries = []
                 }
 
                 #if DEBUG

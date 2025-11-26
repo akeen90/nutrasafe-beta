@@ -58,8 +58,8 @@ class MicronutrientTrackingManager: ObservableObject {
         // Recalculate balance for the day
         await updateBalanceScore(for: date)
 
-        // Save to Firebase
-        await saveDailyScores()
+        // PERFORMANCE FIX: Don't save here - caller should batch save after processing all foods
+        // await saveDailyScores()
     }
 
     /// Convert camelCase nutrient keys to database format (underscore separated)
@@ -239,8 +239,8 @@ class MicronutrientTrackingManager: ObservableObject {
         // Recalculate balance for the day
         await updateBalanceScore(for: date)
 
-        // Save to Firebase
-        await saveDailyScores()
+        // PERFORMANCE FIX: Don't save here - caller should batch save after processing all foods
+        // await saveDailyScores()
 
         #if DEBUG
         print("✅ Successfully processed \(processedCount) nutrients for: \(foodName)")
@@ -437,6 +437,11 @@ class MicronutrientTrackingManager: ObservableObject {
     func generateTodayInsights() async -> [String] {
         let summaries = await getAllNutrientSummaries()
         return NutrientInsightGenerator.generateInsights(for: summaries)
+    }
+
+    /// Save all daily scores to Firebase (call after batch processing foods)
+    func saveAllScores() async {
+        await saveDailyScores()
     }
 
     // MARK: - Trend Calculation
@@ -640,21 +645,8 @@ class MicronutrientTrackingManager: ObservableObject {
             print("✅ Loaded \(dailyScores.count) nutrients with scores and \(balanceHistory.count) balance records")
             #endif
 
-            // Recalculate all balance scores with new formula (fixes old weighted data)
-        // DEBUG LOG: print("🔄 Recalculating balance scores with new average coverage formula...")
-            let uniqueDates = Set(dailyScores.values.flatMap { $0.map { formatDate($0.date) } })
-            for dateKey in uniqueDates {
-                // Parse date from dateKey
-                let formatter = DateFormatter()
-                formatter.dateFormat = "yyyy-MM-dd"
-                if let date = formatter.date(from: dateKey) {
-                    await updateBalanceScore(for: date)
-                }
-            }
-            await saveDailyScores()
-            #if DEBUG
-            print("✅ Recalculated \(uniqueDates.count) balance scores")
-            #endif
+            // PERFORMANCE FIX: Removed recalculation on every load - this was causing slow loading
+            // Balance scores are now only recalculated when foods are processed
 
             // MEMORY CACHE: Cache the loaded data
             firebaseCache = (scores: dailyScores, balance: balanceHistory)
