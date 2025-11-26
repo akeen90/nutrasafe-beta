@@ -450,6 +450,34 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
     
     // MARK: - Camera Setup
     private func setupCamera() {
+        // Check camera authorization status first
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            // Permission already granted, proceed with setup
+            configureCamera()
+
+        case .notDetermined:
+            // First time - request permission
+            AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
+                DispatchQueue.main.async {
+                    if granted {
+                        self?.configureCamera()
+                    } else {
+                        self?.showCameraError("Camera permission denied")
+                    }
+                }
+            }
+
+        case .denied, .restricted:
+            // Permission was denied or restricted - show settings message
+            showCameraError("Camera permission denied. Please enable in Settings")
+
+        @unknown default:
+            showCameraError("Camera permission unknown")
+        }
+    }
+
+    private func configureCamera() {
         // Use the best rear camera with autofocus capabilities
         let discoverySession = AVCaptureDevice.DiscoverySession(
             deviceTypes: [.builtInWideAngleCamera, .builtInDualCamera, .builtInTripleCamera],
