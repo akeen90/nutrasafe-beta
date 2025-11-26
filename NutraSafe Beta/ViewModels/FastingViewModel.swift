@@ -363,6 +363,31 @@ class FastingViewModel: ObservableObject {
         }
     }
 
+    /// Clear a session by setting its duration to 0 (endTime = startTime)
+    /// This keeps the record but shows 0 hours fasted for that day
+    func clearSession(_ session: FastingSession) async {
+        guard let sessionId = session.id else { return }
+
+        // Create updated session with endTime = startTime (0 duration)
+        var clearedSession = session
+        clearedSession.endTime = session.startTime
+        clearedSession.completionStatus = .failed // Mark as not completed
+        clearedSession.manuallyEdited = true
+
+        do {
+            _ = try await firebaseManager.saveFastingSession(clearedSession)
+            // Update local array
+            if let index = self.recentSessions.firstIndex(where: { $0.id == sessionId }) {
+                self.recentSessions[index] = clearedSession
+            }
+            // Notify about history update
+            NotificationCenter.default.post(name: .fastHistoryUpdated, object: nil)
+        } catch {
+            self.error = error
+            self.showError = true
+        }
+    }
+
     // MARK: - Timer
 
     private func startTimer() {

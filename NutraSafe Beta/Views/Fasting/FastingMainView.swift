@@ -1738,11 +1738,44 @@ struct WeekDetailView: View {
     @ObservedObject var viewModel: FastingViewModel
     @Environment(\.dismiss) private var dismiss
 
+    // Generate dates for each day of the week (Mon-Sun)
+    private var weekDays: [(date: Date, dayName: String, dayDate: String)] {
+        let calendar = Calendar.current
+        return (0..<7).compactMap { offset in
+            guard let date = calendar.date(byAdding: .day, value: offset, to: week.weekStart) else { return nil }
+            let dayFormatter = DateFormatter()
+            dayFormatter.dateFormat = "EEEE"
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "d MMM"
+            return (date: date, dayName: dayFormatter.string(from: date), dayDate: dateFormatter.string(from: date))
+        }
+    }
+
+    // Get sessions for a specific date
+    private func sessionsForDate(_ date: Date) -> [FastingSession] {
+        let calendar = Calendar.current
+        return viewModel.recentSessions.filter { session in
+            calendar.isDate(session.startTime, inSameDayAs: date)
+        }
+    }
+
+    // Get the best session for a day (longest completed, or just longest)
+    private func bestSessionForDate(_ date: Date) -> FastingSession? {
+        let sessions = sessionsForDate(date)
+        // Prefer completed sessions, then longest duration
+        let completed = sessions.filter { $0.completionStatus == .completed || $0.completionStatus == .overGoal }
+        if let best = completed.max(by: { $0.actualDurationHours < $1.actualDurationHours }) {
+            return best
+        }
+        // Otherwise return the longest session
+        return sessions.max(by: { $0.actualDurationHours < $1.actualDurationHours })
+    }
+
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    // Week Summary Header
+            List {
+                // Week Summary Header Section
+                Section {
                     VStack(spacing: 12) {
                         Text(week.dateRangeText)
                             .font(.title2)
@@ -1766,7 +1799,7 @@ struct WeekDetailView: View {
                                     .font(.title)
                                     .fontWeight(.bold)
                                     .foregroundColor(.purple)
-                                Text("Total")
+                                Text("Fasts")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
@@ -1782,13 +1815,13 @@ struct WeekDetailView: View {
                                         .foregroundColor(.secondary)
                                 }
 
-                                if week.skippedCount > 0 {
+                                if week.averageDuration > 0 {
                                     VStack {
-                                        Text("\(week.skippedCount)")
+                                        Text("\(week.averageDuration, specifier: "%.1f")h")
                                             .font(.title)
                                             .fontWeight(.bold)
-                                            .foregroundColor(.orange)
-                                        Text("Skipped")
+                                            .foregroundColor(.blue)
+                                        Text("Average")
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                     }
@@ -1800,25 +1833,34 @@ struct WeekDetailView: View {
                         .background(Color.gray.opacity(0.05))
                         .cornerRadius(12)
                     }
-                    .padding(.horizontal)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                }
 
-                    // Daily Breakdown
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Daily Breakdown")
-                            .font(.headline)
-                            .padding(.horizontal)
+                // Daily Breakdown Section - One row per day
+                Section(header: Text("Daily Breakdown")) {
+                    ForEach(weekDays, id: \.date) { day in
+                        let bestSession = bestSessionForDate(day.date)
+                        let allSessions = sessionsForDate(day.date)
 
-                        ForEach(1...7, id: \.self) { weekday in
-                            DaySessionRow(
-                                weekday: weekday,
-                                sessions: week.sessionsByDay[weekday] ?? [],
-                                weekStart: week.weekStart
-                            )
-                        }
+                        DaySummaryRow(
+                            dayName: day.dayName,
+                            dayDate: day.dayDate,
+                            bestSession: bestSession,
+                            totalSessions: allSessions.count,
+                            onClear: bestSession != nil ? {
+                                Task {
+                                    // Clear all sessions for this day
+                                    for session in allSessions {
+                                        await viewModel.clearSession(session)
+                                    }
+                                }
+                            } : nil
+                        )
                     }
                 }
-                .padding(.vertical)
             }
+            .listStyle(.insetGrouped)
             .navigationTitle("Week Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1832,11 +1874,98 @@ struct WeekDetailView: View {
     }
 }
 
+// MARK: - Day Summary Row (one row per day)
+struct DaySummaryRow: View {
+    let dayName: String
+    let dayDate: String
+    let bestSession: FastingSession?
+    let totalSessions: Int
+    var onClear: (() -> Void)?
+
+    var body: some View {
+        HStack {
+            // Day info
+            VStack(alignment: .leading, spacing: 2) {
+                Text(dayName)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                Text(dayDate)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            // Status display
+            if let session = bestSession {
+                HStack(spacing: 6) {
+                    if session.skipped {
+                        Image(systemName: "moon.zzz.fill")
+                            .foregroundColor(.orange)
+                        Text("Skipped")
+                            .foregroundColor(.orange)
+                    } else if session.actualDurationHours == 0 {
+                        Image(systemName: "xmark.circle")
+                            .foregroundColor(.gray)
+                        Text("Cleared")
+                            .foregroundColor(.gray)
+                    } else {
+                        Image(systemName: statusIcon(for: session.completionStatus))
+                            .foregroundColor(statusColor(for: session.completionStatus))
+                        // Show actual/target format e.g. "18/18h"
+                        let actual = Int(session.actualDurationHours.rounded())
+                        let target = session.targetDurationHours
+                        Text("\(actual)/\(target)h")
+                            .fontWeight(.semibold)
+                            .foregroundColor(statusColor(for: session.completionStatus))
+                    }
+                }
+                .font(.subheadline)
+            } else {
+                Text("No fast")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            if onClear != nil {
+                Button(role: .destructive) {
+                    onClear?()
+                } label: {
+                    Label("Clear", systemImage: "xmark.circle")
+                }
+                .tint(.orange)
+            }
+        }
+    }
+
+    private func statusIcon(for status: FastingCompletionStatus) -> String {
+        switch status {
+        case .completed, .overGoal: return "checkmark.circle.fill"
+        case .earlyEnd: return "exclamationmark.circle.fill"
+        case .failed: return "xmark.circle.fill"
+        case .skipped: return "moon.zzz.fill"
+        case .active: return "clock.fill"
+        }
+    }
+
+    private func statusColor(for status: FastingCompletionStatus) -> Color {
+        switch status {
+        case .completed, .overGoal: return .green
+        case .earlyEnd: return .orange
+        case .failed: return .red
+        case .skipped: return .gray
+        case .active: return .blue
+        }
+    }
+}
+
 // MARK: - Day Session Row
 struct DaySessionRow: View {
     let weekday: Int // 1 = Sunday, 2 = Monday, etc.
     let sessions: [FastingSession]
     let weekStart: Date
+    var onClearSession: ((FastingSession) -> Void)?
 
     private var dayName: String {
         let formatter = DateFormatter()
@@ -1892,6 +2021,14 @@ struct DaySessionRow: View {
                                     Text("Skipped")
                                         .font(.caption)
                                         .foregroundColor(.orange)
+                                } else if session.actualDurationHours == 0 {
+                                    Image(systemName: "xmark.circle")
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                    Text("0h")
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.gray)
                                 } else {
                                     Image(systemName: statusIcon(for: session.completionStatus))
                                         .font(.caption)
