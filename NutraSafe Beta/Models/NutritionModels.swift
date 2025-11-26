@@ -1126,13 +1126,6 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
 
     // Convert DiaryFoodItem back to FoodSearchResult for full feature access
     func toFoodSearchResult() -> FoodSearchResult {
-        #if DEBUG
-        print("🔄 toFoodSearchResult called for: \(self.name)")
-        print("🔄 DiaryFoodItem.isPerUnit: \(String(describing: self.isPerUnit))")
-        print("🔄 DiaryFoodItem.servingDescription: '\(self.servingDescription)'")
-        print("🔄 DiaryFoodItem.quantity: \(self.quantity)")
-        #endif
-
         // PERFORMANCE: Set database version to current to prevent re-analysis
         // DiaryFoodItem doesn't store database version, so we set it here to mark as "current"
         let currentVersion = ProcessingScorer.shared.databaseVersion

@@ -171,10 +171,7 @@ struct FoodSearchResultRowEnhanced: View {
     
     var body: some View {
         Button(action: {
-            print("🔵 [Search] Food item tapped: \(food.name)")
-            print("🔵 [Search] Setting showingFoodDetail = true")
             showingFoodDetail = true
-            print("🔵 [Search] showingFoodDetail is now: \(showingFoodDetail)")
         }) {
             HStack(spacing: 12) {
                 // Product name and brand
@@ -222,20 +219,10 @@ struct FoodSearchResultRowEnhanced: View {
         .animation(.easeInOut(duration: 0.1), value: isPressed)
         .buttonStyle(PlainButtonStyle())
         .sheet(isPresented: $showingFoodDetail) {
-            print("🟢 [Search] Sheet presenting for food: \(food.name)")
-            return FoodDetailViewFromSearch(food: food, sourceType: sourceType, selectedTab: $selectedTab) { tab in
+            FoodDetailViewFromSearch(food: food, sourceType: sourceType, selectedTab: $selectedTab) { tab in
                 onComplete?(tab)
             }
             .environmentObject(diaryDataManager)
-            .onAppear {
-                print("🟢 [Search] FoodDetailViewFromSearch appeared for: \(food.name)")
-            }
-            .onDisappear {
-                print("🔴 [Search] FoodDetailViewFromSearch disappeared")
-            }
-        }
-        .onChange(of: showingFoodDetail) { newValue in
-            print("🔄 [Search] showingFoodDetail changed to: \(newValue) for food: \(food.name)")
         }
     }
 }

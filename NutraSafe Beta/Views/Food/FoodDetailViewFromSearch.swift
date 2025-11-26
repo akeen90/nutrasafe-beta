@@ -193,21 +193,6 @@ struct FoodDetailViewFromSearch: View {
 
         // Initialize quantity multiplier from diary entry if editing
         self._quantityMultiplier = State(initialValue: diaryQuantity ?? 1.0)
-
-        // Debug logging
-        #if DEBUG
-        print("🔧 DEBUG FoodDetailViewFromSearch init:")
-        print("  - food.name: \(food.name)")
-        print("  - food.isPerUnit: \(String(describing: food.isPerUnit))")
-        print("  - food.servingDescription: \(String(describing: food.servingDescription))")
-        print("  - diaryEntryId: \(String(describing: diaryEntryId))")
-        print("  - diaryMealType: \(String(describing: diaryMealType))")
-        print("  - diaryQuantity: \(String(describing: diaryQuantity))")
-        print("  - initialServingSize: \(initialServingSize)")
-        print("  - initialUnit: \(initialUnit)")
-        print("  - isEditingMode will be: \(diaryEntryId != nil)")
-        print("  - selectedMeal will be: \(diaryMealType ?? "Breakfast")")
-        #endif
     }
 
     // OPTIMIZED: Use food directly - search already returns complete data
@@ -321,29 +306,9 @@ struct FoodDetailViewFromSearch: View {
     @State private var showingAllergenCitations = false
 
     private var buttonText: String {
-        #if DEBUG
-        print("DEBUG buttonText calculation:")
-        print("  - diaryEntryId: \(String(describing: diaryEntryId))")
-        print("  - isEditingMode: \(isEditingMode)")
-        print("  - selectedMeal: \(selectedMeal)")
-        print("  - originalMealType: \(originalMealType)")
-        #endif
-        if let _ = diaryEntryId {
-            // When editing, we ALWAYS stay in the same meal, so just say "Update"
-            #if DEBUG
-            print("  -> Has diaryEntryId, returning Update")
-            #endif
-            return "Update"
-        } else if isEditingMode {
-            // When editing, we ALWAYS stay in the same meal, so just say "Update"
-            #if DEBUG
-            print("  -> isEditingMode true, returning Update")
-            #endif
+        if diaryEntryId != nil || isEditingMode {
             return "Update"
         } else {
-            #if DEBUG
-            print("  -> Default case, returning Add to Diary")
-            #endif
             return "Add to Diary"
         }
     }
@@ -1543,14 +1508,6 @@ struct FoodDetailViewFromSearch: View {
 
             // Initialize cached ingredients from food data
             cachedIngredients = food.ingredients
-            #if DEBUG
-            print("🔍 DEBUG: Initialized cachedIngredients with \(cachedIngredients?.count ?? 0) items")
-            #endif
-            if let ingredients = cachedIngredients {
-                #if DEBUG
-                print("   Ingredients: \(ingredients.joined(separator: ", "))")
-                #endif
-            }
 
             // Load user allergens from cache (instant) and detect if present in this food
             Task {

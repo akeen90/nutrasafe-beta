@@ -1621,18 +1621,9 @@ struct ContentView: View {
                 selectedTab: $selectedTab,
                 isPresented: $showingDiaryAdd,
                 onDismiss: {
-                    #if DEBUG
-                    print("🟢 onDismiss called - setting showingDiaryAdd to false (was: \(showingDiaryAdd))")
-                    #endif
                     showingDiaryAdd = false
-                    #if DEBUG
-                    print("🟢 showingDiaryAdd is now: \(showingDiaryAdd)")
-                    #endif
                 },
                 onComplete: { tab in
-                    #if DEBUG
-                    print("🟢 onComplete called - setting showingDiaryAdd to false")
-                    #endif
                     showingDiaryAdd = false
                     selectedTab = tab
                 }
@@ -1692,16 +1683,8 @@ struct ContentView: View {
         .onChange(of: selectedTab) { newTab in
             // Track the last non-add tab for proper return behavior when dismissing
             if newTab != .add {
-                // Update previousTabBeforeAdd to the current non-add tab
                 previousTabBeforeAdd = newTab
-                #if DEBUG
-                print("[Tab] Updated previousTabBeforeAdd to: \(newTab)")
-                #endif
             }
-
-            #if DEBUG
-            print("[Tab] selectedTab changed -> \(newTab)")
-            #endif
 
             // Enforce subscription gating for programmatic tab changes
             // BUT allow notification-triggered navigation to proceed
@@ -6927,15 +6910,12 @@ struct AddFoodMainView: View {
                     // Option selector
                     HStack(spacing: 0) {
                         OptionSelectorButton(title: "Search", icon: "magnifyingglass", isSelected: selectedAddOption == .search) {
-                            print("🔵 [Diary] Search option tapped")
                             selectedAddOption = .search
                         }
                         OptionSelectorButton(title: "AI/Manual", icon: "square.and.pencil", isSelected: selectedAddOption == .manual) {
-                            print("🔵 [Diary] AI/Manual option tapped")
                             selectedAddOption = .manual
                         }
                         OptionSelectorButton(title: "Barcode", icon: "barcode.viewfinder", isSelected: selectedAddOption == .barcode) {
-                            print("🔵 [Diary] Barcode option tapped")
                             selectedAddOption = .barcode
                         }
                     }
@@ -6946,9 +6926,6 @@ struct AddFoodMainView: View {
                 .background(Color(.systemBackground))
                 .zIndex(999)
                 .allowsHitTesting(true)
-                .onAppear {
-                    print("🟢 [Diary] Header VStack appeared with zIndex 999")
-                }
 
                 // Content based on selected option
                 Group {
@@ -6978,19 +6955,13 @@ struct AddFoodMainView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .zIndex(0)
-                .onAppear {
-                    print("🟢 [Diary] Content Group appeared with zIndex 0, frame: maxWidth/maxHeight")
-                }
                 }
                 .navigationTitle("Diary")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button(action: {
-                            print("🔴 [Diary] X button TAPPED - keyboard visible: \(keyboardVisible)")
-                            print("🔴 [Diary] Directly setting isPresented to false")
                             isPresented = false
-                            print("🔴 [Diary] isPresented set to false")
                         }) {
                             Image(systemName: "xmark")
                                 .font(.system(size: 16, weight: .semibold))
@@ -6998,30 +6969,19 @@ struct AddFoodMainView: View {
                         }
                         .zIndex(1000)
                         .allowsHitTesting(true)
-                        .onAppear {
-                            print("🟢 [Diary] X button appeared with zIndex 1000")
-                        }
                     }
                 }
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .onAppear {
-            print("🟢 [Diary] AddFoodMainView APPEARED")
-            print("🔍 [Diary] ROOT NavigationView - allowsHitTesting: true, disabled: false")
-
             // Monitor keyboard
             NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main) { _ in
-                print("⌨️ [Diary] Keyboard WILL SHOW")
                 keyboardVisible = true
             }
             NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil, queue: .main) { _ in
-                print("⌨️ [Diary] Keyboard WILL HIDE")
                 keyboardVisible = false
             }
-        }
-        .onDisappear {
-            print("🔴 [Diary] AddFoodMainView DISAPPEARED")
         }
     }
 }
