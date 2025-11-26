@@ -17,22 +17,22 @@ struct AddActionMenu: View {
 
     var body: some View {
         ZStack {
-            // Transparent tap area to dismiss (no dark overlay) - only when presented
+            // Subtle dim overlay for focus - only when presented
             if isPresented {
-                Color.clear
+                Color.black.opacity(0.15)
                     .ignoresSafeArea()
-                    .contentShape(Rectangle())
                     .onTapGesture {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                        withAnimation(.easeOut(duration: 0.25)) {
                             isPresented = false
                         }
                     }
+                    .transition(.opacity)
             }
 
             VStack {
                 Spacer()
 
-                // Menu container - slides up from bottom with square grid
+                // Menu container - smooth slide up from bottom
                 VStack(spacing: 12) {
                     // 2x2 Grid of square buttons
                     VStack(spacing: 12) {
@@ -42,7 +42,6 @@ struct AddActionMenu: View {
                                 icon: "fork.knife",
                                 label: "Add Food",
                                 color: .blue,
-                                delay: 0.0,
                                 isPresented: isPresented
                             ) {
                                 dismissAndExecute(onSelectDiary)
@@ -52,7 +51,6 @@ struct AddActionMenu: View {
                                 icon: "heart.fill",
                                 label: "Log Reaction",
                                 color: .red,
-                                delay: 0.05,
                                 isPresented: isPresented
                             ) {
                                 dismissAndExecute(onSelectReaction)
@@ -65,7 +63,6 @@ struct AddActionMenu: View {
                                 icon: "calendar",
                                 label: "Use By",
                                 color: .gray,
-                                delay: 0.1,
                                 isPresented: isPresented
                             ) {
                                 dismissAndExecute(onSelectUseBy)
@@ -75,7 +72,6 @@ struct AddActionMenu: View {
                                 icon: AnyView(BathroomScaleIcon(color: .gray, size: 28)),
                                 label: "Weigh In",
                                 color: .gray,
-                                delay: 0.15,
                                 isPresented: isPresented
                             ) {
                                 dismissAndExecute(onSelectWeighIn)
@@ -86,12 +82,14 @@ struct AddActionMenu: View {
                     .background(
                         RoundedRectangle(cornerRadius: 20)
                             .fill(Color(.systemGray5))
+                            .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: -4)
                     )
                     .padding(.horizontal, 40)
                 }
                 .padding(.bottom, 50) // Position above the tab bar
-                .offset(y: isPresented ? 0 : 500) // Slide up from bottom, fully hidden when dismissed
-                .animation(.spring(response: 0.45, dampingFraction: 0.82), value: isPresented)
+                .offset(y: isPresented ? 0 : 300)
+                .opacity(isPresented ? 1 : 0)
+                .animation(.easeOut(duration: 0.28), value: isPresented)
             }
         }
         .allowsHitTesting(isPresented) // Disable touch interception when dismissed
@@ -101,10 +99,10 @@ struct AddActionMenu: View {
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
 
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+        withAnimation(.easeOut(duration: 0.22)) {
             isPresented = false
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             action()
         }
     }
@@ -114,7 +112,6 @@ struct SquareMenuButton: View {
     let icon: String
     let label: String
     let color: Color
-    let delay: Double
     let isPresented: Bool
     let action: () -> Void
 
@@ -144,12 +141,6 @@ struct SquareMenuButton: View {
             )
         }
         .buttonStyle(SquareButtonStyle())
-        .scaleEffect(isPresented ? 1 : 0.8)
-        .opacity(isPresented ? 1 : 0)
-        .animation(
-            .spring(response: 0.5, dampingFraction: 0.75).delay(delay),
-            value: isPresented
-        )
     }
 }
 
@@ -157,7 +148,6 @@ struct SquareMenuButtonCustomIcon: View {
     let icon: AnyView
     let label: String
     let color: Color
-    let delay: Double
     let isPresented: Bool
     let action: () -> Void
 
@@ -175,18 +165,16 @@ struct SquareMenuButtonCustomIcon: View {
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(.systemGray4), lineWidth: 0.5))
         }
         .buttonStyle(SquareButtonStyle())
-        .scaleEffect(isPresented ? 1 : 0.8)
-        .opacity(isPresented ? 1 : 0)
-        .animation(.spring(response: 0.5, dampingFraction: 0.75).delay(delay), value: isPresented)
     }
 }
 
-// Custom button style for square buttons
+// Custom button style for square buttons - smooth press feedback
 struct SquareButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
+            .opacity(configuration.isPressed ? 0.85 : 1.0)
+            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
     }
 }
 

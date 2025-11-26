@@ -40,7 +40,7 @@ struct CustomTabBar: View {
                                 .font(.system(size: 28, weight: .semibold))
                                 .foregroundColor(.white)
                                 .rotationEffect(.degrees(showingAddMenu ? 45 : 0))
-                                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: showingAddMenu)
+                                .animation(.easeOut(duration: 0.25), value: showingAddMenu)
                         }
                     }
                     .frame(maxWidth: .infinity)
