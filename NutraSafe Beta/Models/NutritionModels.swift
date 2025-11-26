@@ -1133,28 +1133,64 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
         print("🔄 DiaryFoodItem.quantity: \(self.quantity)")
         #endif
 
-        // Extract serving size from servingDescription (e.g., "150g serving" -> 150)
+        // PERFORMANCE: Set database version to current to prevent re-analysis
+        // DiaryFoodItem doesn't store database version, so we set it here to mark as "current"
+        let currentVersion = ProcessingScorer.shared.databaseVersion
+
+        // For per-unit foods, preserve the unit-based serving description and values
+        if self.isPerUnit == true {
+            // Per-unit foods: values are stored as totals (per-unit * quantity)
+            // Divide by quantity to get per-unit values
+            let perUnitCalories = quantity > 0 ? Double(calories) / quantity : Double(calories)
+            let perUnitProtein = quantity > 0 ? protein / quantity : protein
+            let perUnitCarbs = quantity > 0 ? carbs / quantity : carbs
+            let perUnitFat = quantity > 0 ? fat / quantity : fat
+            let perUnitFiber = quantity > 0 ? fiber / quantity : fiber
+            let perUnitSugar = quantity > 0 ? sugar / quantity : sugar
+            let perUnitSodium = quantity > 0 ? sodium / quantity : sodium
+
+            return FoodSearchResult(
+                id: self.id.uuidString,
+                name: self.name,
+                brand: self.brand,
+                calories: perUnitCalories,
+                protein: perUnitProtein,
+                carbs: perUnitCarbs,
+                fat: perUnitFat,
+                fiber: perUnitFiber,
+                sugar: perUnitSugar,
+                sodium: perUnitSodium,
+                servingDescription: self.servingDescription, // Keep the unit name (e.g., "burger")
+                servingSizeG: nil, // No gram size for per-unit foods
+                isPerUnit: true,
+                ingredients: self.ingredients,
+                confidence: 1.0,
+                isVerified: true,
+                additives: self.additives,
+                additivesDatabaseVersion: currentVersion,
+                processingScore: nil,
+                processingGrade: self.processedScore,
+                processingLabel: self.processedScore,
+                barcode: self.barcode,
+                micronutrientProfile: self.micronutrientProfile
+            )
+        }
+
+        // For per-100g foods, extract serving size and convert back to per-100g values
         let servingSize = extractServingSize(from: servingDescription)
-        // DEBUG LOG: print("🔄 Extracted servingSize: \(servingSize)g")
 
         // DiaryFoodItem stores total values (servingSize * quantity)
         // We need to reverse-calculate to per-100g base values
         let multiplier = (servingSize / 100.0) * quantity
-        // DEBUG LOG: print("🔄 Calculated multiplier: \(multiplier) (servingSize: \(servingSize), quantity: \(quantity))")
 
         // Convert stored totals back to per-100g values
         let per100gCalories = multiplier > 0 ? Double(calories) / multiplier : Double(calories)
-        // DEBUG LOG: print("🔄 Per-100g calories: \(per100gCalories) (from total: \(calories))")
         let per100gProtein = multiplier > 0 ? protein / multiplier : protein
         let per100gCarbs = multiplier > 0 ? carbs / multiplier : carbs
         let per100gFat = multiplier > 0 ? fat / multiplier : fat
         let per100gFiber = multiplier > 0 ? fiber / multiplier : fiber
         let per100gSugar = multiplier > 0 ? sugar / multiplier : sugar
         let per100gSodium = multiplier > 0 ? sodium / multiplier : sodium
-
-        // PERFORMANCE: Set database version to current to prevent re-analysis
-        // DiaryFoodItem doesn't store database version, so we set it here to mark as "current"
-        let currentVersion = ProcessingScorer.shared.databaseVersion
 
         return FoodSearchResult(
             id: self.id.uuidString,
@@ -1169,7 +1205,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
             sodium: per100gSodium,
             servingDescription: "\(servingSize.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(servingSize)) : String(servingSize))g",
             servingSizeG: servingSize,
-            isPerUnit: self.isPerUnit,
+            isPerUnit: false,
             ingredients: self.ingredients,
             confidence: 1.0, // High confidence for saved items
             isVerified: true,
@@ -1243,15 +1279,28 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
 
     // Convert DiaryFoodItem to FoodEntry for Firebase sync
     func toFoodEntry(userId: String, mealType: MealType, date: Date) -> FoodEntry {
-        let servingSize = extractServingSize(from: servingDescription)
+        // For per-unit foods, servingSize is the quantity count and servingUnit is the unit name
+        // For per-100g foods, servingSize is the gram amount and servingUnit is "g" or "ml"
+        let servingSize: Double
+        let servingUnit: String
+
+        if self.isPerUnit == true {
+            // Per-unit: store quantity as servingSize, unit name as servingUnit
+            servingSize = self.quantity
+            servingUnit = self.servingDescription
+        } else {
+            // Per-100g: extract gram amount and multiply by quantity
+            servingSize = extractServingSize(from: servingDescription) * self.quantity
+            servingUnit = extractServingUnit(from: servingDescription)
+        }
 
         return FoodEntry(
             id: self.id.uuidString,
             userId: userId,
             foodName: self.name,
             brandName: self.brand,
-            servingSize: servingSize * self.quantity,
-            servingUnit: extractServingUnit(from: servingDescription),
+            servingSize: servingSize,
+            servingUnit: servingUnit,
             calories: Double(self.calories),
             protein: self.protein,
             carbohydrates: self.carbs,
@@ -1273,6 +1322,24 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
 
     // Convert FoodEntry from Firebase back to DiaryFoodItem
     static func fromFoodEntry(_ entry: FoodEntry) -> DiaryFoodItem {
+        // For per-unit foods, servingSize is the quantity and servingUnit is the unit name
+        // For per-100g foods, servingSize includes quantity already, so we set quantity to 1.0
+        let servingDescription: String
+        let quantity: Double
+
+        if entry.isPerUnit == true {
+            // Per-unit: servingDescription is just the unit name, quantity comes from servingSize
+            servingDescription = entry.servingUnit
+            quantity = entry.servingSize
+        } else {
+            // Per-100g: show "Xg serving" format, quantity is 1.0 (already multiplied into servingSize)
+            let sizeStr = entry.servingSize.truncatingRemainder(dividingBy: 1) == 0
+                ? String(Int(entry.servingSize))
+                : String(format: "%.1f", entry.servingSize)
+            servingDescription = "\(sizeStr)\(entry.servingUnit) serving"
+            quantity = 1.0
+        }
+
         return DiaryFoodItem(
             id: UUID(uuidString: entry.id) ?? UUID(),
             name: entry.foodName,
@@ -1285,8 +1352,8 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
             sugar: entry.sugar ?? 0,
             sodium: entry.sodium ?? 0,
             calcium: entry.calcium ?? 0,
-            servingDescription: "\(entry.servingSize.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(entry.servingSize)) : String(entry.servingSize))\(entry.servingUnit) serving",
-            quantity: 1.0, // Quantity is already included in servingSize from Firebase
+            servingDescription: servingDescription,
+            quantity: quantity,
             time: nil,
             processedScore: nil,
             sugarLevel: nil,

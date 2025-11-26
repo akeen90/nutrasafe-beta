@@ -367,13 +367,14 @@ struct DiaryTabView: View {
                 editingFood = nil
                 editingMealType = ""
             }) { food in
-                let _ = print("📝 Presenting edit sheet for: \(food.name) in meal: \(editingMealType)")
+                let _ = print("📝 Presenting edit sheet for: \(food.name) in meal: \(editingMealType), quantity: \(food.quantity)")
                 FoodDetailViewFromSearch(
                     food: food.toFoodSearchResult(),
                     sourceType: .diary,
                     selectedTab: $selectedTab,
                     diaryEntryId: food.id,
-                    diaryMealType: editingMealType.isEmpty ? food.time : editingMealType
+                    diaryMealType: editingMealType.isEmpty ? food.time : editingMealType,
+                    diaryQuantity: food.quantity
                 )
             }
             .background(Color.adaptiveBackground)
