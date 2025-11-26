@@ -70,13 +70,10 @@
 		AB4B75AD2E72DF080058DCD3 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = AB4B75AC2E72DF080058DCD3 /* FirebaseStorage */; };
 		AB6A8F070FF14DC49BA4BC80 /* NutraSafe Beta/Utils/ReactionPDFExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF1C3CB3424C495E9408953D /* NutraSafe Beta/Utils/ReactionPDFExporter.swift */; };
 		CACHEMGR001BUILD /* NutraSafe Beta/Utils/CacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CACHEMGR001FILE /* NutraSafe Beta/Utils/CacheManager.swift */; };
-		AB9A79F32ECA769D00F7354A /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 953245696D9904535E8F08F2 /* Core */; };
-		AB9A79F42ECA769D00F7354A /* Search in Frameworks */ = {isa = PBXBuildFile; productRef = F8B093B13F95948B176C38A4 /* Search */; };
 		AB9A79F62ECA773F00F7354A /* FastingSourcesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB9A79F52ECA773F00F7354A /* FastingSourcesView.swift */; };
 		ABB0AEFA2EAC3F14009F044D /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ABB0AEF92EAC3F13009F044D /* StoreKit.framework */; };
 		ABC1D3B02EAD665E00518F41 /* NutraSafe.storekit in Resources */ = {isa = PBXBuildFile; fileRef = ABC1D3AF2EAD665E00518F41 /* NutraSafe.storekit */; };
 		ABCDD6892EB51DEE0085890E /* WeeklySummarySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCDD6882EB51DEE0085890E /* WeeklySummarySheet.swift */; };
-		ABCDDED32EC9300F0085890E /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = ABCDDED22EC9300F0085890E /* Core */; };
 		AUTH1234567890123456789001 /* AuthenticationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AUTH1234567890123456789002 /* AuthenticationView.swift */; };
 		B1234567890123456789CM02 /* CoreModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1234567890123456789CM01 /* CoreModels.swift */; };
 		B1234567890123456789EM02 /* ExerciseModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1234567890123456789EM01 /* ExerciseModels.swift */; };
@@ -117,6 +114,7 @@
 		RECOM456E67696E65426C64 /* NutrientRecommendationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = RECOM456E67696E6546696C65 /* NutrientRecommendationEngine.swift */; };
 		RECOM566965774275696C64 /* SmartRecommendationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = RECOM5669657746696C65 /* SmartRecommendationsView.swift */; };
 		SUBS0001BUILD /* Managers/SubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = SUBS0001FILE /* Managers/SubscriptionManager.swift */; };
+		ALGOLIA001BUILD /* Managers/AlgoliaSearchManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ALGOLIA001FILE /* Managers/AlgoliaSearchManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -225,6 +223,7 @@
 		RECOM456E67696E6546696C65 /* NutrientRecommendationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutrientRecommendationEngine.swift; sourceTree = "<group>"; };
 		RECOM5669657746696C65 /* SmartRecommendationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartRecommendationsView.swift; sourceTree = "<group>"; };
 		SUBS0001FILE /* Managers/SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/SubscriptionManager.swift; sourceTree = "<group>"; };
+		ALGOLIA001FILE /* Managers/AlgoliaSearchManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/AlgoliaSearchManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -232,14 +231,11 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AB9A79F42ECA769D00F7354A /* Search in Frameworks */,
-				AB9A79F32ECA769D00F7354A /* Core in Frameworks */,
 				804783D4F2414E90984B7EEC /* WeeklySummarySheet.swift in Frameworks */,
 				AB4B75A92E72DEFC0058DCD3 /* FirebaseCore in Frameworks */,
 				AB4B75A72E72DEF60058DCD3 /* FirebaseAuth in Frameworks */,
 				ABB0AEFA2EAC3F14009F044D /* StoreKit.framework in Frameworks */,
 				AB13BC1C2EAE253100C7B892 /* FirebaseFunctions in Frameworks */,
-				ABCDDED32EC9300F0085890E /* Core in Frameworks */,
 				AB4B75AB2E72DF020058DCD3 /* FirebaseFirestore in Frameworks */,
 				AB4B75AD2E72DF080058DCD3 /* FirebaseStorage in Frameworks */,
 			);
@@ -353,7 +349,7 @@
 		956ECB7D602D71885046D54F /* Managers */ = {
 			isa = PBXGroup;
 			children = (
-			
+				ALGOLIA001FILE /* Managers/AlgoliaSearchManager.swift */,
 				ONBMGR0001FILE /* Managers/OnboardingManager.swift */,);
 			name = Managers;
 			sourceTree = "<group>";
@@ -520,8 +516,6 @@
 			);
 			name = "NutraSafe Beta";
 			packageProductDependencies = (
-				953245696D9904535E8F08F2 /* Core */,
-				F8B093B13F95948B176C38A4 /* Search */,
 			);
 			productName = "NutraSafe Beta";
 			productReference = A1234567890123456789012000 /* NutraSafe Beta.app */;
@@ -553,7 +547,6 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				AB4B75A52E72DD260058DCD3 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
-				ABCDDED12EC92FEE0085890E /* XCRemoteSwiftPackageReference "algoliasearch-client-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A1234567890123456789011997 /* Products */;
@@ -608,6 +601,7 @@
 				SUBS0001BUILD /* Managers/SubscriptionManager.swift in Sources */,
 				FASTMGR0001BUILD /* Managers/FastingManager.swift in Sources */,
 				IMGCACHE001BUILD /* Managers/ImageCacheManager.swift in Sources */,
+				ALGOLIA001BUILD /* Managers/AlgoliaSearchManager.swift in Sources */,
 				26E954E4A2634655AB0F1224 /* FoodDetailViewFromSearch.swift in Sources */,
 				99C873C9DCA241B8B3F6C5CA /* FoodSearchViews.swift in Sources */,
 				5499F48301DC4732BB15091B /* FoodManagementViews.swift in Sources */,
@@ -911,22 +905,9 @@
 				minimumVersion = 12.2.0;
 			};
 		};
-		ABCDDED12EC92FEE0085890E /* XCRemoteSwiftPackageReference "algoliasearch-client-swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/algolia/algoliasearch-client-swift";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 9.35.0;
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		953245696D9904535E8F08F2 /* Core */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = ABCDDED12EC92FEE0085890E /* XCRemoteSwiftPackageReference "algoliasearch-client-swift" */;
-			productName = Core;
-		};
 		AB13BC1B2EAE253100C7B892 /* FirebaseFunctions */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = AB4B75A52E72DD260058DCD3 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
@@ -951,16 +932,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = AB4B75A52E72DD260058DCD3 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
-		};
-		ABCDDED22EC9300F0085890E /* Core */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = ABCDDED12EC92FEE0085890E /* XCRemoteSwiftPackageReference "algoliasearch-client-swift" */;
-			productName = Core;
-		};
-		F8B093B13F95948B176C38A4 /* Search */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = ABCDDED12EC92FEE0085890E /* XCRemoteSwiftPackageReference "algoliasearch-client-swift" */;
-			productName = Search;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

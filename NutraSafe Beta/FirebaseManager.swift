@@ -973,94 +973,17 @@ class FirebaseManager: ObservableObject {
         return limitedResults
     }
 
-    /// Search main food database via Algolia Cloud Function (instant search)
+    /// Search main food database via Direct Algolia SDK (instant search)
+    /// Previously used Cloud Function which added 100-500ms latency
     private func searchMainDatabase(query: String) async throws -> [FoodSearchResult] {
-        #if DEBUG
-        print("🚀 Searching Algolia for '\(query)'...")
-        #endif
-
-        let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        let urlString = "https://us-central1-nutrasafe-705c7.cloudfunctions.net/searchFoodsAlgolia?q=\(encodedQuery)"
-
-        guard let url = URL(string: urlString) else {
-            #if DEBUG
-            print("❌ Invalid Algolia search URL")
-            #endif
-            return []
-        }
-
-        // Configure URLSession with 3-second timeout for fast failure
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 3.0
-        config.timeoutIntervalForResource = 3.0
-        let session = URLSession(configuration: config)
-
-        do {
-            let (data, _) = try await session.data(from: url)
-
-            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let hits = json["hits"] as? [[String: Any]] else {
-                #if DEBUG
-                print("⚠️ Invalid Algolia response format")
-                #endif
-                return []
-            }
-
-            #if DEBUG
-            print("⚡️ Algolia: Found \(hits.count) results in ~20ms")
-            #endif
-
-            // Convert Algolia hits to FoodSearchResult
-            let results: [FoodSearchResult] = hits.compactMap { hit in
-                guard let objectID = hit["objectID"] as? String,
-                      let name = hit["name"] as? String else {
-                    return nil
-                }
-
-                // Debug: Check what ingredients data looks like
-                let ingredients = hit["ingredients"] as? [String]
-                #if DEBUG
-                if let ing = ingredients, !ing.isEmpty {
-                    print("🥗 [Algolia] '\(name)' has \(ing.count) ingredients: \(ing.prefix(3).joined(separator: ", "))")
-                } else {
-                    print("⚠️ [Algolia] '\(name)' has NO ingredients data")
-                }
-                #endif
-
-                return FoodSearchResult(
-                    id: objectID,
-                    name: name,
-                    brand: hit["brandName"] as? String,
-                    calories: (hit["calories"] as? Double) ?? 0,
-                    protein: (hit["protein"] as? Double) ?? 0,
-                    carbs: (hit["carbs"] as? Double) ?? 0,
-                    fat: (hit["fat"] as? Double) ?? 0,
-                    fiber: (hit["fiber"] as? Double) ?? 0,
-                    sugar: (hit["sugar"] as? Double) ?? 0,
-                    sodium: (hit["sodium"] as? Double) ?? 0,
-                    servingDescription: hit["servingSize"] as? String,
-                    servingSizeG: hit["servingSizeG"] as? Double,
-                    isPerUnit: hit["per_unit_nutrition"] as? Bool,
-                    ingredients: ingredients,
-                    isVerified: (hit["verified"] as? Bool) ?? false,
-                    barcode: hit["barcode"] as? String
-                )
-            }
-
-            return results
-        } catch {
-            #if DEBUG
-            print("⚠️ Algolia search failed: \(error.localizedDescription)")
-            #endif
-
-            // No fallback - Algolia is the only main database
-            return []
-        }
+        // Use direct Algolia SDK for instant results (~300ms faster than Cloud Function)
+        return try await AlgoliaSearchManager.shared.search(query: query)
     }
 
     /// Clear the search cache (useful for testing or memory management)
     func clearSearchCache() {
         searchCache.removeAllObjects()
+        AlgoliaSearchManager.shared.clearCache()
         // DEBUG LOG: print("🗑️ Search cache cleared")
     }
 
