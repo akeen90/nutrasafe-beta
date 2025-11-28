@@ -415,19 +415,7 @@ class MicronutrientDatabase {
     func getNutrientInfo(_ nutrient: String) -> NutrientInfo? {
         guard isInitialized, let db = db else { return nil }
 
-        // Check cache first (should hit after preload)
-        let cacheKey = nutrient.lowercased() as NSString
-        if let cached = nutrientInfoCache.object(forKey: cacheKey) {
-            // Cache hit - no logging needed (most common path after preload)
-            return cached.info
-        }
-
-        // Cache miss - query database (rare after preload)
-        #if DEBUG
-        print("⚠️  Cache miss for nutrient '\(nutrient)' - querying database")
-        #endif
-
-        // Map detector IDs to database IDs
+        // Map detector IDs to database IDs (moved up for cache check)
         let nutrientMapping: [String: String] = [
             // Vitamins with specific names
             "vitamin_a": "Vitamin_A",
@@ -463,7 +451,6 @@ class MicronutrientDatabase {
             "chromium": "Chromium",
             "molybdenum": "Molybdenum",
             "sodium": "Sodium",
-            // "fluoride": "Fluoride", // REMOVED: Not tracked
 
             // Other nutrients
             "choline": "Choline",
@@ -476,17 +463,28 @@ class MicronutrientDatabase {
             "lycopene": "Lycopene"
         ]
 
-        // Try mapping first, then fall back to PascalCase conversion
+        // Get the normalized database key for cache lookup
         let normalizedNutrient: String
         if let mapped = nutrientMapping[nutrient.lowercased()] {
             normalizedNutrient = mapped
         } else {
-            // For minerals and other nutrients: "iron" -> "Iron", "calcium" -> "Calcium"
             normalizedNutrient = nutrient.split(separator: "_")
                 .map { $0.prefix(1).uppercased() + $0.dropFirst().lowercased() }
                 .joined(separator: "_")
         }
 
+        // Check cache with NORMALIZED key (matches preload format)
+        let cacheKey = normalizedNutrient.lowercased() as NSString
+        if let cached = nutrientInfoCache.object(forKey: cacheKey) {
+            return cached.info
+        }
+
+        // Cache miss - query database
+        #if DEBUG
+        print("⚠️  Cache miss for nutrient '\(nutrient)' (normalized: '\(normalizedNutrient)') - querying database")
+        #endif
+
+        // Use normalizedNutrient (already computed above) for database query
         let query = """
         SELECT nutrient, name, category, benefits, deficiency_signs, common_sources, recommended_daily_intake
         FROM nutrient_info

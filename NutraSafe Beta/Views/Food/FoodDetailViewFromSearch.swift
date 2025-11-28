@@ -1954,8 +1954,11 @@ private var nutritionFactsSection: some View {
             quantityForMicronutrients = (servingSize / 100) * quantityMultiplier
         }
 
-        // Generate micronutrient profile from food data
-        let micronutrientProfile = MicronutrientManager.shared.getMicronutrientProfile(for: displayFood, quantity: quantityForMicronutrients)
+        // FIX: Do NOT generate micronutrient profile from macros
+        // The old system multiplied macros by arbitrary factors to create fake vitamin data
+        // (e.g., protein × 2.5 = Vitamin A, carbs × 0.8 = Vitamin C - completely fictitious)
+        // The dashboard now uses ingredient-based analysis with position weighting instead
+        // This ensures only REAL nutrients from actual ingredients are shown
 
         // Create diary entry
         // DEBUG LOG: print("📝 Creating DiaryFoodItem:")
@@ -1997,7 +2000,7 @@ private var nutritionFactsSection: some View {
             ingredients: displayFood.ingredients,
             additives: displayFood.additives,
             barcode: displayFood.barcode,
-            micronutrientProfile: micronutrientProfile,
+            micronutrientProfile: nil,  // FIX: Don't save fake macro-based estimates
             isPerUnit: food.isPerUnit
         )
 

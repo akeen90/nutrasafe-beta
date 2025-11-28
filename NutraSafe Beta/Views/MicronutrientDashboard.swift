@@ -718,23 +718,17 @@ struct MicronutrientDashboard: View {
         // DEBUG LOG: print("📥 Processing \(allFoods.count) foods from today")
 
             // Process each food's micronutrients
+            // FIX: Always use ingredient-based analysis with position weighting
+            // The saved micronutrientProfile was generated from macros (fake data)
+            // The proper system analyzes actual ingredients with regulatory-aligned thresholds
             for food in allFoods {
-                // Process vitamins and minerals from micronutrient profile if available
-                if let profile = food.micronutrientProfile {
-                    await trackingManager.processNutrientProfile(
-                        profile,
-                        foodName: food.name,
-                        servingSize: food.quantity,
-                        date: today
-                    )
-                } else {
-                    // No micronutrient profile - use keyword-based detection instead
-                    await trackingManager.processFoodLog(
-                        name: food.name,
-                        ingredients: food.ingredients ?? [],
-                        date: today
-                    )
-                }
+                // Always use ingredient-based detection (MicronutrientDatabase.analyzeFoodItem)
+                // This uses position weighting, complexity penalties, and UK/EU thresholds
+                await trackingManager.processFoodLog(
+                    name: food.name,
+                    ingredients: food.ingredients ?? [],
+                    date: today
+                )
             }
 
             // PERFORMANCE FIX: Save once after processing all foods instead of per-food

@@ -279,33 +279,61 @@ struct NutrientDatabase {
 
 struct NutrientDetector {
     /// Food source keywords for each nutrient
+    /// TIGHTENED: Only includes foods that are SIGNIFICANT sources (>15% DV per typical serving)
+    /// Based on USDA FoodData Central and UK CoFID database values
     static let nutrientFoodSources: [String: [String]] = [
-        "vitamin_c": ["orange", "lemon", "lime", "strawberry", "strawberries", "kiwi", "bell pepper", "peppers", "broccoli", "tomato", "potato", "papaya", "guava", "apple", "apples"],
-        "vitamin_d": ["salmon", "tuna", "mackerel", "sardines", "egg", "eggs", "fortified milk", "fortified cereal", "mushrooms", "cod liver oil"],
-        "vitamin_a": ["carrot", "sweet potato", "spinach", "kale", "pumpkin", "mango", "apricot", "liver", "egg yolk", "red pepper"],
-        "vitamin_e": ["almonds", "sunflower seeds", "hazelnuts", "peanuts", "avocado", "spinach", "broccoli", "olive oil", "wheat germ"],
-        "vitamin_k": ["kale", "spinach", "broccoli", "brussels sprouts", "cabbage", "lettuce", "asparagus", "parsley", "apple", "apples"],
-        "vitamin_b1": ["pork", "beans", "lentils", "nuts", "whole grains", "fortified cereals", "sunflower seeds"],
-        "vitamin_b2": ["milk", "yogurt", "cheese", "eggs", "lean meats", "almonds", "spinach"],
-        "vitamin_b3": ["chicken", "turkey", "tuna", "salmon", "peanuts", "mushrooms", "green peas"],
-        "vitamin_b6": ["chicken", "turkey", "tuna", "salmon", "potato", "chickpeas", "banana", "apple", "apples"],
-        "vitamin_b12": ["meat", "fish", "dairy", "eggs", "nutritional yeast", "fortified", "clams", "liver"],
-        "folate": ["leafy greens", "spinach", "asparagus", "avocado", "beans", "lentils", "fortified", "broccoli"],
-        "biotin": ["eggs", "almonds", "sweet potato", "spinach", "broccoli", "cheese", "salmon"],
-        "vitamin_b5": ["chicken", "beef", "potato", "oats", "tomato", "broccoli", "whole grains", "avocado", "mushrooms", "eggs"],
-        "calcium": ["milk", "cheese", "yogurt", "yoghurt", "broccoli", "kale", "sardines", "almonds", "tofu", "fortified"],
-        "iron": ["spinach", "beef", "chicken", "turkey", "lentils", "beans", "quinoa", "tofu", "liver", "oysters"],
-        "magnesium": ["almonds", "spinach", "cashews", "peanuts", "black beans", "avocado", "dark chocolate"],
-        "potassium": ["banana", "potato", "sweet potato", "spinach", "avocado", "beans", "lentils", "yogurt", "apple", "apples"],
-        "zinc": ["oysters", "beef", "chicken", "beans", "nuts", "seeds", "dairy", "whole grains"],
-        "selenium": ["brazil nuts", "tuna", "halibut", "sardines", "shrimp", "turkey", "chicken"],
-        "phosphorus": ["dairy", "meat", "fish", "poultry", "beans", "lentils", "nuts", "whole grains"],
-        "copper": ["shellfish", "nuts", "seeds", "organ meats", "beans", "dark chocolate", "apple", "apples"],
-        "manganese": ["nuts", "beans", "whole grains", "tea", "leafy vegetables", "pineapple"],
-        "iodine": ["seaweed", "cod", "dairy", "iodized salt", "shrimp", "eggs"],
-        "chromium": ["broccoli", "grapes", "potatoes", "garlic", "whole grains", "beef", "turkey", "green beans", "apple", "apples"],
-        "molybdenum": ["lentils", "beans", "peas", "nuts", "whole grains", "leafy vegetables", "liver"],
-        "omega_3": ["salmon", "sardines", "mackerel", "walnuts", "flax", "flaxseed", "chia", "hemp", "tuna"]
+        // Vitamin C: 90mg DV - only high sources (>15mg per serving)
+        "vitamin_c": ["orange", "lemon", "lime", "grapefruit", "strawberry", "strawberries", "kiwi", "bell pepper", "peppers", "broccoli", "papaya", "guava", "mango"],
+        // Vitamin D: 20mcg DV - very few natural sources
+        "vitamin_d": ["salmon", "mackerel", "sardines", "herring", "cod liver oil", "fortified milk", "fortified cereal", "egg yolk"],
+        // Vitamin A: 900mcg DV - only rich sources
+        "vitamin_a": ["liver", "sweet potato", "carrot", "spinach", "kale", "butternut squash", "cantaloupe", "red pepper", "mango"],
+        // Vitamin E: 15mg DV - concentrated sources only
+        "vitamin_e": ["sunflower seeds", "almonds", "hazelnuts", "wheat germ", "sunflower oil", "safflower oil"],
+        // Vitamin K: 120mcg DV - leafy greens dominate
+        "vitamin_k": ["kale", "spinach", "collard greens", "swiss chard", "broccoli", "brussels sprouts", "parsley", "natto"],
+        // B1 Thiamine: 1.2mg DV
+        "vitamin_b1": ["pork", "sunflower seeds", "fortified cereals", "black beans", "lentils", "green peas"],
+        // B2 Riboflavin: 1.3mg DV - removed generic terms
+        "vitamin_b2": ["liver", "fortified cereals", "oats", "yogurt", "milk", "mushrooms", "almonds"],
+        // B3 Niacin: 16mg DV
+        "vitamin_b3": ["chicken breast", "turkey breast", "tuna", "salmon", "peanuts", "fortified cereals", "liver"],
+        // B6: 1.7mg DV
+        "vitamin_b6": ["chickpeas", "salmon", "tuna", "chicken breast", "turkey", "potato", "banana", "fortified cereals"],
+        // B12: 2.4mcg DV - only animal/fortified sources
+        "vitamin_b12": ["liver", "clams", "sardines", "salmon", "tuna", "beef", "fortified cereals", "nutritional yeast"],
+        // Folate: 400mcg DV
+        "folate": ["liver", "spinach", "black-eyed peas", "asparagus", "brussels sprouts", "fortified cereals", "avocado", "broccoli"],
+        // Biotin: 30mcg DV - TIGHTENED: removed cheese (not significant)
+        "biotin": ["liver", "egg yolk", "eggs", "salmon", "pork", "sunflower seeds", "sweet potato", "almonds"],
+        // B5 Pantothenic Acid: 5mg DV - TIGHTENED: removed minor sources
+        "vitamin_b5": ["liver", "shiitake mushrooms", "sunflower seeds", "chicken", "avocado", "fortified cereals"],
+        // Calcium: 1000mg DV
+        "calcium": ["milk", "yogurt", "yoghurt", "cheese", "sardines", "fortified orange juice", "tofu", "fortified cereals", "kale"],
+        // Iron: 18mg DV - TIGHTENED: only significant sources
+        "iron": ["liver", "oysters", "beef", "fortified cereals", "spinach", "lentils", "kidney beans", "tofu"],
+        // Magnesium: 420mg DV
+        "magnesium": ["pumpkin seeds", "chia seeds", "almonds", "spinach", "cashews", "black beans", "edamame", "dark chocolate"],
+        // Potassium: 4700mg DV - very high threshold
+        "potassium": ["potato", "sweet potato", "white beans", "spinach", "banana", "acorn squash", "salmon", "avocado"],
+        // Zinc: 11mg DV - TIGHTENED
+        "zinc": ["oysters", "beef", "crab", "lobster", "pork", "fortified cereals", "pumpkin seeds", "chickpeas"],
+        // Selenium: 55mcg DV
+        "selenium": ["brazil nuts", "tuna", "halibut", "sardines", "ham", "shrimp", "turkey"],
+        // Phosphorus: 1250mg DV
+        "phosphorus": ["salmon", "yogurt", "milk", "turkey", "chicken", "pumpkin seeds", "lentils"],
+        // Copper: 0.9mg DV
+        "copper": ["liver", "oysters", "shiitake mushrooms", "cashews", "crab", "sunflower seeds", "dark chocolate"],
+        // Manganese: 2.3mg DV
+        "manganese": ["mussels", "hazelnuts", "pecans", "brown rice", "oatmeal", "pineapple", "spinach"],
+        // Iodine: 150mcg DV
+        "iodine": ["seaweed", "cod", "iodized salt", "milk", "shrimp", "tuna", "eggs"],
+        // Chromium: 35mcg DV - TIGHTENED: removed generic terms
+        "chromium": ["broccoli", "grape juice", "mashed potatoes", "garlic", "green beans", "turkey breast"],
+        // Molybdenum: 45mcg DV
+        "molybdenum": ["black-eyed peas", "lima beans", "kidney beans", "lentils", "oats", "almonds"],
+        // Omega-3: No official DV, but significant sources only
+        "omega_3": ["salmon", "sardines", "mackerel", "herring", "anchovies", "trout", "walnuts", "flaxseed", "chia seeds"]
     ]
 
     /// Detect which nutrients are present in a food item based on its micronutrient profile
