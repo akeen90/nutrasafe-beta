@@ -43,6 +43,9 @@ struct DiaryTabView: View {
     @State private var hasLoadedOnce = false // PERFORMANCE: Guard flag to prevent redundant loads
     @State private var isLoadingData = false // Loading state for UI feedback
 
+    // MARK: - HealthKit Auto-Refresh Timer (60 seconds)
+    private let healthKitRefreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+
     private struct NutritionTotals {
         var totalCalories: Int = 0
         var totalProtein: Double = 0
@@ -432,6 +435,15 @@ struct DiaryTabView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .diaryFoodDetailOpened)) { _ in
                 selectedFoodItems.removeAll()
+            }
+            .onReceive(healthKitRefreshTimer) { _ in
+                // Only refresh HealthKit data if viewing today's date
+                if Calendar.current.isDateInToday(selectedDate) {
+                    Task {
+                        await healthKitManager.updateStepCount(for: selectedDate)
+                        await healthKitManager.updateActiveEnergy(for: selectedDate)
+                    }
+                }
             }
             .onChange(of: moveTrigger) { newValue in
                 if newValue {
