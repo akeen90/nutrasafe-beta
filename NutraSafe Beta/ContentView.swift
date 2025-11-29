@@ -1723,14 +1723,24 @@ struct ContentView: View {
                 async let weightsTask = FirebaseManager.shared.getWeightHistory()
                 async let useByTask: [UseByInventoryItem] = FirebaseManager.shared.getUseByItems()
                 async let reactionsTask = FirebaseManager.shared.getReactions()
+                async let settingsTask = FirebaseManager.shared.getUserSettings()
                 async let nutrientsTask = MicronutrientTrackingManager.shared.getAllNutrientSummaries()
 
                 // Wait for all to complete (runs in ~1.2s instead of 3.4s sequential)
                 do {
-                    let _ = try await (weightsTask, useByTask, reactionsTask)
+                    let weights = try await weightsTask
+                    let useByItems = try await useByTask
+                    let reactions = try await reactionsTask
+                    let settings = try await settingsTask
                     let _ = await nutrientsTask
+                    await MainActor.run {
+                        if let uid = FirebaseManager.shared.currentUser?.uid {
+                            ReactionManager.shared.preload(reactions, for: uid)
+                        }
+                        FirebaseManager.shared.preloadWeightData(history: weights, height: settings.height, goalWeight: settings.goalWeight)
+                    }
                     #if DEBUG
-                    print("✅ Background preload complete - all tabs ready")
+                    print("✅ Background preload complete - all tabs ready (weights: \(weights.count), useBy: \(useByItems.count), reactions: \(reactions.count))")
                     #endif
                 } catch {
                     #if DEBUG
@@ -1826,7 +1836,7 @@ struct WeightTrackingView: View {
     @State private var showingAddWeight = false
     @State private var weightHistory: [WeightEntry] = []
     @State private var showingHeightSetup = false
-    @State private var isLoadingData = false // PERFORMANCE: Start false - prevents spinner on subsequent visits
+    @State private var isLoadingData = false
     @State private var hasCheckedHeight = false
     @State private var hasLoadedOnce = false // PERFORMANCE: Guard flag to prevent redundant loads
 
@@ -1888,8 +1898,7 @@ struct WeightTrackingView: View {
     }
 
     var body: some View {
-        NavigationView {
-            VStack(spacing: 0) {
+        VStack(spacing: 0) {
                 // Fixed Header
                 HStack(spacing: 16) {
                     Text("Progress")
@@ -1980,19 +1989,12 @@ struct WeightTrackingView: View {
                             .padding(16)
                             .background(
                                 RoundedRectangle(cornerRadius: 20)
-                                    .fill(.ultraThinMaterial)
+                                    .fill(Color(.systemBackground))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 20)
-                                            .stroke(
-                                                LinearGradient(
-                                                    colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
-                                                    startPoint: .topLeading,
-                                                    endPoint: .bottomTrailing
-                                                ),
-                                                lineWidth: 1
-                                            )
+                                            .stroke(Color(.systemGray4), lineWidth: 1)
                                     )
-                                    .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
+                                    .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 3)
                             )
 
                             // Goal Weight
@@ -2013,19 +2015,12 @@ struct WeightTrackingView: View {
                             .padding(16)
                             .background(
                                 RoundedRectangle(cornerRadius: 20)
-                                    .fill(.ultraThinMaterial)
+                                    .fill(Color(.systemBackground))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 20)
-                                            .stroke(
-                                                LinearGradient(
-                                                    colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
-                                                    startPoint: .topLeading,
-                                                    endPoint: .bottomTrailing
-                                                ),
-                                                lineWidth: 1
-                                            )
+                                            .stroke(Color(.systemGray4), lineWidth: 1)
                                     )
-                                    .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
+                                    .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 3)
                             )
                         }
                         .padding(.horizontal, 16)
@@ -2051,19 +2046,12 @@ struct WeightTrackingView: View {
                             .padding(16)
                             .background(
                                 RoundedRectangle(cornerRadius: 20)
-                                    .fill(.ultraThinMaterial)
+                                    .fill(Color(.systemBackground))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 20)
-                                            .stroke(
-                                                LinearGradient(
-                                                    colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
-                                                    startPoint: .topLeading,
-                                                    endPoint: .bottomTrailing
-                                                ),
-                                                lineWidth: 1
-                                            )
+                                            .stroke(Color(.systemGray4), lineWidth: 1)
                                     )
-                                    .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
+                                    .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 3)
                             )
 
                             // Remaining
@@ -2085,19 +2073,12 @@ struct WeightTrackingView: View {
                             .padding(16)
                             .background(
                                 RoundedRectangle(cornerRadius: 20)
-                                    .fill(.ultraThinMaterial)
+                                    .fill(Color(.systemBackground))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 20)
-                                            .stroke(
-                                                LinearGradient(
-                                                    colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
-                                                    startPoint: .topLeading,
-                                                    endPoint: .bottomTrailing
-                                                ),
-                                                lineWidth: 1
-                                            )
+                                            .stroke(Color(.systemGray4), lineWidth: 1)
                                     )
-                                    .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
+                                    .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 3)
                             )
                         }
                         .padding(.horizontal, 16)
@@ -2236,20 +2217,13 @@ struct WeightTrackingView: View {
                         .padding(12)
                         .background(
                             RoundedRectangle(cornerRadius: 22)
-                                .fill(.ultraThinMaterial)
+                                .fill(Color(.systemBackground))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 22)
-                                        .stroke(
-                                            LinearGradient(
-                                                colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            ),
-                                            lineWidth: 1
-                                        )
+                                        .stroke(Color(.systemGray4), lineWidth: 1)
                                 )
                         )
-                        .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
+                        .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 3)
                             .padding(.horizontal, 0)
                     } else {
                         // Empty State
@@ -2323,8 +2297,6 @@ struct WeightTrackingView: View {
                 } // End of loading else block
             }
             .background(Color.adaptiveBackground)
-        }
-        .navigationViewStyle(StackNavigationViewStyle())
         .sheet(isPresented: $showingAddWeight) {
             AddWeightView(currentWeight: $currentWeight, weightHistory: $weightHistory, userHeight: $userHeight)
                 .environmentObject(firebaseManager)
@@ -2358,14 +2330,19 @@ struct WeightTrackingView: View {
             }
         }
         .onAppear {
-            // PERFORMANCE: Skip if already loaded - prevents redundant Firebase calls on tab switches
-            guard !hasLoadedOnce else {
-        // DEBUG LOG: print("⚡️ WeightTrackingView: Skipping load - data already loaded")
-                return
+            guard !hasLoadedOnce else { return }
+            if !(firebaseManager.cachedWeightHistory.isEmpty && firebaseManager.cachedUserHeight == nil && firebaseManager.cachedGoalWeight == nil) {
+                currentWeight = firebaseManager.cachedWeightHistory.first?.weight ?? currentWeight
+                weightHistory = firebaseManager.cachedWeightHistory
+                if let h = firebaseManager.cachedUserHeight { userHeight = h }
+                if let g = firebaseManager.cachedGoalWeight { goalWeight = g }
+                hasCheckedHeight = true
+                hasLoadedOnce = true
+                loadWeightHistory(silent: true)
+            } else {
+                hasLoadedOnce = true
+                loadWeightHistory()
             }
-            hasLoadedOnce = true
-
-            loadWeightHistory()
             if needsHeightSetup {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     showingHeightSetup = true
@@ -2426,8 +2403,8 @@ struct WeightTrackingView: View {
         .ignoresSafeArea()
     }
 
-    private func loadWeightHistory() {
-        isLoadingData = true
+    private func loadWeightHistory(silent: Bool = false) {
+        if !silent { isLoadingData = true }
         Task {
             do {
                 // OPTIMIZATION: Load weight history and settings in parallel
@@ -2452,8 +2429,8 @@ struct WeightTrackingView: View {
                         goalWeight = goal
                     }
 
-                    hasCheckedHeight = true // Mark that we've checked Firebase
-                    isLoadingData = false
+                    hasCheckedHeight = true
+                    if !silent { isLoadingData = false }
                 }
             } catch {
                 #if DEBUG
@@ -2461,7 +2438,7 @@ struct WeightTrackingView: View {
                 #endif
                 await MainActor.run {
                     hasCheckedHeight = true
-                    isLoadingData = false
+                    if !silent { isLoadingData = false }
                 }
             }
         }

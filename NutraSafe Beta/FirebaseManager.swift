@@ -11,6 +11,9 @@ class FirebaseManager: ObservableObject {
 
     @Published var currentUser: User?
     @Published var isAuthenticated = false
+    @Published var cachedWeightHistory: [WeightEntry] = []
+    @Published var cachedUserHeight: Double?
+    @Published var cachedGoalWeight: Double?
 
     private lazy var db = Firestore.firestore()
     private lazy var auth = Auth.auth()
@@ -71,6 +74,14 @@ class FirebaseManager: ObservableObject {
                     NotificationCenter.default.post(name: .authStateChanged, object: nil)
                 }
             }
+        }
+    }
+
+    func preloadWeightData(history: [WeightEntry], height: Double?, goalWeight: Double?) {
+        Task { @MainActor in
+            self.cachedWeightHistory = history
+            self.cachedUserHeight = height
+            self.cachedGoalWeight = goalWeight
         }
     }
     

@@ -84,19 +84,21 @@ struct FoodTabView: View {
                 // - FastingPresetButton: Quick-select fasting duration button
                 
                 // Content based on selected sub-tab
-                Group {
-                    switch selectedFoodSubTab {
-                    case .reactions:
-                        FoodReactionsView(selectedTab: $selectedTab)
-                    case .fasting:
-                        if let viewModel = fastingViewModelWrapper.viewModel {
-                            FastingMainView(viewModel: viewModel)
-                        } else {
-                            ProgressView()
-                        }
-                    }
+        Group {
+            switch selectedFoodSubTab {
+            case .reactions:
+                FoodReactionsView(selectedTab: $selectedTab)
+            case .fasting:
+                if let viewModel = fastingViewModelWrapper.viewModel {
+                    FastingMainView(viewModel: viewModel)
+                } else {
+                    ProgressView()
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .animation(nil, value: selectedFoodSubTab)
+        .transaction { $0.disablesAnimations = true }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .background(Color.adaptiveBackground)
             .navigationBarHidden(true)
@@ -1682,6 +1684,18 @@ class ReactionManager: ObservableObject {
         }
     }
 
+    func preload(_ reactions: [FoodReaction], for userId: String) {
+        let sorted = reactions.sorted { $0.timestamp.dateValue() > $1.timestamp.dateValue() }
+        reactionsDidPreload(sorted: sorted, userId: userId)
+    }
+
+    @MainActor
+    private func reactionsDidPreload(sorted: [FoodReaction], userId: String) {
+        self.reactions = sorted
+        self.lastLoadedUserId = userId
+        self.isLoading = false
+    }
+
     func deleteReaction(_ reaction: FoodReaction) async {
         // Prevent double-delete race condition
         guard !deletingIds.contains(reaction.id) else { return }
@@ -2290,7 +2304,9 @@ struct FoodReactionSearchView: View {
             }
         }
         .onAppear {
-            loadRecentDiaryEntries()
+            if diaryEntries.isEmpty && !isLoadingDiary {
+                loadRecentDiaryEntries()
+            }
         }
         .onDisappear {
             searchTask?.cancel()
