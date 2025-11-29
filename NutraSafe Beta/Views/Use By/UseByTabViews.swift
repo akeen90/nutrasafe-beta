@@ -100,7 +100,7 @@ struct UseByTabView: View {
             VStack(spacing: 0) {
                 // Header - AAA Modern Design
                 HStack(spacing: 16) {
-                    Text("Use By")
+                    Text("Use By · Updated")
                         .font(.system(size: 38, weight: .bold, design: .rounded))
                         .frame(height: 44, alignment: .center)
                         .foregroundColor(.primary)

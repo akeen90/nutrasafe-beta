@@ -28,6 +28,12 @@ struct FastingTimerView: View {
     @State private var showStopError = false
     @State private var stopErrorText = ""
     @State private var showingCitations = false
+    @State private var showingStartOptions = false
+    @State private var startOverride = Date()
+    @State private var showingEditFast = false
+    @State private var editStartTime = Date()
+    @State private var editTargetHours = 16
+    private var isRegimeActive: Bool { currentPlan?.active == true }
 
     // Live Activity
     @State private var currentActivity: Any? // Holds Activity<FastingActivityAttributes> on iOS 16.1+
@@ -87,12 +93,14 @@ struct FastingTimerView: View {
 
                 Spacer()
 
-                Button(action: {
-                    showingSettings = true
-                }) {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(.secondary)
+                if !isRegimeActive {
+                    Button(action: {
+                        showingSettings = true
+                    }) {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.secondary)
+                    }
                 }
             }
                     
@@ -193,7 +201,7 @@ struct FastingTimerView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                 } else {
-                    Button(action: startFasting) {
+                    Button(action: { showingStartOptions = true }) {
                         HStack(spacing: 8) {
                             Image(systemName: "play.circle.fill")
                                 .font(.system(size: 18))
@@ -204,6 +212,26 @@ struct FastingTimerView: View {
                         .padding(.vertical, 14)
                         .background(.green)
                         .foregroundColor(.white)
+                        .cornerRadius(12)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+                if isFasting {
+                    Button(action: {
+                        editStartTime = currentSession?.startTime ?? Date()
+                        editTargetHours = currentSession?.targetDurationHours ?? fastingGoal
+                        showingEditFast = true
+                    }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "pencil.circle.fill")
+                                .font(.system(size: 18))
+                            Text("Edit Fast")
+                                .font(.system(size: 16, weight: .semibold))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color(.systemGray5))
+                        .foregroundColor(.primary)
                         .cornerRadius(12)
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -412,6 +440,41 @@ struct FastingTimerView: View {
         .sheet(isPresented: $showingCitations) {
             FastingCitationsView()
         }
+        .sheet(isPresented: $showingStartOptions) {
+            VStack(spacing: 16) {
+                DatePicker("Started At", selection: $startOverride, in: ...Date(), displayedComponents: .hourAndMinute)
+                HStack {
+                    Stepper("Goal: \(editTargetHours)h", value: $editTargetHours, in: 8...24)
+                }
+                Button {
+                    fastingGoal = editTargetHours
+                    startFasting(at: startOverride)
+                    showingStartOptions = false
+                } label: {
+                    Text("Start")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .padding()
+        }
+        .sheet(isPresented: $showingEditFast) {
+            VStack(spacing: 16) {
+                DatePicker("Start Time", selection: $editStartTime, in: ...Date(), displayedComponents: .hourAndMinute)
+                Stepper("Goal: \(editTargetHours)h", value: $editTargetHours, in: 8...24)
+                Button {
+                    editActiveFast()
+                    showingEditFast = false
+                } label: {
+                    Text("Save Changes")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .padding()
+        }
     }
 
     // MARK: - Private Methods
@@ -489,6 +552,50 @@ struct FastingTimerView: View {
 
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
+    }
+
+    private func startFasting(at startTime: Date) {
+        activeFastSessionId = UUID().uuidString
+        let newSession = FastingManager.createSession(
+            userId: firebaseManager.currentUser?.uid ?? "",
+            plan: currentPlan,
+            targetDurationHours: fastingGoal,
+            startTime: startTime
+        )
+        Task {
+            do {
+                let _ = try await firebaseManager.saveFastingSession(newSession)
+                await loadFastingData()
+            } catch {
+            }
+            if #available(iOS 16.1, *) {
+                await startLiveActivity()
+            }
+            await scheduleFastingNotifications()
+        }
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+    }
+
+    private func editActiveFast() {
+        guard var session = currentSession else { return }
+        session.startTime = editStartTime
+        session.targetDurationHours = editTargetHours
+        session.manuallyEdited = true
+        Task {
+            do {
+                try await firebaseManager.updateFastingSession(session)
+                await MainActor.run {
+                    currentSession = session
+                    fastingGoal = session.targetDurationHours
+                }
+                // Persist overrides so regime view picks up changes immediately
+                UserDefaults.standard.set(editStartTime, forKey: "customFastingStartTimeOverride")
+                UserDefaults.standard.set(editTargetHours, forKey: "customFastingTargetHoursOverride")
+                NotificationCenter.default.post(name: .fastHistoryUpdated, object: nil)
+            } catch {
+            }
+        }
     }
 
     private func stopFasting() {

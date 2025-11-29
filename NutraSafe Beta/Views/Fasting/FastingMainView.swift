@@ -271,6 +271,26 @@ struct PlanDashboardView: View {
         cachedAverageDuration = total / Double(planSessions.count)
     }
 
+    private var effectiveDurationHours: Int {
+        switch viewModel.currentRegimeState {
+        case .fasting(let started, let ends):
+            return max(1, Int(round(ends.timeIntervalSince(started) / 3600)))
+        default:
+            if let sessionHours = viewModel.activeSession?.targetDurationHours { return sessionHours }
+            return plan.durationHours
+        }
+    }
+
+    private var effectiveDisplayName: String {
+        let h = effectiveDurationHours
+        if h == 16 { return "16:8 Fasting Plan" }
+        if h == 12 { return "12:12 Fasting Plan" }
+        if h == 18 { return "18:6 Fasting Plan" }
+        if h == 20 { return "20:4 Fasting Plan" }
+        if h == 24 { return "OMAD Plan" }
+        return "\(h)-Hour Fast"
+    }
+
     var body: some View {
         VStack(spacing: 20) {
             // Plan Header Card
@@ -278,13 +298,13 @@ struct PlanDashboardView: View {
                 HStack {
                     Image(systemName: "clock.badge.checkmark")
                         .foregroundColor(.green)
-                    Text(plan.displayName)
+                    Text(effectiveDisplayName)
                         .font(.headline)
                     Spacer()
                 }
 
                 HStack {
-                    Text(plan.durationDisplay)
+                    Text("\(effectiveDurationHours)h")
                         .font(.caption)
                         .foregroundColor(.secondary)
 
@@ -379,7 +399,7 @@ struct PlanDashboardView: View {
                             .background(Color.blue.opacity(0.1))
                             .cornerRadius(8)
 
-                            // Snooze and Skip buttons
+                            // Snooze, Skip, and Edit buttons
                             HStack(spacing: 12) {
                                 Button {
                                     // Initialize with current time TODAY (not 30 min in future which might roll to tomorrow)
@@ -414,6 +434,8 @@ struct PlanDashboardView: View {
                                     .cornerRadius(8)
                                 }
                                 .buttonStyle(.plain)
+
+                                EmptyView()
                             }
                         }
 
@@ -668,10 +690,14 @@ struct PlanDashboardView: View {
             }
             .presentationDetents([.medium])
         }
+            
         .sheet(isPresented: $showWeekDetail) {
             if let week = selectedWeek {
                 WeekDetailView(week: week, viewModel: viewModel)
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .fastHistoryUpdated)) { _ in
+            viewModel.objectWillChange.send()
         }
         .confirmationDialog(
             "Start Fasting",
@@ -709,6 +735,9 @@ struct RegimeDetailView: View {
     let plan: FastingPlan
     @Environment(\.dismiss) private var dismiss
     @State private var showingCitations = false
+    @State private var showingEditTimes = false
+    @State private var editStartTime = Date()
+    @State private var editTargetHours = 16
 
     var body: some View {
         NavigationStack {
@@ -722,6 +751,26 @@ struct RegimeDetailView: View {
 
                     // Current state info
                     RegimeStateInfo(viewModel: viewModel)
+
+                    if case .fasting(let started, _) = viewModel.currentRegimeState {
+                        Button {
+                            editStartTime = started
+                            editTargetHours = viewModel.activeSession?.targetDurationHours ?? viewModel.activePlan?.durationHours ?? 16
+                            showingEditTimes = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "pencil.circle.fill")
+                                Text("Edit Fast")
+                                    .fontWeight(.semibold)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.gray.opacity(0.2))
+                            .foregroundColor(.primary)
+                            .cornerRadius(12)
+                        }
+                        .buttonStyle(.plain)
+                    }
 
                     // View Sources Button
                     Button {
@@ -753,6 +802,32 @@ struct RegimeDetailView: View {
             }
             .sheet(isPresented: $showingCitations) {
                 FastingCitationsView()
+            }
+            .sheet(isPresented: $showingEditTimes) {
+                NavigationStack {
+                    Form {
+                        Section("Current Fast") {
+                            DatePicker("Start Time", selection: $editStartTime, in: ...Date())
+                            Stepper("Goal: \(editTargetHours)h", value: $editTargetHours, in: 8...24)
+                        }
+                        Section {
+                            Button {
+                                Task { await viewModel.editActiveFast(startTime: editStartTime, targetHours: editTargetHours) }
+                                showingEditTimes = false
+                            } label: {
+                                HStack { Spacer(); Text("Save Changes").fontWeight(.semibold); Spacer() }
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                    }
+                    .navigationTitle("Edit Fast")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel") { showingEditTimes = false }
+                        }
+                    }
+                }
             }
         }
     }
@@ -944,16 +1019,15 @@ struct RegimeStateInfo: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                if case .fasting(let started, _) = viewModel.currentRegimeState {
+                if case .fasting(let started, let ends) = viewModel.currentRegimeState {
                     Text("Fast started: \(started.formatted(date: .abbreviated, time: .shortened))")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
 
-                    if let plan = viewModel.activePlan {
-                        Text("Target: \(plan.durationHours)h fast / \(24 - plan.durationHours)h eating window")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
+                    let targetHours = Int(round(ends.timeIntervalSince(started) / 3600))
+                    Text("Target: \(targetHours)h fast / \(max(0, 24 - targetHours))h eating window")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
                 } else if case .eating = viewModel.currentRegimeState {
                     Text("Enjoy your eating window!")
                         .font(.subheadline)
@@ -2093,6 +2167,7 @@ struct EditSessionTimesView: View {
     @State private var startTime: Date
     @State private var endTime: Date?
     @State private var isActive: Bool
+    @State private var targetHours: Int
     
     init(viewModel: FastingViewModel, session: FastingSession) {
         self.viewModel = viewModel
@@ -2100,6 +2175,7 @@ struct EditSessionTimesView: View {
         self._startTime = State(initialValue: session.startTime)
         self._endTime = State(initialValue: session.endTime)
         self._isActive = State(initialValue: session.endTime == nil)
+        self._targetHours = State(initialValue: session.targetDurationHours)
     }
     
     var body: some View {
@@ -2117,14 +2193,17 @@ struct EditSessionTimesView: View {
                         ))
                     }
                 }
+                Section(header: Text("Target")) {
+                    Stepper("Goal: \(targetHours)h", value: $targetHours, in: 8...24)
+                }
                 
                 Section {
                     Button {
                         Task {
-                            await viewModel.editSessionTimes(
-                                startTime: startTime,
-                                endTime: isActive ? nil : endTime
-                            )
+                            await viewModel.editActiveFast(startTime: startTime, targetHours: targetHours)
+                            if !isActive {
+                                await viewModel.editSessionTimes(startTime: startTime, endTime: endTime)
+                            }
                             dismiss()
                         }
                     } label: {

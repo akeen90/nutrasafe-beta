@@ -848,7 +848,8 @@ class FastingViewModel: ObservableObject {
         // Apply custom start time override if set (for manual starts)
         if let customStart = customStartTimeOverride,
            let plan = activePlan {
-            let customEnd = customStart.addingTimeInterval(Double(plan.durationHours) * 3600)
+            let hours = customTargetHoursOverride ?? plan.durationHours
+            let customEnd = customStart.addingTimeInterval(Double(hours) * 3600)
 
             // If we're still within the custom fasting window
             if Date() < customEnd {
@@ -856,6 +857,7 @@ class FastingViewModel: ObservableObject {
             } else {
                 // Custom window ended - find next fast
                 customStartTimeOverride = nil
+                customTargetHoursOverride = nil
                 if let nextFast = plan.nextScheduledFastingWindow() {
                     return .eating(nextFastStart: nextFast)
                 }
@@ -870,9 +872,11 @@ class FastingViewModel: ObservableObject {
         guard let customStart = customStartTimeOverride,
               let plan = activePlan else { return }
 
-        let customEnd = customStart.addingTimeInterval(Double(plan.durationHours) * 3600)
+        let hours = customTargetHoursOverride ?? plan.durationHours
+        let customEnd = customStart.addingTimeInterval(Double(hours) * 3600)
         if Date() >= customEnd {
             customStartTimeOverride = nil
+            customTargetHoursOverride = nil
             print("🧹 Cleared expired custom start time override")
         }
     }
@@ -938,6 +942,7 @@ class FastingViewModel: ObservableObject {
 
     // MARK: - Custom Start Time Override
     private static let customStartTimeKey = "customFastingStartTimeOverride"
+    private static let customTargetHoursKey = "customFastingTargetHoursOverride"
 
     /// Store a custom start time override for the current fasting window
     private var customStartTimeOverride: Date? {
@@ -949,6 +954,19 @@ class FastingViewModel: ObservableObject {
                 UserDefaults.standard.set(date, forKey: Self.customStartTimeKey)
             } else {
                 UserDefaults.standard.removeObject(forKey: Self.customStartTimeKey)
+            }
+        }
+    }
+
+    private var customTargetHoursOverride: Int? {
+        get {
+            return UserDefaults.standard.object(forKey: Self.customTargetHoursKey) as? Int
+        }
+        set {
+            if let hours = newValue {
+                UserDefaults.standard.set(hours, forKey: Self.customTargetHoursKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: Self.customTargetHoursKey)
             }
         }
     }
@@ -1410,6 +1428,35 @@ class FastingViewModel: ObservableObject {
         } catch {
             self.error = error
             self.showError = true
+        }
+    }
+
+    func editActiveFast(startTime: Date, targetHours: Int) async {
+        if var session = activeSession {
+            isLoading = true
+            defer { isLoading = false }
+            session.startTime = startTime
+            session.targetDurationHours = targetHours
+            session.manuallyEdited = true
+            do {
+                try await firebaseManager.updateFastingSession(session)
+                await MainActor.run {
+                    self.activeSession = session
+                    self.customStartTimeOverride = startTime
+                    self.customTargetHoursOverride = targetHours
+                    self.objectWillChange.send()
+                }
+            } catch {
+                self.error = error
+                self.showError = true
+            }
+        } else {
+            await MainActor.run {
+                self.customStartTimeOverride = startTime
+                self.customTargetHoursOverride = targetHours
+                self.objectWillChange.send()
+                NotificationCenter.default.post(name: .fastHistoryUpdated, object: nil)
+            }
         }
     }
 
