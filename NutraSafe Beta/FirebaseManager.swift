@@ -3,6 +3,8 @@ import Firebase
 import FirebaseFirestore
 import FirebaseAuth
 import FirebaseStorage
+import AuthenticationServices
+import CryptoKit
 
 class FirebaseManager: ObservableObject {
     static let shared = FirebaseManager()
@@ -16,6 +18,9 @@ class FirebaseManager: ObservableObject {
     // Thread-safe cache using DispatchQueue (Swift 6 async-safe)
     private let cacheQueue = DispatchQueue(label: "com.nutrasafe.cacheQueue")
     private var authListenerHandle: AuthStateDidChangeListenerHandle?
+
+    // Apple Sign In nonce storage
+    private var currentNonce: String?
 
     // MARK: - Search Cache (Optimized with NSCache)
     private class SearchCacheEntry {
@@ -310,7 +315,84 @@ class FirebaseManager: ObservableObject {
         }
         try await user.sendEmailVerification()
     }
-    
+
+    // MARK: - Apple Sign In
+
+    /// Start Apple Sign In flow and return the hashed nonce for the request
+    func startAppleSignIn() -> String {
+        let nonce = randomNonceString()
+        currentNonce = nonce
+        return sha256(nonce)
+    }
+
+    /// Complete Apple Sign In with the authorization result
+    func signInWithApple(authorization: ASAuthorization) async throws {
+        guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential else {
+            throw NSError(domain: "AppleSignIn", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid credential type"])
+        }
+
+        guard let nonce = currentNonce else {
+            throw NSError(domain: "AppleSignIn", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid state: nonce not set"])
+        }
+
+        guard let appleIDToken = appleIDCredential.identityToken,
+              let idTokenString = String(data: appleIDToken, encoding: .utf8) else {
+            throw NSError(domain: "AppleSignIn", code: -1, userInfo: [NSLocalizedDescriptionKey: "Unable to fetch identity token"])
+        }
+
+        initializeFirebaseServices()
+
+        // Create Firebase credential with Apple ID token
+        let credential = OAuthProvider.appleCredential(
+            withIDToken: idTokenString,
+            rawNonce: nonce,
+            fullName: appleIDCredential.fullName
+        )
+
+        // Sign in with Firebase - automatically links if email matches existing account
+        let result = try await auth.signIn(with: credential)
+
+        // Update display name if provided (Apple only sends name on first sign-in)
+        if let fullName = appleIDCredential.fullName,
+           let givenName = fullName.givenName {
+            let displayName = [givenName, fullName.familyName].compactMap { $0 }.joined(separator: " ")
+            if !displayName.isEmpty {
+                let changeRequest = result.user.createProfileChangeRequest()
+                changeRequest.displayName = displayName
+                try? await changeRequest.commitChanges()
+            }
+        }
+
+        await MainActor.run {
+            self.currentUser = result.user
+            self.isAuthenticated = true
+        }
+    }
+
+    /// Check if current user authenticated via Apple Sign In
+    var isAppleUser: Bool {
+        currentUser?.providerData.contains { $0.providerID == "apple.com" } ?? false
+    }
+
+    // Generate random nonce string for Apple Sign In security
+    private func randomNonceString(length: Int = 32) -> String {
+        precondition(length > 0)
+        var randomBytes = [UInt8](repeating: 0, count: length)
+        let errorCode = SecRandomCopyBytes(kSecRandomDefault, randomBytes.count, &randomBytes)
+        if errorCode != errSecSuccess {
+            fatalError("Unable to generate nonce. SecRandomCopyBytes failed with OSStatus \(errorCode)")
+        }
+        let charset: [Character] = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+        return String(randomBytes.map { charset[Int($0) % charset.count] })
+    }
+
+    // SHA256 hash for nonce
+    private func sha256(_ input: String) -> String {
+        let inputData = Data(input.utf8)
+        let hashedData = SHA256.hash(data: inputData)
+        return hashedData.compactMap { String(format: "%02x", $0) }.joined()
+    }
+
     // MARK: - User Data
     
     func createUserProfile(userId: String, profile: UserProfile) async throws {

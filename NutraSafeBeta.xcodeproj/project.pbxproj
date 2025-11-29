@@ -7,9 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		ONBVIEW0001BUILD /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONBVIEW0001FILE /* OnboardingView.swift */; };
-		ONBSCREEN0001BUILD /* OnboardingScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONBSCREEN0001FILE /* OnboardingScreens.swift */; };
-		ONBMGR0001BUILD /* Managers/OnboardingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONBMGR0001FILE /* Managers/OnboardingManager.swift */; };
 		013A7F75B09C430AB1EE40154700DAAB /* DiaryDailySummaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE1E506F81E64504BA776F466B03D0BC /* DiaryDailySummaryCard.swift */; };
 		053A05A52E60FD20C626C633 /* NutrientTrendChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24ED2B63CEA2D1DEA6011858 /* NutrientTrendChart.swift */; };
 		170B8500767E821043D1D6E5 /* FastingPlanViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4CC825B3113A674F68A6B62 /* FastingPlanViews.swift */; };
@@ -69,11 +66,11 @@
 		AB4B75AB2E72DF020058DCD3 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = AB4B75AA2E72DF020058DCD3 /* FirebaseFirestore */; };
 		AB4B75AD2E72DF080058DCD3 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = AB4B75AC2E72DF080058DCD3 /* FirebaseStorage */; };
 		AB6A8F070FF14DC49BA4BC80 /* NutraSafe Beta/Utils/ReactionPDFExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF1C3CB3424C495E9408953D /* NutraSafe Beta/Utils/ReactionPDFExporter.swift */; };
-		CACHEMGR001BUILD /* NutraSafe Beta/Utils/CacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CACHEMGR001FILE /* NutraSafe Beta/Utils/CacheManager.swift */; };
 		AB9A79F62ECA773F00F7354A /* FastingSourcesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB9A79F52ECA773F00F7354A /* FastingSourcesView.swift */; };
 		ABB0AEFA2EAC3F14009F044D /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ABB0AEF92EAC3F13009F044D /* StoreKit.framework */; };
 		ABC1D3B02EAD665E00518F41 /* NutraSafe.storekit in Resources */ = {isa = PBXBuildFile; fileRef = ABC1D3AF2EAD665E00518F41 /* NutraSafe.storekit */; };
 		ABCDD6892EB51DEE0085890E /* WeeklySummarySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCDD6882EB51DEE0085890E /* WeeklySummarySheet.swift */; };
+		ALGOLIA001BUILD /* Managers/AlgoliaSearchManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ALGOLIA001FILE /* Managers/AlgoliaSearchManager.swift */; };
 		AUTH1234567890123456789001 /* AuthenticationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AUTH1234567890123456789002 /* AuthenticationView.swift */; };
 		B1234567890123456789CM02 /* CoreModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1234567890123456789CM01 /* CoreModels.swift */; };
 		B1234567890123456789EM02 /* ExerciseModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1234567890123456789EM01 /* ExerciseModels.swift */; };
@@ -93,6 +90,7 @@
 		BFEA1EBFC21031BC05146B62 /* NutrientActivityDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 062BCEAA60197405CFED2ACE /* NutrientActivityDashboard.swift */; };
 		C1D4E6259B6DDC850735FACC /* MicronutrientTrackingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57546E11975DA5FBEF0A2680 /* MicronutrientTrackingManager.swift */; };
 		C83CC72A7D464E1685D1143F /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95FB33855679471485B474B4 /* SettingsView.swift */; };
+		CACHEMGR001BUILD /* NutraSafe Beta/Utils/CacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CACHEMGR001FILE /* NutraSafe Beta/Utils/CacheManager.swift */; };
 		D0A8A48A748A347D14A7EB37 /* MicronutrientTimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBE697EABA1800E1CF7758D /* MicronutrientTimelineView.swift */; };
 		DB01DIARY000CACHE000ACTOR /* DiaryCacheActor.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC01DIARY000CACHE000ACTOR /* DiaryCacheActor.swift */; };
 		DB02WEEKD000CACHE000ACTOR /* WeekDataCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC02WEEKD000CACHE000ACTOR /* WeekDataCache.swift */; };
@@ -110,17 +108,16 @@
 		FC60C4299246265536D0CF46 /* NutrientTrackingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92A9EF78D75CD70F28F3810E /* NutrientTrackingManager.swift */; };
 		FDACD6EE052840C79A707950 /* AddTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0B6A2D7294D44D9A25481CE /* AddTabView.swift */; };
 		IMGCACHE001BUILD /* Managers/ImageCacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = IMGCACHE001FILE /* Managers/ImageCacheManager.swift */; };
+		ONBMGR0001BUILD /* Managers/OnboardingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONBMGR0001FILE /* Managers/OnboardingManager.swift */; };
+		ONBSCREEN0001BUILD /* OnboardingScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONBSCREEN0001FILE /* OnboardingScreens.swift */; };
+		ONBVIEW0001BUILD /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ONBVIEW0001FILE /* OnboardingView.swift */; };
 		PAYWALL0001BUILD /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PAYWALL0001FILE /* PaywallView.swift */; };
 		RECOM456E67696E65426C64 /* NutrientRecommendationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = RECOM456E67696E6546696C65 /* NutrientRecommendationEngine.swift */; };
 		RECOM566965774275696C64 /* SmartRecommendationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = RECOM5669657746696C65 /* SmartRecommendationsView.swift */; };
 		SUBS0001BUILD /* Managers/SubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = SUBS0001FILE /* Managers/SubscriptionManager.swift */; };
-		ALGOLIA001BUILD /* Managers/AlgoliaSearchManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ALGOLIA001FILE /* Managers/AlgoliaSearchManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		ONBVIEW0001FILE /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
-		ONBSCREEN0001FILE /* OnboardingScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingScreens.swift; sourceTree = "<group>"; };
-		ONBMGR0001FILE /* Managers/OnboardingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/OnboardingManager.swift; sourceTree = "<group>"; };
 		025E4F9F2ED6507377598194 /* UseByNotificationManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UseByNotificationManager.swift; sourceTree = "<group>"; };
 		034F60AA8BCB4662A86709D4 /* FastingTimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastingTimerView.swift; sourceTree = "<group>"; };
 		062BCEAA60197405CFED2ACE /* NutrientActivityDashboard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NutrientActivityDashboard.swift; sourceTree = "<group>"; };
@@ -178,6 +175,7 @@
 		ABC1D3AF2EAD665E00518F41 /* NutraSafe.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = NutraSafe.storekit; sourceTree = "<group>"; };
 		ABCDD6882EB51DEE0085890E /* WeeklySummarySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklySummarySheet.swift; sourceTree = "<group>"; };
 		AFD9F648F59C4B7EA1CE6A9850464D04 /* ProfessionalSummaryViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfessionalSummaryViews.swift; sourceTree = "<group>"; };
+		ALGOLIA001FILE /* Managers/AlgoliaSearchManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/AlgoliaSearchManager.swift; sourceTree = "<group>"; };
 		AUTH1234567890123456789002 /* AuthenticationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationView.swift; sourceTree = "<group>"; };
 		B1234567890123456789CM01 /* CoreModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CoreModels.swift; path = "NutraSafe Beta/Models/CoreModels.swift"; sourceTree = "<group>"; };
 		B1234567890123456789EM01 /* ExerciseModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ExerciseModels.swift; path = "NutraSafe Beta/Models/ExerciseModels.swift"; sourceTree = "<group>"; };
@@ -197,8 +195,8 @@
 		C0B6A2D7294D44D9A25481CE /* AddTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddTabView.swift; sourceTree = "<group>"; };
 		C0D23EEA8C59479AB6188B94 /* NutraSafe Beta/Views/Components/ActionButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Components/ActionButtons.swift"; sourceTree = "<group>"; };
 		C9BF68D365EE4EFCAC81C56F /* NutraSafe Beta/Views/Diary/DiaryExerciseComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Diary/DiaryExerciseComponents.swift"; sourceTree = "<group>"; };
-		CF1C3CB3424C495E9408953D /* NutraSafe Beta/Utils/ReactionPDFExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Utils/ReactionPDFExporter.swift"; sourceTree = SOURCE_ROOT; };
 		CACHEMGR001FILE /* NutraSafe Beta/Utils/CacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Utils/CacheManager.swift"; sourceTree = SOURCE_ROOT; };
+		CF1C3CB3424C495E9408953D /* NutraSafe Beta/Utils/ReactionPDFExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Utils/ReactionPDFExporter.swift"; sourceTree = SOURCE_ROOT; };
 		D0FEC9B4AA084ED5BF9A4E53858FE767 /* NutraSafe Beta/ultra_processed_ingredients.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "NutraSafe Beta/ultra_processed_ingredients.json"; sourceTree = SOURCE_ROOT; };
 		D2B222B37C6C811A1DA830D7 /* FastingLiveActivity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FastingLiveActivity.swift; sourceTree = "<group>"; };
 		D3F02B35EB79BB96AD3D3301 /* FastingEducationView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FastingEducationView.swift; sourceTree = "<group>"; };
@@ -219,11 +217,13 @@
 		FEAB7CC556B14207BD435571 /* AddFoodAIView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFoodAIView.swift; sourceTree = "<group>"; };
 		FF612B9BEC774EC78502B67C /* FoodDetailViewFromSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodDetailViewFromSearch.swift; sourceTree = "<group>"; };
 		IMGCACHE001FILE /* Managers/ImageCacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/ImageCacheManager.swift; sourceTree = "<group>"; };
+		ONBMGR0001FILE /* Managers/OnboardingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/OnboardingManager.swift; sourceTree = "<group>"; };
+		ONBSCREEN0001FILE /* OnboardingScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingScreens.swift; sourceTree = "<group>"; };
+		ONBVIEW0001FILE /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		PAYWALL0001FILE /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
 		RECOM456E67696E6546696C65 /* NutrientRecommendationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutrientRecommendationEngine.swift; sourceTree = "<group>"; };
 		RECOM5669657746696C65 /* SmartRecommendationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartRecommendationsView.swift; sourceTree = "<group>"; };
 		SUBS0001FILE /* Managers/SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/SubscriptionManager.swift; sourceTree = "<group>"; };
-		ALGOLIA001FILE /* Managers/AlgoliaSearchManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/AlgoliaSearchManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -350,7 +350,8 @@
 			isa = PBXGroup;
 			children = (
 				ALGOLIA001FILE /* Managers/AlgoliaSearchManager.swift */,
-				ONBMGR0001FILE /* Managers/OnboardingManager.swift */,);
+				ONBMGR0001FILE /* Managers/OnboardingManager.swift */,
+			);
 			name = Managers;
 			sourceTree = "<group>";
 		};
@@ -393,7 +394,7 @@
 				AB13BC172EAE215A00C7B892 /* AIMicronutrientParser.swift */,
 				AB13BC182EAE215A00C7B892 /* IngredientMicronutrientParser.swift */,
 				ABB0AEFB2EAC4FA5009F044D /* NutraSafe Beta.entitlements */,
-				ABB0AEF62EA8CCD1009F044D /* Onboarding */,
+				ABB0AEF62EA8CCD1009F044D /* Views/Onboarding */,
 				AB77ABAB2E686D0E00857409 /* NutraSafe BetaDebug.entitlements */,
 				A1234567890123456789012001 /* NutraSafeBetaApp.swift */,
 				AUTH1234567890123456789002 /* AuthenticationView.swift */,
@@ -456,12 +457,12 @@
 			name = "Recovered References";
 			sourceTree = "<group>";
 		};
-		ABB0AEF62EA8CCD1009F044D /* Onboarding */ = {
+		ABB0AEF62EA8CCD1009F044D /* Views/Onboarding */ = {
 			isa = PBXGroup;
 			children = (
-			
 				ONBVIEW0001FILE /* OnboardingView.swift */,
-				ONBSCREEN0001FILE /* OnboardingScreens.swift */,);
+				ONBSCREEN0001FILE /* OnboardingScreens.swift */,
+			);
 			path = Views/Onboarding;
 			sourceTree = "<group>";
 		};
@@ -671,10 +672,10 @@
 				170B8500767E821043D1D6E5 /* FastingPlanViews.swift in Sources */,
 				7FDF9EAC1D6C21BCED86078E /* FastingEducationView.swift in Sources */,
 				F30EE587A7676BDEA5D95EC6 /* FastingInsightsView.swift in Sources */,
-			
 				ONBMGR0001BUILD /* Managers/OnboardingManager.swift in Sources */,
 				ONBVIEW0001BUILD /* OnboardingView.swift in Sources */,
-				ONBSCREEN0001BUILD /* OnboardingScreens.swift in Sources */,);
+				ONBSCREEN0001BUILD /* OnboardingScreens.swift in Sources */,
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
@@ -828,7 +829,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2;
+				MARKETING_VERSION = 1.2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.nutrasafe.beta;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -864,7 +865,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2;
+				MARKETING_VERSION = 1.2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.nutrasafe.beta;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

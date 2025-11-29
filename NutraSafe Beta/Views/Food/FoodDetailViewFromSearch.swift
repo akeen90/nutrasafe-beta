@@ -104,14 +104,16 @@ struct FoodDetailViewFromSearch: View {
     let diaryEntryId: UUID?
     let diaryMealType: String?
     let diaryQuantity: Double?
+    let diaryDate: Date?
 
-    init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, diaryEntryId: UUID? = nil, diaryMealType: String? = nil, diaryQuantity: Double? = nil, onComplete: ((TabItem) -> Void)? = nil) {
+    init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, diaryEntryId: UUID? = nil, diaryMealType: String? = nil, diaryQuantity: Double? = nil, diaryDate: Date? = nil, onComplete: ((TabItem) -> Void)? = nil) {
         self.food = food
         self.sourceType = sourceType
         self._selectedTab = selectedTab
         self.diaryEntryId = diaryEntryId
         self.diaryMealType = diaryMealType
         self.diaryQuantity = diaryQuantity
+        self.diaryDate = diaryDate
         self.onComplete = onComplete
 
         // CRITICAL FIX: Initialize serving size from food data immediately
@@ -2015,14 +2017,19 @@ private var nutritionFactsSection: some View {
         // Add to diary (diary-only view)
         #endif
         // Add to diary using DiaryDataManager
-            // Get the preselected date from UserDefaults, or use today if not available
+            // Determine target date based on context
             let targetDate: Date
-            if let preselectedTimestamp = UserDefaults.standard.object(forKey: "preselectedDate") as? Double {
-                targetDate = Date(timeIntervalSince1970: preselectedTimestamp)
-                // Clear after reading to prevent stale dates from persisting across sessions
-                UserDefaults.standard.removeObject(forKey: "preselectedDate")
+            if diaryEntryId != nil {
+                // Editing an existing diary entry: use explicit diary date when provided
+                targetDate = diaryDate ?? Date()
             } else {
-                targetDate = Date()
+                // Adding new item: use preselected date if available, otherwise today
+                if let preselectedTimestamp = UserDefaults.standard.object(forKey: "preselectedDate") as? Double {
+                    targetDate = Date(timeIntervalSince1970: preselectedTimestamp)
+                    UserDefaults.standard.removeObject(forKey: "preselectedDate")
+                } else {
+                    targetDate = Date()
+                }
             }
 
             // Check if we're replacing an existing diary entry or adding a new one

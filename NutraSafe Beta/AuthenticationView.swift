@@ -7,6 +7,7 @@
 
 import SwiftUI
 import FirebaseAuth
+import AuthenticationServices
 
 struct AuthenticationView: View {
     @StateObject private var firebaseManager = FirebaseManager.shared
@@ -14,9 +15,10 @@ struct AuthenticationView: View {
 
     var body: some View {
         if firebaseManager.isAuthenticated {
-            // Check if email is verified
-            if firebaseManager.isEmailVerified {
-                // Email verified, show main app
+            // Apple Sign In users skip email verification (Apple already verified)
+            // Email/password users need to verify their email
+            if firebaseManager.isAppleUser || firebaseManager.isEmailVerified {
+                // Verified user, show main app
                 ContentView()
             } else {
                 // Email not verified, show verification screen
@@ -60,12 +62,16 @@ struct SignInView: View {
 
             VStack(spacing: 30) {
                 Spacer()
+                    .frame(height: 50)
 
                 // Logo/Title
                 VStack(spacing: 12) {
-                    Image(systemName: "heart.text.square.fill")
-                        .font(.system(size: 80))
-                        .foregroundColor(.white)
+                    // App Icon
+                    Image("SignInIcon")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 100, height: 100)
+                        .clipShape(RoundedRectangle(cornerRadius: 22))
 
                     Text("NutraSafe")
                         .font(.system(size: 42, weight: .bold, design: .rounded))
@@ -75,7 +81,7 @@ struct SignInView: View {
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.white.opacity(0.8))
                 }
-                .padding(.bottom, 40)
+                .padding(.bottom, 10)
 
                 // Sign In Form
                 VStack(spacing: 16) {
@@ -140,6 +146,34 @@ struct SignInView: View {
                 }
                 .padding(.horizontal, 32)
 
+                // Divider
+                HStack {
+                    Rectangle()
+                        .frame(height: 1)
+                        .foregroundColor(.white.opacity(0.3))
+                    Text("or")
+                        .font(.subheadline)
+                        .foregroundColor(.white.opacity(0.7))
+                    Rectangle()
+                        .frame(height: 1)
+                        .foregroundColor(.white.opacity(0.3))
+                }
+                .padding(.horizontal, 32)
+                .padding(.vertical, 8)
+
+                // Apple Sign In
+                SignInWithAppleButton(.signIn) { request in
+                    let nonce = firebaseManager.startAppleSignIn()
+                    request.requestedScopes = [.fullName, .email]
+                    request.nonce = nonce
+                } onCompletion: { result in
+                    handleAppleSignIn(result: result)
+                }
+                .signInWithAppleButtonStyle(.white)
+                .frame(height: 50)
+                .cornerRadius(12)
+                .padding(.horizontal, 32)
+
                 // Forgot Password Link
                 Button(action: { showingPasswordReset = true }) {
                     Text("Forgot Password?")
@@ -164,10 +198,7 @@ struct SignInView: View {
                 Spacer()
             }
         }
-        .onTapGesture {
-            // Dismiss keyboard when tapping outside text fields
-            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        }
+        .scrollDismissesKeyboard(.interactively)
         .alert("Error", isPresented: $showingError) {
             Button("OK", role: .cancel) { }
         } message: {
@@ -190,6 +221,30 @@ struct SignInView: View {
                     showingError = true
                     isLoading = false
                 }
+            }
+        }
+    }
+
+    private func handleAppleSignIn(result: Result<ASAuthorization, Error>) {
+        switch result {
+        case .success(let authorization):
+            isLoading = true
+            Task {
+                do {
+                    try await firebaseManager.signInWithApple(authorization: authorization)
+                } catch {
+                    await MainActor.run {
+                        errorMessage = error.localizedDescription
+                        showingError = true
+                        isLoading = false
+                    }
+                }
+            }
+        case .failure(let error):
+            // Don't show error for user cancellation
+            if (error as NSError).code != ASAuthorizationError.canceled.rawValue {
+                errorMessage = error.localizedDescription
+                showingError = true
             }
         }
     }
@@ -331,13 +386,38 @@ struct SignUpView: View {
                 }
                 .padding(.horizontal, 32)
 
+                // Divider
+                HStack {
+                    Rectangle()
+                        .frame(height: 1)
+                        .foregroundColor(.white.opacity(0.3))
+                    Text("or")
+                        .font(.subheadline)
+                        .foregroundColor(.white.opacity(0.7))
+                    Rectangle()
+                        .frame(height: 1)
+                        .foregroundColor(.white.opacity(0.3))
+                }
+                .padding(.horizontal, 32)
+                .padding(.vertical, 8)
+
+                // Apple Sign In
+                SignInWithAppleButton(.signUp) { request in
+                    let nonce = firebaseManager.startAppleSignIn()
+                    request.requestedScopes = [.fullName, .email]
+                    request.nonce = nonce
+                } onCompletion: { result in
+                    handleAppleSignIn(result: result)
+                }
+                .signInWithAppleButtonStyle(.white)
+                .frame(height: 50)
+                .cornerRadius(12)
+                .padding(.horizontal, 32)
+
                 Spacer()
             }
         }
-        .onTapGesture {
-            // Dismiss keyboard when tapping outside text fields
-            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        }
+        .scrollDismissesKeyboard(.interactively)
         .alert("Error", isPresented: $showingError) {
             Button("OK", role: .cancel) { }
         } message: {
@@ -347,6 +427,30 @@ struct SignUpView: View {
 
     private var isFormValid: Bool {
         !email.isEmpty && !password.isEmpty && !confirmPassword.isEmpty && password == confirmPassword && password.count >= 6
+    }
+
+    private func handleAppleSignIn(result: Result<ASAuthorization, Error>) {
+        switch result {
+        case .success(let authorization):
+            isLoading = true
+            Task {
+                do {
+                    try await firebaseManager.signInWithApple(authorization: authorization)
+                } catch {
+                    await MainActor.run {
+                        errorMessage = error.localizedDescription
+                        showingError = true
+                        isLoading = false
+                    }
+                }
+            }
+        case .failure(let error):
+            // Don't show error for user cancellation
+            if (error as NSError).code != ASAuthorizationError.canceled.rawValue {
+                errorMessage = error.localizedDescription
+                showingError = true
+            }
+        }
     }
 
     private func signUp() {

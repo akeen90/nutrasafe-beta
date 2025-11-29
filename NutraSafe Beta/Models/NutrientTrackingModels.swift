@@ -342,18 +342,12 @@ struct NutrientDetector {
 
         // Use actual micronutrient data if available
         if let profile = food.micronutrientProfile {
-        // DEBUG LOG: print("🔍 Detecting nutrients in '\(food.name)' using micronutrient profile")
-
             // Check vitamins
             for (vitaminKey, amount) in profile.vitamins {
                 if amount > 0 {
-                    // Map vitamin keys to nutrient IDs
                     let nutrientId = mapVitaminKeyToNutrientId(vitaminKey)
                     if !nutrientId.isEmpty {
                         detectedNutrients.insert(nutrientId)
-                        #if DEBUG
-                        print("  ✅ Found vitamin: \(vitaminKey) -> \(nutrientId) (\(amount))")
-                        #endif
                     }
                 }
             }
@@ -361,68 +355,40 @@ struct NutrientDetector {
             // Check minerals
             for (mineralKey, amount) in profile.minerals {
                 if amount > 0 {
-                    // Map mineral keys to nutrient IDs
                     let nutrientId = mapMineralKeyToNutrientId(mineralKey)
                     if !nutrientId.isEmpty {
                         detectedNutrients.insert(nutrientId)
-                        #if DEBUG
-                        print("  ✅ Found mineral: \(mineralKey) -> \(nutrientId) (\(amount))")
-                        #endif
                     }
                 }
             }
-
-            #if DEBUG
-            print("  📊 Total nutrients from profile: \(detectedNutrients.count)")
-            #endif
-        } else {
-        // DEBUG LOG: print("🔍 Detecting nutrients in '\(food.name)' using keyword matching (no micronutrient profile)")
         }
 
-        // ENHANCED: Use pattern-based parser for fortified nutrients from ingredients
+        // Use pattern-based parser for fortified nutrients from ingredients
         if let ingredients = food.ingredients, !ingredients.isEmpty {
-            #if DEBUG
-            print("  🔬 Using pattern-based parser for fortified nutrients...")
-            #endif
             let fortifiedNutrients = IngredientMicronutrientParser.shared.parseIngredientsArray(ingredients)
-
             for detected in fortifiedNutrients {
-                let wasNew = detectedNutrients.insert(detected.nutrient).inserted
-                if wasNew {
-                    #if DEBUG
-                    print("  ✅ Found fortified nutrient: \(detected.nutrient) from '\(detected.rawText)'")
-                    #endif
-                }
+                detectedNutrients.insert(detected.nutrient)
             }
-            #if DEBUG
-            print("  📊 Pattern parser found \(fortifiedNutrients.count) fortified nutrients")
-            #endif
         }
 
-        // ALWAYS do keyword-based detection for nutrients not in micronutrient profiles
-        // (like omega-3, lutein, lycopene, etc.) regardless of whether food has a profile
-        #if DEBUG
-        print("  🔎 Supplementing with keyword matching for special nutrients...")
-        #endif
-        let searchText = "\(food.name.lowercased()) \(food.brand?.lowercased() ?? "") \(food.ingredients?.joined(separator: " ").lowercased() ?? "")"
+        // Only do keyword-based detection if food has actual nutritional data
+        // This prevents false positives from foods with no ingredients/micronutrient data
+        let hasMicronutrientData = food.micronutrientProfile != nil
+        let hasIngredients = food.ingredients != nil && !food.ingredients!.isEmpty
 
-        for (nutrientId, keywords) in nutrientFoodSources {
-            for keyword in keywords {
-                if searchText.contains(keyword.lowercased()) {
-                    let wasNew = detectedNutrients.insert(nutrientId).inserted
-                    if wasNew {
-                        #if DEBUG
-                        print("  ✅ Found keyword '\(keyword)' -> \(nutrientId)")
-                        #endif
+        if hasMicronutrientData || hasIngredients {
+            let searchText = "\(food.name.lowercased()) \(food.brand?.lowercased() ?? "") \(food.ingredients?.joined(separator: " ").lowercased() ?? "")"
+
+            for (nutrientId, keywords) in nutrientFoodSources {
+                for keyword in keywords {
+                    if searchText.contains(keyword.lowercased()) {
+                        detectedNutrients.insert(nutrientId)
+                        break
                     }
-                    break
                 }
             }
         }
 
-        #if DEBUG
-        print("  📊 Total nutrients detected: \(detectedNutrients.count)")
-        #endif
         return Array(detectedNutrients)
     }
 

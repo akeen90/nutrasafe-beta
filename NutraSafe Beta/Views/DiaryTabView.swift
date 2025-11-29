@@ -397,7 +397,8 @@ struct DiaryTabView: View {
                     selectedTab: $selectedTab,
                     diaryEntryId: food.id,
                     diaryMealType: editingMealType.isEmpty ? food.time : editingMealType,
-                    diaryQuantity: food.quantity
+                    diaryQuantity: food.quantity,
+                    diaryDate: selectedDate
                 )
             }
             .background(Color.adaptiveBackground)
@@ -2377,6 +2378,7 @@ final class CategoricalNutrientViewModel: ObservableObject {
 
     /// Recalculates micronutrient profile for an entry using improved estimation
     /// This fixes old entries that were saved with inaccurate estimates
+    /// IMPORTANT: Only estimates for foods WITH actual data (ingredients or micronutrient profile)
     nonisolated private func recalculateMicronutrientProfile(for entry: FoodEntry, existingCache: [String: MicronutrientProfile], newCache: inout [String: MicronutrientProfile]) -> MicronutrientProfile {
         // Check cache first (existing cache from actor, then new cache from this session)
         let cacheKey = "\(entry.id)_\(entry.servingSize)"
@@ -2387,6 +2389,30 @@ final class CategoricalNutrientViewModel: ObservableObject {
 
         if let cached = newCache[cacheKey] {
             return cached
+        }
+
+        // CRITICAL FIX: If food has no actual micronutrient data AND no ingredients,
+        // return an empty profile instead of estimating from macros (which creates false positives)
+        let hasActualMicronutrientData = entry.micronutrientProfile != nil
+        let hasIngredients = entry.ingredients != nil && !entry.ingredients!.isEmpty
+
+        if !hasActualMicronutrientData && !hasIngredients {
+            // Return empty profile - don't estimate from macros alone
+            let emptyProfile = MicronutrientProfile(
+                vitamins: [:],
+                minerals: [:],
+                recommendedIntakes: RecommendedIntakes(age: 30, gender: .other, dailyValues: [:]),
+                confidenceScore: .low
+            )
+            newCache[cacheKey] = emptyProfile
+            return emptyProfile
+        }
+
+        // If the food already has a micronutrient profile, use it (scaled by serving size)
+        if let existingProfile = entry.micronutrientProfile {
+            // The profile is already for the logged serving size, use as-is
+            newCache[cacheKey] = existingProfile
+            return existingProfile
         }
 
         // FoodEntry stores TOTAL values for the serving, but FoodSearchResult expects per-100g values
@@ -2419,7 +2445,7 @@ final class CategoricalNutrientViewModel: ObservableObject {
             servingSizeG: 100.0,
             ingredients: entry.ingredients,
             isVerified: true,
-            micronutrientProfile: nil  // Force recalculation
+            micronutrientProfile: nil  // Will estimate based on ingredients
         )
 
         // Now apply the quantity multiplier to get the actual nutrients consumed

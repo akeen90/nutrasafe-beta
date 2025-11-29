@@ -1541,6 +1541,7 @@ struct CardButtonStyle: ButtonStyle {
 }
 
 // MARK: - Reaction Management
+@MainActor
 class ReactionManager: ObservableObject {
     static let shared = ReactionManager()
 
@@ -1548,6 +1549,7 @@ class ReactionManager: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var showingError = false
+    private var deletingIds: Set<UUID> = []
     private let firebaseManager = FirebaseManager.shared
     private var lastLoadedUserId: String?
     private var authObserver: NSObjectProtocol?
@@ -1681,8 +1683,12 @@ class ReactionManager: ObservableObject {
     }
 
     func deleteReaction(_ reaction: FoodReaction) async {
-        // Remove from local array first for immediate UI update
-        await MainActor.run {
+        // Prevent double-delete race condition
+        guard !deletingIds.contains(reaction.id) else { return }
+        deletingIds.insert(reaction.id)
+
+        // Remove from local array with animation for smooth SwiftUI list update
+        withAnimation {
             reactions.removeAll { $0.id == reaction.id }
         }
 
@@ -1694,11 +1700,13 @@ class ReactionManager: ObservableObject {
             print("Failed to delete reaction: \(error)")
             #endif
             // Re-add if deletion failed
-            await MainActor.run {
+            withAnimation {
                 reactions.insert(reaction, at: 0)
                 reactions.sort { $0.timestamp.dateValue() > $1.timestamp.dateValue() }
             }
         }
+
+        deletingIds.remove(reaction.id)
     }
 
     func clearData() {
