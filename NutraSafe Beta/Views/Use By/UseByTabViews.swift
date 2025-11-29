@@ -979,10 +979,11 @@ struct UseByExpiryView: View {
             }
         }
         .onAppear {
-            // PERFORMANCE: Load data from manager (will skip if already loaded)
             Task {
-                await dataManager.loadItems()
-                recalculateCache() // Initial cache population
+                if !dataManager.isLoaded {
+                    await dataManager.loadItems()
+                }
+                recalculateCache()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .useByInventoryUpdated)) { _ in

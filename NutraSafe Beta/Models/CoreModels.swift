@@ -1305,6 +1305,8 @@ class UseByDataManager: ObservableObject {
     @Published var isLoading: Bool = false
     private var hasLoadedOnce: Bool = false
 
+    var isLoaded: Bool { hasLoadedOnce }
+
     private init() {}
 
     func loadItems() async {
@@ -1338,4 +1340,3 @@ class UseByDataManager: ObservableObject {
         await loadItems()
     }
 }
-

@@ -1518,6 +1518,8 @@ struct ContentView: View {
                 // Main Content with padding for tab bar and potential workout progress bar
                 VStack {
                     persistentTabViews
+                        .animation(nil, value: selectedTab)
+                        .transaction { $0.disablesAnimations = true }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             
