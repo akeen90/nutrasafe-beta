@@ -1456,52 +1456,35 @@ struct ContentView: View {
     @State private var visitedTabs: Set<TabItem> = [.diary] // Diary pre-loaded
 
     private var persistentTabViews: some View {
-        ZStack {
-            // Diary Tab - always rendered (most frequently used)
-            DiaryTabView(
-                selectedFoodItems: $selectedFoodItems,
-                showingSettings: $showingSettings,
-                selectedTab: $selectedTab,
-                editTrigger: $editTrigger,
-                moveTrigger: $moveTrigger,
-                copyTrigger: $copyTrigger,
-                deleteTrigger: $deleteTrigger,
-                onEditFood: editSelectedFood,
-                onDeleteFoods: deleteSelectedFoods,
-                onBlockedNutrientsAttempt: { showingPaywall = true }
-            )
-            .environmentObject(diaryDataManager)
-            .environmentObject(healthKitManager)
-            .opacity(selectedTab == .diary ? 1 : 0)
-            .allowsHitTesting(selectedTab == .diary)
+        Group {
+            switch selectedTab {
+            case .diary:
+                DiaryTabView(
+                    selectedFoodItems: $selectedFoodItems,
+                    showingSettings: $showingSettings,
+                    selectedTab: $selectedTab,
+                    editTrigger: $editTrigger,
+                    moveTrigger: $moveTrigger,
+                    copyTrigger: $copyTrigger,
+                    deleteTrigger: $deleteTrigger,
+                    onEditFood: editSelectedFood,
+                    onDeleteFoods: deleteSelectedFoods,
+                    onBlockedNutrientsAttempt: { showingPaywall = true }
+                )
+                .environmentObject(diaryDataManager)
+                .environmentObject(healthKitManager)
 
-            // Weight Tab - lazy loaded on first visit
-            if selectedTab == .weight || visitedTabs.contains(.weight) {
+            case .weight:
                 WeightTrackingView(showingSettings: $showingSettings)
                     .environmentObject(healthKitManager)
-                    .opacity(selectedTab == .weight ? 1 : 0)
-                    .allowsHitTesting(selectedTab == .weight)
-                    .onAppear { visitedTabs.insert(.weight) }
-            }
 
-            // Food Tab - lazy loaded on first visit
-            if selectedTab == .food || visitedTabs.contains(.food) {
+            case .food:
                 FoodTabView(showingSettings: $showingSettings, selectedTab: $selectedTab)
-                    .opacity(selectedTab == .food ? 1 : 0)
-                    .allowsHitTesting(selectedTab == .food)
-                    .onAppear { visitedTabs.insert(.food) }
-            }
 
-            // Use By Tab - lazy loaded on first visit
-            if selectedTab == .useBy || visitedTabs.contains(.useBy) {
+            case .useBy:
                 UseByTabView(showingSettings: $showingSettings, selectedTab: $selectedTab)
-                    .opacity(selectedTab == .useBy ? 1 : 0)
-                    .allowsHitTesting(selectedTab == .useBy)
-                    .onAppear { visitedTabs.insert(.useBy) }
-            }
 
-            // Add Tab - only shown when selected (modal behavior)
-            if selectedTab == .add {
+            case .add:
                 AddTabView(
                     selectedTab: $selectedTab,
                     isPresented: Binding(
