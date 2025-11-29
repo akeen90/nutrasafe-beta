@@ -958,12 +958,12 @@ struct UseByExpiryView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 40)
                             } else {
-                                LazyVStack(spacing: 12) {
+                                LazyVStack(spacing: 8) {
                                     ForEach(sortedItems, id: \.id) { item in
                                         CleanUseByRow(item: item)
                                     }
                                 }
-                                .padding(.vertical, 8)
+                                .padding(.vertical, 6)
                             }
                         }
                         .background {
@@ -971,6 +971,10 @@ struct UseByExpiryView: View {
                                 .fill(.ultraThinMaterial)
                                 .shadow(color: .black.opacity(0.08), radius: 16, x: 0, y: 4)
                         }
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 28)
+                                .stroke(Color(.systemGray4), lineWidth: 1)
+                        )
                         .clipShape(RoundedRectangle(cornerRadius: 28))
                         .padding(.horizontal, 20)
                         .padding(.bottom, 20)
@@ -4173,11 +4177,11 @@ struct CleanUseByRow: View {
             }
 
             // Main content - Premium modern card design
-            HStack(spacing: 14) {
+            HStack(spacing: 10) {
                 // Enhanced product image with gradient border
                 ZStack {
                     // Subtle gradient glow behind image
-                    RoundedRectangle(cornerRadius: 14)
+                    RoundedRectangle(cornerRadius: 12)
                         .fill(
                             RadialGradient(
                                 colors: [statusColor.opacity(0.12), Color.clear],
@@ -4186,26 +4190,26 @@ struct CleanUseByRow: View {
                                 endRadius: 40
                             )
                         )
-                        .frame(width: 64, height: 64)
-                        .blur(radius: 8)
+                        .frame(width: 58, height: 58)
+                        .blur(radius: 6)
 
                     Group {
                         if item.imageURL != nil {
                             CachedUseByImage(
                                 itemId: item.id,
                                 imageURL: item.imageURL,
-                                width: 60,
-                                height: 60,
-                                cornerRadius: 12
+                                width: 52,
+                                height: 52,
+                                cornerRadius: 10
                             )
                         } else {
                             PlaceholderImageView()
                         }
                     }
-                    .frame(width: 60, height: 60)
+                    .frame(width: 52, height: 52)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .strokeBorder(
+                        RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(
                                 LinearGradient(
                                     colors: [
                                         statusColor.opacity(0.2),
@@ -4217,20 +4221,20 @@ struct CleanUseByRow: View {
                                 lineWidth: 1.5
                             )
                     )
-                    .shadow(color: statusColor.opacity(0.15), radius: 8, x: 0, y: 4)
-                    .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+                    .shadow(color: statusColor.opacity(0.15), radius: 6, x: 0, y: 3)
+                    .shadow(color: .black.opacity(0.08), radius: 3, x: 0, y: 2)
                 }
 
                 // Item info with enhanced typography
                 VStack(alignment: .leading, spacing: 5) {
                     Text(item.name)
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
                         .foregroundColor(.primary)
                         .lineLimit(2)
 
                     if let brand = item.brand, !brand.isEmpty {
                         Text(brand)
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
                             .foregroundColor(.secondary.opacity(0.8))
                             .lineLimit(1)
                     }
@@ -4257,8 +4261,8 @@ struct CleanUseByRow: View {
                                 )
                             )
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
                     .background {
                         ZStack {
                             // Glassmorphic background
@@ -4290,39 +4294,49 @@ struct CleanUseByRow: View {
 
                 Spacer()
 
-                // Modern chevron with gradient
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color(.systemGray6), Color(.systemGray5)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 24, height: 24)
+                        .overlay(
+                            Circle()
+                                .stroke(Color(.systemGray4), lineWidth: 1)
+                        )
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Color(.systemBackground))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(Color(.systemGray4), lineWidth: 1)
+            )
+            .overlay(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(
                         LinearGradient(
-                            colors: [Color.secondary, Color.secondary.opacity(0.6)],
+                            colors: [statusColor, statusColor.opacity(0.7)],
                             startPoint: .top,
                             endPoint: .bottom
                         )
                     )
+                    .frame(width: 3)
+                    .padding(.vertical, 8)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 16)
-            .background(
-                RoundedRectangle(cornerRadius: 18)
-                    .fill(.ultraThinMaterial)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 18)
-                    .strokeBorder(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.35),
-                                Color.white.opacity(0.15)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
-                    )
-            )
-            .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 4)
-            .clipShape(RoundedRectangle(cornerRadius: 18))
+            .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
             .offset(x: offset)
             .highPriorityGesture(
                 DragGesture(minimumDistance: 20)
