@@ -663,9 +663,13 @@ class DiaryDataManager: ObservableObject {
         print("DiaryDataManager: Loaded current counts from Firebase - Breakfast: \(breakfast.count), Lunch: \(lunch.count), Dinner: \(dinner.count), Snacks: \(snacks.count)")
 
         // Replace existing item in appropriate meal
+        var updatedBreakfast = breakfast
+        var updatedLunch = lunch
+        var updatedDinner = dinner
+        var updatedSnacks = snacks
+
         switch meal.lowercased() {
         case "breakfast":
-            var updatedBreakfast = breakfast
             if let index = updatedBreakfast.firstIndex(where: { $0.id == item.id }) {
                 updatedBreakfast[index] = item
                 print("DiaryDataManager: Replaced in breakfast at index \(index)")
@@ -673,10 +677,7 @@ class DiaryDataManager: ObservableObject {
                 print("DiaryDataManager: WARNING - Item not found in breakfast, appending instead")
                 updatedBreakfast.append(item)
             }
-            // FIX: Trigger reload NOW to update UI immediately with local data
-            saveFoodData(for: date, breakfast: updatedBreakfast, lunch: lunch, dinner: dinner, snacks: snacks, triggerReload: true)
         case "lunch":
-            var updatedLunch = lunch
             if let index = updatedLunch.firstIndex(where: { $0.id == item.id }) {
                 updatedLunch[index] = item
                 print("DiaryDataManager: Replaced in lunch at index \(index)")
@@ -684,9 +685,7 @@ class DiaryDataManager: ObservableObject {
                 print("DiaryDataManager: WARNING - Item not found in lunch, appending instead")
                 updatedLunch.append(item)
             }
-            saveFoodData(for: date, breakfast: breakfast, lunch: updatedLunch, dinner: dinner, snacks: snacks, triggerReload: true)
         case "dinner":
-            var updatedDinner = dinner
             if let index = updatedDinner.firstIndex(where: { $0.id == item.id }) {
                 updatedDinner[index] = item
                 print("DiaryDataManager: Replaced in dinner at index \(index)")
@@ -694,9 +693,7 @@ class DiaryDataManager: ObservableObject {
                 print("DiaryDataManager: WARNING - Item not found in dinner, appending instead")
                 updatedDinner.append(item)
             }
-            saveFoodData(for: date, breakfast: breakfast, lunch: lunch, dinner: updatedDinner, snacks: snacks, triggerReload: true)
         case "snacks":
-            var updatedSnacks = snacks
             if let index = updatedSnacks.firstIndex(where: { $0.id == item.id }) {
                 updatedSnacks[index] = item
                 print("DiaryDataManager: Replaced in snacks at index \(index)")
@@ -704,26 +701,32 @@ class DiaryDataManager: ObservableObject {
                 print("DiaryDataManager: WARNING - Item not found in snacks, appending instead")
                 updatedSnacks.append(item)
             }
-            saveFoodData(for: date, breakfast: breakfast, lunch: lunch, dinner: dinner, snacks: updatedSnacks, triggerReload: true)
         default:
             print("DiaryDataManager: ERROR - Unknown meal type: \(meal)")
         }
+
+        // Save locally (don't trigger reload yet - wait for Firebase first)
+        saveFoodData(for: date, breakfast: updatedBreakfast, lunch: updatedLunch, dinner: updatedDinner, snacks: updatedSnacks, triggerReload: false)
 
         // Add to recent foods for quick access in search
         await MainActor.run {
             addToRecentFoods(item)
         }
 
-        // Sync to Firebase in background (don't wait for it)
-        // The local data is already updated and UI refreshed
-        Task {
-            await syncFoodItemToFirebase(item, meal: meal, date: date)
-            // Process micronutrients for this food item
-            await processMicronutrientsForFood(item, date: date)
-            print("DiaryDataManager: Successfully synced '\(item.name)' to Firebase")
+        // FIX: Sync to Firebase and WAIT for it to complete before triggering reload
+        // This ensures loadFoodData() will fetch the updated data from Firebase
+        await syncFoodItemToFirebase(item, meal: meal, date: date)
+
+        // Process micronutrients for this food item
+        await processMicronutrientsForFood(item, date: date)
+
+        // NOW trigger the reload - Firebase has the updated data
+        await MainActor.run {
+            self.objectWillChange.send()
+            self.dataReloadTrigger = UUID()
         }
 
-        print("DiaryDataManager: Successfully completed replacing '\(item.name)' locally")
+        print("DiaryDataManager: Successfully completed replacing '\(item.name)'")
     }
 
     // Move an existing food item from one meal to another for a given date
@@ -820,24 +823,28 @@ class DiaryDataManager: ObservableObject {
             print("DiaryDataManager: ERROR - Unknown new meal type: \(newMeal)")
         }
 
-        // FIX: Trigger reload NOW to update UI immediately with local data
-        saveFoodData(for: date, breakfast: updatedBreakfast, lunch: updatedLunch, dinner: updatedDinner, snacks: updatedSnacks, triggerReload: true)
+        // Save locally (don't trigger reload yet - wait for Firebase first)
+        saveFoodData(for: date, breakfast: updatedBreakfast, lunch: updatedLunch, dinner: updatedDinner, snacks: updatedSnacks, triggerReload: false)
 
         // Add to recent foods for quick access in search
         await MainActor.run {
             addToRecentFoods(item)
         }
 
-        // Sync to Firebase in background (don't wait for it)
-        // The local data is already updated and UI refreshed
-        Task {
-            await syncFoodItemToFirebase(item, meal: newMeal, date: date)
-            // Process micronutrients for this food item
-            await processMicronutrientsForFood(item, date: date)
-            print("DiaryDataManager: Successfully synced moved item '\(item.name)' to Firebase")
+        // FIX: Sync to Firebase and WAIT for it to complete before triggering reload
+        // This ensures loadFoodData() will fetch the updated data from Firebase
+        await syncFoodItemToFirebase(item, meal: newMeal, date: date)
+
+        // Process micronutrients for this food item
+        await processMicronutrientsForFood(item, date: date)
+
+        // NOW trigger the reload - Firebase has the updated data
+        await MainActor.run {
+            self.objectWillChange.send()
+            self.dataReloadTrigger = UUID()
         }
 
-        print("DiaryDataManager: Successfully completed moving '\(item.name)' to \(newMeal) locally")
+        print("DiaryDataManager: Successfully completed moving '\(item.name)' to \(newMeal)")
     }
 
     // Delete food items from both local storage and Firebase
