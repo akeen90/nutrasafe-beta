@@ -665,9 +665,27 @@ struct UseByExpiryView: View {
         }
         cachedSortedItems = filtered.sorted { $0.expiryDate < $1.expiryDate }
 
-        // Count urgent and this week items
-        cachedUrgentCount = dataManager.items.filter { $0.daysUntilExpiry <= 2 }.count
-        cachedThisWeekCount = dataManager.items.filter { (3...7).contains($0.daysUntilExpiry) }.count
+        // Single-pass categorization: count urgent/this week items and find min urgent days
+        var urgentCount = 0
+        var thisWeekCount = 0
+        var minUrgentDays: Int? = nil
+
+        for item in dataManager.items {
+            let days = item.daysUntilExpiry
+            if days <= 2 {
+                urgentCount += 1
+                if let currentMin = minUrgentDays {
+                    minUrgentDays = min(currentMin, days)
+                } else {
+                    minUrgentDays = days
+                }
+            } else if (3...7).contains(days) {
+                thisWeekCount += 1
+            }
+        }
+
+        cachedUrgentCount = urgentCount
+        cachedThisWeekCount = thisWeekCount
 
         // Update adaptive card properties
         if cachedUrgentCount > 0 {
@@ -676,7 +694,7 @@ struct UseByExpiryView: View {
             cachedAdaptiveIcon = "exclamationmark.triangle.fill"
             cachedAdaptiveColor = .red
 
-            let minDays = dataManager.items.filter { $0.daysUntilExpiry <= 2 }.map { $0.daysUntilExpiry }.min() ?? 0
+            let minDays = minUrgentDays ?? 0
             if minDays <= 1 {
                 cachedAdaptiveSubtitle = cachedUrgentCount == 1 ? "Use today" : "Use very soon"
             } else {
@@ -2450,7 +2468,10 @@ struct AddUseByItemSheet: View {
                         case .search:
                             UseByInlineSearchView(onComplete: onComplete)
                         case .manual:
-                            UseByItemDetailView(item: nil)
+                            UseByItemDetailView(item: nil, onComplete: {
+                                dismiss()
+                                onComplete?()
+                            })
                         case .barcode:
                             UseByBarcodeScanSheet()
                         }
@@ -3137,6 +3158,7 @@ struct UseByItemDetailView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
     let item: UseByInventoryItem? // Optional for add mode
+    var onComplete: (() -> Void)? = nil
 
     @State private var editedName: String = ""
     @State private var editedBrand: String = ""
@@ -3798,6 +3820,7 @@ struct UseByItemDetailView: View {
                     successFeedback.notificationOccurred(.success)
 
                     dismiss()
+                    onComplete?()
                 }
             } catch {
                 #if DEBUG
