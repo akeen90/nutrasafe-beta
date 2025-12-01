@@ -2262,6 +2262,9 @@ struct FoodReactionSearchView: View {
     @State private var showingManualEntry = false
     @State private var selectedTab = 0
 
+    // PERFORMANCE: Debouncer to prevent search from running on every keystroke
+    @StateObject private var searchDebouncer = Debouncer(milliseconds: 300)
+
     // Diary entries
     @State private var diaryEntries: [FoodEntry] = []
     @State private var isLoadingDiary = false
@@ -2328,7 +2331,10 @@ struct FoodReactionSearchView: View {
                     .textInputAutocapitalization(.never)
                     .focused($isSearchFieldFocused)
                     .onChange(of: searchText, perform: { newValue in
-                        performLiveSearch(query: newValue)
+                        // PERFORMANCE: Debounce search to avoid running expensive operations on every keystroke
+                        searchDebouncer.debounce {
+                            performLiveSearch(query: newValue)
+                        }
                     })
                     .onSubmit {
                         performSearch()

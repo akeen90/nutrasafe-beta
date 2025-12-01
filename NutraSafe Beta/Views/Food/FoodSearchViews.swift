@@ -275,6 +275,9 @@ struct AddFoodSearchView: View {
     @State private var searchTask: Task<Void, Never>?
     @State private var keyboardHeight: CGFloat = 0
     @State private var isEditingMode = false
+
+    // PERFORMANCE: Debouncer to prevent search from running on every keystroke
+    @StateObject private var searchDebouncer = Debouncer(milliseconds: 300)
     @State private var editingFoodName = ""
     @State private var originalMealType = ""
 
@@ -291,7 +294,10 @@ struct AddFoodSearchView: View {
                         .autocorrectionDisabled(true)
                         .textInputAutocapitalization(.never)
                         .onChange(of: searchText, perform: { newValue in
-                            performLiveSearch(query: newValue)
+                            // PERFORMANCE: Debounce search to avoid running expensive operations on every keystroke
+                            searchDebouncer.debounce {
+                                performLiveSearch(query: newValue)
+                            }
                         })
                         .onSubmit {
                             performSearch()

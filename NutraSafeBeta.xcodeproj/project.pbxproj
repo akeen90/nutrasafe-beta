@@ -106,6 +106,7 @@
 		FASTMGR0001BUILD /* Managers/FastingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FASTMGR0001FILE /* Managers/FastingManager.swift */; };
 		FASTNOTMGR001BLD /* Managers/FastingNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FASTNOTMGR001REF /* Managers/FastingNotificationManager.swift */; };
 		BGTASKMGR001BLD /* Managers/BackgroundTaskManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BGTASKMGR001REF /* Managers/BackgroundTaskManager.swift */; };
+		DEBOUNCER001BLD /* Utilities/Debouncer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEBOUNCER001REF /* Utilities/Debouncer.swift */; };
 		FC60C4299246265536D0CF46 /* NutrientTrackingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92A9EF78D75CD70F28F3810E /* NutrientTrackingManager.swift */; };
 		FDACD6EE052840C79A707950 /* AddTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0B6A2D7294D44D9A25481CE /* AddTabView.swift */; };
 		IMGCACHE001BUILD /* Managers/ImageCacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = IMGCACHE001FILE /* Managers/ImageCacheManager.swift */; };
@@ -216,6 +217,7 @@
 		FASTMGR0001FILE /* Managers/FastingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/FastingManager.swift; sourceTree = "<group>"; };
 		FASTNOTMGR001REF /* Managers/FastingNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/FastingNotificationManager.swift; sourceTree = "<group>"; };
 		BGTASKMGR001REF /* Managers/BackgroundTaskManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/BackgroundTaskManager.swift; sourceTree = "<group>"; };
+		DEBOUNCER001REF /* Utilities/Debouncer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Utilities/Debouncer.swift; sourceTree = "<group>"; };
 		FEAB7CC556B14207BD435571 /* AddFoodAIView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFoodAIView.swift; sourceTree = "<group>"; };
 		FF612B9BEC774EC78502B67C /* FoodDetailViewFromSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodDetailViewFromSearch.swift; sourceTree = "<group>"; };
 		IMGCACHE001FILE /* Managers/ImageCacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/ImageCacheManager.swift; sourceTree = "<group>"; };
@@ -394,6 +396,7 @@
 			children = (
 				FASTNOTMGR001REF /* Managers/FastingNotificationManager.swift */,
 				BGTASKMGR001REF /* Managers/BackgroundTaskManager.swift */,
+				DEBOUNCER001REF /* Utilities/Debouncer.swift */,
 				AB13BC172EAE215A00C7B892 /* AIMicronutrientParser.swift */,
 				AB13BC182EAE215A00C7B892 /* IngredientMicronutrientParser.swift */,
 				ABB0AEFB2EAC4FA5009F044D /* NutraSafe Beta.entitlements */,
@@ -589,6 +592,7 @@
 			files = (
 				FASTNOTMGR001BLD /* Managers/FastingNotificationManager.swift in Sources */,
 				BGTASKMGR001BLD /* Managers/BackgroundTaskManager.swift in Sources */,
+				DEBOUNCER001BLD /* Utilities/Debouncer.swift in Sources */,
 				B9E69A3D4385429DA8CB3239 /* FastingEarlyEndViews.swift in Sources */,
 				42B4CA708B0E403EAFFD2EED /* NutrientCacheActor.swift in Sources */,
 				DB01DIARY000CACHE000ACTOR /* DiaryCacheActor.swift in Sources */,

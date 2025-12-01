@@ -613,6 +613,9 @@ struct UseByExpiryView: View {
     @State private var selectedFoodForUseBy: FoodSearchResult? // Hoisted to avoid nested presentations
     @State private var searchText: String = ""
 
+    // PERFORMANCE: Debouncer to prevent search from running on every keystroke
+    @StateObject private var searchDebouncer = Debouncer(milliseconds: 300)
+
     // PERFORMANCE: Cached computed values - only recalculate when data changes
     @State private var cachedSortedItems: [UseByInventoryItem] = []
     @State private var cachedUrgentCount: Int = 0
@@ -1008,7 +1011,10 @@ struct UseByExpiryView: View {
             recalculateCache()
         }
         .onChange(of: searchText) { _ in
-            recalculateCache()
+            // PERFORMANCE: Debounce search to avoid running expensive operations on every keystroke
+            searchDebouncer.debounce {
+                recalculateCache()
+            }
         }
         .alert("Clear all Use By items?", isPresented: $showClearAlert) {
             Button("Delete All", role: .destructive) {
