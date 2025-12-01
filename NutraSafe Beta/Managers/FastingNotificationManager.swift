@@ -233,8 +233,8 @@ class FastingNotificationManager {
         // Cancel any existing notifications for this plan
         await cancelPlanNotifications(planId: plan.id ?? "")
 
-        // Get the next 4 weeks of scheduled days for this plan
-        let scheduledDates = getNextScheduledDates(for: plan, weeksAhead: 4)
+        // Get the next 2 weeks of scheduled days for this plan (reduced from 4 to stay within iOS 64-notification limit)
+        let scheduledDates = getNextScheduledDates(for: plan, weeksAhead: 2)
 
         for date in scheduledDates {
             if settings.startNotificationEnabled {
@@ -374,6 +374,11 @@ class FastingNotificationManager {
         ]
 
         for stage in stages where stage.settingEnabled && stage.hours < plan.durationHours {
+            // Only schedule stages that occur before 75% of fast duration (reduces notification count)
+            let stageDuration = Double(stage.hours)
+            let fastDuration = Double(plan.durationHours)
+            guard stageDuration / fastDuration <= 0.75 else { continue }
+
             let stageDate = startDate.addingTimeInterval(TimeInterval(stage.hours * 3600))
 
             // Only schedule if the stage time is in the future
@@ -521,5 +526,96 @@ class FastingNotificationManager {
             }
         }
         #endif
+    }
+
+    // MARK: - Background Refresh Support
+
+    /// Check if notification queue needs refreshing (< 7 days remaining)
+    func checkNotificationQueue() async -> Bool {
+        let pendingRequests = await notificationCenter.pendingNotificationRequests()
+        let fastingNotifications = pendingRequests.filter { request in
+            if let type = request.content.userInfo["type"] as? String {
+                return type == "fasting"
+            }
+            return false
+        }
+
+        guard !fastingNotifications.isEmpty else { return true }
+
+        var latestDate: Date?
+        for request in fastingNotifications {
+            if let trigger = request.trigger as? UNCalendarNotificationTrigger,
+               let triggerDate = trigger.nextTriggerDate() {
+                if latestDate == nil || triggerDate > latestDate! {
+                    latestDate = triggerDate
+                }
+            }
+        }
+
+        guard let latest = latestDate else { return true }
+
+        let daysRemaining = Calendar.current.dateComponents([.day], from: Date(), to: latest).day ?? 0
+
+        #if DEBUG
+        print("📊 Notification queue check: \(daysRemaining) days remaining")
+        #endif
+
+        return daysRemaining < 7
+    }
+
+    /// Calculate days remaining in notification queue for a specific plan
+    func daysRemainingInQueue(for planId: String) async -> Int {
+        let pendingRequests = await notificationCenter.pendingNotificationRequests()
+
+        let planNotifications = pendingRequests.filter { request in
+            if let storedPlanId = request.content.userInfo["planId"] as? String {
+                return storedPlanId == planId
+            }
+            return false
+        }
+
+        var latestDate: Date?
+        for request in planNotifications {
+            if let trigger = request.trigger as? UNCalendarNotificationTrigger,
+               let triggerDate = trigger.nextTriggerDate() {
+                if latestDate == nil || triggerDate > latestDate! {
+                    latestDate = triggerDate
+                }
+            }
+        }
+
+        guard let latest = latestDate else { return 0 }
+
+        let days = Calendar.current.dateComponents([.day], from: Date(), to: latest).day ?? 0
+        return max(0, days)
+    }
+
+    /// Refresh notifications for all active regime plans
+    func refreshNotificationsForActivePlans() async throws {
+        let firebaseManager = FirebaseManager.shared
+        let plans = try await firebaseManager.getFastingPlans()
+        let activePlans = plans.filter { $0.active && $0.regimeActive }
+
+        #if DEBUG
+        print("🔄 Refreshing notifications for \(activePlans.count) active plan(s)")
+        #endif
+
+        for plan in activePlans {
+            guard let planId = plan.id else { continue }
+
+            let daysRemaining = await daysRemainingInQueue(for: planId)
+
+            if daysRemaining < 7 {
+                #if DEBUG
+                print("📅 Refreshing notifications for plan: \(plan.name) - \(daysRemaining) days remaining")
+                #endif
+
+                try await schedulePlanNotifications(for: plan)
+            } else {
+                #if DEBUG
+                print("✅ Plan \(plan.name) has sufficient notifications (\(daysRemaining) days)")
+                #endif
+            }
+        }
     }
 }

@@ -48,7 +48,7 @@ struct FoodTabView: View {
                 VStack(spacing: 16) {
                     HStack(spacing: 16) {
                         Text("Health")
-                            .font(.system(size: 38, weight: .bold, design: .rounded))
+                            .font(AppTypography.largeTitle())
                             .frame(height: 44, alignment: .center)
                             .foregroundColor(.primary)
 
@@ -75,7 +75,7 @@ struct FoodTabView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 8)
                 }
-                .background(Color.adaptiveBackground)
+                .background(AppColors.background)
                 
                 // MARK: - Fasting Components have been extracted to Views/Fasting/FastingTimerView.swift
                 // The following components were moved as part of Phase 13 ContentView.swift modularization effort:

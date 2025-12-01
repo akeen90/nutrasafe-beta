@@ -252,20 +252,24 @@ struct AddFoodBarcodeView: View {
             print("🔍 Searching for barcode variations: \(barcodeVariations)")
             #endif
 
-            // Step 2: Search SQLite database FIRST (priority search - instant, no network)
-            var foundInSQLite: FoodSearchResult? = nil
+            // Step 2: Try Algolia exact barcode lookup across indices (fast path)
+            var foundInAlgolia: FoodSearchResult? = nil
             for variation in barcodeVariations {
-                if let result = await SQLiteFoodDatabase.shared.searchByBarcode(variation) {
-                    foundInSQLite = result
-                    #if DEBUG
-                    print("✅ Found in SQLite database with barcode: \(variation)")
-                    #endif
-                    break
+                do {
+                    if let hit = try await AlgoliaSearchManager.shared.searchByBarcode(variation) {
+                        foundInAlgolia = hit
+                        #if DEBUG
+                        print("✅ Found in Algolia with barcode: \(variation)")
+                        #endif
+                        break
+                    }
+                } catch {
+                    // Continue to next variation/fallback
                 }
             }
 
-            // If found in SQLite, show immediately (fast path)
-            if let product = foundInSQLite {
+            // If found in Algolia, show immediately (fast path)
+            if let product = foundInAlgolia {
                 await MainActor.run {
                     self.scannedProduct = product
                     self.isSearching = false
@@ -274,10 +278,10 @@ struct AddFoodBarcodeView: View {
             }
 
             #if DEBUG
-            print("⚠️ Not found in SQLite, falling back to Firebase Cloud Function...")
+            print("⚠️ Not found in Algolia, falling back to Firebase Cloud Function...")
             #endif
 
-            // Step 3: Fallback to Firebase Cloud Function if not in SQLite
+            // Step 3: Fallback to Firebase Cloud Function (which falls back to OpenFoodFacts)
             searchProductByBarcode(barcode) { result in
                 Task { @MainActor in
                     self.isSearching = false

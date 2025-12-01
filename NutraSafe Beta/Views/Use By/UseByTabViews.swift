@@ -99,9 +99,9 @@ struct UseByTabView: View {
         navigationContainer {
             VStack(spacing: 0) {
                 // Header - AAA Modern Design
-                HStack(spacing: 16) {
+                HStack(spacing: 12) {
                     Text("Use By")
-                        .font(.system(size: 38, weight: .bold, design: .rounded))
+                        .font(AppTypography.largeTitle())
                         .frame(height: 44, alignment: .center)
                         .foregroundColor(.primary)
 
@@ -191,16 +191,7 @@ struct UseByTabView: View {
                     .padding(.bottom, 80) // Space for tab bar
                 }
             }
-            .background(
-                LinearGradient(
-                    colors: [
-                        Color.blue.opacity(0.15),
-                        Color.purple.opacity(0.15)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
+            .background(AppColors.background)
             .navigationBarHidden(true)
         }
         .fullScreenCover(isPresented: $showingAddSheet) {
@@ -2244,6 +2235,7 @@ struct UseByBarcodeScanSheet: View {
     @State private var scannedFood: FoodSearchResult?
     @State private var errorMessage: String?
     @State private var showAddForm = false
+    @State private var pendingContribution: PendingFoodContribution?
 
     var body: some View {
         NavigationView {
@@ -2275,6 +2267,18 @@ struct UseByBarcodeScanSheet: View {
 .sheet(item: $scannedFood) { food in
             AddFoundFoodToUseBySheet(food: food)
         }
+        .sheet(isPresented: $showAddForm) {
+            VStack(spacing: 16) {
+                Image(systemName: "square.and.pencil").font(.system(size: 50)).foregroundColor(.blue)
+                Text("Product Not Found").font(.system(size: 20, weight: .semibold))
+                if let pending = pendingContribution {
+                    Text("Barcode: \(pending.barcode)").font(.system(size: 14, design: .monospaced)).foregroundColor(.secondary)
+                }
+                Button("Close") { showAddForm = false }
+                    .buttonStyle(.borderedProminent)
+            }
+            .padding()
+        }
     }
 
     private func lookup(barcode: String) async {
@@ -2283,14 +2287,32 @@ struct UseByBarcodeScanSheet: View {
             self.isSearching = true
             self.errorMessage = nil
         }
+        // First: Algolia exact barcode lookup (fast path)
         do {
-            let results = try await FirebaseManager.shared.searchFoodsByBarcode(barcode: barcode)
-            await MainActor.run {
-                self.isSearching = false
-                if let first = results.first {
-                    self.scannedFood = first
-                } else {
-                    self.errorMessage = "Product not found. Try another scan or search manually."
+            if let found = try await AlgoliaSearchManager.shared.searchByBarcode(barcode) {
+                await MainActor.run {
+                    self.scannedFood = found
+                    self.isSearching = false
+                }
+                return
+            }
+        } catch {
+            // Ignore and continue to fallback
+        }
+
+        // Fallback: Cloud Function that itself falls back to OpenFoodFacts
+        do {
+            if let remote = try await searchProductByBarcodeRemote(barcode) {
+                await MainActor.run {
+                    self.scannedFood = remote
+                    self.isSearching = false
+                }
+            } else {
+                await MainActor.run {
+                    self.isSearching = false
+                    self.errorMessage = "Product not found. Try another scan or add manually."
+                    self.pendingContribution = PendingFoodContribution(placeholderId: "", barcode: barcode)
+                    self.showAddForm = true
                 }
             }
         } catch {
@@ -2299,6 +2321,36 @@ struct UseByBarcodeScanSheet: View {
                 self.errorMessage = "Lookup failed. Please try again."
             }
         }
+    }
+
+    private func searchProductByBarcodeRemote(_ barcode: String) async throws -> FoodSearchResult? {
+        guard let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/searchFoodByBarcode") else {
+            throw NSError(domain: "InvalidURL", code: 0)
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["barcode": barcode])
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+        let decoder = JSONDecoder()
+        if let resp = try? decoder.decode(BarcodeSearchResponse.self, from: data) {
+            if resp.success, let food = resp.toFoodSearchResult() { return food }
+            if resp.action == "user_contribution_needed" {
+                self.pendingContribution = PendingFoodContribution(placeholderId: resp.placeholder_id ?? "", barcode: barcode)
+            }
+            return nil
+        }
+        // Fallback: manual JSON parse
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            let success = json["success"] as? Bool ?? false
+            if success, let foodDict = json["food"] as? [String: Any] {
+                // Minimal mapping to FoodSearchResult
+                let food = try JSONSerialization.data(withJSONObject: foodDict)
+                return try? JSONDecoder().decode(FoodSearchResult.self, from: food)
+            }
+        }
+        return nil
     }
 }
 

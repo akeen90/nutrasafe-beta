@@ -600,6 +600,59 @@ final class AlgoliaSearchManager {
         }
     }
 
+    // MARK: - Barcode Search
+    /// Exact barcode lookup across indices using Algolia filters
+    func searchByBarcode(_ barcode: String) async throws -> FoodSearchResult? {
+        let variations: [String] = {
+            var v = [barcode]
+            if barcode.count == 13 && barcode.hasPrefix("0") { v.append(String(barcode.dropFirst())) }
+            if barcode.count == 12 { v.append("0" + barcode) }
+            return v
+        }()
+
+        for variation in variations {
+            if let hit = try await searchBarcodeInIndices(variation) {
+                return hit
+            }
+        }
+        return nil
+    }
+
+    private func searchBarcodeInIndices(_ barcode: String) async throws -> FoodSearchResult? {
+        // Search all indices in priority order; return first exact match
+        for (indexName, _) in indices {
+            if let result = try await searchIndexByBarcode(indexName: indexName, barcode: barcode) {
+                return result
+            }
+        }
+        return nil
+    }
+
+    private func searchIndexByBarcode(indexName: String, barcode: String) async throws -> FoodSearchResult? {
+        let url = URL(string: "\(baseURL)/\(indexName)/query")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(appId, forHTTPHeaderField: "X-Algolia-Application-Id")
+        request.setValue(searchKey, forHTTPHeaderField: "X-Algolia-API-Key")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let params: [String: Any] = [
+            "filters": "barcode:\(barcode)",
+            "hitsPerPage": 1,
+            "getRankingInfo": false
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: params)
+
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw AlgoliaError.invalidResponse
+        }
+
+        let results = try parseResponse(data, source: indexName)
+        return results.first
+    }
+
     /// Clear the search cache
     func clearCache() {
         searchCache.removeAllObjects()

@@ -4,6 +4,7 @@ import UserNotifications
 import WidgetKit
 import ActivityKit
 import StoreKit
+import BackgroundTasks
 // TEMPORARILY DISABLED: StoreKitTest framework linking issue in simulator builds
 // #if DEBUG && canImport(StoreKitTest)
 // import StoreKitTest
@@ -22,6 +23,13 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 
         // Set notification delegate to handle notification taps
         UNUserNotificationCenter.current().delegate = self
+
+        // Register background tasks for notification refresh
+        BackgroundTaskManager.shared.registerBackgroundTasks()
+
+        // Schedule initial background refresh
+        BackgroundTaskManager.shared.scheduleNotificationRefresh()
+
         return true
     }
 
@@ -66,6 +74,14 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                                didReceive response: UNNotificationResponse,
                                withCompletionHandler completionHandler: @escaping () -> Void) {
         let userInfo = response.notification.request.content.userInfo
+
+        // Handle notification actions (snooze, extend, etc.)
+        if let type = userInfo["type"] as? String, type == "fasting" {
+            FastingNotificationManager.shared.handleNotificationAction(
+                identifier: response.actionIdentifier,
+                userInfo: userInfo
+            )
+        }
 
         // Check if this is a fasting notification
         if let type = userInfo["type"] as? String, type == "fasting" {
@@ -224,11 +240,17 @@ struct MainAppView: View {
                     }
                     await requestNotificationPermission()
                     await clearAppBadge()
+
+                    // Check and refresh notification queue on app launch
+                    await checkAndRefreshNotifications()
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
                 Task {
                     await clearAppBadge()
+
+                    // Check and refresh notification queue when returning from background
+                    await checkAndRefreshNotifications()
                 }
             }
             .onChange(of: healthKitRingsEnabled) { enabled in
@@ -287,6 +309,23 @@ struct MainAppView: View {
             #if DEBUG
             print("❌ Error clearing badge: \(error)")
             #endif
+        }
+    }
+
+    /// Check and refresh notification queue if needed
+    private func checkAndRefreshNotifications() async {
+        let needsRefresh = await FastingNotificationManager.shared.checkNotificationQueue()
+        if needsRefresh {
+            do {
+                try await FastingNotificationManager.shared.refreshNotificationsForActivePlans()
+                #if DEBUG
+                print("✅ Notification queue refreshed on foreground")
+                #endif
+            } catch {
+                #if DEBUG
+                print("❌ Failed to refresh notifications: \(error)")
+                #endif
+            }
         }
     }
 }
