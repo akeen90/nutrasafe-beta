@@ -966,12 +966,9 @@ class FirebaseManager: ObservableObject {
             .order(by: "expiryDate", descending: false)
             .getDocuments()
 
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-
+        // Use Firestore's direct Codable support (handles FIRTimestamp properly)
         return snapshot.documents.compactMap { doc in
-            guard let data = try? JSONSerialization.data(withJSONObject: doc.data(), options: []) else { return nil }
-            return try? decoder.decode(UseByInventoryItem.self, from: data)
+            try? doc.data(as: UseByInventoryItem.self)
         }
     }
 
