@@ -137,7 +137,7 @@ struct DiaryTabView: View {
     private var diaryHeaderView: some View {
         HStack(alignment: .center) {
             Text("Diary")
-                .font(.system(size: 38, weight: .bold, design: .rounded))
+                .font(AppTypography.largeTitle())
                 .frame(height: 44, alignment: .center)
                 .foregroundColor(.primary)
 
@@ -174,7 +174,7 @@ struct DiaryTabView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
-                    .background(RoundedRectangle(cornerRadius: 10).fill(.ultraThinMaterial))
+                    .background(RoundedRectangle(cornerRadius: 10).fill(AppColors.cardBackgroundInteractive))
                 }
 
                 Button(action: {

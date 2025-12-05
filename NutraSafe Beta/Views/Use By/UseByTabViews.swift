@@ -110,63 +110,20 @@ struct UseByTabView: View {
                         Button(action: { showingSettings = true }) {
                             ZStack {
                                 Circle()
-                                    .fill(.ultraThinMaterial)
+                                    .fill(AppColors.cardBackgroundInteractive)
                                     .frame(width: 44, height: 44)
-                                    .overlay(
-                                        Circle()
-                                            .stroke(
-                                                LinearGradient(
-                                                    colors: [.white.opacity(0.5), .white.opacity(0.1)],
-                                                    startPoint: .topLeading,
-                                                    endPoint: .bottomTrailing
-                                                ),
-                                                lineWidth: 1.5
-                                            )
-                                    )
-                                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-
+                                    .overlay(Circle().stroke(AppColors.borderLight, lineWidth: 1))
                                 Image(systemName: "gearshape.fill")
                                     .font(.system(size: 20, weight: .semibold))
                                     .foregroundColor(.primary)
-                                    .symbolRenderingMode(.hierarchical)
                             }
                         }
 
-                        Button(action: {
-                            showingAddSheet = true
-                        }) {
+                        Button(action: { showingAddSheet = true }) {
                             ZStack {
-                                // Glow effect
                                 Circle()
-                                    .fill(
-                                        RadialGradient(
-                                            colors: [Color.blue.opacity(0.4), Color.blue.opacity(0)],
-                                            center: .center,
-                                            startRadius: 5,
-                                            endRadius: 25
-                                        )
-                                    )
-                                    .frame(width: 50, height: 50)
-                                    .blur(radius: 10)
-
-                                Circle()
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [
-                                                Color(red: 0.3, green: 0.5, blue: 1.0),
-                                                Color(red: 0.4, green: 0.4, blue: 0.9)
-                                            ],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
+                                    .fill(AppColors.primary)
                                     .frame(width: 44, height: 44)
-                                    .overlay(
-                                        Circle()
-                                            .stroke(.white.opacity(0.3), lineWidth: 1.5)
-                                    )
-                                    .shadow(color: Color.blue.opacity(0.3), radius: 12, x: 0, y: 6)
-
                                 Image(systemName: "plus")
                                     .font(.system(size: 20, weight: .bold))
                                     .foregroundColor(.white)
@@ -791,57 +748,7 @@ struct UseByExpiryView: View {
                 // Modern premium design with gradients and depth
                 ScrollView {
                     LazyVStack(spacing: 16) {
-                        // Modern search bar with gradient accent
-                        HStack(spacing: 10) {
-                            Image(systemName: "magnifyingglass")
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(
-                                    LinearGradient(
-                                        colors: [Color.blue, Color.purple.opacity(0.8)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-
-                            TextField("Search your useBy...", text: $searchText)
-                                .font(.system(size: 16, weight: .medium))
-                                .textFieldStyle(PlainTextFieldStyle())
-
-                            if !searchText.isEmpty {
-                                Button(action: { searchText = "" }) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.system(size: 18))
-                                        .foregroundColor(.secondary.opacity(0.6))
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 14)
-                        .background {
-                            ZStack {
-                                // Transparent background to show page gradient
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(Color.white.opacity(0.1))
-
-                                // Gradient border
-                                RoundedRectangle(cornerRadius: 16)
-                                    .strokeBorder(
-                                        LinearGradient(
-                                            colors: [
-                                                Color.blue.opacity(0.3),
-                                                Color.purple.opacity(0.2)
-                                            ],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        ),
-                                        lineWidth: 1.5
-                                    )
-                            }
-                        }
-                        .shadow(color: Color.blue.opacity(0.08), radius: 12, x: 0, y: 4)
-                        .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
-                        .padding(.horizontal, 16)
-                        .padding(.top, 12)
+                        
 
                         // Ultra-modern compact stat cards
                         HStack(spacing: 10) {
@@ -849,14 +756,14 @@ struct UseByExpiryView: View {
                                 value: "\(sortedItems.count)",
                                 label: "Items",
                                 icon: "refrigerator.fill",
-                                gradient: [Color.blue, Color.purple.opacity(0.8)]
+                                tint: Color.blue
                             )
 
                             CompactStatPill(
                                 value: adaptiveValue,
                                 label: adaptiveTitle == "This Week" ? "This Week" : "Expiring",
                                 icon: adaptiveIcon,
-                                gradient: [adaptiveColor, adaptiveColor.opacity(0.7)]
+                                tint: adaptiveColor
                             )
                         }
                         .padding(.horizontal, 16)
@@ -978,14 +885,13 @@ struct UseByExpiryView: View {
                                 .padding(.vertical, 6)
                             }
                         }
-                        .background {
+                        .background(
                             RoundedRectangle(cornerRadius: 28)
-                                .fill(.ultraThinMaterial)
-                                .shadow(color: .black.opacity(0.08), radius: 16, x: 0, y: 4)
-                        }
+                                .fill(AppColors.cardBackgroundElevated)
+                        )
                         .overlay(
                             RoundedRectangle(cornerRadius: 28)
-                                .stroke(Color(.systemGray4), lineWidth: 1)
+                                .stroke(AppColors.border, lineWidth: 1)
                         )
                         .clipShape(RoundedRectangle(cornerRadius: 28))
                         .padding(.horizontal, 20)
@@ -994,6 +900,9 @@ struct UseByExpiryView: View {
                 }
             }
         }
+        .transaction { $0.disablesAnimations = true }
+        .animation(nil, value: cachedSortedItems)
+        .animation(nil, value: searchText)
         .onAppear {
             Task {
                 if !dataManager.isLoaded {
@@ -5298,51 +5207,23 @@ struct CompactStatPill: View {
     let value: String
     let label: String
     let icon: String
-    let gradient: [Color]
-    @State private var isVisible = false
+    let tint: Color
 
     var body: some View {
-        HStack(spacing: 8) {
-            // Compact gradient icon
-            ZStack {
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [gradient[0].opacity(0.3), gradient[0].opacity(0.15)],
-                            center: .center,
-                            startRadius: 5,
-                            endRadius: 18
-                        )
-                    )
-                    .frame(width: 36, height: 36)
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(tint)
 
-                Image(systemName: icon)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: gradient,
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            }
-
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(value)
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: gradient,
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
+                    .font(AppTypography.title3(weight: .bold))
+                    .foregroundColor(tint)
 
                 Text(label)
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundColor(.secondary.opacity(0.9))
+                    .font(AppTypography.caption2(weight: .semibold))
+                    .foregroundColor(tint.opacity(0.9))
                     .textCase(.uppercase)
-                    .tracking(0.5)
             }
 
             Spacer(minLength: 0)
@@ -5350,35 +5231,13 @@ struct CompactStatPill: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity)
-        .background {
-            ZStack {
-                // Transparent background to show page gradient
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(Color.white.opacity(0.1))
-
-                // Gradient border
-                RoundedRectangle(cornerRadius: 14)
-                    .strokeBorder(
-                        LinearGradient(
-                            colors: [
-                                gradient[0].opacity(0.35),
-                                gradient[1].opacity(0.2)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1.5
-                    )
-            }
-        }
-        .shadow(color: gradient[0].opacity(0.15), radius: 10, x: 0, y: 5)
-        .shadow(color: Color.black.opacity(0.06), radius: 4, x: 0, y: 2)
-        .scaleEffect(isVisible ? 1 : 0.9)
-        .opacity(isVisible ? 1 : 0)
-        .onAppear {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.2)) {
-                isVisible = true
-            }
-        }
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(AppColors.cardBackgroundInteractive)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(tint.opacity(0.25), lineWidth: 1)
+        )
     }
 }
