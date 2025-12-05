@@ -941,10 +941,18 @@ class FirebaseManager: ObservableObject {
     }
 
     private func addUseByItemHelper(_ item: UseByInventoryItem, userId: String) async throws {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        let data = try encoder.encode(item)
-        let dict = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] ?? [:]
+        var dict: [String: Any] = [
+            "id": item.id,
+            "name": item.name,
+            "quantity": item.quantity,
+            "expiryDate": Timestamp(date: item.expiryDate),
+            "addedDate": Timestamp(date: item.addedDate)
+        ]
+        if let brand = item.brand { dict["brand"] = brand }
+        if let barcode = item.barcode { dict["barcode"] = barcode }
+        if let category = item.category { dict["category"] = category }
+        if let imageURL = item.imageURL { dict["imageURL"] = imageURL }
+        if let notes = item.notes { dict["notes"] = notes }
 
         try await db.collection("users").document(userId)
             .collection("useByInventory").document(item.id).setData(dict)
@@ -978,22 +986,18 @@ class FirebaseManager: ObservableObject {
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to update use by items"])
         }
-
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        let data = try encoder.encode(item)
-        var dict = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] ?? [:]
-
-
-        if item.notes == nil {
-            dict["notes"] = FieldValue.delete()
-        }
-        if item.brand == nil {
-            dict["brand"] = FieldValue.delete()
-        }
-        if item.imageURL == nil {
-            dict["imageURL"] = FieldValue.delete()
-        }
+        var dict: [String: Any] = [
+            "id": item.id,
+            "name": item.name,
+            "quantity": item.quantity,
+            "expiryDate": Timestamp(date: item.expiryDate),
+            "addedDate": Timestamp(date: item.addedDate)
+        ]
+        if let brand = item.brand { dict["brand"] = brand } else { dict["brand"] = FieldValue.delete() }
+        if let barcode = item.barcode { dict["barcode"] = barcode } else { dict["barcode"] = FieldValue.delete() }
+        if let category = item.category { dict["category"] = category } else { dict["category"] = FieldValue.delete() }
+        if let imageURL = item.imageURL { dict["imageURL"] = imageURL } else { dict["imageURL"] = FieldValue.delete() }
+        if let notes = item.notes { dict["notes"] = notes } else { dict["notes"] = FieldValue.delete() }
 
         try await db.collection("users").document(userId)
             .collection("useByInventory").document(item.id).setData(dict, merge: true)
