@@ -288,10 +288,66 @@ struct AddFoodBarcodeView: View {
 
                     switch result {
                     case .success(let response):
-                        if response.success, let product = response.toFoodSearchResult() {
+                        if response.success, var product = response.toFoodSearchResult() {
                             #if DEBUG
-                            print("✅ Found via Firebase Cloud Function")
+                            print("✅ Found via Cloud Function: \(product.name)")
+                            print("   Nutrition per 100g → kcal: \(product.calories), protein: \(product.protein), carbs: \(product.carbs), fat: \(product.fat), fiber: \(product.fiber), sugar: \(product.sugar), sodium: \(product.sodium)")
+                            print("   Serving: \(product.servingDescription ?? "nil") sizeG: \(product.servingSizeG ?? -1)")
                             #endif
+                            // Enrichment: if macros are missing/zero, try Algolia text search to fill them
+                            let macrosAreZero = (product.calories == 0
+                                                 && product.protein == 0
+                                                 && product.carbs == 0
+                                                 && product.fat == 0
+                                                 && product.fiber == 0
+                                                 && product.sugar == 0)
+                            if macrosAreZero {
+                                #if DEBUG
+                                print("🔎 Macros missing from CF result; enriching via Algolia text search…")
+                                #endif
+                                do {
+                                    let candidates = try await AlgoliaSearchManager.shared.search(query: product.name, hitsPerPage: 5)
+                                    if let match = candidates.first(where: { cand in
+                                        // Prefer exact brand match if available
+                                        if let b1 = product.brand?.lowercased(), let b2 = cand.brand?.lowercased() { return b1 == b2 }
+                                        // Otherwise fall back to name proximity
+                                        return cand.name.lowercased() == product.name.lowercased()
+                                    }) ?? candidates.first {
+                                        product = FoodSearchResult(
+                                            id: product.id,
+                                            name: product.name,
+                                            brand: product.brand ?? match.brand,
+                                            calories: match.calories,
+                                            protein: match.protein,
+                                            carbs: match.carbs,
+                                            fat: match.fat,
+                                            fiber: match.fiber,
+                                            sugar: match.sugar,
+                                            sodium: match.sodium,
+                                            servingDescription: product.servingDescription ?? match.servingDescription ?? "per 100g",
+                                            servingSizeG: product.servingSizeG ?? match.servingSizeG,
+                                            isPerUnit: match.isPerUnit,
+                                            ingredients: product.ingredients ?? match.ingredients,
+                                            confidence: product.confidence,
+                                            isVerified: product.isVerified || match.isVerified,
+                                            additives: product.additives ?? match.additives,
+                                            additivesDatabaseVersion: product.additivesDatabaseVersion ?? match.additivesDatabaseVersion,
+                                            processingScore: product.processingScore ?? match.processingScore,
+                                            processingGrade: product.processingGrade ?? match.processingGrade,
+                                            processingLabel: product.processingLabel ?? match.processingLabel,
+                                            barcode: product.barcode ?? match.barcode,
+                                            micronutrientProfile: product.micronutrientProfile ?? match.micronutrientProfile
+                                        )
+                                        #if DEBUG
+                                        print("✅ Enriched macros from Algolia: kcal=\(product.calories), protein=\(product.protein), carbs=\(product.carbs)")
+                                        #endif
+                                    }
+                                } catch {
+                                    #if DEBUG
+                                    print("⚠️ Algolia enrichment failed: \(error)")
+                                    #endif
+                                }
+                            }
                             self.scannedProduct = product
                         } else if response.action == "user_contribution_needed",
                                   let placeholderId = response.placeholder_id {
