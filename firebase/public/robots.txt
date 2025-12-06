@@ -1,0 +1,23 @@
+# Robots.txt for NutraSafe
+# https://www.nutrasafe.co.uk/robots.txt
+
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /admin-*.html
+Disallow: /debug.html
+Disallow: /test.html
+Disallow: /cleanse.html
+Disallow: /*.html$
+
+# Allow important pages
+Allow: /index.html
+Allow: /privacy-policy.html
+Allow: /terms-of-service.html
+Allow: /support.html
+
+# Sitemap location
+Sitemap: https://www.nutrasafe.co.uk/sitemap.xml
+
+# Crawl delay (optional, 1 second)
+Crawl-delay: 1

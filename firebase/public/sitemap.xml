@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+
+    <!-- Homepage - Food Reactions & Additive Scanner -->
+    <url>
+        <loc>https://www.nutrasafe.co.uk/</loc>
+        <lastmod>2025-01-06</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>1.0</priority>
+        <image:image>
+            <image:loc>https://www.nutrasafe.co.uk/app-icon.png</image:loc>
+            <image:title>NutraSafe - Food Reactions & Allergy App UK</image:title>
+            <image:caption>Track food reactions, scan additives, check E-numbers and monitor vitamins</image:caption>
+        </image:image>
+        <image:image>
+            <image:loc>https://www.nutrasafe.co.uk/nutrition-dashboard.png</image:loc>
+            <image:title>NutraSafe Nutrition Dashboard</image:title>
+            <image:caption>Daily food diary and macro tracking</image:caption>
+        </image:image>
+        <image:image>
+            <image:loc>https://www.nutrasafe.co.uk/allergy-alerts.png</image:loc>
+            <image:title>Food Reaction Tracker</image:title>
+            <image:caption>Track food reactions and identify allergens</image:caption>
+        </image:image>
+        <image:image>
+            <image:loc>https://www.nutrasafe.co.uk/ingredients-view.png</image:loc>
+            <image:title>Ingredient & Additive Scanner</image:title>
+            <image:caption>Check E-numbers and food additives</image:caption>
+        </image:image>
+        <image:image>
+            <image:loc>https://www.nutrasafe.co.uk/use-by-screen.png</image:loc>
+            <image:title>Food Expiry Date Tracker</image:title>
+            <image:caption>Track use-by dates and reduce food waste</image:caption>
+        </image:image>
+    </url>
+
+    <!-- Privacy Policy -->
+    <url>
+        <loc>https://www.nutrasafe.co.uk/privacy-policy.html</loc>
+        <lastmod>2025-01-06</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+    </url>
+
+    <!-- Terms of Service -->
+    <url>
+        <loc>https://www.nutrasafe.co.uk/terms-of-service.html</loc>
+        <lastmod>2025-01-06</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+    </url>
+
+    <!-- Support Page -->
+    <url>
+        <loc>https://www.nutrasafe.co.uk/support.html</loc>
+        <lastmod>2025-01-06</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+
+</urlset>
