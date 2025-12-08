@@ -19,7 +19,7 @@ struct PaywallView: View {
         if let product = subscriptionManager.product {
             return "\(product.displayPrice)/month"
         }
-        return "£1.99/month"
+        return "£2.99/month"
     }
 
     private var ctaText: String {
