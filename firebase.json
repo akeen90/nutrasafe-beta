@@ -13,6 +13,18 @@
       "**/.*",
       "**/node_modules/**"
     ],
+    "redirects": [
+      {
+        "source": "/resources/how-to-track-micronutrients-and-vitamins.html",
+        "destination": "/resources/how-to-track-micronutrients.html",
+        "type": 301
+      },
+      {
+        "source": "/resources/intermittent-fasting-choosing-your-schedule.html",
+        "destination": "/resources/intermittent-fasting-schedules-uk.html",
+        "type": 301
+      }
+    ],
     "rewrites": [
       {
         "source": "/admin",
