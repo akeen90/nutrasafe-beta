@@ -365,48 +365,40 @@ class FastingNotificationManager {
 
     /// Schedule stage notifications throughout the fast
     private func scheduleStageNotifications(for plan: FastingPlan, startingOn startDate: Date) async throws {
-        let stages: [(hours: Int, title: String, body: String, settingEnabled: Bool)] = [
-            (4, "4 hours in", "Post-meal processing complete. Your body is transitioning.", settings.stage4hEnabled),
-            (8, "8 hours in", "Fuel switching activated. Fat burning is ramping up!", settings.stage8hEnabled),
-            (12, "12 hours in", "Fat mobilisation underway. Your body is using fat stores.", settings.stage12hEnabled),
-            (16, "16 hours in", "Mild ketosis reached. Ketone production increasing.", settings.stage16hEnabled),
-            (20, "20 hours in", "Autophagy potential. Cellular cleanup may begin.", settings.stage20hEnabled)
+        // Only schedule a single stage: "Fat burning" (default at 12h) to stay well under the iOS 64 notification cap.
+        let fatBurnHours = 12
+
+        guard settings.stageNotificationsEnabled,
+              settings.stage12hEnabled,
+              fatBurnHours < plan.durationHours else { return }
+
+        let stageDate = startDate.addingTimeInterval(TimeInterval(fatBurnHours * 3600))
+
+        // Only schedule if the stage time is in the future
+        guard stageDate > Date() else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = "Fat burning phase"
+        content.body = "You’re ~\(fatBurnHours) hours in. Fat mobilisation is underway—stay hydrated and plan your break."
+        content.sound = .default
+        content.categoryIdentifier = fastStageCategoryId
+
+        content.userInfo = [
+            "type": "fasting",
+            "fastingType": "stage",
+            "planId": plan.id ?? "",
+            "planName": plan.displayName,
+            "stageHours": fatBurnHours
         ]
 
-        for stage in stages where stage.settingEnabled && stage.hours < plan.durationHours {
-            // Only schedule stages that occur before 75% of fast duration (reduces notification count)
-            let stageDuration = Double(stage.hours)
-            let fastDuration = Double(plan.durationHours)
-            guard stageDuration / fastDuration <= 0.75 else { continue }
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: stageDate)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
 
-            let stageDate = startDate.addingTimeInterval(TimeInterval(stage.hours * 3600))
+        let identifier = "fast_stage_\(plan.id ?? "")_\(fatBurnHours)h_\(startDate.timeIntervalSince1970)"
+        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
 
-            // Only schedule if the stage time is in the future
-            guard stageDate > Date() else { continue }
-
-            let content = UNMutableNotificationContent()
-            content.title = stage.title
-            content.body = stage.body
-            content.sound = .default
-            content.categoryIdentifier = fastStageCategoryId
-
-            content.userInfo = [
-                "type": "fasting",
-                "fastingType": "stage",
-                "planId": plan.id ?? "",
-                "planName": plan.displayName,
-                "stageHours": stage.hours
-            ]
-
-            let calendar = Calendar.current
-            let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: stageDate)
-            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-
-            let identifier = "fast_stage_\(plan.id ?? "")_\(stage.hours)h_\(startDate.timeIntervalSince1970)"
-            let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
-
-            try await notificationCenter.add(request)
-        }
+        try await notificationCenter.add(request)
     }
 
     // MARK: - Cancel Notifications
