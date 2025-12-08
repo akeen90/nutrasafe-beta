@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Additive Scanner UK — Check E-Numbers Instantly | NutraSafe</title>
+    <meta name="description" content="Scan barcodes to check food additives and E-numbers in UK products. Instant safety information on preservatives, colourings, and ultra-processed ingredients. Free barcode scanner app.">
+
+    <!-- SEO Meta Tags -->
+    <meta name="keywords" content="food additive scanner UK, e number checker UK, additive checker app, food scanner UK, barcode scanner additives, e number app UK, food safety scanner, additive detector UK">
+    <meta name="author" content="Aaron Keen">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://www.nutrasafe.co.uk/food-additive-scanner-uk.html">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.nutrasafe.co.uk/food-additive-scanner-uk.html">
+    <meta property="og:title" content="Food Additive Scanner UK — Check E-Numbers Instantly">
+    <meta property="og:description" content="Scan barcodes to check food additives and E-numbers in UK products. Instant safety information.">
+    <meta property="og:image" content="https://www.nutrasafe.co.uk/ingredients-view.png">
+    <meta property="og:locale" content="en_GB">
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-YZNJZ4C1MV"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-YZNJZ4C1MV');
+    </script>
+
+    <!-- Structured Data - HowTo -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "HowTo",
+        "name": "How to Check Food Additives and E-Numbers in UK Products",
+        "description": "Learn how to scan barcodes and check food additives, E-numbers, and ultra-processed ingredients in UK food products",
+        "step": [
+            {
+                "@type": "HowToStep",
+                "name": "Download the NutraSafe app",
+                "text": "Download NutraSafe from the Apple App Store on your iPhone or iPad"
+            },
+            {
+                "@type": "HowToStep",
+                "name": "Scan a barcode",
+                "text": "Open the app and scan any food product barcode with your phone's camera"
+            },
+            {
+                "@type": "HowToStep",
+                "name": "View additive information",
+                "text": "Instantly see all E-numbers, additives, and ultra-processed ingredients with safety information"
+            }
+        ]
+    }
+    </script>
+
+    <link rel="icon" type="image/png" href="/app-icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --primary-dark: #4f46e5;
+            --accent: #f472b6;
+            --accent-secondary: #22d3ee;
+            --text-dark: #0f172a;
+            --text-light: #64748b;
+            --text-muted: #94a3b8;
+            --bg-dark: #0f172a;
+            --bg-card: rgba(255, 255, 255, 0.03);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background: #ffffff;
+        }
+
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 1rem 0;
+            transition: all 0.3s ease;
+        }
+
+        header.scrolled {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .logo-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2.5rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: white;
+        }
+
+        .nav-cta {
+            padding: 0.6rem 1.5rem;
+            background: var(--primary);
+            color: white !important;
+            border-radius: 100px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .nav-cta:hover {
+            background: var(--primary-light);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
+        }
+
+        .nav-cta:hover {
+            background: var(--primary-light);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            color: white;
+            padding: 120px 2rem 80px;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: rgba(255,255,255,0.8);
+            max-width: 700px;
+            margin: 0 auto 2rem;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: var(--primary);
+            color: white;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        section {
+            padding: 80px 2rem;
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--text-dark);
+        }
+
+        h3 {
+            font-size: 1.5rem;
+            margin: 2rem 0 1rem;
+            color: var(--text-dark);
+        }
+
+        .content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .content p {
+            margin-bottom: 1.5rem;
+            color: var(--text-light);
+            font-size: 1.1rem;
+            line-height: 1.8;
+        }
+
+        .content ul {
+            margin: 1.5rem 0;
+            padding-left: 2rem;
+        }
+
+        .content li {
+            margin-bottom: 1rem;
+            color: var(--text-light);
+            line-height: 1.8;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        .feature-card {
+            background: #f8fafc;
+            padding: 2rem;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .feature-card h3 {
+            margin-top: 0;
+        }
+
+        .bg-light {
+            background: #f8fafc;
+        }
+
+        .cta-section {
+            background: linear-gradient(135deg, var(--text-dark) 0%, #1e1b4b 100%);
+            color: white;
+            text-align: center;
+            padding: 80px 2rem;
+        }
+
+        .cta-section h2 {
+            color: white;
+        }
+
+        footer {
+            background: var(--bg-dark);
+            color: white;
+            padding: 4rem 2rem 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr repeat(3, 1fr);
+            gap: 3rem;
+            margin-bottom: 3rem;
+        }
+
+        .footer-brand p {
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 1rem;
+            line-height: 1.7;
+        }
+
+        .footer-section h4 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1.5rem;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .footer-section ul {
+            list-style: none;
+        }
+
+        .footer-section a {
+            color: rgba(255, 255, 255, 0.5);
+            text-decoration: none;
+            display: block;
+            padding: 0.4rem 0;
+            transition: color 0.3s;
+        }
+
+        .footer-section a:hover {
+            color: white;
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        @media (max-width: 968px) {
+            .footer-content {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .footer-content {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header id="header">
+        <nav>
+            <a href="/" class="logo">
+                <div class="logo-icon">
+                    <img src="/app-icon.png" alt="NutraSafe food diary and nutrition tracker app icon">
+                </div>
+                <span>NutraSafe</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/#features">Features</a></li>
+                <li><a href="/#how-it-works">How It Works</a></li>
+                <li><a href="/resources.html">Resources</a></li>
+                <li><a href="/#faqs">FAQ</a></li>
+                <li><a href="/#download" class="nav-cta">Download</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <h1>Food Additive Scanner UK — Check E-Numbers Instantly</h1>
+            <p>Scan any barcode to check food additives, E-numbers, and ultra-processed ingredients in UK products. Instant safety information based on scientific research.</p>
+            <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="cta-button">Download Free App</a>
+        </div>
+    </section>
+
+    <section>
+        <div class="content">
+            <h2>What Are Food Additives and E-Numbers?</h2>
+            <p>Food additives are substances added to food to preserve flavour, enhance taste, or improve appearance. In the UK and EU, these additives are assigned E-numbers — standardised codes that identify specific additives like preservatives, colourings, sweeteners, and emulsifiers.</p>
+
+            <p>Whilst many additives are safe, some have been linked to health concerns including allergic reactions, hyperactivity in children, and digestive issues. Understanding which E-numbers are in your food helps you make informed choices about what you eat.</p>
+
+            <h3>Common Types of Food Additives</h3>
+            <ul>
+                <li><strong>Preservatives (E200-E299):</strong> Prevent food spoilage and extend shelf life</li>
+                <li><strong>Colourings (E100-E199):</strong> Add or restore colour to food products</li>
+                <li><strong>Antioxidants (E300-E399):</strong> Prevent oxidation and rancidity</li>
+                <li><strong>Sweeteners (E420-E499, E950-E969):</strong> Provide sweetness without sugar</li>
+                <li><strong>Emulsifiers (E400-E499):</strong> Help mix ingredients that don't naturally combine</li>
+                <li><strong>Flavour enhancers (E620-E650):</strong> Intensify taste, like MSG (E621)</li>
+            </ul>
+
+            <h3>Why Use a Food Additive Scanner?</h3>
+            <p>Reading ingredient lists on food packaging can be confusing and time-consuming. Many E-numbers have complex chemical names, making it difficult to know what you're consuming. A food additive scanner like NutraSafe solves this by:</p>
+
+            <ul>
+                <li>Instantly identifying all additives and E-numbers in a product</li>
+                <li>Providing safety information based on scientific research</li>
+                <li>Highlighting potentially harmful or controversial additives</li>
+                <li>Detecting ultra-processed ingredients</li>
+                <li>Checking for allergens and intolerances</li>
+            </ul>
+
+            <h3>How NutraSafe's Additive Scanner Works</h3>
+            <p>NutraSafe makes checking food additives simple:</p>
+
+            <ol>
+                <li><strong>Scan the barcode:</strong> Use your phone's camera to scan any UK food product</li>
+                <li><strong>View instant results:</strong> See a complete list of all additives, E-numbers, and ingredients</li>
+                <li><strong>Check safety information:</strong> Get detailed information about each additive's purpose and safety profile</li>
+                <li><strong>Identify concerns:</strong> NutraSafe highlights potentially harmful additives and ultra-processed ingredients</li>
+            </ol>
+
+            <p>Our database covers over 500,000 products from UK supermarkets including Tesco, Sainsbury's, Asda, Morrisons, Waitrose, Aldi, Lidl, and more.</p>
+        </div>
+    </section>
+
+    <section class="bg-light">
+        <div class="content">
+            <h2>Which Additives Should You Avoid?</h2>
+            <p>Whilst regulatory bodies like the FSA (Food Standards Agency) approve additives for use, some may cause adverse reactions in sensitive individuals. NutraSafe helps you identify:</p>
+
+            <ul>
+                <li><strong>Artificial colourings:</strong> Some linked to hyperactivity in children (E102, E110, E122, E124, E129)</li>
+                <li><strong>Preservatives:</strong> Can cause allergic reactions in some people (E220-E228, sodium benzoate)</li>
+                <li><strong>Flavour enhancers:</strong> MSG (E621) and related compounds</li>
+                <li><strong>Artificial sweeteners:</strong> Aspartame (E951), sucralose (E955), and others</li>
+                <li><strong>Trans fats and hydrogenated oils:</strong> Linked to heart disease</li>
+            </ul>
+
+            <p>NutraSafe doesn't just list these additives — it explains what they are, why they're used, and what the research says about their safety.</p>
+        </div>
+    </section>
+
+    <section>
+        <div class="content">
+            <h2>Ultra-Processed Foods and Your Health</h2>
+            <p>Ultra-processed foods contain multiple additives, preservatives, and industrial ingredients. Research links high consumption of ultra-processed foods to obesity, heart disease, and other health issues.</p>
+
+            <p>NutraSafe's additive scanner helps you identify ultra-processed foods by analysing:</p>
+            <ul>
+                <li>Number and type of additives present</li>
+                <li>Processing level and industrial ingredients</li>
+                <li>Nutritional quality and density</li>
+                <li>Presence of artificial ingredients</li>
+            </ul>
+
+            <h3>Beyond Additive Scanning: NutraSafe's Complete Features</h3>
+            <p>NutraSafe isn't just an additive scanner. It's a complete food intelligence app that helps you:</p>
+        </div>
+
+        <div class="container">
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>🔍 Allergen Detection</h3>
+                    <p>Instantly check for allergens like gluten, dairy, nuts, soya, and others in any product</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>🧬 Food Reaction Tracking</h3>
+                    <p>Log how you feel after eating and identify patterns between foods and symptoms</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>💊 Vitamin & Nutrient Tracking</h3>
+                    <p>Monitor micronutrients and vitamin intake throughout the day and week</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>📊 Nutrition Scoring</h3>
+                    <p>Get A+ to F grades based on processing level, additives, and nutritional quality</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>⏱️ Intermittent Fasting</h3>
+                    <p>Track fasting windows for 16:8, 18:6, or custom schedules</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>📅 Expiry Date Tracker</h3>
+                    <p>Never waste food — track use-by dates and get reminders before food expires</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="container">
+            <h2>Start Checking Food Additives Today</h2>
+            <p style="color: rgba(255,255,255,0.8); margin-bottom: 2rem;">Download NutraSafe and scan your first product in seconds. Free to download.</p>
+            <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="cta-button">Download Free App</a>
+        </div>
+    </section>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-brand">
+                <a href="/" class="logo">
+                    <div class="logo-icon">
+                        <img src="/app-icon.png" alt="NutraSafe">
+                    </div>
+                    <span>NutraSafe</span>
+                </a>
+                <p>The food intelligence app that learns your body. Food clarity. Body clarity. Simple.</p>
+            </div>
+
+            <div class="footer-section">
+                <h4>Product</h4>
+                <ul>
+                    <li><a href="/#features">Features</a></li>
+                    <li><a href="/#how-it-works">How It Works</a></li>
+                    <li><a href="/#faqs">FAQs</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>Resources</h4>
+                <ul>
+                    <li><a href="/resources.html">All Resources</a></li>
+                    <li><a href="/food-additive-scanner-uk.html">Additive Scanner</a></li>
+                    <li><a href="/food-intolerance-tracker-uk.html">Food Intolerances</a></li>
+                    <li><a href="/intermittent-fasting-app-uk.html">Fasting Guide</a></li>
+                    <li><a href="/food-expiry-tracker-uk.html">Expiry Tracker</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>Company</h4>
+                <ul>
+                    <li><a href="/support.html">Support</a></li>
+                    <li><a href="/privacy-policy.html">Privacy Policy</a></li>
+                    <li><a href="/terms-of-service.html">Terms of Service</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p>&copy; 2025 NutraSafe. All rights reserved. Operated by Aaron Keen, United Kingdom</p>
+        </div>
+    </footer>
+
+    <script>
+        // Header scroll effect
+        window.addEventListener('scroll', function() {
+            const header = document.getElementById('header');
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
+    </script>
+</body>
+</html>

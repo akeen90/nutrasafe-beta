@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Intolerance Tracker UK — Identify Food Reactions | NutraSafe</title>
+    <meta name="description" content="Track food reactions and identify intolerances with NutraSafe. Log symptoms, discover patterns, and understand which foods affect you. Free food diary and reaction tracker for UK users.">
+
+    <!-- SEO Meta Tags -->
+    <meta name="keywords" content="food intolerance tracker UK, food reaction tracker, food sensitivity app UK, intolerance diary UK, food allergy tracker UK, symptom tracker food, elimination diet app UK">
+    <meta name="author" content="Aaron Keen">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://www.nutrasafe.co.uk/food-intolerance-tracker-uk.html">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.nutrasafe.co.uk/food-intolerance-tracker-uk.html">
+    <meta property="og:title" content="Food Intolerance Tracker UK — Identify Food Reactions">
+    <meta property="og:description" content="Track food reactions and identify intolerances. Log symptoms and discover patterns.">
+    <meta property="og:image" content="https://www.nutrasafe.co.uk/allergy-alerts.png">
+    <meta property="og:locale" content="en_GB">
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-YZNJZ4C1MV"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-YZNJZ4C1MV');
+    </script>
+
+    <!-- Structured Data - Article -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "How to Track Food Intolerances and Identify Problem Foods",
+        "description": "Learn how to track food reactions, identify intolerances, and discover which foods cause symptoms",
+        "author": {
+            "@type": "Person",
+            "name": "Aaron Keen"
+        },
+        "publisher": {
+            "@type": "Organization",
+            "name": "NutraSafe",
+            "logo": {
+                "@type": "ImageObject",
+                "url": "https://www.nutrasafe.co.uk/app-icon.png"
+            }
+        }
+    }
+    </script>
+
+    <link rel="icon" type="image/png" href="/app-icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --primary-dark: #4f46e5;
+            --accent: #f472b6;
+            --accent-secondary: #22d3ee;
+            --text-dark: #0f172a;
+            --text-light: #64748b;
+            --text-muted: #94a3b8;
+            --bg-dark: #0f172a;
+            --bg-card: rgba(255, 255, 255, 0.03);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background: #ffffff;
+        }
+
+        header {
+            background: var(--text-dark);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            color: white !important;
+            text-decoration: none;
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo img {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: white !important;
+        }
+
+        .nav-cta {
+            padding: 0.6rem 1.5rem;
+            background: var(--primary);
+            color: white !important;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            color: white !important;
+            padding: 120px 2rem 80px;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: rgba(255,255,255,0.8);
+            max-width: 700px;
+            margin: 0 auto 2rem;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: var(--primary);
+            color: white !important;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+            font-size: 1.1rem;
+        }
+
+        section {
+            padding: 80px 2rem;
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--text-dark);
+        }
+
+        h3 {
+            font-size: 1.5rem;
+            margin: 2rem 0 1rem;
+            color: var(--text-dark);
+        }
+
+        .content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .content p {
+            margin-bottom: 1.5rem;
+            color: var(--text-light);
+            font-size: 1.1rem;
+            line-height: 1.8;
+        }
+
+        .content ul, .content ol {
+            margin: 1.5rem 0;
+            padding-left: 2rem;
+        }
+
+        .content li {
+            margin-bottom: 1rem;
+            color: var(--text-light);
+            line-height: 1.8;
+        }
+
+        .bg-light {
+            background: #f8fafc;
+        }
+
+        .highlight-box {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 8px;
+        }
+
+        .highlight-box p {
+            margin-bottom: 0;
+        }
+
+        .cta-section {
+            background: linear-gradient(135deg, var(--text-dark) 0%, #1e1b4b 100%);
+            color: white !important;
+            text-align: center;
+            padding: 80px 2rem;
+        }
+
+        .cta-section h2 {
+            color: white !important;
+        }
+
+        footer {
+            background: var(--bg-dark);
+            color: white;
+            padding: 4rem 2rem 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr repeat(3, 1fr);
+            gap: 3rem;
+            margin-bottom: 3rem;
+        }
+
+        .footer-brand p {
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 1rem;
+            line-height: 1.7;
+        }
+
+        .footer-section h4 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1.5rem;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .footer-section ul {
+            list-style: none;
+        }
+
+        .footer-section a {
+            color: rgba(255, 255, 255, 0.5);
+            text-decoration: none;
+            display: block;
+            padding: 0.4rem 0;
+            transition: color 0.3s;
+        }
+
+        .footer-section a:hover {
+            color: white;
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        @media (max-width: 968px) {
+            .footer-content {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .footer-content {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header id="header">
+        <nav>
+            <a href="/" class="logo">
+                <div class="logo-icon">
+                    <img src="/app-icon.png" alt="NutraSafe food diary and nutrition tracker app icon">
+                </div>
+                <span>NutraSafe</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/#features">Features</a></li>
+                <li><a href="/#how-it-works">How It Works</a></li>
+                <li><a href="/resources.html">Resources</a></li>
+                <li><a href="/#faqs">FAQ</a></li>
+                <li><a href="/#download" class="nav-cta">Download</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <h1>Food Intolerance Tracker UK — Identify Food Reactions</h1>
+            <p>Track food reactions, log symptoms, and discover patterns between what you eat and how you feel. Find your trigger foods with NutraSafe's food intolerance tracker.</p>
+            <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="cta-button">Download Free App</a>
+        </div>
+    </section>
+
+    <section>
+        <div class="content">
+            <h2>Understanding Food Intolerances</h2>
+            <p>Food intolerances are different from food allergies. Whilst allergies trigger an immune system response, intolerances typically cause digestive and other symptoms that can be delayed and harder to identify.</p>
+
+            <p>Common symptoms of food intolerances include:</p>
+            <ul>
+                <li>Bloating and stomach discomfort</li>
+                <li>Digestive issues (IBS-like symptoms)</li>
+                <li>Headaches or migraines</li>
+                <li>Skin reactions (rashes, eczema)</li>
+                <li>Fatigue and brain fog</li>
+                <li>Joint pain</li>
+            </ul>
+
+            <div class="highlight-box">
+                <p><strong>Important:</strong> NutraSafe is a food diary and pattern tracker, not a medical diagnostic tool. Always consult your GP or healthcare provider for proper diagnosis and treatment of food allergies or intolerances.</p>
+            </div>
+
+            <h3>Common Food Intolerances in the UK</h3>
+            <p>The most common food intolerances in the UK include:</p>
+            <ul>
+                <li><strong>Lactose intolerance:</strong> Difficulty digesting dairy products</li>
+                <li><strong>Gluten sensitivity:</strong> Reactions to wheat, barley, and rye (non-coeliac)</li>
+                <li><strong>Histamine intolerance:</strong> Sensitivity to aged or fermented foods</li>
+                <li><strong>Food additive sensitivities:</strong> Reactions to preservatives, colourings, or flavourings</li>
+                <li><strong>FODMAP sensitivity:</strong> Difficulty digesting certain carbohydrates</li>
+                <li><strong>Caffeine sensitivity:</strong> Adverse reactions to coffee, tea, or energy drinks</li>
+            </ul>
+
+            <h3>How to Track Food Intolerances</h3>
+            <p>Identifying food intolerances requires careful observation and record-keeping. The traditional method involves keeping a food diary and noting symptoms, but this can be time-consuming and difficult to analyse.</p>
+
+            <p>NutraSafe simplifies this process by:</p>
+            <ol>
+                <li><strong>Automatic food logging:</strong> Scan barcodes or search foods to quickly log meals</li>
+                <li><strong>Symptom tracking:</strong> Record how you feel after eating, including timing and severity</li>
+                <li><strong>Pattern recognition:</strong> NutraSafe identifies which foods appear before reactions</li>
+                <li><strong>Ingredient analysis:</strong> See exactly what's in each food, including hidden additives</li>
+            </ol>
+        </div>
+    </section>
+
+    <section class="bg-light">
+        <div class="content">
+            <h2>How NutraSafe's Food Reaction Tracker Works</h2>
+
+            <h3>1. Log Your Meals</h3>
+            <p>Scan barcodes or search for foods to add them to your food diary. NutraSafe shows complete ingredient lists, additives, and nutritional information for over 500,000 UK products.</p>
+
+            <h3>2. Record Reactions</h3>
+            <p>When you notice symptoms, log them in the app. Record:</p>
+            <ul>
+                <li>Type of reaction (digestive, skin, headache, etc.)</li>
+                <li>Severity (mild, moderate, severe)</li>
+                <li>Timing (how long after eating)</li>
+                <li>Additional notes</li>
+            </ul>
+
+            <h3>3. Discover Patterns</h3>
+            <p>NutraSafe analyses your food diary and reactions to identify patterns. See which foods frequently appear before symptoms, helping you spot trigger foods and ingredients.</p>
+
+            <h3>4. Make Informed Choices</h3>
+            <p>Use your insights to make dietary changes. Check ingredients before buying products, and build a personalised list of foods that work for your body.</p>
+        </div>
+    </section>
+
+    <section>
+        <div class="content">
+            <h2>Beyond Food Intolerance Tracking</h2>
+            <p>NutraSafe isn't just a food intolerance tracker. It's a complete food intelligence app with features including:</p>
+
+            <h3>Additive & E-Number Scanner</h3>
+            <p>Identify all food additives and E-numbers in products. Some food additives trigger reactions in sensitive individuals — NutraSafe helps you spot them instantly.</p>
+
+            <h3>Allergen Detection</h3>
+            <p>Check for the 14 major allergens recognised in UK law: gluten, crustaceans, eggs, fish, peanuts, soya, milk, nuts, celery, mustard, sesame, sulphites, lupin, and molluscs.</p>
+
+            <h3>Nutrition Tracking</h3>
+            <p>Monitor calories, macros (protein, carbs, fats), and micronutrients (vitamins and minerals). Track daily and weekly intake to ensure you're meeting nutritional needs whilst avoiding trigger foods.</p>
+
+            <h3>Intermittent Fasting</h3>
+            <p>Track fasting windows for 16:8, 18:6, or custom schedules. Many people find intermittent fasting helps with digestive issues and food sensitivities.</p>
+
+            <h3>Food Expiry Tracking</h3>
+            <p>Track use-by dates and reduce food waste. Get reminders before food expires, especially useful when following restricted diets.</p>
+
+            <h2>Start Your Food Intolerance Journey</h2>
+            <p>Understanding your food intolerances takes time and careful observation. NutraSafe makes the process simple by combining food logging, symptom tracking, and pattern analysis in one easy-to-use app.</p>
+
+            <p>Whether you're investigating digestive issues, skin reactions, or unexplained symptoms, NutraSafe helps you build a complete picture of how food affects you.</p>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="container">
+            <h2>Start Tracking Food Reactions Today</h2>
+            <p style="color: rgba(255,255,255,0.8); margin-bottom: 2rem;">Download NutraSafe and begin identifying your trigger foods. Free to download.</p>
+            <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="cta-button">Download Free App</a>
+        </div>
+    </section>
+
+        <footer>
+        <div class="footer-content">
+            <div class="footer-brand">
+                <a href="/" class="logo">
+                    <div class="logo-icon">
+                        <img src="/app-icon.png" alt="NutraSafe">
+                    </div>
+                    <span>NutraSafe</span>
+                </a>
+                <p>The food intelligence app that learns your body. Food clarity. Body clarity. Simple.</p>
+            </div>
+
+            <div class="footer-section">
+                <h4>Product</h4>
+                <ul>
+                    <li><a href="/#features">Features</a></li>
+                    <li><a href="/#how-it-works">How It Works</a></li>
+                    <li><a href="/#faqs">FAQs</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>Resources</h4>
+                <ul>
+                    <li><a href="/resources.html">All Resources</a></li>
+                    <li><a href="/food-additive-scanner-uk.html">Additive Scanner</a></li>
+                    <li><a href="/food-intolerance-tracker-uk.html">Food Intolerances</a></li>
+                    <li><a href="/intermittent-fasting-app-uk.html">Fasting Guide</a></li>
+                    <li><a href="/food-expiry-tracker-uk.html">Expiry Tracker</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>Company</h4>
+                <ul>
+                    <li><a href="/support.html">Support</a></li>
+                    <li><a href="/privacy-policy.html">Privacy Policy</a></li>
+                    <li><a href="/terms-of-service.html">Terms of Service</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p>&copy; 2025 NutraSafe. All rights reserved. Operated by Aaron Keen, United Kingdom</p>
+        </div>
+    </footer>
+
+    <script>
+        // Header scroll effect
+        window.addEventListener('scroll', function() {
+            const header = document.getElementById('header');
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
+    </script>
+</body>
+</html>

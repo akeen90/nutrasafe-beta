@@ -678,6 +678,7 @@ struct AddFoodSearchView: View {
             sodium: base.sodium,
             servingDescription: base.servingDescription,
             servingSizeG: base.servingSizeG,
+            isPerUnit: base.isPerUnit,
             ingredients: base.ingredients,
             confidence: base.confidence,
             isVerified: base.isVerified,

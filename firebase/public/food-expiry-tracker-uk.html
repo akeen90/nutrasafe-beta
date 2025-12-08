@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Expiry Date Tracker UK — Use By Date Reminder App | NutraSafe</title>
+    <meta name="description" content="Track food expiry dates and reduce waste with NutraSafe. Get use-by date reminders, monitor opened items, and never wonder if food is still safe. Free UK app.">
+
+    <!-- SEO Meta Tags -->
+    <meta name="keywords" content="food expiry tracker UK, use by date app UK, expiry reminder app, food waste app UK, opened food tracker, use by date reminder, food safety app UK">
+    <meta name="author" content="Aaron Keen">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://www.nutrasafe.co.uk/food-expiry-tracker-uk.html">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.nutrasafe.co.uk/food-expiry-tracker-uk.html">
+    <meta property="og:title" content="Food Expiry Date Tracker UK — Use By Reminders">
+    <meta property="og:description" content="Track food expiry dates and reduce waste. Get reminders before food expires.">
+    <meta property="og:image" content="https://www.nutrasafe.co.uk/use-by-screen.png">
+    <meta property="og:locale" content="en_GB">
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-YZNJZ4C1MV"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-YZNJZ4C1MV');
+    </script>
+
+    <!-- Structured Data - HowTo -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "HowTo",
+        "name": "How to Track Food Expiry Dates and Reduce Waste",
+        "description": "Learn how to track use-by dates, monitor opened food, and reduce food waste with a dedicated expiry tracking app",
+        "step": [
+            {
+                "@type": "HowToStep",
+                "name": "Add items to your tracker",
+                "text": "Log food items when you open them or bring them home, adding the use-by date"
+            },
+            {
+                "@type": "HowToStep",
+                "name": "Set reminder preferences",
+                "text": "Choose when to receive notifications — 1 day before, 2 days before, or on the expiry date"
+            },
+            {
+                "@type": "HowToStep",
+                "name": "Receive alerts",
+                "text": "Get reminders before food expires so you can use it in time or freeze it for later"
+            }
+        ]
+    }
+    </script>
+
+    <link rel="icon" type="image/png" href="/app-icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --primary-dark: #4f46e5;
+            --accent: #f472b6;
+            --accent-secondary: #22d3ee;
+            --text-dark: #0f172a;
+            --text-light: #64748b;
+            --text-muted: #94a3b8;
+            --bg-dark: #0f172a;
+            --bg-card: rgba(255, 255, 255, 0.03);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background: #ffffff;
+        }
+
+        header {
+            background: var(--text-dark);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            color: white !important;
+            text-decoration: none;
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo img {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: white !important;
+        }
+
+        .nav-cta {
+            padding: 0.6rem 1.5rem;
+            background: var(--primary);
+            color: white !important;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            color: white !important;
+            padding: 120px 2rem 80px;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: rgba(255,255,255,0.8);
+            max-width: 700px;
+            margin: 0 auto 2rem;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: var(--primary);
+            color: white !important;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+            font-size: 1.1rem;
+        }
+
+        section {
+            padding: 80px 2rem;
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--text-dark);
+        }
+
+        h3 {
+            font-size: 1.5rem;
+            margin: 2rem 0 1rem;
+            color: var(--text-dark);
+        }
+
+        .content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .content p {
+            margin-bottom: 1.5rem;
+            color: var(--text-light);
+            font-size: 1.1rem;
+            line-height: 1.8;
+        }
+
+        .content ul, .content ol {
+            margin: 1.5rem 0;
+            padding-left: 2rem;
+        }
+
+        .content li {
+            margin-bottom: 1rem;
+            color: var(--text-light);
+            line-height: 1.8;
+        }
+
+        .bg-light {
+            background: #f8fafc;
+        }
+
+        .stat-box {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 8px;
+        }
+
+        .stat-box p {
+            margin-bottom: 0;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+        }
+
+        .cta-section {
+            background: linear-gradient(135deg, var(--text-dark) 0%, #1e1b4b 100%);
+            color: white !important;
+            text-align: center;
+            padding: 80px 2rem;
+        }
+
+        .cta-section h2 {
+            color: white !important;
+        }
+
+        footer {
+            background: var(--bg-dark);
+            color: white;
+            padding: 4rem 2rem 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr repeat(3, 1fr);
+            gap: 3rem;
+            margin-bottom: 3rem;
+        }
+
+        .footer-brand p {
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 1rem;
+            line-height: 1.7;
+        }
+
+        .footer-section h4 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1.5rem;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .footer-section ul {
+            list-style: none;
+        }
+
+        .footer-section a {
+            color: rgba(255, 255, 255, 0.5);
+            text-decoration: none;
+            display: block;
+            padding: 0.4rem 0;
+            transition: color 0.3s;
+        }
+
+        .footer-section a:hover {
+            color: white;
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        @media (max-width: 968px) {
+            .footer-content {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .footer-content {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header id="header">
+        <nav>
+            <a href="/" class="logo">
+                <div class="logo-icon">
+                    <img src="/app-icon.png" alt="NutraSafe food diary and nutrition tracker app icon">
+                </div>
+                <span>NutraSafe</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/#features">Features</a></li>
+                <li><a href="/#how-it-works">How It Works</a></li>
+                <li><a href="/resources.html">Resources</a></li>
+                <li><a href="/#faqs">FAQ</a></li>
+                <li><a href="/#download" class="nav-cta">Download</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <h1>Food Expiry Date Tracker UK — Reduce Waste, Stay Safe</h1>
+            <p>Track use-by dates, monitor opened items, and get reminders before food expires. Never waste food or wonder "is this still good?" again.</p>
+            <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="cta-button">Download Free App</a>
+        </div>
+    </section>
+
+    <section>
+        <div class="content">
+            <h2>The UK Food Waste Problem</h2>
+
+            <div class="stat-box">
+                <p>UK households throw away approximately £14 billion worth of edible food each year — much of it because people aren't sure if it's still safe to eat.</p>
+            </div>
+
+            <p>Forgotten leftovers, opened packets, and confusing date labels contribute to massive food waste. The average UK household wastes around £700 worth of food annually — food that could have been eaten if properly tracked.</p>
+
+            <p>NutraSafe's food expiry tracker helps you reduce waste, save money, and stay safe by keeping track of what's in your fridge and cupboard.</p>
+
+            <h3>Understanding UK Food Date Labels</h3>
+            <p>UK food labelling uses different date indicators:</p>
+            <ul>
+                <li><strong>Use by:</strong> Important for food safety. Don't eat food after this date, even if it looks and smells fine</li>
+                <li><strong>Best before:</strong> About quality, not safety. Food is usually safe after this date but may not be at its best</li>
+                <li><strong>Display until / Sell by:</strong> For shop staff, not consumers</li>
+            </ul>
+
+            <p>The confusion between these labels contributes to unnecessary waste. Many people throw away food that's still perfectly safe to eat.</p>
+        </div>
+    </section>
+
+    <section class="bg-light">
+        <div class="content">
+            <h2>How NutraSafe's Expiry Tracker Works</h2>
+
+            <h3>1. Add Items to Your Tracker</h3>
+            <p>When you open food or bring it home, add it to NutraSafe. Scan the barcode or manually enter the item with its use-by date.</p>
+
+            <h3>2. Set Custom Expiry Dates</h3>
+            <p>For items without use-by dates or opened products, set custom expiry dates based on food safety guidelines. NutraSafe helps you track:</p>
+            <ul>
+                <li>Opened packets and jars</li>
+                <li>Leftovers and cooked food</li>
+                <li>Opened dairy products</li>
+                <li>Fresh produce</li>
+                <li>Meat and fish</li>
+            </ul>
+
+            <h3>3. Get Timely Reminders</h3>
+            <p>NutraSafe sends notifications before food expires, giving you time to:</p>
+            <ul>
+                <li>Use ingredients before they spoil</li>
+                <li>Freeze items for later use</li>
+                <li>Plan meals around expiring food</li>
+                <li>Share surplus food with family or neighbours</li>
+            </ul>
+
+            <h3>4. Track Your Inventory</h3>
+            <p>See everything that's currently in your fridge and cupboard at a glance. Sort by expiry date to prioritise what needs using first.</p>
+        </div>
+    </section>
+
+    <section>
+        <div class="content">
+            <h2>Tips for Reducing Food Waste</h2>
+
+            <h3>First In, First Out (FIFO)</h3>
+            <p>Use NutraSafe to practise FIFO — always use older items first. The app shows items sorted by expiry date, making it easy to see what needs using.</p>
+
+            <h3>Freeze Before It's Too Late</h3>
+            <p>When NutraSafe alerts you about approaching expiry dates, consider freezing food instead of letting it spoil. Most foods freeze well before their use-by date.</p>
+
+            <h3>Plan Meals Around Expiring Items</h3>
+            <p>Check your NutraSafe tracker when planning meals. Build your menu around ingredients that need using soon.</p>
+
+            <h3>Understand Storage Guidelines</h3>
+            <p>Proper storage extends food life. Keep your fridge at 5°C or below, store items in appropriate containers, and follow "once opened" guidelines on packaging.</p>
+
+            <h2>Common Foods to Track</h2>
+
+            <h3>Opened Dairy Products</h3>
+            <p>Milk, cream, yoghurt, and cheese all have limited shelf life once opened. Track opening dates and use-by dates to avoid waste.</p>
+
+            <h3>Leftovers</h3>
+            <p>Cooked food should typically be consumed within 2-3 days. NutraSafe helps you track leftovers so nothing gets forgotten at the back of the fridge.</p>
+
+            <h3>Fresh Produce</h3>
+            <p>Fruit and vegetables often don't have use-by dates. Set custom dates based on when you bought them and typical shelf life.</p>
+
+            <h3>Opened Packets</h3>
+            <p>Opened packets of ham, bacon, smoked fish, and other deli items deteriorate quickly. Track opening dates to ensure food safety.</p>
+
+            <h2>Beyond Expiry Tracking</h2>
+            <p>NutraSafe combines expiry tracking with comprehensive nutrition and food intelligence features:</p>
+
+            <h3>Barcode Scanner</h3>
+            <p>Scan products to add them to your tracker instantly. See nutritional information and ingredients while tracking expiry dates.</p>
+
+            <h3>Nutrition Logging</h3>
+            <p>When you use items from your tracker in meals, log them in your food diary. Track calories, macros, and micronutrients.</p>
+
+            <h3>Ingredient & Additive Checker</h3>
+            <p>Check food additives and E-numbers in products. Make informed choices about what to buy and store.</p>
+
+            <h3>Allergen Detection</h3>
+            <p>Scan products for allergens before adding them to your tracker. Essential for households with food allergies.</p>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="container">
+            <h2>Start Reducing Food Waste Today</h2>
+            <p style="color: rgba(255,255,255,0.8); margin-bottom: 2rem;">Download NutraSafe and never waste food again. Free to download.</p>
+            <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="cta-button">Download Free App</a>
+        </div>
+    </section>
+
+        <footer>
+        <div class="footer-content">
+            <div class="footer-brand">
+                <a href="/" class="logo">
+                    <div class="logo-icon">
+                        <img src="/app-icon.png" alt="NutraSafe">
+                    </div>
+                    <span>NutraSafe</span>
+                </a>
+                <p>The food intelligence app that learns your body. Food clarity. Body clarity. Simple.</p>
+            </div>
+
+            <div class="footer-section">
+                <h4>Product</h4>
+                <ul>
+                    <li><a href="/#features">Features</a></li>
+                    <li><a href="/#how-it-works">How It Works</a></li>
+                    <li><a href="/#faqs">FAQs</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>Resources</h4>
+                <ul>
+                    <li><a href="/resources.html">All Resources</a></li>
+                    <li><a href="/food-additive-scanner-uk.html">Additive Scanner</a></li>
+                    <li><a href="/food-intolerance-tracker-uk.html">Food Intolerances</a></li>
+                    <li><a href="/intermittent-fasting-app-uk.html">Fasting Guide</a></li>
+                    <li><a href="/food-expiry-tracker-uk.html">Expiry Tracker</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>Company</h4>
+                <ul>
+                    <li><a href="/support.html">Support</a></li>
+                    <li><a href="/privacy-policy.html">Privacy Policy</a></li>
+                    <li><a href="/terms-of-service.html">Terms of Service</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p>&copy; 2025 NutraSafe. All rights reserved. Operated by Aaron Keen, United Kingdom</p>
+        </div>
+    </footer>
+
+    <script>
+        // Header scroll effect
+        window.addEventListener('scroll', function() {
+            const header = document.getElementById('header');
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
+    </script>
+</body>
+</html>

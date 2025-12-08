@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intermittent Fasting App UK — 16:8, 18:6 Fasting Timer | NutraSafe</title>
+    <meta name="description" content="Track intermittent fasting with NutraSafe's UK fasting app. 16:8, 18:6, or custom fasting schedules. Built-in timer, eating window tracker, and nutrition logging. Free download.">
+
+    <!-- SEO Meta Tags -->
+    <meta name="keywords" content="intermittent fasting app UK, fasting timer UK, 16:8 fasting app, 18:6 fasting tracker, eating window app UK, fasting schedule app, IF app UK">
+    <meta name="author" content="Aaron Keen">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://www.nutrasafe.co.uk/intermittent-fasting-app-uk.html">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.nutrasafe.co.uk/intermittent-fasting-app-uk.html">
+    <meta property="og:title" content="Intermittent Fasting App UK — 16:8, 18:6 Timer">
+    <meta property="og:description" content="Track intermittent fasting with built-in timer and nutrition logging. Free UK fasting app.">
+    <meta property="og:image" content="https://www.nutrasafe.co.uk/nutrition-dashboard.png">
+    <meta property="og:locale" content="en_GB">
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-YZNJZ4C1MV"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-YZNJZ4C1MV');
+    </script>
+
+    <!-- Structured Data - SoftwareApplication -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "MobileApplication",
+        "name": "NutraSafe Intermittent Fasting Tracker",
+        "operatingSystem": "iOS",
+        "applicationCategory": "HealthApplication",
+        "description": "Intermittent fasting app for UK users. Track 16:8, 18:6, or custom fasting schedules with built-in timer and nutrition logging.",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "GBP"
+        },
+        "featureList": "Fasting timer, 16:8 and 18:6 presets, Custom fasting schedules, Eating window tracker, Nutrition logging, Meal tracking"
+    }
+    </script>
+
+    <link rel="icon" type="image/png" href="/app-icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --primary-dark: #4f46e5;
+            --accent: #f472b6;
+            --accent-secondary: #22d3ee;
+            --text-dark: #0f172a;
+            --text-light: #64748b;
+            --text-muted: #94a3b8;
+            --bg-dark: #0f172a;
+            --bg-card: rgba(255, 255, 255, 0.03);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background: #ffffff;
+        }
+
+        header {
+            background: var(--text-dark);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            color: white !important;
+            text-decoration: none;
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo img {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: white !important;
+        }
+
+        .nav-cta {
+            padding: 0.6rem 1.5rem;
+            background: var(--primary);
+            color: white !important;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            color: white !important;
+            padding: 120px 2rem 80px;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: rgba(255,255,255,0.8);
+            max-width: 700px;
+            margin: 0 auto 2rem;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: var(--primary);
+            color: white !important;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+            font-size: 1.1rem;
+        }
+
+        section {
+            padding: 80px 2rem;
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--text-dark);
+        }
+
+        h3 {
+            font-size: 1.5rem;
+            margin: 2rem 0 1rem;
+            color: var(--text-dark);
+        }
+
+        .content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .content p {
+            margin-bottom: 1.5rem;
+            color: var(--text-light);
+            font-size: 1.1rem;
+            line-height: 1.8;
+        }
+
+        .content ul, .content ol {
+            margin: 1.5rem 0;
+            padding-left: 2rem;
+        }
+
+        .content li {
+            margin-bottom: 1rem;
+            color: var(--text-light);
+            line-height: 1.8;
+        }
+
+        .bg-light {
+            background: #f8fafc;
+        }
+
+        .schedule-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .schedule-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 2px solid #e2e8f0;
+        }
+
+        .schedule-card h4 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+            color: var(--primary);
+        }
+
+        .cta-section {
+            background: linear-gradient(135deg, var(--text-dark) 0%, #1e1b4b 100%);
+            color: white !important;
+            text-align: center;
+            padding: 80px 2rem;
+        }
+
+        .cta-section h2 {
+            color: white !important;
+        }
+
+        footer {
+            background: var(--bg-dark);
+            color: white;
+            padding: 4rem 2rem 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr repeat(3, 1fr);
+            gap: 3rem;
+            margin-bottom: 3rem;
+        }
+
+        .footer-brand p {
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 1rem;
+            line-height: 1.7;
+        }
+
+        .footer-section h4 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1.5rem;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .footer-section ul {
+            list-style: none;
+        }
+
+        .footer-section a {
+            color: rgba(255, 255, 255, 0.5);
+            text-decoration: none;
+            display: block;
+            padding: 0.4rem 0;
+            transition: color 0.3s;
+        }
+
+        .footer-section a:hover {
+            color: white;
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        @media (max-width: 968px) {
+            .footer-content {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .footer-content {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header id="header">
+        <nav>
+            <a href="/" class="logo">
+                <div class="logo-icon">
+                    <img src="/app-icon.png" alt="NutraSafe food diary and nutrition tracker app icon">
+                </div>
+                <span>NutraSafe</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/#features">Features</a></li>
+                <li><a href="/#how-it-works">How It Works</a></li>
+                <li><a href="/resources.html">Resources</a></li>
+                <li><a href="/#faqs">FAQ</a></li>
+                <li><a href="/#download" class="nav-cta">Download</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <h1>Intermittent Fasting App UK — Track Your Fasting Journey</h1>
+            <p>Track 16:8, 18:6, or custom intermittent fasting schedules with NutraSafe's built-in fasting timer. Monitor eating windows, log nutrition, and achieve your fasting goals.</p>
+            <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="cta-button">Download Free App</a>
+        </div>
+    </section>
+
+    <section>
+        <div class="content">
+            <h2>What Is Intermittent Fasting?</h2>
+            <p>Intermittent fasting (IF) is an eating pattern that cycles between periods of fasting and eating. Rather than focusing on what you eat, intermittent fasting focuses on when you eat.</p>
+
+            <p>Popular in the UK for weight management, metabolic health, and digestive benefits, intermittent fasting has become one of the most widely practised eating patterns.</p>
+
+            <h3>Benefits of Intermittent Fasting</h3>
+            <p>Research suggests intermittent fasting may offer several health benefits:</p>
+            <ul>
+                <li><strong>Weight management:</strong> Helps create a calorie deficit naturally</li>
+                <li><strong>Metabolic health:</strong> May improve insulin sensitivity</li>
+                <li><strong>Digestive rest:</strong> Gives your digestive system time to rest and recover</li>
+                <li><strong>Mental clarity:</strong> Many people report improved focus during fasting windows</li>
+                <li><strong>Simplified eating:</strong> Fewer meals to plan and prepare</li>
+            </ul>
+
+            <h3>Popular Intermittent Fasting Schedules</h3>
+            <p>NutraSafe supports all major intermittent fasting protocols:</p>
+        </div>
+
+        <div class="container">
+            <div class="schedule-grid">
+                <div class="schedule-card">
+                    <h4>16:8 Method</h4>
+                    <p><strong>Fast:</strong> 16 hours<br><strong>Eat:</strong> 8 hours</p>
+                    <p>The most popular method. Fast overnight and through the morning, eating between 12pm-8pm or 1pm-9pm.</p>
+                </div>
+
+                <div class="schedule-card">
+                    <h4>18:6 Method</h4>
+                    <p><strong>Fast:</strong> 18 hours<br><strong>Eat:</strong> 6 hours</p>
+                    <p>For more experienced fasters. Eating window typically 2pm-8pm or 3pm-9pm.</p>
+                </div>
+
+                <div class="schedule-card">
+                    <h4>Custom Schedules</h4>
+                    <p><strong>Your choice</strong></p>
+                    <p>Create your own fasting schedule to match your lifestyle. Track any fasting window length.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="bg-light">
+        <div class="content">
+            <h2>How NutraSafe's Fasting Tracker Works</h2>
+
+            <h3>1. Choose Your Fasting Schedule</h3>
+            <p>Select from preset schedules (16:8, 18:6) or create a custom fasting window that suits your lifestyle. Set your preferred eating hours based on your daily routine.</p>
+
+            <h3>2. Track Your Fasting Window</h3>
+            <p>NutraSafe's built-in timer shows exactly where you are in your fasting window. See how many hours you've fasted and when your eating window opens or closes.</p>
+
+            <h3>3. Log Meals During Eating Windows</h3>
+            <p>When your eating window opens, log meals by scanning barcodes or searching foods. NutraSafe shows complete nutritional information so you can make the most of your eating window.</p>
+
+            <h3>4. Monitor Nutrition</h3>
+            <p>Track calories, macros (protein, carbs, fats), and micronutrients during your eating window. Ensure you're meeting nutritional needs whilst following your fasting schedule.</p>
+
+            <h3>5. Build Consistency</h3>
+            <p>Track your fasting history and build a consistent routine. NutraSafe helps you stay accountable to your fasting goals.</p>
+        </div>
+    </section>
+
+    <section>
+        <div class="content">
+            <h2>Tips for Successful Intermittent Fasting</h2>
+
+            <h3>Start Gradually</h3>
+            <p>If you're new to intermittent fasting, start with a 12-hour overnight fast and gradually extend your fasting window. Many people find 16:8 easiest to maintain long-term.</p>
+
+            <h3>Stay Hydrated</h3>
+            <p>Drink plenty of water during your fasting window. Black coffee and unsweetened tea are also acceptable during fasting periods.</p>
+
+            <h3>Focus on Nutrition Quality</h3>
+            <p>Use NutraSafe's nutrition tracking to ensure you're getting adequate protein, healthy fats, and micronutrients during your eating window. Quality matters when you have fewer hours to eat.</p>
+
+            <h3>Listen to Your Body</h3>
+            <p>Intermittent fasting isn't suitable for everyone. If you experience persistent discomfort, dizziness, or other concerning symptoms, consult your GP.</p>
+
+            <h2>More Than Just a Fasting Timer</h2>
+            <p>NutraSafe combines intermittent fasting tracking with comprehensive nutrition features:</p>
+
+            <h3>Complete Food Database</h3>
+            <p>Scan over 500,000 UK products from Tesco, Sainsbury's, Asda, Morrisons, Waitrose, and more. See complete nutritional information and ingredients.</p>
+
+            <h3>Macro & Micronutrient Tracking</h3>
+            <p>Monitor daily intake of protein, carbs, fats, and all major vitamins and minerals. Perfect for ensuring proper nutrition during eating windows.</p>
+
+            <h3>Ingredient & Additive Scanner</h3>
+            <p>Check food additives, E-numbers, and ultra-processed ingredients. Make healthier choices during your eating window.</p>
+
+            <h3>Food Reaction Tracking</h3>
+            <p>Log how you feel after eating. Many people combine intermittent fasting with elimination diets — NutraSafe helps you track both.</p>
+
+            <h3>Expiry Date Tracking</h3>
+            <p>Track use-by dates and reduce food waste. Never wonder if food is still safe to eat during your eating window.</p>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="container">
+            <h2>Start Your Fasting Journey Today</h2>
+            <p style="color: rgba(255,255,255,0.8); margin-bottom: 2rem;">Download NutraSafe and track your first fast. Free to download.</p>
+            <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="cta-button">Download Free App</a>
+        </div>
+    </section>
+
+        <footer>
+        <div class="footer-content">
+            <div class="footer-brand">
+                <a href="/" class="logo">
+                    <div class="logo-icon">
+                        <img src="/app-icon.png" alt="NutraSafe">
+                    </div>
+                    <span>NutraSafe</span>
+                </a>
+                <p>The food intelligence app that learns your body. Food clarity. Body clarity. Simple.</p>
+            </div>
+
+            <div class="footer-section">
+                <h4>Product</h4>
+                <ul>
+                    <li><a href="/#features">Features</a></li>
+                    <li><a href="/#how-it-works">How It Works</a></li>
+                    <li><a href="/#faqs">FAQs</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>Resources</h4>
+                <ul>
+                    <li><a href="/resources.html">All Resources</a></li>
+                    <li><a href="/food-additive-scanner-uk.html">Additive Scanner</a></li>
+                    <li><a href="/food-intolerance-tracker-uk.html">Food Intolerances</a></li>
+                    <li><a href="/intermittent-fasting-app-uk.html">Fasting Guide</a></li>
+                    <li><a href="/food-expiry-tracker-uk.html">Expiry Tracker</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>Company</h4>
+                <ul>
+                    <li><a href="/support.html">Support</a></li>
+                    <li><a href="/privacy-policy.html">Privacy Policy</a></li>
+                    <li><a href="/terms-of-service.html">Terms of Service</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p>&copy; 2025 NutraSafe. All rights reserved. Operated by Aaron Keen, United Kingdom</p>
+        </div>
+    </footer>
+
+    <script>
+        // Header scroll effect
+        window.addEventListener('scroll', function() {
+            const header = document.getElementById('header');
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
+    </script>
+</body>
+</html>

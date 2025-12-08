@@ -1456,45 +1456,58 @@ struct ContentView: View {
     @State private var visitedTabs: Set<TabItem> = [.diary] // Diary pre-loaded
 
     private var persistentTabViews: some View {
-        Group {
-            switch selectedTab {
-            case .diary:
-                DiaryTabView(
-                    selectedFoodItems: $selectedFoodItems,
-                    showingSettings: $showingSettings,
-                    selectedTab: $selectedTab,
-                    editTrigger: $editTrigger,
-                    moveTrigger: $moveTrigger,
-                    copyTrigger: $copyTrigger,
-                    deleteTrigger: $deleteTrigger,
-                    onEditFood: editSelectedFood,
-                    onDeleteFoods: deleteSelectedFoods,
-                    onBlockedNutrientsAttempt: { showingPaywall = true }
-                )
-                .environmentObject(diaryDataManager)
+        ZStack {
+            ForEach(TabItem.allCases, id: \.self) { tab in
+                if visitedTabs.contains(tab) {
+                    tabContent(for: tab)
+                        .opacity(selectedTab == tab ? 1 : 0)
+                        .allowsHitTesting(selectedTab == tab)
+                        .accessibilityHidden(selectedTab != tab)
+                }
+            }
+        }
+    }
+
+    // Keep each tab alive once visited so data/models are not re-created on every switch
+    @ViewBuilder
+    private func tabContent(for tab: TabItem) -> some View {
+        switch tab {
+        case .diary:
+            DiaryTabView(
+                selectedFoodItems: $selectedFoodItems,
+                showingSettings: $showingSettings,
+                selectedTab: $selectedTab,
+                editTrigger: $editTrigger,
+                moveTrigger: $moveTrigger,
+                copyTrigger: $copyTrigger,
+                deleteTrigger: $deleteTrigger,
+                onEditFood: editSelectedFood,
+                onDeleteFoods: deleteSelectedFoods,
+                onBlockedNutrientsAttempt: { showingPaywall = true }
+            )
+            .environmentObject(diaryDataManager)
+            .environmentObject(healthKitManager)
+
+        case .weight:
+            WeightTrackingView(showingSettings: $showingSettings)
                 .environmentObject(healthKitManager)
 
-            case .weight:
-                WeightTrackingView(showingSettings: $showingSettings)
-                    .environmentObject(healthKitManager)
+        case .food:
+            FoodTabView(showingSettings: $showingSettings, selectedTab: $selectedTab)
 
-            case .food:
-                FoodTabView(showingSettings: $showingSettings, selectedTab: $selectedTab)
+        case .useBy:
+            UseByTabView(showingSettings: $showingSettings, selectedTab: $selectedTab)
 
-            case .useBy:
-                UseByTabView(showingSettings: $showingSettings, selectedTab: $selectedTab)
-
-            case .add:
-                AddTabView(
-                    selectedTab: $selectedTab,
-                    isPresented: Binding(
-                        get: { selectedTab == .add },
-                        set: { if !$0 { selectedTab = previousTabBeforeAdd } }
-                    )
+        case .add:
+            AddTabView(
+                selectedTab: $selectedTab,
+                isPresented: Binding(
+                    get: { selectedTab == .add },
+                    set: { if !$0 { selectedTab = previousTabBeforeAdd } }
                 )
-                .environmentObject(diaryDataManager)
-                .transition(.opacity)
-            }
+            )
+            .environmentObject(diaryDataManager)
+            .transition(.opacity)
         }
     }
 
@@ -1520,6 +1533,12 @@ struct ContentView: View {
                     persistentTabViews
                         .animation(nil, value: selectedTab)
                         .transaction { $0.disablesAnimations = true }
+                        .onAppear {
+                            visitedTabs.insert(selectedTab)
+                        }
+                        .onChange(of: selectedTab) { tab in
+                            visitedTabs.insert(tab)
+                        }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             
