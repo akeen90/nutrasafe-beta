@@ -80,19 +80,11 @@
         }
 
         header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1000;
+            background: var(--text-dark);
             padding: 1rem 0;
-            transition: all 0.3s ease;
-        }
-
-        header.scrolled {
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
         nav {
@@ -105,59 +97,46 @@
         }
 
         .logo {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
+            color: white !important;
+            text-decoration: none;
             font-size: 1.5rem;
             font-weight: 700;
-            color: white;
-            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
-        .logo-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
-            overflow: hidden;
-        }
-
-        .logo-icon img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
+        .logo img {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
         }
 
         .nav-links {
             display: flex;
-            gap: 2.5rem;
+            gap: 2rem;
             list-style: none;
+            align-items: center;
         }
 
         .nav-links a {
             color: rgba(255, 255, 255, 0.7);
             text-decoration: none;
             font-weight: 500;
-            font-size: 0.95rem;
             transition: color 0.3s;
         }
 
         .nav-links a:hover {
-            color: white;
+            color: white !important;
         }
 
         .nav-cta {
             padding: 0.6rem 1.5rem;
             background: var(--primary);
             color: white !important;
-            border-radius: 100px;
+            text-decoration: none;
+            border-radius: 8px;
             font-weight: 600;
-            transition: all 0.3s;
-        }
-
-        .nav-cta:hover {
-            background: var(--primary-light);
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
         }
 
         @media (max-width: 768px) {
@@ -169,9 +148,8 @@
         .hero {
             background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
             color: white !important;
-            padding: 140px 2rem 80px;
+            padding: 120px 2rem 80px;
             text-align: center;
-            margin-top: 0;
         }
 
         .container {
