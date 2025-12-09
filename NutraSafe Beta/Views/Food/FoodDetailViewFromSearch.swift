@@ -1136,32 +1136,7 @@ struct FoodDetailViewFromSearch: View {
                 let overview = additive.overview.trimmingCharacters(in: .whitespacesAndNewlines)
                 let uses = additive.typicalUses.trimmingCharacters(in: .whitespacesAndNewlines)
 
-                let overrideLookup: [String: (displayName: String?, whatItIs: String?, originSummary: String?, riskSummary: String?)] = [
-                    "e300": (displayName: "Vitamin C (Ascorbic acid)",
-                             whatItIs: "Essential vitamin C used as an antioxidant to stop foods turning brown or stale.",
-                             originSummary: nil,
-                             riskSummary: "Generally recognised as safe at permitted use levels."),
-                    "ascorbic acid": (displayName: "Vitamin C (Ascorbic acid)",
-                                      whatItIs: "Essential vitamin C used as an antioxidant to stop foods turning brown or stale.",
-                                      originSummary: nil,
-                                      riskSummary: "Generally recognised as safe at permitted use levels."),
-                    "e375": (displayName: "Vitamin B3 (Nicotinic acid)",
-                             whatItIs: "Essential B vitamin (niacin) added to fortified foods to prevent deficiency.",
-                             originSummary: "Usually synthesised for use in fortification.",
-                             riskSummary: "High doses may cause flushing; food levels are considered safe."),
-                    "nicotinic acid": (displayName: "Vitamin B3 (Nicotinic acid)",
-                                       whatItIs: "Essential B vitamin (niacin) added to fortified foods to prevent deficiency.",
-                                       originSummary: "Usually synthesised for use in fortification.",
-                                       riskSummary: "High doses may cause flushing; food levels are considered safe."),
-                    "e570": (displayName: "Fatty acids",
-                             whatItIs: "Blend of purified fatty acids from natural fats used as a processing aid or anti-caking agent.",
-                             originSummary: "Varied origin (plant or animal fats).",
-                             riskSummary: "Generally recognised as safe at permitted food use levels.")
-                ]
-
-                let lowerName = additive.name.lowercased()
-                let lowerCodes = additive.eNumbers.map { $0.lowercased() }
-                let override = overrideLookup[lowerCodes.first ?? ""] ?? overrideLookup[lowerName]
+                let override = AdditiveOverrides.override(for: additive)
 
                 let displayName = override?.displayName ?? additive.name
                 var whatItIs = override?.whatItIs ?? (!overview.isEmpty ? overview : displayName)

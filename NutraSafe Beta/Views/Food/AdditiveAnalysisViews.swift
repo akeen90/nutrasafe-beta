@@ -10,6 +10,96 @@ import SwiftUI
 import Foundation
 import UIKit
 
+// MARK: - Shared additive overrides (friendly names/descriptions)
+
+struct AdditiveOverrideData {
+    let displayName: String?
+    let whatItIs: String?
+    let originSummary: String?
+    let riskSummary: String?
+}
+
+enum AdditiveOverrides {
+    // Lookup by lowercase E-number or name
+    private static let overrides: [String: AdditiveOverrideData] = [
+        // Vitamins / fortification
+        "e300": .init(displayName: "Vitamin C (Ascorbic acid)", whatItIs: "Essential vitamin C antioxidant that stops foods turning brown or stale.", originSummary: "Typically synthesised for food use or from fermentation.", riskSummary: "Generally recognised as safe at permitted levels."),
+        "ascorbic acid": .init(displayName: "Vitamin C (Ascorbic acid)", whatItIs: "Essential vitamin C antioxidant that stops foods turning brown or stale.", originSummary: "Typically synthesised for food use or from fermentation.", riskSummary: "Generally recognised as safe at permitted levels."),
+        "e375": .init(displayName: "Vitamin B3 (Nicotinic acid)", whatItIs: "Essential B vitamin (niacin) added to fortified foods to prevent deficiency.", originSummary: "Usually synthesised for fortification.", riskSummary: "High supplement doses may cause flushing; food levels are safe."),
+        "nicotinic acid": .init(displayName: "Vitamin B3 (Nicotinic acid)", whatItIs: "Essential B vitamin (niacin) added to fortified foods to prevent deficiency.", originSummary: "Usually synthesised for fortification.", riskSummary: "High supplement doses may cause flushing; food levels are safe."),
+        "e101": .init(displayName: "Vitamin B2 (Riboflavin)", whatItIs: "Vitamin B2 used as a yellow-orange colour and nutrient.", originSummary: "Produced via fermentation or synthetic routes.", riskSummary: "Essential vitamin; generally safe."),
+        "riboflavin": .init(displayName: "Vitamin B2 (Riboflavin)", whatItIs: "Vitamin B2 used as a yellow-orange colour and nutrient.", originSummary: "Produced via fermentation or synthetic routes.", riskSummary: "Essential vitamin; generally safe."),
+        "e160a": .init(displayName: "Beta-carotene (Provitamin A)", whatItIs: "Natural orange pigment that the body can convert to vitamin A.", originSummary: "Usually from plant sources like carrots or algae; sometimes synthetic.", riskSummary: "Generally safe; very high doses may tint skin."),
+        "beta-carotene": .init(displayName: "Beta-carotene (Provitamin A)", whatItIs: "Natural orange pigment that the body can convert to vitamin A.", originSummary: "Usually from plant sources like carrots or algae; sometimes synthetic.", riskSummary: "Generally safe; very high doses may tint skin."),
+        "e306": .init(displayName: "Vitamin E (Mixed tocopherols)", whatItIs: "Vitamin E antioxidants that protect fats from going rancid.", originSummary: "Commonly from vegetable oils or produced by purification.", riskSummary: "Generally recognised as safe at food levels."),
+        "e307": .init(displayName: "Vitamin E (Alpha-tocopherol)", whatItIs: "Vitamin E antioxidant that protects fats from oxidation.", originSummary: "Usually from vegetable oils or synthetic.", riskSummary: "Generally recognised as safe at food levels."),
+        "e308": .init(displayName: "Vitamin E (Gamma-tocopherol)", whatItIs: "Vitamin E antioxidant that protects fats from oxidation.", originSummary: "Usually from vegetable oils or synthetic.", riskSummary: "Generally recognised as safe at food levels."),
+        "e309": .init(displayName: "Vitamin E (Delta-tocopherol)", whatItIs: "Vitamin E antioxidant that protects fats from oxidation.", originSummary: "Usually from vegetable oils or synthetic.", riskSummary: "Generally recognised as safe at food levels."),
+
+        // Sweeteners
+        "e951": .init(displayName: "Aspartame", whatItIs: "Intense low-calorie sweetener used in drinks and diet foods.", originSummary: "Synthetic.", riskSummary: "Not suitable for people with PKU; otherwise permitted within limits."),
+        "e950": .init(displayName: "Acesulfame K", whatItIs: "Intense zero-calorie sweetener often blended with others.", originSummary: "Synthetic.", riskSummary: "Permitted within limits; can leave a bitter aftertaste."),
+        "e955": .init(displayName: "Sucralose", whatItIs: "High-intensity sweetener about 600x sweeter than sugar.", originSummary: "Synthetic (modified sucrose).", riskSummary: "Permitted within limits; generally well tolerated."),
+        "e954": .init(displayName: "Saccharin", whatItIs: "Zero-calorie sweetener used in diet products.", originSummary: "Synthetic.", riskSummary: "Permitted within limits; can taste metallic at high levels."),
+        "e960": .init(displayName: "Steviol glycosides (Stevia)", whatItIs: "Plant-based zero-calorie sweetener from stevia leaves.", originSummary: "Plant-derived then purified.", riskSummary: "Generally well tolerated at permitted levels."),
+        "e420": .init(displayName: "Sorbitol", whatItIs: "Sugar alcohol sweetener and humectant.", originSummary: "Typically from glucose hydrogenation (plant origin).", riskSummary: "Excess can cause laxative effects."),
+        "e421": .init(displayName: "Mannitol", whatItIs: "Sugar alcohol sweetener and bulking agent.", originSummary: "Typically produced from fructose (plant origin).", riskSummary: "Excess can cause laxative effects."),
+        "e965": .init(displayName: "Maltitol", whatItIs: "Sugar alcohol sweetener used in sugar-free confectionery.", originSummary: "Made from maltose (starch).", riskSummary: "Excess can cause laxative effects."),
+        "e967": .init(displayName: "Xylitol", whatItIs: "Sugar alcohol sweetener often used in gum.", originSummary: "Usually from birch or corn.", riskSummary: "Excess can cause laxative effects; toxic to dogs."),
+        "e968": .init(displayName: "Erythritol", whatItIs: "Low-calorie sugar alcohol sweetener.", originSummary: "Made via fermentation of plant sugars.", riskSummary: "Generally well tolerated; large amounts may cause mild GI upset."),
+
+        // Preservatives / acids
+        "e211": .init(displayName: "Sodium benzoate", whatItIs: "Preservative that stops moulds and yeasts.", originSummary: "Synthetic.", riskSummary: "Generally recognised as safe; avoid pairing with vitamin C at high heat to minimise benzene formation."),
+        "e202": .init(displayName: "Potassium sorbate", whatItIs: "Preservative that prevents mould and yeast growth.", originSummary: "Synthetic (salt of sorbic acid).", riskSummary: "Generally recognised as safe at permitted levels."),
+        "e200": .init(displayName: "Sorbic acid", whatItIs: "Preservative that prevents mould and yeast growth.", originSummary: "Synthetic or from rowan berries originally.", riskSummary: "Generally recognised as safe at permitted levels."),
+        "e223": .init(displayName: "Sodium metabisulfite", whatItIs: "Preservative and antioxidant.", originSummary: "Synthetic.", riskSummary: "Can trigger reactions in sulphite-sensitive individuals."),
+        "e220": .init(displayName: "Sulphur dioxide", whatItIs: "Preservative and antioxidant.", originSummary: "Synthetic gas used in winemaking and dried fruits.", riskSummary: "Can trigger reactions in sulphite-sensitive individuals."),
+        "e250": .init(displayName: "Sodium nitrite", whatItIs: "Curing salt for processed meats; prevents botulism and sets colour.", originSummary: "Synthetic.", riskSummary: "Forms nitrosamines at high heat; eat cured meats in moderation."),
+        "e251": .init(displayName: "Sodium nitrate", whatItIs: "Curing salt precursor used in some meats.", originSummary: "Synthetic.", riskSummary: "Converted to nitrite in the body; cured meats best in moderation."),
+        "e200-e203": .init(displayName: "Sorbates (preservatives)", whatItIs: "Group of mould/yeast inhibitors used in baked goods and cheese.", originSummary: "Synthetic.", riskSummary: "Generally recognised as safe at permitted levels."),
+        "e338": .init(displayName: "Phosphoric acid", whatItIs: "Acidulant for tangy taste and pH control in colas and foods.", originSummary: "Synthetic.", riskSummary: "High intake may affect tooth enamel; acceptable at food levels."),
+        "e330": .init(displayName: "Citric acid", whatItIs: "Natural-tasting acid that adds tartness and preserves freshness.", originSummary: "Usually produced via fermentation from sugar sources.", riskSummary: "Generally safe; large amounts can irritate sensitive mouths."),
+        "e300-e304": .init(displayName: "Vitamin C antioxidants", whatItIs: "Antioxidants that prevent browning and rancidity.", originSummary: "Typically synthesised for food use or from fermentation.", riskSummary: "Generally recognised as safe at permitted levels."),
+
+        // Colours
+        "e102": .init(displayName: "Tartrazine", whatItIs: "Synthetic yellow azo dye used in drinks and snacks.", originSummary: "Synthetic.", riskSummary: "May affect sensitive children; some people avoid it."),
+        "e110": .init(displayName: "Sunset Yellow", whatItIs: "Synthetic orange azo dye used in beverages and sweets.", originSummary: "Synthetic.", riskSummary: "May affect sensitive children; some people avoid it."),
+        "e129": .init(displayName: "Allura Red", whatItIs: "Synthetic red dye used in drinks and confectionery.", originSummary: "Synthetic.", riskSummary: "May affect sensitive children; some people avoid it."),
+        "e133": .init(displayName: "Brilliant Blue", whatItIs: "Synthetic blue dye used in confectionery and drinks.", originSummary: "Synthetic.", riskSummary: "Permitted within limits; may affect sensitive individuals."),
+        "e104": .init(displayName: "Quinoline Yellow", whatItIs: "Synthetic yellow dye used in desserts and snacks.", originSummary: "Synthetic.", riskSummary: "May affect sensitive children; some people avoid it."),
+
+        // Emulsifiers / thickeners / gums
+        "e322": .init(displayName: "Lecithin", whatItIs: "Emulsifier that helps oil and water stay mixed.", originSummary: "Usually from soy or sunflower; sometimes egg.", riskSummary: "Generally recognised as safe at food levels."),
+        "lecithin": .init(displayName: "Lecithin", whatItIs: "Emulsifier that helps oil and water stay mixed.", originSummary: "Usually from soy or sunflower; sometimes egg.", riskSummary: "Generally recognised as safe at food levels."),
+        "e466": .init(displayName: "Cellulose gum (CMC)", whatItIs: "Thickener and stabiliser for texture and moisture retention.", originSummary: "Derived from plant cellulose.", riskSummary: "Generally recognised as safe at food levels."),
+        "e415": .init(displayName: "Xanthan gum", whatItIs: "Fermentation-derived gum used to thicken and stabilise.", originSummary: "Produced by fermenting sugars.", riskSummary: "Generally safe; large amounts may cause gas in sensitive people."),
+        "e412": .init(displayName: "Guar gum", whatItIs: "Plant-based thickener and stabiliser.", originSummary: "From guar bean seeds.", riskSummary: "Generally safe; very high doses can cause bloating."),
+        "e407": .init(displayName: "Carrageenan", whatItIs: "Seaweed-derived thickener and stabiliser.", originSummary: "Extracted from red seaweed.", riskSummary: "Food-grade carrageenan is permitted; some people with sensitive guts prefer to limit it."),
+
+        // Flavour enhancers
+        "e621": .init(displayName: "MSG (Monosodium glutamate)", whatItIs: "Umami flavour enhancer.", originSummary: "Produced by fermenting plant sugars/starches.", riskSummary: "Considered safe; a small subset reports sensitivity."),
+        "monosodium glutamate": .init(displayName: "MSG (Monosodium glutamate)", whatItIs: "Umami flavour enhancer.", originSummary: "Produced by fermenting plant sugars/starches.", riskSummary: "Considered safe; a small subset reports sensitivity."),
+
+        // Antioxidants
+        "e320": .init(displayName: "BHA", whatItIs: "Antioxidant that prevents fats from going rancid.", originSummary: "Synthetic.", riskSummary: "Permitted within limits; monitored by regulators."),
+        "e321": .init(displayName: "BHT", whatItIs: "Antioxidant that prevents fats from going rancid.", originSummary: "Synthetic.", riskSummary: "Permitted within limits; monitored by regulators."),
+
+        // Misc
+        "e570": .init(displayName: "Fatty acids", whatItIs: "Purified fatty acids used as a processing aid or anti-caking agent.", originSummary: "Varied origin (plant or animal fats).", riskSummary: "Generally recognised as safe at permitted food use levels."),
+        "fatty acids": .init(displayName: "Fatty acids", whatItIs: "Purified fatty acids used as a processing aid or anti-caking agent.", originSummary: "Varied origin (plant or animal fats).", riskSummary: "Generally recognised as safe at permitted food use levels."),
+        "caffeine": .init(displayName: "Caffeine", whatItIs: "Stimulant naturally found in coffee, tea, and added to energy drinks.", originSummary: "Natural or synthetic.", riskSummary: "Can affect sleep and heart rate; limit if sensitive.")
+    ]
+
+    static func override(for additive: AdditiveInfo) -> AdditiveOverrideData? {
+        for code in additive.eNumbers {
+            if let match = overrides[code.lowercased()] {
+                return match
+            }
+        }
+        return overrides[additive.name.lowercased()]
+    }
+}
+
 // MARK: - Additive Analysis Component
 
 struct AdditiveWatchView: View {
@@ -308,40 +398,12 @@ struct AdditiveWatchView: View {
 
     // Convert AdditiveInfo to DetailedAdditive for UI display
     private func convertToDetailedAdditive(_ additive: AdditiveInfo) -> DetailedAdditive {
-        // Friendly overrides for common vitamins/ambiguous additives
-        let overrideLookup: [String: (displayName: String?, whatItIs: String?, originSummary: String?, riskSummary: String?)] = [
-            "e300": (displayName: "Vitamin C (Ascorbic acid)",
-                     whatItIs: "Essential vitamin C used as an antioxidant to stop foods turning brown or stale.",
-                     originSummary: nil,
-                     riskSummary: "Generally recognised as safe at permitted use levels."),
-            "ascorbic acid": (displayName: "Vitamin C (Ascorbic acid)",
-                              whatItIs: "Essential vitamin C used as an antioxidant to stop foods turning brown or stale.",
-                              originSummary: nil,
-                              riskSummary: "Generally recognised as safe at permitted use levels."),
-            "e375": (displayName: "Vitamin B3 (Nicotinic acid)",
-                     whatItIs: "Essential B vitamin (niacin) added to fortified foods to prevent deficiency.",
-                     originSummary: "Usually synthesised for use in fortification.",
-                     riskSummary: "High doses may cause flushing; food levels are considered safe."),
-            "nicotinic acid": (displayName: "Vitamin B3 (Nicotinic acid)",
-                               whatItIs: "Essential B vitamin (niacin) added to fortified foods to prevent deficiency.",
-                               originSummary: "Usually synthesised for use in fortification.",
-                               riskSummary: "High doses may cause flushing; food levels are considered safe."),
-            "e570": (displayName: "Fatty acids",
-                     whatItIs: "Blend of purified fatty acids from natural fats used as a processing aid or anti-caking agent.",
-                     originSummary: "Varied origin (plant or animal fats).",
-                     riskSummary: "Generally recognised as safe at permitted food use levels.")
-        ]
-
         // Prefer the human-friendly overview from the consolidated DB; fall back to typical uses or group label
         let overview = additive.overview.trimmingCharacters(in: .whitespacesAndNewlines)
         let uses = additive.typicalUses.trimmingCharacters(in: .whitespacesAndNewlines)
         let whereFrom = (additive.whereItComesFrom ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let effects = additive.effectsSummary.trimmingCharacters(in: .whitespacesAndNewlines)
-        let lowerName = additive.name.lowercased()
-        let lowerCodes = additive.eNumbers.map { $0.lowercased() }
-
-        // Apply overrides if present (priority: code, then name)
-        let override = overrideLookup[lowerCodes.first ?? ""] ?? overrideLookup[lowerName]
+        let override = AdditiveOverrides.override(for: additive)
 
         // Show consumer-friendly name for known vitamins/aliases
         let displayName = override?.displayName ?? additive.name
