@@ -306,6 +306,7 @@ struct FoodDetailViewFromSearch: View {
     @State private var selectedWatchTab: WatchTab = .additives
     @State private var showingVitaminCitations = false
     @State private var showingAllergenCitations = false
+    @State private var cachedDetectedNutrients: [String] = []
 
     private var buttonText: String {
         if diaryEntryId != nil || isEditingMode {
@@ -1530,8 +1531,8 @@ struct FoodDetailViewFromSearch: View {
             guard !hasInitialized else { return }
             hasInitialized = true
 
-            // Initialize cached ingredients from food data
             cachedIngredients = food.ingredients
+            recomputeDetectedNutrients()
 
             // Load user allergens from cache (instant) and detect if present in this food
             Task {
@@ -1591,6 +1592,7 @@ struct FoodDetailViewFromSearch: View {
             cachedNutritionScore = nil
             cachedNutraSafeGrade = nil
             hasInitialized = false
+            cachedDetectedNutrients = []
         }
         .onChange(of: enhancedIngredientsText) { _ in
             // Invalidate caches when enhanced ingredients data changes
@@ -1598,6 +1600,10 @@ struct FoodDetailViewFromSearch: View {
             cachedIngredientsStatus = nil
             cachedAdditives = nil
             cachedNutraSafeGrade = nil  // Grade depends on ingredients
+            cachedDetectedNutrients = []
+        }
+        .onChange(of: cachedIngredients) { _ in
+            recomputeDetectedNutrients()
         }
         .onChange(of: enhancedNutrition?.calories) { _ in
             // Invalidate caches when enhanced nutrition data changes
@@ -3683,31 +3689,34 @@ private var nutritionFactsSection: some View {
 
     // MARK: - Vitamins & Minerals Content (NEW SYSTEM)
     private func vitaminsContent(scrollProxy: ScrollViewProxy) -> some View {
-        let detectedNutrients = getDetectedNutrients()
+        let detectedNutrients = cachedDetectedNutrients
         let micronutrientDB = MicronutrientDatabase.shared
+        let ordering = NutrientDatabase.allNutrients.map { $0.id }
+        let sortedDetected = detectedNutrients.sorted { a, b in
+            let ia = ordering.firstIndex(of: a) ?? Int.max
+            let ib = ordering.firstIndex(of: b) ?? Int.max
+            if ia != ib { return ia < ib }
+            return a < b
+        }
 
         #if DEBUG
         print("🎨 vitaminsContent rendering: \(detectedNutrients.count) nutrients")
 
         #endif
         return VStack(alignment: .leading, spacing: 12) {
-            if !detectedNutrients.isEmpty {
+            if !sortedDetected.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
-                    ForEach(Array(detectedNutrients.enumerated()), id: \.element) { index, nutrientId in
+                    ForEach(sortedDetected, id: \.self) { nutrientId in
                         if let nutrientInfo = micronutrientDB.getNutrientInfo(nutrientId) {
                             NutrientInfoCard(nutrientInfo: nutrientInfo, scrollProxy: scrollProxy, cardId: nutrientId)
                                 .id(nutrientId)
-                                .onAppear {
-                                    #if DEBUG
-                                    print("  🃏 Card #\(index + 1) appeared: \(nutrientInfo.name)")
-                                    #endif
-                                }
                         } else {
                             Text("⚠️ Could not load info for: \(nutrientId)")
                                 .foregroundColor(.red)
                         }
                     }
                 }
+                .transaction { t in t.disablesAnimations = true }
             } else {
                 VStack(spacing: 12) {
                     Image(systemName: "drop.fill")
@@ -3762,6 +3771,17 @@ private var nutritionFactsSection: some View {
             .padding(.top, 8)
         }
         .padding(16)
+    }
+    
+    private func recomputeDetectedNutrients() {
+        let ids = getDetectedNutrients()
+        let ordering = NutrientDatabase.allNutrients.map { $0.id }
+        cachedDetectedNutrients = ids.sorted { a, b in
+            let ia = ordering.firstIndex(of: a) ?? Int.max
+            let ib = ordering.firstIndex(of: b) ?? Int.max
+            if ia != ib { return ia < ib }
+            return a < b
+        }
     }
 
     // NEW: Detect nutrients from ingredients using NutrientDetector and MicronutrientDatabase

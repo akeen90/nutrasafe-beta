@@ -425,7 +425,13 @@ struct NutrientDetector {
             }
         }
 
-        return Array(detectedNutrients)
+        let ordering = NutrientDatabase.allNutrients.map { $0.id }
+        return Array(detectedNutrients).sorted { a, b in
+            let ia = ordering.firstIndex(of: a) ?? Int.max
+            let ib = ordering.firstIndex(of: b) ?? Int.max
+            if ia != ib { return ia < ib }
+            return a < b
+        }
     }
 
     /// Apply minimum meaningful thresholds for micronutrient profile amounts
