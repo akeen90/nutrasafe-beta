@@ -129,7 +129,6 @@ class UseByNotificationManager {
             "itemName": itemName
         ]
 
-        // Schedule notification at 9 AM on the target date
         let calendar = Calendar.current
         var components = calendar.dateComponents([.year, .month, .day], from: date)
         components.hour = 9
@@ -138,28 +137,14 @@ class UseByNotificationManager {
         components.timeZone = calendar.timeZone
 
         guard let targetDate = calendar.date(from: components) else {
-            #if DEBUG
-            print("⚠️ Failed to create target date for \(identifier)")
-            #endif
             return
         }
 
-        let now = Date()
-        let timeInterval = targetDate.timeIntervalSince(now)
-
-        guard timeInterval > 0 else {
-            #if DEBUG
-            print("⚠️ Notification time is in the past for \(identifier)")
-            #endif
+        guard targetDate > Date() else {
             return
         }
 
-        #if DEBUG
-        print("📅 Scheduling notification '\(identifier)' for \(targetDate) (in \(Int(timeInterval/3600)) hours)")
-        #endif
-
-        // Use UNTimeIntervalNotificationTrigger for reliable scheduling
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: timeInterval, repeats: false)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
 
         do {
@@ -192,8 +177,12 @@ class UseByNotificationManager {
 
     /// Cancel all use-by related notifications
     func cancelAllNotifications() {
-        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
-        // DEBUG LOG: print("🗑️ Cancelled all use-by notifications")
+        Task {
+            let center = UNUserNotificationCenter.current()
+            let requests = await center.pendingNotificationRequests()
+            let ids = requests.filter { ($0.content.userInfo["type"] as? String) == "useBy" }.map { $0.identifier }
+            center.removePendingNotificationRequests(withIdentifiers: ids)
+        }
     }
 
     // MARK: - Refresh Notifications

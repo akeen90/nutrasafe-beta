@@ -1133,16 +1133,58 @@ struct FoodDetailViewFromSearch: View {
                     riskLevel = "Low"
                 }
 
-                let description = additive.consumerInfo ?? "No detailed information available for this additive."
+                let overview = additive.overview.trimmingCharacters(in: .whitespacesAndNewlines)
+                let uses = additive.typicalUses.trimmingCharacters(in: .whitespacesAndNewlines)
+
+                let overrideLookup: [String: (displayName: String?, whatItIs: String?, originSummary: String?, riskSummary: String?)] = [
+                    "e300": (displayName: "Vitamin C (Ascorbic acid)",
+                             whatItIs: "Essential vitamin C used as an antioxidant to stop foods turning brown or stale.",
+                             originSummary: nil,
+                             riskSummary: "Generally recognised as safe at permitted use levels."),
+                    "ascorbic acid": (displayName: "Vitamin C (Ascorbic acid)",
+                                      whatItIs: "Essential vitamin C used as an antioxidant to stop foods turning brown or stale.",
+                                      originSummary: nil,
+                                      riskSummary: "Generally recognised as safe at permitted use levels."),
+                    "e375": (displayName: "Vitamin B3 (Nicotinic acid)",
+                             whatItIs: "Essential B vitamin (niacin) added to fortified foods to prevent deficiency.",
+                             originSummary: "Usually synthesised for use in fortification.",
+                             riskSummary: "High doses may cause flushing; food levels are considered safe."),
+                    "nicotinic acid": (displayName: "Vitamin B3 (Nicotinic acid)",
+                                       whatItIs: "Essential B vitamin (niacin) added to fortified foods to prevent deficiency.",
+                                       originSummary: "Usually synthesised for use in fortification.",
+                                       riskSummary: "High doses may cause flushing; food levels are considered safe."),
+                    "e570": (displayName: "Fatty acids",
+                             whatItIs: "Blend of purified fatty acids from natural fats used as a processing aid or anti-caking agent.",
+                             originSummary: "Varied origin (plant or animal fats).",
+                             riskSummary: "Generally recognised as safe at permitted food use levels.")
+                ]
+
+                let lowerName = additive.name.lowercased()
+                let lowerCodes = additive.eNumbers.map { $0.lowercased() }
+                let override = overrideLookup[lowerCodes.first ?? ""] ?? overrideLookup[lowerName]
+
+                let displayName = override?.displayName ?? additive.name
+                var whatItIs = override?.whatItIs ?? (!overview.isEmpty ? overview : displayName)
+                if !uses.isEmpty && override?.whatItIs == nil {
+                    let cleanedUses = uses.trimmingCharacters(in: .punctuationCharacters)
+                    if !whatItIs.lowercased().contains(cleanedUses.lowercased()) {
+                        whatItIs += (whatItIs.isEmpty ? "" : ". ") + "Commonly used in \(cleanedUses)"
+                    }
+                }
+                if !whatItIs.isEmpty && !whatItIs.hasSuffix(".") { whatItIs += "." }
+
+                let originSummary = override?.originSummary ?? (additive.whereItComesFrom ?? additive.origin.rawValue.capitalized)
+                let riskSummary = override?.riskSummary ?? (!additive.effectsSummary.isEmpty ? additive.effectsSummary : "No detailed information available for this additive.")
 
                 return DetailedAdditive(
-                    name: additive.name,
+                    name: displayName,
                     code: additive.eNumber,
-                    purpose: additive.group.rawValue.capitalized,
-                    origin: additive.origin.rawValue.capitalized,
+                    whatItIs: whatItIs,
+                    origin: additive.origin.rawValue,
+                    originSummary: originSummary,
                     childWarning: additive.hasChildWarning,
                     riskLevel: riskLevel,
-                    description: description,
+                    riskSummary: riskSummary,
                     sources: additive.sources
                 )
             }
@@ -1164,16 +1206,20 @@ struct FoodDetailViewFromSearch: View {
                 }
 
                 // Use consumer guide if available, otherwise use a default message
-                let description = additive.consumerGuide ?? "No detailed information available for this additive."
+                let displayName = additive.name
+                let whatItIs = additive.consumerGuide ?? displayName
+                let originSummary = additive.origin ?? "Origin not specified"
+                let riskSummary = additive.consumerGuide ?? "No detailed information available for this additive."
 
                 return DetailedAdditive(
-                    name: additive.name,
+                    name: displayName,
                     code: additive.code,
-                    purpose: additive.category.capitalized,
+                    whatItIs: whatItIs,
                     origin: additive.origin ?? "Unknown",
+                    originSummary: originSummary,
                     childWarning: additive.childWarning,
                     riskLevel: riskLevel,
-                    description: description,
+                    riskSummary: riskSummary,
                     sources: []
                 )
             }
@@ -1220,16 +1266,17 @@ struct FoodDetailViewFromSearch: View {
         ]
         
         // Check each additive in the database against ingredients
-        for (additiveName, code, purpose, origin, childWarning, riskLevel, description) in additiveDatabase {
+        for (additiveName, code, _, origin, childWarning, riskLevel, description) in additiveDatabase {
             if ingredientsText.contains(additiveName.lowercased()) {
                 detectedAdditives.append(DetailedAdditive(
                     name: additiveName.capitalized,
                     code: code,
-                    purpose: purpose,
+                    whatItIs: description,
                     origin: origin,
+                    originSummary: origin,
                     childWarning: childWarning,
                     riskLevel: riskLevel,
-                    description: description,
+                    riskSummary: description,
                     sources: []
                 ))
             }

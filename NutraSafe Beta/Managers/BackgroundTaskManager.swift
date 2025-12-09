@@ -67,23 +67,17 @@ class BackgroundTaskManager {
         Task {
             do {
                 let needsRefresh = await FastingNotificationManager.shared.checkNotificationQueue()
-
                 if needsRefresh {
                     try await FastingNotificationManager.shared.refreshNotificationsForActivePlans()
-                    #if DEBUG
-                    print("✅ Background notification refresh completed")
-                    #endif
-                    task.setTaskCompleted(success: true)
-                } else {
-                    #if DEBUG
-                    print("ℹ️ Notification queue sufficient, skipping refresh")
-                    #endif
-                    task.setTaskCompleted(success: true)
                 }
+
+                do {
+                    let items: [UseByInventoryItem] = try await FirebaseManager.shared.getUseByItems()
+                    await UseByNotificationManager.shared.refreshAllNotifications(for: items)
+                } catch {}
+
+                task.setTaskCompleted(success: true)
             } catch {
-                #if DEBUG
-                print("❌ Background refresh failed: \(error)")
-                #endif
                 task.setTaskCompleted(success: false)
             }
         }

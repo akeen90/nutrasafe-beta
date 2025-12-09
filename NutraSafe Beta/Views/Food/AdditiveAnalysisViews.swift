@@ -308,16 +308,111 @@ struct AdditiveWatchView: View {
 
     // Convert AdditiveInfo to DetailedAdditive for UI display
     private func convertToDetailedAdditive(_ additive: AdditiveInfo) -> DetailedAdditive {
+        // Friendly overrides for common vitamins/ambiguous additives
+        let overrideLookup: [String: (displayName: String?, whatItIs: String?, originSummary: String?, riskSummary: String?)] = [
+            "e300": (displayName: "Vitamin C (Ascorbic acid)",
+                     whatItIs: "Essential vitamin C used as an antioxidant to stop foods turning brown or stale.",
+                     originSummary: nil,
+                     riskSummary: "Generally recognised as safe at permitted use levels."),
+            "ascorbic acid": (displayName: "Vitamin C (Ascorbic acid)",
+                              whatItIs: "Essential vitamin C used as an antioxidant to stop foods turning brown or stale.",
+                              originSummary: nil,
+                              riskSummary: "Generally recognised as safe at permitted use levels."),
+            "e375": (displayName: "Vitamin B3 (Nicotinic acid)",
+                     whatItIs: "Essential B vitamin (niacin) added to fortified foods to prevent deficiency.",
+                     originSummary: "Usually synthesised for use in fortification.",
+                     riskSummary: "High doses may cause flushing; food levels are considered safe."),
+            "nicotinic acid": (displayName: "Vitamin B3 (Nicotinic acid)",
+                               whatItIs: "Essential B vitamin (niacin) added to fortified foods to prevent deficiency.",
+                               originSummary: "Usually synthesised for use in fortification.",
+                               riskSummary: "High doses may cause flushing; food levels are considered safe."),
+            "e570": (displayName: "Fatty acids",
+                     whatItIs: "Blend of purified fatty acids from natural fats used as a processing aid or anti-caking agent.",
+                     originSummary: "Varied origin (plant or animal fats).",
+                     riskSummary: "Generally recognised as safe at permitted food use levels.")
+        ]
+
+        // Prefer the human-friendly overview from the consolidated DB; fall back to typical uses or group label
+        let overview = additive.overview.trimmingCharacters(in: .whitespacesAndNewlines)
+        let uses = additive.typicalUses.trimmingCharacters(in: .whitespacesAndNewlines)
+        let whereFrom = (additive.whereItComesFrom ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let effects = additive.effectsSummary.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lowerName = additive.name.lowercased()
+        let lowerCodes = additive.eNumbers.map { $0.lowercased() }
+
+        // Apply overrides if present (priority: code, then name)
+        let override = overrideLookup[lowerCodes.first ?? ""] ?? overrideLookup[lowerName]
+
+        // Show consumer-friendly name for known vitamins/aliases
+        let displayName = override?.displayName ?? additive.name
+
+        // Build “What is it?” sentence(s)
+        var whatItIs = override?.whatItIs ?? (!overview.isEmpty ? overview : (!uses.isEmpty ? uses : additive.group.rawValue.capitalized))
+        if !uses.isEmpty && override?.whatItIs == nil {
+            // Avoid awkward “used to ...” phrasing
+            let cleanedUses = uses.trimmingCharacters(in: .punctuationCharacters)
+            if !whatItIs.lowercased().contains(cleanedUses.lowercased()) {
+                whatItIs += (whatItIs.isEmpty ? "" : ". ") + "Commonly used in \(cleanedUses)"
+            }
+        }
+        if !whatItIs.isEmpty && !whatItIs.hasSuffix(".") { whatItIs += "." }
+
+        let originSummary = override?.originSummary ?? (!whereFrom.isEmpty ? whereFrom : describeOrigin(additive.origin.rawValue))
+
+        let riskLevel: String
+        switch additive.effectsVerdict {
+        case .avoid: riskLevel = "High"
+        case .caution: riskLevel = "Moderate"
+        default: riskLevel = "Low"
+        }
+
+        let riskSummary: String
+        if let customRisk = override?.riskSummary {
+            riskSummary = customRisk
+        } else if !effects.isEmpty {
+            riskSummary = effects
+        } else if additive.hasChildWarning {
+            let guidance: String
+            switch riskLevel {
+            case "High": guidance = "Best avoided"
+            case "Moderate": guidance = "Use in moderation"
+            default: guidance = "Generally fine"
+            }
+            riskSummary = "Some studies suggest this may affect children's behavior. \(guidance)."
+        } else {
+            switch riskLevel {
+            case "High":
+                riskSummary = "Some studies have raised questions about this additive for sensitive individuals."
+            case "Moderate":
+                riskSummary = "This additive has a moderate safety rating in food safety databases."
+            default:
+                riskSummary = "This additive is generally recognised as safe when used in food."
+            }
+        }
+
         return DetailedAdditive(
-            name: additive.name,
+            name: displayName,
             code: additive.eNumber.isEmpty ? nil : additive.eNumber,
-            purpose: additive.typicalUses.isEmpty ? additive.group.rawValue.capitalized : additive.typicalUses,
-            origin: additive.origin.rawValue.capitalized,
+            whatItIs: whatItIs,
+            origin: additive.origin.rawValue,
+            originSummary: originSummary,
             childWarning: additive.hasChildWarning,
-            riskLevel: additive.effectsVerdict.rawValue,
-            description: additive.effectsSummary,
+            riskLevel: riskLevel,
+            riskSummary: riskSummary,
             sources: additive.sources
         )
+    }
+
+    // Simple origin explainer for use before the UI helper functions are in scope
+    private func describeOrigin(_ origin: String) -> String {
+        let lower = origin.lowercased()
+        if lower.contains("plant") { return "Derived from plants - a natural source" }
+        if lower.contains("synthetic") { return "Made in a laboratory using chemical processes" }
+        if lower.contains("animal") { return "Derived from animals" }
+        if lower.contains("mineral") { return "Extracted from minerals or rocks" }
+        if lower.contains("ferment") { return "Produced through fermentation - a natural process" }
+        if lower.contains("varied") { return "Can come from multiple sources depending on manufacturer" }
+        return origin
     }
 }
 
@@ -581,11 +676,12 @@ struct AdditiveCard: View {
 struct DetailedAdditive {
     let name: String
     let code: String?
-    let purpose: String
+    let whatItIs: String
     let origin: String
+    let originSummary: String
     let childWarning: Bool
     let riskLevel: String
-    let description: String
+    let riskSummary: String
     let sources: [AdditiveSource]
 }
 
@@ -668,10 +764,10 @@ struct AdditiveCardView: View {
 
                     VStack(alignment: .leading, spacing: 12) {
                         // What is it (Purpose)
-                        AdditiveInfoRow(icon: "info.circle.fill", title: "What is it?", content: getPurposeDescription(additive.purpose), color: .blue)
+                        AdditiveInfoRow(icon: "info.circle.fill", title: "What is it?", content: getWhatItIsDescription(additive.whatItIs), color: .blue)
 
                         // Where is it from
-                        AdditiveInfoRow(icon: "leaf.fill", title: "Where is it from?", content: getOriginDescription(additive.origin), color: getOriginColor(additive.origin))
+                        AdditiveInfoRow(icon: "leaf.fill", title: "Where is it from?", content: additive.originSummary.isEmpty ? getOriginDescription(additive.origin) : additive.originSummary, color: getOriginColor(additive.origin))
 
                         // Any risks
                         AdditiveInfoRow(icon: getRiskIcon(), title: "Any risks?", content: getRiskDescription(), color: getUsageColor())
@@ -770,6 +866,21 @@ struct AdditiveCardView: View {
         }
     }
 
+    private func getRiskFallback(for level: String, childWarning: Bool) -> String {
+        if childWarning {
+            return "Some studies suggest this may affect children's behavior. \(getUsageGuidance(level))."
+        }
+
+        switch level {
+        case "High":
+            return "Some studies have raised questions about this additive for sensitive individuals."
+        case "Moderate":
+            return "This additive has a moderate safety rating in food safety databases."
+        default:
+            return "This additive is generally recognised as safe when used in food."
+        }
+    }
+
     private func getOriginLabel(_ origin: String) -> String {
         let lowercased = origin.lowercased()
 
@@ -858,30 +969,10 @@ struct AdditiveCardView: View {
         }
     }
 
-    private func getPurposeDescription(_ purpose: String) -> String {
-        let lower = purpose.lowercased()
-
-        if lower.contains("emulsifier") {
-            return "Helps mix ingredients that normally don't combine (like oil and water)"
-        } else if lower.contains("colour") || lower.contains("color") {
-            return "Adds or enhances color to make food more visually appealing"
-        } else if lower.contains("preserv") {
-            return "Helps food stay fresh longer by preventing spoilage"
-        } else if lower.contains("antioxidant") {
-            return "Prevents food from going rancid and extends shelf life"
-        } else if lower.contains("stabil") {
-            return "Helps maintain food texture and prevents separation"
-        } else if lower.contains("thick") {
-            return "Increases thickness and improves texture"
-        } else if lower.contains("sweet") {
-            return "Provides sweetness with fewer or no calories"
-        } else if lower.contains("flavour") || lower.contains("flavor") {
-            return "Enhances or adds flavor to food"
-        } else if lower.contains("acid") {
-            return "Controls acidity and adds tartness"
-        } else {
-            return purpose
-        }
+    private func getWhatItIsDescription(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.isEmpty else { return trimmed }
+        return "Food additive information not available yet."
     }
 
     private func getOriginDescription(_ origin: String) -> String {
@@ -913,18 +1004,11 @@ struct AdditiveCardView: View {
     }
 
     private func getRiskDescription() -> String {
-        if additive.childWarning {
-            return "Some studies suggest this may affect children's behavior. " + getUsageGuidance(additive.riskLevel) + "."
+        var summary = additive.riskSummary.trimmingCharacters(in: .whitespacesAndNewlines)
+        if summary.isEmpty {
+            summary = getRiskFallback(for: additive.riskLevel, childWarning: additive.childWarning)
         }
-
-        switch additive.riskLevel {
-        case "High":
-            return "Some studies have raised questions about this additive for sensitive individuals."
-        case "Moderate":
-            return "This additive has a moderate safety rating in food safety databases."
-        default:
-            return "This additive is generally recognised as safe when used in food."
-        }
+        return summary
     }
 }
 
