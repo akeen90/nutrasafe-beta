@@ -39,30 +39,24 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                                withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         let userInfo = notification.request.content.userInfo
 
-        // Validate fasting notifications
         if let type = userInfo["type"] as? String, type == "fasting" {
-            // Get current active fast session ID from AppStorage
-            let activeFastSessionId = UserDefaults.standard.string(forKey: "activeFastSessionId") ?? ""
-            let notificationSessionId = userInfo["sessionId"] as? String ?? ""
-
-            // Only show notification if it matches the current active fast session
-            if activeFastSessionId.isEmpty || notificationSessionId != activeFastSessionId {
+            let hasPlanContext = userInfo["fastingType"] != nil || userInfo["planId"] != nil
+            if !hasPlanContext {
+                let activeFastSessionId = UserDefaults.standard.string(forKey: "activeFastSessionId") ?? ""
+                let notificationSessionId = userInfo["sessionId"] as? String ?? ""
+                if activeFastSessionId.isEmpty || notificationSessionId != activeFastSessionId {
+                    #if DEBUG
+                    print("🚫 Suppressing fasting notification - fast is no longer active")
+                    print("   - Active session: \(activeFastSessionId)")
+                    print("   - Notification session: \(notificationSessionId)")
+                    #endif
+                    completionHandler([])
+                    return
+                }
                 #if DEBUG
-                print("🚫 Suppressing fasting notification - fast is no longer active")
+                print("✅ Showing fasting notification - session matches: \(notificationSessionId)")
                 #endif
-                #if DEBUG
-                print("   - Active session: \(activeFastSessionId)")
-                #endif
-                #if DEBUG
-                print("   - Notification session: \(notificationSessionId)")
-                #endif
-                completionHandler([]) // Don't show notification
-                return
             }
-
-            #if DEBUG
-            print("✅ Showing fasting notification - session matches: \(notificationSessionId)")
-            #endif
         }
 
         // Show banner even when app is in foreground
