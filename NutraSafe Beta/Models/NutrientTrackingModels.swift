@@ -336,6 +336,38 @@ struct NutrientDetector {
         "omega_3": ["salmon", "sardines", "mackerel", "herring", "anchovies", "trout", "walnuts", "flaxseed", "chia seeds"]
     ]
 
+    /// Minimum meaningful thresholds (skip trace amounts)
+    /// Units match MicronutrientProfile fields (mg or mcg as annotated in the model)
+    private static let nutrientThresholds: [String: Double] = [
+        // Vitamins
+        "vitamin_a": 90,       // mcg RAE (~10% DV)
+        "vitamin_c": 5,        // mg
+        "vitamin_d": 1,        // mcg
+        "vitamin_e": 1.5,      // mg
+        "vitamin_k": 12,       // mcg
+        "vitamin_b1": 0.12,    // mg
+        "vitamin_b2": 0.13,    // mg
+        "vitamin_b3": 1.6,     // mg
+        "vitamin_b6": 0.17,    // mg
+        "vitamin_b12": 0.24,   // mcg
+        "folate": 40,          // mcg
+        "biotin": 3,           // mcg
+        "vitamin_b5": 0.5,     // mg
+        // Minerals
+        "calcium": 50,         // mg
+        "iron": 0.9,           // mg
+        "magnesium": 20,       // mg
+        "phosphorus": 50,      // mg
+        "potassium": 150,      // mg
+        "zinc": 0.8,           // mg
+        "selenium": 5,         // mcg
+        "copper": 0.09,        // mg
+        "manganese": 0.2,      // mg
+        "iodine": 15,          // mcg
+        "chromium": 3,         // mcg
+        "molybdenum": 4        // mcg
+    ]
+
     /// Detect which nutrients are present in a food item based on its micronutrient profile
     static func detectNutrients(in food: DiaryFoodItem) -> [String] {
         var detectedNutrients: Set<String> = []
@@ -346,7 +378,7 @@ struct NutrientDetector {
             for (vitaminKey, amount) in profile.vitamins {
                 if amount > 0 {
                     let nutrientId = mapVitaminKeyToNutrientId(vitaminKey)
-                    if !nutrientId.isEmpty {
+                    if !nutrientId.isEmpty, passesThreshold(nutrientId: nutrientId, amount: amount) {
                         detectedNutrients.insert(nutrientId)
                     }
                 }
@@ -356,7 +388,7 @@ struct NutrientDetector {
             for (mineralKey, amount) in profile.minerals {
                 if amount > 0 {
                     let nutrientId = mapMineralKeyToNutrientId(mineralKey)
-                    if !nutrientId.isEmpty {
+                    if !nutrientId.isEmpty, passesThreshold(nutrientId: nutrientId, amount: amount) {
                         detectedNutrients.insert(nutrientId)
                     }
                 }
@@ -371,25 +403,53 @@ struct NutrientDetector {
             }
         }
 
-        // Only do keyword-based detection if food has actual nutritional data
-        // This prevents false positives from foods with no ingredients/micronutrient data
-        let hasMicronutrientData = food.micronutrientProfile != nil
-        let hasIngredients = food.ingredients != nil && !food.ingredients!.isEmpty
-
-        if hasMicronutrientData || hasIngredients {
-            let searchText = "\(food.name.lowercased()) \(food.brand?.lowercased() ?? "") \(food.ingredients?.joined(separator: " ").lowercased() ?? "")"
+        // Only do keyword-based detection if we have ingredient text
+        if let ingredients = food.ingredients, !ingredients.isEmpty {
+            let lowerIngredients = ingredients.map { $0.lowercased() }
+            let topIngredients = Array(lowerIngredients.prefix(5)) // focus on primary ingredients to reduce false positives
 
             for (nutrientId, keywords) in nutrientFoodSources {
-                for keyword in keywords {
-                    if searchText.contains(keyword.lowercased()) {
-                        detectedNutrients.insert(nutrientId)
-                        break
+                var matched = false
+                for ingredient in topIngredients {
+                    for keyword in keywords {
+                        if containsWholeWord(in: ingredient, keyword: keyword) {
+                            matched = true
+                            break
+                        }
                     }
+                    if matched { break }
+                }
+                if matched {
+                    detectedNutrients.insert(nutrientId)
                 }
             }
         }
 
         return Array(detectedNutrients)
+    }
+
+    /// Apply minimum meaningful thresholds for micronutrient profile amounts
+    private static func passesThreshold(nutrientId: String, amount: Double) -> Bool {
+        guard let threshold = nutrientThresholds[nutrientId] else {
+            return amount > 0
+        }
+        return amount >= threshold
+    }
+
+    /// Whole-word match helper to avoid matching flavours/aromas
+    private static func containsWholeWord(in text: String, keyword: String) -> Bool {
+        // Quick rejects
+        if text.isEmpty || keyword.isEmpty { return false }
+
+        // Avoid matching flavour-only mentions
+        if text.contains("flavor") || text.contains("flavour") || text.contains("aroma") {
+            // Require exact whole-word match to reduce false positives in flavour strings
+            let pattern = "\\b\(NSRegularExpression.escapedPattern(for: keyword.lowercased()))\\b"
+            return text.range(of: pattern, options: .regularExpression) != nil
+        }
+
+        let pattern = "\\b\(NSRegularExpression.escapedPattern(for: keyword.lowercased()))\\b"
+        return text.range(of: pattern, options: .regularExpression) != nil
     }
 
     /// Map vitamin dictionary keys to nutrient IDs
