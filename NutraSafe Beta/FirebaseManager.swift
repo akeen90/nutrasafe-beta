@@ -1784,6 +1784,12 @@ class FirebaseManager: ObservableObject {
         return MacroGoal.defaultMacros
     }
 
+    func cacheNutritionGoals(caloric: Int?, exercise: Int?, steps: Int?) {
+        if let caloric = caloric { UserDefaults.standard.set(caloric, forKey: "cachedCaloricGoal") }
+        if let exercise = exercise { UserDefaults.standard.set(exercise, forKey: "cachedExerciseGoal") }
+        if let steps = steps { UserDefaults.standard.set(steps, forKey: "cachedStepGoal") }
+    }
+
     func saveAllergens(_ allergens: [Allergen]) async throws {
         ensureAuthStateLoaded()
 

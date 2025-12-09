@@ -237,6 +237,7 @@ struct MainAppView: View {
 
                     // Check and refresh notification queue on app launch
                     await checkAndRefreshNotifications()
+                    await prewarmSettingsCache()
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
@@ -320,6 +321,27 @@ struct MainAppView: View {
                 print("❌ Failed to refresh notifications: \(error)")
                 #endif
             }
+        }
+    }
+
+    /// Prewarm settings caches for instant settings load
+    private func prewarmSettingsCache() async {
+        let manager = FirebaseManager.shared
+        do {
+            async let settingsTask = manager.getUserSettings()
+            async let macroTask = manager.getMacroGoals()
+            let settings = try await settingsTask
+            _ = try await macroTask
+            let caloric = settings.caloricGoal ?? UserDefaults.standard.integer(forKey: "cachedCaloricGoal")
+            let exercise = settings.exerciseGoal ?? UserDefaults.standard.integer(forKey: "cachedExerciseGoal")
+            let steps = settings.stepGoal ?? UserDefaults.standard.integer(forKey: "cachedStepGoal")
+            UserDefaults.standard.set(caloric, forKey: "cachedCaloricGoal")
+            UserDefaults.standard.set(exercise, forKey: "cachedExerciseGoal")
+            UserDefaults.standard.set(steps, forKey: "cachedStepGoal")
+            #if DEBUG
+            print("🔥 Settings cache prewarmed")
+            #endif
+        } catch {
         }
     }
 }

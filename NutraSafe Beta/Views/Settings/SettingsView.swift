@@ -592,9 +592,11 @@ struct NutritionGoalsSection: View {
             }
         }
         .onAppear {
-            Task {
-                await loadNutritionGoals()
-            }
+            // Instant render from cached values
+            caloricGoal = cachedCaloricGoal
+            exerciseGoal = cachedExerciseGoal
+            stepGoal = cachedStepGoal
+            Task { await loadNutritionGoals() }
         }
         .sheet(isPresented: $showingMacroManagement) {
             MacroManagementView(
@@ -607,18 +609,28 @@ struct NutritionGoalsSection: View {
         } message: {
             Text(errorMessage)
         }
+        .redacted(reason: isLoading ? .placeholder : [])
     }
 
+    @AppStorage("cachedCaloricGoal") private var cachedCaloricGoal: Int = 2000
+    @AppStorage("cachedExerciseGoal") private var cachedExerciseGoal: Int = 600
+    @AppStorage("cachedStepGoal") private var cachedStepGoal: Int = 10000
+
     private func loadNutritionGoals() async {
+        let start = Date()
         do {
-            // Load user settings
-            let settings = try await firebaseManager.getUserSettings()
-            let loadedMacroGoals = try await firebaseManager.getMacroGoals()
+            async let settingsTask = firebaseManager.getUserSettings()
+            async let macroTask = firebaseManager.getMacroGoals()
+            let settings = try await settingsTask
+            let loadedMacroGoals = try await macroTask
 
             await MainActor.run {
-                caloricGoal = settings.caloricGoal ?? 2000
-                exerciseGoal = settings.exerciseGoal ?? 600
-                stepGoal = settings.stepGoal ?? 10000
+                caloricGoal = settings.caloricGoal ?? cachedCaloricGoal
+                exerciseGoal = settings.exerciseGoal ?? cachedExerciseGoal
+                stepGoal = settings.stepGoal ?? cachedStepGoal
+                cachedCaloricGoal = caloricGoal
+                cachedExerciseGoal = exerciseGoal
+                cachedStepGoal = stepGoal
                 macroGoals = loadedMacroGoals
                 isLoading = false
                 #if DEBUG
@@ -632,11 +644,16 @@ struct NutritionGoalsSection: View {
                 isLoading = false
             }
         }
+        #if DEBUG
+        let elapsed = Date().timeIntervalSince(start)
+        print("⏱️ Nutrition goals loaded in \(String(format: "%.2f", elapsed))s")
+        #endif
     }
 
     private func saveCaloricGoal(_ goal: Int) {
         Task {
             do {
+                cachedCaloricGoal = goal
                 try await firebaseManager.saveUserSettings(height: nil, goalWeight: nil, caloricGoal: goal)
                 #if DEBUG
                 print("✅ Caloric goal updated to \(goal)")
@@ -660,6 +677,7 @@ struct NutritionGoalsSection: View {
     private func saveExerciseGoal(_ goal: Int) {
         Task {
             do {
+                cachedExerciseGoal = goal
                 try await firebaseManager.saveUserSettings(height: nil, goalWeight: nil, exerciseGoal: goal)
                 #if DEBUG
                 print("✅ Exercise goal updated to \(goal)")
@@ -683,6 +701,7 @@ struct NutritionGoalsSection: View {
     private func saveStepGoal(_ goal: Int) {
         Task {
             do {
+                cachedStepGoal = goal
                 try await firebaseManager.saveUserSettings(height: nil, goalWeight: nil, stepGoal: goal)
                 #if DEBUG
                 print("✅ Step goal updated to \(goal)")
@@ -983,13 +1002,17 @@ struct ProgressGoalsSection: View {
         } message: {
             Text(errorMessage)
         }
+        .redacted(reason: isLoading ? .placeholder : [])
     }
 
     private func loadProgressData() async {
         let manager = firebaseManager
+        let start = Date()
         do {
-            let settings = try await manager.getUserSettings()
-            let entries = try await manager.getWeightHistory()
+            async let settingsTask = manager.getUserSettings()
+            async let entriesTask = manager.getWeightHistory()
+            let settings = try await settingsTask
+            let entries = try await entriesTask
 
             await MainActor.run {
                 height = settings.height
@@ -1005,6 +1028,10 @@ struct ProgressGoalsSection: View {
                 isLoading = false
             }
         }
+        #if DEBUG
+        let elapsed = Date().timeIntervalSince(start)
+        print("⏱️ Progress data loaded in \(String(format: "%.2f", elapsed))s")
+        #endif
     }
 
     private func saveHeight() {
@@ -1015,9 +1042,6 @@ struct ProgressGoalsSection: View {
                 #if DEBUG
                 print("✅ Height saved: \(height ?? 0) cm")
                 #endif
-
-                // Reload data to update the UI immediately
-                await loadProgressData()
             } catch {
                 await MainActor.run {
                     errorMessage = "Failed to save height: \(error.localizedDescription)"
@@ -1035,9 +1059,6 @@ struct ProgressGoalsSection: View {
                 #if DEBUG
                 print("✅ Goal weight saved: \(goalWeight ?? 0) kg")
                 #endif
-
-                // Reload data to update the UI immediately
-                await loadProgressData()
             } catch {
                 await MainActor.run {
                     errorMessage = "Failed to save goal weight: \(error.localizedDescription)"
