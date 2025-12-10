@@ -290,6 +290,34 @@ final class AlgoliaSearchManager {
         searchCache.countLimit = 100
     }
 
+    // MARK: - Word Order Flexibility Helpers
+
+    /// Detect if query is a simple 2-word phrase that should be searched with flexible word order
+    private func shouldUseFlexibleWordOrder(_ query: String) -> Bool {
+        let words = query.trimmingCharacters(in: .whitespacesAndNewlines)
+            .components(separatedBy: .whitespaces)
+            .filter { !$0.isEmpty }
+
+        // Only enable for exactly 2 words, each at least 3 characters
+        guard words.count == 2 else { return false }
+        return words.allSatisfy { $0.count >= 3 }
+    }
+
+    /// Generate word order variants for 2-word queries
+    private func generateWordOrderVariants(_ query: String) -> [String] {
+        let words = query.trimmingCharacters(in: .whitespacesAndNewlines)
+            .components(separatedBy: .whitespaces)
+            .filter { !$0.isEmpty }
+
+        guard words.count == 2 else { return [query] }
+
+        let original = words.joined(separator: " ")
+        let reversed = words.reversed().joined(separator: " ")
+
+        // Return both orders (original first for better ranking)
+        return [original, reversed]
+    }
+
     // MARK: - Search Methods
 
     /// Search all food indices directly via Algolia REST API
@@ -330,11 +358,27 @@ final class AlgoliaSearchManager {
         }
         #endif
 
+        // Add word order variants for 2-word queries
+        var allSearchQueries: [String] = []
+        for query in expandedQueries {
+            if shouldUseFlexibleWordOrder(query) {
+                let variants = generateWordOrderVariants(query)
+                allSearchQueries.append(contentsOf: variants)
+                #if DEBUG
+                if variants.count > 1 {
+                    print("🔄 Word order variants for '\(query)': \(variants)")
+                }
+                #endif
+            } else {
+                allSearchQueries.append(query)
+            }
+        }
+
         // Search all indices with all expanded queries in parallel
         var allResults: [FoodSearchResult] = []
         var seenIds = Set<String>()
 
-        for searchQuery in expandedQueries {
+        for searchQuery in allSearchQueries {
             let results = try await searchMultipleIndices(query: searchQuery, hitsPerPage: hitsPerPage)
             for result in results where !seenIds.contains(result.id) {
                 seenIds.insert(result.id)
@@ -528,7 +572,9 @@ final class AlgoliaSearchManager {
             "query": query,
             "hitsPerPage": hitsPerPage,
             "typoTolerance": true,
-            "getRankingInfo": true
+            "getRankingInfo": true,
+            "optionalWords": query,  // Makes word order more flexible for 3+ words
+            "removeWordsIfNoResults": "allOptional"  // Try different word combinations if no results
         ]
 
         request.httpBody = try JSONSerialization.data(withJSONObject: params)
