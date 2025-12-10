@@ -85,5 +85,15 @@ service cloud.firestore {
     match /fasting_settings/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+
+    // Cookie consent collection - allow anonymous writes for GDPR compliance logging
+    match /cookie_consents/{consentId} {
+      // Allow anyone to create consent records (website visitors)
+      allow create: if request.resource.data.keys().hasAll(['choice', 'timestamp', 'userAgent']) &&
+                      request.resource.data.choice in ['accepted', 'rejected'] &&
+                      request.resource.data.timestamp is timestamp;
+      // No read or update access (write-only for privacy)
+      allow read, update, delete: if false;
+    }
   }
 }
