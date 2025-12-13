@@ -115,8 +115,8 @@ class FastingManager {
     ) -> Result<Void, ValidationError> {
         // Plan name is now optional - will be auto-generated if empty
 
-        guard durationHours >= 12 && durationHours <= 168 else {
-            return .failure(ValidationError(reason: "Fast duration must be between 12 and 168 hours"))
+        guard durationHours >= 1 && durationHours <= 168 else {
+            return .failure(ValidationError(reason: "Fast duration must be between 1 and 168 hours"))
         }
         
         guard !daysOfWeek.isEmpty else {
