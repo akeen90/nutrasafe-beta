@@ -1752,11 +1752,11 @@ struct WeekSummaryCard: View {
                     Divider()
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("\(week.completedCount)")
+                        Text("\(week.totalHours, specifier: "%.1f")h")
                             .font(.title3)
                             .fontWeight(.semibold)
                             .foregroundColor(.green)
-                        Text("Completed")
+                        Text("Total Hours")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -1868,13 +1868,18 @@ struct WeekDetailView: View {
                                 .cornerRadius(8)
                         }
 
-                        // Summary Stats
+                        // Summary Stats - Modern Design
                         HStack(spacing: 30) {
                             VStack {
                                 Text("\(week.totalFasts)")
-                                    .font(.title)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.purple)
+                                    .font(.system(size: 36, weight: .bold, design: .rounded))
+                                    .foregroundStyle(
+                                        LinearGradient(
+                                            colors: [.purple, .purple.opacity(0.7)],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
                                 Text("Fasts")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -1882,11 +1887,16 @@ struct WeekDetailView: View {
 
                             if week.totalFasts > 0 {
                                 VStack {
-                                    Text("\(week.completedCount)")
-                                        .font(.title)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.green)
-                                    Text("Completed")
+                                    Text("\(week.totalHours, specifier: "%.1f")h")
+                                        .font(.system(size: 36, weight: .bold, design: .rounded))
+                                        .foregroundStyle(
+                                            LinearGradient(
+                                                colors: [.green, .green.opacity(0.7)],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                        )
+                                    Text("Total")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }
@@ -1894,9 +1904,14 @@ struct WeekDetailView: View {
                                 if week.averageDuration > 0 {
                                     VStack {
                                         Text("\(week.averageDuration, specifier: "%.1f")h")
-                                            .font(.title)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.blue)
+                                            .font(.system(size: 36, weight: .bold, design: .rounded))
+                                            .foregroundStyle(
+                                                LinearGradient(
+                                                    colors: [.blue, .blue.opacity(0.7)],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                )
+                                            )
                                         Text("Average")
                                             .font(.caption)
                                             .foregroundColor(.secondary)
@@ -1908,33 +1923,86 @@ struct WeekDetailView: View {
                         .frame(maxWidth: .infinity)
                         .background(Color.gray.opacity(0.05))
                         .cornerRadius(12)
+                        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
                     }
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
                 }
 
-                // Daily Breakdown Section - One row per day
+                // Daily Breakdown Section - Modern card design showing all fasts
                 Section(header: Text("Daily Breakdown")) {
                     ForEach(weekDays, id: \.date) { day in
-                        let bestSession = bestSessionForDate(day.date)
                         let allSessions = sessionsForDate(day.date)
 
-                        DaySummaryRow(
-                            dayName: day.dayName,
-                            dayDate: day.dayDate,
-                            bestSession: bestSession,
-                            totalSessions: allSessions.count,
-                            onClear: bestSession != nil ? {
-                                Task {
-                                    // Clear all sessions for this day
-                                    for session in allSessions {
-                                        await viewModel.clearSession(session)
+                        VStack(alignment: .leading, spacing: 0) {
+                            // Day header
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(day.dayName)
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(.primary)
+                                    Text(day.dayDate)
+                                        .font(.system(size: 13))
+                                        .foregroundColor(.secondary)
+                                }
+
+                                Spacer()
+
+                                // Day summary badge
+                                if !allSessions.isEmpty {
+                                    let dayTotal = allSessions.reduce(0.0) { sum, session in
+                                        let endTime = session.endTime ?? Date()
+                                        return sum + (endTime.timeIntervalSince(session.startTime) / 3600)
+                                    }
+                                    Text("\(dayTotal, specifier: "%.1f")h total")
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundColor(.purple)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 4)
+                                        .background(Color.purple.opacity(0.1))
+                                        .cornerRadius(8)
+                                }
+                            }
+                            .padding(.bottom, allSessions.isEmpty ? 0 : 12)
+
+                            // Show all fasts for this day
+                            if allSessions.isEmpty {
+                                HStack {
+                                    Image(systemName: "moon.stars.fill")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.secondary.opacity(0.5))
+                                    Text("No fasts")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(.top, 8)
+                            } else {
+                                ForEach(Array(allSessions.enumerated()), id: \.element.id) { index, session in
+                                    ModernFastCard(
+                                        session: session,
+                                        sessionNumber: allSessions.count > 1 ? index + 1 : nil,
+                                        onClear: {
+                                            Task {
+                                                await viewModel.clearSession(session)
+                                            }
+                                        }
+                                    )
+
+                                    if index < allSessions.count - 1 {
+                                        Divider()
+                                            .padding(.vertical, 8)
                                     }
                                 }
-                            } : nil
-                        )
+                            }
+                        }
+                        .padding()
+                        .background(Color(.systemBackground))
+                        .cornerRadius(12)
+                        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
                     }
                 }
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                .listRowBackground(Color.clear)
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Week Details")
@@ -2225,6 +2293,162 @@ struct EditSessionTimesView: View {
                         dismiss()
                     }
                 }
+            }
+        }
+    }
+}
+
+// MARK: - Modern Fast Card
+struct ModernFastCard: View {
+    let session: FastingSession
+    let sessionNumber: Int? // Show "Fast #1", "Fast #2" if multiple fasts per day
+    let onClear: () -> Void
+
+    private var completionPercentage: Double {
+        guard session.targetDurationHours > 0 else { return 0 }
+        return min(1.0, session.actualDurationHours / Double(session.targetDurationHours))
+    }
+
+    private var statusColor: Color {
+        switch session.completionStatus {
+        case .completed, .overGoal: return .green
+        case .earlyEnd: return .orange
+        case .failed: return .red
+        case .skipped: return .gray
+        case .active: return .blue
+        }
+    }
+
+    private var statusIcon: String {
+        switch session.completionStatus {
+        case .completed: return "checkmark.circle.fill"
+        case .overGoal: return "star.circle.fill"
+        case .earlyEnd: return "exclamationmark.triangle.fill"
+        case .failed: return "xmark.circle.fill"
+        case .skipped: return "moon.zzz.fill"
+        case .active: return "clock.fill"
+        }
+    }
+
+    private var statusText: String {
+        switch session.completionStatus {
+        case .completed: return "Completed"
+        case .overGoal: return "Exceeded Goal"
+        case .earlyEnd: return "Ended Early"
+        case .failed: return "Failed"
+        case .skipped: return "Skipped"
+        case .active: return "Active"
+        }
+    }
+
+    private var timeFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter
+    }
+
+    var body: some View {
+        HStack(spacing: 16) {
+            // Circular progress indicator
+            ZStack {
+                Circle()
+                    .stroke(statusColor.opacity(0.2), lineWidth: 4)
+                    .frame(width: 56, height: 56)
+
+                Circle()
+                    .trim(from: 0, to: completionPercentage)
+                    .stroke(
+                        statusColor,
+                        style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                    )
+                    .frame(width: 56, height: 56)
+                    .rotationEffect(.degrees(-90))
+
+                VStack(spacing: 2) {
+                    Text("\(Int(completionPercentage * 100))")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(statusColor)
+                    Text("%")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            // Fast details
+            VStack(alignment: .leading, spacing: 6) {
+                // Session number and status
+                HStack(spacing: 6) {
+                    if let number = sessionNumber {
+                        Text("Fast #\(number)")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.purple)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.purple.opacity(0.15))
+                            .cornerRadius(6)
+                    }
+
+                    Image(systemName: statusIcon)
+                        .font(.system(size: 12))
+                        .foregroundColor(statusColor)
+                    Text(statusText)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(statusColor)
+                }
+
+                // Duration
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text("\(session.actualDurationHours, specifier: "%.1f")")
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+                    Text("hours")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+
+                // Time range
+                HStack(spacing: 4) {
+                    Image(systemName: "clock")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    Text("\(timeFormatter.string(from: session.startTime))")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary.opacity(0.6))
+                    if let endTime = session.endTime {
+                        Text("\(timeFormatter.string(from: endTime))")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("Ongoing")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.blue)
+                    }
+                }
+
+                // Target info
+                if session.targetDurationHours > 0 {
+                    HStack(spacing: 4) {
+                        Image(systemName: "target")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Text("Target: \(session.targetDurationHours)h")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+
+            Spacer()
+        }
+        .contentShape(Rectangle())
+        .contextMenu {
+            Button(role: .destructive) {
+                onClear()
+            } label: {
+                Label("Clear Fast", systemImage: "xmark.circle")
             }
         }
     }

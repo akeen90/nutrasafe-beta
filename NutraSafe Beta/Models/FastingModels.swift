@@ -524,6 +524,23 @@ struct WeekSummary: Identifiable, Equatable {
         return totalDuration / Double(activeDaysByDate.count)
     }
 
+    var totalHours: Double {
+        // Calculate total hours fasted across all days in the week
+        // Sum the actual duration of each individual fast
+        activeDaysByDate.values.reduce(0.0) { totalForAllDays, daySessions in
+            guard !daySessions.isEmpty else { return totalForAllDays }
+
+            // Sum the duration of each fast on this day
+            let dayTotal = daySessions.reduce(0.0) { daySum, session in
+                let endTime = session.endTime ?? Date()
+                let duration = endTime.timeIntervalSince(session.startTime) / 3600
+                return daySum + max(0, duration) // Only count positive durations
+            }
+
+            return totalForAllDays + dayTotal
+        }
+    }
+
     var isCurrentWeek: Bool {
         let now = Date()
         return now >= weekStart && now <= weekEnd
