@@ -4126,6 +4126,7 @@ struct EmailMarketingConsentView: View {
                             BulletPoint(text: "Nutrition tips and health insights")
                             BulletPoint(text: "Exclusive offers and early access")
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(20)
                         .background(Color(.systemGray6))
                         .cornerRadius(12)
@@ -4143,6 +4144,7 @@ struct EmailMarketingConsentView: View {
                                 .font(.system(size: 14))
                                 .foregroundColor(.secondary)
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(20)
                         .background(Color.green.opacity(0.1))
                         .cornerRadius(12)
