@@ -3514,7 +3514,7 @@ struct AddWeightView: View {
                         VStack(spacing: 16) {
                             ProgressView()
                                 .scaleEffect(1.5)
-                            Text("Uploading photos...")
+                            Text(selectedPhotos.isEmpty ? "Saving weight..." : "Uploading photos...")
                                 .font(.headline)
                                 .foregroundColor(.white)
                         }
@@ -3957,7 +3957,7 @@ struct EditWeightView: View {
                         VStack(spacing: 16) {
                             ProgressView()
                                 .scaleEffect(1.5)
-                            Text("Uploading photos...")
+                            Text(selectedPhotos.isEmpty ? "Saving weight..." : "Uploading photos...")
                                 .font(.headline)
                                 .foregroundColor(.white)
                         }
