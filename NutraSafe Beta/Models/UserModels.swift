@@ -22,6 +22,12 @@ struct UserProfile {
     let medicalConditions: [String]
     let dateCreated: Date
     let lastUpdated: Date
+
+    // GDPR-compliant email marketing consent
+    let emailMarketingConsent: Bool
+    let emailMarketingConsentDate: Date?
+    let emailMarketingConsentWithdrawn: Bool
+    let emailMarketingConsentWithdrawnDate: Date?
     
     enum ActivityLevel: String, CaseIterable {
         case sedentary = "sedentary"
@@ -58,7 +64,11 @@ struct UserProfile {
             "allergies": allergies,
             "medicalConditions": medicalConditions,
             "dateCreated": Timestamp(date: dateCreated),
-            "lastUpdated": Timestamp(date: lastUpdated)
+            "lastUpdated": Timestamp(date: lastUpdated),
+            "emailMarketingConsent": emailMarketingConsent,
+            "emailMarketingConsentDate": emailMarketingConsentDate != nil ? Timestamp(date: emailMarketingConsentDate!) : NSNull(),
+            "emailMarketingConsentWithdrawn": emailMarketingConsentWithdrawn,
+            "emailMarketingConsentWithdrawnDate": emailMarketingConsentWithdrawnDate != nil ? Timestamp(date: emailMarketingConsentWithdrawnDate!) : NSNull()
         ]
     }
     
@@ -84,7 +94,13 @@ struct UserProfile {
         let height = data["height"] as? Double
         let weight = data["weight"] as? Double
         let dateOfBirth = (data["dateOfBirth"] as? Timestamp)?.dateValue()
-        
+
+        // Email consent fields with defaults for backwards compatibility
+        let emailMarketingConsent = data["emailMarketingConsent"] as? Bool ?? false
+        let emailMarketingConsentDate = (data["emailMarketingConsentDate"] as? Timestamp)?.dateValue()
+        let emailMarketingConsentWithdrawn = data["emailMarketingConsentWithdrawn"] as? Bool ?? false
+        let emailMarketingConsentWithdrawnDate = (data["emailMarketingConsentWithdrawnDate"] as? Timestamp)?.dateValue()
+
         let dietaryGoals = DietaryGoals(
             dailyCalories: dailyCalories,
             proteinPercentage: proteinPercentage,
@@ -92,7 +108,7 @@ struct UserProfile {
             fatPercentage: fatPercentage,
             waterIntake: waterIntake
         )
-        
+
         return UserProfile(
             userId: userId,
             name: name,
@@ -105,7 +121,11 @@ struct UserProfile {
             allergies: allergies,
             medicalConditions: medicalConditions,
             dateCreated: dateCreatedTimestamp.dateValue(),
-            lastUpdated: lastUpdatedTimestamp.dateValue()
+            lastUpdated: lastUpdatedTimestamp.dateValue(),
+            emailMarketingConsent: emailMarketingConsent,
+            emailMarketingConsentDate: emailMarketingConsentDate,
+            emailMarketingConsentWithdrawn: emailMarketingConsentWithdrawn,
+            emailMarketingConsentWithdrawnDate: emailMarketingConsentWithdrawnDate
         )
     }
 }

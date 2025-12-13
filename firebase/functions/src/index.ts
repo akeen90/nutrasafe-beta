@@ -40,3 +40,6 @@ export { syncVerifiedFoodToAlgolia, syncFoodToAlgolia, syncManualFoodToAlgolia, 
 // Algolia synonyms and query rules
 export { syncSynonymsToAlgolia, getSynonymStats, clearSynonymsFromAlgolia } from './food-synonyms';
 export { configureQueryRules, getQueryRulesStats, clearQueryRules } from './algolia-query-rules';
+
+// Mailchimp email marketing sync
+export { syncEmailConsentToMailchimp, syncAllEmailConsentsToMailchimp } from './mailchimp-sync';

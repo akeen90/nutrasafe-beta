@@ -1772,6 +1772,31 @@ struct AppPreferencesSection: View {
                         showingDataPrivacy = true
                     }
                 )
+
+                Divider()
+                    .padding(.leading, 52)
+
+                // Email Marketing Consent
+                NavigationLink(destination: EmailMarketingConsentView()) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "envelope.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.blue)
+                            .frame(width: 24)
+
+                        Text("Email Preferences")
+                            .font(.system(size: 16))
+                            .foregroundColor(.primary)
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                }
             }
         }
         .sheet(isPresented: $showingThemeSelector) {
@@ -4044,5 +4069,196 @@ struct CitationCard: View {
                 .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
         )
         .padding(.horizontal)
+    }
+}
+
+// MARK: - Email Marketing Consent View
+struct EmailMarketingConsentView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var firebaseManager: FirebaseManager
+
+    @State private var hasConsented = false
+    @State private var isLoading = true
+    @State private var isSaving = false
+    @State private var showingSuccess = false
+    @State private var showingError = false
+    @State private var errorMessage = ""
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 32) {
+                Spacer().frame(height: 20)
+
+                // Email icon
+                ZStack {
+                    Circle()
+                        .fill(Color.blue.opacity(0.15))
+                        .frame(width: 100, height: 100)
+
+                    Image(systemName: "envelope.fill")
+                        .font(.system(size: 50))
+                        .foregroundColor(.blue)
+                }
+
+                VStack(spacing: 16) {
+                    Text("Email Preferences")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundColor(.primary)
+
+                    Text("Manage your email communication settings")
+                        .font(.system(size: 16))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+
+                if isLoading {
+                    ProgressView()
+                        .padding()
+                } else {
+                    VStack(alignment: .leading, spacing: 24) {
+                        // What you'll receive
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("What you'll receive:")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.primary)
+
+                            BulletPoint(text: "New feature announcements")
+                            BulletPoint(text: "Nutrition tips and health insights")
+                            BulletPoint(text: "Exclusive offers and early access")
+                        }
+                        .padding(20)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+
+                        // Privacy info
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Image(systemName: "lock.shield.fill")
+                                    .foregroundColor(.green)
+                                Text("Your Privacy")
+                                    .font(.system(size: 16, weight: .semibold))
+                            }
+
+                            Text("We respect your privacy and will never share your email with third parties. You can unsubscribe at any time from Settings or from any email we send.")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(20)
+                        .background(Color.green.opacity(0.1))
+                        .cornerRadius(12)
+
+                        // Consent toggle
+                        Toggle(isOn: $hasConsented) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Send me emails")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.primary)
+
+                                Text(hasConsented ? "You'll receive updates, tips and offers" : "You'll only receive essential account emails")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .tint(.blue)
+                        .padding(20)
+                        .background(Color(.systemBackground))
+                        .cornerRadius(12)
+                        .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
+
+                        // Save button
+                        Button(action: saveConsent) {
+                            if isSaving {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 50)
+                            } else {
+                                Text("Save Preferences")
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 50)
+                            }
+                        }
+                        .background(
+                            LinearGradient(
+                                colors: [.blue, .purple],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(12)
+                        .disabled(isSaving)
+                    }
+                    .padding(.horizontal, 24)
+                }
+
+                Spacer()
+            }
+        }
+        .navigationTitle("Email Preferences")
+        .navigationBarTitleDisplayMode(.inline)
+        .alert("Success", isPresented: $showingSuccess) {
+            Button("OK") {
+                dismiss()
+            }
+        } message: {
+            Text("Your email preferences have been saved")
+        }
+        .alert("Error", isPresented: $showingError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(errorMessage)
+        }
+        .task {
+            await loadConsent()
+        }
+    }
+
+    private func loadConsent() async {
+        do {
+            hasConsented = try await firebaseManager.getEmailMarketingConsent()
+            isLoading = false
+        } catch {
+            errorMessage = "Failed to load email preferences: \(error.localizedDescription)"
+            showingError = true
+            isLoading = false
+        }
+    }
+
+    private func saveConsent() {
+        isSaving = true
+
+        Task {
+            do {
+                try await firebaseManager.updateEmailMarketingConsent(hasConsented: hasConsented)
+                await MainActor.run {
+                    isSaving = false
+                    showingSuccess = true
+                }
+            } catch {
+                await MainActor.run {
+                    isSaving = false
+                    errorMessage = "Failed to save preferences: \(error.localizedDescription)"
+                    showingError = true
+                }
+            }
+        }
+    }
+}
+
+struct BulletPoint: View {
+    let text: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundColor(.blue)
+                .font(.system(size: 16))
+
+            Text(text)
+                .font(.system(size: 14))
+                .foregroundColor(.primary)
+        }
     }
 }

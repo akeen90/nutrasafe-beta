@@ -449,7 +449,41 @@ class FirebaseManager: ObservableObject {
         guard let data = document.data() else { return nil }
         return UserProfile.fromDictionary(data)
     }
-    
+
+    // MARK: - Email Marketing Consent
+
+    func updateEmailMarketingConsent(hasConsented: Bool) async throws {
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "FirebaseManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "No authenticated user"])
+        }
+
+        let consentData: [String: Any] = [
+            "emailMarketingConsent": hasConsented,
+            "emailMarketingConsentDate": hasConsented ? Timestamp(date: Date()) : NSNull(),
+            "emailMarketingConsentWithdrawn": !hasConsented,
+            "emailMarketingConsentWithdrawnDate": !hasConsented ? Timestamp(date: Date()) : NSNull(),
+            "email": currentUser?.email ?? ""
+        ]
+
+        try await db.collection("users").document(userId).setData(consentData, merge: true)
+
+        #if DEBUG
+        print("✅ Email marketing consent updated: \(hasConsented ? "opted in" : "opted out")")
+        #endif
+    }
+
+    func getEmailMarketingConsent() async throws -> Bool {
+        guard let userId = currentUser?.uid else { return false }
+
+        let document = try await db.collection("users").document(userId).getDocument()
+        guard let data = document.data() else { return false }
+
+        let isWithdrawn = data["emailMarketingConsentWithdrawn"] as? Bool ?? false
+        if isWithdrawn { return false }
+
+        return data["emailMarketingConsent"] as? Bool ?? false
+    }
+
     // MARK: - Food Diary
     
     func saveFoodEntry(_ entry: FoodEntry) async throws {

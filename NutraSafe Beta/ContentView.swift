@@ -1433,6 +1433,7 @@ struct ContentView: View {
     @StateObject private var healthKitManager = HealthKitManager.shared
     @State private var showOnboarding = !OnboardingManager.shared.hasCompletedOnboarding
     @EnvironmentObject var subscriptionManager: SubscriptionManager
+    @EnvironmentObject var firebaseManager: FirebaseManager
     @State private var showingPaywall = false
     @State private var showingAddMenu = false
     @State private var showingDiaryAdd = false
@@ -1611,8 +1612,28 @@ struct ContentView: View {
                 .environmentObject(subscriptionManager)
         }
         .fullScreenCover(isPresented: $showOnboarding) {
-            OnboardingView(onComplete: {
+            OnboardingView(onComplete: { emailMarketingConsent in
                 OnboardingManager.shared.completeOnboarding()
+
+                // Save email consent to Firestore
+                Task {
+                    do {
+                        try await firebaseManager.updateEmailMarketingConsent(hasConsented: emailMarketingConsent)
+                        #if DEBUG
+                        print("✅ Email marketing consent saved to Firestore: \(emailMarketingConsent)")
+                        #endif
+                    } catch {
+                        #if DEBUG
+                        print("❌ Failed to save email consent: \(error)")
+                        #endif
+                        // Save to UserDefaults as fallback
+                        UserDefaults.standard.set(emailMarketingConsent, forKey: "emailMarketingConsent")
+                        if emailMarketingConsent {
+                            UserDefaults.standard.set(Date(), forKey: "emailMarketingConsentDate")
+                        }
+                    }
+                }
+
                 showOnboarding = false
                 // Only show paywall if not already subscribed
                 if !(subscriptionManager.isSubscribed || subscriptionManager.isInTrial || subscriptionManager.isPremiumOverride) {

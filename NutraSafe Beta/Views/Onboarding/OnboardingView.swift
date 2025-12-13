@@ -18,8 +18,9 @@ struct ScrollOffsetPreferenceKey: PreferenceKey {
 struct OnboardingView: View {
     @State private var currentPage = 0
     @State private var hasScrolledToBottom: [Int: Bool] = [0: true] // Welcome page always enabled
-    let totalPages = 11 // 10 content pages + 1 disclaimer
-    let onComplete: () -> Void
+    @State private var emailMarketingConsent = false // GDPR email consent
+    let totalPages = 12 // 10 content pages + 1 disclaimer + 1 email consent
+    let onComplete: (Bool) -> Void // Pass email consent to completion handler
 
     var body: some View {
         ZStack {
@@ -50,8 +51,11 @@ struct OnboardingView: View {
                     case 9: FinalMessagePage(onScrolledToBottom: { hasScrolledToBottom[9] = true })
                     case 10: DisclaimerPage(onAccept: {
                         OnboardingManager.shared.acceptDisclaimer()
+                        withAnimation(.spring(response: 0.3)) { currentPage = 11 }
+                    })
+                    case 11: EmailConsentPage(hasConsented: $emailMarketingConsent, onContinue: {
                         OnboardingManager.shared.completeOnboarding()
-                        onComplete()
+                        onComplete(emailMarketingConsent) // Pass consent state
                     })
                     default: WelcomePage()
                     }
@@ -62,7 +66,7 @@ struct OnboardingView: View {
                     removal: .move(edge: .leading).combined(with: .opacity)
                 ))
 
-                // Navigation buttons (only appear when scrolled to bottom)
+                // Navigation buttons (only appear when scrolled to bottom, not on disclaimer or email consent pages)
                 if currentPage < 10 {
                     let isScrolledToBottom = hasScrolledToBottom[currentPage] ?? false
 
@@ -110,7 +114,7 @@ struct OnboardingView: View {
                     .animation(.easeInOut(duration: 0.3), value: isScrolledToBottom)
                 }
 
-                // Progress indicator
+                // Progress indicator (only for main pages, not disclaimer or email consent)
                 if currentPage < 10 {
                     HStack(spacing: 8) {
                         ForEach(0..<10) { index in

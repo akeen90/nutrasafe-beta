@@ -554,6 +554,128 @@ struct FinalMessagePage: View {
     }
 }
 
+// MARK: - Email Consent Page (GDPR-compliant)
+struct EmailConsentPage: View {
+    @Binding var hasConsented: Bool
+    let onContinue: () -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 32) {
+                Spacer().frame(height: 40)
+
+                // Email icon
+                ZStack {
+                    Circle()
+                        .fill(Color.blue.opacity(0.15))
+                        .frame(width: 120, height: 120)
+
+                    Image(systemName: "envelope.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(.blue)
+                }
+
+                VStack(spacing: 16) {
+                    Text("Stay Updated")
+                        .font(.system(size: 32, weight: .bold))
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.center)
+
+                    Text("Get the latest features and tips")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+
+                // Info about what they'll receive
+                VStack(alignment: .leading, spacing: 16) {
+                    InfoBullet(
+                        icon: "sparkles",
+                        color: .blue,
+                        title: "New features",
+                        description: "Be first to know about app updates and improvements"
+                    )
+
+                    InfoBullet(
+                        icon: "lightbulb.fill",
+                        color: .orange,
+                        title: "Health tips",
+                        description: "Occasional nutrition insights and guidance"
+                    )
+
+                    InfoBullet(
+                        icon: "gift.fill",
+                        color: .purple,
+                        title: "Special offers",
+                        description: "Exclusive deals and early access to premium features"
+                    )
+                }
+                .padding(.horizontal, 24)
+
+                // Privacy info card
+                InfoCard(
+                    icon: "lock.shield.fill",
+                    text: "We respect your privacy. You can unsubscribe anytime from Settings or from any email we send. We'll never share your email with third parties."
+                )
+                .padding(.horizontal, 24)
+
+                // GDPR-compliant consent checkbox (NOT pre-checked)
+                Button(action: { hasConsented.toggle() }) {
+                    HStack(spacing: 16) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(hasConsented ? Color.blue : Color.gray.opacity(0.3), lineWidth: 2)
+                                .frame(width: 32, height: 32)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(hasConsented ? Color.blue : Color.clear)
+                                )
+
+                            if hasConsented {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundColor(.white)
+                            }
+                        }
+
+                        Text("I'd like to receive emails about updates and offers")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.primary)
+                            .multilineTextAlignment(.leading)
+                    }
+                }
+                .padding(20)
+                .background(Color.white)
+                .cornerRadius(16)
+                .shadow(color: Color.black.opacity(0.05), radius: 10, y: 4)
+                .padding(.horizontal, 24)
+
+                // Continue button (always enabled - consent is optional)
+                Button(action: onContinue) {
+                    HStack {
+                        Text(hasConsented ? "Continue with emails" : "Continue without emails")
+                        Image(systemName: "arrow.right.circle.fill")
+                    }
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .background(
+                        LinearGradient(
+                            colors: [.blue, .purple],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(16)
+                    .shadow(color: Color.blue.opacity(0.3), radius: 15, y: 8)
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 40)
+            }
+        }
+    }
+}
+
 // MARK: - Disclaimer Page (Dedicated Final Page)
 struct DisclaimerPage: View {
     @State private var hasAccepted = false
