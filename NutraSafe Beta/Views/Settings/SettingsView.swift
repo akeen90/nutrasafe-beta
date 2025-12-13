@@ -66,7 +66,18 @@ struct SettingsView: View {
                             title: "Restore Purchases",
                             iconColor: .blue,
                             action: {
-                                Task { try? await subscriptionManager.restore() }
+                                Task {
+                                    do {
+                                        try await subscriptionManager.restore()
+                                        successMessage = subscriptionManager.isSubscribed
+                                            ? "Subscription successfully restored!"
+                                            : "No active subscriptions found to restore."
+                                        showingSuccess = true
+                                    } catch {
+                                        errorMessage = "Failed to restore purchases. Please try again."
+                                        showingError = true
+                                    }
+                                }
                             }
                         )
 
