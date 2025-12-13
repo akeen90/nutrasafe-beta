@@ -331,6 +331,9 @@ class FirebaseManager: ObservableObject {
 
     /// Start Apple Sign In flow and return the hashed nonce for the request
     func startAppleSignIn() -> String {
+        // Initialize Firebase services to ensure auth listener is set up
+        initializeFirebaseServices()
+
         let nonce = randomNonceString()
         currentNonce = nonce
         return sha256(nonce)
@@ -338,18 +341,35 @@ class FirebaseManager: ObservableObject {
 
     /// Complete Apple Sign In with the authorization result
     func signInWithApple(authorization: ASAuthorization) async throws {
+        #if DEBUG
+        print("🔐 [FirebaseManager] signInWithApple called")
+        #endif
+
         guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential else {
+            #if DEBUG
+            print("❌ [FirebaseManager] Invalid credential type")
+            #endif
             throw NSError(domain: "AppleSignIn", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid credential type"])
         }
 
         guard let nonce = currentNonce else {
+            #if DEBUG
+            print("❌ [FirebaseManager] Nonce not set - this shouldn't happen!")
+            #endif
             throw NSError(domain: "AppleSignIn", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid state: nonce not set"])
         }
 
         guard let appleIDToken = appleIDCredential.identityToken,
               let idTokenString = String(data: appleIDToken, encoding: .utf8) else {
+            #if DEBUG
+            print("❌ [FirebaseManager] Unable to fetch identity token")
+            #endif
             throw NSError(domain: "AppleSignIn", code: -1, userInfo: [NSLocalizedDescriptionKey: "Unable to fetch identity token"])
         }
+
+        #if DEBUG
+        print("✅ [FirebaseManager] Apple credentials validated, initializing Firebase...")
+        #endif
 
         initializeFirebaseServices()
 
@@ -360,14 +380,25 @@ class FirebaseManager: ObservableObject {
             fullName: appleIDCredential.fullName
         )
 
+        #if DEBUG
+        print("🔑 [FirebaseManager] Attempting Firebase sign in with Apple credential...")
+        #endif
+
         // Sign in with Firebase - automatically links if email matches existing account
         let result = try await auth.signIn(with: credential)
+
+        #if DEBUG
+        print("✅ [FirebaseManager] Firebase sign in successful! User ID: \(result.user.uid)")
+        #endif
 
         // Update display name if provided (Apple only sends name on first sign-in)
         if let fullName = appleIDCredential.fullName,
            let givenName = fullName.givenName {
             let displayName = [givenName, fullName.familyName].compactMap { $0 }.joined(separator: " ")
             if !displayName.isEmpty {
+                #if DEBUG
+                print("📝 [FirebaseManager] Updating display name to: \(displayName)")
+                #endif
                 let changeRequest = result.user.createProfileChangeRequest()
                 changeRequest.displayName = displayName
                 try? await changeRequest.commitChanges()
@@ -377,6 +408,9 @@ class FirebaseManager: ObservableObject {
         await MainActor.run {
             self.currentUser = result.user
             self.isAuthenticated = true
+            #if DEBUG
+            print("✅ [FirebaseManager] Auth state updated - user is now authenticated!")
+            #endif
         }
     }
 

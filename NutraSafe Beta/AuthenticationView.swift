@@ -46,6 +46,7 @@ struct SignInView: View {
     @State private var errorMessage = ""
     @State private var isLoading = false
     @State private var showingPasswordReset = false
+    @StateObject private var appleSignInCoordinator = AppleSignInCoordinator()
 
     var body: some View {
         ZStack {
@@ -161,17 +162,27 @@ struct SignInView: View {
                 .padding(.horizontal, 32)
                 .padding(.vertical, 8)
 
-                // Apple Sign In
-                SignInWithAppleButton(.signIn) { request in
-                    let nonce = firebaseManager.startAppleSignIn()
-                    request.requestedScopes = [.fullName, .email]
-                    request.nonce = nonce
-                } onCompletion: { result in
-                    handleAppleSignIn(result: result)
+                // Apple Sign In - Custom Button with ASAuthorizationController
+                Button(action: {
+                    #if DEBUG
+                    print("🍎 Apple Sign In button tapped!")
+                    #endif
+                    appleSignInCoordinator.startSignInWithApple(firebaseManager: firebaseManager) { result in
+                        handleAppleSignIn(result: result)
+                    }
+                }) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "applelogo")
+                            .font(.system(size: 20, weight: .medium))
+                        Text("Sign in with Apple")
+                            .font(.system(size: 17, weight: .semibold))
+                    }
+                    .foregroundColor(.black)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(Color.white)
+                    .cornerRadius(12)
                 }
-                .signInWithAppleButtonStyle(.white)
-                .frame(height: 50)
-                .cornerRadius(12)
                 .padding(.horizontal, 32)
 
                 // Forgot Password Link
@@ -232,21 +243,33 @@ struct SignInView: View {
         switch result {
         case .success(let authorization):
             isLoading = true
+            #if DEBUG
+            print("✅ Apple authorization received, attempting Firebase sign in...")
+            #endif
             Task {
                 do {
                     try await firebaseManager.signInWithApple(authorization: authorization)
+                    #if DEBUG
+                    print("✅ Successfully signed in with Apple!")
+                    #endif
                 } catch {
+                    #if DEBUG
+                    print("❌ Apple sign-in error: \(error.localizedDescription)")
+                    #endif
                     await MainActor.run {
-                        errorMessage = error.localizedDescription
+                        errorMessage = "Sign in failed: \(error.localizedDescription)"
                         showingError = true
                         isLoading = false
                     }
                 }
             }
         case .failure(let error):
+            #if DEBUG
+            print("❌ Apple authorization failed: \(error.localizedDescription), code: \((error as NSError).code)")
+            #endif
             // Don't show error for user cancellation
             if (error as NSError).code != ASAuthorizationError.canceled.rawValue {
-                errorMessage = error.localizedDescription
+                errorMessage = "Apple Sign In failed: \(error.localizedDescription)"
                 showingError = true
             }
         }
@@ -264,6 +287,7 @@ struct SignUpView: View {
     @State private var showingError = false
     @State private var errorMessage = ""
     @State private var isLoading = false
+    @StateObject private var appleSignInCoordinator = AppleSignInCoordinator()
 
     var body: some View {
         ZStack {
@@ -404,17 +428,27 @@ struct SignUpView: View {
                 .padding(.horizontal, 32)
                 .padding(.vertical, 8)
 
-                // Apple Sign In
-                SignInWithAppleButton(.signUp) { request in
-                    let nonce = firebaseManager.startAppleSignIn()
-                    request.requestedScopes = [.fullName, .email]
-                    request.nonce = nonce
-                } onCompletion: { result in
-                    handleAppleSignIn(result: result)
+                // Apple Sign In - Custom Button with ASAuthorizationController
+                Button(action: {
+                    #if DEBUG
+                    print("🍎 Apple Sign Up button tapped!")
+                    #endif
+                    appleSignInCoordinator.startSignInWithApple(firebaseManager: firebaseManager) { result in
+                        handleAppleSignIn(result: result)
+                    }
+                }) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "applelogo")
+                            .font(.system(size: 20, weight: .medium))
+                        Text("Sign up with Apple")
+                            .font(.system(size: 17, weight: .semibold))
+                    }
+                    .foregroundColor(.black)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(Color.white)
+                    .cornerRadius(12)
                 }
-                .signInWithAppleButtonStyle(.white)
-                .frame(height: 50)
-                .cornerRadius(12)
                 .padding(.horizontal, 32)
 
                 Spacer()
@@ -439,21 +473,33 @@ struct SignUpView: View {
         switch result {
         case .success(let authorization):
             isLoading = true
+            #if DEBUG
+            print("✅ Apple authorization received (Sign Up), attempting Firebase sign in...")
+            #endif
             Task {
                 do {
                     try await firebaseManager.signInWithApple(authorization: authorization)
+                    #if DEBUG
+                    print("✅ Successfully signed up/in with Apple!")
+                    #endif
                 } catch {
+                    #if DEBUG
+                    print("❌ Apple sign-up error: \(error.localizedDescription)")
+                    #endif
                     await MainActor.run {
-                        errorMessage = error.localizedDescription
+                        errorMessage = "Sign up failed: \(error.localizedDescription)"
                         showingError = true
                         isLoading = false
                     }
                 }
             }
         case .failure(let error):
+            #if DEBUG
+            print("❌ Apple authorization failed (Sign Up): \(error.localizedDescription), code: \((error as NSError).code)")
+            #endif
             // Don't show error for user cancellation
             if (error as NSError).code != ASAuthorizationError.canceled.rawValue {
-                errorMessage = error.localizedDescription
+                errorMessage = "Apple Sign Up failed: \(error.localizedDescription)"
                 showingError = true
             }
         }
@@ -864,5 +910,84 @@ struct EmailVerificationView: View {
                 showingError = true
             }
         }
+    }
+}
+
+// MARK: - Apple Sign In Coordinator
+
+/// Coordinator to handle Apple Sign In with ASAuthorizationController
+class AppleSignInCoordinator: NSObject, ObservableObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+
+    private var completionHandler: ((Result<ASAuthorization, Error>) -> Void)?
+    private var currentNonce: String?
+
+    func startSignInWithApple(firebaseManager: FirebaseManager, completion: @escaping (Result<ASAuthorization, Error>) -> Void) {
+        #if DEBUG
+        print("🍎 [Coordinator] Starting Apple Sign In flow...")
+        #endif
+
+        self.completionHandler = completion
+
+        // Generate nonce
+        let nonce = firebaseManager.startAppleSignIn()
+        self.currentNonce = nonce
+
+        #if DEBUG
+        print("🍎 [Coordinator] Nonce generated, creating request...")
+        #endif
+
+        // Create Apple ID request
+        let appleIDProvider = ASAuthorizationAppleIDProvider()
+        let request = appleIDProvider.createRequest()
+        request.requestedScopes = [.fullName, .email]
+        request.nonce = nonce
+
+        // Create authorization controller
+        let authorizationController = ASAuthorizationController(authorizationRequests: [request])
+        authorizationController.delegate = self
+        authorizationController.presentationContextProvider = self
+
+        #if DEBUG
+        print("🍎 [Coordinator] Performing authorization request...")
+        #endif
+
+        // Perform request
+        authorizationController.performRequests()
+    }
+
+    // MARK: - ASAuthorizationControllerDelegate
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        #if DEBUG
+        print("✅ [Coordinator] Authorization completed successfully!")
+        #endif
+        completionHandler?(.success(authorization))
+        completionHandler = nil
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        #if DEBUG
+        print("❌ [Coordinator] Authorization failed with error: \(error.localizedDescription)")
+        #endif
+        completionHandler?(.failure(error))
+        completionHandler = nil
+    }
+
+    // MARK: - ASAuthorizationControllerPresentationContextProviding
+
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        // Return the window to present the authorization UI
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first else {
+            #if DEBUG
+            print("⚠️ [Coordinator] No window found, returning empty window")
+            #endif
+            return UIWindow()
+        }
+
+        #if DEBUG
+        print("✅ [Coordinator] Returning presentation window")
+        #endif
+        return window
     }
 }

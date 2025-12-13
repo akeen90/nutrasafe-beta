@@ -2385,9 +2385,16 @@ struct WeightTrackingView: View {
         .onReceive(NotificationCenter.default.publisher(for: .weightHistoryUpdated)) { notification in
             // Optimistically reflect the saved entry if provided; otherwise reload
             if let entry = notification.userInfo?["entry"] as? WeightEntry {
-                if weightHistory.first?.id != entry.id {
+                // Check if entry already exists (editing existing entry)
+                if let existingIndex = weightHistory.firstIndex(where: { $0.id == entry.id }) {
+                    // Update existing entry
+                    weightHistory[existingIndex] = entry
+                } else {
+                    // Insert new entry at beginning
                     weightHistory.insert(entry, at: 0)
                 }
+                // Update current weight and re-sort by date
+                weightHistory.sort { $0.date > $1.date }
                 currentWeight = entry.weight
             } else {
                 loadWeightHistory()

@@ -181,12 +181,15 @@ final class SubscriptionManager: ObservableObject {
     func restore() async throws {
         print("StoreKit: Starting restore purchases")
 
-        // Note: Removed AppStore.sync() to prevent unnecessary Apple ID prompts
-        // Transaction restoration happens automatically when refreshStatus() is called
-        // StoreKit 2 handles transaction syncing in the background
-
+        // IMPORTANT: We MUST call AppStore.sync() when user explicitly requests restore
+        // This syncs with Apple's servers to fetch existing purchases
+        // Without this, restore won't work after app reinstall or if local data is cleared
         do {
-            // Refresh subscription status directly - this checks for existing transactions
+            print("StoreKit: Syncing with App Store servers...")
+            try await AppStore.sync()
+            print("StoreKit: Sync completed, refreshing subscription status...")
+
+            // Refresh subscription status - this checks for existing transactions
             await refreshEligibility()
             try await refreshStatus()
             await refreshPremiumOverride()

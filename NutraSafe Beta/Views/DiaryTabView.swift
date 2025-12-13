@@ -1089,11 +1089,14 @@ struct CategoricalNutrientTrackingView: View {
         .onReceive(NotificationCenter.default.publisher(for: .foodDiaryUpdated)) { _ in
             // Only reload if we've already done initial load
             guard hasInitiallyLoaded else { return }
-            // CACHE INVALIDATION: Clear cache for changed date
+            // CACHE INVALIDATION: Clear cache for changed date, then reload
             Task {
                 await vm.invalidateCache(for: selectedDate)
+                // Now request data reload after cache is invalidated
+                await MainActor.run {
+                    requestDataLoad(for: selectedWeekStart, reason: "diary-updated-notification")
+                }
             }
-            requestDataLoad(for: selectedWeekStart, reason: "diary-updated-notification")
         }
         .onDisappear {
             // Cancel any in-flight tasks FIRST
