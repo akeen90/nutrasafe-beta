@@ -523,7 +523,14 @@ final class AlgoliaSearchManager {
             else if queryWords.allSatisfy({ queryWord in
                 nameWords.contains { $0.hasPrefix(queryWord) || $0 == queryWord }
             }) {
-                score += 3000
+                // Higher score for all words present
+                score += 4500
+
+                // BONUS: If name has ONLY the query words (e.g., "Egg Boiled" for "boiled egg")
+                // This catches reversed word order matches
+                if nameWords.count == queryWords.count {
+                    score += 2000  // Big bonus for exact word set match
+                }
             }
             // Any query word matches start of name
             else if queryWords.contains(where: { nameLower.hasPrefix($0) }) {
