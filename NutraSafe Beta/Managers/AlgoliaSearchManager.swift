@@ -406,9 +406,11 @@ final class AlgoliaSearchManager {
     /// Re-rank results from synonym-expanded searches, prioritizing original query matches
     private func rankResultsForSynonymSearch(_ results: [FoodSearchResult], originalQuery: String, hitsPerPage: Int) -> [FoodSearchResult] {
         let queryLower = originalQuery.lowercased()
+        let queryWords = Set(queryLower.split(separator: " ").map { String($0) })
 
         let scored = results.map { result -> (result: FoodSearchResult, score: Int) in
             let nameLower = result.name.lowercased()
+            let nameWords = Set(nameLower.split(separator: " ").map { String($0) })
             let brandLower = result.brand?.lowercased() ?? ""
 
             var score = 0
@@ -421,7 +423,18 @@ final class AlgoliaSearchManager {
             else if nameLower.hasPrefix(queryLower) || brandLower.hasPrefix(queryLower) {
                 score += 5000
             }
-            // Name/brand contains original query
+            // All query words appear in name (e.g., "boiled egg" finds "Egg Boiled")
+            else if queryWords.allSatisfy({ queryWord in
+                nameWords.contains { $0.hasPrefix(queryWord) || $0 == queryWord }
+            }) {
+                score += 4500
+
+                // BONUS: If name has ONLY the query words (reversed match)
+                if nameWords.count == queryWords.count {
+                    score += 2000
+                }
+            }
+            // Name/brand contains original query as substring
             else if nameLower.contains(queryLower) || brandLower.contains(queryLower) {
                 score += 3000
             }
