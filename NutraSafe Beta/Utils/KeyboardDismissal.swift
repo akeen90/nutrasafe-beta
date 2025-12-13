@@ -34,3 +34,15 @@ extension View {
         self.modifier(KeyboardDismissModifier())
     }
 }
+
+// MARK: - Global Keyboard Dismissal Helper
+
+/// Programmatically dismiss the keyboard from anywhere
+func dismissKeyboard() {
+    UIApplication.shared.sendAction(
+        #selector(UIResponder.resignFirstResponder),
+        to: nil,
+        from: nil,
+        for: nil
+    )
+}

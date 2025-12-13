@@ -962,6 +962,7 @@ struct ManualFoodDetailEntryView: View {
                         callback(.diary)
                     } else {
                         // Fallback: manually dismiss and switch tabs
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                         dismiss()
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                             selectedTab = .diary
@@ -1139,6 +1140,7 @@ struct ManualFoodDetailEntryView: View {
 
             // Dismiss the sheet after successful save
             await MainActor.run {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 dismiss()
 
                 // Switch to diary tab after a short delay
