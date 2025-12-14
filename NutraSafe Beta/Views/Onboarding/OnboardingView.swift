@@ -142,16 +142,25 @@ struct WelcomePage: View {
             VStack(spacing: 32) {
                 Spacer().frame(height: 40)
 
-                // App icon or logo
-                Image(systemName: "heart.text.square.fill")
-                    .font(.system(size: 80))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [.blue, .purple],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                // App icon
+                if let appIcon = UIImage(named: "AppIcon") {
+                    Image(uiImage: appIcon)
+                        .resizable()
+                        .frame(width: 120, height: 120)
+                        .cornerRadius(26)
+                        .shadow(color: Color.black.opacity(0.2), radius: 20, y: 10)
+                } else {
+                    // Fallback to system icon if AppIcon not found
+                    Image(systemName: "heart.text.square.fill")
+                        .font(.system(size: 80))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.blue, .purple],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
-                    )
+                }
 
                 VStack(spacing: 16) {
                     Text("Welcome to")
@@ -184,7 +193,7 @@ struct WelcomePage: View {
                 }
                 .padding(.horizontal, 32)
 
-                Spacer().frame(height: 80)
+                Spacer().frame(height: 40)
 
                 // Scroll detector - only triggers when user scrolls to bottom
                 GeometryReader { geometry in
