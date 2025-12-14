@@ -145,13 +145,13 @@ struct FirestoreTransactionHelper {
         transform: @escaping ([String: Any]) -> [String: Any],
         db: Firestore
     ) async throws -> [String: Any] {
-        return try await db.runTransaction { (transaction, errorPointer) -> [String: Any] in
+        let result = try await db.runTransaction { (transaction, errorPointer) -> Any? in
             let document: DocumentSnapshot
             do {
                 document = try transaction.getDocument(documentRef)
             } catch {
                 errorPointer?.pointee = error as NSError
-                return [:]
+                return nil
             }
 
             // Get current data or start with empty
@@ -169,8 +169,10 @@ struct FirestoreTransactionHelper {
             // Write back
             transaction.setData(newData, forDocument: documentRef, merge: true)
 
-            return newData
+            return newData as Any
         }
+
+        return result as? [String: Any] ?? [:]
     }
 
     // MARK: - Increment/Decrement Operations
@@ -226,20 +228,20 @@ struct FirestoreTransactionHelper {
         updateData: [String: Any],
         db: Firestore
     ) async throws -> Bool {
-        return try await db.runTransaction { (transaction, errorPointer) -> Bool in
+        let result = try await db.runTransaction { (transaction, errorPointer) -> Any? in
             let document: DocumentSnapshot
             do {
                 document = try transaction.getDocument(documentRef)
             } catch {
                 errorPointer?.pointee = error as NSError
-                return false
+                return false as Any
             }
 
             let currentData = document.data() ?? [:]
 
             // Check condition
             guard condition(currentData) else {
-                return false
+                return false as Any
             }
 
             // Condition met - perform update
@@ -248,8 +250,10 @@ struct FirestoreTransactionHelper {
 
             transaction.setData(dataWithMetadata, forDocument: documentRef, merge: true)
 
-            return true
+            return true as Any
         }
+
+        return result as? Bool ?? false
     }
 }
 

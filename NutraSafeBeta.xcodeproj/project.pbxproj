@@ -232,10 +232,10 @@
 		RECOM456E67696E6546696C65 /* NutrientRecommendationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutrientRecommendationEngine.swift; sourceTree = "<group>"; };
 		RECOM5669657746696C65 /* SmartRecommendationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartRecommendationsView.swift; sourceTree = "<group>"; };
 		SUBS0001FILE /* Managers/SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/SubscriptionManager.swift; sourceTree = "<group>"; };
-		9DE8FF1321AD41AE8218BF92 /* NutritionValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionValidator.swift; sourceTree = "<group>"; };
-		C66F1A0043C040B68C17D123 /* FirestoreTransactionHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirestoreTransactionHelper.swift; sourceTree = "<group>"; };
-		B2E3B509554C438DB764FD12 /* SecureStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureStorage.swift; sourceTree = "<group>"; };
-		18D010044E9A4163897EA548 /* PrivacyLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyLogger.swift; sourceTree = "<group>"; };
+		9DE8FF1321AD41AE8218BF92 /* NutritionValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Utils/NutritionValidator.swift"; sourceTree = SOURCE_ROOT; };
+		C66F1A0043C040B68C17D123 /* FirestoreTransactionHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Utils/FirestoreTransactionHelper.swift"; sourceTree = SOURCE_ROOT; };
+		B2E3B509554C438DB764FD12 /* SecureStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Utils/SecureStorage.swift"; sourceTree = SOURCE_ROOT; };
+		18D010044E9A4163897EA548 /* PrivacyLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Utils/PrivacyLogger.swift"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */

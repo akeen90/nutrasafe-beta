@@ -512,21 +512,25 @@ class FirebaseManager: ObservableObject {
         guard let userId = currentUser?.uid else { return }
 
         // Validate food entry before saving to prevent corrupt data
-        let validatedEntry: FoodEntry
+        // Validate entry before saving
         if ValidationConfig.strictMode {
+            // Strict mode: throw error if validation fails
             try NutritionValidator.validateFoodEntry(entry)
-            validatedEntry = entry
         } else {
-            // Auto-sanitize in non-strict mode
-            validatedEntry = entry.sanitized()
+            // Non-strict mode: log warning but continue
+            do {
+                try NutritionValidator.validateFoodEntry(entry)
+            } catch {
+                print("⚠️ Validation warning for '\(entry.foodName)': \(error.localizedDescription)")
+            }
         }
 
-        let entryData = validatedEntry.toDictionary()
+        let entryData = entry.toDictionary()
 
         // Wrap with retry for network resilience
         try await withRetry {
             try await self.db.collection("users").document(userId)
-                .collection("foodEntries").document(validatedEntry.id).setData(entryData)
+                .collection("foodEntries").document(entry.id).setData(entryData)
         }
 
         // Invalidate cache for this date only (granular invalidation for better performance)
@@ -1306,7 +1310,7 @@ class FirebaseManager: ObservableObject {
         guard let userId = currentUser?.uid else { return }
 
         // Validate exercise entry before saving
-        try NutritionValidator.validateExerciseEntry(calories: entry.caloriesBurned, date: entry.date)
+        try NutritionValidator.validateExerciseEntry(calories: Double(entry.caloriesBurned), date: entry.date)
 
         let entryData = entry.toDictionary()
         try await db.collection("users").document(userId)

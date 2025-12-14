@@ -191,13 +191,8 @@ struct NutritionValidator {
         try validateFiber(entry.fiber ?? 0)
         try validateSodium(entry.sodium ?? 0)
 
-        // Validate serving size if present
-        if let servingSize = entry.servingSizeG {
-            try validateServingSize(servingSize)
-        }
-
-        // Validate quantity
-        try validateQuantity(entry.quantity)
+        // Validate serving size
+        try validateServingSize(entry.servingSize)
 
         // Validate date
         try validateDate(entry.date)
@@ -226,49 +221,6 @@ struct NutritionValidator {
         try validateDate(date)
     }
 
-    // MARK: - Sanitization Helpers
-
-    /// Sanitizes a nutrition value by clamping to valid range
-    /// Useful for auto-correction instead of throwing errors
-    /// - Parameters:
-    ///   - value: Raw value to sanitize
-    ///   - min: Minimum valid value
-    ///   - max: Maximum valid value
-    /// - Returns: Clamped value within valid range
-    static func sanitizeValue(_ value: Double, min: Double = 0, max: Double) -> Double {
-        return Swift.max(min, Swift.min(max, value))
-    }
-
-    /// Sanitizes all macronutrients in a food entry
-    /// - Parameter entry: Food entry to sanitize
-    /// - Returns: New FoodEntry with sanitized values
-    static func sanitizeFoodEntry(_ entry: FoodEntry) -> FoodEntry {
-        var sanitized = entry
-
-        // Sanitize macronutrients
-        sanitized.calories = sanitizeValue(entry.calories, max: 10_000)
-        sanitized.protein = sanitizeValue(entry.protein, max: 500)
-        sanitized.carbohydrates = sanitizeValue(entry.carbohydrates, max: 1_000)
-        sanitized.fat = sanitizeValue(entry.fat, max: 500)
-
-        if let sugar = entry.sugar {
-            sanitized.sugar = sanitizeValue(sugar, max: 500)
-        }
-        if let fiber = entry.fiber {
-            sanitized.fiber = sanitizeValue(fiber, max: 200)
-        }
-        if let sodium = entry.sodium {
-            sanitized.sodium = sanitizeValue(sodium, max: 50_000)
-        }
-        if let servingSize = entry.servingSizeG {
-            sanitized.servingSizeG = sanitizeValue(servingSize, min: 0.1, max: 10_000)
-        }
-
-        // Sanitize quantity
-        sanitized.quantity = sanitizeValue(entry.quantity, min: 0.01, max: 1_000)
-
-        return sanitized
-    }
 }
 
 // MARK: - Validation Mode Preference
@@ -298,11 +250,5 @@ extension FoodEntry {
             }
             return false
         }
-    }
-
-    /// Returns a sanitized version of this food entry
-    /// - Returns: New FoodEntry with all values clamped to valid ranges
-    func sanitized() -> FoodEntry {
-        return NutritionValidator.sanitizeFoodEntry(self)
     }
 }
