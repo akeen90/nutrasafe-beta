@@ -2091,6 +2091,8 @@ private var nutritionFactsSection: some View {
                         }
 
                         await MainActor.run {
+                            // Dismiss keyboard before closing view
+                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                             dismiss()
                             onComplete?(.diary)
                         }
@@ -2116,6 +2118,8 @@ private var nutritionFactsSection: some View {
                     print("FoodDetailView: Successfully added \(diaryEntry.name) to \(selectedMeal) on \(targetDate)")
                     #endif
                     await MainActor.run {
+                        // Dismiss keyboard before closing view
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                         dismiss()
                         onComplete?(.diary)
                     }
