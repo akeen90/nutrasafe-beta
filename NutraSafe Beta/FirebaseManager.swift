@@ -1685,7 +1685,11 @@ class FirebaseManager: ObservableObject {
         let settingsRef = db.collection("users").document(userId)
             .collection("settings").document("preferences")
 
-        try await db.updateWithVersionCheck(documentRef: settingsRef, data: data)
+        try await FirestoreTransactionHelper.updateWithVersionCheck(
+            documentRef: settingsRef,
+            updateData: data,
+            db: db
+        )
         #if DEBUG
         print("✅ User settings saved successfully")
 
