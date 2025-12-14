@@ -171,6 +171,11 @@ struct FoodSearchResultRowEnhanced: View {
     
     var body: some View {
         Button(action: {
+            // Dismiss keyboard BEFORE showing sheet to prevent refocus when sheet dismisses
+            UIApplication.shared.sendAction(
+                #selector(UIResponder.resignFirstResponder),
+                to: nil, from: nil, for: nil
+            )
             showingFoodDetail = true
         }) {
             HStack(spacing: 12) {
