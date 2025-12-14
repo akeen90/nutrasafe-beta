@@ -957,12 +957,14 @@ struct ManualFoodDetailEntryView: View {
                 // Use the onComplete callback to dismiss entire sheet stack and navigate
                 await MainActor.run {
                     isSaving = false
+                    // Always dismiss keyboard first
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+
                     if let callback = onComplete {
                         // Use callback if available (proper dismissal)
                         callback(.diary)
                     } else {
                         // Fallback: manually dismiss and switch tabs
-                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                         dismiss()
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                             selectedTab = .diary
