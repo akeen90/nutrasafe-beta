@@ -35,9 +35,63 @@ struct ViewOffsetKey: PreferenceKey {
     }
 }
 
+// MARK: - Navigation Buttons Component
+struct OnboardingNavigationButtons: View {
+    let currentPage: Int
+    let totalPages: Int
+    let onBack: () -> Void
+    let onContinue: () -> Void
+
+    var body: some View {
+        HStack(spacing: 16) {
+            if currentPage > 0 {
+                Button(action: onBack) {
+                    HStack {
+                        Image(systemName: "chevron.left")
+                        Text("Back")
+                    }
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.primary)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 54)
+                    .background(Color.white)
+                    .cornerRadius(16)
+                    .shadow(color: Color.black.opacity(0.05), radius: 10, y: 4)
+                }
+            }
+
+            Button(action: onContinue) {
+                HStack {
+                    Text(currentPage == 10 ? "Continue to Disclaimer" : "Continue")
+                    Image(systemName: "chevron.right")
+                }
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 54)
+                .background(
+                    LinearGradient(
+                        colors: [Color.blue, Color.blue.opacity(0.8)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .cornerRadius(16)
+                .shadow(color: Color.blue.opacity(0.3), radius: 15, y: 8)
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 20)
+        .padding(.bottom, 10)
+    }
+}
+
 // MARK: - Diary Page with Screenshot
 struct DiaryPage: View {
+    let currentPage: Int
     let onScrolledToBottom: () -> Void
+    let onBack: () -> Void
+    let onContinue: () -> Void
 
     var body: some View {
         ScrollView {
@@ -92,10 +146,15 @@ struct DiaryPage: View {
                 }
                 .padding(.horizontal, 24)
 
-                // Minimal spacing before scroll detector
-                Spacer().frame(height: 10)
+                // Navigation buttons
+                OnboardingNavigationButtons(
+                    currentPage: currentPage,
+                    totalPages: 11,
+                    onBack: onBack,
+                    onContinue: onContinue
+                )
 
-                // Scroll detector - only triggers when user scrolls to bottom
+                // Scroll detector - triggers when navigation buttons are visible
                 ScrollDetector(onScrolledToBottom: onScrolledToBottom)
             }
         }
@@ -105,7 +164,10 @@ struct DiaryPage: View {
 
 // MARK: - Food Detail Page
 struct FoodDetailPage: View {
+    let currentPage: Int
     let onScrolledToBottom: () -> Void
+    let onBack: () -> Void
+    let onContinue: () -> Void
 
     var body: some View {
         ScrollView {
@@ -160,10 +222,15 @@ struct FoodDetailPage: View {
                 }
                 .padding(.horizontal, 24)
 
-                // Minimal spacing before scroll detector
-                Spacer().frame(height: 10)
+                // Navigation buttons
+                OnboardingNavigationButtons(
+                    currentPage: currentPage,
+                    totalPages: 11,
+                    onBack: onBack,
+                    onContinue: onContinue
+                )
 
-                // Scroll detector - only triggers when user scrolls to bottom
+                // Scroll detector - triggers when navigation buttons are visible
                 ScrollDetector(onScrolledToBottom: onScrolledToBottom)
             }
         }
@@ -173,7 +240,10 @@ struct FoodDetailPage: View {
 
 // MARK: - Nutrients Page
 struct NutrientsPage: View {
+    let currentPage: Int
     let onScrolledToBottom: () -> Void
+    let onBack: () -> Void
+    let onContinue: () -> Void
 
     var body: some View {
         ScrollView {
@@ -215,10 +285,15 @@ struct NutrientsPage: View {
                 }
                 .padding(.horizontal, 24)
 
-                // Minimal spacing before scroll detector
-                Spacer().frame(height: 10)
+                // Navigation buttons
+                OnboardingNavigationButtons(
+                    currentPage: currentPage,
+                    totalPages: 11,
+                    onBack: onBack,
+                    onContinue: onContinue
+                )
 
-                // Scroll detector - only triggers when user scrolls to bottom
+                // Scroll detector - triggers when navigation buttons are visible
                 ScrollDetector(onScrolledToBottom: onScrolledToBottom)
             }
         }
@@ -228,7 +303,10 @@ struct NutrientsPage: View {
 
 // MARK: - Reactions Page
 struct ReactionsPage: View {
+    let currentPage: Int
     let onScrolledToBottom: () -> Void
+    let onBack: () -> Void
+    let onContinue: () -> Void
 
     var body: some View {
         ScrollView {
@@ -269,10 +347,15 @@ struct ReactionsPage: View {
                 }
                 .padding(.horizontal, 24)
 
-                // Minimal spacing before scroll detector
-                Spacer().frame(height: 10)
+                // Navigation buttons
+                OnboardingNavigationButtons(
+                    currentPage: currentPage,
+                    totalPages: 11,
+                    onBack: onBack,
+                    onContinue: onContinue
+                )
 
-                // Scroll detector - only triggers when user scrolls to bottom
+                // Scroll detector - triggers when navigation buttons are visible
                 ScrollDetector(onScrolledToBottom: onScrolledToBottom)
             }
         }
@@ -282,7 +365,10 @@ struct ReactionsPage: View {
 
 // MARK: - Patterns Page
 struct PatternsPage: View {
+    let currentPage: Int
     let onScrolledToBottom: () -> Void
+    let onBack: () -> Void
+    let onContinue: () -> Void
 
     var body: some View {
         ScrollView {
@@ -331,10 +417,15 @@ struct PatternsPage: View {
                 }
                 .padding(.horizontal, 24)
 
-                // Minimal spacing before scroll detector
-                Spacer().frame(height: 10)
+                // Navigation buttons
+                OnboardingNavigationButtons(
+                    currentPage: currentPage,
+                    totalPages: 11,
+                    onBack: onBack,
+                    onContinue: onContinue
+                )
 
-                // Scroll detector - only triggers when user scrolls to bottom
+                // Scroll detector - triggers when navigation buttons are visible
                 ScrollDetector(onScrolledToBottom: onScrolledToBottom)
             }
         }
@@ -344,7 +435,10 @@ struct PatternsPage: View {
 
 // MARK: - Fasting Page with Screenshot
 struct FastingPage: View {
+    let currentPage: Int
     let onScrolledToBottom: () -> Void
+    let onBack: () -> Void
+    let onContinue: () -> Void
 
     var body: some View {
         ScrollView {
@@ -385,10 +479,15 @@ struct FastingPage: View {
                 }
                 .padding(.horizontal, 24)
 
-                // Minimal spacing before scroll detector
-                Spacer().frame(height: 10)
+                // Navigation buttons
+                OnboardingNavigationButtons(
+                    currentPage: currentPage,
+                    totalPages: 11,
+                    onBack: onBack,
+                    onContinue: onContinue
+                )
 
-                // Scroll detector - only triggers when user scrolls to bottom
+                // Scroll detector - triggers when navigation buttons are visible
                 ScrollDetector(onScrolledToBottom: onScrolledToBottom)
             }
         }
@@ -398,7 +497,10 @@ struct FastingPage: View {
 
 // MARK: - Progress Page
 struct ProgressPage: View {
+    let currentPage: Int
     let onScrolledToBottom: () -> Void
+    let onBack: () -> Void
+    let onContinue: () -> Void
 
     var body: some View {
         ScrollView {
@@ -447,10 +549,15 @@ struct ProgressPage: View {
                 }
                 .padding(.horizontal, 24)
 
-                // Minimal spacing before scroll detector
-                Spacer().frame(height: 10)
+                // Navigation buttons
+                OnboardingNavigationButtons(
+                    currentPage: currentPage,
+                    totalPages: 11,
+                    onBack: onBack,
+                    onContinue: onContinue
+                )
 
-                // Scroll detector - only triggers when user scrolls to bottom
+                // Scroll detector - triggers when navigation buttons are visible
                 ScrollDetector(onScrolledToBottom: onScrolledToBottom)
             }
         }
@@ -460,7 +567,10 @@ struct ProgressPage: View {
 
 // MARK: - Apple Health Permissions Page
 struct HealthPermissionsPage: View {
+    let currentPage: Int
     let onScrolledToBottom: () -> Void
+    let onBack: () -> Void
+    let onContinue: () -> Void
     @State private var userAction: HealthPermissionAction = .none
     @EnvironmentObject var healthKitManager: HealthKitManager
 
@@ -579,7 +689,13 @@ struct HealthPermissionsPage: View {
                     .padding(.top, 8)
                 }
 
-                Spacer().frame(height: 80)
+                // Navigation buttons
+                OnboardingNavigationButtons(
+                    currentPage: currentPage,
+                    totalPages: 11,
+                    onBack: onBack,
+                    onContinue: onContinue
+                )
 
                 // Invisible scroll detector (auto-triggered if action taken)
                 Color.clear
@@ -597,7 +713,10 @@ struct HealthPermissionsPage: View {
 
 // MARK: - Use By Page
 struct UseByPage: View {
+    let currentPage: Int
     let onScrolledToBottom: () -> Void
+    let onBack: () -> Void
+    let onContinue: () -> Void
 
     var body: some View {
         ScrollView {
@@ -645,10 +764,15 @@ struct UseByPage: View {
                 }
                 .padding(.horizontal, 24)
 
-                // Minimal spacing before scroll detector
-                Spacer().frame(height: 10)
+                // Navigation buttons
+                OnboardingNavigationButtons(
+                    currentPage: currentPage,
+                    totalPages: 11,
+                    onBack: onBack,
+                    onContinue: onContinue
+                )
 
-                // Scroll detector - only triggers when user scrolls to bottom
+                // Scroll detector - triggers when navigation buttons are visible
                 ScrollDetector(onScrolledToBottom: onScrolledToBottom)
             }
         }
@@ -658,7 +782,10 @@ struct UseByPage: View {
 
 // MARK: - Final Message Page
 struct FinalMessagePage: View {
+    let currentPage: Int
     let onScrolledToBottom: () -> Void
+    let onBack: () -> Void
+    let onContinue: () -> Void
 
     var body: some View {
         ScrollView {
@@ -708,7 +835,13 @@ struct FinalMessagePage: View {
                 )
                 .padding(.horizontal, 24)
 
-                Spacer()
+                // Navigation buttons
+                OnboardingNavigationButtons(
+                    currentPage: currentPage,
+                    totalPages: 11,
+                    onBack: onBack,
+                    onContinue: onContinue
+                )
 
                 // Invisible scroll detector
                 Color.clear

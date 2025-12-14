@@ -39,17 +39,72 @@ struct OnboardingView: View {
                 // Page content
                 Group {
                     switch currentPage {
-                    case 0: WelcomePage(onScrolledToBottom: { hasScrolledToBottom[0] = true })
-                    case 1: DiaryPage(onScrolledToBottom: { hasScrolledToBottom[1] = true })
-                    case 2: FoodDetailPage(onScrolledToBottom: { hasScrolledToBottom[2] = true })
-                    case 3: NutrientsPage(onScrolledToBottom: { hasScrolledToBottom[3] = true })
-                    case 4: ReactionsPage(onScrolledToBottom: { hasScrolledToBottom[4] = true })
-                    case 5: PatternsPage(onScrolledToBottom: { hasScrolledToBottom[5] = true })
-                    case 6: FastingPage(onScrolledToBottom: { hasScrolledToBottom[6] = true })
-                    case 7: ProgressPage(onScrolledToBottom: { hasScrolledToBottom[7] = true })
-                    case 8: HealthPermissionsPage(onScrolledToBottom: { hasScrolledToBottom[8] = true })
-                    case 9: UseByPage(onScrolledToBottom: { hasScrolledToBottom[9] = true })
-                    case 10: FinalMessagePage(onScrolledToBottom: { hasScrolledToBottom[10] = true })
+                    case 0: WelcomePage(
+                        currentPage: 0,
+                        onScrolledToBottom: { hasScrolledToBottom[0] = true },
+                        onBack: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } },
+                        onContinue: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }
+                    )
+                    case 1: DiaryPage(
+                        currentPage: 1,
+                        onScrolledToBottom: { hasScrolledToBottom[1] = true },
+                        onBack: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } },
+                        onContinue: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }
+                    )
+                    case 2: FoodDetailPage(
+                        currentPage: 2,
+                        onScrolledToBottom: { hasScrolledToBottom[2] = true },
+                        onBack: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } },
+                        onContinue: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }
+                    )
+                    case 3: NutrientsPage(
+                        currentPage: 3,
+                        onScrolledToBottom: { hasScrolledToBottom[3] = true },
+                        onBack: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } },
+                        onContinue: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }
+                    )
+                    case 4: ReactionsPage(
+                        currentPage: 4,
+                        onScrolledToBottom: { hasScrolledToBottom[4] = true },
+                        onBack: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } },
+                        onContinue: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }
+                    )
+                    case 5: PatternsPage(
+                        currentPage: 5,
+                        onScrolledToBottom: { hasScrolledToBottom[5] = true },
+                        onBack: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } },
+                        onContinue: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }
+                    )
+                    case 6: FastingPage(
+                        currentPage: 6,
+                        onScrolledToBottom: { hasScrolledToBottom[6] = true },
+                        onBack: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } },
+                        onContinue: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }
+                    )
+                    case 7: ProgressPage(
+                        currentPage: 7,
+                        onScrolledToBottom: { hasScrolledToBottom[7] = true },
+                        onBack: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } },
+                        onContinue: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }
+                    )
+                    case 8: HealthPermissionsPage(
+                        currentPage: 8,
+                        onScrolledToBottom: { hasScrolledToBottom[8] = true },
+                        onBack: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } },
+                        onContinue: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }
+                    )
+                    case 9: UseByPage(
+                        currentPage: 9,
+                        onScrolledToBottom: { hasScrolledToBottom[9] = true },
+                        onBack: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } },
+                        onContinue: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }
+                    )
+                    case 10: FinalMessagePage(
+                        currentPage: 10,
+                        onScrolledToBottom: { hasScrolledToBottom[10] = true },
+                        onBack: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } },
+                        onContinue: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }
+                    )
                     case 11: DisclaimerPage(onAccept: {
                         OnboardingManager.shared.acceptDisclaimer()
                         withAnimation(.spring(response: 0.3)) { currentPage = 12 }
@@ -58,7 +113,12 @@ struct OnboardingView: View {
                         OnboardingManager.shared.completeOnboarding()
                         onComplete(emailMarketingConsent) // Pass consent state
                     })
-                    default: WelcomePage(onScrolledToBottom: { hasScrolledToBottom[0] = true })
+                    default: WelcomePage(
+                        currentPage: 0,
+                        onScrolledToBottom: { hasScrolledToBottom[0] = true },
+                        onBack: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } },
+                        onContinue: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }
+                    )
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -66,54 +126,6 @@ struct OnboardingView: View {
                     insertion: .move(edge: .trailing).combined(with: .opacity),
                     removal: .move(edge: .leading).combined(with: .opacity)
                 ))
-
-                // Navigation buttons (only appear when scrolled to bottom, not on disclaimer or email consent pages)
-                if currentPage < 11 {
-                    let isScrolledToBottom = hasScrolledToBottom[currentPage] ?? false
-
-                    HStack(spacing: 16) {
-                        if currentPage > 0 {
-                            Button(action: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } }) {
-                                HStack {
-                                    Image(systemName: "chevron.left")
-                                    Text("Back")
-                                }
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundColor(.primary)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 54)
-                                .background(Color.white)
-                                .cornerRadius(16)
-                                .shadow(color: Color.black.opacity(0.05), radius: 10, y: 4)
-                            }
-                        }
-
-                        Button(action: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }) {
-                            HStack {
-                                Text(currentPage == 10 ? "Continue to Disclaimer" : "Continue")
-                                Image(systemName: "chevron.right")
-                            }
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 54)
-                            .background(
-                                LinearGradient(
-                                    colors: [Color.blue, Color.blue.opacity(0.8)],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                            .cornerRadius(16)
-                            .shadow(color: Color.blue.opacity(0.3), radius: 15, y: 8)
-                        }
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 32)
-                    .layoutPriority(1)
-                    .opacity(isScrolledToBottom ? 1 : 0)
-                    .animation(.easeInOut(duration: 0.3), value: isScrolledToBottom)
-                }
 
                 // Progress indicator (only for main pages, not disclaimer or email consent)
                 if currentPage < 11 {
@@ -135,7 +147,10 @@ struct OnboardingView: View {
 
 // MARK: - Welcome Page
 struct WelcomePage: View {
+    let currentPage: Int
     let onScrolledToBottom: () -> Void
+    let onBack: () -> Void
+    let onContinue: () -> Void
 
     var body: some View {
         ScrollView {
@@ -205,10 +220,15 @@ struct WelcomePage: View {
                 }
                 .padding(.horizontal, 32)
 
-                // Minimal spacing before scroll detector
-                Spacer().frame(height: 10)
+                // Navigation buttons
+                OnboardingNavigationButtons(
+                    currentPage: currentPage,
+                    totalPages: 11,
+                    onBack: onBack,
+                    onContinue: onContinue
+                )
 
-                // Scroll detector - only triggers when user scrolls to bottom
+                // Scroll detector - triggers when navigation buttons are visible
                 GeometryReader { geometry in
                     Color.clear
                         .preference(key: WelcomeScrollOffsetKey.self, value: geometry.frame(in: .named("welcomeScroll")).minY)
