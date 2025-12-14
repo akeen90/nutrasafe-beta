@@ -1649,6 +1649,8 @@ struct ContentView: View {
                     showingDiaryAdd = false
                 },
                 onComplete: { tab in
+                    // Dismiss keyboard before closing fullscreen and switching tabs
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     showingDiaryAdd = false
                     selectedTab = tab
                 }
