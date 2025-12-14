@@ -1456,11 +1456,29 @@ struct ContentView: View {
     // Only the selected tab is visible, but all maintain their loaded data
     @State private var visitedTabs: Set<TabItem> = [.diary] // Diary pre-loaded
 
+    // PERFORMANCE: Pre-render all tabs in background for instant switching
+    private func preloadAllTabsInBackground() {
+        // Wait 1.5 seconds after app launch to avoid impacting startup
+        Task {
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+
+            await MainActor.run {
+                let tabsToPreload = TabItem.allCases.filter { $0 != .add }
+                // Pre-load all tabs except .add (modal)
+                visitedTabs = Set(tabsToPreload)
+            }
+        }
+    }
+
     private var persistentTabViews: some View {
         ZStack {
             ForEach(TabItem.allCases, id: \.self) { tab in
                 if visitedTabs.contains(tab) {
+                    // PERFORMANCE: Use .id() to stabilize view identity and prevent re-creation
+                    // This ensures that once a tab is created, it stays alive and isn't recreated
+                    // on every state change, reducing excessive re-rendering
                     tabContent(for: tab)
+                        .id(tab) // Stable identity prevents view re-creation
                         .opacity(selectedTab == tab ? 1 : 0)
                         .allowsHitTesting(selectedTab == tab)
                         .accessibilityHidden(selectedTab != tab)
@@ -1536,9 +1554,11 @@ struct ContentView: View {
                         .transaction { $0.disablesAnimations = true }
                         .onAppear {
                             visitedTabs.insert(selectedTab)
+                            // PERFORMANCE: Pre-load all tabs in background for instant switching
+                            preloadAllTabsInBackground()
                         }
-                        .onChange(of: selectedTab) { tab in
-                            visitedTabs.insert(tab)
+                        .onChange(of: selectedTab) { oldTab, newTab in
+                            visitedTabs.insert(newTab)
                         }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

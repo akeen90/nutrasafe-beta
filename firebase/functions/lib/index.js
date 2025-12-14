@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.syncManualFoodToAlgolia = exports.syncFoodToAlgolia = exports.syncVerifiedFoodToAlgolia = exports.auditMissingIngredients = exports.findIngredients = exports.parseAdditivesWithAICached = exports.parseAdditivesWithAI = exports.parseMicronutrientsWithAICached = exports.parseMicronutrientsWithAI = exports.notifyIncompleteFood = exports.standardizeIngredients = exports.replaceAllFoods = exports.detectLiveText = exports.testCors = exports.updateCleansedFoodStatus = exports.emergencyCleanCleansedFoods = exports.updateCleansedFood = exports.deleteCleansedFood = exports.exportCleansedFoods = exports.getCleansedFoods = exports.analyzeAndCleanFoods = exports.getAllFoods = exports.getNutrientSuggestions = exports.importGenericFoods = exports.extractIngredientsWithAI = exports.analyzeAdditivesEnhanced = exports.getContextualNutritionScore = exports.getUserAnalytics = exports.deleteUsers = exports.updateUser = exports.addUser = exports.getUsers = exports.getAnalyticsData = exports.getOverviewStats = exports.updateServingSizes = exports.fixExistingFoodsVerification = exports.resetAllFoodsToInitial = exports.resetAdminManualFoods = exports.moveFoodBetweenCollections = exports.deleteVerifiedFoods = exports.updateVerifiedFood = exports.addVerifiedFood = exports.searchFoodsByCollection = exports.getFoodDetails = exports.searchFoodsWeb = exports.fastSearchFoods = exports.searchFoodByBarcode = exports.searchCleansedFoods = exports.searchFoods = exports.addVerifiedFoodComplete = void 0;
-exports.clearQueryRules = exports.getQueryRulesStats = exports.configureQueryRules = exports.clearSynonymsFromAlgolia = exports.getSynonymStats = exports.syncSynonymsToAlgolia = exports.configureAlgoliaIndices = exports.searchFoodsAlgolia = exports.bulkImportFoodsToAlgolia = exports.syncAIManuallyAddedFoodToAlgolia = exports.syncAIEnhancedFoodToAlgolia = exports.syncUserAddedFoodToAlgolia = void 0;
+exports.syncAllEmailConsentsToMailchimp = exports.syncEmailConsentToMailchimp = exports.clearQueryRules = exports.getQueryRulesStats = exports.configureQueryRules = exports.clearSynonymsFromAlgolia = exports.getSynonymStats = exports.syncSynonymsToAlgolia = exports.configureAlgoliaIndices = exports.searchFoodsAlgolia = exports.bulkImportFoodsToAlgolia = exports.syncAIManuallyAddedFoodToAlgolia = exports.syncAIEnhancedFoodToAlgolia = exports.syncUserAddedFoodToAlgolia = void 0;
 const admin = require("firebase-admin");
 // Initialize Firebase Admin
 if (!admin.apps.length) {
@@ -102,4 +102,8 @@ var algolia_query_rules_1 = require("./algolia-query-rules");
 Object.defineProperty(exports, "configureQueryRules", { enumerable: true, get: function () { return algolia_query_rules_1.configureQueryRules; } });
 Object.defineProperty(exports, "getQueryRulesStats", { enumerable: true, get: function () { return algolia_query_rules_1.getQueryRulesStats; } });
 Object.defineProperty(exports, "clearQueryRules", { enumerable: true, get: function () { return algolia_query_rules_1.clearQueryRules; } });
+// Mailchimp email marketing sync
+var mailchimp_sync_1 = require("./mailchimp-sync");
+Object.defineProperty(exports, "syncEmailConsentToMailchimp", { enumerable: true, get: function () { return mailchimp_sync_1.syncEmailConsentToMailchimp; } });
+Object.defineProperty(exports, "syncAllEmailConsentsToMailchimp", { enumerable: true, get: function () { return mailchimp_sync_1.syncAllEmailConsentsToMailchimp; } });
 //# sourceMappingURL=index.js.map

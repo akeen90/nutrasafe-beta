@@ -2878,6 +2878,57 @@ class FirebaseManager: ObservableObject {
             .collection("fastingPlans").document(id).delete()
     }
 
+    /// Clean up corrupted fasting plans that failed to decode
+    /// Uses batch operations for efficient deletion (max 500 per batch)
+    func cleanupCorruptedFastingPlans() async throws -> Int {
+        ensureAuthStateLoaded()
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to cleanup fasting plans"])
+        }
+
+        print("🧹 Starting cleanup of corrupted fasting plans...")
+
+        let snapshot = try await db.collection("users").document(userId)
+            .collection("fastingPlans").getDocuments()
+
+        // Identify corrupted plans
+        var corruptedDocIDs: [String] = []
+        for doc in snapshot.documents {
+            do {
+                _ = try doc.data(as: FastingPlan.self)
+            } catch {
+                corruptedDocIDs.append(doc.documentID)
+            }
+        }
+
+        guard !corruptedDocIDs.isEmpty else {
+            print("✅ No corrupted plans found - database is clean!")
+            return 0
+        }
+
+        print("   Found \(corruptedDocIDs.count) corrupted plans to delete")
+
+        // PERFORMANCE: Use batch operations to delete efficiently
+        // Firestore batch limit is 500 operations
+        let chunkSize = 500
+        for chunkStart in stride(from: 0, to: corruptedDocIDs.count, by: chunkSize) {
+            let chunkEnd = min(chunkStart + chunkSize, corruptedDocIDs.count)
+            let chunk = Array(corruptedDocIDs[chunkStart..<chunkEnd])
+
+            let batch = db.batch()
+            for docID in chunk {
+                let docRef = db.collection("users").document(userId)
+                    .collection("fastingPlans").document(docID)
+                batch.deleteDocument(docRef)
+            }
+            try await batch.commit()
+            print("   ✅ Deleted batch of \(chunk.count) corrupted plans")
+        }
+
+        print("✅ Cleanup complete - deleted \(corruptedDocIDs.count) corrupted plans")
+        return corruptedDocIDs.count
+    }
+
     func saveFastingSession(_ session: FastingSession) async throws -> String {
         print("🔥 FirebaseManager.saveFastingSession() called")
         print("   📋 Session data - userId: '\(session.userId)', planId: '\(session.planId ?? "nil")', target: \(session.targetDurationHours)h")

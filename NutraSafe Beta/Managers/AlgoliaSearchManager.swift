@@ -374,15 +374,30 @@ final class AlgoliaSearchManager {
             }
         }
 
-        // Search all indices with all expanded queries in parallel
+        // PERFORMANCE: Search all queries in parallel instead of sequentially
+        // This reduces search time from (N x 200ms) to ~200ms for N query variants
         var allResults: [FoodSearchResult] = []
         var seenIds = Set<String>()
 
-        for searchQuery in allSearchQueries {
-            let results = try await searchMultipleIndices(query: searchQuery, hitsPerPage: hitsPerPage)
-            for result in results where !seenIds.contains(result.id) {
-                seenIds.insert(result.id)
-                allResults.append(result)
+        await withTaskGroup(of: [FoodSearchResult].self) { group in
+            for searchQuery in allSearchQueries {
+                group.addTask {
+                    do {
+                        return try await self.searchMultipleIndices(query: searchQuery, hitsPerPage: hitsPerPage)
+                    } catch {
+                        #if DEBUG
+                        print("⚠️ Search failed for query '\(searchQuery)': \(error)")
+                        #endif
+                        return []
+                    }
+                }
+            }
+
+            for await results in group {
+                for result in results where !seenIds.contains(result.id) {
+                    seenIds.insert(result.id)
+                    allResults.append(result)
+                }
             }
         }
 

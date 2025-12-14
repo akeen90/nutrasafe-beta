@@ -260,9 +260,20 @@ class FastingViewModel: ObservableObject {
 
     private func loadInitialData() async {
         await loadActivePlan()
-        await loadActiveSession()
-        await loadRecentSessions()
-        await loadAnalytics()
+
+        // PERFORMANCE: Fetch sessions once and share across all functions
+        // This eliminates triple-fetching (getFastingSessions was called 3 times)
+        do {
+            let sessions = try await firebaseManager.getFastingSessions()
+
+            // Pass shared sessions to all loaders to avoid redundant fetches
+            await loadActiveSession(from: sessions)
+            await loadRecentSessions(from: sessions)
+            await loadAnalytics(from: sessions)
+        } catch {
+            self.error = error
+            self.showError = true
+        }
     }
 
     func loadActivePlan() async {
@@ -318,30 +329,48 @@ class FastingViewModel: ObservableObject {
         }
     }
 
-    private func loadActiveSession() async {
+    // PERFORMANCE: Accept optional pre-fetched sessions to avoid redundant network calls
+    private func loadActiveSession(from sessions: [FastingSession]? = nil) async {
         do {
-            let sessions = try await firebaseManager.getFastingSessions()
-            self.activeSession = sessions.prefix(1).first(where: { $0.isActive })
+            let allSessions: [FastingSession]
+            if let providedSessions = sessions {
+                allSessions = providedSessions
+            } else {
+                allSessions = try await firebaseManager.getFastingSessions()
+            }
+            self.activeSession = allSessions.prefix(1).first(where: { $0.isActive })
         } catch {
             self.error = error
             self.showError = true
         }
     }
 
-    private func loadRecentSessions() async {
+    // PERFORMANCE: Accept optional pre-fetched sessions to avoid redundant network calls
+    private func loadRecentSessions(from sessions: [FastingSession]? = nil) async {
         do {
-            let sessions = try await firebaseManager.getFastingSessions()
-            self.recentSessions = Array(sessions.prefix(10))
+            let allSessions: [FastingSession]
+            if let providedSessions = sessions {
+                allSessions = providedSessions
+            } else {
+                allSessions = try await firebaseManager.getFastingSessions()
+            }
+            self.recentSessions = Array(allSessions.prefix(10))
         } catch {
             self.error = error
             self.showError = true
         }
     }
 
-    private func loadAnalytics() async {
+    // PERFORMANCE: Accept optional pre-fetched sessions to avoid redundant network calls
+    private func loadAnalytics(from sessions: [FastingSession]? = nil) async {
         do {
-            let sessions = try await firebaseManager.getFastingSessions()
-            self.analytics = FastingManager.calculateAnalytics(from: Array(sessions.prefix(100)))
+            let allSessions: [FastingSession]
+            if let providedSessions = sessions {
+                allSessions = providedSessions
+            } else {
+                allSessions = try await firebaseManager.getFastingSessions()
+            }
+            self.analytics = FastingManager.calculateAnalytics(from: Array(allSessions.prefix(100)))
         } catch {
             self.error = error
             self.showError = true
