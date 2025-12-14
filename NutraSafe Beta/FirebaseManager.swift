@@ -1681,8 +1681,11 @@ class FirebaseManager: ObservableObject {
             data["stepGoal"] = stepGoal
         }
 
-        try await db.collection("users").document(userId)
-            .collection("settings").document("preferences").setData(data, merge: true)
+        // Use transaction with version check to prevent concurrent update conflicts
+        let settingsRef = db.collection("users").document(userId)
+            .collection("settings").document("preferences")
+
+        try await db.updateWithVersionCheck(documentRef: settingsRef, data: data)
         #if DEBUG
         print("✅ User settings saved successfully")
 
