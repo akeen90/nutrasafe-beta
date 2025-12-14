@@ -17,9 +17,9 @@ struct ScrollOffsetPreferenceKey: PreferenceKey {
 
 struct OnboardingView: View {
     @State private var currentPage = 0
-    @State private var hasScrolledToBottom: [Int: Bool] = [0: true] // Welcome page always enabled
+    @State private var hasScrolledToBottom: [Int: Bool] = [:] // User must scroll to bottom of each page
     @State private var emailMarketingConsent = false // GDPR email consent
-    let totalPages = 12 // 10 content pages + 1 disclaimer + 1 email consent
+    let totalPages = 13 // 11 content pages + 1 disclaimer + 1 email consent
     let onComplete: (Bool) -> Void // Pass email consent to completion handler
 
     var body: some View {
@@ -39,7 +39,7 @@ struct OnboardingView: View {
                 // Page content
                 Group {
                     switch currentPage {
-                    case 0: WelcomePage()
+                    case 0: WelcomePage(onScrolledToBottom: { hasScrolledToBottom[0] = true })
                     case 1: DiaryPage(onScrolledToBottom: { hasScrolledToBottom[1] = true })
                     case 2: FoodDetailPage(onScrolledToBottom: { hasScrolledToBottom[2] = true })
                     case 3: NutrientsPage(onScrolledToBottom: { hasScrolledToBottom[3] = true })
@@ -47,17 +47,18 @@ struct OnboardingView: View {
                     case 5: PatternsPage(onScrolledToBottom: { hasScrolledToBottom[5] = true })
                     case 6: FastingPage(onScrolledToBottom: { hasScrolledToBottom[6] = true })
                     case 7: ProgressPage(onScrolledToBottom: { hasScrolledToBottom[7] = true })
-                    case 8: UseByPage(onScrolledToBottom: { hasScrolledToBottom[8] = true })
-                    case 9: FinalMessagePage(onScrolledToBottom: { hasScrolledToBottom[9] = true })
-                    case 10: DisclaimerPage(onAccept: {
+                    case 8: HealthPermissionsPage(onScrolledToBottom: { hasScrolledToBottom[8] = true })
+                    case 9: UseByPage(onScrolledToBottom: { hasScrolledToBottom[9] = true })
+                    case 10: FinalMessagePage(onScrolledToBottom: { hasScrolledToBottom[10] = true })
+                    case 11: DisclaimerPage(onAccept: {
                         OnboardingManager.shared.acceptDisclaimer()
-                        withAnimation(.spring(response: 0.3)) { currentPage = 11 }
+                        withAnimation(.spring(response: 0.3)) { currentPage = 12 }
                     })
-                    case 11: EmailConsentPage(hasConsented: $emailMarketingConsent, onContinue: {
+                    case 12: EmailConsentPage(hasConsented: $emailMarketingConsent, onContinue: {
                         OnboardingManager.shared.completeOnboarding()
                         onComplete(emailMarketingConsent) // Pass consent state
                     })
-                    default: WelcomePage()
+                    default: WelcomePage(onScrolledToBottom: { hasScrolledToBottom[0] = true })
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -67,7 +68,7 @@ struct OnboardingView: View {
                 ))
 
                 // Navigation buttons (only appear when scrolled to bottom, not on disclaimer or email consent pages)
-                if currentPage < 10 {
+                if currentPage < 11 {
                     let isScrolledToBottom = hasScrolledToBottom[currentPage] ?? false
 
                     HStack(spacing: 16) {
@@ -89,7 +90,7 @@ struct OnboardingView: View {
 
                         Button(action: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }) {
                             HStack {
-                                Text(currentPage == 9 ? "Continue to Disclaimer" : "Continue")
+                                Text(currentPage == 10 ? "Continue to Disclaimer" : "Continue")
                                 Image(systemName: "chevron.right")
                             }
                             .font(.system(size: 17, weight: .semibold))
@@ -115,9 +116,9 @@ struct OnboardingView: View {
                 }
 
                 // Progress indicator (only for main pages, not disclaimer or email consent)
-                if currentPage < 10 {
+                if currentPage < 11 {
                     HStack(spacing: 8) {
-                        ForEach(0..<10) { index in
+                        ForEach(0..<11) { index in
                             Capsule()
                                 .fill(index == currentPage ? Color.blue : Color.gray.opacity(0.3))
                                 .frame(width: index == currentPage ? 24 : 8, height: 8)
@@ -134,6 +135,8 @@ struct OnboardingView: View {
 
 // MARK: - Welcome Page
 struct WelcomePage: View {
+    let onScrolledToBottom: () -> Void
+
     var body: some View {
         ScrollView {
             VStack(spacing: 32) {
@@ -181,9 +184,29 @@ struct WelcomePage: View {
                 }
                 .padding(.horizontal, 32)
 
-                Spacer()
+                Spacer().frame(height: 80)
+
+                // Scroll detector - only triggers when user scrolls to bottom
+                GeometryReader { geometry in
+                    Color.clear
+                        .preference(key: WelcomeScrollOffsetKey.self, value: geometry.frame(in: .named("welcomeScroll")).minY)
+                        .onPreferenceChange(WelcomeScrollOffsetKey.self) { offset in
+                            if offset < UIScreen.main.bounds.height {
+                                onScrolledToBottom()
+                            }
+                        }
+                }
+                .frame(height: 1)
             }
         }
+        .coordinateSpace(name: "welcomeScroll")
+    }
+}
+
+struct WelcomeScrollOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
 

@@ -7,6 +7,34 @@
 
 import SwiftUI
 
+// MARK: - Scroll Detection Helper
+struct ScrollDetector: View {
+    let onScrolledToBottom: () -> Void
+    @State private var hasTriggered = false
+
+    var body: some View {
+        GeometryReader { geometry in
+            Color.clear
+                .preference(key: ViewOffsetKey.self, value: geometry.frame(in: .named("scroll")).minY)
+                .onPreferenceChange(ViewOffsetKey.self) { offset in
+                    // Trigger when this view is visible in the scroll view (offset < screen height)
+                    if offset < UIScreen.main.bounds.height && !hasTriggered {
+                        hasTriggered = true
+                        onScrolledToBottom()
+                    }
+                }
+        }
+        .frame(height: 1)
+    }
+}
+
+struct ViewOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 // MARK: - Diary Page with Screenshot
 struct DiaryPage: View {
     let onScrolledToBottom: () -> Void
@@ -66,12 +94,11 @@ struct DiaryPage: View {
 
                 Spacer().frame(height: 80)
 
-                // Invisible scroll detector
-                Color.clear
-                    .frame(height: 1)
-                    .onAppear { onScrolledToBottom() }
+                // Scroll detector - only triggers when user scrolls to bottom
+                ScrollDetector(onScrolledToBottom: onScrolledToBottom)
             }
         }
+        .coordinateSpace(name: "scroll")
     }
 }
 
@@ -134,12 +161,11 @@ struct FoodDetailPage: View {
 
                 Spacer().frame(height: 80)
 
-                // Invisible scroll detector
-                Color.clear
-                    .frame(height: 1)
-                    .onAppear { onScrolledToBottom() }
+                // Scroll detector - only triggers when user scrolls to bottom
+                ScrollDetector(onScrolledToBottom: onScrolledToBottom)
             }
         }
+        .coordinateSpace(name: "scroll")
     }
 }
 
@@ -189,12 +215,11 @@ struct NutrientsPage: View {
 
                 Spacer().frame(height: 80)
 
-                // Invisible scroll detector
-                Color.clear
-                    .frame(height: 1)
-                    .onAppear { onScrolledToBottom() }
+                // Scroll detector - only triggers when user scrolls to bottom
+                ScrollDetector(onScrolledToBottom: onScrolledToBottom)
             }
         }
+        .coordinateSpace(name: "scroll")
     }
 }
 
@@ -243,12 +268,11 @@ struct ReactionsPage: View {
 
                 Spacer().frame(height: 80)
 
-                // Invisible scroll detector
-                Color.clear
-                    .frame(height: 1)
-                    .onAppear { onScrolledToBottom() }
+                // Scroll detector - only triggers when user scrolls to bottom
+                ScrollDetector(onScrolledToBottom: onScrolledToBottom)
             }
         }
+        .coordinateSpace(name: "scroll")
     }
 }
 
@@ -305,12 +329,11 @@ struct PatternsPage: View {
 
                 Spacer().frame(height: 80)
 
-                // Invisible scroll detector
-                Color.clear
-                    .frame(height: 1)
-                    .onAppear { onScrolledToBottom() }
+                // Scroll detector - only triggers when user scrolls to bottom
+                ScrollDetector(onScrolledToBottom: onScrolledToBottom)
             }
         }
+        .coordinateSpace(name: "scroll")
     }
 }
 
@@ -359,12 +382,11 @@ struct FastingPage: View {
 
                 Spacer().frame(height: 80)
 
-                // Invisible scroll detector
-                Color.clear
-                    .frame(height: 1)
-                    .onAppear { onScrolledToBottom() }
+                // Scroll detector - only triggers when user scrolls to bottom
+                ScrollDetector(onScrolledToBottom: onScrolledToBottom)
             }
         }
+        .coordinateSpace(name: "scroll")
     }
 }
 
@@ -421,10 +443,127 @@ struct ProgressPage: View {
 
                 Spacer().frame(height: 80)
 
-                // Invisible scroll detector
+                // Scroll detector - only triggers when user scrolls to bottom
+                ScrollDetector(onScrolledToBottom: onScrolledToBottom)
+            }
+        }
+        .coordinateSpace(name: "scroll")
+    }
+}
+
+// MARK: - Apple Health Permissions Page
+struct HealthPermissionsPage: View {
+    let onScrolledToBottom: () -> Void
+    @State private var hasRequestedPermissions = false
+    @EnvironmentObject var healthKitManager: HealthKitManager
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                Spacer().frame(height: 20)
+
+                VStack(spacing: 8) {
+                    Text("Apple Health")
+                        .font(.system(size: 36, weight: .bold))
+                        .foregroundColor(.primary)
+
+                    Text("Connect for better tracking")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+
+                // Apple Health icon
+                ZStack {
+                    Circle()
+                        .fill(Color.pink.opacity(0.15))
+                        .frame(width: 120, height: 120)
+
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(.pink)
+                }
+                .padding(.vertical, 20)
+
+                VStack(alignment: .leading, spacing: 16) {
+                    InfoBullet(
+                        icon: "scalemass.fill",
+                        color: .blue,
+                        title: "Sync your weight",
+                        description: "Automatically pull weight data from Apple Health"
+                    )
+
+                    InfoBullet(
+                        icon: "flame.fill",
+                        color: .orange,
+                        title: "Track calories burned",
+                        description: "See exercise calories in your daily nutrition totals"
+                    )
+
+                    InfoBullet(
+                        icon: "arrow.triangle.2.circlepath",
+                        color: .green,
+                        title: "Two-way sync",
+                        description: "Weight you log in NutraSafe can also save to Apple Health"
+                    )
+
+                    InfoCard(
+                        icon: "hand.raised.fill",
+                        text: "You can skip this step and enable Apple Health later in Settings. Permissions are optional and you control what data is shared."
+                    )
+                }
+                .padding(.horizontal, 24)
+
+                // Request permissions button or confirmation
+                if !hasRequestedPermissions {
+                    Button(action: {
+                        Task {
+                            await healthKitManager.requestAuthorization()
+                            hasRequestedPermissions = true
+                            onScrolledToBottom()
+                        }
+                    }) {
+                        HStack {
+                            Image(systemName: "heart.fill")
+                            Text("Connect Apple Health")
+                        }
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 54)
+                        .background(
+                            LinearGradient(
+                                colors: [.pink, .red],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(16)
+                        .shadow(color: Color.pink.opacity(0.3), radius: 15, y: 8)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 8)
+                } else {
+                    HStack(spacing: 12) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(.green)
+                        Text("Permissions requested")
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.top, 8)
+                }
+
+                Spacer().frame(height: 80)
+
+                // Invisible scroll detector (auto-triggered if permissions requested)
                 Color.clear
                     .frame(height: 1)
-                    .onAppear { onScrolledToBottom() }
+                    .onAppear {
+                        if hasRequestedPermissions {
+                            onScrolledToBottom()
+                        }
+                    }
             }
         }
     }
@@ -482,12 +621,11 @@ struct UseByPage: View {
 
                 Spacer().frame(height: 80)
 
-                // Invisible scroll detector
-                Color.clear
-                    .frame(height: 1)
-                    .onAppear { onScrolledToBottom() }
+                // Scroll detector - only triggers when user scrolls to bottom
+                ScrollDetector(onScrolledToBottom: onScrolledToBottom)
             }
         }
+        .coordinateSpace(name: "scroll")
     }
 }
 
@@ -943,33 +1081,25 @@ struct ScreenshotContainer: View {
     let imageName: String
 
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 32)
-                .fill(Color.white)
+        // Try to load image, show placeholder if not found
+        if UIImage(named: imageName) != nil {
+            Image(imageName)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .cornerRadius(28)
                 .shadow(color: Color.black.opacity(0.15), radius: 30, y: 15)
-
-            // Try to load image, show placeholder if not found
-            if UIImage(named: imageName) != nil {
-                Image(imageName)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .cornerRadius(28)
-                    .padding(12)
-            } else {
-                // Placeholder when image not yet added
-                VStack(spacing: 12) {
-                    Image(systemName: "photo")
-                        .font(.system(size: 70))
-                        .foregroundColor(.gray.opacity(0.3))
-                    Text("Add '\(imageName)' to Assets")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(.secondary)
-                }
-                .frame(height: 520)
+        } else {
+            // Placeholder when image not yet added
+            VStack(spacing: 12) {
+                Image(systemName: "photo")
+                    .font(.system(size: 70))
+                    .foregroundColor(.gray.opacity(0.3))
+                Text("Add '\(imageName)' to Assets")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.secondary)
             }
+            .frame(height: 520)
         }
-        .frame(maxWidth: .infinity)
-        .frame(height: 540)
         .padding(.horizontal, 20)
     }
 }
