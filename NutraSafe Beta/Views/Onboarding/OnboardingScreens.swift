@@ -92,7 +92,8 @@ struct DiaryPage: View {
                 }
                 .padding(.horizontal, 24)
 
-                Spacer().frame(height: 40)
+                // Minimal spacing before scroll detector
+                Spacer().frame(height: 10)
 
                 // Scroll detector - only triggers when user scrolls to bottom
                 ScrollDetector(onScrolledToBottom: onScrolledToBottom)
@@ -159,7 +160,8 @@ struct FoodDetailPage: View {
                 }
                 .padding(.horizontal, 24)
 
-                Spacer().frame(height: 40)
+                // Minimal spacing before scroll detector
+                Spacer().frame(height: 10)
 
                 // Scroll detector - only triggers when user scrolls to bottom
                 ScrollDetector(onScrolledToBottom: onScrolledToBottom)
@@ -213,7 +215,8 @@ struct NutrientsPage: View {
                 }
                 .padding(.horizontal, 24)
 
-                Spacer().frame(height: 40)
+                // Minimal spacing before scroll detector
+                Spacer().frame(height: 10)
 
                 // Scroll detector - only triggers when user scrolls to bottom
                 ScrollDetector(onScrolledToBottom: onScrolledToBottom)
@@ -266,7 +269,8 @@ struct ReactionsPage: View {
                 }
                 .padding(.horizontal, 24)
 
-                Spacer().frame(height: 40)
+                // Minimal spacing before scroll detector
+                Spacer().frame(height: 10)
 
                 // Scroll detector - only triggers when user scrolls to bottom
                 ScrollDetector(onScrolledToBottom: onScrolledToBottom)
@@ -327,7 +331,8 @@ struct PatternsPage: View {
                 }
                 .padding(.horizontal, 24)
 
-                Spacer().frame(height: 40)
+                // Minimal spacing before scroll detector
+                Spacer().frame(height: 10)
 
                 // Scroll detector - only triggers when user scrolls to bottom
                 ScrollDetector(onScrolledToBottom: onScrolledToBottom)
@@ -380,7 +385,8 @@ struct FastingPage: View {
                 }
                 .padding(.horizontal, 24)
 
-                Spacer().frame(height: 40)
+                // Minimal spacing before scroll detector
+                Spacer().frame(height: 10)
 
                 // Scroll detector - only triggers when user scrolls to bottom
                 ScrollDetector(onScrolledToBottom: onScrolledToBottom)
@@ -441,7 +447,8 @@ struct ProgressPage: View {
                 }
                 .padding(.horizontal, 24)
 
-                Spacer().frame(height: 40)
+                // Minimal spacing before scroll detector
+                Spacer().frame(height: 10)
 
                 // Scroll detector - only triggers when user scrolls to bottom
                 ScrollDetector(onScrolledToBottom: onScrolledToBottom)
@@ -638,7 +645,8 @@ struct UseByPage: View {
                 }
                 .padding(.horizontal, 24)
 
-                Spacer().frame(height: 40)
+                // Minimal spacing before scroll detector
+                Spacer().frame(height: 10)
 
                 // Scroll detector - only triggers when user scrolls to bottom
                 ScrollDetector(onScrolledToBottom: onScrolledToBottom)

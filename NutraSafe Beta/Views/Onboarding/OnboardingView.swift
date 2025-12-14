@@ -205,7 +205,8 @@ struct WelcomePage: View {
                 }
                 .padding(.horizontal, 32)
 
-                Spacer().frame(height: 40)
+                // Minimal spacing before scroll detector
+                Spacer().frame(height: 10)
 
                 // Scroll detector - only triggers when user scrolls to bottom
                 GeometryReader { geometry in
