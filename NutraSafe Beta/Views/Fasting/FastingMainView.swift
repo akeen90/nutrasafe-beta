@@ -568,7 +568,8 @@ struct PlanDashboardView: View {
                 }
 
                 // Filter out weeks where all fasts have been cleared (averageDuration == 0)
-                let weeks = viewModel.weekSummaries.filter { $0.averageDuration > 0 }.prefix(5)
+                // Show all fasting history, not limited to recent weeks
+                let weeks = viewModel.weekSummaries.filter { $0.averageDuration > 0 }
 
                 if weeks.isEmpty {
                     Text("No fasts recorded yet")
