@@ -1798,6 +1798,8 @@ struct ContentView: View {
                     await MainActor.run {
                         if let uid = FirebaseManager.shared.currentUser?.uid {
                             ReactionManager.shared.preload(reactions, for: uid)
+                            // Start nutrient tracking with user-scoped caching
+                            NutrientTrackingManager.shared.startTracking(for: uid)
                         }
                         FirebaseManager.shared.preloadWeightData(history: weights, height: settings.height, goalWeight: settings.goalWeight)
                     }

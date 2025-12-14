@@ -20,18 +20,139 @@ class NutrientTrackingManager: ObservableObject {
     @Published var dayActivities: [String: DayNutrientActivity] = [:] // Key: "YYYY-MM-DD"
     @Published var isLoading = false
     @Published var lastUpdated: Date?
+    @Published var hasCachedData = false
 
     private let db = Firestore.firestore()
     private var listeners: [ListenerRegistration] = []
+    private var currentUserId: String = "" // User-specific cache isolation
+
+    // Base cache keys (will be appended with userId)
+    private let cacheKey_frequencies = "nutrient_frequencies_cache"
+    private let cacheKey_dayActivities = "day_activities_cache"
+    private let cacheKey_lastUpdated = "nutrient_cache_last_updated"
+
+    // Generate user-scoped cache key
+    private func cacheKey(for baseKey: String) -> String {
+        guard !currentUserId.isEmpty else { return baseKey }
+        return "\(baseKey)_\(currentUserId)"
+    }
 
     private init() {
-        // Initialize with all tracked nutrients
-        for nutrient in NutrientDatabase.allNutrients {
-            nutrientFrequencies[nutrient.id] = NutrientFrequency(
-                nutrientId: nutrient.id,
-                nutrientName: nutrient.displayName
-            )
+        // Cache will be loaded in startTracking() once userId is known
+        // Initialize with empty state
+    }
+
+    // MARK: - Cache Management
+
+    private func loadFromCache() {
+        guard !currentUserId.isEmpty else {
+            #if DEBUG
+            print("⚠️ Cannot load cache: currentUserId not set")
+            #endif
+            return
         }
+
+        // Load last updated date
+        let lastUpdatedKey = cacheKey(for: cacheKey_lastUpdated)
+        if let lastUpdatedTimestamp = UserDefaults.standard.object(forKey: lastUpdatedKey) as? Double {
+            lastUpdated = Date(timeIntervalSince1970: lastUpdatedTimestamp)
+        }
+
+        // Load nutrient frequencies with user-scoped key
+        let frequenciesKey = cacheKey(for: cacheKey_frequencies)
+        if let frequenciesData = UserDefaults.standard.data(forKey: frequenciesKey) {
+            do {
+                let decoder = JSONDecoder()
+                decoder.dateDecodingStrategy = .secondsSince1970
+                let frequencies = try decoder.decode([String: NutrientFrequency].self, from: frequenciesData)
+                nutrientFrequencies = frequencies
+                hasCachedData = !frequencies.isEmpty
+                #if DEBUG
+                print("✅ Loaded \(frequencies.count) nutrient frequencies from cache for user \(currentUserId)")
+                #endif
+            } catch {
+                #if DEBUG
+                print("⚠️ Failed to decode cached nutrient frequencies: \(error)")
+                #endif
+            }
+        }
+
+        // Load day activities with user-scoped key
+        let activitiesKey = cacheKey(for: cacheKey_dayActivities)
+        if let activitiesData = UserDefaults.standard.data(forKey: activitiesKey) {
+            do {
+                let decoder = JSONDecoder()
+                decoder.dateDecodingStrategy = .secondsSince1970
+                let activities = try decoder.decode([String: DayNutrientActivity].self, from: activitiesData)
+                dayActivities = activities
+                #if DEBUG
+                print("✅ Loaded \(activities.count) day activities from cache for user \(currentUserId)")
+                #endif
+            } catch {
+                #if DEBUG
+                print("⚠️ Failed to decode cached day activities: \(error)")
+                #endif
+            }
+        }
+
+        // Initialize with all tracked nutrients if no cache
+        if nutrientFrequencies.isEmpty {
+            for nutrient in NutrientDatabase.allNutrients {
+                nutrientFrequencies[nutrient.id] = NutrientFrequency(
+                    nutrientId: nutrient.id,
+                    nutrientName: nutrient.displayName
+                )
+            }
+        }
+    }
+
+    private func saveToCache() {
+        guard !currentUserId.isEmpty else {
+            #if DEBUG
+            print("⚠️ Cannot save cache: currentUserId not set")
+            #endif
+            return
+        }
+
+        // Save last updated date with user-scoped key
+        let lastUpdatedKey = cacheKey(for: cacheKey_lastUpdated)
+        if let lastUpdated = lastUpdated {
+            UserDefaults.standard.set(lastUpdated.timeIntervalSince1970, forKey: lastUpdatedKey)
+        }
+
+        // Save nutrient frequencies with user-scoped key
+        let frequenciesKey = cacheKey(for: cacheKey_frequencies)
+        do {
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .secondsSince1970
+            let frequenciesData = try encoder.encode(nutrientFrequencies)
+            UserDefaults.standard.set(frequenciesData, forKey: frequenciesKey)
+            #if DEBUG
+            print("💾 Saved \(nutrientFrequencies.count) nutrient frequencies to cache for user \(currentUserId)")
+            #endif
+        } catch {
+            #if DEBUG
+            print("⚠️ Failed to encode nutrient frequencies for caching: \(error)")
+            #endif
+        }
+
+        // Save day activities with user-scoped key
+        let activitiesKey = cacheKey(for: cacheKey_dayActivities)
+        do {
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .secondsSince1970
+            let activitiesData = try encoder.encode(dayActivities)
+            UserDefaults.standard.set(activitiesData, forKey: activitiesKey)
+            #if DEBUG
+            print("💾 Saved \(dayActivities.count) day activities to cache for user \(currentUserId)")
+            #endif
+        } catch {
+            #if DEBUG
+            print("⚠️ Failed to encode day activities for caching: \(error)")
+            #endif
+        }
+
+        hasCachedData = true
     }
 
     // MARK: - User Session
@@ -43,7 +164,16 @@ class NutrientTrackingManager: ObservableObject {
             #endif
             return
         }
-        // DEBUG LOG: print("🚀 Starting nutrient tracking for user: \(userId)")
+
+        #if DEBUG
+        print("🚀 Starting nutrient tracking for user: \(userId)")
+        #endif
+
+        // Set user ID and load their cached data immediately
+        currentUserId = userId
+        loadFromCache()
+
+        // Then refresh from server in background
         Task {
             await loadUserData(userId: userId)
             await performInitialDiaryProcessing(userId: userId)
@@ -54,6 +184,17 @@ class NutrientTrackingManager: ObservableObject {
     func stopTracking() {
         listeners.forEach { $0.remove() }
         listeners.removeAll()
+
+        // Clear memory and reset state
+        nutrientFrequencies.removeAll()
+        dayActivities.removeAll()
+        hasCachedData = false
+        currentUserId = ""
+        lastUpdated = nil
+
+        #if DEBUG
+        print("🛑 Stopped nutrient tracking and cleared cache")
+        #endif
     }
 
     // MARK: - Data Loading
@@ -96,6 +237,9 @@ class NutrientTrackingManager: ObservableObject {
             }
 
             lastUpdated = Date()
+
+            // Save to cache after successful load
+            saveToCache()
 
         } catch {
             #if DEBUG
@@ -435,6 +579,9 @@ class NutrientTrackingManager: ObservableObject {
         await updateMonthlySnapshots(userId: userId)
 
         lastUpdated = Date()
+
+        // Save updated data to cache
+        saveToCache()
     }
 
     private func updateMonthlySnapshots(userId: String) async {
@@ -710,6 +857,9 @@ class NutrientTrackingManager: ObservableObject {
         }
 
         lastUpdated = Date()
+
+        // Save updated data to cache
+        saveToCache()
     }
 
     // MARK: - Helpers

@@ -142,8 +142,14 @@ struct NutrientRingCard: View {
             withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
                 animateGlow = true
             }
-            withAnimation(.spring(response: 1.2, dampingFraction: 0.6).delay(0.1)) {
+            // If we have cached data, show immediately without animation delay
+            // Otherwise animate in
+            if trackingManager.hasCachedData {
                 animateRing = true
+            } else {
+                withAnimation(.spring(response: 1.2, dampingFraction: 0.6).delay(0.1)) {
+                    animateRing = true
+                }
             }
         }
     }
@@ -226,8 +232,14 @@ struct NutrientGridItem: View {
         .padding(.vertical, 10)
         .background(Color(.systemBackground))
         .onAppear {
-            withAnimation(.spring(response: 0.8, dampingFraction: 0.7).delay(0.05)) {
+            // If we have cached data, show immediately without animation
+            // Otherwise animate in
+            if trackingManager.hasCachedData {
                 animateRing = true
+            } else {
+                withAnimation(.spring(response: 0.8, dampingFraction: 0.7).delay(0.05)) {
+                    animateRing = true
+                }
             }
         }
     }

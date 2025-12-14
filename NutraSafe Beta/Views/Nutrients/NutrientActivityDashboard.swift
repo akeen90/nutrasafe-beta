@@ -33,6 +33,7 @@ struct NutrientActivityDashboard: View {
 
     var body: some View {
         VStack(spacing: 24) {
+            // Show content immediately - cached data should be available
             // Header
             headerSection
 
@@ -75,19 +76,29 @@ struct NutrientActivityDashboard: View {
         }
         .onAppear {
         // DEBUG LOG: print("🎯 NutrientActivityDashboard appeared")
-            // Only process once on initial load
+            // Cached data is already loaded by NutrientTrackingManager, display it immediately
+            // Only process fresh data in background to update cache
             if !hasProcessedInitialData {
-                processCurrentDiaryData()
                 hasProcessedInitialData = true
+
+                // If we have cached data, just refresh in background after a delay
+                // If no cached data, process immediately
+                if trackingManager.hasCachedData {
+                    // Background refresh - don't block UI
+                    Task {
+                        try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds delay
+                        processCurrentDiaryData()
+                    }
+                } else {
+                    // No cache, need to process now
+                    processCurrentDiaryData()
+                }
             }
         }
         .onChange(of: diaryDataManager.dataReloadTrigger) { _ in
         // DEBUG LOG: print("🔄 Diary data changed, reprocessing nutrients...")
-            // Only reprocess if we've already done initial load
-            // This prevents duplicate processing on first appearance
-            if hasProcessedInitialData {
-                processCurrentDiaryData()
-            }
+            // Reprocess when diary data changes
+            processCurrentDiaryData()
         }
     }
 
