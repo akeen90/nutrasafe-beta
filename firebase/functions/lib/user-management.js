@@ -18,21 +18,38 @@ const admin = require("firebase-admin");
 if (!admin.apps.length) {
     admin.initializeApp();
 }
-// Get all users with pagination
-exports.getUsers = functions.https.onRequest(async (req, res) => {
-    // Set CORS headers
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    if (req.method === 'OPTIONS') {
-        res.status(200).send();
-        return;
+/**
+ * Helper function to check if a user is an admin
+ * Admins have write access to food collections and can manage users
+ */
+async function isAdmin(uid) {
+    const db = admin.firestore();
+    const adminDoc = await db.collection('admins').doc(uid).get();
+    return adminDoc.exists;
+}
+/**
+ * Helper function to verify admin access for sensitive operations
+ * Throws an error if user is not authenticated or not an admin
+ */
+async function requireAdmin(context) {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated to access this function');
     }
+    const userIsAdmin = await isAdmin(context.auth.uid);
+    if (!userIsAdmin) {
+        throw new functions.https.HttpsError('permission-denied', 'Admin access required. User must be in /admins collection.');
+    }
+}
+// Get all users with pagination (ADMIN ONLY)
+exports.getUsers = functions.https.onCall(async (data, context) => {
+    var _a;
+    // Verify admin access
+    await requireAdmin(context);
     try {
-        console.log('Getting users list...');
+        console.log(`Admin ${(_a = context.auth) === null || _a === void 0 ? void 0 : _a.uid} getting users list...`);
         const db = admin.firestore();
-        const limit = parseInt(req.query.limit) || 50;
-        const offset = parseInt(req.query.offset) || 0;
+        const limit = data.limit || 50;
+        const offset = data.offset || 0;
         // Get users from Firestore
         const usersSnapshot = await db.collection('users')
             .orderBy('createdAt', 'desc')
@@ -46,35 +63,29 @@ exports.getUsers = functions.https.onRequest(async (req, res) => {
             // Convert Firestore timestamps to ISO strings
             createdAt: doc.data().createdAt ? doc.data().createdAt.toDate().toISOString() : null, lastLogin: doc.data().lastLogin ? doc.data().lastLogin.toDate().toISOString() : null, lastActivity: doc.data().lastActivity ? doc.data().lastActivity.toDate().toISOString() : null })));
         console.log(`Found ${users.length} users (${totalUsers} total)`);
-        res.json({
+        return {
             success: true,
             users,
             totalUsers,
             hasMore: offset + users.length < totalUsers
-        });
+        };
     }
     catch (error) {
         console.error('Error getting users:', error);
-        res.status(500).json({ error: 'Failed to get users' });
+        throw new functions.https.HttpsError('internal', 'Failed to get users');
     }
 });
-// Add new user
-exports.addUser = functions.https.onRequest(async (req, res) => {
-    // Set CORS headers
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    if (req.method === 'OPTIONS') {
-        res.status(200).send();
-        return;
-    }
+// Add new user (ADMIN ONLY)
+exports.addUser = functions.https.onCall(async (data, context) => {
+    var _a;
+    // Verify admin access
+    await requireAdmin(context);
     try {
-        const { email, displayName, phoneNumber, role = 'user', allergens = [], preferences = {} } = req.body;
+        const { email, displayName, phoneNumber, role = 'user', allergens = [], preferences = {} } = data;
         if (!email) {
-            res.status(400).json({ error: 'Email is required' });
-            return;
+            throw new functions.https.HttpsError('invalid-argument', 'Email is required');
         }
-        console.log(`Adding new user: ${email}`);
+        console.log(`Admin ${(_a = context.auth) === null || _a === void 0 ? void 0 : _a.uid} adding new user: ${email}`);
         const db = admin.firestore();
         const userRef = db.collection('users').doc();
         const userData = {
@@ -95,68 +106,56 @@ exports.addUser = functions.https.onRequest(async (req, res) => {
             reactionsLogged: 0
         };
         await userRef.set(userData);
-        res.json({
+        return {
             success: true,
             message: 'User added successfully',
             userId: userRef.id,
             user: Object.assign(Object.assign({ id: userRef.id }, userData), { createdAt: new Date().toISOString() })
-        });
+        };
     }
     catch (error) {
         console.error('Error adding user:', error);
-        res.status(500).json({ error: 'Failed to add user' });
+        throw new functions.https.HttpsError('internal', 'Failed to add user');
     }
 });
-// Update user
-exports.updateUser = functions.https.onRequest(async (req, res) => {
-    // Set CORS headers
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    if (req.method === 'OPTIONS') {
-        res.status(200).send();
-        return;
-    }
+// Update user (ADMIN ONLY)
+exports.updateUser = functions.https.onCall(async (data, context) => {
+    var _a;
+    // Verify admin access
+    await requireAdmin(context);
     try {
-        const _a = req.body, { userId } = _a, updateData = __rest(_a, ["userId"]);
+        const { userId } = data, updateData = __rest(data, ["userId"]);
         if (!userId) {
-            res.status(400).json({ error: 'User ID is required' });
-            return;
+            throw new functions.https.HttpsError('invalid-argument', 'User ID is required');
         }
-        console.log(`Updating user: ${userId}`);
+        console.log(`Admin ${(_a = context.auth) === null || _a === void 0 ? void 0 : _a.uid} updating user: ${userId}`);
         const db = admin.firestore();
         const userRef = db.collection('users').doc(userId);
         // Remove fields that shouldn't be updated directly
         const { createdAt } = updateData, safeUpdateData = __rest(updateData, ["createdAt"]);
         await userRef.update(Object.assign(Object.assign({}, safeUpdateData), { updatedAt: admin.firestore.FieldValue.serverTimestamp() }));
-        res.json({
+        return {
             success: true,
             message: 'User updated successfully',
             userId
-        });
+        };
     }
     catch (error) {
         console.error('Error updating user:', error);
-        res.status(500).json({ error: 'Failed to update user' });
+        throw new functions.https.HttpsError('internal', 'Failed to update user');
     }
 });
-// Delete users (batch operation)
-exports.deleteUsers = functions.https.onRequest(async (req, res) => {
-    // Set CORS headers
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    if (req.method === 'OPTIONS') {
-        res.status(200).send();
-        return;
-    }
+// Delete users (batch operation) (ADMIN ONLY)
+exports.deleteUsers = functions.https.onCall(async (data, context) => {
+    var _a;
+    // Verify admin access
+    await requireAdmin(context);
     try {
-        const { userIds } = req.body;
+        const { userIds } = data;
         if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
-            res.status(400).json({ error: 'User IDs array is required' });
-            return;
+            throw new functions.https.HttpsError('invalid-argument', 'User IDs array is required');
         }
-        console.log(`Deleting users: ${userIds.join(', ')}`);
+        console.log(`Admin ${(_a = context.auth) === null || _a === void 0 ? void 0 : _a.uid} deleting users: ${userIds.join(', ')}`);
         const db = admin.firestore();
         const batch = db.batch();
         for (const userId of userIds) {
@@ -164,29 +163,24 @@ exports.deleteUsers = functions.https.onRequest(async (req, res) => {
             batch.delete(userRef);
         }
         await batch.commit();
-        res.json({
+        return {
             success: true,
             message: `Successfully deleted ${userIds.length} user(s)`,
             deletedIds: userIds
-        });
+        };
     }
     catch (error) {
         console.error('Error deleting users:', error);
-        res.status(500).json({ error: 'Failed to delete users' });
+        throw new functions.https.HttpsError('internal', 'Failed to delete users');
     }
 });
-// Get user analytics
-exports.getUserAnalytics = functions.https.onRequest(async (req, res) => {
-    // Set CORS headers
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    if (req.method === 'OPTIONS') {
-        res.status(200).send();
-        return;
-    }
+// Get user analytics (ADMIN ONLY)
+exports.getUserAnalytics = functions.https.onCall(async (data, context) => {
+    var _a;
+    // Verify admin access
+    await requireAdmin(context);
     try {
-        console.log('Getting user analytics...');
+        console.log(`Admin ${(_a = context.auth) === null || _a === void 0 ? void 0 : _a.uid} getting user analytics...`);
         const db = admin.firestore();
         // Get all users for analysis
         const usersSnapshot = await db.collection('users').get();
@@ -264,14 +258,14 @@ exports.getUserAnalytics = functions.https.onRequest(async (req, res) => {
             generatedAt: new Date().toISOString()
         };
         console.log(`User analytics generated - Total: ${totalUsers}, Active: ${activeUsers}`);
-        res.json({
+        return {
             success: true,
             analytics
-        });
+        };
     }
     catch (error) {
         console.error('Error getting user analytics:', error);
-        res.status(500).json({ error: 'Failed to get user analytics' });
+        throw new functions.https.HttpsError('internal', 'Failed to get user analytics');
     }
 });
 //# sourceMappingURL=user-management.js.map

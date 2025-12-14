@@ -134,8 +134,8 @@ class FirebaseManager: ObservableObject {
                 let delay = pow(2.0, Double(attempt))
 
                 #if DEBUG
-                print("⚠️ [Retry \(attempt + 1)/\(maxAttempts)] Network error: \(error.localizedDescription)")
-                print("   Retrying in \(delay)s...")
+                logWarning("[Retry \(attempt + 1)/\(maxAttempts)] Network error: \(error.localizedDescription)", subsystem: .firebase)
+                logDebug("Retrying in \(delay)s...", subsystem: .firebase)
                 #endif
 
                 try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
@@ -195,11 +195,9 @@ class FirebaseManager: ObservableObject {
         UserDefaults.standard.removeObject(forKey: "goalWeight")
         UserDefaults.standard.removeObject(forKey: "userHeight")
         UserDefaults.standard.removeObject(forKey: "weightHistory")
-        #if DEBUG
-        print("🧹 Cleared local UserDefaults data on sign out")
+        logInfo("Cleared local UserDefaults data on sign out", subsystem: .app, category: .security)
 
         // Clear ReactionManager data to prevent leakage between accounts
-        #endif
         Task { @MainActor in
             ReactionManager.shared.clearData()
         }
@@ -217,7 +215,8 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to delete data"])
         }
 
-        // DEBUG LOG: print("🗑️ Starting to delete all user data for user: \(userId)")
+        // Log data deletion (user ID is automatically redacted in production logs)
+        PrivacyLogger.securityEvent("User data deletion initiated", severity: .info)
 
         // Delete all subcollections
         let collections = [
@@ -241,10 +240,7 @@ class FirebaseManager: ObservableObject {
                 .collection(collection).getDocuments()
 
             let count = snapshot.documents.count
-            #if DEBUG
-            print("   Deleting \(count) documents from \(collection)...")
-
-            #endif
+            logDebug("Deleting \(count) documents from \(collection)", subsystem: .firebase)
 
             // PERFORMANCE: Use batch operations instead of sequential deletes
             // Firestore batch limit is 500 operations, so chunk if needed
@@ -263,16 +259,12 @@ class FirebaseManager: ObservableObject {
             }
 
             totalDeleted += count
-            #if DEBUG
-            print("   ✅ Successfully deleted \(count) documents from \(collection)")
-            #endif
+            logDebug("Successfully deleted \(count) documents from \(collection)", subsystem: .firebase)
         }
 
-        #if DEBUG
-        print("✅ All user data deleted successfully - Total: \(totalDeleted) documents deleted")
+        logInfo("All user data deleted successfully - Total: \(totalDeleted) documents", subsystem: .firebase, category: .security)
 
         // Clear caches and notify observers so the UI refreshes immediately
-        #endif
         // Invalidate internal caches - thread-safe, also cancel in-flight requests
         cacheQueue.sync {
             self.foodEntriesCache.removeAll()
@@ -363,35 +355,25 @@ class FirebaseManager: ObservableObject {
 
     /// Complete Apple Sign In with the authorization result
     func signInWithApple(authorization: ASAuthorization) async throws {
-        #if DEBUG
-        print("🔐 [FirebaseManager] signInWithApple called")
-        #endif
+        logDebug("signInWithApple called", subsystem: .auth, category: .authentication)
 
         guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential else {
-            #if DEBUG
-            print("❌ [FirebaseManager] Invalid credential type")
-            #endif
+            logError("Invalid credential type", subsystem: .auth, category: .authentication)
             throw NSError(domain: "AppleSignIn", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid credential type"])
         }
 
         guard let nonce = currentNonce else {
-            #if DEBUG
-            print("❌ [FirebaseManager] Nonce not set - this shouldn't happen!")
-            #endif
+            logError("Nonce not set - invalid state", subsystem: .auth, category: .authentication)
             throw NSError(domain: "AppleSignIn", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid state: nonce not set"])
         }
 
         guard let appleIDToken = appleIDCredential.identityToken,
               let idTokenString = String(data: appleIDToken, encoding: .utf8) else {
-            #if DEBUG
-            print("❌ [FirebaseManager] Unable to fetch identity token")
-            #endif
+            logError("Unable to fetch identity token", subsystem: .auth, category: .authentication)
             throw NSError(domain: "AppleSignIn", code: -1, userInfo: [NSLocalizedDescriptionKey: "Unable to fetch identity token"])
         }
 
-        #if DEBUG
-        print("✅ [FirebaseManager] Apple credentials validated, initializing Firebase...")
-        #endif
+        logDebug("Apple credentials validated, initializing Firebase", subsystem: .auth, category: .authentication)
 
         initializeFirebaseServices()
 
@@ -402,25 +384,20 @@ class FirebaseManager: ObservableObject {
             fullName: appleIDCredential.fullName
         )
 
-        #if DEBUG
-        print("🔑 [FirebaseManager] Attempting Firebase sign in with Apple credential...")
-        #endif
+        logDebug("Attempting Firebase sign in with Apple credential", subsystem: .auth, category: .authentication)
 
         // Sign in with Firebase - automatically links if email matches existing account
         let result = try await auth.signIn(with: credential)
 
-        #if DEBUG
-        print("✅ [FirebaseManager] Firebase sign in successful! User ID: \(result.user.uid)")
-        #endif
+        // Use privacy-aware logging for user ID (automatically redacted in production)
+        PrivacyLogger.authEvent("Apple Sign In Success", userId: result.user.uid, email: result.user.email)
 
         // Update display name if provided (Apple only sends name on first sign-in)
         if let fullName = appleIDCredential.fullName,
            let givenName = fullName.givenName {
             let displayName = [givenName, fullName.familyName].compactMap { $0 }.joined(separator: " ")
             if !displayName.isEmpty {
-                #if DEBUG
-                print("📝 [FirebaseManager] Updating display name to: \(displayName)")
-                #endif
+                PrivacyLogger.debugPrivate("Updating display name", privateData: displayName, subsystem: .auth, category: .authentication)
                 let changeRequest = result.user.createProfileChangeRequest()
                 changeRequest.displayName = displayName
                 try? await changeRequest.commitChanges()
@@ -430,9 +407,7 @@ class FirebaseManager: ObservableObject {
         await MainActor.run {
             self.currentUser = result.user
             self.isAuthenticated = true
-            #if DEBUG
-            print("✅ [FirebaseManager] Auth state updated - user is now authenticated!")
-            #endif
+            logInfo("Auth state updated - user authenticated", subsystem: .auth, category: .authentication)
         }
     }
 
