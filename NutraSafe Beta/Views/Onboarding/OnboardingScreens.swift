@@ -515,30 +515,44 @@ struct HealthPermissionsPage: View {
 
                 // Request permissions button or confirmation
                 if !hasRequestedPermissions {
-                    Button(action: {
-                        Task {
-                            await healthKitManager.requestAuthorization()
+                    VStack(spacing: 12) {
+                        Button(action: {
+                            Task {
+                                await healthKitManager.requestAuthorization()
+                                hasRequestedPermissions = true
+                                onScrolledToBottom()
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: "heart.fill")
+                                Text("Connect Apple Health")
+                            }
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 54)
+                            .background(
+                                LinearGradient(
+                                    colors: [.pink, .red],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .cornerRadius(16)
+                            .shadow(color: Color.pink.opacity(0.3), radius: 15, y: 8)
+                        }
+
+                        // Skip button
+                        Button(action: {
                             hasRequestedPermissions = true
                             onScrolledToBottom()
+                        }) {
+                            Text("Skip for now")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 44)
                         }
-                    }) {
-                        HStack {
-                            Image(systemName: "heart.fill")
-                            Text("Connect Apple Health")
-                        }
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 54)
-                        .background(
-                            LinearGradient(
-                                colors: [.pink, .red],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .cornerRadius(16)
-                        .shadow(color: Color.pink.opacity(0.3), radius: 15, y: 8)
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, 8)
@@ -1081,24 +1095,26 @@ struct ScreenshotContainer: View {
     let imageName: String
 
     var body: some View {
-        // Try to load image, show placeholder if not found
-        if UIImage(named: imageName) != nil {
-            Image(imageName)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .cornerRadius(28)
-                .shadow(color: Color.black.opacity(0.15), radius: 30, y: 15)
-        } else {
-            // Placeholder when image not yet added
-            VStack(spacing: 12) {
-                Image(systemName: "photo")
-                    .font(.system(size: 70))
-                    .foregroundColor(.gray.opacity(0.3))
-                Text("Add '\(imageName)' to Assets")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(.secondary)
+        Group {
+            // Try to load image, show placeholder if not found
+            if UIImage(named: imageName) != nil {
+                Image(imageName)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .cornerRadius(28)
+                    .shadow(color: Color.black.opacity(0.15), radius: 30, y: 15)
+            } else {
+                // Placeholder when image not yet added
+                VStack(spacing: 12) {
+                    Image(systemName: "photo")
+                        .font(.system(size: 70))
+                        .foregroundColor(.gray.opacity(0.3))
+                    Text("Add '\(imageName)' to Assets")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                .frame(height: 520)
             }
-            .frame(height: 520)
         }
         .padding(.horizontal, 20)
     }
