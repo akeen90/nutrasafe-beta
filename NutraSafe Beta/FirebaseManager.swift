@@ -15,7 +15,16 @@ class FirebaseManager: ObservableObject {
     @Published var cachedUserHeight: Double?
     @Published var cachedGoalWeight: Double?
 
-    private lazy var db = Firestore.firestore()
+    private lazy var db: Firestore = {
+        let firestore = Firestore.firestore()
+
+        // Enable offline persistence with unlimited cache size for instant loading
+        let settings = FirestoreSettings()
+        settings.cacheSettings = PersistentCacheSettings(sizeBytes: FirestoreCacheSizeUnlimited as NSNumber)
+        firestore.settings = settings
+
+        return firestore
+    }()
     private lazy var auth = Auth.auth()
 
     // Thread-safe cache using DispatchQueue (Swift 6 async-safe)
@@ -236,8 +245,21 @@ class FirebaseManager: ObservableObject {
             print("   Deleting \(count) documents from \(collection)...")
 
             #endif
-            for document in snapshot.documents {
-                try await document.reference.delete()
+
+            // PERFORMANCE: Use batch operations instead of sequential deletes
+            // Firestore batch limit is 500 operations, so chunk if needed
+            let documents = snapshot.documents
+            let chunkSize = 500
+
+            for chunkStart in stride(from: 0, to: documents.count, by: chunkSize) {
+                let chunkEnd = min(chunkStart + chunkSize, documents.count)
+                let chunk = Array(documents[chunkStart..<chunkEnd])
+
+                let batch = db.batch()
+                for document in chunk {
+                    batch.deleteDocument(document.reference)
+                }
+                try await batch.commit()
             }
 
             totalDeleted += count
@@ -496,16 +518,12 @@ class FirebaseManager: ObservableObject {
                 .collection("foodEntries").document(entry.id).setData(entryData)
         }
 
-        // Invalidate cache for this date
+        // Invalidate cache for this date only (granular invalidation for better performance)
         invalidateFoodEntriesCache(for: entry.date, userId: userId)
 
-        // Invalidate period cache (7-day queries) - thread-safe, also cancel in-flight requests
-        cacheQueue.sync {
-            periodCache.removeAll()
-            inFlightPeriodRequests.values.forEach { $0.cancel() }
-            inFlightPeriodRequests.removeAll()
-        }
-        // DEBUG LOG: print("🗑️ Cleared period cache after saving food entry")
+        // Note: Period cache NOT cleared here for performance
+        // It has a 5-minute expiration and will refresh automatically
+        // This prevents unnecessary refetches of 7-day data when adding one food item
 
         // Notify that food diary was updated
         await MainActor.run {
@@ -1358,25 +1376,31 @@ class FirebaseManager: ObservableObject {
 
     // MARK: - Weight Tracking
 
-    // Resize and compress image for faster uploads
-    @MainActor
-    private func optimizeImage(_ image: UIImage) -> Data? {
-        let maxDimension: CGFloat = 1200
-        var newSize = image.size
+    // Resize and compress image for faster uploads (runs on background thread)
+    private func optimizeImage(_ image: UIImage) async -> Data? {
+        return await Task.detached {
+            let maxDimension: CGFloat = 1200
+            var newSize = image.size
 
-        // Resize if too large
-        if image.size.width > maxDimension || image.size.height > maxDimension {
-            let ratio = min(maxDimension / image.size.width, maxDimension / image.size.height)
-            newSize = CGSize(width: image.size.width * ratio, height: image.size.height * ratio)
-        }
+            // Resize if too large
+            if image.size.width > maxDimension || image.size.height > maxDimension {
+                let ratio = min(maxDimension / image.size.width, maxDimension / image.size.height)
+                newSize = CGSize(width: image.size.width * ratio, height: image.size.height * ratio)
+            }
 
-        UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
-        image.draw(in: CGRect(origin: .zero, size: newSize))
-        let resizedImage = UIGraphicsGetImageFromCurrentImageContext()
-        UIGraphicsEndImageContext()
+            // Use UIGraphicsImageRenderer for thread-safe image processing
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = 1.0
+            format.opaque = false
 
-        // Compress to JPEG at 50% quality for smaller file size
-        return resizedImage?.jpegData(compressionQuality: 0.5)
+            let renderer = UIGraphicsImageRenderer(size: newSize, format: format)
+            let resizedImage = renderer.image { context in
+                image.draw(in: CGRect(origin: .zero, size: newSize))
+            }
+
+            // Compress to JPEG at 50% quality for smaller file size
+            return resizedImage.jpegData(compressionQuality: 0.5)
+        }.value
     }
 
     // Upload multiple photos in parallel for better performance
