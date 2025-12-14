@@ -950,6 +950,9 @@ struct DiaryTabView: View {
     }
 
     private func addFoodToMeal(_ mealType: String) {
+        // Dismiss keyboard before switching tabs
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+
         // Store the selected meal type and date for the add flow
         UserDefaults.standard.set(mealType, forKey: "preselectedMealType")
         UserDefaults.standard.set(selectedDate.timeIntervalSince1970, forKey: "preselectedDate")
