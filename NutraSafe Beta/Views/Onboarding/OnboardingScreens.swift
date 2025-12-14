@@ -454,8 +454,12 @@ struct ProgressPage: View {
 // MARK: - Apple Health Permissions Page
 struct HealthPermissionsPage: View {
     let onScrolledToBottom: () -> Void
-    @State private var hasRequestedPermissions = false
+    @State private var userAction: HealthPermissionAction = .none
     @EnvironmentObject var healthKitManager: HealthKitManager
+
+    enum HealthPermissionAction {
+        case none, requested, skipped
+    }
 
     var body: some View {
         ScrollView {
@@ -514,12 +518,12 @@ struct HealthPermissionsPage: View {
                 .padding(.horizontal, 24)
 
                 // Request permissions button or confirmation
-                if !hasRequestedPermissions {
+                if userAction == .none {
                     VStack(spacing: 12) {
                         Button(action: {
                             Task {
                                 await healthKitManager.requestAuthorization()
-                                hasRequestedPermissions = true
+                                userAction = .requested
                                 onScrolledToBottom()
                             }
                         }) {
@@ -544,7 +548,7 @@ struct HealthPermissionsPage: View {
 
                         // Skip button
                         Button(action: {
-                            hasRequestedPermissions = true
+                            userAction = .skipped
                             onScrolledToBottom()
                         }) {
                             Text("Skip for now")
@@ -558,10 +562,10 @@ struct HealthPermissionsPage: View {
                     .padding(.top, 8)
                 } else {
                     HStack(spacing: 12) {
-                        Image(systemName: "checkmark.circle.fill")
+                        Image(systemName: userAction == .requested ? "checkmark.circle.fill" : "arrow.forward.circle.fill")
                             .font(.system(size: 24))
-                            .foregroundColor(.green)
-                        Text("Permissions requested")
+                            .foregroundColor(userAction == .requested ? .green : .secondary)
+                        Text(userAction == .requested ? "Permissions requested" : "Skipped - can enable later in Settings")
                             .font(.system(size: 17, weight: .medium))
                             .foregroundColor(.secondary)
                     }
