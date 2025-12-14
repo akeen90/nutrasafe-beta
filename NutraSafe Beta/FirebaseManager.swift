@@ -510,12 +510,23 @@ class FirebaseManager: ObservableObject {
     
     func saveFoodEntry(_ entry: FoodEntry) async throws {
         guard let userId = currentUser?.uid else { return }
-        let entryData = entry.toDictionary()
+
+        // Validate food entry before saving to prevent corrupt data
+        let validatedEntry: FoodEntry
+        if ValidationConfig.strictMode {
+            try NutritionValidator.validateFoodEntry(entry)
+            validatedEntry = entry
+        } else {
+            // Auto-sanitize in non-strict mode
+            validatedEntry = entry.sanitized()
+        }
+
+        let entryData = validatedEntry.toDictionary()
 
         // Wrap with retry for network resilience
         try await withRetry {
             try await self.db.collection("users").document(userId)
-                .collection("foodEntries").document(entry.id).setData(entryData)
+                .collection("foodEntries").document(validatedEntry.id).setData(entryData)
         }
 
         // Invalidate cache for this date only (granular invalidation for better performance)
@@ -1293,6 +1304,10 @@ class FirebaseManager: ObservableObject {
     
     func saveExerciseEntry(_ entry: ExerciseEntry) async throws {
         guard let userId = currentUser?.uid else { return }
+
+        // Validate exercise entry before saving
+        try NutritionValidator.validateExerciseEntry(calories: entry.caloriesBurned, date: entry.date)
+
         let entryData = entry.toDictionary()
         try await db.collection("users").document(userId)
             .collection("exerciseEntries").document(entry.id.uuidString).setData(entryData)
@@ -1552,6 +1567,9 @@ class FirebaseManager: ObservableObject {
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save weight entries"])
         }
+
+        // Validate weight entry before saving
+        try NutritionValidator.validateWeightEntry(weight: entry.weight, date: entry.date)
 
         var entryData: [String: Any] = [
             "id": entry.id.uuidString,
