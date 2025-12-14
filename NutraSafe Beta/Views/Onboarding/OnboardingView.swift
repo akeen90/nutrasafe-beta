@@ -139,30 +139,42 @@ struct WelcomePage: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 32) {
-                Spacer().frame(height: 40)
+            VStack(spacing: 24) {
+                Spacer().frame(height: 30)
 
-                // App icon
-                if let appIcon = UIImage(named: "AppIcon") {
-                    Image(uiImage: appIcon)
-                        .resizable()
-                        .frame(width: 120, height: 120)
-                        .cornerRadius(26)
-                        .shadow(color: Color.black.opacity(0.2), radius: 20, y: 10)
-                } else {
-                    // Fallback to system icon if AppIcon not found
-                    Image(systemName: "heart.text.square.fill")
-                        .font(.system(size: 80))
-                        .foregroundStyle(
+                // App icon - matching actual design
+                ZStack {
+                    RoundedRectangle(cornerRadius: 26)
+                        .fill(
                             LinearGradient(
-                                colors: [.blue, .purple],
+                                colors: [
+                                    Color(red: 0.40, green: 0.58, blue: 0.93), // Blue
+                                    Color(red: 0.68, green: 0.45, blue: 0.93)  // Purple
+                                ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
                         )
+                        .frame(width: 120, height: 120)
+                        .shadow(color: Color.black.opacity(0.2), radius: 20, y: 10)
+
+                    VStack(spacing: 10) {
+                        Image(systemName: "heart.fill")
+                            .font(.system(size: 32, weight: .medium))
+                            .foregroundColor(.white)
+
+                        VStack(spacing: 6) {
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(Color.white)
+                                .frame(width: 50, height: 4)
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(Color.white)
+                                .frame(width: 50, height: 4)
+                        }
+                    }
                 }
 
-                VStack(spacing: 16) {
+                VStack(spacing: 12) {
                     Text("Welcome to")
                         .font(.system(size: 24, weight: .medium))
                         .foregroundColor(.secondary)
