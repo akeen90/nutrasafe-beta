@@ -199,7 +199,7 @@ extension SecureStorage {
     }
 
     /// Retrieves a Double securely
-    static func getDouble(forKey key: Key) -> Double? {
+    static func getDouble(forKey key: String) -> Double? {
         return getOptional(forKey: key)
     }
 
