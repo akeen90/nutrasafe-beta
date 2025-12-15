@@ -2385,7 +2385,7 @@ struct AddUseByItemSheet: View {
                         .padding(.horizontal, 16)
                         .padding(.top, 8)
                     }
-                    .background(Color(.systemBackground))
+                    .background(Color.adaptiveBackground)
                     .zIndex(999)
                     .allowsHitTesting(true)
 
@@ -2406,6 +2406,7 @@ struct AddUseByItemSheet: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .zIndex(0)
                 }
+                .background(Color.adaptiveBackground)
             }
             .navigationTitle("Add to Use By")
             .navigationBarTitleDisplayMode(.inline)
@@ -2523,6 +2524,7 @@ struct UseByInlineSearchView: View {
             }
             .scrollDismissesKeyboard(.interactively)
         }
+        .background(Color.adaptiveBackground)
         .sheet(isPresented: $showingFoodDetail) {
             if let food = selectedFood {
                 UseByFoodDetailSheet(food: food, onComplete: onComplete)

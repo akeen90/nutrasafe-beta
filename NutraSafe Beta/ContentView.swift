@@ -6958,7 +6958,7 @@ struct AddFoodMainView: View {
                     .padding(.top, 8)
                     .background(Color.green.opacity(0.001)) // Ultra-transparent hit test helper
                 }
-                .background(Color(.systemBackground))
+                .background(Color.adaptiveBackground)
                 .zIndex(999)
                 .allowsHitTesting(true)
 
@@ -6991,6 +6991,7 @@ struct AddFoodMainView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .zIndex(0)
                 }
+                .background(Color.adaptiveBackground)
                 .navigationTitle("Diary")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {

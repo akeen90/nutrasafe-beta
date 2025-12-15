@@ -322,7 +322,7 @@ struct AddFoodSearchView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
             }
-            .background(Color(.systemBackground))
+            .background(Color.adaptiveBackground)
             .zIndex(1) // Keep search bar on top
 
             // Results
