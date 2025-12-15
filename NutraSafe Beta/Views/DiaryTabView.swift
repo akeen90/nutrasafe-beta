@@ -3,6 +3,7 @@ import Foundation
 import UIKit
 
 struct DiaryTabView: View {
+    @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var diaryDataManager: DiaryDataManager
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var subscriptionManager: SubscriptionManager
@@ -235,16 +236,22 @@ struct DiaryTabView: View {
                 .padding(.bottom, 8)
 
                 VStack(spacing: 0) {
-                    // Match the diary's lavender gradient background
+                    // Match the diary's background
                     // Height covers native DatePicker header + navigation arrows
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.92, green: 0.96, blue: 1.0),
-                            Color(red: 0.93, green: 0.90, blue: 1.0)
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
+                    Group {
+                        if colorScheme == .dark {
+                            Color.midnightBackground
+                        } else {
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.92, green: 0.96, blue: 1.0),
+                                    Color(red: 0.93, green: 0.90, blue: 1.0)
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        }
+                    }
                     .frame(height: 58)
                     Spacer()
                 }
@@ -253,14 +260,20 @@ struct DiaryTabView: View {
                 datePickerHeader
             }
             .background(
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.92, green: 0.96, blue: 1.0),
-                        Color(red: 0.93, green: 0.88, blue: 1.0)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
+                Group {
+                    if colorScheme == .dark {
+                        Color.midnightBackground
+                    } else {
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.92, green: 0.96, blue: 1.0),
+                                Color(red: 0.93, green: 0.88, blue: 1.0)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    }
+                }
             )
             .clipShape(RoundedRectangle(cornerRadius: 12))
         }
@@ -480,31 +493,40 @@ struct DiaryTabView: View {
         .background(diaryBlueBackground)
     }
 
-    // MARK: - Glass Background (matches Health)
+    // MARK: - Adaptive Background (gradient in light mode, midnight blue in dark mode)
     private var diaryBlueBackground: some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    Color(red: 0.92, green: 0.96, blue: 1.0),
-                    Color(red: 0.93, green: 0.88, blue: 1.0)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            RadialGradient(
-                colors: [Color.blue.opacity(0.10), Color.clear],
-                center: .topLeading,
-                startRadius: 0,
-                endRadius: 300
-            )
-            RadialGradient(
-                colors: [Color.purple.opacity(0.08), Color.clear],
-                center: .bottomTrailing,
-                startRadius: 0,
-                endRadius: 280
-            )
+        Group {
+            if colorScheme == .dark {
+                // Dark mode: Use midnight blue
+                Color.midnightBackground
+                    .ignoresSafeArea()
+            } else {
+                // Light mode: Use beautiful gradient
+                ZStack {
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.92, green: 0.96, blue: 1.0),
+                            Color(red: 0.93, green: 0.88, blue: 1.0)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    RadialGradient(
+                        colors: [Color.blue.opacity(0.10), Color.clear],
+                        center: .topLeading,
+                        startRadius: 0,
+                        endRadius: 300
+                    )
+                    RadialGradient(
+                        colors: [Color.purple.opacity(0.08), Color.clear],
+                        center: .bottomTrailing,
+                        startRadius: 0,
+                        endRadius: 280
+                    )
+                }
+                .ignoresSafeArea()
+            }
         }
-        .ignoresSafeArea()
     }
 
     // MARK: - Helper Methods for onChange Handlers
