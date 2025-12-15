@@ -447,12 +447,15 @@ struct WeekSummary: Identifiable, Equatable {
     let sessions: [FastingSession]
 
     // Helper: Group sessions by calendar date (not just weekday)
+    // Uses END date for reporting so multi-day fasts appear on the day they ended
     private var sessionsByDate: [Date: [FastingSession]] {
         let calendar = Calendar.current
         var grouped: [Date: [FastingSession]] = [:]
 
         for session in sessions {
-            let dayStart = calendar.startOfDay(for: session.startTime)
+            // Use endTime if available, otherwise startTime (for active sessions)
+            let reportDate = session.endTime ?? session.startTime
+            let dayStart = calendar.startOfDay(for: reportDate)
             if grouped[dayStart] == nil {
                 grouped[dayStart] = []
             }

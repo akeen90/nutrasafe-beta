@@ -425,7 +425,7 @@ struct PlanDashboardView: View {
                                 } label: {
                                     HStack {
                                         Image(systemName: "forward.fill")
-                                        Text("Skip Fast")
+                                        Text("End Fast Early")
                                     }
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 12)
@@ -1219,7 +1219,7 @@ struct ActiveSessionView: View {
                     } label: {
                         HStack {
                             Image(systemName: "forward.fill")
-                            Text("Skip Fast")
+                            Text("End Fast Early")
                         }
                         .frame(maxWidth: .infinity)
                         .padding()

@@ -85,6 +85,7 @@ private class SimpleImageCache {
 // MARK: - UseBy Tab Main View
 
 struct UseByTabView: View {
+    @Environment(\.colorScheme) var colorScheme
     @Binding var showingSettings: Bool
     @Binding var selectedTab: TabItem
     @State private var showingScanner = false
@@ -148,7 +149,7 @@ struct UseByTabView: View {
                     .padding(.bottom, 80) // Space for tab bar
                 }
             }
-            .background(AppColors.background)
+            .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
             .navigationBarHidden(true)
         }
         .fullScreenCover(isPresented: $showingAddSheet) {
@@ -239,6 +240,7 @@ struct CounterPill: View {
 
 struct AddFoundFoodToUseBySheet: View {
 @Environment(\.dismiss) var dismiss
+@Environment(\.colorScheme) var colorScheme
     let food: FoodSearchResult
     var onComplete: ((TabItem) -> Void)?
 
@@ -297,7 +299,7 @@ struct AddFoundFoodToUseBySheet: View {
             }
             .padding(.horizontal)
             .padding(.vertical, 12)
-            .background(Color(.systemBackground))
+            .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
 
             Divider()
 
@@ -405,11 +407,11 @@ struct AddFoundFoodToUseBySheet: View {
                     }
                 }
                 .padding(16)
-.onAppear { 
+.onAppear {
                 recalcExpiry()
             }
             }
-            .background(Color(.systemGroupedBackground))
+            .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemGroupedBackground))
             .alert("Couldn't save item", isPresented: $showErrorAlert, actions: {
                 Button("OK", role: .cancel) {}
             }, message: {
@@ -1328,6 +1330,7 @@ struct StatusCard: View {
 
 struct UseByItemsListCard: View {
     let items: [UseByInventoryItem]
+    @Environment(\.colorScheme) var colorScheme
 
     private var sortedItems: [UseByInventoryItem] {
         items.sorted { $0.expiryDate < $1.expiryDate }
@@ -1381,7 +1384,7 @@ struct UseByItemsListCard: View {
                         }
                     }
                 }
-                .background(Color(.systemBackground))
+                .background(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
                 .cornerRadius(10)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
@@ -1403,6 +1406,8 @@ struct UseByItemsListCard: View {
 }
 
 struct UseByCriticalExpiryCard: View {
+    @Environment(\.colorScheme) var colorScheme
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -1463,7 +1468,7 @@ struct UseByCriticalExpiryCard: View {
                     }
                 }
             }
-            .background(Color(.systemBackground))
+            .background(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
             .cornerRadius(10)
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
@@ -1485,6 +1490,7 @@ struct UseByCriticalExpiryCard: View {
 
 struct UseByWeeklyExpiryCard: View {
     @State private var expandedSections: Set<String> = []
+    @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -1622,7 +1628,7 @@ struct UseByWeeklyExpiryCard: View {
                     }
                 }
             }
-            .background(Color(.systemBackground))
+            .background(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
             .cornerRadius(10)
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
@@ -1729,6 +1735,7 @@ struct UseByEmptyStateView: View {
 
 struct ModernExpiryRow: View {
     let item: UseByInventoryItem
+    @Environment(\.colorScheme) var colorScheme
     @State private var showingDetail = false
     @State private var showingDeleteAlert = false
 
@@ -1818,7 +1825,7 @@ struct ModernExpiryRow: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
-            .background(Color(.systemBackground))
+            .background(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
         }
         .buttonStyle(PlainButtonStyle())
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -1908,6 +1915,7 @@ struct ModernExpiryRow: View {
 
 struct UseByFreshItemsCard: View {
     @State private var isExpanded = false
+    @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -1992,7 +2000,7 @@ struct UseByFreshItemsCard: View {
                         }
                     }
                 }
-                .background(Color(.systemBackground))
+                .background(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
                 .cornerRadius(10)
                 .transition(.opacity)
             }
@@ -2164,6 +2172,7 @@ struct SecondaryActionButton: View {
 
 struct UseByBarcodeScanSheet: View {
     @Environment(\.dismiss) var dismiss
+    @Environment(\.colorScheme) var colorScheme
     @State private var isSearching = false
     @State private var scannedFood: FoodSearchResult?
     @State private var errorMessage: String?
@@ -2211,6 +2220,8 @@ struct UseByBarcodeScanSheet: View {
                     .buttonStyle(.borderedProminent)
             }
             .padding()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
     }
 
@@ -2747,6 +2758,7 @@ struct UseByFoodDetailSheet: View {
     let food: FoodSearchResult
     var onComplete: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) var colorScheme
     @State private var quantity: String = "1"
     @State private var expiryDate: Date = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
     @State private var location: String = ""
@@ -3025,6 +3037,7 @@ struct UseByFoodDetailSheet: View {
                 }
             }
         }
+        .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
     }
 
     private func saveToUseBy() {
@@ -3221,7 +3234,7 @@ struct UseByItemDetailView: View {
                     .padding(20)
                     .background(
                         RoundedRectangle(cornerRadius: 16)
-                            .fill(Color(.secondarySystemBackground))
+                            .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
                     )
                     .scaleEffect(animateIn ? 1 : 0.95)
                     .opacity(animateIn ? 1 : 0)
@@ -3274,7 +3287,7 @@ struct UseByItemDetailView: View {
                                 .padding()
                                 .background(
                                     RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color(.tertiarySystemBackground))
+                                        .fill(colorScheme == .dark ? Color.midnightBackground.opacity(0.5) : Color(.tertiarySystemBackground))
                                 )
                             }
                             .buttonStyle(PlainButtonStyle())
@@ -3303,7 +3316,7 @@ struct UseByItemDetailView: View {
                                 .padding(.vertical, 12)
                                 .background(
                                     RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color(.tertiarySystemBackground))
+                                        .fill(colorScheme == .dark ? Color.midnightBackground.opacity(0.5) : Color(.tertiarySystemBackground))
                                 )
 
                                 // Unit picker wrapped for consistency
@@ -3321,7 +3334,7 @@ struct UseByItemDetailView: View {
                     .padding(20)
                     .background(
                         RoundedRectangle(cornerRadius: 16)
-                            .fill(Color(.secondarySystemBackground))
+                            .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
                     )
                     .scaleEffect(animateIn ? 1 : 0.95)
                     .opacity(animateIn ? 1 : 0)
@@ -3340,7 +3353,7 @@ struct UseByItemDetailView: View {
                                 .frame(minHeight: 80)
                                 .padding(4)
                                 .scrollContentBackground(.hidden)
-                                .background(Color(.tertiarySystemBackground))
+                                .background(colorScheme == .dark ? Color.midnightBackground.opacity(0.5) : Color(.tertiarySystemBackground))
                                 .cornerRadius(12)
 
                             if notes.isEmpty {
@@ -3356,7 +3369,7 @@ struct UseByItemDetailView: View {
                     .padding(20)
                     .background(
                         RoundedRectangle(cornerRadius: 16)
-                            .fill(Color(.secondarySystemBackground))
+                            .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
                     )
                     .scaleEffect(animateIn ? 1 : 0.95)
                     .opacity(animateIn ? 1 : 0)
@@ -3416,7 +3429,7 @@ struct UseByItemDetailView: View {
                     .padding(20)
                     .background(
                         RoundedRectangle(cornerRadius: 16)
-                            .fill(Color(.secondarySystemBackground))
+                            .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
                     )
                     .scaleEffect(animateIn ? 1 : 0.95)
                     .opacity(animateIn ? 1 : 0)

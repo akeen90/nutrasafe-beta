@@ -18,6 +18,7 @@ func navigationContainer<Content: View>(@ViewBuilder content: () -> Content) -> 
 // Complete food hub navigation with sub-tabs and comprehensive food tracking
 
 struct FoodTabView: View {
+    @Environment(\.colorScheme) var colorScheme
     @Binding var showingSettings: Bool
     @Binding var selectedTab: TabItem
     @State private var selectedFoodSubTab: FoodSubTab = .reactions
@@ -75,7 +76,7 @@ struct FoodTabView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 8)
                 }
-                .background(AppColors.background)
+                .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
                 
                 // MARK: - Fasting Components have been extracted to Views/Fasting/FastingTimerView.swift
                 // The following components were moved as part of Phase 13 ContentView.swift modularization effort:

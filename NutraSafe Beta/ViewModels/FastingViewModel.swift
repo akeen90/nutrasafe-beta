@@ -29,9 +29,12 @@ class FastingViewModel: ObservableObject {
         let calendar = Calendar.current
         var weekMap: [Date: [FastingSession]] = [:]
 
-        // Group sessions by their week start (Monday)
+        // Group sessions by their week start (Monday), using END date for reporting
+        // This ensures multi-day fasts (e.g., Sun→Mon) appear on the day they ended
         for session in recentSessions {
-            let weekStart = getWeekStart(for: session.startTime, calendar: calendar)
+            // Use endTime if available, otherwise startTime (for active sessions)
+            let reportDate = session.endTime ?? session.startTime
+            let weekStart = getWeekStart(for: reportDate, calendar: calendar)
             if weekMap[weekStart] == nil {
                 weekMap[weekStart] = []
             }

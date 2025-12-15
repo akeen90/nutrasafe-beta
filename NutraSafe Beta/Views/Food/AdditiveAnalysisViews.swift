@@ -104,6 +104,7 @@ enum AdditiveOverrides {
 
 struct AdditiveWatchView: View {
     let ingredients: [String]
+    @Environment(\.colorScheme) var colorScheme
     @State private var additiveResult: AdditiveDetectionResult?
     @State private var showingSources = false
     @State private var lastAnalyzedHash: Int = 0
@@ -133,8 +134,6 @@ struct AdditiveWatchView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .animation(.easeInOut(duration: 0.3), value: additiveResult != nil)
-        .background(Color.white)
-        .cornerRadius(12)
         .sheet(isPresented: $showingSources) {
             SourcesAndCitationsView()
         }
@@ -749,6 +748,7 @@ struct DetailedAdditive {
 
 struct AdditiveCardView: View {
     let additive: DetailedAdditive
+    @Environment(\.colorScheme) var colorScheme
     @State private var isExpanded = false
     @State private var showingSources = false
 
@@ -903,7 +903,7 @@ struct AdditiveCardView: View {
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 14)
-                .fill(Color.purple.opacity(0.06))
+                .fill(colorScheme == .dark ? Color.midnightCard.opacity(0.8) : Color.purple.opacity(0.06))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
                         .stroke(Color.purple.opacity(0.25), lineWidth: 1.5)
@@ -1232,6 +1232,7 @@ struct AdditiveSection {
 
 struct UltraProcessedIngredientCard: View {
     let ingredient: UltraProcessedIngredientDisplay
+    @Environment(\.colorScheme) var colorScheme
     @State private var isExpanded: Bool
 
     init(ingredient: UltraProcessedIngredientDisplay, initialExpanded: Bool = false) {
@@ -1431,7 +1432,7 @@ struct UltraProcessedIngredientCard: View {
         }
         .frame(maxWidth: .infinity)
         .padding(12)
-        .background(Color.purple.opacity(0.08))
+        .background(colorScheme == .dark ? Color.midnightCard.opacity(0.8) : Color.purple.opacity(0.08))
         .overlay(
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color.purple.opacity(0.2), lineWidth: 1)

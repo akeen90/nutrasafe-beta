@@ -75,6 +75,7 @@ struct FoodDetailViewFromSearch: View {
     @Binding var selectedTab: TabItem
     var onComplete: ((TabItem) -> Void)?
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var diaryDataManager: DiaryDataManager
     @State private var gramsAmount: String
     @State private var servings: String = "1"
@@ -1526,6 +1527,7 @@ struct FoodDetailViewFromSearch: View {
                 }
             }
         }
+        .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         .onAppear {
             // Only initialize once per view instance, even if .onAppear is called multiple times
             guard !hasInitialized else { return }
@@ -2276,6 +2278,7 @@ private var nutritionFactsSection: some View {
     }
 
     struct IngredientsSectionView: View {
+        @Environment(\.colorScheme) var colorScheme
         let status: IngredientsStatus?
         let ingredients: [String]?
 
@@ -2301,9 +2304,9 @@ private var nutritionFactsSection: some View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16)
-                .background(Color.white)
+                .background(colorScheme == .dark ? Color.midnightCard : Color.white)
                 .overlay(
-                    Rectangle().frame(height: 2).foregroundColor(.black),
+                    Rectangle().frame(height: 2).foregroundColor(colorScheme == .dark ? Color.gray.opacity(0.3) : .black),
                     alignment: .bottom
                 )
                 if let ingredientsList = ingredients {
@@ -2318,7 +2321,7 @@ private var nutritionFactsSection: some View {
                         .multilineTextAlignment(.leading)
                         .padding(16)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.white)
+                        .background(colorScheme == .dark ? Color.midnightCard : Color.white)
                 } else {
                     VStack(alignment: .center, spacing: 8) {
                         Image(systemName: "exclamationmark.triangle")
@@ -2330,14 +2333,14 @@ private var nutritionFactsSection: some View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(20)
-                    .background(Color.white)
+                    .background(colorScheme == .dark ? Color.midnightCard : Color.white)
                 }
             }
-            .background(Color.white)
+            .background(colorScheme == .dark ? Color.midnightCard : Color.white)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(Color.black, lineWidth: 2)
+                    .stroke(colorScheme == .dark ? Color.gray.opacity(0.3) : Color.black, lineWidth: 2)
             )
             .padding(.horizontal, 16)
         }

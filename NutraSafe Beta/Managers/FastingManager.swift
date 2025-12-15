@@ -71,9 +71,25 @@ class FastingManager {
     
     static func skipSession(_ session: FastingSession) -> FastingSession {
         var updatedSession = session
-        updatedSession.skipped = true
-        updatedSession.completionStatus = .skipped
-        updatedSession.endTime = Date()
+        let now = Date()
+
+        // Calculate how much of the fast was actually done
+        let actualDuration = now.timeIntervalSince(session.startTime) / 3600 // hours
+        let targetDuration = Double(session.targetDurationHours)
+        let completionPercentage = actualDuration / targetDuration
+
+        // If barely started (less than 10% or less than 2 hours), mark as truly skipped
+        if completionPercentage < 0.1 || actualDuration < 2 {
+            updatedSession.skipped = true
+            updatedSession.completionStatus = .skipped
+            // Set endTime to startTime so actualDurationHours = 0 for truly skipped fasts
+            updatedSession.endTime = session.startTime
+        } else {
+            // Otherwise, treat it as ending early and use normal completion logic
+            updatedSession = endSession(session, endTime: now)
+            updatedSession.skipped = false // Mark as not skipped since they did make progress
+        }
+
         return updatedSession
     }
 

@@ -1889,6 +1889,7 @@ struct RoundedCorner: Shape {
 
 // MARK: - Weight Tracking View
 struct WeightTrackingView: View {
+    @Environment(\.colorScheme) var colorScheme
     @Binding var showingSettings: Bool
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var firebaseManager: FirebaseManager
@@ -2053,7 +2054,7 @@ struct WeightTrackingView: View {
                             .padding(16)
                             .background(
                                 RoundedRectangle(cornerRadius: 20)
-                                    .fill(Color(.systemBackground))
+                                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 20)
                                             .stroke(Color(.systemGray4), lineWidth: 1)
@@ -2079,7 +2080,7 @@ struct WeightTrackingView: View {
                             .padding(16)
                             .background(
                                 RoundedRectangle(cornerRadius: 20)
-                                    .fill(Color(.systemBackground))
+                                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 20)
                                             .stroke(Color(.systemGray4), lineWidth: 1)
@@ -2110,7 +2111,7 @@ struct WeightTrackingView: View {
                             .padding(16)
                             .background(
                                 RoundedRectangle(cornerRadius: 20)
-                                    .fill(Color(.systemBackground))
+                                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 20)
                                             .stroke(Color(.systemGray4), lineWidth: 1)
@@ -2137,7 +2138,7 @@ struct WeightTrackingView: View {
                             .padding(16)
                             .background(
                                 RoundedRectangle(cornerRadius: 20)
-                                    .fill(Color(.systemBackground))
+                                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 20)
                                             .stroke(Color(.systemGray4), lineWidth: 1)
@@ -2281,7 +2282,7 @@ struct WeightTrackingView: View {
                         .padding(12)
                         .background(
                             RoundedRectangle(cornerRadius: 22)
-                                .fill(Color(.systemBackground))
+                                .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 22)
                                         .stroke(Color(.systemGray4), lineWidth: 1)
