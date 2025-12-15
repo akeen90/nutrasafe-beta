@@ -3267,25 +3267,92 @@ struct UseByItemDetailView: View {
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(.secondary)
 
-                        // Mode Selector
-                        SegmentedContainer {
-                            Picker("", selection: $expiryMode) {
-                                Text("Calendar").tag(ExpiryMode.calendar)
-                                Text("Select").tag(ExpiryMode.selector)
+                        if isAddMode {
+                            // Full selector interface for new items
+                            // Mode Selector
+                            SegmentedContainer {
+                                Picker("", selection: $expiryMode) {
+                                    Text("Calendar").tag(ExpiryMode.calendar)
+                                    Text("Select").tag(ExpiryMode.selector)
+                                }
+                                .pickerStyle(.segmented)
                             }
-                            .pickerStyle(.segmented)
-                        }
 
-                        if expiryMode == .calendar {
+                            if expiryMode == .calendar {
+                                Button(action: { showDatePicker.toggle() }) {
+                                    HStack {
+                                        Text(editedExpiryDate, style: .date)
+                                            .font(.system(size: 16, weight: .medium))
+                                            .foregroundColor(.primary)
+                                        Spacer()
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 14))
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding()
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(colorScheme == .dark ? Color.midnightBackground.opacity(0.5) : Color(.tertiarySystemBackground))
+                                    )
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            } else {
+                                // Days/Weeks Selector
+                                HStack(spacing: 6) {
+                                    // Amount picker
+                                    HStack {
+                                        Button(action: { if expiryAmount > 0 { expiryAmount -= 1 } }) {
+                                            Image(systemName: "minus.circle.fill")
+                                                .font(.system(size: 24))
+                                                .foregroundColor(.blue)
+                                        }
+
+                                        Text("\(expiryAmount)")
+                                            .font(.system(size: 20, weight: .semibold))
+                                            .frame(minWidth: 40)
+
+                                        Button(action: { if expiryAmount < 365 { expiryAmount += 1 } }) {
+                                            Image(systemName: "plus.circle.fill")
+                                                .font(.system(size: 24))
+                                                .foregroundColor(.blue)
+                                        }
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 12)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(colorScheme == .dark ? Color.midnightBackground.opacity(0.5) : Color(.tertiarySystemBackground))
+                                    )
+
+                                    // Unit picker wrapped for consistency
+                                    SegmentedContainer {
+                                        Picker("", selection: $expiryUnit) {
+                                            ForEach(ExpiryUnit.allCases, id: \.self) { unit in
+                                                Text(unit.rawValue).tag(unit)
+                                            }
+                                        }
+                                        .pickerStyle(.segmented)
+                                    }
+                                }
+                            }
+                        } else {
+                            // Simple display for existing items - tap to change via calendar
                             Button(action: { showDatePicker.toggle() }) {
-                                HStack {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    HStack {
+                                        Text("Expiring on")
+                                            .font(.system(size: 14, weight: .medium))
+                                            .foregroundColor(.secondary)
+                                        Spacer()
+                                        Image(systemName: "calendar")
+                                            .font(.system(size: 14))
+                                            .foregroundColor(.blue)
+                                    }
+
                                     Text(editedExpiryDate, style: .date)
-                                        .font(.system(size: 16, weight: .medium))
+                                        .font(.system(size: 18, weight: .semibold))
                                         .foregroundColor(.primary)
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.secondary)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
                                 }
                                 .padding()
                                 .background(
@@ -3294,44 +3361,6 @@ struct UseByItemDetailView: View {
                                 )
                             }
                             .buttonStyle(PlainButtonStyle())
-                        } else {
-                            // Days/Weeks Selector
-                            HStack(spacing: 6) {
-                                // Amount picker
-                                HStack {
-                                    Button(action: { if expiryAmount > 0 { expiryAmount -= 1 } }) {
-                                        Image(systemName: "minus.circle.fill")
-                                            .font(.system(size: 24))
-                                            .foregroundColor(.blue)
-                                    }
-
-                                    Text("\(expiryAmount)")
-                                        .font(.system(size: 20, weight: .semibold))
-                                        .frame(minWidth: 40)
-
-                                    Button(action: { if expiryAmount < 365 { expiryAmount += 1 } }) {
-                                        Image(systemName: "plus.circle.fill")
-                                            .font(.system(size: 24))
-                                            .foregroundColor(.blue)
-                                    }
-                                }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(colorScheme == .dark ? Color.midnightBackground.opacity(0.5) : Color(.tertiarySystemBackground))
-                                )
-
-                                // Unit picker wrapped for consistency
-                                SegmentedContainer {
-                                    Picker("", selection: $expiryUnit) {
-                                        ForEach(ExpiryUnit.allCases, id: \.self) { unit in
-                                            Text(unit.rawValue).tag(unit)
-                                        }
-                                    }
-                                    .pickerStyle(.segmented)
-                                }
-                            }
                         }
                     }
                     .padding(20)
