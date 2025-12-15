@@ -420,6 +420,20 @@ class FastingViewModel: ObservableObject {
         }
     }
 
+    /// Clear all sessions for a specific day
+    func clearAllSessionsForDay(_ sessions: [FastingSession]) async {
+        for session in sessions {
+            await clearSession(session)
+        }
+    }
+
+    /// Delete all sessions for a specific day permanently
+    func deleteAllSessionsForDay(_ sessions: [FastingSession]) async {
+        for session in sessions {
+            await deleteSession(session)
+        }
+    }
+
     // MARK: - Timer
 
     private func startTimer() {
@@ -1285,8 +1299,9 @@ class FastingViewModel: ObservableObject {
             let savedId = try await firebaseManager.saveFastingSession(skippedSession)
             print("   ✅ Skipped session SAVED to Firebase with ID: \(savedId)")
 
-            // Mark this fasting window as ended
+            // Mark this fasting window as ended AND prevent auto-record duplicate
             lastEndedWindowEnd = ends
+            lastRecordedFastWindowEnd = ends  // Prevent recordCompletedRegimeFast() from creating duplicate
 
             print("✅ Skipped current fast - regime continues")
             print("   Fast window: \(started.formatted(date: .omitted, time: .shortened)) - \(ends.formatted(date: .omitted, time: .shortened))")

@@ -233,6 +233,8 @@ struct PlanDashboardView: View {
     @State private var snoozeUntilTime = Date()
     @State private var selectedWeek: WeekSummary?
     @State private var showWeekDetail = false
+    @State private var weekToDelete: WeekSummary?
+    @State private var showDeleteAlert = false
     @State private var showingCitations = false
 
     // PERFORMANCE: Cache average duration to prevent redundant calculations on every render
@@ -240,7 +242,8 @@ struct PlanDashboardView: View {
     @State private var cachedAverageDuration: Double = 0
 
     // Use all recent sessions (since typically only one plan is active at a time)
-    // Filter out cleared sessions (where actualDurationHours == 0)
+    // Filter out only cleared sessions (actualDurationHours == 0)
+    // Skipped sessions SHOULD count their actual hours in totals
     private var planSessions: [FastingSession] {
         viewModel.recentSessions.filter { $0.actualDurationHours > 0 }
     }
@@ -567,9 +570,9 @@ struct PlanDashboardView: View {
                     }
                 }
 
-                // Filter out weeks where all fasts have been cleared (averageDuration == 0)
-                // Show all fasting history, not limited to recent weeks
-                let weeks = viewModel.weekSummaries.filter { $0.averageDuration > 0 }
+                // Show all weeks with any fasts (including skipped ones)
+                // Filter out only weeks with no fasts at all
+                let weeks = viewModel.weekSummaries.filter { $0.totalFasts > 0 }
 
                 if weeks.isEmpty {
                     Text("No fasts recorded yet")
@@ -582,11 +585,17 @@ struct PlanDashboardView: View {
                 } else {
                     VStack(spacing: 12) {
                         ForEach(Array(weeks)) { week in
-                            WeekSummaryCard(week: week)
-                                .onTapGesture {
-                                    selectedWeek = week
-                                    showWeekDetail = true
+                            WeekSummaryCard(
+                                week: week,
+                                onDeleteTap: {
+                                    weekToDelete = week
+                                    showDeleteAlert = true
                                 }
+                            )
+                            .onTapGesture {
+                                selectedWeek = week
+                                showWeekDetail = true
+                            }
                         }
                     }
                 }
@@ -696,6 +705,21 @@ struct PlanDashboardView: View {
             if let week = selectedWeek {
                 WeekDetailView(week: week, viewModel: viewModel)
             }
+        }
+        .alert("Delete Week", isPresented: $showDeleteAlert, presenting: weekToDelete) { week in
+            Button("Delete Permanently", role: .destructive) {
+                Task {
+                    await viewModel.deleteAllSessionsForDay(week.sessions)
+                }
+            }
+            Button("Clear (Keep Record)") {
+                Task {
+                    await viewModel.clearAllSessionsForDay(week.sessions)
+                }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: { week in
+            Text("Remove \(week.dateRangeText) fasting data?")
         }
         .onReceive(NotificationCenter.default.publisher(for: .fastHistoryUpdated)) { _ in
             viewModel.objectWillChange.send()
@@ -1716,6 +1740,7 @@ struct LastSessionCard: View {
 // MARK: - Week Summary Card
 struct WeekSummaryCard: View {
     let week: WeekSummary
+    var onDeleteTap: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -1735,6 +1760,20 @@ struct WeekSummaryCard: View {
                         .padding(.vertical, 4)
                         .background(Color.purple.opacity(0.15))
                         .cornerRadius(6)
+                }
+
+                Spacer()
+
+                // Delete button
+                Button {
+                    onDeleteTap?()
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 14))
+                        .foregroundColor(.red)
+                        .padding(8)
+                        .background(Color.red.opacity(0.1))
+                        .clipShape(Circle())
                 }
             }
 
@@ -2000,6 +2039,25 @@ struct WeekDetailView: View {
                         .background(Color(.systemBackground))
                         .cornerRadius(12)
                         .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                        .contextMenu {
+                            if !allSessions.isEmpty {
+                                Button(role: .destructive) {
+                                    Task {
+                                        await viewModel.deleteAllSessionsForDay(allSessions)
+                                    }
+                                } label: {
+                                    Label("Delete Day", systemImage: "trash")
+                                }
+
+                                Button {
+                                    Task {
+                                        await viewModel.clearAllSessionsForDay(allSessions)
+                                    }
+                                } label: {
+                                    Label("Clear Day (Keep Record)", systemImage: "xmark.circle")
+                                }
+                            }
+                        }
                     }
                 }
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))

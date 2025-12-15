@@ -2323,6 +2323,7 @@ struct AddUseByItemSheet: View {
 
     // Lightweight button component matching Diary's OptionSelectorButton
     private struct UseByOptionSelectorButton: View {
+        @Environment(\.colorScheme) var colorScheme
         let title: String
         let icon: String
         let isSelected: Bool
@@ -2341,7 +2342,7 @@ struct AddUseByItemSheet: View {
                 .padding(.vertical, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(isSelected ? Color.blue : Color(.systemGray6))
+                        .fill(isSelected ? (colorScheme == .dark ? Color.midnightBackground : Color.blue) : Color(.systemGray6))
                 )
             }
             .buttonStyle(PlainButtonStyle())

@@ -465,10 +465,11 @@ struct WeekSummary: Identifiable, Equatable {
         return grouped
     }
 
-    // Helper: Sessions grouped by date, excluding cleared sessions (duration == 0)
+    // Helper: Sessions grouped by date, excluding only cleared sessions
     private var activeDaysByDate: [Date: [FastingSession]] {
         sessionsByDate.compactMapValues { daySessions in
-            // Filter out cleared sessions (where duration is 0)
+            // Filter out only cleared sessions (duration == 0)
+            // Skipped sessions SHOULD count their actual hours in totals
             let activeSessions = daySessions.filter { $0.actualDurationHours > 0 }
             return activeSessions.isEmpty ? nil : activeSessions
         }

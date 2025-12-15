@@ -75,19 +75,18 @@ class FastingManager {
 
         // Calculate how much of the fast was actually done
         let actualDuration = now.timeIntervalSince(session.startTime) / 3600 // hours
-        let targetDuration = Double(session.targetDurationHours)
-        let completionPercentage = actualDuration / targetDuration
 
-        // If barely started (less than 10% or less than 2 hours), mark as truly skipped
-        if completionPercentage < 0.1 || actualDuration < 2 {
-            updatedSession.skipped = true
+        // ALWAYS use current time for endTime - skipped fasts should show actual hours completed
+        updatedSession.endTime = now
+        updatedSession.skipped = true
+
+        // Determine status based on 8-hour threshold:
+        // - Skip <8h → Status = "Skipped" (shows actual hours, e.g., "0.0h of 18h")
+        // - Skip ≥8h → Status = "Ended Early" (shows actual hours, e.g., "10.0h of 18h")
+        if actualDuration < 8.0 {
             updatedSession.completionStatus = .skipped
-            // Set endTime to startTime so actualDurationHours = 0 for truly skipped fasts
-            updatedSession.endTime = session.startTime
         } else {
-            // Otherwise, treat it as ending early and use normal completion logic
-            updatedSession = endSession(session, endTime: now)
-            updatedSession.skipped = false // Mark as not skipped since they did make progress
+            updatedSession.completionStatus = .earlyEnd
         }
 
         return updatedSession
