@@ -150,10 +150,12 @@ class FastingManager {
     // MARK: - Analytics
     
     static func calculateAnalytics(from sessions: [FastingSession]) -> FastingAnalytics {
-        // Count ALL ended sessions (completed, earlyEnd, overGoal, skipped with duration)
+        // Count ALL ended sessions (completed, earlyEnd, overGoal, skipped)
         // Exclude only active and failed sessions
+        // Include skipped sessions even with 0 duration (they're still attempts)
         let endedSessions = sessions.filter { session in
-            session.completionStatus != .active && session.completionStatus != .failed && session.actualDurationHours > 0
+            session.completionStatus != .active && session.completionStatus != .failed &&
+            (session.actualDurationHours > 0 || session.completionStatus == .skipped)
         }
 
         let completedSessions = sessions.filter { $0.completionStatus == .completed }
