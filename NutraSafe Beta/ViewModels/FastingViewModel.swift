@@ -1277,7 +1277,8 @@ class FastingViewModel: ObservableObject {
             let oneHourInSeconds: TimeInterval = 3600
 
             // Determine whether to skip or end early based on duration
-            let shouldSkip = fastDuration < oneHourInSeconds
+            // Only mark as "ended early" if over 1 hour (not equal to)
+            let shouldSkip = fastDuration <= oneHourInSeconds
 
             print("   Fast duration: \(String(format: "%.1f", fastDuration / 3600)) hours")
             print("   Action: \(shouldSkip ? "Skip" : "End Early")")
