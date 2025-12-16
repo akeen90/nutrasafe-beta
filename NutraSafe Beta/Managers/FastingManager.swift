@@ -150,13 +150,20 @@ class FastingManager {
     // MARK: - Analytics
     
     static func calculateAnalytics(from sessions: [FastingSession]) -> FastingAnalytics {
+        // Count ALL ended sessions (completed, earlyEnd, overGoal, skipped with duration)
+        // Exclude only active and failed sessions
+        let endedSessions = sessions.filter { session in
+            session.completionStatus != .active && session.completionStatus != .failed && session.actualDurationHours > 0
+        }
+
         let completedSessions = sessions.filter { $0.completionStatus == .completed }
         let totalSessions = sessions.count
-        let completedCount = completedSessions.count
+        let totalFastsCount = endedSessions.count  // Count all ended fasts, not just completed
 
-        let completionRate = totalSessions > 0 ? Double(completedCount) / Double(totalSessions) * 100 : 0
+        let completionRate = totalSessions > 0 ? Double(completedSessions.count) / Double(totalSessions) * 100 : 0
 
-        let averageDuration = completedSessions.isEmpty ? 0 : completedSessions.map { $0.actualDurationHours }.reduce(0, +) / Double(completedSessions.count)
+        // Calculate average from ALL ended sessions
+        let averageDuration = endedSessions.isEmpty ? 0 : endedSessions.map { $0.actualDurationHours }.reduce(0, +) / Double(endedSessions.count)
 
         let longestFast = sessions.map { $0.actualDurationHours }.max() ?? 0
 
@@ -168,7 +175,7 @@ class FastingManager {
         _ = calculateMonthlyCompletionRate(from: sessions)
 
         return FastingAnalytics(
-            totalFastsCompleted: completedCount,
+            totalFastsCompleted: totalFastsCount,
             averageCompletionPercentage: completionRate,
             averageDurationVsGoal: averageDuration,
             longestFastHours: longestFast,

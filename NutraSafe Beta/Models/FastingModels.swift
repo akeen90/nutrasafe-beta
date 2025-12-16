@@ -503,29 +503,20 @@ struct WeekSummary: Identifiable, Equatable {
     }
 
     var averageDuration: Double {
-        // Calculate average duration per DAY (excluding cleared days)
+        // Calculate average of individual session durations (excluding cleared sessions)
         guard !activeDaysByDate.isEmpty else { return 0 }
 
-        let totalDuration = activeDaysByDate.values.reduce(0.0) { totalForAllDays, daySessions in
-            guard !daySessions.isEmpty else { return totalForAllDays }
+        var totalDuration: Double = 0
+        var sessionCount = 0
 
-            // Sort sessions by start time
-            let sorted = daySessions.sorted { $0.startTime < $1.startTime }
-
-            // Get first start and last end for this day
-            let firstStart = sorted.first!.startTime
-            let lastEnd = sorted.last!.endTime ?? Date()
-
-            // Calculate elapsed time from first start to last end
-            let elapsedHours = lastEnd.timeIntervalSince(firstStart) / 3600
-
-            // Cap at 24 hours maximum per day (defensive against bad data)
-            let cappedHours = min(24.0, max(0, elapsedHours))
-
-            return totalForAllDays + cappedHours
+        for daySessions in activeDaysByDate.values {
+            for session in daySessions {
+                totalDuration += session.actualDurationHours
+                sessionCount += 1
+            }
         }
 
-        return totalDuration / Double(activeDaysByDate.count)
+        return sessionCount > 0 ? totalDuration / Double(sessionCount) : 0
     }
 
     var totalHours: Double {
@@ -534,11 +525,9 @@ struct WeekSummary: Identifiable, Equatable {
         activeDaysByDate.values.reduce(0.0) { totalForAllDays, daySessions in
             guard !daySessions.isEmpty else { return totalForAllDays }
 
-            // Sum the duration of each fast on this day
+            // Sum the actual duration of each fast on this day
             let dayTotal = daySessions.reduce(0.0) { daySum, session in
-                let endTime = session.endTime ?? Date()
-                let duration = endTime.timeIntervalSince(session.startTime) / 3600
-                return daySum + max(0, duration) // Only count positive durations
+                return daySum + session.actualDurationHours
             }
 
             return totalForAllDays + dayTotal

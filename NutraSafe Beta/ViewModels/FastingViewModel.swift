@@ -1271,42 +1271,61 @@ class FastingViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            // Create a skipped session for the current fasting window
-            var skippedSession = FastingManager.createSession(
+            // Calculate how long the fast has been running
+            let now = Date()
+            let fastDuration = now.timeIntervalSince(started)
+            let oneHourInSeconds: TimeInterval = 3600
+
+            // Determine whether to skip or end early based on duration
+            let shouldSkip = fastDuration < oneHourInSeconds
+
+            print("   Fast duration: \(String(format: "%.1f", fastDuration / 3600)) hours")
+            print("   Action: \(shouldSkip ? "Skip" : "End Early")")
+
+            // Create a session for the current fasting window
+            var session = FastingManager.createSession(
                 userId: userId,
                 plan: plan,
                 targetDurationHours: plan.durationHours,
                 startTime: started
             )
 
-            print("   Created session - before skip:")
-            print("      userId: \(skippedSession.userId)")
-            print("      planId: \(skippedSession.planId ?? "nil")")
-            print("      startTime: \(skippedSession.startTime.formatted(date: .abbreviated, time: .complete))")
-            print("      endTime: \(skippedSession.endTime?.formatted(date: .abbreviated, time: .complete) ?? "nil")")
-            print("      skipped: \(skippedSession.skipped)")
-            print("      completionStatus: \(skippedSession.completionStatus)")
+            print("   Created session - before action:")
+            print("      userId: \(session.userId)")
+            print("      planId: \(session.planId ?? "nil")")
+            print("      startTime: \(session.startTime.formatted(date: .abbreviated, time: .complete))")
+            print("      endTime: \(session.endTime?.formatted(date: .abbreviated, time: .complete) ?? "nil")")
 
-            skippedSession = FastingManager.skipSession(skippedSession)
+            if shouldSkip {
+                // Under 1 hour - mark as skipped
+                session = FastingManager.skipSession(session)
+                print("   Marking as skipped (under 1 hour)")
+            } else {
+                // 1 hour or more - mark as ended early
+                session.endTime = now
+                session.completionStatus = .earlyEnd
+                session.manuallyEdited = false
+                print("   Marking as ended early (1+ hours)")
+            }
 
-            print("   After skipSession():")
-            print("      endTime: \(skippedSession.endTime?.formatted(date: .abbreviated, time: .complete) ?? "nil")")
-            print("      skipped: \(skippedSession.skipped)")
-            print("      completionStatus: \(skippedSession.completionStatus)")
-            print("      actualDurationHours: \(skippedSession.actualDurationHours)")
+            print("   After action:")
+            print("      endTime: \(session.endTime?.formatted(date: .abbreviated, time: .complete) ?? "nil")")
+            print("      skipped: \(session.skipped)")
+            print("      completionStatus: \(session.completionStatus)")
+            print("      actualDurationHours: \(session.actualDurationHours)")
 
-            // Save the skipped session
-            let savedId = try await firebaseManager.saveFastingSession(skippedSession)
-            print("   ✅ Skipped session SAVED to Firebase with ID: \(savedId)")
+            // Save the session
+            let savedId = try await firebaseManager.saveFastingSession(session)
+            print("   ✅ Session SAVED to Firebase with ID: \(savedId)")
 
             // Mark this fasting window as ended AND prevent auto-record duplicate
             lastEndedWindowEnd = ends
             lastRecordedFastWindowEnd = ends  // Prevent recordCompletedRegimeFast() from creating duplicate
 
-            print("✅ Skipped current fast - regime continues")
+            print("✅ \(shouldSkip ? "Skipped" : "Ended early") current fast - regime continues")
             print("   Fast window: \(started.formatted(date: .omitted, time: .shortened)) - \(ends.formatted(date: .omitted, time: .shortened))")
 
-            // Refresh sessions to show the skipped fast
+            // Refresh sessions to show the fast
             print("   Refreshing sessions...")
             await loadRecentSessions()
             print("   📊 After refresh: recentSessions count = \(recentSessions.count)")
@@ -1315,17 +1334,28 @@ class FastingViewModel: ObservableObject {
                 print("      \(index + 1). ID: \(session.id ?? "nil"), status: \(session.completionStatus), skipped: \(session.skipped), duration: \(String(format: "%.1f", session.actualDurationHours))h")
             }
 
-            let skippedCount = recentSessions.filter { $0.skipped }.count
-            print("   🔢 Total skipped sessions in recent: \(skippedCount)")
-
             await loadAnalytics()
+
+            // Cancel and reschedule notifications to prevent orphaned notifications
+            if let planId = plan.id {
+                print("🔔 Cancelling old notifications for plan: \(planId)")
+                await FastingNotificationManager.shared.cancelPlanNotifications(planId: planId)
+                if plan.regimeActive {
+                    do {
+                        try await FastingNotificationManager.shared.schedulePlanNotifications(for: plan)
+                        print("✅ Notifications rescheduled")
+                    } catch {
+                        print("⚠️ Failed to reschedule notifications: \(error)")
+                    }
+                }
+            }
 
             // Trigger UI refresh
             objectWillChange.send()
 
             // The regime stays active and will start the next scheduled fast
         } catch {
-            print("❌ SKIP FAST ERROR: \(error.localizedDescription)")
+            print("❌ SKIP/END FAST ERROR: \(error.localizedDescription)")
             self.error = error
             self.showError = true
         }
@@ -1410,6 +1440,20 @@ class FastingViewModel: ObservableObject {
             // Refresh sessions to show the partial fast
             await loadRecentSessions()
             await loadAnalytics()
+
+            // Cancel and reschedule notifications to prevent orphaned notifications
+            if let planId = plan.id {
+                print("🔔 Cancelling old notifications for plan: \(planId)")
+                await FastingNotificationManager.shared.cancelPlanNotifications(planId: planId)
+                if plan.regimeActive {
+                    do {
+                        try await FastingNotificationManager.shared.schedulePlanNotifications(for: plan)
+                        print("✅ Notifications rescheduled after snooze")
+                    } catch {
+                        print("⚠️ Failed to reschedule notifications: \(error)")
+                    }
+                }
+            }
 
             // Trigger UI refresh to show eating window
             objectWillChange.send()
