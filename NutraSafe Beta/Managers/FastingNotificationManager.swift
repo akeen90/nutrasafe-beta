@@ -469,6 +469,56 @@ class FastingNotificationManager {
         #endif
     }
 
+    /// Clean up orphaned notifications (notifications for sessions that no longer exist)
+    /// This is useful for cleaning up notifications from sessions deleted before the fix was implemented
+    func cleanupOrphanedNotifications(activeSessions: [FastingSession]) async {
+        let pendingRequests = await notificationCenter.pendingNotificationRequests()
+
+        // Get all fasting notifications
+        let fastingNotifications = pendingRequests.filter { request in
+            if let type = request.content.userInfo["type"] as? String {
+                return type == "fasting"
+            }
+            return false
+        }
+
+        // Build a set of valid notification identifiers from active sessions
+        var validIdentifiers = Set<String>()
+        for session in activeSessions {
+            guard let planId = session.planId else { continue }
+            let startTimestamp = session.startTime.timeIntervalSince1970
+
+            validIdentifiers.insert("fast_start_\(planId)_\(startTimestamp)")
+            validIdentifiers.insert("fast_end_\(planId)_\(startTimestamp)")
+            validIdentifiers.insert("fast_reminder_\(planId)_\(startTimestamp)")
+            validIdentifiers.insert("fast_stage_\(planId)_12h_\(startTimestamp)")
+        }
+
+        // Find orphaned notifications (ones that don't match any active session)
+        let orphanedIdentifiers = fastingNotifications
+            .filter { notification in
+                // Skip snooze and extend notifications (they're temporary)
+                if notification.identifier.contains("_snooze_") || notification.identifier.contains("_extend_") {
+                    return false
+                }
+                // Check if this notification matches an active session
+                return !validIdentifiers.contains(notification.identifier)
+            }
+            .map { $0.identifier }
+
+        if !orphanedIdentifiers.isEmpty {
+            notificationCenter.removePendingNotificationRequests(withIdentifiers: orphanedIdentifiers)
+
+            #if DEBUG
+            print("🧹 Cleaned up \(orphanedIdentifiers.count) orphaned notifications")
+            #endif
+        } else {
+            #if DEBUG
+            print("✅ No orphaned notifications found")
+            #endif
+        }
+    }
+
     // MARK: - Helper Methods
 
     /// Get the next scheduled dates for a plan (up to specified weeks ahead)

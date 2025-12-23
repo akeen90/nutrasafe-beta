@@ -273,6 +273,9 @@ class FastingViewModel: ObservableObject {
             await loadActiveSession(from: sessions)
             await loadRecentSessions(from: sessions)
             await loadAnalytics(from: sessions)
+
+            // Clean up orphaned notifications (from sessions deleted before the fix)
+            await FastingNotificationManager.shared.cleanupOrphanedNotifications(activeSessions: sessions)
         } catch {
             self.error = error
             self.showError = true
