@@ -2430,7 +2430,7 @@ struct AddUseByItemSheet: View {
         .onDisappear {
             print("🔴 [UseBy] AddUseByItemSheet DISAPPEARED")
         }
-        .onChange(of: selectedOption) { newOption in
+        .onChange(of: selectedOption) { _, newOption in
             print("🔄 [UseBy] Selected option changed to: \(newOption)")
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
@@ -2457,7 +2457,7 @@ struct UseByInlineSearchView: View {
                         .textInputAutocapitalization(.never)
                         .disableAutocorrection(true)
                         .padding(.trailing, 28)
-                        .onChange(of: query) { newValue in
+                        .onChange(of: query) { _, newValue in
                             searchTask?.cancel()
                             let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
                             guard trimmed.count >= 2 else { self.results = []; self.isSearching = false; return }
@@ -2533,7 +2533,7 @@ struct UseByInlineSearchView: View {
                     }
             }
         }
-        .onChange(of: showingFoodDetail) { newValue in
+        .onChange(of: showingFoodDetail) { _, newValue in
             print("🔄 [UseBy Search] showingFoodDetail changed to: \(newValue)")
             if newValue {
                 print("🔄 [UseBy Search] selectedFood when showing sheet: \(selectedFood?.name ?? "nil")")

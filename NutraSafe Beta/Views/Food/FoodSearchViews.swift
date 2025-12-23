@@ -472,7 +472,7 @@ struct AddFoodSearchView: View {
                     .onTapGesture {
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     }
-                    .onChange(of: searchResults.count) { newCount in
+                    .onChange(of: searchResults.count) { _, newCount in
                         // Auto-scroll to show first result when results appear
                         if newCount > 0 {
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
@@ -482,7 +482,7 @@ struct AddFoodSearchView: View {
                             }
                         }
                     }
-                    .onChange(of: keyboardHeight) { height in
+                    .onChange(of: keyboardHeight) { _, height in
                         // Also scroll when keyboard appears if we have results
                         if height > 0 && !searchResults.isEmpty {
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {

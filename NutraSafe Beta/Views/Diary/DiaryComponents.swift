@@ -144,7 +144,7 @@ struct DiaryMealCard: View {
                 .fill(.ultraThinMaterial)
         )
         .cardShadow()
-        .onChange(of: foods) { newFoods in
+        .onChange(of: foods) { _, newFoods in
             // PERFORMANCE: Update cached totals only when foods array changes
             // Prevents recalculation on every render cycle
             cachedProtein = newFoods.reduce(0) { $0 + $1.protein }

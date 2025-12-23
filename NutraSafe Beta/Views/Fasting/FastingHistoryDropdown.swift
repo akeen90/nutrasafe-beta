@@ -90,7 +90,7 @@ struct FastingHistoryDropdown: View {
         .onReceive(NotificationCenter.default.publisher(for: .fastHistoryUpdated)) { _ in
             reload()
         }
-        .onChange(of: isExpanded) { expanded in
+        .onChange(of: isExpanded) { _, expanded in
             if expanded && sessions.isEmpty {
                 reload()
             }

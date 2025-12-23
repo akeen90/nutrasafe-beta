@@ -3241,7 +3241,7 @@ private var nutritionFactsSection: some View {
                         }
                     }
                     .pickerStyle(SegmentedPickerStyle())
-                    .onChange(of: quantityInputMode) { newMode in
+                    .onChange(of: quantityInputMode) { _, newMode in
                         // Convert between modes
                         if newMode == .fraction {
                             // Converting from decimal to fraction
@@ -3262,7 +3262,7 @@ private var nutritionFactsSection: some View {
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
                                 .font(.system(size: 16, weight: .medium))
                                 .frame(maxWidth: 100)
-                                .onChange(of: quantityDecimalText) { newValue in
+                                .onChange(of: quantityDecimalText) { _, newValue in
                                     if let value = Double(newValue), value > 0 {
                                         quantityMultiplier = value
                                     }
@@ -3281,7 +3281,7 @@ private var nutritionFactsSection: some View {
                         .pickerStyle(WheelPickerStyle())
                         .frame(height: 100)
                         .clipped()
-                        .onChange(of: quantityFraction) { newFraction in
+                        .onChange(of: quantityFraction) { _, newFraction in
                             quantityMultiplier = newFraction.decimalValue
                             quantityDecimalText = String(format: "%.2f", newFraction.decimalValue)
                         }

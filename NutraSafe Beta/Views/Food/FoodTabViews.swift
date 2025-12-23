@@ -1809,7 +1809,7 @@ struct LogReactionView: View {
                         )
                     }
                     .buttonStyle(PlainButtonStyle())
-                    .onChange(of: selectedFood) { newFood in
+                    .onChange(of: selectedFood) { _, newFood in
                         #if DEBUG
                         print("🔄 [Reaction] Food changed: \(newFood?.name ?? "nil")")
                         print("🔄 [Reaction] Ingredients count: \(newFood?.ingredients?.count ?? 0)")

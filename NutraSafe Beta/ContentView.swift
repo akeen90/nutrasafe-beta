@@ -1327,7 +1327,7 @@ struct WorkoutSetRow: View {
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .keyboardType(.numberPad)
                     .frame(width: 60)
-                    .onChange(of: repsText) { newValue in
+                    .onChange(of: repsText) { _, newValue in
                         set.reps = Int(newValue) ?? 0
                         onUpdate(set)
                     }
@@ -1344,7 +1344,7 @@ struct WorkoutSetRow: View {
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .keyboardType(.decimalPad)
                     .frame(width: 80)
-                    .onChange(of: weightText) { newValue in
+                    .onChange(of: weightText) { _, newValue in
                         set.weight = Double(newValue) ?? 0.0
                         onUpdate(set)
                     }
@@ -1727,7 +1727,7 @@ struct ContentView: View {
             }
         }
         
-        .onChange(of: selectedTab) { newTab in
+        .onChange(of: selectedTab) { _, newTab in
             // Track the last non-add tab for proper return behavior when dismissing
             if newTab != .add {
                 previousTabBeforeAdd = newTab
@@ -3992,11 +3992,11 @@ struct EditWeightView: View {
                     }
                 }
             }
-            .onChange(of: selectedUnit) { newUnit in
+            .onChange(of: selectedUnit) { _, newUnit in
                 convertWeight(from: previousUnit, to: newUnit)
                 previousUnit = newUnit  // Update after conversion
             }
-            .onChange(of: selectedHeightUnit) { newUnit in
+            .onChange(of: selectedHeightUnit) { _, newUnit in
                 convertHeight(from: previousHeightUnit, to: newUnit)
                 previousHeightUnit = newUnit  // Update after conversion
             }

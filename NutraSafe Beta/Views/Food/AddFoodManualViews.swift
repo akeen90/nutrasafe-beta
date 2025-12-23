@@ -561,7 +561,7 @@ struct ManualFoodDetailEntryView: View {
                                 }
                             }
                             .tint(.purple)
-                            .onChange(of: isPerUnit) { newValue in
+                            .onChange(of: isPerUnit) { _, newValue in
                                 if newValue {
                                     // Switching to per-unit: set serving size to 1
                                     servingSize = "1"

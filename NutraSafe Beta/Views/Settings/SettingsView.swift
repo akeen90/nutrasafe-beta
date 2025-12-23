@@ -487,7 +487,7 @@ struct NutritionGoalsSection: View {
                                     .font(.system(size: 20, weight: .semibold))
                                     .foregroundColor(.orange)
                             }
-                            .onChange(of: caloricGoal) { newValue in
+                            .onChange(of: caloricGoal) { _, newValue in
                                 saveCaloricGoal(newValue)
                             }
 
@@ -523,7 +523,7 @@ struct NutritionGoalsSection: View {
                                     .font(.system(size: 20, weight: .semibold))
                                     .foregroundColor(.orange)
                             }
-                            .onChange(of: exerciseGoal) { newValue in
+                            .onChange(of: exerciseGoal) { _, newValue in
                                 saveExerciseGoal(newValue)
                             }
 
@@ -559,7 +559,7 @@ struct NutritionGoalsSection: View {
                                     .font(.system(size: 20, weight: .semibold))
                                     .foregroundColor(.green)
                             }
-                            .onChange(of: stepGoal) { newValue in
+                            .onChange(of: stepGoal) { _, newValue in
                                 saveStepGoal(newValue)
                             }
 
@@ -983,7 +983,7 @@ struct ProgressGoalsSection: View {
             WeightTrackingView(showingSettings: $showingWeightHistory)
                 .environmentObject(firebaseManager)
         }
-        .onChange(of: showingWeightHistory) { isShowing in
+        .onChange(of: showingWeightHistory) { _, isShowing in
             if !isShowing {
                 // Reload data when returning from Weight History
                 Task {
@@ -3349,7 +3349,7 @@ struct NotificationSettingsView: View {
                         }
                     }
                     .disabled(permissionStatus != .authorized && permissionStatus != .provisional)
-                    .onChange(of: useByNotificationsEnabled) { newValue in
+                    .onChange(of: useByNotificationsEnabled) { _, newValue in
                         if newValue {
                             // Request permission if needed
                             if permissionStatus == .notDetermined {

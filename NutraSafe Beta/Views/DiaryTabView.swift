@@ -432,10 +432,10 @@ struct DiaryTabView: View {
                 hasLoadedOnce = true
                 loadFoodData()
             }
-            .onChange(of: selectedTab) { newTab in
+            .onChange(of: selectedTab) { _, newTab in
                 handleSelectedTabChange(newTab)
             }
-            .onChange(of: diarySubTab) { newTab in
+            .onChange(of: diarySubTab) { _, newTab in
                 handleDiarySubTabChange(newTab)
             }
             .onChange(of: refreshTrigger) { _ in
@@ -444,7 +444,7 @@ struct DiaryTabView: View {
             .onChange(of: diaryDataManager.dataReloadTrigger) { _ in
                 loadFoodData()
             }
-            .onChange(of: editTrigger) { newValue in
+            .onChange(of: editTrigger) { _, newValue in
                 handleEditTrigger(newValue)
             }
             .onReceive(NotificationCenter.default.publisher(for: .diaryFoodDetailOpened)) { _ in
@@ -459,19 +459,19 @@ struct DiaryTabView: View {
                     }
                 }
             }
-            .onChange(of: moveTrigger) { newValue in
+            .onChange(of: moveTrigger) { _, newValue in
                 if newValue {
                     showMoveOptions()
                     moveTrigger = false
                 }
             }
-            .onChange(of: copyTrigger) { newValue in
+            .onChange(of: copyTrigger) { _, newValue in
                 if newValue {
                     showCopyOptions()
                     copyTrigger = false
                 }
             }
-            .onChange(of: deleteTrigger) { newValue in
+            .onChange(of: deleteTrigger) { _, newValue in
                 guard newValue else { return }
                 deleteSelectedFoods()
                 deleteTrigger = false
