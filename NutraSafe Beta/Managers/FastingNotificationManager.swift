@@ -424,6 +424,31 @@ class FastingNotificationManager {
         #endif
     }
 
+    /// Cancel notifications for a specific session
+    func cancelSessionNotifications(session: FastingSession) async {
+        guard let planId = session.planId else {
+            #if DEBUG
+            print("⚠️ Cannot cancel notifications for session without planId")
+            #endif
+            return
+        }
+
+        let startTimestamp = session.startTime.timeIntervalSince1970
+
+        // Build all possible notification identifiers for this session
+        var identifiersToRemove: [String] = []
+        identifiersToRemove.append("fast_start_\(planId)_\(startTimestamp)")
+        identifiersToRemove.append("fast_end_\(planId)_\(startTimestamp)")
+        identifiersToRemove.append("fast_reminder_\(planId)_\(startTimestamp)")
+        identifiersToRemove.append("fast_stage_\(planId)_12h_\(startTimestamp)")
+
+        notificationCenter.removePendingNotificationRequests(withIdentifiers: identifiersToRemove)
+
+        #if DEBUG
+        print("🗑️ Cancelled notifications for session starting at \(session.startTime)")
+        #endif
+    }
+
     /// Cancel all fasting notifications
     func cancelAllFastingNotifications() async {
         let pendingRequests = await notificationCenter.pendingNotificationRequests()

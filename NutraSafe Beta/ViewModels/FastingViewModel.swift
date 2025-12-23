@@ -387,6 +387,10 @@ class FastingViewModel: ObservableObject {
 
         do {
             try await firebaseManager.deleteFastingSession(id: sessionId)
+
+            // Cancel any scheduled notifications for this session
+            await FastingNotificationManager.shared.cancelSessionNotifications(session: session)
+
             // Remove from local array
             self.recentSessions.removeAll { $0.id == sessionId }
         } catch {
@@ -408,6 +412,10 @@ class FastingViewModel: ObservableObject {
 
         do {
             _ = try await firebaseManager.saveFastingSession(clearedSession)
+
+            // Cancel any scheduled notifications for this session
+            await FastingNotificationManager.shared.cancelSessionNotifications(session: session)
+
             // Update local array
             if let index = self.recentSessions.firstIndex(where: { $0.id == sessionId }) {
                 self.recentSessions[index] = clearedSession
