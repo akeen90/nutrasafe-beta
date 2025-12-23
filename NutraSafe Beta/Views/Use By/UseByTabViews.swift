@@ -3091,10 +3091,10 @@ struct UseByItemDetailView: View {
     let item: UseByInventoryItem? // Optional for add mode
     var onComplete: (() -> Void)? = nil
 
-    @State private var editedName: String = ""
-    @State private var editedBrand: String = ""
-    @State private var editedQuantity: String = ""
-    @State private var editedExpiryDate: Date = Date()
+    @State private var editedName: String
+    @State private var editedBrand: String
+    @State private var editedQuantity: String
+    @State private var editedExpiryDate: Date
 
 
     @State private var notes: String = ""
@@ -3115,6 +3115,29 @@ struct UseByItemDetailView: View {
     @State private var showPhotoActionSheet: Bool = false
     @State private var isUploadingPhoto: Bool = false
     @State private var uploadedImageURL: String?
+
+    // Initializer to properly set initial values
+    init(item: UseByInventoryItem? = nil, onComplete: (() -> Void)? = nil) {
+        self.item = item
+        self.onComplete = onComplete
+
+        // Initialize @State properties based on item (edit mode) or defaults (add mode)
+        if let item = item {
+            _editedName = State(initialValue: item.name)
+            _editedBrand = State(initialValue: item.brand ?? "")
+            _editedQuantity = State(initialValue: item.quantity)
+            _editedExpiryDate = State(initialValue: item.expiryDate)
+            _notes = State(initialValue: item.notes ?? "")
+            _uploadedImageURL = State(initialValue: item.imageURL)
+        } else {
+            _editedName = State(initialValue: "")
+            _editedBrand = State(initialValue: "")
+            _editedQuantity = State(initialValue: "")
+            _editedExpiryDate = State(initialValue: Date().addingTimeInterval(7 * 24 * 60 * 60)) // Default: 7 days from now
+            _notes = State(initialValue: "")
+            _uploadedImageURL = State(initialValue: nil)
+        }
+    }
 
     // Computed properties that work for both add and edit modes
     private var isAddMode: Bool { item == nil }
@@ -3533,23 +3556,16 @@ struct UseByItemDetailView: View {
             }
         }
         .onAppear {
-            if let item = item {
-                // Edit mode: Initialize state from item
-                editedName = item.name
-                editedBrand = item.brand ?? ""
-                editedQuantity = item.quantity
-                editedExpiryDate = item.expiryDate
-                notes = item.notes ?? ""
-                uploadedImageURL = item.imageURL
-
-                // Load existing photo from URL if available
-                if let imageURL = item.imageURL, capturedImage == nil {
-                    Task {
-                        await loadExistingPhoto(from: imageURL)
-                    }
+            // Load existing photo from URL if available (edit mode only)
+            if let item = item, let imageURL = item.imageURL, capturedImage == nil {
+                Task {
+                    await loadExistingPhoto(from: imageURL)
                 }
+            }
 
-                // Initialize expiry selector from actual expiry date
+            // Initialize expiry selector values based on mode
+            if let item = item {
+                // Edit mode: Calculate days from actual expiry date
                 let calendar = Calendar.current
                 let today = calendar.startOfDay(for: Date())
                 let expiry = calendar.startOfDay(for: item.expiryDate)
@@ -3559,14 +3575,6 @@ struct UseByItemDetailView: View {
                 if expiryUnit == .weeks {
                     expiryAmount = max(expiryAmount / 7, 0)
                 }
-            } else {
-                // Add mode: Set defaults
-                editedQuantity = "1"
-                expiryMode = .selector
-                expiryAmount = 7
-                expiryUnit = .days
-                // Set expiry date based on selector values
-                updateExpiryDate()
             }
 
             withAnimation(.spring(response: 0.6)) {
