@@ -248,7 +248,7 @@ struct MainAppView: View {
                     await checkAndRefreshNotifications()
                 }
             }
-            .onChange(of: healthKitRingsEnabled) { enabled in
+            .onChange(of: healthKitRingsEnabled) { _, enabled in
                 Task {
                     if enabled {
                         await healthKitManager.requestAuthorization()
