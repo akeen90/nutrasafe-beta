@@ -298,7 +298,7 @@ struct AddFoodSearchView: View {
                         .textFieldStyle(PlainTextFieldStyle())
                         .autocorrectionDisabled(true)
                         .textInputAutocapitalization(.never)
-                        .onChange(of: searchText, perform: { newValue in
+                        .onChange(of: searchText) { _, newValue in
                             // PERFORMANCE: Debounce search to avoid running expensive operations on every keystroke
                             searchDebouncer.debounce {
                                 performLiveSearch(query: newValue)

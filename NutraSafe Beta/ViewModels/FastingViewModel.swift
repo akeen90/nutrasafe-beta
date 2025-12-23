@@ -1231,7 +1231,7 @@ class FastingViewModel: ObservableObject {
         newSession.startTime = Date()
 
         do {
-            try await firebaseManager.saveFastingSession(newSession)
+            _ = try await firebaseManager.saveFastingSession(newSession)
             self.activeSession = newSession
             await loadRecentSessions()
             await loadAnalytics()
@@ -1401,7 +1401,7 @@ class FastingViewModel: ObservableObject {
             )
 
             // Save the partial session
-            try await firebaseManager.saveFastingSession(partialSession)
+            _ = try await firebaseManager.saveFastingSession(partialSession)
 
             // Mark this fasting window as ended
             lastEndedWindowEnd = ends

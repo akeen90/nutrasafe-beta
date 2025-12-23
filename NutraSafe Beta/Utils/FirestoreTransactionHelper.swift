@@ -190,7 +190,7 @@ struct FirestoreTransactionHelper {
         by amount: Double,
         db: Firestore
     ) async throws {
-        try await db.runTransaction { (transaction, errorPointer) -> Any? in
+        _ = try await db.runTransaction { (transaction, errorPointer) -> Any? in
             let document: DocumentSnapshot
             do {
                 document = try transaction.getDocument(documentRef)

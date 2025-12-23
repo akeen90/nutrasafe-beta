@@ -1905,7 +1905,7 @@ final class CategoricalNutrientViewModel: ObservableObject {
         }
 
         // Capture strong reference to manager to prevent deallocation during task
-        guard let manager = diaryManager else {
+        guard diaryManager != nil else {
             #if DEBUG
             print("❌ DiaryManager not set")
             #endif

@@ -365,7 +365,7 @@ struct PlanDashboardView: View {
 
                     // Show current state
                     switch viewModel.currentRegimeState {
-                    case .fasting(let started, let ends):
+                    case .fasting(_, let ends):
                         VStack(spacing: 12) {
                             // Snooze indicator (if snoozed)
                             if viewModel.isRegimeSnoozed, let snoozeUntil = viewModel.regimeSnoozedUntil {
