@@ -294,312 +294,335 @@ struct PlanDashboardView: View {
         return "\(h)-Hour Fast"
     }
 
-    var body: some View {
-        VStack(spacing: 20) {
-            // Plan Header Card
-            VStack(spacing: 12) {
-                HStack {
-                    Image(systemName: "clock.badge.checkmark")
-                        .foregroundColor(.green)
-                    Text(effectiveDisplayName)
-                        .font(.headline)
-                    Spacer()
-                }
+    // MARK: - Extracted View Components
 
-                HStack {
-                    Text("\(effectiveDurationHours)h")
+    @ViewBuilder
+    private var planHeaderCard: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Image(systemName: "clock.badge.checkmark")
+                    .foregroundColor(.green)
+                Text(effectiveDisplayName)
+                    .font(.headline)
+                Spacer()
+            }
+
+            HStack {
+                Text("\(effectiveDurationHours)h")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                if !plan.daysOfWeek.isEmpty {
+                    Text("•")
                         .font(.caption)
                         .foregroundColor(.secondary)
 
-                    if !plan.daysOfWeek.isEmpty {
-                        Text("•")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                    Text("\(plan.daysOfWeek.count) days/week")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding()
+        .background(Color.green.opacity(0.1))
+        .cornerRadius(12)
+    }
 
-                        Text("\(plan.daysOfWeek.count) days/week")
+    @ViewBuilder
+    private var statsGrid: some View {
+        HStack(spacing: 12) {
+            FastingStatCard(title: "Total Fasts", value: "\(totalFasts)", icon: "calendar")
+            FastingStatCard(title: "Completed", value: "\(completionRate)%", icon: "checkmark.circle.fill")
+            FastingStatCard(title: "Avg Duration", value: String(format: "%.1fh", averageDuration), icon: "clock.fill")
+        }
+    }
+
+    @ViewBuilder
+    private var regimeActiveControls: some View {
+        VStack(spacing: 12) {
+            Button {
+                showRegimeDetails = true
+            } label: {
+                HStack {
+                    Image(systemName: "bolt.circle.fill")
+                        .foregroundColor(.green)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Regime Active")
+                            .font(.headline)
+                            .foregroundColor(.green)
+                        Text("Tap for timer & stages")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(.secondary)
+                        .font(.caption)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+                .background(Color.green.opacity(0.1))
+                .cornerRadius(12)
+            }
+            .buttonStyle(.plain)
+
+            regimeStateView
+
+            // Stop Regime Button
+            Button {
+                Task {
+                    await viewModel.stopRegime()
+                }
+            } label: {
+                HStack {
+                    Image(systemName: "stop.circle.fill")
+                    Text("Stop Regime")
+                        .fontWeight(.semibold)
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.red)
+                .foregroundColor(.white)
+                .cornerRadius(12)
+            }
+            .buttonStyle(.plain)
+
+            // View Sources Button
+            Button {
+                showingCitations = true
+            } label: {
+                HStack {
+                    Image(systemName: "doc.text.fill")
+                    Text("View Sources")
+                        .fontWeight(.medium)
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.blue.opacity(0.1))
+                .foregroundColor(.blue)
+                .cornerRadius(12)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    @ViewBuilder
+    private var regimeStateView: some View {
+        switch viewModel.currentRegimeState {
+        case .fasting(_, let ends):
+            fastingStateView(ends: ends)
+        case .eating(let nextFastStart):
+            eatingStateView(nextFastStart: nextFastStart)
+        case .inactive:
+            EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private func fastingStateView(ends: Date) -> some View {
+        VStack(spacing: 12) {
+            // Snooze indicator (if snoozed)
+            if viewModel.isRegimeSnoozed, let snoozeUntil = viewModel.regimeSnoozedUntil {
+                HStack {
+                    Image(systemName: "bell.zzz.fill")
+                        .foregroundColor(.orange)
+                    Text("Snoozed until \(snoozeUntil.formatted(date: .omitted, time: .shortened))")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.orange.opacity(0.15))
+                .cornerRadius(8)
+            }
+
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Currently Fasting")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    Text("Ends: \(ends.formatted(date: .omitted, time: .shortened))")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                Text(viewModel.timeUntilFastEnds)
+                    .font(.title3)
+                    .fontWeight(.bold)
+                    .monospacedDigit()
             }
             .padding()
-            .background(Color.green.opacity(0.1))
-            .cornerRadius(12)
+            .background(Color.blue.opacity(0.1))
+            .cornerRadius(8)
 
-            // Stats Grid
+            // Snooze and Skip buttons
             HStack(spacing: 12) {
-                FastingStatCard(title: "Total Fasts", value: "\(totalFasts)", icon: "calendar")
-                FastingStatCard(title: "Completed", value: "\(completionRate)%", icon: "checkmark.circle.fill")
-                FastingStatCard(title: "Avg Duration", value: String(format: "%.1fh", averageDuration), icon: "clock.fill")
+                Button {
+                    snoozeUntilTime = Date()
+                    showSnoozePicker = true
+                } label: {
+                    HStack {
+                        Image(systemName: "bell.zzz.fill")
+                        Text("Snooze Fast")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.blue.opacity(0.2))
+                    .foregroundColor(.blue)
+                    .cornerRadius(8)
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    Task {
+                        await viewModel.skipCurrentRegimeFast()
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "forward.fill")
+                        Text("End Fast Early")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.orange.opacity(0.2))
+                    .foregroundColor(.orange)
+                    .cornerRadius(8)
+                }
+                .buttonStyle(.plain)
             }
+        }
+    }
 
-            // Regime Control Button
-            if viewModel.isRegimeActive {
-                // Show regime state info
-                VStack(spacing: 12) {
-                    Button {
-                        showRegimeDetails = true
-                    } label: {
-                        HStack {
-                            Image(systemName: "bolt.circle.fill")
-                                .foregroundColor(.green)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Regime Active")
-                                    .font(.headline)
-                                    .foregroundColor(.green)
-                                Text("Tap for timer & stages")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
-                        }
-                        .padding()
-                        .background(Color.green.opacity(0.1))
-                        .cornerRadius(12)
-                    }
-                    .buttonStyle(.plain)
-
-                    // Show current state
-                    switch viewModel.currentRegimeState {
-                    case .fasting(_, let ends):
-                        VStack(spacing: 12) {
-                            // Snooze indicator (if snoozed)
-                            if viewModel.isRegimeSnoozed, let snoozeUntil = viewModel.regimeSnoozedUntil {
-                                HStack {
-                                    Image(systemName: "bell.zzz.fill")
-                                        .foregroundColor(.orange)
-                                    Text("Snoozed until \(snoozeUntil.formatted(date: .omitted, time: .shortened))")
-                                        .font(.caption)
-                                        .fontWeight(.medium)
-                                    Spacer()
-                                }
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(Color.orange.opacity(0.15))
-                                .cornerRadius(8)
-                            }
-
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Currently Fasting")
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                    Text("Ends: \(ends.formatted(date: .omitted, time: .shortened))")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                                Spacer()
-                                Text(viewModel.timeUntilFastEnds)
-                                    .font(.title3)
-                                    .fontWeight(.bold)
-                                    .monospacedDigit()
-                            }
-                            .padding()
-                            .background(Color.blue.opacity(0.1))
-                            .cornerRadius(8)
-
-                            // Snooze, Skip, and Edit buttons
-                            HStack(spacing: 12) {
-                                Button {
-                                    // Initialize with current time TODAY (not 30 min in future which might roll to tomorrow)
-                                    snoozeUntilTime = Date()
-                                    showSnoozePicker = true
-                                } label: {
-                                    HStack {
-                                        Image(systemName: "bell.zzz.fill")
-                                        Text("Snooze Fast")
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 12)
-                                    .background(Color.blue.opacity(0.2))
-                                    .foregroundColor(.blue)
-                                    .cornerRadius(8)
-                                }
-                                .buttonStyle(.plain)
-
-                                Button {
-                                    Task {
-                                        await viewModel.skipCurrentRegimeFast()
-                                    }
-                                } label: {
-                                    HStack {
-                                        Image(systemName: "forward.fill")
-                                        Text("End Fast Early")
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 12)
-                                    .background(Color.orange.opacity(0.2))
-                                    .foregroundColor(.orange)
-                                    .cornerRadius(8)
-                                }
-                                .buttonStyle(.plain)
-
-                                EmptyView()
-                            }
-                        }
-
-                    case .eating(let nextFastStart):
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Eating Window")
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                // Show snooze time if snoozed, otherwise next scheduled fast
-                                if viewModel.isRegimeSnoozed, let snoozeUntil = viewModel.regimeSnoozedUntil {
-                                    Text("Resume fasting: \(snoozeUntil.formatted(date: .omitted, time: .shortened))")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                } else {
-                                    Text("Next fast: \(nextFastStart.formatted(date: .omitted, time: .shortened))")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                            Spacer()
-                            Text(viewModel.timeUntilNextFast)
-                                .font(.title3)
-                                .fontWeight(.bold)
-                                .monospacedDigit()
-                        }
-                        .padding()
-                        .background(Color.green.opacity(0.1))
-                        .cornerRadius(8)
-
-                    case .inactive:
-                        EmptyView()
-                    }
-
-                    // Stop Regime Button
-                    Button {
-                        Task {
-                            await viewModel.stopRegime()
-                        }
-                    } label: {
-                        HStack {
-                            Image(systemName: "stop.circle.fill")
-                            Text("Stop Regime")
-                                .fontWeight(.semibold)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.red)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
-                    }
-                    .buttonStyle(.plain)
-
-                    // View Sources Button (always visible)
-                    Button {
-                        showingCitations = true
-                    } label: {
-                        HStack {
-                            Image(systemName: "doc.text.fill")
-                            Text("View Sources")
-                                .fontWeight(.medium)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue.opacity(0.1))
-                        .foregroundColor(.blue)
-                        .cornerRadius(12)
-                    }
-                    .buttonStyle(.plain)
-                }
-            } else {
-                // Start Regime and Fast Settings Buttons
-                VStack(spacing: 12) {
-                    // Start Regime Button
-                    Button {
-                        // Check if past today's start time
-                        let (isPast, startTime) = viewModel.checkIfPastTodaysStartTime()
-                        if isPast {
-                            scheduledStartTime = startTime
-                            showStartTimeChoice = true
-                        } else {
-                            Task {
-                                await viewModel.startRegime()
-                            }
-                        }
-                    } label: {
-                        HStack {
-                            Image(systemName: "bolt.circle.fill")
-                            Text("Start Regime")
-                                .fontWeight(.semibold)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
-                    }
-                    .buttonStyle(.plain)
-
-                    // Fast Settings Button
-                    Button {
-                        showFastSettings = true
-                    } label: {
-                        HStack {
-                            Image(systemName: "gearshape.fill")
-                            Text("Fast Settings")
-                                .fontWeight(.medium)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.gray.opacity(0.2))
-                        .foregroundColor(.primary)
-                        .cornerRadius(12)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-
-            // Fasting History
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("Fasting History")
-                        .font(.headline)
-                    Spacer()
-                    if totalFasts > 0 {
-                        Text("\(totalFasts) total fasts")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-
-                // Show all weeks with any fasts (including skipped ones)
-                // Filter out only weeks with no fasts at all
-                let weeks = viewModel.weekSummaries.filter { $0.totalFasts > 0 }
-
-                if weeks.isEmpty {
-                    Text("No fasts recorded yet")
-                        .font(.subheadline)
+    @ViewBuilder
+    private func eatingStateView(nextFastStart: Date) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Eating Window")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                if viewModel.isRegimeSnoozed, let snoozeUntil = viewModel.regimeSnoozedUntil {
+                    Text("Resume fasting: \(snoozeUntil.formatted(date: .omitted, time: .shortened))")
+                        .font(.caption)
                         .foregroundColor(.secondary)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.gray.opacity(0.1))
-                        .cornerRadius(8)
                 } else {
-                    VStack(spacing: 12) {
-                        ForEach(Array(weeks)) { week in
-                            WeekSummaryCard(
-                                week: week,
-                                onDeleteTap: {
-                                    weekToDelete = week
-                                    showDeleteAlert = true
-                                }
-                            )
-                            .onTapGesture {
-                                selectedWeek = week
-                                showWeekDetail = true
+                    Text("Next fast: \(nextFastStart.formatted(date: .omitted, time: .shortened))")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            Spacer()
+            Text(viewModel.timeUntilNextFast)
+                .font(.title3)
+                .fontWeight(.bold)
+                .monospacedDigit()
+        }
+        .padding()
+        .background(Color.green.opacity(0.1))
+        .cornerRadius(8)
+    }
+
+    @ViewBuilder
+    private var regimeInactiveControls: some View {
+        VStack(spacing: 12) {
+            Button {
+                let (isPast, startTime) = viewModel.checkIfPastTodaysStartTime()
+                if isPast {
+                    scheduledStartTime = startTime
+                    showStartTimeChoice = true
+                } else {
+                    Task {
+                        await viewModel.startRegime()
+                    }
+                }
+            } label: {
+                HStack {
+                    Image(systemName: "bolt.circle.fill")
+                    Text("Start Regime")
+                        .fontWeight(.semibold)
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.blue)
+                .foregroundColor(.white)
+                .cornerRadius(12)
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                showFastSettings = true
+            } label: {
+                HStack {
+                    Image(systemName: "gearshape.fill")
+                    Text("Fast Settings")
+                        .fontWeight(.medium)
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.gray.opacity(0.2))
+                .foregroundColor(.primary)
+                .cornerRadius(12)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    @ViewBuilder
+    private var fastingHistorySection: some View {
+        let weeks = viewModel.weekSummaries.filter { $0.totalFasts > 0 }
+
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Fasting History")
+                    .font(.headline)
+                Spacer()
+                if totalFasts > 0 {
+                    Text("\(totalFasts) total fasts")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            if weeks.isEmpty {
+                Text("No fasts recorded yet")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(8)
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(Array(weeks)) { week in
+                        WeekSummaryCard(
+                            week: week,
+                            onDeleteTap: {
+                                weekToDelete = week
+                                showDeleteAlert = true
                             }
+                        )
+                        .onTapGesture {
+                            selectedWeek = week
+                            showWeekDetail = true
                         }
                     }
                 }
             }
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 20) {
+            planHeaderCard
+            statsGrid
+
+            if viewModel.isRegimeActive {
+                regimeActiveControls
+            } else {
+                regimeInactiveControls
+            }
+
+            fastingHistorySection
         }
         .sheet(isPresented: $showRegimeDetails) {
             RegimeDetailView(viewModel: viewModel, plan: plan)

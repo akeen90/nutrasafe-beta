@@ -1962,7 +1962,6 @@ private var nutritionFactsSection: some View {
         let totalFiber: Double
         let totalSugar: Double
         let totalSodium: Double
-        let quantityForMicronutrients: Double
 
         if food.isPerUnit == true {
             // Per-unit mode: values are already per unit, just multiply by quantity
@@ -1973,7 +1972,6 @@ private var nutritionFactsSection: some View {
             totalFiber = displayFood.fiber * quantityMultiplier
             totalSugar = displayFood.sugar * quantityMultiplier
             totalSodium = displayFood.sodium * quantityMultiplier
-            quantityForMicronutrients = quantityMultiplier
         } else {
             // Per-100g mode: convert to serving size first, then multiply by quantity
             totalCalories = displayFood.calories * (servingSize / 100) * quantityMultiplier
@@ -1983,7 +1981,6 @@ private var nutritionFactsSection: some View {
             totalFiber = displayFood.fiber * (servingSize / 100) * quantityMultiplier
             totalSugar = displayFood.sugar * (servingSize / 100) * quantityMultiplier
             totalSodium = displayFood.sodium * (servingSize / 100) * quantityMultiplier
-            quantityForMicronutrients = (servingSize / 100) * quantityMultiplier
         }
 
         // FIX: Do NOT generate micronutrient profile from macros

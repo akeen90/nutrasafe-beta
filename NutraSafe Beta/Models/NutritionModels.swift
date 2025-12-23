@@ -230,7 +230,7 @@ struct BarcodeSearchResponse: Codable {
             fiber: food.fiber,
             sugar: food.sugar,
             sodium: food.sodium,
-            servingDescription: food.serving_description ?? "per 100g",
+            servingDescription: food.serving_description,
             ingredients: food.ingredients?.components(separatedBy: ", "),
             isVerified: food.source_collection != "pendingFoods"
         )

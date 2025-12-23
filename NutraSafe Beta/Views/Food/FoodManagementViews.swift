@@ -1196,15 +1196,9 @@ struct CopyFoodBottomSheet: View {
 
 struct PresentationModifier: ViewModifier {
     func body(content: Content) -> some View {
-        if #available(iOS 16.4, *) {
-            content
-                .presentationDetents([.fraction(0.65)]) // Show 65% of screen so diary is still visible behind
-                .presentationDragIndicator(.visible)
-                .presentationBackgroundInteraction(.enabled(upThrough: .fraction(0.65)))
-        } else {
-            content
-                .presentationDetents([.fraction(0.65)]) // Show 65% of screen so diary is still visible behind
-                .presentationDragIndicator(.visible)
-        }
+        content
+            .presentationDetents([.fraction(0.65)]) // Show 65% of screen so diary is still visible behind
+            .presentationDragIndicator(.visible)
+            .presentationBackgroundInteraction(.enabled(upThrough: .fraction(0.65)))
     }
 }

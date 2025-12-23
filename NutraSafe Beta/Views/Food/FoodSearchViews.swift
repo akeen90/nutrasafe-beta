@@ -303,7 +303,7 @@ struct AddFoodSearchView: View {
                             searchDebouncer.debounce {
                                 performLiveSearch(query: newValue)
                             }
-                        })
+                        }
                         .onSubmit {
                             performSearch()
                         }
@@ -639,11 +639,12 @@ struct AddFoodSearchView: View {
 
                     // Only update UI if we actually found pending data
                     if hasChanges, !Task.isCancelled {
+                        let finalResults = enrichedResults // Capture for Swift 6 concurrency
                         await MainActor.run {
                             #if DEBUG
                             print("✅ Updated results with pending verification data")
                             #endif
-                            self.searchResults = enrichedResults
+                            self.searchResults = finalResults
                         }
                     }
                 } catch {
@@ -830,12 +831,12 @@ struct FoodDetailView: View {
                             }
                         }
                         .pickerStyle(.segmented)
-                        .onChange(of: selectedServingIndex, perform: { newValue in
+                        .onChange(of: selectedServingIndex) { _, newValue in
                             isCustomGrams = (newValue == servingOptions.count - 1)
                             if !isCustomGrams {
                                 customGrams = ""
                             }
-                        })
+                        }
                         
                         // Custom grams input
                         if isCustomGrams {

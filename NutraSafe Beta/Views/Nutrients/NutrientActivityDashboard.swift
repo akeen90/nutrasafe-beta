@@ -452,7 +452,7 @@ struct NutrientActivityDashboard: View {
         return formatter.string(from: date)
     }
 
-    private func mapVitaminKey(_ key: String) -> String {
+    nonisolated private func mapVitaminKey(_ key: String) -> String {
         let mapping: [String: String] = [
             "vitaminA": "vitamin_a",
             "vitaminC": "vitamin_c",
@@ -470,7 +470,7 @@ struct NutrientActivityDashboard: View {
         return mapping[key] ?? ""
     }
 
-    private func mapMineralKey(_ key: String) -> String {
+    nonisolated private func mapMineralKey(_ key: String) -> String {
         let mapping: [String: String] = [
             "calcium": "calcium",
             "iron": "iron",

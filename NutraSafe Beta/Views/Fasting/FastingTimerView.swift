@@ -676,9 +676,10 @@ struct FastingTimerView: View {
         )
 
         do {
+            let content = ActivityContent(state: contentState, staleDate: nil)
             let activity = try Activity.request(
                 attributes: attributes,
-                contentState: contentState,
+                content: content,
                 pushType: nil
             )
             currentActivity = activity
@@ -714,7 +715,8 @@ struct FastingTimerView: View {
             currentMinutes: minutes
         )
 
-        await activity.update(contentState)
+        let content = ActivityContent(state: contentState, staleDate: nil)
+        await activity.update(content)
         // DEBUG LOG: print("🔄 Live Activity updated: \(hours)h \(minutes)m")
     }
 
@@ -724,7 +726,7 @@ struct FastingTimerView: View {
             print("⚠️  No active Live Activity to end")
             return
         }
-        await activity.end(dismissalPolicy: .immediate)
+        await activity.end(nil, dismissalPolicy: .immediate)
         currentActivity = nil
         print("✅ Fasting Live Activity ended and removed from Dynamic Island")
     }

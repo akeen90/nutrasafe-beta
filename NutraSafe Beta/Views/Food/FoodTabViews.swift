@@ -1588,13 +1588,15 @@ class ReactionManager: ObservableObject {
         if authObserver == nil {
             authObserver = NotificationCenter.default.addObserver(forName: .authStateChanged, object: nil, queue: .main) { [weak self] _ in
                 guard let self else { return }
-                if self.firebaseManager.isAuthenticated,
-                   let uid = self.firebaseManager.currentUser?.uid {
-                    if self.lastLoadedUserId != uid || self.reactions.isEmpty {
-                        self.reloadIfAuthenticated()
+                Task { @MainActor in
+                    if self.firebaseManager.isAuthenticated,
+                       let uid = self.firebaseManager.currentUser?.uid {
+                        if self.lastLoadedUserId != uid || self.reactions.isEmpty {
+                            self.reloadIfAuthenticated()
+                        }
+                    } else {
+                        self.clearData()
                     }
-                } else {
-                    self.clearData()
                 }
             }
         }
@@ -2331,12 +2333,12 @@ struct FoodReactionSearchView: View {
                     .autocorrectionDisabled(true)
                     .textInputAutocapitalization(.never)
                     .focused($isSearchFieldFocused)
-                    .onChange(of: searchText, perform: { newValue in
+                    .onChange(of: searchText) { _, newValue in
                         // PERFORMANCE: Debounce search to avoid running expensive operations on every keystroke
                         searchDebouncer.debounce {
                             performLiveSearch(query: newValue)
                         }
-                    })
+                    }
                     .onSubmit {
                         performSearch()
                     }
@@ -2688,8 +2690,9 @@ struct FoodReactionSearchView: View {
                         }
 
                         if hasChanges {
+                            let finalResults = enrichedResults // Capture for Swift 6 concurrency
                             await MainActor.run {
-                                self.searchResults = enrichedResults
+                                self.searchResults = finalResults
                             }
                         }
                     } catch {
