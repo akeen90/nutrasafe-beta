@@ -1201,12 +1201,10 @@ struct PresentationModifier: ViewModifier {
                 .presentationDetents([.fraction(0.65)]) // Show 65% of screen so diary is still visible behind
                 .presentationDragIndicator(.visible)
                 .presentationBackgroundInteraction(.enabled(upThrough: .fraction(0.65)))
-        } else if #available(iOS 16.0, *) {
+        } else {
             content
                 .presentationDetents([.fraction(0.65)]) // Show 65% of screen so diary is still visible behind
                 .presentationDragIndicator(.visible)
-        } else {
-            content
         }
     }
 }

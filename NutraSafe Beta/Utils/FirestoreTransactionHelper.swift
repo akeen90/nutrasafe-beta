@@ -52,7 +52,7 @@ struct FirestoreTransactionHelper {
 
         while retryCount < maxRetries {
             do {
-                try await db.runTransaction { (transaction, errorPointer) -> Any? in
+                _ = try await db.runTransaction { (transaction, errorPointer) -> Any? in
                     let document: DocumentSnapshot
                     do {
                         document = try transaction.getDocument(documentRef)
@@ -121,7 +121,7 @@ struct FirestoreTransactionHelper {
         operations: [(DocumentReference, [String: Any])],
         db: Firestore
     ) async throws {
-        try await db.runTransaction { (transaction, errorPointer) -> Any? in
+        _ = try await db.runTransaction { (transaction, errorPointer) -> Any? in
             for (docRef, data) in operations {
                 var dataWithMetadata = data
                 dataWithMetadata["_lastModified"] = FieldValue.serverTimestamp()

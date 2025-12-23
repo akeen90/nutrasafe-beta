@@ -714,7 +714,7 @@ struct FastingTimerView: View {
             currentMinutes: minutes
         )
 
-        await activity.update(using: contentState)
+        await activity.update(contentState)
         // DEBUG LOG: print("🔄 Live Activity updated: \(hours)h \(minutes)m")
     }
 
