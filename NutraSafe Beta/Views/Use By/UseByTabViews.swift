@@ -3153,7 +3153,13 @@ struct UseByItemDetailView: View {
         let today = calendar.startOfDay(for: Date())
         let expiry = calendar.startOfDay(for: editedExpiryDate)
         let components = calendar.dateComponents([.day], from: today, to: expiry)
-        return components.day ?? 0
+        let days = components.day ?? 0
+
+        #if DEBUG
+        print("📅 [DETAIL VIEW] \(itemName): editedExpiryDate=\(editedExpiryDate), today=\(today), expiry=\(expiry), days=\(days)")
+        #endif
+
+        return days
     }
     private var quantity: String { editedQuantity }
 
