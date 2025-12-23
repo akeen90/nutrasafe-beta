@@ -3398,7 +3398,7 @@ struct NotificationSettingsView: View {
                         }
                     }
                     .disabled(permissionStatus != .authorized && permissionStatus != .provisional)
-                    .onChange(of: fastingSettings.startNotificationEnabled) { _ in
+                    .onChange(of: fastingSettings.startNotificationEnabled) {
                         saveFastingSettings()
                     }
 
@@ -3418,7 +3418,7 @@ struct NotificationSettingsView: View {
                         }
                     }
                     .disabled(permissionStatus != .authorized && permissionStatus != .provisional)
-                    .onChange(of: fastingSettings.endNotificationEnabled) { _ in
+                    .onChange(of: fastingSettings.endNotificationEnabled) {
                         saveFastingSettings()
                     }
 
@@ -3438,7 +3438,7 @@ struct NotificationSettingsView: View {
                         }
                     }
                     .disabled(permissionStatus != .authorized && permissionStatus != .provisional)
-                    .onChange(of: fastingSettings.stageNotificationsEnabled) { _ in
+                    .onChange(of: fastingSettings.stageNotificationsEnabled) {
                         saveFastingSettings()
                     }
 
@@ -3454,7 +3454,7 @@ struct NotificationSettingsView: View {
                             }
                         }
                         .disabled(permissionStatus != .authorized && permissionStatus != .provisional)
-                        .onChange(of: fastingSettings.stage4hEnabled) { _ in
+                        .onChange(of: fastingSettings.stage4hEnabled) {
                             saveFastingSettings()
                         }
 
@@ -3468,7 +3468,7 @@ struct NotificationSettingsView: View {
                             }
                         }
                         .disabled(permissionStatus != .authorized && permissionStatus != .provisional)
-                        .onChange(of: fastingSettings.stage8hEnabled) { _ in
+                        .onChange(of: fastingSettings.stage8hEnabled) {
                             saveFastingSettings()
                         }
 
@@ -3482,7 +3482,7 @@ struct NotificationSettingsView: View {
                             }
                         }
                         .disabled(permissionStatus != .authorized && permissionStatus != .provisional)
-                        .onChange(of: fastingSettings.stage12hEnabled) { _ in
+                        .onChange(of: fastingSettings.stage12hEnabled) {
                             saveFastingSettings()
                         }
 
@@ -3496,7 +3496,7 @@ struct NotificationSettingsView: View {
                             }
                         }
                         .disabled(permissionStatus != .authorized && permissionStatus != .provisional)
-                        .onChange(of: fastingSettings.stage16hEnabled) { _ in
+                        .onChange(of: fastingSettings.stage16hEnabled) {
                             saveFastingSettings()
                         }
 
@@ -3510,7 +3510,7 @@ struct NotificationSettingsView: View {
                             }
                         }
                         .disabled(permissionStatus != .authorized && permissionStatus != .provisional)
-                        .onChange(of: fastingSettings.stage20hEnabled) { _ in
+                        .onChange(of: fastingSettings.stage20hEnabled) {
                             saveFastingSettings()
                         }
                     }

@@ -88,8 +88,8 @@ struct MacroProgressView: View {
             }
         }
         // PERFORMANCE: Update cached totals when data changes
-        .onChange(of: trackedFoods) { _ in updateCachedCalories() }
-        .onChange(of: trackedExercises) { _ in updateCachedCalories() }
+        .onChange(of: trackedFoods) { updateCachedCalories() }
+        .onChange(of: trackedExercises) { updateCachedCalories() }
     }
 
     private func loadCaloricGoal() async {

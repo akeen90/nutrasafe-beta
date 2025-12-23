@@ -79,8 +79,8 @@ struct DiaryExerciseSummaryCard: View {
             updateCachedValues()
         }
         // PERFORMANCE: Update cached values only when data changes
-        .onChange(of: workouts) { _ in updateCachedValues() }
-        .onChange(of: manualExercises) { _ in updateCachedValues() }
+        .onChange(of: workouts) { updateCachedValues() }
+        .onChange(of: manualExercises) { updateCachedValues() }
     }
 }
 
@@ -237,7 +237,7 @@ struct DiaryExerciseCard: View {
             updateCachedCalories()
         }
         // PERFORMANCE: Update cached calories only when exercises change
-        .onChange(of: exercises) { _ in updateCachedCalories() }
+        .onChange(of: exercises) { updateCachedCalories() }
         // Exercise selector removed - feature deprecated
     }
 }

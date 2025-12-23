@@ -64,7 +64,7 @@ struct DiaryDailySummaryCard: View {
         .background(cardBackground)
         .cardShadow()
         .onAppear { handleOnAppear() }
-        .onChange(of: currentDate) { _ in handleDateChange() }
+        .onChange(of: currentDate) { handleDateChange() }
         .onChange(of: healthKitRingsEnabled) { _, enabled in handleHealthKitToggle(enabled) }
         .onReceive(NotificationCenter.default.publisher(for: .nutritionGoalsUpdated)) { _ in
             Task { await loadNutritionGoals() }

@@ -395,8 +395,8 @@ struct AddFoundFoodToUseBySheet: View {
                                 .pickerStyle(.segmented)
                             }
                         }
-                        .onChange(of: expiryAmount) { _ in recalcExpiry() }
-                        .onChange(of: expiryUnit) { _ in recalcExpiry() }
+                        .onChange(of: expiryAmount) { recalcExpiry() }
+                        .onChange(of: expiryUnit) { recalcExpiry() }
                         HStack {
                             Text("Expiry Date").font(.system(size: 14, weight: .medium)).foregroundColor(.secondary)
                             Spacer()
@@ -918,10 +918,10 @@ struct UseByExpiryView: View {
             Task { await dataManager.forceReload() }
         }
         // PERFORMANCE: Recalculate cached values only when data actually changes
-        .onChange(of: dataManager.items) { _ in
+        .onChange(of: dataManager.items) {
             recalculateCache()
         }
-        .onChange(of: searchText) { _ in
+        .onChange(of: searchText) {
             // PERFORMANCE: Debounce search to avoid running expensive operations on every keystroke
             searchDebouncer.debounce {
                 recalculateCache()
@@ -3584,13 +3584,13 @@ struct UseByItemDetailView: View {
                 pulseAnimation = true
             }
         }
-        .onChange(of: expiryMode) { _ in
+        .onChange(of: expiryMode) {
             updateExpiryDate()
         }
-        .onChange(of: expiryAmount) { _ in
+        .onChange(of: expiryAmount) {
             updateExpiryDate()
         }
-        .onChange(of: expiryUnit) { _ in
+        .onChange(of: expiryUnit) {
             updateExpiryDate()
         }
         .confirmationDialog("Add Photo", isPresented: $showPhotoActionSheet) {

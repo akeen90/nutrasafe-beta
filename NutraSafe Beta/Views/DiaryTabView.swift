@@ -420,7 +420,7 @@ struct DiaryTabView: View {
     // MARK: - Content with Lifecycle Modifiers
     private var contentWithLifecycleModifiers: some View {
         mainContent
-            .onChange(of: selectedDate) { _ in
+            .onChange(of: selectedDate) {
                 loadFoodData()
             }
             .onAppear {
@@ -438,10 +438,10 @@ struct DiaryTabView: View {
             .onChange(of: diarySubTab) { _, newTab in
                 handleDiarySubTabChange(newTab)
             }
-            .onChange(of: refreshTrigger) { _ in
+            .onChange(of: refreshTrigger) {
                 loadFoodData()
             }
-            .onChange(of: diaryDataManager.dataReloadTrigger) { _ in
+            .onChange(of: diaryDataManager.dataReloadTrigger) {
                 loadFoodData()
             }
             .onChange(of: editTrigger) { _, newValue in
@@ -1081,7 +1081,7 @@ struct CategoricalNutrientTrackingView: View {
             #endif
             requestDataLoad(for: weekStart, reason: "initial-load")
         }
-        .onChange(of: diaryDataManager.dataReloadTrigger) { _ in
+        .onChange(of: diaryDataManager.dataReloadTrigger) {
             // Only reload if we've already done initial load
             guard hasInitiallyLoaded else { return }
             // CACHE INVALIDATION: Clear cache for changed date

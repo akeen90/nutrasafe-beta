@@ -250,7 +250,7 @@ struct ProfessionalMealCard: View {
             updateCachedCalories()
         }
         // PERFORMANCE: Update cached calories only when items change
-        .onChange(of: items) { _ in updateCachedCalories() }
+        .onChange(of: items) { updateCachedCalories() }
     }
     
     private var totalCalories: Int { cachedTotalCalories }

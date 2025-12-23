@@ -95,7 +95,7 @@ struct NutrientActivityDashboard: View {
                 }
             }
         }
-        .onChange(of: diaryDataManager.dataReloadTrigger) { _ in
+        .onChange(of: diaryDataManager.dataReloadTrigger) {
         // DEBUG LOG: print("🔄 Diary data changed, reprocessing nutrients...")
             // Reprocess when diary data changes
             processCurrentDiaryData()

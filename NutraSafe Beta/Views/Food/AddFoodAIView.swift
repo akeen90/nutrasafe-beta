@@ -837,7 +837,7 @@ struct CombinedMealView: View {
             updateCachedNutritionTotals()
         }
         // PERFORMANCE: Update cached totals only when serving sizes change
-        .onChange(of: servingSizes) { _ in updateCachedNutritionTotals() }
+        .onChange(of: servingSizes) { updateCachedNutritionTotals() }
     }
     
     private var totalCalories: Double { cachedTotalCalories }

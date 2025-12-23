@@ -1586,7 +1586,7 @@ struct FoodDetailViewFromSearch: View {
                 }
             }
         }
-        .onChange(of: food.id) { _ in
+        .onChange(of: food.id) {
             // Invalidate all caches when food changes (e.g., switching between search and diary)
             cachedIngredients = nil
             cachedIngredientsStatus = nil
@@ -1596,7 +1596,7 @@ struct FoodDetailViewFromSearch: View {
             hasInitialized = false
             cachedDetectedNutrients = []
         }
-        .onChange(of: enhancedIngredientsText) { _ in
+        .onChange(of: enhancedIngredientsText) {
             // Invalidate caches when enhanced ingredients data changes
             cachedIngredients = nil
             cachedIngredientsStatus = nil
@@ -1604,10 +1604,10 @@ struct FoodDetailViewFromSearch: View {
             cachedNutraSafeGrade = nil  // Grade depends on ingredients
             cachedDetectedNutrients = []
         }
-        .onChange(of: cachedIngredients) { _ in
+        .onChange(of: cachedIngredients) {
             recomputeDetectedNutrients()
         }
-        .onChange(of: enhancedNutrition?.calories) { _ in
+        .onChange(of: enhancedNutrition?.calories) {
             // Invalidate caches when enhanced nutrition data changes
             cachedNutritionScore = nil
             cachedNutraSafeGrade = nil  // Grade may depend on nutrition completeness

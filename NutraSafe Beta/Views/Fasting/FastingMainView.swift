@@ -750,7 +750,7 @@ struct PlanDashboardView: View {
             updateCachedAverageDuration()
         }
         // PERFORMANCE: Update cached average duration only when sessions change
-        .onChange(of: viewModel.recentSessions) { _ in updateCachedAverageDuration() }
+        .onChange(of: viewModel.recentSessions) { updateCachedAverageDuration() }
     }
 }
 

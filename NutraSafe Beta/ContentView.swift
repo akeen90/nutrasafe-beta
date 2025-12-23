@@ -6387,7 +6387,7 @@ struct CompactHydrationRing: View {
         .onAppear {
             loadHydrationData()
         }
-        .onChange(of: currentDate) { _ in
+        .onChange(of: currentDate) {
             loadHydrationData()
         }
     }
