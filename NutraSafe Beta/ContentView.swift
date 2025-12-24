@@ -6,10 +6,6 @@ import UserNotifications
 import ActivityKit
 import UIKit
 
-// Import the extracted view components
-// Note: These would typically be handled by proper module imports
-// For now, ensure all View files are included in your Xcode target
-
 // MARK: - Ingredient Submission Service
 class IngredientSubmissionService: ObservableObject {
     static let shared = IngredientSubmissionService()
@@ -309,11 +305,6 @@ class FatSecretService: ObservableObject {
                 }
             }
         }
-        
-        // Debug: Print raw JSON response (commented out for production)
-        // if let jsonString = String(data: data, encoding: .utf8) {
-        //     print("🔍 Raw API response: \(jsonString.prefix(500))")
-        // }
         
         let searchResponse: FirebaseFoodSearchResponse
         do {
@@ -934,8 +925,6 @@ enum TabItem: String, CaseIterable {
         }
     }
 }
-
-// MARK: - Custom Tab Bar (removed duplicate - using Views/Components/CustomTabBar.swift)
 
 // MARK: - Corner Radius Extension
 extension View {
@@ -3898,72 +3887,6 @@ struct GlassShape: Shape {
     }
 }
 
-// MARK: - DiaryMealCard moved to separate file
-
-// MARK: - Data Models moved to DataModels.swift
-// DiaryFoodItem, WorkoutSessionSummary, ExerciseSummary now in DataModels.swift
-
-// ExerciseSet already defined in DataModels.swift - removed duplicate
-
-// MARK: - Rest Timer
-// RestTimer duplicate removed - using the one at line 67
-
-// MARK: - Workout Template
-// WorkoutTemplate duplicate removed - already defined in DataModels.swift
-
-// WorkoutStatus enum moved to DataModels.swift
-
-// MARK: - Diary Data Manager moved to DataModels.swift
-
-// MARK: - CompactMacroItem moved to separate file
-// struct CompactMacroItem: View {
-//     let value: Double
-//     let label: String
-//     let color: Color
-//     
-//     var body: some View {
-//         VStack(spacing: 2) {
-//             Text("\(Int(value))g")
-//                 .font(.system(size: 12, weight: .semibold))
-//                 .foregroundColor(.primary)
-//             
-//             Text(label)
-//                 .font(.system(size: 10, weight: .medium))
-//                 .foregroundColor(color)
-//                 .padding(.horizontal, 4)
-//                 .padding(.vertical, 1)
-//                 .background(
-//                     Capsule()
-//                         .fill(color.opacity(0.15))
-//                 )
-//         }
-//     }
-// }
-// End of CompactMacroItem - see extracted file for implementation
-
-// MARK: - DiaryFoodRow moved to separate file
-
-// MARK: - MacroLabel moved to separate file
-// struct MacroLabel: View {
-//     let value: Double
-//     let label: String
-//     let color: Color
-//     
-//     var body: some View {
-//         VStack(spacing: 1) {
-//             Text(String(format: "%.0f", value))
-//                 .font(.system(size: 11, weight: .medium))
-//                 .foregroundColor(color)
-//             Text(label)
-//                 .font(.system(size: 9, weight: .medium))
-//                 .foregroundColor(color.opacity(0.7))
-//         }
-//         .frame(minWidth: 20)
-//     }
-// }
-//
-// End of MacroLabel - see extracted file for implementation
-
 struct MacroSummaryLabel: View {
     let value: Double
     let label: String
@@ -4021,292 +3944,6 @@ struct ModernMacroItem: View {
     }
 }
 
-// MARK: - NutritionScoreView moved to separate file
-// struct NutritionScoreView: View {
-//     let food: DiaryFoodItem
-//     @State private var showingScoreDetails = false
-//     
-//     private var nutritionScore: NutritionProcessingScore {
-//         ProcessingScorer.shared.calculateProcessingScore(for: food.name)
-//     }
-//     
-//     var body: some View {
-//         Button(action: {
-//             showingScoreDetails = true
-//         }) {
-//             VStack(spacing: 2) {
-//                 Text(nutritionScore.grade.rawValue)
-//                     .font(.system(size: 14, weight: .bold))
-//                     .foregroundColor(.white)
-//                     .frame(width: 24, height: 24)
-//                     .background(nutritionScore.color)
-//                     .clipShape(RoundedRectangle(cornerRadius: 6))
-//                 
-//                 Text("Grade")
-//                     .font(.system(size: 8, weight: .medium))
-//                     .foregroundColor(.secondary)
-//             }
-//         }
-//         .buttonStyle(PlainButtonStyle())
-//         .sheet(isPresented: $showingScoreDetails) {
-//             NutritionScoreDetailView(food: food, score: nutritionScore)
-//         }
-//     }
-// }
-//
-// End of NutritionScoreView - see extracted file for implementation
-
-// MARK: - ModernNutritionScore moved to separate file
-// struct ModernNutritionScore: View {
-//     let food: DiaryFoodItem
-//     @State private var showingScoreDetails = false
-//     
-//     private var nutritionScore: NutritionProcessingScore {
-//         ProcessingScorer.shared.calculateProcessingScore(for: food.name)
-//     }
-//     
-//     var body: some View {
-//         Button(action: {
-//             showingScoreDetails = true
-//         }) {
-//             HStack(spacing: 8) {
-                // Grade circle
-//                 Text(nutritionScore.grade.rawValue)
-//                     .font(.system(size: 14, weight: .bold))
-//                     .foregroundColor(.white)
-//                     .frame(width: 24, height: 24)
-//                     .background(nutritionScore.color)
-//                     .clipShape(Circle())
-//                 
-                // Processing score label
-//                 Text("Processing Score")
-//                     .font(.system(size: 11, weight: .medium))
-//                     .foregroundColor(.secondary)
-//                     .multilineTextAlignment(.leading)
-//                 
-//                 Spacer(minLength: 0)
-//             }
-//             .padding(.horizontal, 14)
-//             .padding(.vertical, 8)
-//             .background(
-//                 RoundedRectangle(cornerRadius: 10)
-//                     .fill(Color(.systemBackground))
-//             )
-//         }
-//         .buttonStyle(PlainButtonStyle())
-//         .sheet(isPresented: $showingScoreDetails) {
-//             NutritionScoreDetailView(food: food, score: nutritionScore)
-//         }
-//     }
-// }
-//
-// End of ModernNutritionScore - see extracted file for implementation
-
-// MARK: - NutritionScoreDetailView moved to separate file
-// struct NutritionScoreDetailView: View {
-//     let food: DiaryFoodItem
-//     let score: NutritionProcessingScore
-//     @Environment(\.dismiss) private var dismiss
-//     
-//     var body: some View {
-//         NavigationView {
-//             ScrollView {
-//                 VStack(alignment: .leading, spacing: 20) {
-                    // Header with score
-//                     VStack(spacing: 12) {
-//                         Text(food.name)
-//                             .font(.system(size: 24, weight: .bold))
-//                             .multilineTextAlignment(.center)
-//                         
-//                         HStack(spacing: 16) {
-                            // Grade circle
-//                             Text(score.grade.rawValue)
-//                                 .font(.system(size: 32, weight: .bold))
-//                                 .foregroundColor(.white)
-//                                 .frame(width: 60, height: 60)
-//                                 .background(score.color)
-//                                 .clipShape(Circle())
-//                             
-//                             VStack(alignment: .leading, spacing: 4) {
-//                                 Text("Processing Score")
-//                                     .font(.system(size: 16, weight: .semibold))
-//                                     .foregroundColor(.primary)
-//                                 
-//                                 Text("\(score.score)/100")
-//                                     .font(.system(size: 20, weight: .bold))
-//                                     .foregroundColor(score.color)
-//                                 
-//                                 Text(score.processingLevel.rawValue)
-//                                     .font(.system(size: 14))
-//                                     .foregroundColor(.secondary)
-//                             }
-//                         }
-//                     }
-//                     .padding()
-//                     .background(Color(.systemGray6))
-//                     .cornerRadius(16)
-//                     
-                    // Explanation
-//                     VStack(alignment: .leading, spacing: 8) {
-//                         Text("Explanation")
-//                             .font(.system(size: 18, weight: .semibold))
-//                             .foregroundColor(.primary)
-//                         
-//                         Text(score.explanation)
-//                             .font(.system(size: 15))
-//                             .foregroundColor(.secondary)
-//                             .lineSpacing(2)
-//                     }
-//                     .padding()
-//                     .background(Color(.systemBackground))
-//                     .cornerRadius(12)
-//                     
-                    // Scoring factors
-//                     VStack(alignment: .leading, spacing: 12) {
-//                         Text("Scoring Factors")
-//                             .font(.system(size: 18, weight: .semibold))
-//                             .foregroundColor(.primary)
-//                         
-//                         ForEach(score.factors, id: \.self) { factor in
-//                             HStack {
-//                                 Image(systemName: factor.contains("✅") ? "checkmark.circle.fill" : 
-//                                                  factor.contains("⚠️") ? "exclamationmark.triangle.fill" : "info.circle")
-//                                     .foregroundColor(factor.contains("✅") ? .green : 
-//                                                    factor.contains("⚠️") ? .orange : .blue)
-//                                     .frame(width: 16)
-//                                 
-//                                 Text(factor.replacingOccurrences(of: "✅ ", with: "")
-//                                           .replacingOccurrences(of: "⚠️ ", with: ""))
-//                                     .font(.system(size: 14))
-//                                     .foregroundColor(.primary)
-//                                 
-//                                 Spacer()
-//                             }
-//                             .padding(.vertical, 4)
-//                         }
-//                     }
-//                     .padding()
-//                     .background(Color(.systemBackground))
-//                     .cornerRadius(12)
-//                     
-                    // About the scoring system
-//                     VStack(alignment: .leading, spacing: 8) {
-//                         Text("About This Score")
-//                             .font(.system(size: 18, weight: .semibold))
-//                             .foregroundColor(.primary)
-//                         
-//                         VStack(alignment: .leading, spacing: 8) {
-//                             Text("This processing score evaluates how much a food has been altered from its natural state:")
-//                                 .font(.system(size: 14))
-//                                 .foregroundColor(.secondary)
-//                             
-//                             VStack(alignment: .leading, spacing: 4) {
-//                                 GradeExplanationRow(grade: "A+/A", color: .green, description: "Whole, unprocessed foods")
-//                                 GradeExplanationRow(grade: "B", color: .orange, description: "Lightly processed for preservation")
-//                                 GradeExplanationRow(grade: "C", color: .yellow, description: "Moderately processed with some additives")
-//                                 GradeExplanationRow(grade: "D/F", color: .red, description: "Highly processed with many additives")
-//                             }
-//                             .padding(.top, 8)
-//                         }
-//                     }
-//                     .padding()
-//                     .background(Color(.systemBackground))
-//                     .cornerRadius(12)
-//                     
-//                     Spacer()
-//                 }
-//                 .padding()
-//             }
-//             .navigationBarTitleDisplayMode(.inline)
-//             .navigationBarItems(trailing: Button("Done") {
-//                 dismiss()
-//             })
-//         }
-//     }
-// }
-//
-// End of NutritionScoreDetailView - see extracted file for implementation
-
-// MARK: - GradeExplanationRow moved to separate file
-// struct GradeExplanationRow: View {
-//     let grade: String
-//     let color: Color
-//     let description: String
-//     
-//     var body: some View {
-//         HStack(spacing: 12) {
-//             Text(grade)
-//                 .font(.system(size: 12, weight: .bold))
-//                 .foregroundColor(.white)
-//                 .frame(width: 32, height: 20)
-//                 .background(color)
-//                 .cornerRadius(4)
-//             
-//             Text(description)
-//                 .font(.system(size: 14))
-//                 .foregroundColor(.secondary)
-//             
-//             Spacer()
-//         }
-//     }
-// }
-//
-// End of GradeExplanationRow - see extracted file for implementation
-
-// MARK: - DiaryExerciseSummaryCard moved to separate file
-
-// MARK: - DiaryExerciseStat moved to separate file
-
-// MARK: - DiaryExerciseCard moved to separate file
-
-// MARK: - DiaryExerciseRow moved to separate file
-
-// MARK: - AddTabView moved to separate file
-// struct AddTabView: View {
-//     @Binding var selectedTab: TabItem
-//     
-//     var body: some View {
-//         AddFoodMainView(selectedTab: $selectedTab)
-//     }
-// }
-// 
-// MARK: - Food Tab System moved to Views/Food/FoodTabViews.swift
-// The following components were extracted as part of Phase 14 ContentView.swift modularization effort:
-// - FoodTabView: Main food hub with sub-tab navigation
-// - FoodSubTabSelector: Animated tab selector for food sections
-// - FoodReactionsView: Food reaction tracking interface
-// - RecipesView: Recipe collections and suggestions
-// - FoodReactionSummaryCard: Reaction statistics dashboard
-// - FoodReactionListCard: List of recent food reactions
-// - FoodReactionRow: Individual reaction display row
-// - FoodPatternAnalysisCard: Pattern analysis dashboard
-// - PatternRow: Individual pattern trend row
-// - RecipeCollectionsCard: Recipe collection grid
-// - RecipeCollectionItem: Individual collection item
-// - FavouriteRecipesCard: Favourite recipes list
-// - SafeRecipeSuggestionsCard: Safe recipe recommendations
-// - RecipeRow: Individual recipe display row
-// - SpringyButtonStyle: Button animation style
-// - sampleReactions: Sample data for food reactions
-// Total extracted: 558 lines of comprehensive food tracking functionality
-// 
-// MARK: - UseByTabView System moved to Views/Use By/UseByTabViews.swift
-// The following components were extracted as part of Phase 15 ContentView.swift modularization effort:
-// - UseByTabView: Main fridge interface with sub-tab navigation
-// - UseBySubTabSelector: Sub-tab selector for fridge sections
-// - UseByExpiryView: Food expiry management dashboard
-// - UseByExpiryAlertsCard: Expiry alerts summary
-// - UseByCriticalExpiryCard: Critical expiring items
-// - UseByWeeklyExpiryCard: Weekly expiry schedule
-// - UseByExpiryItemRow: Individual expiry item display
-// - UseByExpiryDayRow: Daily expiry schedule row
-// - UseByQuickAddCard: Quick add item interface
-// Total extracted: 385+ lines of comprehensive Use By management functionality
-// 
-// 
-// MARK: - Add Food Main View
-//
-// End of AddTabView - see extracted file for implementation
 
 struct AddFoodMainView: View {
     @Binding var selectedTab: TabItem
@@ -4508,105 +4145,6 @@ struct AddOptionSelector: View {
     }
 }
 
-// MARK: - Add Food Views
-
-// MARK: - AddFoodManualView has been extracted to Views/Food/AddFoodManualViews.swift
-// This comprehensive manual food entry system was moved as part of manual add enhancement:
-// - AddFoodManualView: Main manual add view with navigation to detail entry
-// - ManualFoodDetailEntryView: Full food entry form with all FoodSearchResult fields
-// - Support for both diary and useBy destinations with appropriate fields
-// - UseByItem models for expiry tracking and location management
-// Total extracted: 450+ lines of comprehensive manual entry functionality
-
-// MARK: - Barcode Scanning System has been extracted to Views/Food/BarcodeScanningViews.swift
-// This comprehensive barcode scanning system was moved as part of Phase 14 ContentView.swift modularization effort.
-
-// MARK: - AddFoodAIView has been extracted to Views/Food/AddFoodAIView.swift
-// This comprehensive AI food scanning system was moved as part of Phase 13 ContentView.swift modularization effort.
-
-// MARK: - NutritionInputRow has been extracted to Views/Food/AddFoodAIView.swift
-// This nutrition input component was moved as part of Phase 13 ContentView.swift modularization effort.
-
-// MARK: - FoodSearchResultRow has been extracted to Views/Food/FoodSearchViews.swift
-// This component was moved as part of Phase 12A food search system extraction
-
-// MARK: - FoodSearchResultRowEnhanced has been extracted to Views/Food/FoodSearchViews.swift
-// This enhanced search result component was moved as part of Phase 12A food search system extraction
-
-// MARK: - NutrientTag has been extracted to Views/Food/FoodSearchViews.swift
-// This nutrient display component was moved as part of Phase 12A food search system extraction
-
-// MARK: - FoodSourceType has been extracted to Views/Food/FoodSearchViews.swift
-// This enumeration was moved as part of Phase 12A food search system extraction
-
-// MARK: - FoodDetailViewFromSearch has been extracted to modular component
-// This massive 2,305-line struct has been moved to Views/Food/FoodDetailViewFromSearch.swift
-// as part of the Phase 10 ContentView.swift modularization effort.
-
-// MARK: - Supporting components (VitaminMineralRow, ExpandableSection, VitaminRow, MacroRow, ScrollDismissModifier)
-// These components have been extracted to Views/Food/FoodDetailViewFromSearch.swift
-
-// MARK: - AddFoodSearchView has been extracted to Views/Food/FoodSearchViews.swift
-// This comprehensive food search interface was moved as part of Phase 12A food search system extraction
-
-// MARK: - Sample search results data has been extracted to Views/Food/FoodSearchViews.swift
-// This sample data was moved as part of Phase 12A food search system extraction
-
-// MARK: - Settings View extracted to Views/Settings/SettingsView.swift
-// The comprehensive settings interface was extracted as part of settings implementation:
-// - SettingsView: Main settings interface with account management, nutrition goals, and preferences
-// - AccountSection: User account management with sign out, password reset, and account deletion
-// - SettingsSection: Reusable section container component
-// - SettingsRow: Individual settings row with icon and action
-// - AboutSection: App version, terms, privacy policy, and health disclaimer
-// Total extracted: 120+ lines of settings functionality
-//
-// PHASE 1 (Completed): Account section with functional sign out button
-// PHASE 2-5: To be implemented in future iterations
-
-// MARK: - Professional Summary Card extracted to Views/Diary/ProfessionalSummaryViews.swift
-// This comprehensive professional nutrition visualization system was moved as part of Phase 13A extraction:
-// - ProfessionalSummaryCard (129 lines) - Advanced nutrition overview with circular progress indicators
-// - MacroPieChart (36 lines) - Individual macro pie chart components with animations
-
-// MARK: - MacroPieChart extracted to Views/Diary/ProfessionalSummaryViews.swift
-// This macro pie chart component was moved as part of Phase 13A professional summary system extraction
-
-// MARK: - Professional Meal Card extracted to Views/Diary/ProfessionalSummaryViews.swift
-// This professional meal display component was moved as part of Phase 13A extraction:
-// - ProfessionalMealCard (57 lines) - Advanced meal type display with meal items and totals
-
-// MARK: - Professional Food Item Card extracted to Views/Diary/ProfessionalSummaryViews.swift
-// This detailed food item display component was moved as part of Phase 13A extraction:
-// - ProfessionalFoodItemCard (55 lines) - Individual food item display with quality indicators and nutrition badges
-
-// MARK: - Nutrition Badge Component extracted to Views/Diary/ProfessionalSummaryViews.swift
-// This compact nutrition display component was moved as part of Phase 13A extraction
-
-// MARK: - Professional Empty State extracted to Views/Diary/ProfessionalSummaryViews.swift
-// This empty meal state component was moved as part of Phase 13A extraction:
-// - ProfessionalEmptyMealState (27 lines) - Clean empty state with contextual add button
-
-// MARK: - MealType Data Model extracted to Views/Diary/ProfessionalSummaryViews.swift
-// This meal type enumeration was moved as part of Phase 13A extraction:
-// - MealType (32 lines) - Complete meal type definitions with display properties
-
-// MARK: - Color Extension for Hex Colors extracted to Views/Diary/ProfessionalSummaryViews.swift
-// This hex color extension was moved as part of Phase 13A extraction:
-// - Color+Hex (23 lines) - Hex color string initialization support
-
-// SpringyButtonStyle moved to Views/Food/FoodTabViews.swift
-
-// MARK: - ModernCardStyle extracted to Views/Diary/ProfessionalSummaryViews.swift
-// This modern card styling modifier was moved as part of Phase 13A extraction:
-// - ModernCardStyle (17 lines) - Professional card styling with material background and shadows
-
-// MARK: - FoodDetailView has been extracted to Views/Food/FoodSearchViews.swift
-// This comprehensive food detail view was moved as part of Phase 12A food search system extraction
-
-// MARK: - MacroNutrientRow has been extracted to Views/Food/FoodSearchViews.swift
-// This macro nutrient display component was moved as part of Phase 12A food search system extraction
-
 // MARK: - Sample Data
 private let sampleDailyNutrition = DailyNutrition(
     calories: NutrientTarget(current: 1450, target: 2000),
@@ -4617,16 +4155,6 @@ private let sampleDailyNutrition = DailyNutrition(
     sodium: NutrientTarget(current: 1200, target: 2300),
     sugar: NutrientTarget(current: 35, target: 50)
 )
-
-// MARK: - AI Food Scanning Components have been extracted to Views/Food/AddFoodAIView.swift
-// The following components were moved as part of Phase 13 ContentView.swift modularization effort:
-// - ImagePicker: UIViewControllerRepresentable for camera functionality
-// - AIFoodSelectionView: UI for selecting detected foods from AI recognition
-// - AIFoodSelectionRow: Individual food selection row with confidence indicators
-// - CombinedMealView: Interface for managing multiple foods from AI scanning
-// - CombinedMealFoodRow: Individual food row in combined meal view
-// - NutrientSummary: Nutrient display component for meal summaries
-// - NutrientPill: Compact nutrient display pills for food rows
 
 struct IngredientCameraView: View {
     let foodName: String
@@ -4984,18 +4512,6 @@ struct AllergenWarningView: View {
                             .fontWeight(.medium)
                             .foregroundColor(riskLevel.color)
                     }
-                    
-                    // TODO: Fix when Allergen model is available
-                    // ForEach(detectedAllergens.sorted(by: { $0.displayName < $1.displayName }), id: \.rawValue) { allergen in
-                    //     HStack(spacing: 4) {
-                    //         Circle()
-                    //             .fill(riskLevel.color)
-                    //             .frame(width: 4, height: 4)
-                    //         Text(allergen.displayName)
-                    //             .font(.caption2)
-                    //             .foregroundColor(.primary)
-                    //     }
-                    // }
                 }
                 .padding(8)
                 .background(riskLevel.color.opacity(0.1))
@@ -5008,33 +4524,8 @@ struct AllergenWarningView: View {
     }
     
     private func analyzeIngredients() {
-        // let ingredientsList = ingredients.lowercased()
-        // var foundAllergens: [Allergen] = []
-        
-        // TODO: Implement allergen analysis when Allergen model is available
         detectedAllergens = []
         riskLevel = .safe
-
-        // // Check for common allergens in ingredients
-        // for allergen in Allergen.allCases {
-        //     for keyword in allergen.keywords {
-        //         if ingredientsList.contains(keyword.lowercased()) {
-        //             foundAllergens.append(allergen)
-        //             break
-        //         }
-        //     }
-        // }
-        //
-        // detectedAllergens = Array(Set(foundAllergens))
-        //
-        // // Determine risk level
-        // if detectedAllergens.contains(where: { $0.severity == .high }) {
-        //     riskLevel = .danger
-        // } else if !detectedAllergens.isEmpty {
-        //     riskLevel = .caution
-        // } else {
-        //     riskLevel = .safe
-        // }
     }
 }
 
@@ -5090,24 +4581,6 @@ struct StatusBadge: View {
     }
 }
 
-// MARK: - DatabasePhotoPromptView extracted to Views/Food/FoodManagementViews.swift
-// This component was moved as part of Phase 12B food management system extraction
-
-// MARK: - PhotoCaptureSection & EnhancedPhotoCaptureSection extracted to Views/Food/FoodManagementViews.swift
-// These components were moved as part of Phase 12B food management system extraction
-
-// MARK: - MacroValue has been extracted to Views/Food/FoodSearchViews.swift
-// This compact macro value display component was moved as part of Phase 12A food search system extraction
-
-// MARK: - Additive Analysis System extracted to Views/Food/AdditiveAnalysisViews.swift
-// Components moved as part of Phase 12C additive system extraction:
-// - AdditiveWatchView (150 lines) - Complete additive detection and analysis interface
-// - AdditiveCard (137 lines) - Individual additive display with expandable details  
-// - AdditiveCardView (100+ lines) - Detailed additive information display
-// - AdditiveDescriptionView (100+ lines) - User-friendly additive descriptions
-// - AdditiveSection - Supporting data model
-// Total: ~500+ lines extracted
-
 struct FoodActionSheet: View {
     let food: DiaryFoodItem
     let isSelected: Bool
@@ -5130,37 +4603,9 @@ struct FoodActionSheet: View {
                 .padding(.top, 8)
                 .padding(.bottom, 16)
             
-            // Clean, minimal actions - TODO: Fix when SlimActionButton is available
             HStack(spacing: 20) {
                 Text("Action buttons placeholder")
                     .foregroundColor(.secondary)
-
-                // if selectedCount <= 1 {
-                //     SlimActionButton(icon: "info.circle", title: "Details", color: .blue) {
-                //         dismiss()
-                //         onViewDetails()
-                //     }
-                //
-                //     SlimActionButton(icon: "pencil", title: "Edit", color: .green) {
-                //         dismiss()
-                //         onEdit()
-                //     }
-                // }
-                //
-                // SlimActionButton(icon: "arrow.up.arrow.down", title: "Move", color: .orange) {
-                //     dismiss()
-                //     onMove()
-                // }
-                //
-                // SlimActionButton(icon: "star", title: "Star", color: .yellow) {
-                //     dismiss()
-                //     onStar()
-                // }
-                //
-                // SlimActionButton(icon: "trash", title: "Delete", color: .red) {
-                //     dismiss()
-                //     onDelete()
-                // }
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 20)
@@ -5182,44 +4627,6 @@ struct iOS16PresentationModifier: ViewModifier {
     }
 }
 
-// MARK: - PersistentBottomMenu moved to separate file
-// struct PersistentBottomMenu: View {
-//     let selectedCount: Int
-//     let onEdit: () -> Void
-//     let onMove: () -> Void
-//     let onStar: () -> Void
-//     let onDelete: () -> Void
-//     let onCancel: () -> Void
-//     
-//     var body: some View {
-//         VStack(spacing: 0) {
-            // Clean, minimal actions that replace nav area
-//             HStack(spacing: 20) {
-                // X button to cancel selection
-//                 SlimActionButton(icon: "xmark", title: "Cancel", color: .secondary, action: onCancel)
-//                 
-//                 if selectedCount == 1 {
-//                     SlimActionButton(icon: "pencil", title: "Edit", color: .green, action: onEdit)
-//                 }
-//                 
-//                 SlimActionButton(icon: "arrow.up.arrow.down", title: "Move", color: .orange, action: onMove)
-//                 SlimActionButton(icon: "star", title: "Star", color: .yellow, action: onStar)
-//                 SlimActionButton(icon: "trash", title: "Delete", color: .red, action: onDelete)
-//             }
-//             .padding(.horizontal, 20)
-//             .padding(.top, 20)
-//             .padding(.bottom, 34) // Account for tab bar and safe area
-//         }
-//         .background(Color(.systemBackground))
-//         .overlay(
-//             Rectangle()
-//                 .fill(Color(.systemGray5))
-//                 .frame(height: 1),
-//             alignment: .top
-//         )
-//     }
-// }
-// End of PersistentBottomMenu - see extracted file for implementation
 
 
 #Preview {

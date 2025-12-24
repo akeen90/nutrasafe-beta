@@ -421,7 +421,6 @@ struct DiaryTabView: View {
                     }
                 }
             }
-            .id(diarySubTab)
             .background(diaryBlueBackground)
             .navigationBarHidden(true)
         }
@@ -1085,21 +1084,10 @@ struct CategoricalNutrientTrackingView: View {
             coverageMapSection
         }
         .task {
-            // Small debounce to prevent race conditions
-            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
-
             // Guard against duplicate initial loads
-            guard !hasInitiallyLoaded else {
-                #if DEBUG
-                print("⚡️ Skipping duplicate initial load")
-                #endif
-                return
-            }
+            guard !hasInitiallyLoaded else { return }
             hasInitiallyLoaded = true
 
-            #if DEBUG
-            print("🎬 CategoricalNutrientTrackingView: Starting task...")
-            #endif
             vm.setDiaryManager(diaryDataManager)
 
             // Initialize with the week containing selectedDate
@@ -1160,25 +1148,8 @@ struct CategoricalNutrientTrackingView: View {
             }
         }
         .onDisappear {
-            // Cancel any in-flight tasks FIRST
+            // Cancel any in-flight tasks - but KEEP data in memory for instant re-display
             vm.cancelLoading()
-
-            // Clear large data structures to free memory
-            // Note: We clear arrays immediately, but cache cleanup is async
-            vm.rhythmDays = []
-            vm.nutrientCoverageRows = []
-
-            // Clear cache asynchronously (safe because it's actor-isolated)
-            Task {
-                await vm.clearCache()
-            }
-
-            // Reset flag for next appearance
-            hasInitiallyLoaded = false
-
-            #if DEBUG
-            print("🧹 Nutrients tab cleanup: cancelled tasks, cleared data and scheduled cache cleanup")
-            #endif
         }
         .sheet(isPresented: $showingGaps) {
             if #available(iOS 16.0, *) {
