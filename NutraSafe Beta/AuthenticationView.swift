@@ -895,7 +895,8 @@ struct EmailVerificationView: View {
                 countdown = 60
                 showingSuccess = true
 
-                // Countdown timer
+                // Countdown timer - captures @State bindings which are value types (no retain cycle)
+                // Timer self-invalidates when countdown reaches 0
                 Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { timer in
                     countdown -= 1
                     if countdown <= 0 {

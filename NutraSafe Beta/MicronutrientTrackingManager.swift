@@ -479,11 +479,17 @@ class MicronutrientTrackingManager: ObservableObject {
         }
     }
 
-    private func formatDate(_ date: Date) -> String {
+    // PERFORMANCE: Static DateFormatter to avoid recreation on every call
+    // DateFormatter creation is expensive (~10ms per instance)
+    private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         formatter.timeZone = Calendar.current.timeZone
-        return formatter.string(from: date)
+        return formatter
+    }()
+
+    private func formatDate(_ date: Date) -> String {
+        return Self.dateFormatter.string(from: date)
     }
 
     // MARK: - Persistence

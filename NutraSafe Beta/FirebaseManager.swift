@@ -46,7 +46,12 @@ class FirebaseManager: ObservableObject {
             self.timestamp = timestamp
         }
     }
-    private let searchCache = NSCache<NSString, SearchCacheEntry>()
+    private let searchCache: NSCache<NSString, SearchCacheEntry> = {
+        let cache = NSCache<NSString, SearchCacheEntry>()
+        cache.countLimit = 100 // Maximum 100 cached searches
+        cache.totalCostLimit = 10 * 1024 * 1024 // 10MB max
+        return cache
+    }()
     private let cacheExpirationSeconds: TimeInterval = 300 // 5 minutes
 
     // MARK: - Food Entries Cache (Performance Optimization)
@@ -55,6 +60,8 @@ class FirebaseManager: ObservableObject {
         let timestamp: Date
     }
     private var foodEntriesCache: [String: FoodEntriesCacheEntry] = [:]
+    // PERFORMANCE: Separate LRU tracking for O(1) access time updates
+    private var foodEntriesCacheAccessTime: [String: Date] = [:]
     private let foodEntriesCacheExpirationSeconds: TimeInterval = 600 // 10 minutes
     private let maxFoodEntriesCacheSize: Int = 100 // Maximum number of cached dates
 
@@ -571,6 +578,8 @@ class FirebaseManager: ObservableObject {
 
         if let cached = cachedEntry,
            Date().timeIntervalSince(cached.timestamp) < foodEntriesCacheExpirationSeconds {
+            // PERFORMANCE: Update access time for LRU tracking - O(1) operation
+            cacheQueue.sync { foodEntriesCacheAccessTime[dateKey] = Date() }
             // DEBUG LOG: print("✅ [Cache HIT] Returning cached entries for \(dateKey)")
             return cached.entries
         }
@@ -617,14 +626,16 @@ class FirebaseManager: ObservableObject {
             // Store in cache and remove from in-flight (async-safe with DispatchQueue)
             self.cacheQueue.sync {
                 self.foodEntriesCache[dateKey] = FoodEntriesCacheEntry(entries: entries, timestamp: Date())
+                self.foodEntriesCacheAccessTime[dateKey] = Date() // O(1) LRU tracking
 
-                // Evict oldest entries if cache exceeds size limit
-                if self.foodEntriesCache.count > self.maxFoodEntriesCacheSize {
-                    // Sort by timestamp and remove oldest entries
-                    let sortedEntries = self.foodEntriesCache.sorted { $0.value.timestamp < $1.value.timestamp }
-                    let entriesToRemove = sortedEntries.prefix(self.foodEntriesCache.count - self.maxFoodEntriesCacheSize)
-                    for (key, _) in entriesToRemove {
-                        self.foodEntriesCache.removeValue(forKey: key)
+                // PERFORMANCE: Evict LRU entries - O(n) find min instead of O(n log n) sort
+                while self.foodEntriesCache.count > self.maxFoodEntriesCacheSize {
+                    // Find least recently accessed entry
+                    if let oldestKey = self.foodEntriesCacheAccessTime.min(by: { $0.value < $1.value })?.key {
+                        self.foodEntriesCache.removeValue(forKey: oldestKey)
+                        self.foodEntriesCacheAccessTime.removeValue(forKey: oldestKey)
+                    } else {
+                        break
                     }
                 }
 
@@ -644,6 +655,8 @@ class FirebaseManager: ObservableObject {
 
     // MARK: - Period Cache (for Micronutrient Dashboard)
     private var periodCache: [Int: (entries: [FoodEntry], timestamp: Date)] = [:]
+    // PERFORMANCE: Separate LRU tracking for O(1) access time updates
+    private var periodCacheAccessTime: [Int: Date] = [:]
     private let periodCacheExpirationSeconds: TimeInterval = 300 // 5 minutes
     private let maxPeriodCacheSize: Int = 50 // Maximum number of cached periods
 
@@ -659,6 +672,8 @@ class FirebaseManager: ObservableObject {
 
         if let cached = cachedPeriod,
            Date().timeIntervalSince(cached.timestamp) < periodCacheExpirationSeconds {
+            // PERFORMANCE: Update access time for LRU tracking - O(1) operation
+            cacheQueue.sync { periodCacheAccessTime[days] = Date() }
             // DEBUG LOG: print("✅ [Period Cache HIT] Returning cached entries for \(days) days")
             return cached.entries
         }
@@ -690,12 +705,14 @@ class FirebaseManager: ObservableObject {
             }
             let queryStart = calendar.startOfDay(for: startDate)
 
+            // PERFORMANCE: Add limit to prevent fetching thousands of documents
             let snapshot = try await withRetry {
                 try await self.db.collection("users").document(userId)
                     .collection("foodEntries")
                     .whereField("date", isGreaterThanOrEqualTo: FirebaseFirestore.Timestamp(date: queryStart))
                     .whereField("date", isLessThanOrEqualTo: FirebaseFirestore.Timestamp(date: endDate))
                     .order(by: "date", descending: true)
+                    .limit(to: 1000) // Reasonable limit for nutrition analysis
                     .getDocuments()
             }
 
@@ -714,14 +731,16 @@ class FirebaseManager: ObservableObject {
             // Store in cache and remove from in-flight (async-safe with DispatchQueue)
             self.cacheQueue.sync {
                 self.periodCache[days] = (entries, Date())
+                self.periodCacheAccessTime[days] = Date() // O(1) LRU tracking
 
-                // Evict oldest entries if cache exceeds size limit
-                if self.periodCache.count > self.maxPeriodCacheSize {
-                    // Sort by timestamp and remove oldest entries
-                    let sortedEntries = self.periodCache.sorted { $0.value.timestamp < $1.value.timestamp }
-                    let entriesToRemove = sortedEntries.prefix(self.periodCache.count - self.maxPeriodCacheSize)
-                    for (key, _) in entriesToRemove {
-                        self.periodCache.removeValue(forKey: key)
+                // PERFORMANCE: Evict LRU entries - O(n) find min instead of O(n log n) sort
+                while self.periodCache.count > self.maxPeriodCacheSize {
+                    // Find least recently accessed entry
+                    if let oldestKey = self.periodCacheAccessTime.min(by: { $0.value < $1.value })?.key {
+                        self.periodCache.removeValue(forKey: oldestKey)
+                        self.periodCacheAccessTime.removeValue(forKey: oldestKey)
+                    } else {
+                        break
                     }
                 }
 
