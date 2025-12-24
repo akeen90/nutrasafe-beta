@@ -29,7 +29,8 @@ actor DiaryCacheActor {
 
     private var dayCache: [String: DayDiaryData] = [:]
     private let maxCacheSize: Int
-    private var accessOrder: [String] = [] // For LRU eviction
+    // Use Dictionary for O(1) access time tracking instead of O(n) array operations
+    private var lastAccessTime: [String: Date] = [:]
 
     // MARK: - Statistics
 
@@ -50,11 +51,8 @@ actor DiaryCacheActor {
     func getData(for date: Date) -> DayDiaryData? {
         let dateKey = formatDateKey(date)
 
-        // Update access order for LRU
-        if let index = accessOrder.firstIndex(of: dateKey) {
-            accessOrder.remove(at: index)
-        }
-        accessOrder.append(dateKey)
+        // Update access time for LRU - O(1) operation
+        lastAccessTime[dateKey] = Date()
 
         let cachedData = dayCache[dateKey]
         if cachedData != nil {
@@ -91,11 +89,8 @@ actor DiaryCacheActor {
 
         dayCache[dateKey] = data
 
-        // Update access order
-        if let index = accessOrder.firstIndex(of: dateKey) {
-            accessOrder.remove(at: index)
-        }
-        accessOrder.append(dateKey)
+        // Update access time - O(1) operation
+        lastAccessTime[dateKey] = Date()
 
         #if DEBUG
         print("📦 [DiaryCache] Cached data for \(dateKey): \(data.totalItems) items")
@@ -107,9 +102,7 @@ actor DiaryCacheActor {
     func invalidate(date: Date) {
         let dateKey = formatDateKey(date)
         if dayCache.removeValue(forKey: dateKey) != nil {
-            if let index = accessOrder.firstIndex(of: dateKey) {
-                accessOrder.remove(at: index)
-            }
+            lastAccessTime.removeValue(forKey: dateKey)
             #if DEBUG
             print("🗑️ [DiaryCache] Invalidated cache for \(dateKey)")
             #endif
@@ -123,9 +116,7 @@ actor DiaryCacheActor {
         for date in stride(from: dateRange.lowerBound, through: dateRange.upperBound, by: 86400) {
             let dateKey = formatDateKey(date)
             if dayCache.removeValue(forKey: dateKey) != nil {
-                if let index = accessOrder.firstIndex(of: dateKey) {
-                    accessOrder.remove(at: index)
-                }
+                lastAccessTime.removeValue(forKey: dateKey)
                 invalidatedCount += 1
             }
         }
@@ -140,7 +131,7 @@ actor DiaryCacheActor {
     func clear() {
         let previousSize = dayCache.count
         dayCache.removeAll()
-        accessOrder.removeAll()
+        lastAccessTime.removeAll()
         hits = 0
         misses = 0
         #if DEBUG
@@ -169,20 +160,28 @@ actor DiaryCacheActor {
     // MARK: - Private Helpers
 
     private func evictOldestEntry() {
-        guard !accessOrder.isEmpty else { return }
+        guard !lastAccessTime.isEmpty else { return }
 
-        // Remove least recently used entry
-        let oldestKey = accessOrder.removeFirst()
-        dayCache.removeValue(forKey: oldestKey)
-        #if DEBUG
-        print("♻️ [DiaryCache] Evicted oldest entry: \(oldestKey)")
-        #endif
+        // Find least recently used entry - O(n) but only runs on eviction, not every access
+        if let oldestKey = lastAccessTime.min(by: { $0.value < $1.value })?.key {
+            dayCache.removeValue(forKey: oldestKey)
+            lastAccessTime.removeValue(forKey: oldestKey)
+            #if DEBUG
+            print("♻️ [DiaryCache] Evicted oldest entry: \(oldestKey)")
+            #endif
+        }
     }
 
-    private func formatDateKey(_ date: Date) -> String {
+    // PERFORMANCE: Static DateFormatter to avoid recreation on every call
+    // DateFormatter creation is expensive (~10ms per instance)
+    private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         formatter.timeZone = Calendar.current.timeZone
-        return formatter.string(from: date)
+        return formatter
+    }()
+
+    private func formatDateKey(_ date: Date) -> String {
+        return Self.dateFormatter.string(from: date)
     }
 }

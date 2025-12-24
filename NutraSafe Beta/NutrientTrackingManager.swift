@@ -24,6 +24,7 @@ class NutrientTrackingManager: ObservableObject {
 
     private let db = Firestore.firestore()
     private var listeners: [ListenerRegistration] = []
+    private var diaryListener: ListenerRegistration? // Deduplicated diary listener
     private var currentUserId: String = "" // User-specific cache isolation
 
     // Base cache keys (will be appended with userId)
@@ -182,6 +183,10 @@ class NutrientTrackingManager: ObservableObject {
     }
 
     func stopTracking() {
+        // Remove deduplicated diary listener
+        diaryListener?.remove()
+        diaryListener = nil
+
         listeners.forEach { $0.remove() }
         listeners.removeAll()
 
@@ -211,31 +216,43 @@ class NutrientTrackingManager: ObservableObject {
         defer { isLoading = false }
 
         do {
-            // Load nutrient frequencies
-            let nutrientsSnapshot = try await db.collection("users").document(userId)
+            // PERFORMANCE: Fetch both collections in parallel with async let
+            // This cuts network time roughly in half
+            let sixtyDaysAgo = Calendar.current.date(byAdding: .day, value: -60, to: Date())!
+
+            async let nutrientsTask = db.collection("users").document(userId)
                 .collection("nutrientTracking").getDocuments()
 
-            for document in nutrientsSnapshot.documents {
-                let data = document.data()
-                if let frequency = parseNutrientFrequency(from: data, nutrientId: document.documentID) {
-                    nutrientFrequencies[document.documentID] = frequency
-                }
-            }
-
-            // Load recent day activities (last 60 days for rolling window calculation)
-            let sixtyDaysAgo = Calendar.current.date(byAdding: .day, value: -60, to: Date())!
-            let activitiesSnapshot = try await db.collection("users").document(userId)
+            async let activitiesTask = db.collection("users").document(userId)
                 .collection("dayNutrientActivity")
                 .whereField("date", isGreaterThanOrEqualTo: Timestamp(date: sixtyDaysAgo))
                 .getDocuments()
 
-            for document in activitiesSnapshot.documents {
+            // Wait for both queries to complete
+            let (nutrientsSnapshot, activitiesSnapshot) = try await (nutrientsTask, activitiesTask)
+
+            // PERFORMANCE: Batch process into temp dictionaries to avoid
+            // triggering @Published for each document (N+1 view updates)
+            var tempFrequencies: [String: NutrientFrequency] = [:]
+            var tempActivities: [String: DayNutrientActivity] = [:]
+
+            for document in nutrientsSnapshot.documents {
                 let data = document.data()
-                if let activity = parseDayActivity(from: data) {
-                    dayActivities[activity.dateId] = activity
+                if let frequency = parseNutrientFrequency(from: data, nutrientId: document.documentID) {
+                    tempFrequencies[document.documentID] = frequency
                 }
             }
 
+            for document in activitiesSnapshot.documents {
+                let data = document.data()
+                if let activity = parseDayActivity(from: data) {
+                    tempActivities[activity.dateId] = activity
+                }
+            }
+
+            // Single batch update - triggers observers once instead of N times
+            nutrientFrequencies = tempFrequencies
+            dayActivities = tempActivities
             lastUpdated = Date()
 
             // Save to cache after successful load
@@ -372,8 +389,17 @@ class NutrientTrackingManager: ObservableObject {
     // MARK: - Realtime Listeners
 
     private func setupRealtimeListeners(userId: String) {
+        // Guard against duplicate listener registration
+        // Multiple calls to startTracking would accumulate listeners without this check
+        guard diaryListener == nil else {
+            #if DEBUG
+            print("⚠️ Diary listener already registered, skipping duplicate")
+            #endif
+            return
+        }
+
         // Listen to diary changes to auto-update nutrients
-        let diaryListener = db.collection("users").document(userId)
+        diaryListener = db.collection("users").document(userId)
             .collection("diary")
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self = self else { return }
@@ -384,8 +410,6 @@ class NutrientTrackingManager: ObservableObject {
                     await self.processDiaryChanges(userId: userId, snapshot: snapshot)
                 }
             }
-
-        listeners.append(diaryListener)
     }
 
     // MARK: - Diary Processing

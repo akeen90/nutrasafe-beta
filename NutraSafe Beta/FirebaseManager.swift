@@ -18,9 +18,11 @@ class FirebaseManager: ObservableObject {
     private lazy var db: Firestore = {
         let firestore = Firestore.firestore()
 
-        // Enable offline persistence with unlimited cache size for instant loading
+        // Enable offline persistence with reasonable cache limit
+        // Unlimited cache can grow to GBs and slow app startup
+        // 100MB provides good offline experience without performance issues
         let settings = FirestoreSettings()
-        settings.cacheSettings = PersistentCacheSettings(sizeBytes: FirestoreCacheSizeUnlimited as NSNumber)
+        settings.cacheSettings = PersistentCacheSettings(sizeBytes: 100 * 1024 * 1024 as NSNumber) // 100 MB
         firestore.settings = settings
 
         return firestore

@@ -34,8 +34,10 @@ class ImageCacheManager {
         weightImagesDirectory = cachesDirectory.appendingPathComponent("WeightImages", isDirectory: true)
 
         // Configure memory cache limits
-        memoryCache.countLimit = 100 // Max 100 images in memory
-        memoryCache.totalCostLimit = 100 * 1024 * 1024 // 100 MB max
+        // Reduced limits to prevent memory pressure on devices with < 2GB RAM
+        // 100 images at 2000x2000 pixels would be ~400MB - too aggressive
+        memoryCache.countLimit = 30 // Max 30 images in memory (realistic visible count)
+        memoryCache.totalCostLimit = 50 * 1024 * 1024 // 50 MB max
 
         // Create cache directories if they don't exist
         createCacheDirectoriesIfNeeded()
