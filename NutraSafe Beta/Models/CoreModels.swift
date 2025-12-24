@@ -449,13 +449,19 @@ class DiaryDataManager: ObservableObject {
 
     @Published var dataReloadTrigger: UUID = UUID()
 
-    private init() {}
-    
-    // Date-based keys for UserDefaults
-    private func keyForDate(_ date: Date, type: String) -> String {
+    // PERFORMANCE: Static DateFormatter to avoid recreation on every call
+    // DateFormatter creation is expensive (~10ms per instance)
+    private static let dateKeyFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
-        return "\(type)_\(formatter.string(from: date))"
+        return formatter
+    }()
+
+    private init() {}
+
+    // Date-based keys for UserDefaults
+    private func keyForDate(_ date: Date, type: String) -> String {
+        return "\(type)_\(Self.dateKeyFormatter.string(from: date))"
     }
     
     // Food data methods - NOW LOADS FROM FIREBASE (source of truth)
@@ -848,17 +854,28 @@ class DiaryDataManager: ObservableObject {
     }
 
     // Delete food items from both local storage and Firebase
+    // Uses batch delete for atomic operations and better performance
     func deleteFoodItems(_ items: [DiaryFoodItem], for date: Date) {
         Task {
             print("DiaryDataManager: Deleting \(items.count) food items from Firebase")
 
-            for item in items {
-                do {
-                    // Delete from Firebase using the item's ID
-                    try await FirebaseManager.shared.deleteFoodEntry(entryId: item.id.uuidString)
-                    print("DiaryDataManager: Deleted item '\(item.name)' from Firebase")
-                } catch {
-                    print("DiaryDataManager: Error deleting item '\(item.name)' from Firebase: \(error.localizedDescription)")
+            // Collect all entry IDs for batch delete
+            let entryIds = items.map { $0.id.uuidString }
+
+            do {
+                // Use batch delete for atomic operation and better performance
+                try await FirebaseManager.shared.deleteFoodEntries(entryIds: entryIds)
+                print("DiaryDataManager: Successfully deleted \(items.count) items from Firebase")
+            } catch {
+                print("DiaryDataManager: Error batch deleting items from Firebase: \(error.localizedDescription)")
+                // Fallback: try deleting one by one
+                for item in items {
+                    do {
+                        try await FirebaseManager.shared.deleteFoodEntry(entryId: item.id.uuidString)
+                        print("DiaryDataManager: Deleted item '\(item.name)' from Firebase")
+                    } catch {
+                        print("DiaryDataManager: Error deleting item '\(item.name)' from Firebase: \(error.localizedDescription)")
+                    }
                 }
             }
 

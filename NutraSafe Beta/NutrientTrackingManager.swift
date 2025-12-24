@@ -43,6 +43,12 @@ class NutrientTrackingManager: ObservableObject {
         // Initialize with empty state
     }
 
+    deinit {
+        // CRITICAL: Clean up Firebase listeners to prevent memory leaks
+        diaryListener?.remove()
+        listeners.forEach { $0.remove() }
+    }
+
     // MARK: - Cache Management
 
     private func loadFromCache() {
@@ -888,10 +894,16 @@ class NutrientTrackingManager: ObservableObject {
 
     // MARK: - Helpers
 
-    private func formatDateId(_ date: Date) -> String {
+    // PERFORMANCE: Static DateFormatter to avoid recreation on every call
+    // DateFormatter creation is expensive (~10ms per instance)
+    private static let dateIdFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         formatter.timeZone = Calendar.current.timeZone
-        return formatter.string(from: date)
+        return formatter
+    }()
+
+    private func formatDateId(_ date: Date) -> String {
+        return Self.dateIdFormatter.string(from: date)
     }
 }

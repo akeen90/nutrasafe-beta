@@ -821,7 +821,9 @@ class FirebaseManager: ObservableObject {
         // Also cancel all in-flight requests
         cacheQueue.sync {
             foodEntriesCache.removeAll()
+            foodEntriesCacheAccessTime.removeAll()
             periodCache.removeAll()
+            periodCacheAccessTime.removeAll()
             inFlightFoodEntriesRequests.values.forEach { $0.cancel() }
             inFlightFoodEntriesRequests.removeAll()
             inFlightPeriodRequests.values.forEach { $0.cancel() }
@@ -833,6 +835,45 @@ class FirebaseManager: ObservableObject {
         // Notify that food diary was updated
         await MainActor.run {
         // DEBUG LOG: print("📢 Posting foodDiaryUpdated notification after deletion...")
+            NotificationCenter.default.post(name: .foodDiaryUpdated, object: nil)
+        }
+    }
+
+    /// Delete multiple food entries atomically using Firestore batch writes
+    /// More efficient than deleting one at a time for bulk operations
+    func deleteFoodEntries(entryIds: [String]) async throws {
+        guard let userId = currentUser?.uid else { return }
+        guard !entryIds.isEmpty else { return }
+
+        // Firestore batches support up to 500 operations
+        let batches = stride(from: 0, to: entryIds.count, by: 500).map {
+            Array(entryIds[$0..<min($0 + 500, entryIds.count)])
+        }
+
+        for batchIds in batches {
+            let batch = db.batch()
+            for entryId in batchIds {
+                let docRef = db.collection("users").document(userId)
+                    .collection("foodEntries").document(entryId)
+                batch.deleteDocument(docRef)
+            }
+            try await batch.commit()
+        }
+
+        // Clear caches after batch delete
+        cacheQueue.sync {
+            foodEntriesCache.removeAll()
+            foodEntriesCacheAccessTime.removeAll()
+            periodCache.removeAll()
+            periodCacheAccessTime.removeAll()
+            inFlightFoodEntriesRequests.values.forEach { $0.cancel() }
+            inFlightFoodEntriesRequests.removeAll()
+            inFlightPeriodRequests.values.forEach { $0.cancel() }
+            inFlightPeriodRequests.removeAll()
+        }
+
+        // Notify that food diary was updated
+        await MainActor.run {
             NotificationCenter.default.post(name: .foodDiaryUpdated, object: nil)
         }
     }
