@@ -2510,7 +2510,6 @@ struct AddWeightView: View {
 
                                     // Delete button
                                     Button(action: {
-        // DEBUG LOG: print("🗑️ Deleting photo with ID: \(identifiableImage.id)")
                                         #if DEBUG
                                         print("   Current photo count: \(selectedPhotos.count)")
                                         #endif
@@ -2552,7 +2551,6 @@ struct AddWeightView: View {
                         }
 
                         Button(action: {
-        // DEBUG LOG: print("📚 Choose from Library button tapped")
                             showingMultiImagePicker = true
                         }) {
                             HStack {
@@ -2647,7 +2645,6 @@ struct AddWeightView: View {
             }
             .sheet(isPresented: $showingMultiImagePicker) {
                 MultiImagePicker(maxSelection: 3 - selectedPhotos.count) { images in
-        // DEBUG LOG: print("🎯 AddWeightView: Received \(images.count) images from MultiImagePicker")
                     #if DEBUG
                     print("   Current photo count before adding: \(selectedPhotos.count)")
 
@@ -2678,7 +2675,6 @@ struct AddWeightView: View {
                     activePickerType = .camera
                 }
                 Button("Choose from Library") {
-        // DEBUG LOG: print("📚 Dialog: Choose from Library selected")
                     activePickerType = .photoLibrary
                 }
                 Button("Cancel", role: .cancel) { }
@@ -2958,7 +2954,6 @@ struct EditWeightView: View {
 
                                     // Delete button
                                     Button(action: {
-        // DEBUG LOG: print("🗑️ Deleting photo with ID: \(identifiableImage.id)")
                                         #if DEBUG
                                         print("   Current photo count: \(selectedPhotos.count)")
                                         #endif
@@ -3129,14 +3124,12 @@ struct EditWeightView: View {
                     activePickerType = .camera
                 }
                 Button("Choose from Library") {
-        // DEBUG LOG: print("📚 Choose from Library button tapped")
                     showingMultiImagePicker = true
                 }
                 Button("Cancel", role: .cancel) { }
             }
             .sheet(isPresented: $showingMultiImagePicker) {
                 MultiImagePicker(maxSelection: 3 - selectedPhotos.count) { images in
-        // DEBUG LOG: print("🎯 Received \(images.count) images from MultiImagePicker")
                     #if DEBUG
                     print("   Current photo count before adding: \(selectedPhotos.count)")
 
@@ -3190,7 +3183,6 @@ struct EditWeightView: View {
     }
 
     private func convertWeight(from oldUnit: WeightUnit, to newUnit: WeightUnit) {
-        // DEBUG LOG: print("🔄 EditWeightView: Converting weight from \(oldUnit.rawValue) to \(newUnit.rawValue)")
         #if DEBUG
         print("   Current primaryWeight: '\(primaryWeight)', secondaryWeight: '\(secondaryWeight)'")
 
@@ -3244,7 +3236,6 @@ struct EditWeightView: View {
     }
 
     private func convertHeight(from oldUnit: HeightUnit, to newUnit: HeightUnit) {
-        // DEBUG LOG: print("🔄 EditWeightView: Converting height from \(oldUnit.rawValue) to \(newUnit.rawValue)")
         #if DEBUG
         print("   Current primaryHeight: '\(primaryHeight)', secondaryHeight: '\(secondaryHeight)'")
 

@@ -505,7 +505,9 @@ class FirebaseManager: ObservableObject {
             do {
                 try NutritionValidator.validateFoodEntry(entry)
             } catch {
+                #if DEBUG
                 print("⚠️ Validation warning for '\(entry.foodName)': \(error.localizedDescription)")
+                #endif
             }
         }
 
@@ -909,7 +911,9 @@ class FirebaseManager: ObservableObject {
                 // Failed to decode - this entry is corrupt
                 #if DEBUG
                 print("❌ Corrupt entry found: \(doc.documentID)")
+                #if DEBUG
                 print("   Error: \(error.localizedDescription)")
+                #endif
                 #endif
                 corruptEntries.append(doc.documentID)
             }
@@ -1281,7 +1285,9 @@ class FirebaseManager: ObservableObject {
             } else {
                 #if DEBUG
                 print("⚠️ Failed to parse reaction document \(doc.documentID)")
+                #if DEBUG
                 print("   Data keys: \(data.keys.joined(separator: ", "))")
+                #endif
                 #endif
                 return nil
             }
@@ -2669,7 +2675,9 @@ class FirebaseManager: ObservableObject {
             #if DEBUG
             print("❌ Server returned status code: \(httpResponse.statusCode)")
             if let responseString = String(data: data, encoding: .utf8) {
+                #if DEBUG
                 print("Response: \(responseString)")
+                #endif
             }
             #endif
             throw NSError(domain: "Server Error", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "Server returned error code \(httpResponse.statusCode)"])
@@ -2839,20 +2847,34 @@ class FirebaseManager: ObservableObject {
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save fasting plans"])
         }
+        #if DEBUG
         print("      🔥 FirebaseManager.saveFastingPlan")
+        #endif
+        #if DEBUG
         print("         UserID: \(userId)")
+        #endif
+        #if DEBUG
         print("         Plan ID: \(plan.id ?? "nil - will generate new UUID")")
+        #endif
+        #if DEBUG
         print("         Plan name: '\(plan.name)'")
+        #endif
+        #if DEBUG
         print("         Active: \(plan.active)")
+        #endif
 
         let docRef = db.collection("users").document(userId)
             .collection("fastingPlans").document(plan.id ?? UUID().uuidString)
 
         let path = "users/\(userId)/fastingPlans/\(docRef.documentID)"
+        #if DEBUG
         print("         Saving to path: \(path)")
+        #endif
 
         try docRef.setData(from: plan, merge: true)
+        #if DEBUG
         print("         ✅ Successfully saved to Firebase")
+        #endif
         return docRef.documentID
     }
 
@@ -2861,28 +2883,42 @@ class FirebaseManager: ObservableObject {
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view fasting plans"])
         }
+        #if DEBUG
         print("      🔥 FirebaseManager.getFastingPlans")
+        #endif
+        #if DEBUG
         print("         UserID: \(userId)")
+        #endif
         let path = "users/\(userId)/fastingPlans"
+        #if DEBUG
         print("         Fetching from path: \(path)")
+        #endif
 
         let snapshot = try await db.collection("users").document(userId)
             .collection("fastingPlans").order(by: "created_at", descending: true).getDocuments()
 
+        #if DEBUG
         print("         Raw document count: \(snapshot.documents.count)")
+        #endif
 
         var plans: [FastingPlan] = []
         for (index, doc) in snapshot.documents.enumerated() {
             do {
                 let plan = try doc.data(as: FastingPlan.self)
+                #if DEBUG
                 print("         ✅ Decoded plan \(index + 1): '\(plan.name)' (ID: \(plan.id ?? "nil"))")
+                #endif
                 plans.append(plan)
             } catch {
+                #if DEBUG
                 print("         ❌ Failed to decode plan \(index + 1) (docID: \(doc.documentID)): \(error.localizedDescription)")
+                #endif
             }
         }
 
+        #if DEBUG
         print("         Returning \(plans.count) successfully decoded plans")
+        #endif
         return plans
     }
 
@@ -2916,7 +2952,9 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to cleanup fasting plans"])
         }
 
+        #if DEBUG
         print("🧹 Starting cleanup of corrupted fasting plans...")
+        #endif
 
         let snapshot = try await db.collection("users").document(userId)
             .collection("fastingPlans").getDocuments()
@@ -2932,11 +2970,15 @@ class FirebaseManager: ObservableObject {
         }
 
         guard !corruptedDocIDs.isEmpty else {
+            #if DEBUG
             print("✅ No corrupted plans found - database is clean!")
+            #endif
             return 0
         }
 
+        #if DEBUG
         print("   Found \(corruptedDocIDs.count) corrupted plans to delete")
+        #endif
 
         // PERFORMANCE: Use batch operations to delete efficiently
         // Firestore batch limit is 500 operations
@@ -2952,65 +2994,99 @@ class FirebaseManager: ObservableObject {
                 batch.deleteDocument(docRef)
             }
             try await batch.commit()
+            #if DEBUG
             print("   ✅ Deleted batch of \(chunk.count) corrupted plans")
+            #endif
         }
 
+        #if DEBUG
         print("✅ Cleanup complete - deleted \(corruptedDocIDs.count) corrupted plans")
+        #endif
         return corruptedDocIDs.count
     }
 
     func saveFastingSession(_ session: FastingSession) async throws -> String {
+        #if DEBUG
         print("🔥 FirebaseManager.saveFastingSession() called")
+        #endif
+        #if DEBUG
         print("   📋 Session data - userId: '\(session.userId)', planId: '\(session.planId ?? "nil")', target: \(session.targetDurationHours)h")
+        #endif
 
         ensureAuthStateLoaded()
         guard let userId = currentUser?.uid else {
+            #if DEBUG
             print("   ❌ currentUser?.uid is nil - user not authenticated!")
+            #endif
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save fasting sessions"])
         }
 
+        #if DEBUG
         print("   ✅ Current authenticated userId: '\(userId)'")
+        #endif
 
         let docRef = db.collection("users").document(userId)
             .collection("fastingSessions").document(session.id ?? UUID().uuidString)
 
+        #if DEBUG
         print("   📍 Firestore path: users/\(userId)/fastingSessions/\(docRef.documentID)")
+        #endif
+        #if DEBUG
         print("   💾 Writing to Firestore...")
+        #endif
 
         try docRef.setData(from: session, merge: true)
 
+        #if DEBUG
         print("   ✅ Firestore write successful!")
+        #endif
 
         await MainActor.run {
             NotificationCenter.default.post(name: .fastHistoryUpdated, object: nil)
         }
 
+        #if DEBUG
         print("   📢 Posted .fastHistoryUpdated notification")
+        #endif
 
         return docRef.documentID
     }
 
     func getFastingSessions() async throws -> [FastingSession] {
+        #if DEBUG
         print("📥 getFastingSessions() called")
+        #endif
         ensureAuthStateLoaded()
         guard let userId = currentUser?.uid else {
+            #if DEBUG
             print("   ❌ No authenticated user")
+            #endif
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view fasting sessions"])
         }
 
+        #if DEBUG
         print("   👤 Fetching sessions for userId: '\(userId)'")
+        #endif
+        #if DEBUG
         print("   📍 Path: users/\(userId)/fastingSessions")
+        #endif
 
         let snapshot = try await db.collection("users").document(userId)
             .collection("fastingSessions").order(by: "start_time", descending: true).getDocuments()
 
+        #if DEBUG
         print("   📊 Raw documents retrieved: \(snapshot.documents.count)")
+        #endif
 
         let sessions = snapshot.documents.compactMap { try? $0.data(as: FastingSession.self) }
 
+        #if DEBUG
         print("   ✅ Successfully decoded \(sessions.count) sessions")
+        #endif
         for (index, session) in sessions.enumerated() {
+            #if DEBUG
             print("      Session \(index + 1): ID=\(session.id ?? "nil"), userId=\(session.userId), status=\(session.completionStatus)")
+            #endif
         }
 
         return sessions

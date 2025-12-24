@@ -77,14 +77,6 @@ struct FoodTabView: View {
                     .padding(.bottom, 8)
                 }
                 .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
-                
-                // MARK: - Fasting Components have been extracted to Views/Fasting/FastingTimerView.swift
-                // The following components were moved as part of Phase 13 ContentView.swift modularization effort:
-                // - FastingTimerView: Main fasting timer interface
-                // - FastingStageRow: Individual fasting stage display row
-                // - FastingPresetButton: Quick-select fasting duration button
-                
-                // Content based on selected sub-tab
         Group {
             switch selectedFoodSubTab {
             case .reactions:
@@ -297,14 +289,10 @@ struct FoodReactionsView: View {
         .onAppear {
             // PERFORMANCE: Skip if already loaded - prevents redundant Firebase calls on tab switches
             guard !hasLoadedOnce else {
-        // DEBUG LOG: print("⚡️ FoodReactionsView: Skipping load - data already loaded (count: \(reactionManager.reactions.count))")
                 return
             }
             hasLoadedOnce = true
 
-        // DEBUG LOG: print("🔵 FoodReactionsView appeared - loading reactions data")
-        // DEBUG LOG: print("🔵 Current reactions count: \(reactionManager.reactions.count)")
-        // DEBUG LOG: print("🔵 Is loading: \(reactionManager.isLoading)")
             reactionManager.reloadIfAuthenticated()
         }
         .alert("Error", isPresented: $reactionManager.showingError) {
@@ -1643,7 +1631,6 @@ class ReactionManager: ObservableObject {
 
             do {
                 let fetchedReactions = try await firebaseManager.getReactions()
-        // DEBUG LOG: print("🔄 ReactionManager: About to update UI with \(fetchedReactions.count) reactions")
                 await MainActor.run {
                     self.reactions = fetchedReactions.sorted { $0.timestamp.dateValue() > $1.timestamp.dateValue() }
                     self.isLoading = false

@@ -196,8 +196,6 @@ class IngredientMicronutrientParser {
 
     /// Debug: List all nutrients that would be detected
     func testParsing(_ ingredientsText: String) {
-        // DEBUG LOG: print("🔬 Testing ingredient parsing:")
-        // DEBUG LOG: print("📝 Input: \(ingredientsText)")
         #if DEBUG
         print("")
         #endif

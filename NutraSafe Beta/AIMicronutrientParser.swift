@@ -40,7 +40,6 @@ class AIMicronutrientParser {
 
         do {
             // Try AI parsing first
-        // DEBUG LOG: print("🤖 Calling AI micronutrient parser...")
             let nutrients = try await callAIParser(ingredientsText: ingredientsText)
 
             // Cache the result locally

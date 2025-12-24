@@ -563,8 +563,6 @@ class NutrientTrackingManager: ObservableObject {
             var currentStreak = 0
             var tempStreak = 0
             var lastAppearance: Date?
-            // TODO: Implement food source tracking
-            // var foodSourceCounts: [String: (count: Int, brand: String?, lastSeen: Date)] = [:]
 
             // Iterate through days in reverse (most recent first) for streak calculation
             for activity in recentActivities.reversed() {

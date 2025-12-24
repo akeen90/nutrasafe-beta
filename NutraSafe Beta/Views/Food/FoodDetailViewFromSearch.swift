@@ -142,10 +142,8 @@ struct FoodDetailViewFromSearch: View {
             // Priority 1: Use servingSizeG if available (most reliable)
             if let sizeG = food.servingSizeG, sizeG > 0 {
                 initialServingSize = String(format: "%.0f", sizeG)
-            // DEBUG LOG: print("🔧 INIT: Using servingSizeG: \(sizeG)g for \(food.name)")
             } else if let servingDesc = food.servingDescription {
                 // Priority 2: Extract from serving description
-            // DEBUG LOG: print("🔧 INIT: Parsing serving description: '\(servingDesc)' for \(food.name)")
 
                 let patterns = [
                     #"(\d+(?:\.\d+)?)\s*g\s+serving"#,  // Match "150g serving"
@@ -159,7 +157,6 @@ struct FoodDetailViewFromSearch: View {
                        let match = regex.firstMatch(in: servingDesc, options: [], range: NSRange(location: 0, length: servingDesc.count)),
                        let range = Range(match.range(at: 1), in: servingDesc) {
                         initialServingSize = String(servingDesc[range])
-            // DEBUG LOG: print("🔧 INIT: Extracted \(initialServingSize)g from '\(servingDesc)'")
                         break
                     }
                 }
@@ -863,7 +860,6 @@ struct FoodDetailViewFromSearch: View {
     }
     
     private func getIngredientsList() -> [String]? {
-        // DEBUG LOG: print("🔍 getIngredientsList() called")
         #if DEBUG
         print("  - enhancedIngredientsText: \(enhancedIngredientsText?.prefix(50) ?? "nil")")
         print("  - displayFood.ingredients: \(displayFood.ingredients?.count ?? 0) items")
@@ -1101,7 +1097,6 @@ struct FoodDetailViewFromSearch: View {
         let currentDBVersion = ProcessingScorer.shared.databaseVersion
         let savedDBVersion = displayFood.additivesDatabaseVersion
 
-        // DEBUG LOG: print("📊 Database versions - Current: \(currentDBVersion), Saved: \(savedDBVersion ?? "nil (legacy)")")
 
         // Re-analyze if:
         // 1. No saved version (legacy data)
@@ -1111,7 +1106,6 @@ struct FoodDetailViewFromSearch: View {
         let needsReAnalysis = (savedDBVersion == nil || savedDBVersion != currentDBVersion) && hasIngredients
 
         if needsReAnalysis {
-        // DEBUG LOG: print("🔄 RE-ANALYZING: Database version outdated or missing")
             #if DEBUG
             print("   - Saved version: \(savedDBVersion ?? "none")")
             print("   - Current version: \(currentDBVersion)")
@@ -1122,7 +1116,6 @@ struct FoodDetailViewFromSearch: View {
             let ingredientsText = displayFood.ingredients!.joined(separator: ", ")
             let freshAdditives = ProcessingScorer.shared.analyzeAdditives(in: ingredientsText)
 
-        // DEBUG LOG: print("🔄 Fresh analysis complete: Found \(freshAdditives.count) additives")
 
             // Convert fresh analysis to DetailedAdditive format
             return freshAdditives.map { additive in
@@ -1409,14 +1402,12 @@ struct FoodDetailViewFromSearch: View {
                             if !isPerUnit, servingAmount == "1" && servingUnit == "g" {
                                 // PRIORITY 1: Use servingSizeG if available (most reliable)
                                 if let sizeG = food.servingSizeG, sizeG > 0 {
-        // DEBUG LOG: print("🔧 Using servingSizeG: \(sizeG)g")
                                     servingAmount = String(format: "%.0f", sizeG)
                                     servingUnit = "g"
                                     gramsAmount = String(format: "%.0f", sizeG)  // Also update gramsAmount
                                 } else {
                                     // PRIORITY 2: Extract from serving description
                                     let description = food.servingDescription ?? "100g"
-        // DEBUG LOG: print("🔧 Parsing serving description: '\(description)'")
 
                                     // Try to extract grams from multiple patterns
                                     let patterns = [
@@ -1432,7 +1423,6 @@ struct FoodDetailViewFromSearch: View {
                                            let match = regex.firstMatch(in: description, options: [], range: NSRange(location: 0, length: description.count)),
                                            let range = Range(match.range(at: 1), in: description) {
                                             let extractedValue = String(description[range])
-        // DEBUG LOG: print("🔧 Extracted serving size: \(extractedValue)g")
                                             servingAmount = extractedValue
                                             servingUnit = "g"
                                             gramsAmount = extractedValue  // Also update gramsAmount
@@ -1990,7 +1980,6 @@ private var nutritionFactsSection: some View {
         // This ensures only REAL nutrients from actual ingredients are shown
 
         // Create diary entry
-        // DEBUG LOG: print("📝 Creating DiaryFoodItem:")
         #if DEBUG
         print("  - displayFood.ingredients: \(displayFood.ingredients?.count ?? 0) items")
         print("  - displayFood.ingredients: \(displayFood.ingredients ?? [])")
@@ -2635,7 +2624,6 @@ private var nutritionFactsSection: some View {
                     barcode: barcode
                 )
 
-        // DEBUG LOG: print("🔍 AI Search Result:")
                 #if DEBUG
                 print("  - ingredients_found: \(result.ingredients_found)")
                 print("  - ingredients_text: \(result.ingredients_text?.prefix(50) ?? "nil")")
@@ -2649,7 +2637,6 @@ private var nutritionFactsSection: some View {
                 // Save to Firebase AI-improved foods collection (outside MainActor)
                 #endif
                 if result.ingredients_found {
-        // DEBUG LOG: print("💾 Saving AI-improved food to Firebase")
                     var enhancedData: [String: Any] = [:]
 
                     if let ingredientsText = result.ingredients_text {
@@ -2709,7 +2696,6 @@ private var nutritionFactsSection: some View {
                             print("✅ AI found enhanced ingredients: \(ingredientsText.prefix(100))...")
                             #endif
                             enhancedIngredientsText = ingredientsText
-        // DEBUG LOG: print("📝 enhancedIngredientsText is now: \(enhancedIngredientsText?.prefix(50) ?? "nil")")
                         } else {
                             #if DEBUG
                             print("⚠️ No ingredients_text in result")
@@ -2766,7 +2752,6 @@ private var nutritionFactsSection: some View {
                         }
 
                         // Trigger UI refresh
-        // DEBUG LOG: print("🔄 Triggering UI refresh")
                         refreshTrigger = UUID()
 
                         #if DEBUG
@@ -3087,7 +3072,6 @@ private var nutritionFactsSection: some View {
                     
                     #if DEBUG
                     print("✅ Intelligent extraction completed:")
-        // DEBUG LOG: print("📝 Ingredients: \(cleanIngredientsText)")
                     print("⚠️ Detected allergens: \(detectedAllergens.joined(separator: ", "))")
                     
                     // Trigger nutrition score recalculation with new ingredients
@@ -3144,7 +3128,6 @@ private var nutritionFactsSection: some View {
     
     // Recalculate nutrition score with new user-verified ingredients
     private func recalculateNutritionScore(with ingredients: [String]) async {
-        // DEBUG LOG: print("🔄 Recalculating nutrition score with user-verified ingredients...")
 
         // PERFORMANCE: Invalidate caches and reset initialization flag to allow re-initialization
         await MainActor.run {
@@ -3165,7 +3148,6 @@ private var nutritionFactsSection: some View {
         #endif
         await MainActor.run {
             refreshTrigger = UUID()
-        // DEBUG LOG: print("🔄 UI refresh triggered - nutrition score should now reflect user-verified ingredients")
         }
     }
     
@@ -3792,7 +3774,6 @@ private var nutritionFactsSection: some View {
 
     // NEW: Detect nutrients from ingredients using NutrientDetector and MicronutrientDatabase
     private func getDetectedNutrients() -> [String] {
-        // DEBUG LOG: print("🔬 getDetectedNutrients() called for food: \(food.name)")
         #if DEBUG
         print("  📝 Ingredients: \(food.ingredients ?? [])")
 

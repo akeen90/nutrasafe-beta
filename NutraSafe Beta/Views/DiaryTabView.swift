@@ -435,7 +435,6 @@ struct DiaryTabView: View {
                 copyFoodSheet
             }
             .sheet(item: $editingFood, onDismiss: {
-                // DEBUG LOG: print("📝 Edit sheet dismissed, resetting editingFood")
                 editingFood = nil
                 editingMealType = ""
             }) { food in
@@ -593,13 +592,9 @@ struct DiaryTabView: View {
 
     private func handleEditTrigger(_ newValue: Bool) {
         guard newValue else { return }
-        // DEBUG LOG: print("📝 Edit trigger fired. Selected items: \(selectedFoodItems)")
 
         if let foodId = selectedFoodItems.first {
-            // DEBUG LOG: print("📝 Looking for food with ID: \(foodId)")
             if let result = findFoodWithMeal(byId: foodId) {
-                // DEBUG LOG: print("📝 Found food to edit: \(result.food.name) in \(result.meal)")
-                // DEBUG LOG: print("📝 Setting editingFood to trigger sheet...")
                 editingFood = result.food
                 editingMealType = result.meal
                 // Clear selection once user enters edit flow

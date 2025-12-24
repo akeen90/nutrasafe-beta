@@ -30,7 +30,6 @@ class MicronutrientTrackingManager: ObservableObject {
 
     private init() {
         // Don't load on init - use lazy loading instead
-        // DEBUG LOG: print("🚀 MicronutrientTrackingManager initialized (lazy loading enabled)")
     }
 
     // MARK: - Food Analysis
@@ -108,7 +107,6 @@ class MicronutrientTrackingManager: ObservableObject {
 
     /// Process actual micronutrient data from a food's nutrient profile
     func processNutrientProfile(_ profile: MicronutrientProfile, foodName: String, servingSize: Double = 1.0, date: Date = Date()) async {
-        // DEBUG LOG: print("🔬 Processing nutrient profile for: \(foodName) (serving: \(servingSize)x)")
         #if DEBUG
         print("  📊 Profile has \(profile.vitamins.count) vitamins, \(profile.minerals.count) minerals")
         #endif
@@ -418,11 +416,9 @@ class MicronutrientTrackingManager: ObservableObject {
     /// Ensure data is loaded before accessing (lazy loading)
     private func ensureDataLoaded() async {
         guard !hasLoadedData else {
-        // DEBUG LOG: print("⚡️ Micronutrient data already loaded - using cache")
             return
         }
 
-        // DEBUG LOG: print("🔄 Lazy loading micronutrient data on first access...")
         await loadFromFirestore()
         hasLoadedData = true
     }
@@ -500,7 +496,6 @@ class MicronutrientTrackingManager: ObservableObject {
         // MEMORY CACHE: Invalidate cache when saving new data
         firebaseCache = nil
         cacheTimestamp = nil
-        // DEBUG LOG: print("🗑️ Cache invalidated due to new data save")
 
         // Save to Firestore
         for (_, scores) in dailyScores {
@@ -559,7 +554,6 @@ class MicronutrientTrackingManager: ObservableObject {
         if let cache = firebaseCache,
            let timestamp = cacheTimestamp,
            Date().timeIntervalSince(timestamp) < cacheExpirationSeconds {
-        // DEBUG LOG: print("⚡️ Using cached Firebase data (age: \(Int(Date().timeIntervalSince(timestamp)))s)")
             dailyScores = cache.scores
             balanceHistory = cache.balance
             return
@@ -570,7 +564,6 @@ class MicronutrientTrackingManager: ObservableObject {
 
         // OPTIMIZED: Load only last 7 days instead of 30 for faster initial load
         let sevenDaysAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
-        // DEBUG LOG: print("📊 Loading micronutrient data from Firebase for last 7 days (optimized)")
 
         do {
             // Load nutrient scores
@@ -657,7 +650,6 @@ class MicronutrientTrackingManager: ObservableObject {
             // MEMORY CACHE: Cache the loaded data
             firebaseCache = (scores: dailyScores, balance: balanceHistory)
             cacheTimestamp = Date()
-        // DEBUG LOG: print("💾 Cached Firebase data for future access")
 
         } catch {
             #if DEBUG

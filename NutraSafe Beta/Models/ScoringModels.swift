@@ -464,7 +464,6 @@ class ProcessingScorer {
         cacheLock.lock()
         if let cached = additivesCache[cacheKey] {
             cacheLock.unlock()
-        // DEBUG LOG: print("⚡ [ProcessingScorer] Using cached additives analysis (\(cached.count) additives)")
             return cached
         }
         cacheLock.unlock()
@@ -513,7 +512,6 @@ class ProcessingScorer {
         cacheLock.lock()
         if let cached = scoreCache[cacheKey] {
             cacheLock.unlock()
-        // DEBUG LOG: print("⚡ [ProcessingScorer] Using cached score for: \(foodName)")
             return cached
         }
         cacheLock.unlock()
@@ -841,7 +839,6 @@ class ProcessingScorer {
     }()
 
     private lazy var comprehensiveAdditives: [String: AdditiveInfo]? = {
-        // DEBUG LOG: print("🔍 Attempting to load consolidated ingredients database...")
 
         guard let path = Bundle.main.path(forResource: "ingredients_consolidated", ofType: "json") else {
             #if DEBUG
@@ -1274,17 +1271,13 @@ class ProcessingScorer {
         cacheLock.lock()
         if let cached = analysisCache[cacheKey] {
             cacheLock.unlock()
-        // DEBUG LOG: print("⚡ [analyseAdditives] Using cached analysis (\(cached.comprehensiveAdditives.count) additives)")
             return cached
         }
         cacheLock.unlock()
 
-        // DEBUG LOG: print("🔬 [analyseAdditives] Starting analysis")
-        // DEBUG LOG: print("🔬 [analyseAdditives] Input text: '\(food)'")
 
         let foodLower = food.lowercased()
         let normalizedFood = normalizeIngredientText(food)
-        // DEBUG LOG: print("🔬 [analyseAdditives] Normalized text: '\(normalizedFood)'")
 
         var detectedAdditives: [AdditiveInfo] = []
         var eNumbers: [String] = []

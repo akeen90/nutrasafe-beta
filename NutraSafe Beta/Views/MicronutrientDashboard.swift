@@ -112,12 +112,10 @@ struct MicronutrientDashboard: View {
         .task {
             // PERFORMANCE: Skip if already loaded - prevents redundant Firebase calls on tab switches
             guard !hasLoadedData, !isLoading else {
-        // DEBUG LOG: print("⚡️ MicronutrientDashboard: Skipping load - data already loaded")
                 return
             }
 
             isLoading = true
-        // DEBUG LOG: print("📊 MicronutrientDashboard: Loading data...")
 
             // Process today's foods FIRST to ensure we have fresh data
             await processTodaysFoods()
@@ -703,7 +701,6 @@ struct MicronutrientDashboard: View {
     // MARK: - Data Processing
 
     private func processTodaysFoods() async {
-        // DEBUG LOG: print("📊 MicronutrientDashboard: Processing TODAY ONLY (performance fix)")
 
         // PERFORMANCE FIX: Only process TODAY'S foods, not 30 days
         // The tracking manager will automatically calculate 7-day and 30-day averages from Firebase data
@@ -715,7 +712,6 @@ struct MicronutrientDashboard: View {
             let (breakfast, lunch, dinner, snacks) = try await diaryDataManager.getFoodDataAsync(for: today)
             let allFoods = breakfast + lunch + dinner + snacks
 
-        // DEBUG LOG: print("📥 Processing \(allFoods.count) foods from today")
 
             // Process each food's micronutrients
             // FIX: Always use ingredient-based analysis with position weighting

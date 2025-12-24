@@ -638,12 +638,8 @@ struct FastingTimerView: View {
     // MARK: - Live Activities (Dynamic Island)
     @available(iOS 16.1, *)
     private func startLiveActivity() async {
-        // DEBUG LOG: print("🔵 startLiveActivity called")
-        // DEBUG LOG: print("🔵 Current device: \(UIDevice.current.model)")
-        // DEBUG LOG: print("🔵 iOS version: \(UIDevice.current.systemVersion)")
 
         let authInfo = ActivityAuthorizationInfo()
-        // DEBUG LOG: print("🔵 Live Activities enabled: \(authInfo.areActivitiesEnabled)")
 
         #if targetEnvironment(simulator)
         print("⚠️  Running in SIMULATOR - Live Activities won't appear")
@@ -666,7 +662,6 @@ struct FastingTimerView: View {
         let hours = Int(fastingDuration / 3600)
         let minutes = Int((fastingDuration.truncatingRemainder(dividingBy: 3600)) / 60)
 
-        // DEBUG LOG: print("🔵 Creating Live Activity with:")
         print("   - Goal: \(fastingGoal)h")
         print("   - Current: \(hours)h \(minutes)m")
         print("   - Start time: \(startTime)")
@@ -720,7 +715,6 @@ struct FastingTimerView: View {
 
         let content = ActivityContent(state: contentState, staleDate: nil)
         await activity.update(content)
-        // DEBUG LOG: print("🔄 Live Activity updated: \(hours)h \(minutes)m")
     }
 
     @available(iOS 16.1, *)
@@ -869,7 +863,6 @@ struct FastingTimerView: View {
         }
 
         center.removePendingNotificationRequests(withIdentifiers: identifiers)
-        // DEBUG LOG: print("🗑️ Cancelled all fasting notifications")
     }
 
     private func prepareStopFasting() {

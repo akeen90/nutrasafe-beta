@@ -122,7 +122,6 @@ class IngredientFinderService: ObservableObject {
     private func callCloudFunction(productName: String, brand: String?, barcode: String?) async throws -> IngredientFinderResponse {
         // Get endpoint URL from AppConfig
         let endpointURLString = AppConfig.Firebase.Functions.findIngredients
-        // DEBUG LOG: print("🔍 Debug: Endpoint URL from AppConfig: \(endpointURLString)")
 
         guard let url = URL(string: endpointURLString) else {
             print("❌ Debug: Invalid URL: \(endpointURLString)")
@@ -848,7 +847,6 @@ struct ManualFoodDetailEntryView: View {
                     barcode: barcode.isEmpty ? nil : barcode
                 )
 
-        // DEBUG LOG: print("🍎 MANUAL ADD - AI Search Result:")
                 print("  - ingredients_found: \(response.ingredients_found)")
                 print("  - ingredients_text: \(response.ingredients_text?.prefix(50) ?? "nil")")
                 print("  - nutrition: \(response.nutrition_per_100g != nil ? "YES" : "NO")")

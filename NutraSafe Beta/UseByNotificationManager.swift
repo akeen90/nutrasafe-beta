@@ -172,7 +172,6 @@ class UseByNotificationManager {
         ]
 
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
-        // DEBUG LOG: print("🗑️ Cancelled notifications for item: \(itemId)")
     }
 
     /// Cancel all use-by related notifications
@@ -197,7 +196,6 @@ class UseByNotificationManager {
             await scheduleNotifications(for: item)
         }
 
-        // DEBUG LOG: print("🔄 Refreshed notifications for \(items.count) items")
     }
 
     // MARK: - Debugging

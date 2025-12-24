@@ -157,7 +157,6 @@ class MicronutrientDatabase {
         if sqlite3_prepare_v2(db, countQuery, -1, &countStmt, nil) == SQLITE_OK {
             if sqlite3_step(countStmt) == SQLITE_ROW {
                 _ = sqlite3_column_int(countStmt, 0)
-        // DEBUG LOG: print("📊 Database contains \(count) nutrients")
             }
         }
 
@@ -219,7 +218,6 @@ class MicronutrientDatabase {
         guard isInitialized, let db = db else { return }
 
         let startTime = Date()
-        // DEBUG LOG: print("⚡️ Preloading all nutrients into cache...")
 
         let query = """
         SELECT nutrient, name, category, benefits, deficiency_signs, common_sources, recommended_daily_intake
@@ -659,7 +657,6 @@ class MicronutrientDatabase {
         //   https://www.ncbi.nlm.nih.gov/books/NBK222871/
         let detectedFortifications = IngredientMicronutrientParser.shared.parseIngredientsArray(ingredients)
 
-        // DEBUG LOG: print("🔬 Pattern parser detected \(detectedFortifications.count) fortified nutrients")
 
         for detected in detectedFortifications {
             // Fortified nutrients are categorized as high sources (0.7 contribution)

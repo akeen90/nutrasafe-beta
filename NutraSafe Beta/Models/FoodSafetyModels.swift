@@ -807,12 +807,8 @@ class AdditiveWatchService {
     }
     
     func analyzeIngredients(_ ingredients: [String], completion: @escaping (AdditiveDetectionResult) -> Void) {
-        // DEBUG LOG: print("🔬 [AdditiveWatchService] Starting local comprehensive additive analysis")
-        // DEBUG LOG: print("🔬 [AdditiveWatchService] Input ingredients array: \(ingredients)")
-        // DEBUG LOG: print("🔬 [AdditiveWatchService] Ingredients count: \(ingredients.count)")
 
         let ingredientsText = ingredients.joined(separator: ", ")
-        // DEBUG LOG: print("🔬 [AdditiveWatchService] Joined ingredients text: '\(ingredientsText)'")
 
         // Normalize ingredients text for matching (used by both additive and ultra-processed detection)
         let normalized = normalizeIngredientTextLocal(ingredientsText)
