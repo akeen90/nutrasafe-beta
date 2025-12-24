@@ -39,6 +39,12 @@ struct DiaryTabView: View {
         case nutrients = "Nutrients"
     }
 
+    // MARK: - Unified Reload Trigger (Performance Optimization)
+    // Consolidates multiple onChange handlers into single coordinated reload
+    // Prevents cascading updates when multiple triggers fire simultaneously
+    @State private var pendingReloadTask: Task<Void, Never>?
+    private let reloadDebounceInterval: UInt64 = 100_000_000 // 100ms in nanoseconds
+
     // MARK: - Cached Nutrition Totals (Performance Optimization)
     @State private var cachedNutrition: NutritionTotals = NutritionTotals()
     @State private var hasLoadedOnce = false // PERFORMANCE: Guard flag to prevent redundant loads
@@ -132,6 +138,32 @@ struct DiaryTabView: View {
         }
 
         return (calories, protein, carbs, fat, fiber)
+    }
+
+    // MARK: - Debounced Reload (Performance Optimization)
+    // Consolidates multiple rapid reload triggers into single load operation
+    // Prevents N sequential Firebase calls when changing date/tab/refreshing simultaneously
+    private func triggerDebouncedReload() {
+        // Cancel any pending reload
+        pendingReloadTask?.cancel()
+
+        // Schedule new reload with debounce
+        pendingReloadTask = Task {
+            do {
+                // Wait for debounce interval
+                try await Task.sleep(nanoseconds: reloadDebounceInterval)
+
+                // Check if cancelled during sleep
+                try Task.checkCancellation()
+
+                // Perform the actual load
+                await MainActor.run {
+                    loadFoodData()
+                }
+            } catch {
+                // Task was cancelled - another reload is pending
+            }
+        }
     }
 
     // Extracted to reduce compiler complexity
@@ -418,19 +450,19 @@ struct DiaryTabView: View {
     }
 
     // MARK: - Content with Lifecycle Modifiers
+    // PERFORMANCE: Consolidated onChange handlers use debounced reload
+    // Multiple triggers (date change, refresh, data reload) are batched into single load
     private var contentWithLifecycleModifiers: some View {
         mainContent
+            // PERFORMANCE: Use debounced reload to prevent cascading updates
             .onChange(of: selectedDate) {
-                loadFoodData()
+                triggerDebouncedReload()
             }
             .onAppear {
                 // PERFORMANCE: Skip if already loaded - prevents redundant Firebase calls on tab switches
-                guard !hasLoadedOnce else {
-                    // DEBUG LOG: print("⚡️ DiaryTabView: Skipping load - data already loaded")
-                    return
-                }
+                guard !hasLoadedOnce else { return }
                 hasLoadedOnce = true
-                loadFoodData()
+                loadFoodData() // Initial load doesn't need debounce
             }
             .onChange(of: selectedTab) { _, newTab in
                 handleSelectedTabChange(newTab)
@@ -438,11 +470,12 @@ struct DiaryTabView: View {
             .onChange(of: diarySubTab) { _, newTab in
                 handleDiarySubTabChange(newTab)
             }
+            // PERFORMANCE: Consolidated - these 3 triggers now use debounced reload
             .onChange(of: refreshTrigger) {
-                loadFoodData()
+                triggerDebouncedReload()
             }
             .onChange(of: diaryDataManager.dataReloadTrigger) {
-                loadFoodData()
+                triggerDebouncedReload()
             }
             .onChange(of: editTrigger) { _, newValue in
                 handleEditTrigger(newValue)
@@ -452,24 +485,21 @@ struct DiaryTabView: View {
             }
             .onReceive(healthKitRefreshTimer) { _ in
                 // Only refresh HealthKit data if viewing today's date
-                if Calendar.current.isDateInToday(selectedDate) {
-                    Task {
-                        await healthKitManager.updateStepCount(for: selectedDate)
-                        await healthKitManager.updateActiveEnergy(for: selectedDate)
-                    }
+                guard Calendar.current.isDateInToday(selectedDate) else { return }
+                Task {
+                    await healthKitManager.updateStepCount(for: selectedDate)
+                    await healthKitManager.updateActiveEnergy(for: selectedDate)
                 }
             }
             .onChange(of: moveTrigger) { _, newValue in
-                if newValue {
-                    showMoveOptions()
-                    moveTrigger = false
-                }
+                guard newValue else { return }
+                showMoveOptions()
+                moveTrigger = false
             }
             .onChange(of: copyTrigger) { _, newValue in
-                if newValue {
-                    showCopyOptions()
-                    copyTrigger = false
-                }
+                guard newValue else { return }
+                showCopyOptions()
+                copyTrigger = false
             }
             .onChange(of: deleteTrigger) { _, newValue in
                 guard newValue else { return }
