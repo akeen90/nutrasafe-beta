@@ -149,7 +149,7 @@ struct UseByTabView: View {
                     .padding(.bottom, 80) // Space for tab bar
                 }
             }
-            .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
+            .tabGradientBackground(.useBy)
             .navigationBarHidden(true)
         }
         .fullScreenCover(isPresented: $showingAddSheet) {

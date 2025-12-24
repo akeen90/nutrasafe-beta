@@ -76,7 +76,6 @@ struct FoodTabView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 8)
                 }
-                .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         Group {
             switch selectedFoodSubTab {
             case .reactions:
@@ -93,7 +92,7 @@ struct FoodTabView: View {
         .transaction { $0.disablesAnimations = true }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .background(Color.adaptiveBackground)
+            .tabGradientBackground(.health)
             .navigationBarHidden(true)
         }
         .onAppear {

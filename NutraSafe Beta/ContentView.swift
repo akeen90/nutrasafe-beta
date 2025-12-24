@@ -1068,7 +1068,6 @@ struct WeightTrackingView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
                 .padding(.bottom, 12)
-                .background(Color.adaptiveBackground)
 
                 // Loading overlay
                 if isLoadingData {
@@ -1429,7 +1428,7 @@ struct WeightTrackingView: View {
                 }
                 } // End of loading else block
             }
-            .background(Color.adaptiveBackground)
+            .tabGradientBackground(.progress)
         .sheet(isPresented: $showingAddWeight) {
             AddWeightView(currentWeight: $currentWeight, weightHistory: $weightHistory, userHeight: $userHeight)
                 .environmentObject(firebaseManager)
