@@ -15,6 +15,13 @@ import UserNotifications
 struct FastingTimerView: View {
     @EnvironmentObject var firebaseManager: FirebaseManager
 
+    // PERFORMANCE: Static gradient to avoid recreation on every render
+    private static let progressGradient = LinearGradient(
+        colors: [.orange, .red, .purple],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+
     @State private var currentSession: FastingSession? = nil
     @State private var currentPlan: FastingPlan? = nil
     @State private var sessions: [FastingSession] = []
@@ -115,11 +122,7 @@ struct FastingTimerView: View {
                 Circle()
                     .trim(from: 0, to: fastingProgress)
                     .stroke(
-                        LinearGradient(
-                            colors: [.orange, .red, .purple],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
+                        Self.progressGradient, // PERFORMANCE: Use static gradient
                         style: StrokeStyle(lineWidth: 12, lineCap: .round)
                     )
                     .frame(width: 200, height: 200)

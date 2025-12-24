@@ -251,24 +251,31 @@ class ImageCacheManager {
 
     private func saveImageAsync(_ image: UIImage, to fileURL: URL, itemId: String) async throws {
         let cacheKey = NSString(string: fileURL.path)
-        guard let imageData = image.jpegData(compressionQuality: 0.7) else {
-            throw NSError(domain: "ImageCache", code: -1, userInfo: [
-                NSLocalizedDescriptionKey: "Failed to convert image to JPEG data"
-            ])
-        }
-        let writeResult = await Task.detached { () -> Result<Void, Error> in
+
+        // PERFORMANCE: Move compression and disk write to background thread
+        let result = await Task.detached { () -> Result<Data, Error> in
+            guard let imageData = image.jpegData(compressionQuality: 0.7) else {
+                return .failure(NSError(domain: "ImageCache", code: -1, userInfo: [
+                    NSLocalizedDescriptionKey: "Failed to convert image to JPEG data"
+                ]))
+            }
             do {
                 try imageData.write(to: fileURL, options: .atomic)
-                return .success(())
+                return .success(imageData)
             } catch {
                 return .failure(error)
             }
         }.value
-        if case .failure(let e) = writeResult { throw e }
-        memoryCache.setObject(image, forKey: cacheKey, cost: imageData.count)
-        #if DEBUG
-        print("💾 Cached image to disk: \(fileURL.lastPathComponent) (\(imageData.count / 1024)KB)")
-        #endif
+
+        switch result {
+        case .success(let imageData):
+            memoryCache.setObject(image, forKey: cacheKey, cost: imageData.count)
+            #if DEBUG
+            print("💾 Cached image to disk: \(fileURL.lastPathComponent) (\(imageData.count / 1024)KB)")
+            #endif
+        case .failure(let error):
+            throw error
+        }
     }
 
     private func loadImage(from fileURL: URL, itemId: String) -> UIImage? {

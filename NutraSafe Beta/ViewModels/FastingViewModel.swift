@@ -17,22 +17,35 @@ class FastingViewModel: ObservableObject {
     @Published var activePlan: FastingPlan?
     @Published var allPlans: [FastingPlan] = []
     @Published var activeSession: FastingSession?
-    @Published var recentSessions: [FastingSession] = []
     @Published var analytics: FastingAnalytics?
 
     @Published var showError = false
     @Published var error: Error?
     @Published var isLoading = false
 
-    // Group sessions by week (Monday to Sunday)
-    var weekSummaries: [WeekSummary] {
+    // PERFORMANCE: Memoized week summaries - only recalculated when recentSessions changes
+    @Published private(set) var weekSummaries: [WeekSummary] = []
+
+    // PERFORMANCE: Cached snooze state to avoid UserDefaults reads in timer
+    @Published private(set) var cachedSnoozeUntil: Date?
+
+    // PERFORMANCE: Tracks if timer-dependent views are visible to avoid unnecessary updates
+    var isTimerViewVisible: Bool = false
+
+    // Backing storage for recentSessions with automatic weekSummaries update
+    @Published var recentSessions: [FastingSession] = [] {
+        didSet {
+            updateWeekSummaries()
+        }
+    }
+
+    // PERFORMANCE: Calculate week summaries only when data changes, not on every access
+    private func updateWeekSummaries() {
         let calendar = Calendar.current
         var weekMap: [Date: [FastingSession]] = [:]
 
         // Group sessions by their week start (Monday), using END date for reporting
-        // This ensures multi-day fasts (e.g., Sun→Mon) appear on the day they ended
         for session in recentSessions {
-            // Use endTime if available, otherwise startTime (for active sessions)
             let reportDate = session.endTime ?? session.startTime
             let weekStart = getWeekStart(for: reportDate, calendar: calendar)
             if weekMap[weekStart] == nil {
@@ -48,12 +61,10 @@ class FastingViewModel: ObservableObject {
         }
 
         // Convert to WeekSummary array and sort by week start (most recent first)
-        let summaries = weekMap.map { weekStart, sessions in
+        weekSummaries = weekMap.map { weekStart, sessions in
             let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart)!
             return WeekSummary(weekStart: weekStart, weekEnd: weekEnd, sessions: sessions)
         }.sorted { $0.weekStart > $1.weekStart }
-
-        return summaries
     }
 
     private func getWeekStart(for date: Date, calendar: Calendar) -> Date {
@@ -73,18 +84,23 @@ class FastingViewModel: ObservableObject {
     private var previousRegimeState: FastingPlan.RegimeState?
     private var lastRecordedFastWindowEnd: Date?
 
-    // Computed property to check if regime is snoozed
+    // PERFORMANCE: Use cached snooze state instead of reading UserDefaults every second
     var isRegimeSnoozed: Bool {
-        guard let plan = activePlan, let planId = plan.id else { return false }
-        guard let snoozeUntil = UserDefaults.standard.object(forKey: "regimeSnoozedUntil_\(planId)") as? Date else {
-            return false
-        }
+        guard let snoozeUntil = cachedSnoozeUntil else { return false }
         return snoozeUntil > Date()
     }
 
     var regimeSnoozedUntil: Date? {
-        guard let plan = activePlan, let planId = plan.id else { return nil }
-        return UserDefaults.standard.object(forKey: "regimeSnoozedUntil_\(planId)") as? Date
+        return cachedSnoozeUntil
+    }
+
+    // PERFORMANCE: Refresh cached snooze state from UserDefaults (call sparingly)
+    func refreshSnoozeCache() {
+        guard let plan = activePlan, let planId = plan.id else {
+            cachedSnoozeUntil = nil
+            return
+        }
+        cachedSnoozeUntil = UserDefaults.standard.object(forKey: "regimeSnoozedUntil_\(planId)") as? Date
     }
 
     // Persisted storage for ended windows (survives app restart)
@@ -242,14 +258,14 @@ class FastingViewModel: ObservableObject {
         ) { [weak self] _ in
             print("🔔 Received .fastHistoryUpdated notification - refreshing sessions")
             Task {
-                await self?.loadRecentSessions()
-                await self?.loadActiveSession()
-                await self?.loadAnalytics()
+                // PERFORMANCE: Load all data in a single batch instead of sequential calls
+                await self?.loadInitialData()
             }
         }
 
         Task {
             await loadInitialData()
+            refreshSnoozeCache() // PERFORMANCE: Initialize snooze cache once at startup
             startTimer()
         }
     }
@@ -447,14 +463,40 @@ class FastingViewModel: ObservableObject {
 
     // MARK: - Timer
 
+    // PERFORMANCE: Track last update to throttle objectWillChange when timer view isn't visible
+    private var lastTimerUpdate: Date = Date()
+
     private func startTimer() {
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
-                self?.objectWillChange.send()
-                self?.checkRegimeStateTransition()
+                guard let self = self else { return }
+
+                // PERFORMANCE: Always check for state transitions (lightweight)
+                self.checkRegimeStateTransition()
+
+                // PERFORMANCE: Only trigger view updates if timer-dependent views are visible
+                // or if we have an active session/regime that needs real-time display
+                let needsUpdate = self.isTimerViewVisible ||
+                                  self.activeSession != nil ||
+                                  self.isRegimeActive
+
+                if needsUpdate {
+                    self.objectWillChange.send()
+                }
             }
         }
+    }
+
+    /// Call when timer view appears to enable frequent updates
+    func timerViewDidAppear() {
+        isTimerViewVisible = true
+        refreshSnoozeCache() // Refresh cache when view appears
+    }
+
+    /// Call when timer view disappears to reduce update frequency
+    func timerViewDidDisappear() {
+        isTimerViewVisible = false
     }
 
     /// Check for regime state transitions and record completed fasts
@@ -720,6 +762,7 @@ class FastingViewModel: ObservableObject {
 
             // Clear any old snooze data from previous regime
             UserDefaults.standard.removeObject(forKey: "regimeSnoozedUntil_\(planId)")
+            cachedSnoozeUntil = nil
             print("🧹 Cleared any old snooze data")
 
             // Store custom start time if starting from now
@@ -816,6 +859,7 @@ class FastingViewModel: ObservableObject {
 
             // Clear any snooze data
             UserDefaults.standard.removeObject(forKey: "regimeSnoozedUntil_\(planId)")
+            cachedSnoozeUntil = nil
             print("🧹 Cleared snooze data for stopped regime")
 
             // Stop the regime
@@ -865,6 +909,7 @@ class FastingViewModel: ObservableObject {
                 // Clear the expired snooze marker
                 if let planId = plan.id {
                     UserDefaults.standard.removeObject(forKey: "regimeSnoozedUntil_\(planId)")
+                    cachedSnoozeUntil = nil
                 }
                 lastEndedWindowEnd = nil
 
@@ -875,6 +920,7 @@ class FastingViewModel: ObservableObject {
             if now.timeIntervalSince(snoozeUntil) >= 300 {
                 if let planId = plan.id {
                     UserDefaults.standard.removeObject(forKey: "regimeSnoozedUntil_\(planId)")
+                    cachedSnoozeUntil = nil
                     print("🧹 Cleared old expired snooze data")
                 }
             }
@@ -1406,8 +1452,9 @@ class FastingViewModel: ObservableObject {
             // Mark this fasting window as ended
             lastEndedWindowEnd = ends
 
-            // Store snooze time in UserDefaults
+            // Store snooze time in UserDefaults and update cache
             UserDefaults.standard.set(snoozeUntil, forKey: "regimeSnoozedUntil_\(plan.id ?? "")")
+            cachedSnoozeUntil = snoozeUntil
 
             print("⏰ Snoozed regime fast until \(snoozeUntil.formatted(date: .abbreviated, time: .shortened))")
             print("   Fast window: \(started.formatted(date: .omitted, time: .shortened)) - \(ends.formatted(date: .omitted, time: .shortened))")
