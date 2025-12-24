@@ -742,19 +742,15 @@ struct MoveFoodBottomSheet: View {
         } else {
             let daysDiff = calendar.dateComponents([.day], from: date, to: now).day ?? 0
             if abs(daysDiff) <= 6 {
-                // Show day name for current week
-                let formatter = DateFormatter()
-                formatter.dateFormat = "EEEE"
-                return formatter.string(from: date)
+                // Show day name for current week - PERFORMANCE: Use cached static formatter
+                return DateHelper.fullDayOfWeekFormatter.string(from: date)
             } else {
-                // Show full date for older entries
-                let formatter = DateFormatter()
-                formatter.dateFormat = "d MMM"
-                return formatter.string(from: date)
+                // Show full date for older entries - PERFORMANCE: Use cached static formatter
+                return DateHelper.dayMonthShortFormatter.string(from: date)
             }
         }
     }
-    
+
     private func getRollerDateOptions() -> [(name: String, date: Date)] {
         let calendar = Calendar.current
         let today = Date()
@@ -784,21 +780,18 @@ struct MoveFoodBottomSheet: View {
         } else {
             let daysDiff = calendar.dateComponents([.day], from: date, to: now).day ?? 0
             if abs(daysDiff) <= 6 {
-                let formatter = DateFormatter()
-                formatter.dateFormat = "EEEE"
-                return formatter.string(from: date)
+                // PERFORMANCE: Use cached static formatter
+                return DateHelper.fullDayOfWeekFormatter.string(from: date)
             } else {
-                let formatter = DateFormatter()
-                formatter.dateFormat = "d MMM"
-                return formatter.string(from: date)
+                // PERFORMANCE: Use cached static formatter
+                return DateHelper.dayMonthShortFormatter.string(from: date)
             }
         }
     }
-    
+
     private func formatDateShort(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "d/M"
-        return formatter.string(from: date)
+        // PERFORMANCE: Use cached static formatter
+        DateHelper.compactDayMonthFormatter.string(from: date)
     }
 }
 
@@ -939,21 +932,18 @@ struct DateRollerPicker: View {
         } else {
             let daysDiff = calendar.dateComponents([.day], from: date, to: now).day ?? 0
             if abs(daysDiff) <= 6 {
-                let formatter = DateFormatter()
-                formatter.dateFormat = "EEEE"
-                return formatter.string(from: date)
+                // PERFORMANCE: Use cached static formatter
+                return DateHelper.fullDayOfWeekFormatter.string(from: date)
             } else {
-                let formatter = DateFormatter()
-                formatter.dateFormat = "d MMMM"
-                return formatter.string(from: date)
+                // PERFORMANCE: Use cached static formatter
+                return DateHelper.dayMonthLongFormatter.string(from: date)
             }
         }
     }
-    
+
     private func formatDateShortForRoller(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "d/M"
-        return formatter.string(from: date)
+        // PERFORMANCE: Use cached static formatter
+        DateHelper.compactDayMonthFormatter.string(from: date)
     }
 }
 
@@ -1178,15 +1168,11 @@ struct CopyFoodBottomSheet: View {
         } else {
             let daysDiff = calendar.dateComponents([.day], from: date, to: now).day ?? 0
             if abs(daysDiff) <= 6 {
-                // Show day name for current week
-                let formatter = DateFormatter()
-                formatter.dateFormat = "EEEE"
-                return formatter.string(from: date)
+                // Show day name for current week - PERFORMANCE: Use cached static formatter
+                return DateHelper.fullDayOfWeekFormatter.string(from: date)
             } else {
-                // Show full date for older entries
-                let formatter = DateFormatter()
-                formatter.dateFormat = "d MMM"
-                return formatter.string(from: date)
+                // Show full date for older entries - PERFORMANCE: Use cached static formatter
+                return DateHelper.dayMonthShortFormatter.string(from: date)
             }
         }
     }

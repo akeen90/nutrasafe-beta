@@ -210,10 +210,8 @@ private struct FastingHistoryRow: View {
     }
 
     private func dateString(_ date: Date) -> String {
-        let df = DateFormatter()
-        df.dateStyle = .medium
-        df.timeStyle = .short
-        return df.string(from: date)
+        // PERFORMANCE: Use cached static formatter
+        DateHelper.mediumDateShortTimeFormatter.string(from: date)
     }
 
     private func durationString(_ hours: Double) -> String {
@@ -341,10 +339,8 @@ struct FastingHistoryDetailSheet: View {
     }
 
     private func dateString(_ date: Date) -> String {
-        let df = DateFormatter()
-        df.dateStyle = .medium
-        df.timeStyle = .short
-        return df.string(from: date)
+        // PERFORMANCE: Use cached static formatter
+        DateHelper.mediumDateShortTimeFormatter.string(from: date)
     }
 
     private func stageName(for hours: Double) -> String {

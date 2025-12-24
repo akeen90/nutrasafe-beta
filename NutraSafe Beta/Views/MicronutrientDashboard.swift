@@ -745,9 +745,8 @@ struct MicronutrientDashboard: View {
     }
 
     private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.string(from: date)
+        // PERFORMANCE: Use cached static formatter
+        DateHelper.isoDateFormatter.string(from: date)
     }
 
     // MARK: - Rhythm Bar Data Loading
@@ -852,9 +851,8 @@ struct MicronutrientDashboard: View {
     }
 
     func shortDateLabel(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "E"
-        return formatter.string(from: date)
+        // PERFORMANCE: Use cached static formatter
+        DateHelper.singleLetterDayFormatter.string(from: date)
     }
 
     private func generateAdaptiveInsight() -> String? {

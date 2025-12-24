@@ -127,40 +127,10 @@ class HealthKitManager: ObservableObject {
     func fetchExerciseCalories(for date: Date) async throws -> Double {
         guard isAuthorized else { return 0 }
 
-        // Fetch calories from workouts and Firebase only (not active energy)
-        let workoutCalories = try await fetchWorkoutCalories(for: date)
-        let firebaseExerciseCalories = try await fetchFirebaseExerciseCalories(for: date)
-
-        // Use the highest value to ensure all exercise is counted but avoid double counting
-        return max(workoutCalories, firebaseExerciseCalories)
+        // Fetch calories from HealthKit workouts
+        return try await fetchWorkoutCalories(for: date)
     }
-    
-    private func fetchFirebaseExerciseCalories(for date: Date) async throws -> Double {
-        do {
-            let exerciseEntries = try await FirebaseManager.shared.getExerciseEntries(for: date)
 
-            // Sum calories from all logged exercises for the specified date
-            let totalCalories = exerciseEntries.reduce(0.0) { total, entry in
-                // Only count entries from the specified date
-                if Calendar.current.isDate(entry.date, inSameDayAs: date) {
-                    return total + Double(entry.caloriesBurned)
-                }
-                return total
-            }
-
-            #if DEBUG
-            print("🔥 Firebase exercise calories for \(date.formatted(.dateTime.day().month())): \(Int(totalCalories))")
-            #endif
-            return totalCalories
-
-        } catch {
-            #if DEBUG
-            print("⚠️ Error fetching Firebase exercise entries: \(error)")
-            #endif
-            return 0.0
-        }
-    }
-    
     private func fetchActiveEnergyBurned(for date: Date = Date()) async throws -> Double {
         let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
         

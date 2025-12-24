@@ -559,6 +559,7 @@ struct AddFoundFoodToUseBySheet: View {
 
 // MARK: - UseBy Sub Views
 struct UseByExpiryView: View {
+    @Environment(\.scenePhase) var scenePhase
     @Binding var showingScanner: Bool
     @Binding var showingCamera: Bool
     @Binding var selectedTab: TabItem
@@ -677,75 +678,80 @@ struct UseByExpiryView: View {
         }
     }
 
+    // MARK: - View Builders (extracted to help Swift type-checker)
+    @ViewBuilder
+    private var loadingView: some View {
+        VStack(spacing: 16) {
+            Spacer()
+            ProgressView()
+                .scaleEffect(1.2)
+                .progressViewStyle(.circular)
+            Text("Loading your items...")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(.secondary)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder
+    private var emptyStateView: some View {
+        VStack(spacing: 0) {
+            Spacer()
+
+            VStack(spacing: 24) {
+                AnimatedFridgeIcon()
+                    .frame(width: 200, height: 200)
+
+                VStack(spacing: 12) {
+                    Text("No items yet")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundColor(.primary)
+
+                    Text("Never forget your food again. Add items to keep track of use-by dates.")
+                        .font(.system(size: 16))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(4)
+                        .padding(.horizontal, 40)
+                }
+            }
+
+            Spacer()
+
+            Button(action: {
+                showingAddSheet = true
+            }) {
+                Text("Add Your First Item")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+                    .background(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 1.0, green: 0.7, blue: 0.5),
+                                Color(red: 1.0, green: 0.6, blue: 0.7),
+                                Color(red: 0.7, green: 0.6, blue: 1.0)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(28)
+            }
+            .padding(.horizontal, 32)
+            .padding(.bottom, 60)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
     var body: some View {
         Group {
             if dataManager.isLoading {
-                // Loading state
-                VStack(spacing: 16) {
-                    Spacer()
-                    ProgressView()
-                        .scaleEffect(1.2)
-                        .progressViewStyle(.circular)
-                    Text("Loading your items...")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.secondary)
-                    Spacer()
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                loadingView
             } else if dataManager.items.isEmpty {
-                // Clean empty state matching design
-                VStack(spacing: 0) {
-                        Spacer()
-
-                        VStack(spacing: 24) {
-                            // 3D-style fridge icon
-                            AnimatedFridgeIcon()
-                                .frame(width: 200, height: 200)
-
-                            VStack(spacing: 12) {
-                                // Title
-                                Text("No items yet")
-                                    .font(.system(size: 28, weight: .bold))
-                                    .foregroundColor(.primary)
-
-                                // Description
-                                Text("Never forget your food again. Add items to keep track of use-by dates.")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
-                                    .lineSpacing(4)
-                                    .padding(.horizontal, 40)
-                            }
-                        }
-
-                        Spacer()
-
-                        // Add button with gradient
-                        Button(action: {
-                            showingAddSheet = true
-                        }) {
-                            Text("Add Your First Item")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 18)
-                                .background(
-                                    LinearGradient(
-                                        colors: [
-                                            Color(red: 1.0, green: 0.7, blue: 0.5),  // Peach/orange
-                                            Color(red: 1.0, green: 0.6, blue: 0.7),  // Pink
-                                            Color(red: 0.7, green: 0.6, blue: 1.0)   // Purple
-                                        ],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                                .cornerRadius(28)
-                        }
-                        .padding(.horizontal, 32)
-                        .padding(.bottom, 60)
-                    }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                emptyStateView
             } else {
                 // Modern premium design with gradients and depth
                 ScrollView {
@@ -924,6 +930,12 @@ struct UseByExpiryView: View {
         .onChange(of: searchText) {
             // PERFORMANCE: Debounce search to avoid running expensive operations on every keystroke
             searchDebouncer.debounce {
+                recalculateCache()
+            }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            // Recalculate days remaining when app becomes active (e.g., after overnight)
+            if newPhase == .active {
                 recalculateCache()
             }
         }

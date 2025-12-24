@@ -226,9 +226,8 @@ struct MicronutrientTimelineView: View {
     }
 
     private func formatDateId(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.string(from: date)
+        // PERFORMANCE: Use cached static formatter
+        DateHelper.isoDateFormatter.string(from: date)
     }
 }
 

@@ -17,6 +17,208 @@ import Foundation
 /// 4. Always document which timezone context each date uses
 enum DateHelper {
 
+    // MARK: - Static Cached DateFormatters (PERFORMANCE OPTIMIZATION)
+    // DateFormatter creation is expensive (~10ms per instance)
+    // These static formatters are created once and reused throughout the app
+
+    /// Short time format (e.g., "2:30 PM")
+    static let shortTimeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        formatter.dateStyle = .none
+        return formatter
+    }()
+
+    /// Short date format (e.g., "12/25/24")
+    static let shortDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .none
+        return formatter
+    }()
+
+    /// Medium date format (e.g., "Dec 25, 2024")
+    static let mediumDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter
+    }()
+
+    /// Medium date and short time (e.g., "Dec 25, 2024 at 2:30 PM")
+    static let mediumDateShortTimeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter
+    }()
+
+    /// Day of week format (e.g., "Mon", "Tue")
+    static let dayOfWeekFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE"
+        return formatter
+    }()
+
+    /// Full day of week format (e.g., "Monday", "Tuesday")
+    static let fullDayOfWeekFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE"
+        return formatter
+    }()
+
+    /// ISO date format for keys (e.g., "2024-12-25")
+    static let isoDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter
+    }()
+
+    /// Friendly date format (e.g., "Monday, Jan 15")
+    static let friendlyDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE, MMM d"
+        return formatter
+    }()
+
+    /// Month and day format (e.g., "Jan 15")
+    static let monthDayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        return formatter
+    }()
+
+    /// Full date format (e.g., "Monday, January 15, 2024")
+    static let fullDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE, MMMM d, yyyy"
+        return formatter
+    }()
+
+    /// Time only format (e.g., "2:30 PM")
+    static let timeOnlyFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "h:mm a"
+        return formatter
+    }()
+
+    /// 24-hour time format (e.g., "14:30")
+    static let time24HourFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter
+    }()
+
+    /// Month day year format (e.g., "Jan 15, 2024")
+    static let monthDayYearFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d, yyyy"
+        return formatter
+    }()
+
+    /// Month year format (e.g., "January 2024")
+    static let monthYearFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM yyyy"
+        return formatter
+    }()
+
+    /// Day number format (e.g., "15")
+    static let dayNumberFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d"
+        return formatter
+    }()
+
+    /// Week key format for caching (e.g., "2024-W52")
+    static let weekKeyFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-'W'ww"
+        formatter.timeZone = Calendar.current.timeZone
+        return formatter
+    }()
+
+    /// Short date UK format (e.g., "25/12/24")
+    static let shortDateUKFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd/MM/yy"
+        return formatter
+    }()
+
+    /// Full month year format (e.g., "December 2024")
+    static let fullMonthYearFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "LLLL yyyy"
+        return formatter
+    }()
+
+    /// Single letter day format (e.g., "M", "T", "W")
+    static let singleLetterDayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "E"
+        return formatter
+    }()
+
+    /// Day comma month day format (e.g., "Mon, Jan 15")
+    static let dayCommaMonthDayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "E, MMM d"
+        return formatter
+    }()
+
+    /// Day date month format (e.g., "Mon 15 Jan")
+    static let dayDateMonthFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "E d MMM"
+        return formatter
+    }()
+
+    /// Short month format (e.g., "Jan", "Feb")
+    static let shortMonthFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM"
+        return formatter
+    }()
+
+    /// Long date short time format (e.g., "January 15, 2024 at 2:30 PM")
+    static let longDateShortTimeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .long
+        formatter.timeStyle = .short
+        return formatter
+    }()
+
+    /// Relative date formatter (e.g., "Today", "Yesterday", "Dec 25")
+    static let relativeDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        formatter.doesRelativeDateFormatting = true
+        return formatter
+    }()
+
+    /// Day month short format (e.g., "15 Jan")
+    static let dayMonthShortFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d MMM"
+        return formatter
+    }()
+
+    /// Day month long format (e.g., "15 January")
+    static let dayMonthLongFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d MMMM"
+        return formatter
+    }()
+
+    /// Compact day/month format (e.g., "15/1")
+    static let compactDayMonthFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d/M"
+        return formatter
+    }()
+
     // MARK: - Shared Calendar (User's Local Timezone)
 
     /// Shared calendar instance using user's current timezone

@@ -13,25 +13,20 @@ struct MacroProgressView: View {
     @EnvironmentObject var healthKitManager: HealthKitManager
 
     @State private var trackedFoods: [DiaryFoodItem] = []
-    @State private var trackedExercises: [ExerciseEntry] = []
     @State private var userCaloricGoal: Int = 2000
 
     // PERFORMANCE: Cache calorie totals to prevent redundant calculations on every render
-    // Pattern from Clay's production app: move expensive operations to cached state
     @State private var cachedCaloriesConsumed: Int = 0
-    @State private var cachedCaloriesBurned: Int = 0
 
     private var totalCaloriesConsumed: Int { cachedCaloriesConsumed }
-    private var totalCaloriesBurned: Int { cachedCaloriesBurned }
 
     // Update cached calorie totals when data changes
     private func updateCachedCalories() {
         cachedCaloriesConsumed = trackedFoods.reduce(0) { $0 + $1.calories }
-        cachedCaloriesBurned = trackedExercises.reduce(0) { $0 + $1.caloriesBurned }
     }
-    
+
     private var netCalories: Int {
-        totalCaloriesConsumed - totalCaloriesBurned
+        totalCaloriesConsumed
     }
     
     private var remainingCalories: Int {
@@ -89,7 +84,6 @@ struct MacroProgressView: View {
         }
         // PERFORMANCE: Update cached totals when data changes
         .onChange(of: trackedFoods) { updateCachedCalories() }
-        .onChange(of: trackedExercises) { updateCachedCalories() }
     }
 
     private func loadCaloricGoal() async {

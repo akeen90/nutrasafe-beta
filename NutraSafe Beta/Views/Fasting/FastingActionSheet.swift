@@ -260,8 +260,7 @@ struct FastingActionSheet: View {
 
     private func reminderTime(minutes: Int) -> String {
         let futureTime = Date().addingTimeInterval(TimeInterval(minutes * 60))
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        return formatter.string(from: futureTime)
+        // PERFORMANCE: Use cached static formatter
+        return DateHelper.shortTimeFormatter.string(from: futureTime)
     }
 }

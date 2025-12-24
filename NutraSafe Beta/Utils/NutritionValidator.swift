@@ -208,19 +208,6 @@ struct NutritionValidator {
         try validateDate(date)
     }
 
-    /// Validates exercise calorie entry
-    /// - Parameters:
-    ///   - calories: Calories burned
-    ///   - date: Date of exercise
-    /// - Throws: ValidationError if any field is invalid
-    static func validateExerciseEntry(calories: Double, date: Date) throws {
-        // Exercise calories can be higher than food calories (marathon = 2000-3000 cal)
-        guard calories >= 0 && calories <= 15_000 else {
-            throw ValidationError.invalidCalories(value: calories)
-        }
-        try validateDate(date)
-    }
-
 }
 
 // MARK: - Validation Mode Preference

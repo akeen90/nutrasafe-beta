@@ -1341,42 +1341,6 @@ class FirebaseManager: ObservableObject {
         }
     }
 
-    // MARK: - Exercise Entries
-    
-    func saveExerciseEntry(_ entry: ExerciseEntry) async throws {
-        guard let userId = currentUser?.uid else { return }
-
-        // Validate exercise entry before saving
-        try NutritionValidator.validateExerciseEntry(calories: Double(entry.caloriesBurned), date: entry.date)
-
-        let entryData = entry.toDictionary()
-        try await db.collection("users").document(userId)
-            .collection("exerciseEntries").document(entry.id.uuidString).setData(entryData)
-    }
-    
-    func getExerciseEntries(for date: Date) async throws -> [ExerciseEntry] {
-        guard let userId = currentUser?.uid else { return [] }
-
-        let calendar = Calendar.current
-        let startOfDay = calendar.startOfDay(for: date)
-        guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else {
-            #if DEBUG
-            print("❌ Failed to calculate end of day for exercise entries")
-            #endif
-            throw NSError(domain: "FirebaseManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to calculate date range"])
-        }
-        
-        let snapshot = try await db.collection("users").document(userId)
-            .collection("exerciseEntries")
-            .whereField("date", isGreaterThanOrEqualTo: FirebaseFirestore.Timestamp(date: startOfDay))
-            .whereField("date", isLessThan: FirebaseFirestore.Timestamp(date: endOfDay))
-            .getDocuments()
-        
-        return snapshot.documents.compactMap { doc in
-            ExerciseEntry.fromDictionary(doc.data())
-        }
-    }
-    
     // MARK: - Pending Food Verifications
     
     func savePendingVerification(_ verification: PendingFoodVerification) async throws {

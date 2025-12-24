@@ -220,10 +220,8 @@ struct DayNutrientActivity: Codable {
     let mealCount: Int
 
     var dateId: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = Calendar.current.timeZone
-        return formatter.string(from: date)
+        // PERFORMANCE: Use cached static formatter instead of creating new one
+        DateHelper.isoDateFormatter.string(from: date)
     }
 
     init(date: Date, nutrientsPresent: [String], mealCount: Int) {

@@ -1880,13 +1880,12 @@ struct WeekDetailView: View {
     // Generate dates for each day of the week (Mon-Sun)
     private var weekDays: [(date: Date, dayName: String, dayDate: String)] {
         let calendar = Calendar.current
+        // PERFORMANCE: Use cached static formatters instead of creating in loop
         return (0..<7).compactMap { offset in
             guard let date = calendar.date(byAdding: .day, value: offset, to: week.weekStart) else { return nil }
-            let dayFormatter = DateFormatter()
-            dayFormatter.dateFormat = "EEEE"
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "d MMM"
-            return (date: date, dayName: dayFormatter.string(from: date), dayDate: dateFormatter.string(from: date))
+            return (date: date,
+                    dayName: DateHelper.fullDayOfWeekFormatter.string(from: date),
+                    dayDate: DateHelper.monthDayFormatter.string(from: date))
         }
     }
 
@@ -2194,8 +2193,7 @@ struct DaySessionRow: View {
     var onClearSession: ((FastingSession) -> Void)?
 
     private var dayName: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE" // Full day name
+        // PERFORMANCE: Use cached static formatter
 
         // Calculate the actual date for this weekday
         let calendar = Calendar.current
@@ -2203,7 +2201,7 @@ struct DaySessionRow: View {
         guard let date = calendar.date(byAdding: .day, value: daysToAdd, to: weekStart) else {
             return ""
         }
-        return formatter.string(from: date)
+        return DateHelper.fullDayOfWeekFormatter.string(from: date)
     }
 
     private var dayDate: String {
@@ -2213,9 +2211,8 @@ struct DaySessionRow: View {
             return ""
         }
 
-        let formatter = DateFormatter()
-        formatter.dateFormat = "d MMM"
-        return formatter.string(from: date)
+        // PERFORMANCE: Use cached static formatter
+        return DateHelper.monthDayFormatter.string(from: date)
     }
 
     var body: some View {
@@ -2423,10 +2420,9 @@ struct ModernFastCard: View {
         }
     }
 
+    // PERFORMANCE: Use cached static formatter instead of computed property
     private var timeFormatter: DateFormatter {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        return formatter
+        DateHelper.shortTimeFormatter
     }
 
     var body: some View {

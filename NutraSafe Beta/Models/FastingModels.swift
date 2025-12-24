@@ -235,16 +235,14 @@ struct FastingPlan: Identifiable, Codable {
     }
 
     var startTimeDisplay: String {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        return formatter.string(from: preferredStartTime)
+        // PERFORMANCE: Use cached static formatter instead of creating new one
+        DateHelper.shortTimeFormatter.string(from: preferredStartTime)
     }
 
     var endTimeDisplay: String {
         let endTime = preferredStartTime.addingTimeInterval(TimeInterval(durationHours * 3600))
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        return formatter.string(from: endTime)
+        // PERFORMANCE: Use cached static formatter instead of creating new one
+        return DateHelper.shortTimeFormatter.string(from: endTime)
     }
 
     // MARK: - Regime State Calculation
@@ -477,9 +475,8 @@ struct WeekSummary: Identifiable, Equatable {
 
     // Computed properties for summary stats
     var dateRangeText: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "d MMM"
-        return "\(formatter.string(from: weekStart)) - \(formatter.string(from: weekEnd))"
+        // PERFORMANCE: Use cached static formatter instead of creating new one
+        "\(DateHelper.monthDayFormatter.string(from: weekStart)) - \(DateHelper.monthDayFormatter.string(from: weekEnd))"
     }
 
     var completedCount: Int {

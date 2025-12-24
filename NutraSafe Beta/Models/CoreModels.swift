@@ -920,16 +920,6 @@ class DiaryDataManager: ObservableObject {
         }
     }
     
-    // Workout data methods
-    func getWorkoutData(for date: Date) -> [WorkoutSessionSummary] {
-        let key = keyForDate(date, type: "workouts")
-        return loadWorkouts(key: key)
-    }
-    
-    func saveWorkoutData(for date: Date, workouts: [WorkoutSessionSummary]) {
-        saveWorkouts(key: keyForDate(date, type: "workouts"), workouts: workouts)
-    }
-    
     // MARK: - Hydration Data Management
     func getHydrationData(for date: Date) -> (count: Int, entries: [WaterEntry]) {
         let countKey = keyForDate(date, type: "waterCount")
@@ -970,21 +960,7 @@ class DiaryDataManager: ObservableObject {
             UserDefaults.standard.set(data, forKey: key)
         }
     }
-    
-    private func loadWorkouts(key: String) -> [WorkoutSessionSummary] {
-        guard let data = UserDefaults.standard.data(forKey: key),
-              let workouts = try? JSONDecoder().decode([WorkoutSessionSummary].self, from: data) else {
-            return []
-        }
-        return workouts
-    }
-    
-    private func saveWorkouts(key: String, workouts: [WorkoutSessionSummary]) {
-        if let data = try? JSONEncoder().encode(workouts) {
-            UserDefaults.standard.set(data, forKey: key)
-        }
-    }
-    
+
     // MARK: - Recent Foods Tracking
     
     private let recentFoodsKey = "recentFoods"
@@ -1178,15 +1154,13 @@ struct DailyBreakdown: Identifiable {
     let isLogged: Bool
 
     var dayName: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE"
-        return formatter.string(from: date)
+        // PERFORMANCE: Use cached static formatter instead of creating new one
+        DateHelper.fullDayOfWeekFormatter.string(from: date)
     }
 
     var shortDateString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d"
-        return formatter.string(from: date)
+        // PERFORMANCE: Use cached static formatter instead of creating new one
+        DateHelper.monthDayFormatter.string(from: date)
     }
 }
 

@@ -2370,15 +2370,13 @@ struct DayMealsSection: View {
     let meals: [FoodEntry]
 
     private var dayName: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE" // Full day name
-        return formatter.string(from: date)
+        // PERFORMANCE: Use cached static formatter
+        DateHelper.fullDayOfWeekFormatter.string(from: date)
     }
 
     private var dateText: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        return formatter.string(from: date)
+        // PERFORMANCE: Use cached static formatter
+        DateHelper.mediumDateFormatter.string(from: date)
     }
 
     var body: some View {

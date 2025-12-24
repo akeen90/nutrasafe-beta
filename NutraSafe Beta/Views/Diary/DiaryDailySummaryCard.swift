@@ -26,10 +26,14 @@ struct DiaryDailySummaryCard: View {
     @EnvironmentObject var firebaseManager: FirebaseManager
     @AppStorage("healthKitRingsEnabled") private var healthKitRingsEnabled = false
 
-    // MARK: - Daily Goals
-    @State private var calorieGoal: Double = 1800
-    @State private var stepGoal: Double = 10000
-    @State private var exerciseGoal: Double = 400
+    // MARK: - Daily Goals (using AppStorage for instant load, no flash)
+    @AppStorage("cachedCaloricGoal") private var cachedCaloricGoal: Int = 1800
+    @AppStorage("cachedStepGoal") private var cachedStepGoal: Int = 10000
+    @AppStorage("cachedExerciseGoal") private var cachedExerciseGoal: Int = 400
+
+    private var calorieGoal: Double { Double(cachedCaloricGoal) }
+    private var stepGoal: Double { Double(cachedStepGoal) }
+    private var exerciseGoal: Double { Double(cachedExerciseGoal) }
     @State private var macroGoals: [MacroGoal] = MacroGoal.defaultMacros
 
     // MARK: - Weekly Summary Sheet
@@ -361,22 +365,18 @@ struct DiaryDailySummaryCard: View {
             let loadedMacroGoals = try await firebaseManager.getMacroGoals()
 
             await MainActor.run {
-                // Update calorie goal
-                calorieGoal = Double(settings.caloricGoal ?? 2000)
-
-                // Update step goal
-                stepGoal = Double(settings.stepGoal ?? 10000)
-
-                // Update exercise goal
-                exerciseGoal = Double(settings.exerciseGoal ?? 400)
+                // Update cached goals (AppStorage syncs instantly, no flash)
+                cachedCaloricGoal = settings.caloricGoal ?? 2000
+                cachedStepGoal = settings.stepGoal ?? 10000
+                cachedExerciseGoal = settings.exerciseGoal ?? 400
 
                 // Update macro goals from Firebase
                 macroGoals = loadedMacroGoals
-                print("✅ Loaded nutrition goals: \(Int(calorieGoal)) cal, \(Int(stepGoal)) steps, \(Int(exerciseGoal)) cal burned")
+                print("✅ Loaded nutrition goals: \(cachedCaloricGoal) cal, \(cachedStepGoal) steps, \(cachedExerciseGoal) cal burned")
             }
         } catch {
             print("⚠️ Failed to load nutrition goals: \(error.localizedDescription)")
-            // Keep default values if loading fails
+            // Keep cached values if loading fails
         }
     }
 
@@ -410,15 +410,11 @@ struct DiaryDailySummaryCard: View {
         } else {
             let daysDiff = calendar.dateComponents([.day], from: date, to: now).day ?? 0
             if abs(daysDiff) <= 6 {
-                // Show day name for current week
-                let formatter = DateFormatter()
-                formatter.dateFormat = "EEEE"
-                return formatter.string(from: date)
+                // Show day name for current week - PERFORMANCE: Use cached static formatter
+                return DateHelper.fullDayOfWeekFormatter.string(from: date)
             } else {
-                // Show full date for older entries
-                let formatter = DateFormatter()
-                formatter.dateFormat = "d MMM yyyy"
-                return formatter.string(from: date)
+                // Show full date for older entries - PERFORMANCE: Use cached static formatter
+                return DateHelper.dayDateMonthFormatter.string(from: date)
             }
         }
     }

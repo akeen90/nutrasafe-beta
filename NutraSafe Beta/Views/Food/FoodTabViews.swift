@@ -651,9 +651,8 @@ struct FoodReactionRow: View {
     }
     
     private func dateDisplayText(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        return formatter.string(from: date)
+        // PERFORMANCE: Use cached static formatter
+        DateHelper.mediumDateFormatter.string(from: date)
     }
 }
 
@@ -1390,10 +1389,8 @@ struct ReactionDetailView: View {
     }
 
     private func formatFullDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .long
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
+        // PERFORMANCE: Use cached static formatter
+        DateHelper.longDateShortTimeFormatter.string(from: date)
     }
 }
 
@@ -2600,11 +2597,8 @@ struct FoodReactionSearchView: View {
     }
 
     private var dateFormatter: DateFormatter {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
-        formatter.doesRelativeDateFormatting = true
-        return formatter
+        // PERFORMANCE: Use cached static formatter with relative dates
+        DateHelper.relativeDateFormatter
     }
 
     private func performLiveSearch(query: String) {
@@ -2819,10 +2813,8 @@ struct DiaryEntryRowForReaction: View {
     }
 
     private var timeFormatter: DateFormatter {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        formatter.dateStyle = .none
-        return formatter
+        // PERFORMANCE: Use cached static formatter
+        DateHelper.shortTimeFormatter
     }
 }
 

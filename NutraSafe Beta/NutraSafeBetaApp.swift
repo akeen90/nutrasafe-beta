@@ -148,8 +148,6 @@ struct NutraSafeBetaApp: App {
 
     @StateObject private var firebaseManager = FirebaseManager.shared
     @StateObject private var healthKitManager = HealthKitManager.shared
-    @StateObject private var workoutManager = WorkoutManager.shared
-    @StateObject private var restTimerManager = ExerciseRestTimerManager()
     @StateObject private var subscriptionManager = SubscriptionManager()
     
     init() {
@@ -195,8 +193,6 @@ struct NutraSafeBetaApp: App {
             MainAppView()
                 .environmentObject(firebaseManager)
                 .environmentObject(healthKitManager)
-                .environmentObject(workoutManager)
-                .environmentObject(restTimerManager)
                 .environmentObject(subscriptionManager)
                 .preferredColorScheme(appearanceMode.colorScheme)
         }

@@ -72,8 +72,8 @@ struct DiaryMealCard: View {
                 // Calories and macros in header
                 HStack(spacing: 0) {
                     Text("\(currentCalories)")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.primary)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.secondary)
                         .frame(width: 50, alignment: .trailing)
 
                     Text("\(String(format: "%.1f", totalProtein))")

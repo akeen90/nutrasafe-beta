@@ -9,7 +9,6 @@ import SwiftUI
 
 struct CustomTabBar: View {
     @Binding var selectedTab: TabItem
-    @ObservedObject var workoutManager: WorkoutManager
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     var onBlockedTabAttempt: (() -> Void)? = nil
     @Binding var showingAddMenu: Bool

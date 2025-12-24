@@ -245,9 +245,8 @@ struct WeeklySummarySheet: View {
         let daysFromMonday = (weekday == 1) ? -6 : 2 - weekday
 
         if let monday = calendar.date(byAdding: .day, value: daysFromMonday, to: date) {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd"
-            return formatter.string(from: monday)
+            // PERFORMANCE: Use cached static formatter
+            return DateHelper.isoDateFormatter.string(from: monday)
         }
 
         return "\(date.timeIntervalSince1970)" // Fallback
@@ -286,20 +285,17 @@ struct WeeklySummarySheet: View {
     private func formatWeekRange() -> String {
         guard let summary = weeklySummary else { return "" }
 
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d"
-        let startStr = formatter.string(from: summary.weekStartDate)
+        // PERFORMANCE: Use cached static formatters
+        let startStr = DateHelper.monthDayFormatter.string(from: summary.weekStartDate)
 
         let calendar = Calendar.current
         let startMonth = calendar.component(.month, from: summary.weekStartDate)
         let endMonth = calendar.component(.month, from: summary.weekEndDate)
 
         if startMonth == endMonth {
-            let dayFormatter = DateFormatter()
-            dayFormatter.dateFormat = "d"
-            return "\(startStr) - \(dayFormatter.string(from: summary.weekEndDate))"
+            return "\(startStr) - \(DateHelper.dayNumberFormatter.string(from: summary.weekEndDate))"
         } else {
-            let endStr = formatter.string(from: summary.weekEndDate)
+            let endStr = DateHelper.monthDayFormatter.string(from: summary.weekEndDate)
             return "\(startStr) - \(endStr)"
         }
     }

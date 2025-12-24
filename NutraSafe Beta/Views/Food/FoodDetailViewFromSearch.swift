@@ -2366,7 +2366,8 @@ private var nutritionFactsSection: some View {
                     .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                     .filter { !$0.isEmpty }
                 if !clean.isEmpty {
-                let detectedAllergens = detectAllergens(in: ingredients)
+                // PERFORMANCE: Pre-sort allergens once, not on every ForEach iteration
+                let detectedAllergens = detectAllergens(in: ingredients).sorted { $0.displayName < $1.displayName }
                 let additiveAnalysis: AdditiveDetectionResult? = nil // Placeholder for now
 
                 VStack(alignment: .leading, spacing: 12) {
@@ -2392,9 +2393,9 @@ private var nutritionFactsSection: some View {
                         .cornerRadius(8)
                     }
 
-                    // Show allergen warnings
+                    // Show allergen warnings (already pre-sorted above)
                     if !detectedAllergens.isEmpty {
-                        ForEach(detectedAllergens.sorted(by: { $0.displayName < $1.displayName }), id: \.rawValue) { allergen in
+                        ForEach(detectedAllergens, id: \.rawValue) { allergen in
                             HStack {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                     .foregroundColor(.red)
@@ -3621,11 +3622,12 @@ private var nutritionFactsSection: some View {
                     .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                     .filter { !$0.isEmpty }
                 if !clean.isEmpty {
-                let potentialAllergens = getPotentialAllergens()
+                // PERFORMANCE: Pre-sort allergens once, not on every ForEach iteration
+                let potentialAllergens = getPotentialAllergens().sorted()
 
                 if !potentialAllergens.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
-                        ForEach(potentialAllergens.sorted(), id: \.self) { allergen in
+                        ForEach(potentialAllergens, id: \.self) { allergen in
                             AllergenWarningCard(allergenName: allergen)
                         }
                     }
@@ -4010,9 +4012,8 @@ private var nutritionFactsSection: some View {
     }
     
     private func getCurrentTimeString() -> String {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        return formatter.string(from: Date())
+        // PERFORMANCE: Use cached static formatter
+        DateHelper.shortTimeFormatter.string(from: Date())
     }
     
     private func getSugarLevel() -> String {
@@ -4032,9 +4033,8 @@ private var nutritionFactsSection: some View {
     
     private func getEditingDate() -> Date {
         if let dateString = UserDefaults.standard.string(forKey: "editingDate") {
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "yyyy-MM-dd"
-            return dateFormatter.date(from: dateString) ?? Date()
+            // PERFORMANCE: Use cached static formatter
+            return DateHelper.isoDateFormatter.date(from: dateString) ?? Date()
         }
         return Date()
     }

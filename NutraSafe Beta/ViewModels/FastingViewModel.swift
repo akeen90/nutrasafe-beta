@@ -996,8 +996,8 @@ class FastingViewModel: ObservableObject {
 
         let calendar = Calendar.current
         let now = Date()
-        let dayFormatter = DateFormatter()
-        dayFormatter.dateFormat = "EEE"
+        // PERFORMANCE: Use cached static formatter instead of creating new one
+        let dayFormatter = DateHelper.dayOfWeekFormatter
 
         let startComponents = calendar.dateComponents([.hour, .minute], from: plan.preferredStartTime)
 

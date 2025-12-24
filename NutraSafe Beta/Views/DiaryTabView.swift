@@ -51,7 +51,12 @@ struct DiaryTabView: View {
     @State private var isLoadingData = false // Loading state for UI feedback
 
     // MARK: - HealthKit Auto-Refresh Timer (60 seconds)
+    // PERFORMANCE: Made controllable to stop when not viewing diary tab
     private let healthKitRefreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+    @State private var isTimerActive = true
+
+    // MARK: - Food Lookup Cache (O(1) instead of O(n))
+    @State private var foodLookupCache: [String: (food: DiaryFoodItem, meal: String)] = [:]
 
     private struct NutritionTotals {
         var totalCalories: Int = 0
@@ -484,8 +489,8 @@ struct DiaryTabView: View {
                 selectedFoodItems.removeAll()
             }
             .onReceive(healthKitRefreshTimer) { _ in
-                // Only refresh HealthKit data if viewing today's date
-                guard Calendar.current.isDateInToday(selectedDate) else { return }
+                // PERFORMANCE: Skip if timer is paused or not viewing today's date
+                guard isTimerActive, Calendar.current.isDateInToday(selectedDate) else { return }
                 Task {
                     await healthKitManager.updateStepCount(for: selectedDate)
                     await healthKitManager.updateActiveEnergy(for: selectedDate)
@@ -554,6 +559,8 @@ struct DiaryTabView: View {
                         endRadius: 280
                     )
                 }
+                // PERFORMANCE: Flatten gradients to single Metal texture, preventing recalculation
+                .drawingGroup()
                 .ignoresSafeArea()
             }
         }
@@ -561,6 +568,9 @@ struct DiaryTabView: View {
 
     // MARK: - Helper Methods for onChange Handlers
     private func handleSelectedTabChange(_ newTab: TabItem) {
+        // PERFORMANCE: Pause timer when leaving diary tab, resume when returning
+        isTimerActive = (newTab == .diary)
+
         // Unselect when leaving diary; reset overview when returning
         if newTab == .diary {
             diarySubTab = .overview
@@ -829,28 +839,25 @@ struct DiaryTabView: View {
         }
     }
 
+    // PERFORMANCE: O(1) lookup using cached dictionary
     private func findFood(byId id: String) -> DiaryFoodItem? {
-        for food in breakfastFoods + lunchFoods + dinnerFoods + snackFoods {
-            if food.id.uuidString == id { return food }
-        }
-        return nil
+        foodLookupCache[id]?.food
     }
 
-    /// Find food and determine which meal it belongs to based on which array contains it
+    // PERFORMANCE: O(1) lookup using cached dictionary
     private func findFoodWithMeal(byId id: String) -> (food: DiaryFoodItem, meal: String)? {
-        for food in breakfastFoods {
-            if food.id.uuidString == id { return (food, "Breakfast") }
-        }
-        for food in lunchFoods {
-            if food.id.uuidString == id { return (food, "Lunch") }
-        }
-        for food in dinnerFoods {
-            if food.id.uuidString == id { return (food, "Dinner") }
-        }
-        for food in snackFoods {
-            if food.id.uuidString == id { return (food, "Snacks") }
-        }
-        return nil
+        foodLookupCache[id]
+    }
+
+    // PERFORMANCE: Rebuild lookup cache when food arrays change
+    private func rebuildFoodLookupCache() {
+        var cache: [String: (food: DiaryFoodItem, meal: String)] = [:]
+        cache.reserveCapacity(breakfastFoods.count + lunchFoods.count + dinnerFoods.count + snackFoods.count)
+        for food in breakfastFoods { cache[food.id.uuidString] = (food, "Breakfast") }
+        for food in lunchFoods { cache[food.id.uuidString] = (food, "Lunch") }
+        for food in dinnerFoods { cache[food.id.uuidString] = (food, "Dinner") }
+        for food in snackFoods { cache[food.id.uuidString] = (food, "Snacks") }
+        foodLookupCache = cache
     }
 
     private func loadFoodData() {
@@ -877,6 +884,7 @@ struct DiaryTabView: View {
                     lunchFoods = lunch
                     dinnerFoods = dinner
                     snackFoods = snacks
+                    rebuildFoodLookupCache() // PERFORMANCE: O(1) lookups
                     recalculateNutrition()
                     isLoadingData = false
                 }
@@ -1038,15 +1046,13 @@ struct DiaryTabView: View {
     }
 
     private func formatDateShort(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "dd/MM/yy"
-        return formatter.string(from: date)
+        // PERFORMANCE: Use cached static formatter instead of creating new one
+        DateHelper.shortDateUKFormatter.string(from: date)
     }
 
     private func formatMonthYear(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "LLLL yyyy"
-        return formatter.string(from: date)
+        // PERFORMANCE: Use cached static formatter
+        DateHelper.fullMonthYearFormatter.string(from: date)
     }
 }
 
@@ -1621,9 +1627,8 @@ struct CategoricalNutrientTrackingView: View {
     }
 
     private func shortDayLabel(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "E"
-        let full = formatter.string(from: date)
+        // PERFORMANCE: Use cached static formatter
+        let full = DateHelper.singleLetterDayFormatter.string(from: date)
         return String(full.prefix(1))
     }
 
@@ -1705,19 +1710,16 @@ struct CategoricalNutrientTrackingView: View {
         let calendar = Calendar.current
         let (weekStart, weekEnd) = getWeekRange(for: selectedWeekStart)
 
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d"
-        let startStr = formatter.string(from: weekStart)
+        // PERFORMANCE: Use cached static formatters
+        let startStr = DateHelper.monthDayFormatter.string(from: weekStart)
 
         let startMonth = calendar.component(.month, from: weekStart)
         let endMonth = calendar.component(.month, from: weekEnd)
 
         if startMonth == endMonth {
-            let dayFormatter = DateFormatter()
-            dayFormatter.dateFormat = "d"
-            return "\(startStr) - \(dayFormatter.string(from: weekEnd))"
+            return "\(startStr) - \(DateHelper.dayNumberFormatter.string(from: weekEnd))"
         } else {
-            let endStr = formatter.string(from: weekEnd)
+            let endStr = DateHelper.monthDayFormatter.string(from: weekEnd)
             return "\(startStr) - \(endStr)"
         }
     }
@@ -2235,9 +2237,8 @@ final class CategoricalNutrientViewModel: ObservableObject {
     // MARK: - Helper Functions
 
     func shortDateLabel(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "E"
-        return formatter.string(from: date)
+        // PERFORMANCE: Use cached static formatter
+        DateHelper.singleLetterDayFormatter.string(from: date)
     }
 
     nonisolated private func calculateDominantLevel(for entries: [FoodEntry], existingCache: [String: MicronutrientProfile], newCache: inout [String: MicronutrientProfile]) -> SourceLevel {
@@ -2857,9 +2858,8 @@ struct NutrientDetailModal: View {
     }
 
     private func fullDateLabel(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "E, MMM d"
-        return formatter.string(from: date)
+        // PERFORMANCE: Use cached static formatter
+        DateHelper.dayCommaMonthDayFormatter.string(from: date)
     }
 
     // MARK: - Good Food Sources Section
@@ -3357,8 +3357,7 @@ struct NutrientGapsView: View {
     // MARK: - Helpers
 
     private func shortDate(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.dateFormat = "E d MMM"
-        return f.string(from: date)
+        // PERFORMANCE: Use cached static formatter
+        DateHelper.dayDateMonthFormatter.string(from: date)
     }
 }

@@ -190,9 +190,7 @@ actor WeekDataCache {
     }
 
     private func formatWeekKey(_ weekStart: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-'W'ww"
-        formatter.timeZone = Calendar.current.timeZone
-        return formatter.string(from: weekStart)
+        // PERFORMANCE: Use cached static formatter
+        DateHelper.weekKeyFormatter.string(from: weekStart)
     }
 }
