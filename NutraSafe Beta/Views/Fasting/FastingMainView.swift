@@ -724,7 +724,7 @@ struct PlanDashboardView: View {
             .presentationDetents([.medium])
         }
             
-        .sheet(isPresented: $showWeekDetail) {
+        .fullScreenCover(isPresented: $showWeekDetail) {
             if let week = selectedWeek {
                 WeekDetailView(week: week, viewModel: viewModel)
             }
@@ -2086,13 +2086,16 @@ struct WeekDetailView: View {
                 .listRowBackground(Color.clear)
             }
             .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .background(Color(.systemGroupedBackground))
             .navigationTitle("Week Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
                         dismiss()
                     }
+                    .fontWeight(.semibold)
                 }
             }
         }

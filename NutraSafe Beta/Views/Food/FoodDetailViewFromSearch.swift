@@ -1485,7 +1485,6 @@ struct FoodDetailViewFromSearch: View {
                     
                     // Food Scores Section (moved from header)
                     foodScoresSection
-                        .id(servingAmount) // Force re-render when serving amount changes (for real-time sugar score updates)
                     
                     // Combined Watch Sections with Tabs
                     watchTabsSection
@@ -1602,7 +1601,6 @@ struct FoodDetailViewFromSearch: View {
             cachedNutritionScore = nil
             cachedNutraSafeGrade = nil  // Grade may depend on nutrition completeness
         }
-        .id("\(enhancedIngredientsText ?? "")\(enhancedNutrition?.calories ?? 0)")
         .alert("Team Notified", isPresented: $showingNotificationSuccess) {
             Button("OK") { }
         } message: {

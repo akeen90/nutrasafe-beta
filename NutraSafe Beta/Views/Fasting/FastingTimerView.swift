@@ -413,16 +413,15 @@ struct FastingTimerView: View {
             Text(stopErrorText)
         }
         .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
-            // Safely update current time with session validation
-            currentTime = Date()
-            
-            // Only proceed with fasting logic if we have a valid active session
+            // PERFORMANCE: Only update when there's an active fasting session
             guard let session = currentSession, session.isActive else { return }
-            
+
+            currentTime = Date()
+
             // Validate session timing to prevent edge cases
             let elapsed = currentTime.timeIntervalSince(session.startTime)
-            guard elapsed >= 0 else { return } // Prevent negative elapsed time
-            
+            guard elapsed >= 0 else { return }
+
             // Update Live Activity every minute for valid sessions
             if isFasting && Int(elapsed) % 60 == 0 {
                 Task {
