@@ -106,123 +106,11 @@ struct FoodSearchResultRowEnhanced: View {
     @State private var isPressed = false
     @EnvironmentObject var diaryDataManager: DiaryDataManager
 
-    // PERFORMANCE: Use @State for grades to enable async background computation
-    // Prevents blocking main thread during scroll with expensive scoring calculations
-    @State private var computedProcessingGrade: ProcessingGrade?
-    @State private var computedSugarGrade: SugarGrade?
-
     init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, onComplete: ((TabItem) -> Void)? = nil) {
         self.food = food
         self.sourceType = sourceType
         self._selectedTab = selectedTab
         self.onComplete = onComplete
-    }
-
-    // Use cached/computed grade, or show placeholder during computation
-    private var nutritionScore: ProcessingGrade {
-        // First check if we already computed it
-        if let computed = computedProcessingGrade {
-            return computed
-        }
-        // Check precomputed from food data
-        if let precomputedGrade = food.processingGrade,
-           let grade = ProcessingGrade(rawValue: precomputedGrade) {
-            return grade
-        }
-        // Check local cache
-        let key = NSString(string: food.id)
-        if let cached = LocalGradeCache.processing.object(forKey: key),
-           let grade = ProcessingGrade(rawValue: cached as String) {
-            return grade
-        }
-        // Return placeholder while computing in background
-        return .unknown
-    }
-
-    private var sugarGrade: SugarGrade {
-        if let computed = computedSugarGrade {
-            return computed
-        }
-        let key = NSString(string: food.id)
-        if let cached = LocalGradeCache.sugar.object(forKey: key),
-           let grade = SugarGrade(rawValue: cached as String) {
-            return grade
-        }
-        return .unknown
-    }
-
-    // Compute grades in background task
-    private func computeGradesIfNeeded() {
-        // Processing grade
-        if computedProcessingGrade == nil {
-            if let precomputedGrade = food.processingGrade,
-               let grade = ProcessingGrade(rawValue: precomputedGrade) {
-                computedProcessingGrade = grade
-            } else {
-                let key = NSString(string: food.id)
-                if let cached = LocalGradeCache.processing.object(forKey: key),
-                   let grade = ProcessingGrade(rawValue: cached as String) {
-                    computedProcessingGrade = grade
-                } else {
-                    // Compute in background
-                    let ingredientsString = food.ingredients?.joined(separator: ", ")
-                    let foodName = food.name
-                    Task.detached(priority: .utility) {
-                        let computed = ProcessingScorer.shared.calculateProcessingScore(for: foodName, ingredients: ingredientsString).grade
-                        LocalGradeCache.processing.setObject(NSString(string: computed.rawValue), forKey: key)
-                        await MainActor.run {
-                            self.computedProcessingGrade = computed
-                        }
-                    }
-                }
-            }
-        }
-
-        // Sugar grade
-        if computedSugarGrade == nil {
-            let key = NSString(string: food.id)
-            if let cached = LocalGradeCache.sugar.object(forKey: key),
-               let grade = SugarGrade(rawValue: cached as String) {
-                computedSugarGrade = grade
-            } else {
-                let sugar = food.sugar
-                Task.detached(priority: .utility) {
-                    let computed = SugarContentScorer.shared.calculateSugarScore(sugarPer100g: sugar).grade
-                    LocalGradeCache.sugar.setObject(NSString(string: computed.rawValue), forKey: key)
-                    await MainActor.run {
-                        self.computedSugarGrade = computed
-                    }
-                }
-            }
-        }
-    }
-    
-    // Calculate per-serving calories from per-100g values
-    private var perServingCalories: Double {
-        let servingSize = extractServingSize(from: food.servingDescription)
-        return food.calories * (servingSize / 100.0)
-    }
-    
-    // Extract serving size in grams from serving description
-    // Uses pre-compiled regexes for performance
-    private func extractServingSize(from servingDesc: String?) -> Double {
-        guard let servingDesc = servingDesc else { return 100.0 }
-
-        // Use pre-compiled patterns instead of compiling on each call
-        for regex in ServingSizePatterns.allPatterns {
-            if let match = regex.firstMatch(in: servingDesc, options: [], range: NSRange(location: 0, length: servingDesc.count)),
-               let range = Range(match.range(at: 1), in: servingDesc) {
-                return Double(String(servingDesc[range])) ?? 100.0
-            }
-        }
-
-        // If just a number is found, assume it's grams
-        if let number = Double(servingDesc.trimmingCharacters(in: .whitespacesAndNewlines)) {
-            return number
-        }
-
-        // Fallback to 100g if no weight found
-        return 100.0
     }
 
     var body: some View {
@@ -284,11 +172,7 @@ struct FoodSearchResultRowEnhanced: View {
                 onComplete?(tab)
             }
             .environmentObject(diaryDataManager)
-        }
-        .onAppear {
-            // PERFORMANCE: Compute grades in background when row appears
-            // This prevents blocking main thread during scroll
-            computeGradesIfNeeded()
+            .interactiveDismissDisabled(false) // Enable smooth interactive dismiss
         }
     }
 }
@@ -370,10 +254,22 @@ struct AddFoodSearchView: View {
                         }
 
                     if !searchText.isEmpty {
-                        Button(action: { searchText = "" }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.secondary)
-                        }
+                        // Clear button with proper tap target
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 18))
+                            .foregroundColor(.secondary)
+                            .frame(width: 44, height: 44) // Minimum tap target size per Apple HIG
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                // Dismiss keyboard first
+                                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                                // Cancel any pending search and reset all state immediately
+                                searchTask?.cancel()
+                                searchTask = nil
+                                searchText = ""
+                                searchResults = []
+                                isSearching = false
+                            }
                     }
                 }
                 .padding(.horizontal, 16)
@@ -530,9 +426,7 @@ struct AddFoodSearchView: View {
                         .padding(.top, searchText.isEmpty ? 0 : 16)
                     }
                     .frame(maxHeight: .infinity)
-                    .onTapGesture {
-                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                    }
+                    .scrollDismissesKeyboard(.interactively) // Dismiss keyboard on scroll, not tap (avoids gesture conflicts)
                     .onChange(of: searchResults.count) { _, newCount in
                         // Auto-scroll to show first result when results appear
                         if newCount > 0 {

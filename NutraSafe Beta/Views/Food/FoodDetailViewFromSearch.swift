@@ -1504,19 +1504,20 @@ struct FoodDetailViewFromSearch: View {
                 }
                 .padding(.horizontal, 16)
             }
-            .onTapGesture {
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-            }
+            .scrollDismissesKeyboard(.interactively) // Dismiss keyboard on scroll instead of tap gesture
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Close") {
+                        // Fast dismiss - no animation delay
                         dismiss()
                     }
                 }
             }
         }
         .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
+        .presentationDragIndicator(.visible)
+        .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         .onAppear {
             // Only initialize once per view instance, even if .onAppear is called multiple times
             guard !hasInitialized else { return }
@@ -3760,13 +3761,19 @@ private var nutritionFactsSection: some View {
     }
     
     private func recomputeDetectedNutrients() {
-        let ids = getDetectedNutrients()
-        let ordering = NutrientDatabase.allNutrients.map { $0.id }
-        cachedDetectedNutrients = ids.sorted { a, b in
-            let ia = ordering.firstIndex(of: a) ?? Int.max
-            let ib = ordering.firstIndex(of: b) ?? Int.max
-            if ia != ib { return ia < ib }
-            return a < b
+        // PERFORMANCE: Run nutrient detection in background to avoid blocking main thread
+        Task.detached(priority: .userInitiated) {
+            let ids = await MainActor.run { self.getDetectedNutrients() }
+            let ordering = NutrientDatabase.allNutrients.map { $0.id }
+            let sorted = ids.sorted { a, b in
+                let ia = ordering.firstIndex(of: a) ?? Int.max
+                let ib = ordering.firstIndex(of: b) ?? Int.max
+                if ia != ib { return ia < ib }
+                return a < b
+            }
+            await MainActor.run {
+                self.cachedDetectedNutrients = sorted
+            }
         }
     }
 

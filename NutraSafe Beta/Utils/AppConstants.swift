@@ -95,46 +95,21 @@ struct TabGradientBackground: View {
         case useBy      // Orange-amber (expiry tracking)
 
         var lightGradientColors: (primary: Color, secondary: Color) {
-            switch self {
-            case .diary:
-                return (
-                    Color(red: 0.92, green: 0.96, blue: 1.0),
-                    Color(red: 0.93, green: 0.88, blue: 1.0)
-                )
-            case .progress:
-                return (
-                    Color(red: 0.90, green: 0.98, blue: 0.96),
-                    Color(red: 0.88, green: 0.95, blue: 1.0)
-                )
-            case .health:
-                return (
-                    Color(red: 0.96, green: 0.92, blue: 1.0),
-                    Color(red: 0.98, green: 0.90, blue: 0.95)
-                )
-            case .useBy:
-                return (
-                    Color(red: 1.0, green: 0.96, blue: 0.90),
-                    Color(red: 0.98, green: 0.92, blue: 0.88)
-                )
-            }
+            // All tabs use the same blue-purple gradient as Diary for consistency
+            return (
+                Color(red: 0.92, green: 0.96, blue: 1.0),
+                Color(red: 0.93, green: 0.88, blue: 1.0)
+            )
         }
 
         var accentColor: Color {
-            switch self {
-            case .diary: return .blue
-            case .progress: return .teal
-            case .health: return .purple
-            case .useBy: return .orange
-            }
+            // All tabs use blue accent for consistency
+            return .blue
         }
 
         var secondaryAccent: Color {
-            switch self {
-            case .diary: return .purple
-            case .progress: return .green
-            case .health: return .pink
-            case .useBy: return .yellow
-            }
+            // All tabs use purple secondary accent for consistency
+            return .purple
         }
     }
 
