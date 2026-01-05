@@ -127,19 +127,21 @@ struct DiaryDailySummaryCard: View {
     }
 
     private var microMacrosView: some View {
-        HStack(spacing: 8) {
+        VStack(spacing: 6) {
             ForEach(macroGoals, id: \.macroType) { macroGoal in
-                VStack(spacing: 4) {
+                HStack {
                     // Macro name with colored dot
-                    HStack(spacing: 4) {
+                    HStack(spacing: 6) {
                         Circle()
                             .fill(macroGoal.macroType.color)
-                            .frame(width: 6, height: 6)
+                            .frame(width: 8, height: 8)
 
                         Text(macroGoal.macroType.displayName)
-                            .font(.system(size: 11, weight: .medium, design: .rounded))
-                            .foregroundColor(.secondary)
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundColor(.primary)
                     }
+
+                    Spacer()
 
                     // Achieved value
                     Text("\(Int(calculateMacroTotal(for: macroGoal.macroType).rounded()))g")
@@ -147,11 +149,11 @@ struct DiaryDailySummaryCard: View {
                         .foregroundColor(macroGoal.macroType.color)
 
                     // Goal value
-                    Text("of \(Int(macroGoal.calculateGramGoal(from: calorieGoal)))g")
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                    Text("/ \(Int(macroGoal.calculateGramGoal(from: calorieGoal)))g")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundColor(.secondary)
                 }
-                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 12)
                 .padding(.vertical, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 10)
