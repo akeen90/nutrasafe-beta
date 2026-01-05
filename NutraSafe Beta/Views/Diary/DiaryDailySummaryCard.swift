@@ -150,7 +150,7 @@ struct DiaryDailySummaryCard: View {
                         .foregroundColor(macroGoal.macroType.color)
                         .frame(width: 44, alignment: .trailing)
 
-                    // Goal value column (fixed width, left aligned)
+                    // Goal value column (fixed width, right aligned)
                     HStack(spacing: 1) {
                         Text("/\(Int(macroGoal.calculateGramGoal(from: calorieGoal)))")
                             .font(.system(size: 14, weight: .medium, design: .rounded))
@@ -160,7 +160,7 @@ struct DiaryDailySummaryCard: View {
                             .font(.system(size: 12, weight: .medium, design: .rounded))
                             .foregroundColor(.secondary.opacity(0.8))
                     }
-                    .frame(width: 52, alignment: .leading)
+                    .frame(width: 52, alignment: .trailing)
                 }
             }
         }
