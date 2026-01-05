@@ -141,17 +141,23 @@ struct DiaryDailySummaryCard: View {
 
                     Spacer()
 
-                    Text("\(Int(calculateMacroTotal(for: macroGoal.macroType).rounded()))")
-                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                    // Achieved value (fixed width for alignment)
+                    Text("\(Int(calculateMacroTotal(for: macroGoal.macroType).rounded()))g")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundColor(macroGoal.macroType.color)
+                        .frame(width: 50, alignment: .trailing)
 
-                    Text("/\(Int(macroGoal.calculateGramGoal(from: calorieGoal)))")
+                    // Vertical divider
+                    Rectangle()
+                        .fill(Color.secondary.opacity(0.3))
+                        .frame(width: 1, height: 14)
+                        .padding(.horizontal, 4)
+
+                    // Goal value (fixed width for alignment)
+                    Text("\(Int(macroGoal.calculateGramGoal(from: calorieGoal)))g")
                         .font(.system(size: 14, weight: .medium, design: .rounded))
                         .foregroundColor(.secondary)
-
-                    Text("g")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary.opacity(0.8))
+                        .frame(width: 45, alignment: .leading)
                 }
             }
         }
