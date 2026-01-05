@@ -357,33 +357,6 @@ struct AboutSection: View {
     }
 }
 
-// MARK: - Placeholder Section (for future phases)
-
-struct PlaceholderSection: View {
-    let title: String
-    let icon: String
-
-    var body: some View {
-        SettingsSection(title: title) {
-            HStack {
-                Image(systemName: icon)
-                    .font(.system(size: 16))
-                    .foregroundColor(.secondary)
-                    .frame(width: 24)
-
-                Text("Coming soon")
-                    .font(.system(size: 16))
-                    .foregroundColor(.secondary)
-                    .italic()
-
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-        }
-    }
-}
-
 // MARK: - Reusable Components
 
 struct SettingsSection<Content: View>: View {
