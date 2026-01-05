@@ -57,8 +57,6 @@ class MicronutrientTrackingManager: ObservableObject {
         // Recalculate balance for the day
         await updateBalanceScore(for: date)
 
-        // PERFORMANCE FIX: Don't save here - caller should batch save after processing all foods
-        // await saveDailyScores()
     }
 
     /// Convert camelCase nutrient keys to database format (underscore separated)
@@ -183,62 +181,9 @@ class MicronutrientTrackingManager: ObservableObject {
             }
         }
 
-        // REMOVED: Omega-3 tracking disabled per user request
-        // OMEGA-3 FIX: Also check for omega-3 via keyword matching
-        // Omega-3 is not in micronutrient profiles, so we use keyword detection
-        /*
-        let searchText = foodName.lowercased()
-
-        // Check for marine sources (high EPA/DHA, low ALA)
-        let marineSources = ["salmon", "sardines", "mackerel", "tuna", "herring", "anchovies"]
-        let plantSources = ["walnuts", "flax", "flaxseed", "chia", "hemp"]
-
-        if marineSources.contains(where: { searchText.contains($0) }) {
-            #if DEBUG
-            print("  🐟 Detected marine omega-3 source: \(foodName)")
-            #endif
-
-            // Marine sources: High EPA/DHA, minimal ALA
-            await updateDailyScore(
-                nutrient: "Omega3_EPA_DHA",
-                date: date,
-                points: Int(40 * servingSize), // Scale with serving size
-                source: foodName
-            )
-            await updateDailyScore(
-                nutrient: "Omega3_ALA",
-                date: date,
-                points: Int(5 * servingSize),
-                source: foodName
-            )
-            processedCount += 2
-            #if DEBUG
-            print("  ✅ Added Omega-3: EPA/DHA: \(Int(40 * servingSize))%, ALA: \(Int(5 * servingSize))%")
-            #endif
-        } else if plantSources.contains(where: { searchText.contains($0) }) {
-            #if DEBUG
-            print("  🌱 Detected plant omega-3 source: \(foodName)")
-            #endif
-
-            // Plant sources: High ALA, no EPA/DHA
-            await updateDailyScore(
-                nutrient: "Omega3_ALA",
-                date: date,
-                points: Int(50 * servingSize),
-                source: foodName
-            )
-            processedCount += 1
-            #if DEBUG
-            print("  ✅ Added Omega-3 (ALA): \(Int(50 * servingSize))%")
-            #endif
-        }
-        */
-
         // Recalculate balance for the day
         await updateBalanceScore(for: date)
 
-        // PERFORMANCE FIX: Don't save here - caller should batch save after processing all foods
-        // await saveDailyScores()
 
         #if DEBUG
         print("✅ Successfully processed \(processedCount) nutrients for: \(foodName)")

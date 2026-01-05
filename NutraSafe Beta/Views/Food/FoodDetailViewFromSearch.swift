@@ -539,17 +539,7 @@ struct FoodDetailViewFromSearch: View {
     }
     
     private var glycemicData: GlycemicIndexData? {
-        // TODO: Fix when GlycemicIndexDatabase is available
         return nil
-        // // Calculate GI based on actual macro data - much more accurate!
-        // GlycemicIndexDatabase.shared.getGIData(
-        //     for: food.name,
-        //     carbs: adjustedCarbs,
-        //     sugar: food.sugar * multiplier,
-        //     fiber: food.fiber * multiplier,
-        //     protein: adjustedProtein,
-        //     fat: adjustedFat
-        // )
     }
     
     private var glycemicLoad: Double? {

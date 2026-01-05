@@ -125,9 +125,6 @@ class MicronutrientDatabase {
             #endif
             isInitialized = true
 
-            // DIAGNOSTIC: Test database readability
-            testDatabaseConnection()
-
             // PERFORMANCE: Preload all nutrients in background (non-blocking startup)
             // This saves 150ms on app launch by not blocking the main thread
             preloadTask = Task.detached(priority: .utility) { [weak self] in
@@ -142,66 +139,6 @@ class MicronutrientDatabase {
                 print("   Error: \(String(cString: error))")
                 #endif
             }
-        }
-    }
-
-    private func testDatabaseConnection() {
-        guard let db = db else { return }
-
-        // Test 1: Count total nutrients
-        let countQuery = "SELECT COUNT(*) FROM nutrient_info;"
-        var countStmt: OpaquePointer?
-
-        defer { sqlite3_finalize(countStmt) }
-
-        if sqlite3_prepare_v2(db, countQuery, -1, &countStmt, nil) == SQLITE_OK {
-            if sqlite3_step(countStmt) == SQLITE_ROW {
-                _ = sqlite3_column_int(countStmt, 0)
-            }
-        }
-
-        // Test 2: List all nutrient IDs
-        let listQuery = "SELECT nutrient FROM nutrient_info ORDER BY nutrient LIMIT 10;"
-        var listStmt: OpaquePointer?
-
-        defer { sqlite3_finalize(listStmt) }
-
-        if sqlite3_prepare_v2(db, listQuery, -1, &listStmt, nil) == SQLITE_OK {
-            #if DEBUG
-            print("📋 First 10 nutrients in database:")
-            #endif
-            var index = 1
-            while sqlite3_step(listStmt) == SQLITE_ROW {
-                let nutrient = String(cString: sqlite3_column_text(listStmt, 0))
-                #if DEBUG
-                print("   \(index). \(nutrient)")
-                #endif
-                index += 1
-            }
-        }
-
-        // Test 3: Try to query a specific nutrient
-        let testQuery = "SELECT nutrient, name FROM nutrient_info WHERE nutrient = 'Niacin_B3' LIMIT 1;"
-        var testStmt: OpaquePointer?
-
-        defer { sqlite3_finalize(testStmt) }
-
-        if sqlite3_prepare_v2(db, testQuery, -1, &testStmt, nil) == SQLITE_OK {
-            if sqlite3_step(testStmt) == SQLITE_ROW {
-                let nutrient = String(cString: sqlite3_column_text(testStmt, 0))
-                let name = String(cString: sqlite3_column_text(testStmt, 1))
-                #if DEBUG
-                print("✅ Test query successful: Found '\(nutrient)' with name '\(name)'")
-                #endif
-            } else {
-                #if DEBUG
-                print("❌ Test query failed: Could not find 'Niacin_B3'")
-                #endif
-            }
-        } else {
-            #if DEBUG
-            print("❌ Test query prepare failed")
-            #endif
         }
     }
 

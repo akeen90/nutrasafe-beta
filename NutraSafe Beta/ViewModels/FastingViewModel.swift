@@ -1526,8 +1526,7 @@ class FastingViewModel: ObservableObject {
     }
 
     private func scheduleSnoozeNotification(for session: FastingSession, at date: Date) async {
-        // TODO: Implement notification scheduling
-        // This would use UNUserNotificationCenter to schedule a local notification
+        // Notification scheduling not yet implemented
     }
 
     func endFastingRegime() async {

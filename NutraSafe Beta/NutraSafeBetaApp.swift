@@ -153,33 +153,6 @@ struct NutraSafeBetaApp: App {
     init() {
         // Check for app version change and clear caches if needed
         CacheManager.shared.checkAndClearCachesIfNeeded()
-
-        // Initialize StoreKitTest session for reliable local testing in debug builds
-        // TEMPORARILY DISABLED: StoreKitTest framework linking issue in simulator builds
-        /*
-        #if DEBUG && canImport(StoreKitTest)
-        if #available(iOS 15.0, *) {
-            if let storeKitURL = Bundle.main.url(forResource: "NutraSafe", withExtension: "storekit") {
-                do {
-                    let session = try SKTestSession(contentsOf: storeKitURL)
-                    session.resetToDefaultState()
-                    session.clearTransactions()
-                    #if DEBUG
-                    print("StoreKitTest: Initialized session with NutraSafe.storekit at \(storeKitURL)")
-                    #endif
-                } catch {
-                    #if DEBUG
-                    print("StoreKitTest: Failed to initialize with error: \(error)")
-                    #endif
-                }
-            } else {
-                #if DEBUG
-                print("StoreKitTest: Could not find NutraSafe.storekit in bundle")
-                #endif
-            }
-        }
-        #endif
-        */
     }
 
     // Add theme binding at the scene level so changes apply instantly across sheets and overlays

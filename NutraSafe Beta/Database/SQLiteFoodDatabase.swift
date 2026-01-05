@@ -730,7 +730,7 @@ actor SQLiteFoodDatabase {
             ingredients: ingredients,
             confidence: 1.0, // Local database = 100% confidence
             isVerified: isVerified,
-            additives: nil, // TODO: Load from additives table
+            additives: nil,
             additivesDatabaseVersion: nil,
             processingScore: processingScore != 0 ? Int(processingScore) : nil,
             processingGrade: processingGrade,
@@ -760,13 +760,6 @@ actor SQLiteFoodDatabase {
     }
 
     // MARK: - Import Operations
-
-    /// Insert or update a food item
-    func upsertFood(_ food: FoodSearchResult, ingredients: [String]?, vitamins: [String: Double]?, minerals: [String: Double]?) -> Bool {
-        // TODO: Implement food insertion/update
-        // This will be used by the import script
-        return false
-    }
 
     /// Get database statistics
     func getStats() -> (totalFoods: Int, withBarcodes: Int, verified: Int) {
