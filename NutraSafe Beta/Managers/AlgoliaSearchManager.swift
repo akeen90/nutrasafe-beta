@@ -458,6 +458,30 @@ final class AlgoliaSearchManager {
                 score += 1000
             }
 
+            // Strong bonus if brand matches original query (for brand searches like "mcdonalds")
+            if let brand = result.brand?.lowercased() {
+                let normalizedBrand = brand.replacingOccurrences(of: "'", with: "").replacingOccurrences(of: "'", with: "")
+                let normalizedQuery = queryLower.replacingOccurrences(of: "'", with: "").replacingOccurrences(of: "'", with: "")
+
+                // Exact brand match
+                if normalizedBrand == normalizedQuery {
+                    score += 8000
+                }
+                // Brand starts with query
+                else if normalizedBrand.hasPrefix(normalizedQuery) {
+                    score += 6000
+                }
+                // Query is a known brand synonym
+                else if let canonical = synonymToCanonical[normalizedQuery],
+                        normalizedBrand.contains(canonical.replacingOccurrences(of: "'", with: "")) {
+                    score += 5500
+                }
+                // Brand contains query
+                else if normalizedBrand.contains(normalizedQuery) {
+                    score += 3000
+                }
+            }
+
             // Bonus for shorter names (more specific)
             score += max(0, 500 - result.name.count * 10)
 
@@ -579,10 +603,28 @@ final class AlgoliaSearchManager {
             // But this is now secondary to relevance
             score += (4 - item.sourcePriority) * 50
 
-            // Bonus if brand contains query (e.g., searching "mcdonalds")
-            if let brand = item.result.brand?.lowercased(),
-               brand.contains(queryLower) || queryLower.contains(brand.replacingOccurrences(of: "'", with: "")) {
-                score += 1000
+            // Strong bonus if brand matches query (e.g., searching "mcdonalds")
+            if let brand = item.result.brand?.lowercased() {
+                let normalizedBrand = brand.replacingOccurrences(of: "'", with: "").replacingOccurrences(of: "'", with: "")
+                let normalizedQuery = queryLower.replacingOccurrences(of: "'", with: "").replacingOccurrences(of: "'", with: "")
+
+                // Exact brand match (highest brand priority)
+                if normalizedBrand == normalizedQuery {
+                    score += 8000
+                }
+                // Brand starts with query
+                else if normalizedBrand.hasPrefix(normalizedQuery) {
+                    score += 6000
+                }
+                // Query is a known brand synonym that matches this brand
+                else if let canonical = synonymToCanonical[normalizedQuery],
+                        normalizedBrand.contains(canonical.replacingOccurrences(of: "'", with: "")) {
+                    score += 5500
+                }
+                // Brand contains query as substring
+                else if normalizedBrand.contains(normalizedQuery) || normalizedQuery.contains(normalizedBrand) {
+                    score += 3000
+                }
             }
 
             return (result: item.result, score: score)
