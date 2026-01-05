@@ -962,31 +962,12 @@ struct FoodDetailViewFromSearch: View {
     }
 
     // Load user's allergens from Firebase and detect which ones are in this food
-    // OPTIMIZED: Use cached allergens for instant loading
     private func loadAndDetectUserAllergensOptimized() async {
-        // Get allergens from cache (instant if available)
         let savedAllergens = await firebaseManager.getUserAllergensWithCache()
 
         await MainActor.run {
             userAllergens = savedAllergens
             detectedUserAllergens = detectUserAllergensInFood(userAllergens: savedAllergens)
-        }
-    }
-
-    // DEPRECATED: Old slow method - kept for reference
-    private func loadAndDetectUserAllergens() async {
-        do {
-            let settings = try await firebaseManager.getUserSettings()
-            let savedAllergens = settings.allergens ?? []
-
-            await MainActor.run {
-                userAllergens = savedAllergens
-                detectedUserAllergens = detectUserAllergensInFood(userAllergens: savedAllergens)
-            }
-        } catch {
-            #if DEBUG
-            print("Failed to load user allergens: \(error.localizedDescription)")
-            #endif
         }
     }
 
@@ -2132,10 +2113,6 @@ private var nutritionFactsSection: some View {
         }
     }
 
-    // Fetch complete nutrition data from Firebase when editing old items with missing data
-    // REMOVED: fetchEnrichedFoodData() - unnecessary since search already returns complete data
-    // The food parameter already has all ingredients, additives, and nutrition data from Firebase search
-    
     private var ingredientsSection: some View {
         IngredientsSectionView(status: cachedIngredientsStatus, ingredients: cachedIngredients)
     }
@@ -2441,12 +2418,7 @@ private var nutritionFactsSection: some View {
         .background(Color(.systemGray6))
         .cornerRadius(12)
     }
-    
-    // REMOVED: Old micronutrientsSection - replaced with vitaminsContent using NutrientDetector
-    
-    // REMOVED: Old fake micronutrient functions that relied on currentMicronutrients variable
-    // Now we use NutrientDetector to detect from ingredients instead of fake math
-    
+
     private func detectAllergens(in ingredients: [String]) -> [Allergen] {
         let combinedIngredients = ingredients.joined(separator: " ").lowercased()
         var detectedAllergens: [Allergen] = []
@@ -4138,8 +4110,6 @@ struct NutrientCard: View {
                 .padding(12)
             }
             .buttonStyle(PlainButtonStyle())
-
-            // Expanded details removed - nutrient information is displayed in the main section above
         }
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)

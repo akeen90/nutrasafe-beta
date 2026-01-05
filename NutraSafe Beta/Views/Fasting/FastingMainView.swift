@@ -679,30 +679,17 @@ struct PlanDashboardView: View {
                                 second: 0,
                                 of: now
                             ) else {
-                                print("❌ Failed to create snooze time")
                                 showSnoozePicker = false
                                 return
                             }
 
-                            print("🕐 Snooze Confirm Debug:")
-                            print("   Current time: \(now.formatted(date: .abbreviated, time: .complete))")
-                            print("   Selected time components: \(components.hour ?? 0):\(components.minute ?? 0)")
-                            print("   Today at selected time: \(todayAtSelectedTime.formatted(date: .abbreviated, time: .complete))")
-
                             // If the time is in the past, move to tomorrow
                             var finalSnoozeTime = todayAtSelectedTime
                             if todayAtSelectedTime <= now {
-                                print("   ⚠️ Selected time has passed today, moving to tomorrow")
                                 if let tomorrow = calendar.date(byAdding: .day, value: 1, to: todayAtSelectedTime) {
                                     finalSnoozeTime = tomorrow
-                                    print("   ✅ Adjusted to: \(finalSnoozeTime.formatted(date: .abbreviated, time: .complete))")
                                 }
-                            } else {
-                                print("   ✅ Selected time is later today")
                             }
-
-                            print("   Final snooze time: \(finalSnoozeTime.formatted(date: .abbreviated, time: .complete))")
-                            print("   Time until snooze: \(finalSnoozeTime.timeIntervalSince(now)) seconds")
 
                             await viewModel.snoozeCurrentRegimeFast(until: finalSnoozeTime)
                             showSnoozePicker = false

@@ -351,7 +351,7 @@ class MicronutrientTrackingManager: ObservableObject {
                 $0.nutrient != "Beta_Carotene" &&
                 $0.nutrient != "Lutein_Zeaxanthin" &&
                 $0.nutrient != "Lycopene"
-            } // REMOVED: Fluoride, Sodium, Omega-3, Beta-Carotene, Lutein/Zeaxanthin, and Lycopene are no longer tracked
+            }
             .compactMap { info in
                 getNutrientSummary(for: info.nutrient)
             }
@@ -588,9 +588,6 @@ class MicronutrientTrackingManager: ObservableObject {
             #if DEBUG
             print("✅ Loaded \(dailyScores.count) nutrients with scores and \(balanceHistory.count) balance records")
             #endif
-
-            // PERFORMANCE FIX: Removed recalculation on every load - this was causing slow loading
-            // Balance scores are now only recalculated when foods are processed
 
             // MEMORY CACHE: Cache the loaded data
             firebaseCache = (scores: dailyScores, balance: balanceHistory)

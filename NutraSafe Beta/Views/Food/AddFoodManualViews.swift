@@ -124,7 +124,6 @@ class IngredientFinderService: ObservableObject {
         let endpointURLString = AppConfig.Firebase.Functions.findIngredients
 
         guard let url = URL(string: endpointURLString) else {
-            print("❌ Debug: Invalid URL: \(endpointURLString)")
             throw IngredientFinderError.notConfigured
         }
 

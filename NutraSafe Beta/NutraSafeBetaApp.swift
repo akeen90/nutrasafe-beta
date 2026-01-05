@@ -5,10 +5,6 @@ import WidgetKit
 import ActivityKit
 import StoreKit
 import BackgroundTasks
-// TEMPORARILY DISABLED: StoreKitTest framework linking issue in simulator builds
-// #if DEBUG && canImport(StoreKitTest)
-// import StoreKitTest
-// #endif
 
 // Explicit app delegate for proper Firebase initialization and to satisfy swizzler expectations
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
@@ -311,6 +307,9 @@ struct MainAppView: View {
             print("🔥 Settings cache prewarmed")
             #endif
         } catch {
+            #if DEBUG
+            print("⚠️ Failed to prewarm settings cache: \(error)")
+            #endif
         }
     }
 }

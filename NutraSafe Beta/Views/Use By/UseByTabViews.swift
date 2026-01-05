@@ -1933,8 +1933,6 @@ struct ModernExpiryRow: View {
     }
 }
 
-// Removed UseByExpiryDayRow - replaced with expandable day sections in UseByWeeklyExpiryCard
-
 struct UseByFreshItemsCard: View {
     @State private var isExpanded = false
     @Environment(\.colorScheme) var colorScheme

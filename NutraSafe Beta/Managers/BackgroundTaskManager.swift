@@ -74,7 +74,11 @@ class BackgroundTaskManager {
                 do {
                     let items: [UseByInventoryItem] = try await FirebaseManager.shared.getUseByItems()
                     await UseByNotificationManager.shared.refreshAllNotifications(for: items)
-                } catch {}
+                } catch {
+                    #if DEBUG
+                    print("⚠️ Failed to refresh Use By notifications: \(error)")
+                    #endif
+                }
 
                 task.setTaskCompleted(success: true)
             } catch {

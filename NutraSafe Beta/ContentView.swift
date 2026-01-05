@@ -689,11 +689,6 @@ struct ContentView: View {
             }
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
-        // REMOVED: .onTapGesture that was consuming ALL taps and blocking buttons
-        // Keyboard dismissal now handled by:
-        // - scrollDismissesKeyboard on ScrollViews
-        // - Return key on TextFields
-        // - Individual view dismiss actions
         .sheet(isPresented: $showingSettings) {
             SettingsView()
                 .environmentObject(firebaseManager)

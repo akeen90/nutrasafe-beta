@@ -1314,15 +1314,11 @@ class FastingViewModel: ObservableObject {
 
         // Get current regime state to find the window end time
         guard case .fasting(let started, let ends) = currentRegimeState else {
+            #if DEBUG
             print("⚠️ Not currently in a fasting window - cannot skip")
+            #endif
             return
         }
-
-        print("🔍 SKIP FAST DEBUG:")
-        print("   Started: \(started.formatted(date: .abbreviated, time: .complete))")
-        print("   Ends: \(ends.formatted(date: .abbreviated, time: .complete))")
-        print("   Plan ID: \(plan.id ?? "nil")")
-        print("   User ID: \(userId)")
 
         isLoading = true
         defer { isLoading = false }

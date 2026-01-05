@@ -1605,8 +1605,6 @@ struct HealthSafetySection: View {
                         .padding(.vertical, 12)
                     }
                     .buttonStyle(PlainButtonStyle())
-
-                    // Removed non-functional Safety Alerts and Micronutrient Display rows
                 }
             }
         }
@@ -1632,7 +1630,6 @@ struct HealthSafetySection: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(Color(.systemBackground))
         }
-        // Removed sheets for Safety Alerts and Micronutrient Display
     }
 
     private func loadHealthSafetyData() async {
