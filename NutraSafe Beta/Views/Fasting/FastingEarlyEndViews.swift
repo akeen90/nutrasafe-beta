@@ -143,6 +143,8 @@ struct EarlyEndModal: View {
         }
         .sheet(isPresented: $showingRestartDecision) {
             RestartDecisionModal(viewModel: viewModel, previousSession: session)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
     }
 

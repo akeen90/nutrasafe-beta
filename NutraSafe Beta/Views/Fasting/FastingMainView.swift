@@ -3,6 +3,7 @@ import Charts
 
 struct FastingMainView: View {
     @ObservedObject var viewModel: FastingViewModel
+    @Environment(\.colorScheme) private var colorScheme
     @State private var showingEditTimes = false
     @State private var showingEducation = false
     @State private var showingCitations = false
@@ -58,13 +59,19 @@ struct FastingMainView: View {
             }
             .sheet(isPresented: $showingEducation) {
                 FastingEducationView()
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
             }
             .sheet(isPresented: $showingCitations) {
                 FastingCitationsView()
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
             }
             .sheet(isPresented: $showingEditTimes) {
                 if let session = viewModel.activeSession {
                     EditSessionTimesView(viewModel: viewModel, session: session)
+                        .presentationDragIndicator(.visible)
+                        .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
                 }
             }
             .sheet(isPresented: $showingActionSheet) {
@@ -97,6 +104,8 @@ struct FastingMainView: View {
                         }
                     )
                     .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
                 }
             }
             .onAppear {

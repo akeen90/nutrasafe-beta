@@ -173,6 +173,8 @@ struct FoodSearchResultRowEnhanced: View {
             }
             .environmentObject(diaryDataManager)
             .interactiveDismissDisabled(false) // Enable smooth interactive dismiss
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
     }
 }

@@ -98,6 +98,8 @@ struct FastingEducationView: View {
             }
             .sheet(isPresented: $showingSources) {
                 FastingCitationsView()
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(Color(.systemBackground))
             }
         }
     }

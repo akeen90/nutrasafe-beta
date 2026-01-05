@@ -294,6 +294,8 @@ struct DiaryFoodRow: View {
                 diaryMealType: mealType,
                 diaryQuantity: food.quantity
             )
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
     }
     

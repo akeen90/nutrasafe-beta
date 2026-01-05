@@ -484,6 +484,7 @@ struct NutritionValue {
 
 struct ContentView: View {
     @StateObject private var diaryDataManager = DiaryDataManager.shared
+    @Environment(\.colorScheme) private var colorScheme
     @State private var selectedTab: TabItem = .diary
     @State private var showingSettings = false
     @State private var selectedFoodItems: Set<String> = []
@@ -695,6 +696,10 @@ struct ContentView: View {
         // - Individual view dismiss actions
         .sheet(isPresented: $showingSettings) {
             SettingsView()
+                .environmentObject(firebaseManager)
+                .environmentObject(subscriptionManager)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
         .fullScreenCover(isPresented: $showingPaywall) {
             PaywallView()
@@ -772,6 +777,8 @@ struct ContentView: View {
                     // Switch to weight tab after adding weight
                     selectedTab = .weight
                 }
+                .presentationDragIndicator(.visible)
+                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToUseBy)) { _ in
             #if DEBUG
@@ -1432,10 +1439,14 @@ struct WeightTrackingView: View {
         .sheet(isPresented: $showingAddWeight) {
             AddWeightView(currentWeight: $currentWeight, weightHistory: $weightHistory, userHeight: $userHeight)
                 .environmentObject(firebaseManager)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
         .sheet(isPresented: $showingHeightSetup) {
             HeightSetupView(userHeight: $userHeight)
                 .environmentObject(firebaseManager)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
         .sheet(item: $editingEntry) { entry in
             EditWeightView(
@@ -1446,6 +1457,8 @@ struct WeightTrackingView: View {
                 onSave: { loadWeightHistory() }
             )
             .environmentObject(firebaseManager)
+            .presentationDragIndicator(.visible)
+            .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
         .alert("Delete Weight Entry?", isPresented: $showingDeleteConfirmation) {
             Button("Cancel", role: .cancel) {
@@ -2351,6 +2364,7 @@ struct WeighingScaleIcon: View {
 // MARK: - Add Weight View
 struct AddWeightView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject var firebaseManager: FirebaseManager
     @Binding var currentWeight: Double
     @Binding var weightHistory: [WeightEntry]
@@ -2665,6 +2679,8 @@ struct AddWeightView: View {
                         #endif
                     }
                 }
+                .presentationDragIndicator(.visible)
+                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
             }
             .confirmationDialog("Choose Photo Source", isPresented: $showingPhotoOptions) {
                 Button("Take Photo") {
@@ -2776,6 +2792,7 @@ struct AddWeightView: View {
 // MARK: - Edit Weight View
 struct EditWeightView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject var firebaseManager: FirebaseManager
     let entry: WeightEntry
     @Binding var currentWeight: Double
@@ -3150,6 +3167,8 @@ struct EditWeightView: View {
                         #endif
                     }
                 }
+                .presentationDragIndicator(.visible)
+                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
             }
             .fullScreenCover(item: $selectedPhotoForViewing) { photo in
                 ZStack {
@@ -4147,6 +4166,7 @@ private let sampleDailyNutrition = DailyNutrition(
 )
 
 struct IngredientCameraView: View {
+    @Environment(\.colorScheme) private var colorScheme
     let foodName: String
     let onImageCaptured: (UIImage) -> Void
     let onDismiss: () -> Void
@@ -4294,6 +4314,8 @@ struct IngredientCameraView: View {
                 showingImagePicker = false // Dismiss picker
                 capturedImage = image
             }
+            .presentationDragIndicator(.visible)
+            .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
     }
 }
@@ -4426,6 +4448,8 @@ struct PendingVerificationRow: View {
                                 showingCompletionSheet = false
                             }
                         )
+                        .presentationDragIndicator(.visible)
+                        .presentationBackground(Color(.systemBackground))
                     }
                 }
                 

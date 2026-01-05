@@ -430,9 +430,13 @@ struct DiaryTabView: View {
         contentWithLifecycleModifiers
             .sheet(isPresented: $showingMoveSheet) {
                 moveFoodSheet
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(Color(.systemBackground))
             }
             .sheet(isPresented: $showingCopySheet) {
                 copyFoodSheet
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(Color(.systemBackground))
             }
             .sheet(item: $editingFood, onDismiss: {
                 editingFood = nil
@@ -448,6 +452,8 @@ struct DiaryTabView: View {
                     diaryQuantity: food.quantity,
                     diaryDate: selectedDate
                 )
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
             }
             .background(Color.adaptiveBackground)
     }
@@ -1149,6 +1155,8 @@ struct CategoricalNutrientTrackingView: View {
         .sheet(isPresented: $showingGaps) {
             if #available(iOS 16.0, *) {
                 NutrientGapsView(rows: vm.nutrientCoverageRows)
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(Color(.systemBackground))
             } else {
                 Text("Nutrient gaps requires iOS 16.0 or later")
             }
@@ -1156,6 +1164,8 @@ struct CategoricalNutrientTrackingView: View {
         .sheet(item: $selectedNutrientRow) { row in
             if #available(iOS 16.0, *) {
                 NutrientDetailModal(row: row)
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(Color(.systemBackground))
             } else {
                 Text(row.name)
             }
@@ -2682,6 +2692,8 @@ struct NutrientDetailModal: View {
                         }
                     }
                 }
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
             }
         }
     }

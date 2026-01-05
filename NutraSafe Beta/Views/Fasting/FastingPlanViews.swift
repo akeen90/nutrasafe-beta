@@ -274,6 +274,8 @@ struct FastingPlanManagementView: View {
             }
             .sheet(isPresented: $showingCreatePlan) {
                 FastingPlanCreationView(viewModel: viewModel)
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(Color(.systemBackground))
             }
             .alert("Delete Plan", isPresented: $showingDeleteConfirmation) {
                 Button("Cancel", role: .cancel) { }

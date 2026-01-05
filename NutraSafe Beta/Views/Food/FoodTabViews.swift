@@ -402,6 +402,8 @@ struct FoodReactionSummaryCard: View {
         .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
         .sheet(isPresented: $showingLogReaction) {
             navigationContainer { LogReactionView(reactionManager: reactionManager, selectedTab: $selectedTab) }
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
     }
 }
@@ -544,6 +546,8 @@ struct FoodReactionListCard: View {
         .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
         .sheet(isPresented: $showingPDFExportSheet) {
             MultipleFoodReactionsPDFExportSheet(reactions: reactions)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
     }
 }
@@ -596,9 +600,11 @@ struct FoodReactionRow: View {
         .buttonStyle(PlainButtonStyle())
         .sheet(isPresented: $showingDetail) {
             ReactionDetailView(reaction: reaction)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
     }
-    
+
     private func severityColor(for severity: ReactionSeverity) -> Color {
         switch severity {
         case .mild: return .yellow
@@ -1355,6 +1361,8 @@ struct ReactionDetailView: View {
             )
             .sheet(isPresented: $showingExportSheet) {
                 FoodReactionPDFExportSheet(reaction: reaction)
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(Color(.systemBackground))
             }
         }
     }
@@ -1966,6 +1974,8 @@ struct LogReactionView: View {
         )
         .sheet(isPresented: $showingFoodSearch) {
             navigationContainer { FoodReactionSearchView(selectedFood: $selectedFood) }
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
     }
 
@@ -2291,6 +2301,8 @@ struct FoodReactionSearchView: View {
                     DispatchQueue.main.async { dismiss() }
                 }
             }
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
         .onAppear {
             if diaryEntries.isEmpty && !isLoadingDiary {
@@ -3067,6 +3079,8 @@ struct FoodReactionPDFExportSheet: View {
             .sheet(isPresented: $showingShareSheet) {
                 if let url = pdfURL {
                     ShareSheet(items: [url])
+                        .presentationDragIndicator(.visible)
+                        .presentationBackground(Color(.systemBackground))
                 }
             }
         }
@@ -3253,6 +3267,8 @@ struct MultipleFoodReactionsPDFExportSheet: View {
             .sheet(isPresented: $showShareSheet) {
                 if let url = pdfURL {
                     ShareSheet(items: [url])
+                        .presentationDragIndicator(.visible)
+                        .presentationBackground(Color(.systemBackground))
                 }
             }
             .alert("Add Name to Report (Optional)", isPresented: $showingNameAlert) {

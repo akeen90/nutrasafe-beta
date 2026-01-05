@@ -1634,6 +1634,8 @@ struct FoodDetailViewFromSearch: View {
                 },
                 photoType: .nutrition
             )
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
         .sheet(isPresented: $showingBarcodeCamera) {
             IngredientCameraView(
@@ -1647,6 +1649,8 @@ struct FoodDetailViewFromSearch: View {
                 },
                 photoType: .barcode
             )
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
         // UseBy add flow
         .sheet(isPresented: $showingUseByAddSheet) {
@@ -1655,9 +1659,13 @@ struct FoodDetailViewFromSearch: View {
                 selectedTab = tab
                 dismiss()
             }
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
         .sheet(isPresented: $showingNutraSafeInfo) {
             NutraSafeGradeInfoView(result: nutraSafeGrade, food: displayFood)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
         .sheet(isPresented: $showingSugarInfo) {
             SugarScoreInfoView(
@@ -1665,6 +1673,8 @@ struct FoodDetailViewFromSearch: View {
                 food: displayFood,
                 perServingSugar: displayFood.sugar * perServingMultiplier * quantityMultiplier
             )
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
         .sheet(isPresented: $showingVitaminCitations) {
             NavigationView {
@@ -1719,6 +1729,8 @@ struct FoodDetailViewFromSearch: View {
                     }
                 }
             }
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
         .sheet(isPresented: $showingAllergenCitations) {
             NavigationView {
@@ -1771,6 +1783,8 @@ struct FoodDetailViewFromSearch: View {
                     }
                 }
             }
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
         // Barcode scanner for enhancement
         .sheet(isPresented: $showingBarcodeScannerForEnhancement) {
@@ -1783,6 +1797,8 @@ struct FoodDetailViewFromSearch: View {
                     showingBarcodeScannerForEnhancement = false
                 }
             )
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
         // Manual search for enhancement
         .sheet(isPresented: $showingManualSearchForEnhancement) {
@@ -1845,6 +1861,8 @@ struct FoodDetailViewFromSearch: View {
                     }
                 }
             }
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
     }
 
@@ -4656,6 +4674,8 @@ struct NutrientInfoCard: View {
                     }
                 }
             }
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
     }
 

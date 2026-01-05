@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ReactionLogView: View {
     @StateObject private var manager = ReactionLogManager.shared
+    @Environment(\.colorScheme) private var colorScheme
     @State private var showingLogSheet = false
     @State private var selectedEntry: ReactionLogEntry?
     @State private var selectedDayRange: DayRange = .threeDays
@@ -69,12 +70,18 @@ struct ReactionLogView: View {
         .background(Color.adaptiveBackground)
         .sheet(isPresented: $showingLogSheet) {
             LogReactionSheet(selectedDayRange: selectedDayRange)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
         .sheet(item: $selectedEntry) { entry in
             ReactionLogDetailView(entry: entry, selectedDayRange: selectedDayRange)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
         .sheet(isPresented: $showingPDFExportSheet) {
             MultiReactionPDFExportSheet()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
         .task {
             isLoadingData = true

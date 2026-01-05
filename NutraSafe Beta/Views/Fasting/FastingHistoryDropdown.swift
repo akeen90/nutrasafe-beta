@@ -100,6 +100,8 @@ struct FastingHistoryDropdown: View {
                 Task { await save(updated) }
             }
             .environmentObject(firebaseManager)
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
     }
 

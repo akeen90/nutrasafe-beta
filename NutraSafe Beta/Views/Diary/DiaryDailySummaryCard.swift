@@ -81,6 +81,8 @@ struct DiaryDailySummaryCard: View {
                 fetchWeeklySummary: fetchWeeklySummary,
                 setSelectedDate: setSelectedDate
             )
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
     }
 

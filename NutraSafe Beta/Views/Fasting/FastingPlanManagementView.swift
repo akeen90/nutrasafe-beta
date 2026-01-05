@@ -66,9 +66,13 @@ struct FastingPlanManagementView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showingCreatePlan) {
             FastingPlanCreationView(viewModel: viewModel)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
         .sheet(item: $planToEdit) { plan in
             FastingPlanEditView(viewModel: viewModel, plan: plan)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
         .alert("Delete Plan", isPresented: $showingDeleteAlert) {
             Button("Cancel", role: .cancel) { }

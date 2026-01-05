@@ -79,6 +79,8 @@ struct FastingInsightsView: View {
             .navigationBarTitleDisplayMode(.large)
             .sheet(isPresented: $showingAllSessions) {
                 AllSessionsView(viewModel: viewModel)
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(Color(.systemBackground))
             }
         }
     }

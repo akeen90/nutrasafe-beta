@@ -242,6 +242,8 @@ struct FoodReactionsHistoryView: View {
         }
         .sheet(item: $selectedReaction) { reaction in
             ReactionDetailView(reaction: reaction)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
         .alert("Error", isPresented: $showingError) {
             Button("OK", role: .cancel) { }

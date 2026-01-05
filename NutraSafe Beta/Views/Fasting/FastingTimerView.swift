@@ -14,6 +14,7 @@ import UserNotifications
 
 struct FastingTimerView: View {
     @EnvironmentObject var firebaseManager: FirebaseManager
+    @Environment(\.colorScheme) private var colorScheme
 
     // PERFORMANCE: Static gradient to avoid recreation on every render
     private static let progressGradient = LinearGradient(
@@ -438,9 +439,13 @@ struct FastingTimerView: View {
                 onSave: saveFastingSettings
             )
             .environmentObject(firebaseManager)
+            .presentationDragIndicator(.visible)
+            .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
         .sheet(isPresented: $showingCitations) {
             FastingCitationsView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
         .sheet(isPresented: $showingStartOptions) {
             VStack(spacing: 16) {
@@ -460,6 +465,9 @@ struct FastingTimerView: View {
                 .buttonStyle(.borderedProminent)
             }
             .padding()
+            .presentationDetents([.height(200)])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
         .sheet(isPresented: $showingEditFast) {
             VStack(spacing: 16) {
@@ -476,6 +484,9 @@ struct FastingTimerView: View {
                 .buttonStyle(.borderedProminent)
             }
             .padding()
+            .presentationDetents([.height(200)])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
     }
 

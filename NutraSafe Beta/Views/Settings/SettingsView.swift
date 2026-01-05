@@ -340,9 +340,13 @@ struct AboutSection: View {
         }
         .sheet(isPresented: $showingHealthDisclaimer) {
             HealthDisclaimerView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
         .sheet(isPresented: $showingDataSources) {
             SourcesAndCitationsView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
     }
 
@@ -614,6 +618,8 @@ struct NutritionGoalsSection: View {
                 macroGoals: $macroGoals,
                 onSave: saveMacroGoals
             )
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
         .alert("Error", isPresented: $showingError) {
             Button("OK", role: .cancel) { }
@@ -982,6 +988,8 @@ struct ProgressGoalsSection: View {
         .sheet(isPresented: $showingWeightHistory) {
             WeightTrackingView(showingSettings: $showingWeightHistory)
                 .environmentObject(firebaseManager)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
         .onChange(of: showingWeightHistory) { _, isShowing in
             if !isShowing {
@@ -997,9 +1005,13 @@ struct ProgressGoalsSection: View {
                 onSave: saveCurrentWeight
             )
             .environmentObject(firebaseManager)
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
         .sheet(isPresented: $showingHeightEditor) {
             HeightEditorView(height: $height, onSave: saveHeight)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
         .sheet(isPresented: $showingGoalEditor) {
             GoalWeightEditorView(
@@ -1007,6 +1019,8 @@ struct ProgressGoalsSection: View {
                 goalWeight: $goalWeight,
                 onSave: saveGoalWeight
             )
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
         .alert("Error", isPresented: $showingError) {
             Button("OK", role: .cancel) { }
@@ -1609,10 +1623,14 @@ struct HealthSafetySection: View {
         .sheet(isPresented: $showingAllergenManagement) {
             AllergenManagementView()
                 .environmentObject(firebaseManager)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
         .sheet(isPresented: $showingReactionsHistory) {
             FoodReactionsHistoryView()
                 .environmentObject(firebaseManager)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
         // Removed sheets for Safety Alerts and Micronutrient Display
     }
@@ -1812,9 +1830,13 @@ struct AppPreferencesSection: View {
         }
         .sheet(isPresented: $showingThemeSelector) {
             ThemeSelectorView(selectedTheme: $appearanceMode)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
         .sheet(isPresented: $showingUnitsSelector) {
             UnitsSelectorView(selectedUnit: $unitSystem)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
         .sheet(isPresented: $showingNotificationSettings) {
             NotificationSettingsView(
@@ -1822,9 +1844,13 @@ struct AppPreferencesSection: View {
                 useByNotificationsEnabled: $useByNotificationsEnabled,
                 fastingNotificationsEnabled: $fastingNotificationsEnabled
             )
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
         .sheet(isPresented: $showingDataPrivacy) {
             DataPrivacyView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
     }
 }
@@ -2294,6 +2320,8 @@ struct DataPrivacyView: View {
                 .navigationTitle("Confirm Deletion")
                 .navigationBarTitleDisplayMode(.inline)
             }
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
     }
 
@@ -3051,6 +3079,8 @@ struct FoodReactionsHistoryView: View {
         }
         .sheet(item: $selectedReaction) { reaction in
             ReactionDetailView(reaction: reaction)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
         .alert("Error", isPresented: $showingError) {
             Button("OK", role: .cancel) { }

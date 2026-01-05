@@ -53,6 +53,8 @@ struct SmartRecommendationsView: View {
             }
             .sheet(isPresented: $showingSources) {
                 SourcesAndCitationsView()
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(Color(.systemBackground))
             }
             .refreshable {
                 await refreshRecommendations()

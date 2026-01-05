@@ -150,6 +150,8 @@ struct DatabasePhotoPromptView: View {
                 },
                 photoType: .ingredients
             )
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
         .sheet(isPresented: $showingNutritionCamera) {
             IngredientCameraView(
@@ -163,6 +165,8 @@ struct DatabasePhotoPromptView: View {
                 },
                 photoType: .nutrition
             )
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
         .sheet(isPresented: $showingBarcodeCamera) {
             IngredientCameraView(
@@ -176,6 +180,8 @@ struct DatabasePhotoPromptView: View {
                 },
                 photoType: .barcode
             )
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
     }
     

@@ -136,6 +136,8 @@ struct AdditiveWatchView: View {
         .animation(.easeInOut(duration: 0.3), value: additiveResult != nil)
         .sheet(isPresented: $showingSources) {
             SourcesAndCitationsView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
         .onAppear {
             // Only analyze if we have meaningful ingredients

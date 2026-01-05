@@ -162,12 +162,16 @@ struct UseByTabView: View {
             Text("Barcode Scanner Coming Soon")
                 .font(.title)
                 .padding()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
         .sheet(isPresented: $showingCamera) {
             // Camera scanner will be implemented
             Text("Camera Scanner Coming Soon")
                 .font(.title)
                 .padding()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
     }
 }
@@ -440,6 +444,8 @@ struct AddFoundFoodToUseBySheet: View {
                         showCameraPicker = false
                     }
                 }
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
             }
             .sheet(isPresented: $showPhotoPicker) {
                 PhotoLibraryPicker { image in
@@ -451,6 +457,8 @@ struct AddFoundFoodToUseBySheet: View {
                         }
                     }
                 }
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
             }
         }
     }
@@ -1859,6 +1867,8 @@ struct ModernExpiryRow: View {
         }
         .sheet(isPresented: $showingDetail) {
             UseByItemDetailView(item: item)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
         .alert("Delete Item", isPresented: $showingDeleteAlert) {
             Button("Delete", role: .destructive) { confirmDelete() }
@@ -2220,6 +2230,8 @@ struct UseByBarcodeScanSheet: View {
         .navigationViewStyle(StackNavigationViewStyle())
 .sheet(item: $scannedFood) { food in
             AddFoundFoodToUseBySheet(food: food)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
         .sheet(isPresented: $showAddForm) {
             VStack(spacing: 16) {
@@ -2234,6 +2246,8 @@ struct UseByBarcodeScanSheet: View {
             .padding()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
     }
 
@@ -2543,6 +2557,8 @@ struct UseByInlineSearchView: View {
                     .onAppear {
                         print("🟢 [UseBy Search] UseByFoodDetailSheet appeared for: \(food.name)")
                     }
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(Color(.systemBackground))
             }
         }
         .onChange(of: showingFoodDetail) { _, newValue in
@@ -2691,6 +2707,8 @@ Text(food.name)
         .navigationViewStyle(StackNavigationViewStyle())
 .sheet(item: $selectedFood) { selectedFood in
             AddFoundFoodToUseBySheet(food: selectedFood)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
     }
 
@@ -3566,6 +3584,8 @@ struct UseByItemDetailView: View {
                     .padding()
                 Spacer()
             }
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
         .onAppear {
             // Load existing photo from URL if available (edit mode only)
@@ -3628,6 +3648,8 @@ struct UseByItemDetailView: View {
                     showCameraPicker = false
                 }
             }
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
         .sheet(isPresented: $showPhotoPicker) {
             PhotoLibraryPicker { image in
@@ -3639,6 +3661,8 @@ struct UseByItemDetailView: View {
                     }
                 }
             }
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(.systemBackground))
         }
     }
 
@@ -4460,6 +4484,8 @@ struct CleanUseByRow: View {
         }
         .sheet(isPresented: $showingDetail) {
             UseByItemDetailView(item: item)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
     }
 

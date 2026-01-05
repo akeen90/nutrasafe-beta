@@ -220,6 +220,8 @@ struct SignInView: View {
         }
         .sheet(isPresented: $showingPasswordReset) {
             PasswordResetView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
     }
 

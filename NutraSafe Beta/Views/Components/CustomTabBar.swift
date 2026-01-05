@@ -46,7 +46,7 @@ struct CustomTabBar: View {
                     .offset(y: -10) // Lift the add button slightly
                     .buttonStyle(PlainButtonStyle())
                 } else {
-                    // Regular tab buttons
+                    // Regular tab buttons with large tap targets
                     Button(action: {
                         let allowed = subscriptionManager.isSubscribed || subscriptionManager.isInTrial || subscriptionManager.isPremiumOverride || tab == .diary
                         if allowed {
@@ -76,10 +76,10 @@ struct CustomTabBar: View {
                                     .offset(y: tab == .useBy ? -3 : 0)
                             }
                         }
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 4)
-                        // No surrounding shade — highlight is icon + label tint only
+                        .frame(maxWidth: .infinity, minHeight: 52) // Increased from 44 for better tap target
+                        .padding(.vertical, 6)
+                        .padding(.horizontal, 2)
+                        .contentShape(Rectangle()) // Ensure entire frame is tappable
                     }
                     .buttonStyle(PlainButtonStyle())
                 }

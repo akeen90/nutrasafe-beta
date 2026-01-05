@@ -13,6 +13,7 @@ struct MicronutrientDashboard: View {
     @StateObject private var trackingManager = MicronutrientTrackingManager.shared
     @StateObject private var recommendationEngine = NutrientRecommendationEngine.shared
     @StateObject private var diaryDataManager = DiaryDataManager.shared
+    @Environment(\.colorScheme) private var colorScheme
     @State private var selectedFilter: DashboardFilter = .all
     @State private var selectedNutrient: MicronutrientSummary?
     @State private var showingTimeline = false
@@ -99,15 +100,23 @@ struct MicronutrientDashboard: View {
         )
         .sheet(item: $selectedNutrient) { nutrient in
             NutrientInfoSheet(summary: nutrient)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
         .sheet(isPresented: $showingTimeline) {
             MicronutrientTimelineView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
         .sheet(isPresented: $showingRecommendations) {
             SmartRecommendationsView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
         .sheet(isPresented: $showingSources) {
             SourcesAndCitationsView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
         .task {
             // PERFORMANCE: Skip if already loaded - prevents redundant Firebase calls on tab switches

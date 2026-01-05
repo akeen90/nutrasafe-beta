@@ -202,6 +202,8 @@ struct AddFoodBarcodeView: View {
                         pendingContribution = nil
                     })
                 }
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
             }
         }
     }
