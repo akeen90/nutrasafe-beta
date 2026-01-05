@@ -1245,7 +1245,6 @@ struct NutrientInfoSheet: View {
             // Load food sources from database
             if let sources = summary.info?.commonSources {
                 let items = parseArrayContent(sources)
-                let _ = print("🍃 [NutrientInfoSheet] Rendering food sources for \(summary.nutrient): \(items)")
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(items, id: \.self) { item in
                         HStack(alignment: .top, spacing: 8) {
@@ -1262,7 +1261,6 @@ struct NutrientInfoSheet: View {
                 .font(.system(size: 14))
                 .foregroundColor(.secondary)
             } else {
-                let _ = print("⚠️ [NutrientInfoSheet] No sources for \(summary.nutrient) - info: \(summary.info != nil), commonSources: \(summary.info?.commonSources ?? "nil")")
                 Text("Loading food sources...")
                     .font(.system(size: 14))
                     .foregroundColor(.secondary)

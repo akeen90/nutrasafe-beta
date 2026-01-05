@@ -442,7 +442,6 @@ struct DiaryTabView: View {
                 editingFood = nil
                 editingMealType = ""
             }) { food in
-                let _ = print("📝 Presenting edit sheet for: \(food.name) in meal: \(editingMealType), quantity: \(food.quantity)")
                 FoodDetailViewFromSearch(
                     food: food.toFoodSearchResult(),
                     sourceType: .diary,

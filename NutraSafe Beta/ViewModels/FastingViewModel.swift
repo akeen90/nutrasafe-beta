@@ -256,7 +256,9 @@ class FastingViewModel: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
+            #if DEBUG
             print("🔔 Received .fastHistoryUpdated notification - refreshing sessions")
+            #endif
             Task {
                 // PERFORMANCE: Load all data in a single batch instead of sequential calls
                 await self?.loadInitialData()
@@ -302,7 +304,9 @@ class FastingViewModel: ObservableObject {
         // If we already have an active plan set locally (e.g., just created one),
         // skip the Firestore fetch to avoid race condition with eventual consistency
         if self.activePlan != nil {
+            #if DEBUG
             print("   ℹ️  Active plan already set locally - skipping Firestore fetch to avoid race condition")
+            #endif
             return
         }
 
@@ -316,19 +320,27 @@ class FastingViewModel: ObservableObject {
 
     private func fetchActivePlanFromFirebase() async {
         do {
+            #if DEBUG
             print("   📥 Fetching plans from Firebase...")
+            #endif
             let plans = try await firebaseManager.getFastingPlans()
+            #if DEBUG
             print("   📊 Received \(plans.count) total plans from Firebase")
+            #endif
             let activePlan = plans.first(where: { $0.active })
             if let active = activePlan {
                 print("   ✅ Found active plan: '\(active.name)' (ID: \(active.id ?? "nil"))")
                 self.activePlan = active
             } else {
+                #if DEBUG
                 print("   ⚠️ No active plan found in \(plans.count) plans")
+                #endif
                 self.activePlan = nil
             }
         } catch {
+            #if DEBUG
             print("   ❌ Failed to load active plan: \(error.localizedDescription)")
+            #endif
             self.error = error
             self.showError = true
         }
@@ -336,16 +348,24 @@ class FastingViewModel: ObservableObject {
 
     func loadAllPlans() async {
         do {
+            #if DEBUG
             print("   📥 Fetching all plans from Firebase...")
+            #endif
             let plans = try await firebaseManager.getFastingPlans()
+            #if DEBUG
             print("   📊 Received \(plans.count) total plans")
+            #endif
             for (index, plan) in plans.enumerated() {
                 print("      Plan \(index + 1): '\(plan.name)' - Active: \(plan.active) - ID: \(plan.id ?? "nil")")
             }
             self.allPlans = plans
+            #if DEBUG
             print("   ✅ Updated allPlans array with \(plans.count) plans")
+            #endif
         } catch {
+            #if DEBUG
             print("   ❌ Failed to load all plans: \(error.localizedDescription)")
+            #endif
             self.error = error
             self.showError = true
         }
@@ -549,13 +569,17 @@ class FastingViewModel: ObservableObject {
         Task {
             do {
                 let savedId = try await firebaseManager.saveFastingSession(session)
+                #if DEBUG
                 print("✅ Auto-recorded regime fast: \(savedId)")
+                #endif
 
                 // Refresh sessions and analytics
                 await loadRecentSessions()
                 await loadAnalytics()
             } catch {
+                #if DEBUG
                 print("❌ Failed to auto-record regime fast: \(error)")
+                #endif
             }
         }
     }
@@ -571,16 +595,26 @@ class FastingViewModel: ObservableObject {
         reminderEnabled: Bool,
         reminderMinutesBeforeEnd: Int
     ) async {
+        #if DEBUG
         print("📝 FastingViewModel.createFastingPlan called")
+        #endif
+        #if DEBUG
         print("   Name: '\(name)'")
+        #endif
+        #if DEBUG
         print("   Duration: \(durationHours) hours")
+        #endif
+        #if DEBUG
         print("   Days: \(daysOfWeek)")
+        #endif
 
         isLoading = true
         defer { isLoading = false }
 
         // Validate plan
+        #if DEBUG
         print("   🔍 Validating plan...")
+        #endif
         let validationResult = FastingManager.validatePlan(
             name: name,
             durationHours: durationHours,
@@ -589,35 +623,49 @@ class FastingViewModel: ObservableObject {
 
         guard case .success = validationResult else {
             if case .failure(let error) = validationResult {
+                #if DEBUG
                 print("   ❌ Validation failed: \(error.reason)")
+                #endif
                 self.error = error
                 self.showError = true
             }
             return
         }
 
+        #if DEBUG
         print("   ✅ Validation passed")
+        #endif
 
         // Deactivate current plan if exists
         if let currentPlan = activePlan {
+            #if DEBUG
             print("   📋 Deactivating current plan: \(currentPlan.name)")
+            #endif
             var deactivatedPlan = currentPlan
             deactivatedPlan.active = false
             do {
                 try await firebaseManager.updateFastingPlan(deactivatedPlan)
+                #if DEBUG
                 print("   ✅ Current plan deactivated")
+                #endif
             } catch {
+                #if DEBUG
                 print("   ❌ Failed to deactivate current plan: \(error.localizedDescription)")
+                #endif
                 self.error = error
                 self.showError = true
                 return
             }
         } else {
+            #if DEBUG
             print("   📋 No active plan to deactivate")
+            #endif
         }
 
         // Create new plan
+        #if DEBUG
         print("   📝 Creating new plan...")
+        #endif
         let newPlan = FastingPlan(
             userId: userId,
             name: name,
@@ -633,10 +681,14 @@ class FastingViewModel: ObservableObject {
             createdAt: Date()
         )
 
+        #if DEBUG
         print("   💾 Saving plan to Firebase...")
+        #endif
         do {
             let docId = try await firebaseManager.saveFastingPlan(newPlan)
+            #if DEBUG
             print("   ✅ Plan saved to Firebase successfully with ID: \(docId)")
+            #endif
 
             // Update the plan with the returned document ID
             var savedPlan = newPlan
@@ -644,12 +696,18 @@ class FastingViewModel: ObservableObject {
 
             // Update local state immediately instead of waiting for Firebase fetch
             // (Firestore has eventual consistency - the document might not be immediately available for reads)
+            #if DEBUG
             print("   🔄 Updating local state with saved plan...")
+            #endif
             self.activePlan = savedPlan
             self.allPlans.insert(savedPlan, at: 0) // Insert at beginning (most recent)
+            #if DEBUG
             print("   ✅ Local state updated - createFastingPlan complete")
+            #endif
         } catch {
+            #if DEBUG
             print("   ❌ Failed to save plan to Firebase: \(error.localizedDescription)")
+            #endif
             self.error = error
             self.showError = true
         }
@@ -728,22 +786,32 @@ class FastingViewModel: ObservableObject {
     /// Activate the regime for the active plan
     /// - Parameter startFromNow: If true, starts the fast from the current time instead of scheduled time
     func startRegime(startFromNow: Bool = false) async {
+        #if DEBUG
         print("🔵 startRegime(startFromNow: \(startFromNow)) called")
+        #endif
+        #if DEBUG
         print("   Active plan exists: \(activePlan != nil)")
+        #endif
         print("   Active plan ID: \(activePlan?.id ?? "nil")")
         print("   Active plan name: \(activePlan?.name ?? "N/A")")
 
         guard let plan = activePlan, let planId = plan.id else {
+            #if DEBUG
             print("❌ startRegime() guard failed - plan or planId is nil")
+            #endif
             print("   activePlan: \(activePlan != nil ? "exists" : "nil")")
             print("   activePlan.id: \(activePlan?.id ?? "nil")")
             self.error = NSError(domain: "FastingViewModel", code: 1, userInfo: [NSLocalizedDescriptionKey: "No active plan found"])
             self.showError = true
+            #if DEBUG
             print("   showError set to: \(self.showError)")
+            #endif
             return
         }
 
+        #if DEBUG
         print("✅ Starting regime for plan: '\(plan.name)' (ID: \(planId))")
+        #endif
         isLoading = true
         defer { isLoading = false }
 
@@ -758,23 +826,33 @@ class FastingViewModel: ObservableObject {
 
             // Clear any previous ended window markers to start fresh
             lastEndedWindowEnd = nil
+            #if DEBUG
             print("🧹 Cleared lastEndedWindowEnd marker")
+            #endif
 
             // Clear any old snooze data from previous regime
             UserDefaults.standard.removeObject(forKey: "regimeSnoozedUntil_\(planId)")
             cachedSnoozeUntil = nil
+            #if DEBUG
             print("🧹 Cleared any old snooze data")
+            #endif
 
             // Store custom start time if starting from now
             if startFromNow {
                 customStartTimeOverride = Date()
+                #if DEBUG
                 print("📝 Custom start time override set to now: \(Date())")
+                #endif
             } else {
                 customStartTimeOverride = nil
             }
 
+            #if DEBUG
             print("✅ Regime started successfully and local state updated for plan: \(plan.name)")
+            #endif
+            #if DEBUG
             print("   regimeActive is now: \(self.activePlan?.regimeActive ?? false)")
+            #endif
 
             // Request notification permissions and schedule notifications
             do {
@@ -790,20 +868,30 @@ class FastingViewModel: ObservableObject {
                             for: updatedPlan,
                             startingAt: Date()
                         )
+                        #if DEBUG
                         print("📅 Scheduled immediate fast notifications for plan: \(plan.name)")
+                        #endif
                     }
 
+                    #if DEBUG
                     print("📅 Notifications scheduled for plan: \(plan.name)")
+                    #endif
                 } else {
+                    #if DEBUG
                     print("⚠️ Notification permissions not granted")
+                    #endif
                 }
             } catch {
+                #if DEBUG
                 print("⚠️ Failed to schedule notifications: \(error.localizedDescription)")
+                #endif
             }
         } catch {
             self.error = error
             self.showError = true
+            #if DEBUG
             print("❌ Failed to start regime: \(error.localizedDescription)")
+            #endif
         }
     }
 
@@ -843,13 +931,19 @@ class FastingViewModel: ObservableObject {
                 )
 
                 let savedId = try await firebaseManager.saveFastingSession(session)
+                #if DEBUG
                 print("✅ Recorded partial regime fast: \(savedId)")
+                #endif
 
                 // Mark this window as already ended so it won't be reused if regime is restarted
                 lastEndedWindowEnd = windowEnd
+                #if DEBUG
                 print("📝 Marked window ending at \(windowEnd) as already used")
+                #endif
             } else {
+                #if DEBUG
                 print("ℹ️ Not in fasting window - no session to record")
+                #endif
             }
 
             // Clear regime tracking state
@@ -860,7 +954,9 @@ class FastingViewModel: ObservableObject {
             // Clear any snooze data
             UserDefaults.standard.removeObject(forKey: "regimeSnoozedUntil_\(planId)")
             cachedSnoozeUntil = nil
+            #if DEBUG
             print("🧹 Cleared snooze data for stopped regime")
+            #endif
 
             // Stop the regime
             try await fastingService.stopRegime(planId: planId)
@@ -873,16 +969,24 @@ class FastingViewModel: ObservableObject {
 
             // Cancel notifications for this plan
             await FastingNotificationManager.shared.cancelPlanNotifications(planId: planId)
+            #if DEBUG
             print("🗑️ Notifications cancelled for plan: \(plan.name)")
+            #endif
 
             await loadRecentSessions()
             await loadAnalytics()
+            #if DEBUG
             print("✅ Regime stopped successfully and local state updated for plan: \(plan.name)")
+            #endif
+            #if DEBUG
             print("   regimeActive is now: \(self.activePlan?.regimeActive ?? false)")
+            #endif
         } catch {
             self.error = error
             self.showError = true
+            #if DEBUG
             print("❌ Failed to stop regime: \(error.localizedDescription)")
+            #endif
         }
     }
 
@@ -900,7 +1004,9 @@ class FastingViewModel: ObservableObject {
 
             // If the snooze just expired (within last 5 minutes), auto-resume fasting
             if now.timeIntervalSince(snoozeUntil) < 300 && now.timeIntervalSince(snoozeUntil) >= 0 {
+                #if DEBUG
                 print("⏰ Snooze expired at \(snoozeUntil.formatted(date: .omitted, time: .shortened)) - auto-resuming fast")
+                #endif
 
                 // Start a new custom fast from now
                 customStartTimeOverride = now
@@ -921,7 +1027,9 @@ class FastingViewModel: ObservableObject {
                 if let planId = plan.id {
                     UserDefaults.standard.removeObject(forKey: "regimeSnoozedUntil_\(planId)")
                     cachedSnoozeUntil = nil
+                    #if DEBUG
                     print("🧹 Cleared old expired snooze data")
+                    #endif
                 }
             }
         }
@@ -933,7 +1041,9 @@ class FastingViewModel: ObservableObject {
             // If the marker is recent (within last hour), we're definitely in eating window
             if now.timeIntervalSince(endedWindow) < 3600 {
                 if let nextFast = activePlan?.nextScheduledFastingWindow() {
+                    #if DEBUG
                     print("🍽️ In eating window due to recent manual end at \(endedWindow.formatted(date: .omitted, time: .shortened))")
+                    #endif
                     return .eating(nextFastStart: nextFast)
                 }
             }
@@ -942,7 +1052,9 @@ class FastingViewModel: ObservableObject {
             if case .fasting(let windowStart, _) = planState {
                 // If the plan's current window started after the marker, clear it
                 if windowStart > endedWindow {
+                    #if DEBUG
                     print("🧹 Clearing old ended window marker - moved to new window")
+                    #endif
                     lastEndedWindowEnd = nil
                 }
             }
@@ -980,7 +1092,9 @@ class FastingViewModel: ObservableObject {
         if Date() >= customEnd {
             customStartTimeOverride = nil
             customTargetHoursOverride = nil
+            #if DEBUG
             print("🧹 Cleared expired custom start time override")
+            #endif
         }
     }
 
@@ -1148,20 +1262,30 @@ class FastingViewModel: ObservableObject {
     // MARK: - Session Management
 
     func startFastingSession() async {
+        #if DEBUG
         print("🚀 startFastingSession() called")
+        #endif
+        #if DEBUG
         print("   📌 Current userId: '\(userId)'")
+        #endif
         guard let plan = activePlan else {
+            #if DEBUG
             print("   ❌ No active plan found")
+            #endif
             self.error = NSError(domain: "FastingViewModel", code: 1, userInfo: [NSLocalizedDescriptionKey: "No active plan found"])
             self.showError = true
             return
         }
 
+        #if DEBUG
         print("   ✅ Active plan found: '\(plan.name)'")
+        #endif
         isLoading = true
         defer { isLoading = false }
 
+        #if DEBUG
         print("   📝 Creating session with userId: '\(userId)'")
+        #endif
         let session = FastingManager.createSession(
             userId: userId,
             plan: plan,
@@ -1170,10 +1294,14 @@ class FastingViewModel: ObservableObject {
 
         print("   📋 Session created - userId: '\(session.userId)', planId: '\(session.planId ?? "nil")', target: \(session.targetDurationHours)h")
 
+        #if DEBUG
         print("   💾 Saving session to Firebase...")
+        #endif
         do {
             let docId = try await firebaseManager.saveFastingSession(session)
+            #if DEBUG
             print("   ✅ Session saved with ID: \(docId)")
+            #endif
 
             // Update local state immediately (same fix as for plan creation)
             var savedSession = session
@@ -1181,9 +1309,13 @@ class FastingViewModel: ObservableObject {
             self.activeSession = savedSession
             self.recentSessions.insert(savedSession, at: 0)
 
+            #if DEBUG
             print("   ✅ Local state updated - startFastingSession complete")
+            #endif
         } catch {
+            #if DEBUG
             print("   ❌ Failed to save session: \(error.localizedDescription)")
+            #endif
             self.error = error
             self.showError = true
         }
@@ -1308,14 +1440,18 @@ class FastingViewModel: ObservableObject {
 
     func skipCurrentRegimeFast() async {
         guard let plan = activePlan, plan.regimeActive else {
+            #if DEBUG
             print("❌ Skip failed: No active plan or regime not active")
+            #endif
             return
         }
 
         // Get current regime state to find the window end time
         guard case .fasting(let started, let ends) = currentRegimeState else {
             #if DEBUG
+            #if DEBUG
             print("⚠️ Not currently in a fasting window - cannot skip")
+            #endif
             #endif
             return
         }
@@ -1344,46 +1480,74 @@ class FastingViewModel: ObservableObject {
                 startTime: started
             )
 
+            #if DEBUG
             print("   Created session - before action:")
+            #endif
+            #if DEBUG
             print("      userId: \(session.userId)")
+            #endif
             print("      planId: \(session.planId ?? "nil")")
+            #if DEBUG
             print("      startTime: \(session.startTime.formatted(date: .abbreviated, time: .complete))")
+            #endif
             print("      endTime: \(session.endTime?.formatted(date: .abbreviated, time: .complete) ?? "nil")")
 
             if shouldSkip {
                 // Under 1 hour - mark as skipped
                 session = FastingManager.skipSession(session)
+                #if DEBUG
                 print("   Marking as skipped (under 1 hour)")
+                #endif
             } else {
                 // 1 hour or more - mark as ended early
                 session.endTime = now
                 session.completionStatus = .earlyEnd
                 session.manuallyEdited = false
+                #if DEBUG
                 print("   Marking as ended early (1+ hours)")
+                #endif
             }
 
+            #if DEBUG
             print("   After action:")
+            #endif
             print("      endTime: \(session.endTime?.formatted(date: .abbreviated, time: .complete) ?? "nil")")
+            #if DEBUG
             print("      skipped: \(session.skipped)")
+            #endif
+            #if DEBUG
             print("      completionStatus: \(session.completionStatus)")
+            #endif
+            #if DEBUG
             print("      actualDurationHours: \(session.actualDurationHours)")
+            #endif
 
             // Save the session
             let savedId = try await firebaseManager.saveFastingSession(session)
+            #if DEBUG
             print("   ✅ Session SAVED to Firebase with ID: \(savedId)")
+            #endif
 
             // Mark this fasting window as ended AND prevent auto-record duplicate
             lastEndedWindowEnd = ends
             lastRecordedFastWindowEnd = ends  // Prevent recordCompletedRegimeFast() from creating duplicate
 
             print("✅ \(shouldSkip ? "Skipped" : "Ended early") current fast - regime continues")
+            #if DEBUG
             print("   Fast window: \(started.formatted(date: .omitted, time: .shortened)) - \(ends.formatted(date: .omitted, time: .shortened))")
+            #endif
 
             // Refresh sessions to show the fast
+            #if DEBUG
             print("   Refreshing sessions...")
+            #endif
             await loadRecentSessions()
+            #if DEBUG
             print("   📊 After refresh: recentSessions count = \(recentSessions.count)")
+            #endif
+            #if DEBUG
             print("   Recent sessions:")
+            #endif
             for (index, session) in recentSessions.enumerated() {
                 print("      \(index + 1). ID: \(session.id ?? "nil"), status: \(session.completionStatus), skipped: \(session.skipped), duration: \(String(format: "%.1f", session.actualDurationHours))h")
             }
@@ -1392,14 +1556,20 @@ class FastingViewModel: ObservableObject {
 
             // Cancel and reschedule notifications to prevent orphaned notifications
             if let planId = plan.id {
+                #if DEBUG
                 print("🔔 Cancelling old notifications for plan: \(planId)")
+                #endif
                 await FastingNotificationManager.shared.cancelPlanNotifications(planId: planId)
                 if plan.regimeActive {
                     do {
                         try await FastingNotificationManager.shared.schedulePlanNotifications(for: plan)
+                        #if DEBUG
                         print("✅ Notifications rescheduled")
+                        #endif
                     } catch {
+                        #if DEBUG
                         print("⚠️ Failed to reschedule notifications: \(error)")
+                        #endif
                     }
                 }
             }
@@ -1409,7 +1579,9 @@ class FastingViewModel: ObservableObject {
 
             // The regime stays active and will start the next scheduled fast
         } catch {
+            #if DEBUG
             print("❌ SKIP/END FAST ERROR: \(error.localizedDescription)")
+            #endif
             self.error = error
             self.showError = true
         }
@@ -1420,7 +1592,9 @@ class FastingViewModel: ObservableObject {
 
         // Get current regime state to find the window end time
         guard case .fasting(let started, let ends) = currentRegimeState else {
+            #if DEBUG
             print("⚠️ Not currently in a fasting window")
+            #endif
             return
         }
 
@@ -1452,8 +1626,12 @@ class FastingViewModel: ObservableObject {
             UserDefaults.standard.set(snoozeUntil, forKey: "regimeSnoozedUntil_\(plan.id ?? "")")
             cachedSnoozeUntil = snoozeUntil
 
+            #if DEBUG
             print("⏰ Snoozed regime fast until \(snoozeUntil.formatted(date: .abbreviated, time: .shortened))")
+            #endif
+            #if DEBUG
             print("   Fast window: \(started.formatted(date: .omitted, time: .shortened)) - \(ends.formatted(date: .omitted, time: .shortened))")
+            #endif
 
             // Request notification permission and schedule notification
             let center = UNUserNotificationCenter.current()
@@ -1470,7 +1648,9 @@ class FastingViewModel: ObservableObject {
                 // Calculate time interval until snooze ends
                 let timeInterval = snoozeUntil.timeIntervalSinceNow
                 guard timeInterval > 0 else {
+                    #if DEBUG
                     print("⚠️ Snooze time is in the past, skipping notification")
+                    #endif
                     return
                 }
 
@@ -1489,7 +1669,9 @@ class FastingViewModel: ObservableObject {
 
                 // Schedule notification
                 try await center.add(request)
+                #if DEBUG
                 print("✅ Snooze notification scheduled for \(snoozeUntil.formatted(date: .abbreviated, time: .shortened))")
+                #endif
             }
 
             // Refresh sessions to show the partial fast
@@ -1498,14 +1680,20 @@ class FastingViewModel: ObservableObject {
 
             // Cancel and reschedule notifications to prevent orphaned notifications
             if let planId = plan.id {
+                #if DEBUG
                 print("🔔 Cancelling old notifications for plan: \(planId)")
+                #endif
                 await FastingNotificationManager.shared.cancelPlanNotifications(planId: planId)
                 if plan.regimeActive {
                     do {
                         try await FastingNotificationManager.shared.schedulePlanNotifications(for: plan)
+                        #if DEBUG
                         print("✅ Notifications rescheduled after snooze")
+                        #endif
                     } catch {
+                        #if DEBUG
                         print("⚠️ Failed to reschedule notifications: \(error)")
+                        #endif
                     }
                 }
             }
@@ -1513,9 +1701,13 @@ class FastingViewModel: ObservableObject {
             // Trigger UI refresh to show eating window
             objectWillChange.send()
 
+            #if DEBUG
             print("✅ Fast snoozed - transitioned to eating window")
+            #endif
         } catch {
+            #if DEBUG
             print("❌ Failed to snooze regime fast: \(error)")
+            #endif
             self.error = error
             self.showError = true
         }
@@ -1616,11 +1808,15 @@ class FastingViewModel: ObservableObject {
 
     func continuePreviousFast(_ session: FastingSession) async {
         guard var previousSession = activeSession ?? (recentSessions.first { $0.id == session.id }) else {
+            #if DEBUG
             print("❌ Cannot continue fast - session not found")
+            #endif
             return
         }
 
+        #if DEBUG
         print("🔄 Continuing previous fast from early end")
+        #endif
         isLoading = true
         defer { isLoading = false }
 
@@ -1632,9 +1828,13 @@ class FastingViewModel: ObservableObject {
         do {
             try await firebaseManager.updateFastingSession(previousSession)
             self.activeSession = previousSession
+            #if DEBUG
             print("✅ Session reactivated successfully")
+            #endif
         } catch {
+            #if DEBUG
             print("❌ Failed to reactivate session: \(error.localizedDescription)")
+            #endif
             self.error = error
             self.showError = true
         }
