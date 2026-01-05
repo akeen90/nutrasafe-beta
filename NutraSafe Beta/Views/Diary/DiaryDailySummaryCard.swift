@@ -137,7 +137,7 @@ struct DiaryDailySummaryCard: View {
                     Text(macroGoal.macroType.displayName)
                         .font(.system(size: 14, weight: .semibold, design: .rounded))
                         .foregroundColor(.primary)
-                        .lineLimit(1)
+                        .fixedSize()
 
                     Spacer()
 
