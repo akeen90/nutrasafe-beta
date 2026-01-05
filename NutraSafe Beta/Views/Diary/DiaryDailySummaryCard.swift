@@ -143,15 +143,17 @@ struct DiaryDailySummaryCard: View {
 
                     Spacer()
 
-                    // Achieved value
+                    // Achieved value (fixed width, right aligned)
                     Text("\(Int(calculateMacroTotal(for: macroGoal.macroType).rounded()))g")
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundColor(macroGoal.macroType.color)
+                        .frame(width: 50, alignment: .trailing)
 
-                    // Goal value
+                    // Goal value (fixed width, right aligned)
                     Text("/ \(Int(macroGoal.calculateGramGoal(from: calorieGoal)))g")
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundColor(.secondary)
+                        .frame(width: 55, alignment: .trailing)
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
