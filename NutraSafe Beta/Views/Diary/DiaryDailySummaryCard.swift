@@ -129,29 +129,38 @@ struct DiaryDailySummaryCard: View {
     private var microMacrosView: some View {
         VStack(alignment: .leading, spacing: 6) {
             ForEach(macroGoals, id: \.macroType) { macroGoal in
-                HStack(spacing: 3) {
-                    Circle()
-                        .fill(macroGoal.macroType.color)
-                        .frame(width: 8, height: 8)
+                HStack(spacing: 0) {
+                    // Label column (left aligned)
+                    HStack(spacing: 3) {
+                        Circle()
+                            .fill(macroGoal.macroType.color)
+                            .frame(width: 8, height: 8)
 
-                    Text(macroGoal.macroType.displayName)
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundColor(.primary)
-                        .lineLimit(1)
+                        Text(macroGoal.macroType.displayName)
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
+                    }
 
                     Spacer()
 
+                    // Achieved value column (fixed width, right aligned)
                     Text("\(Int(calculateMacroTotal(for: macroGoal.macroType).rounded()))")
                         .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundColor(macroGoal.macroType.color)
+                        .frame(width: 44, alignment: .trailing)
 
-                    Text("/\(Int(macroGoal.calculateGramGoal(from: calorieGoal)))")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary)
+                    // Goal value column (fixed width, left aligned)
+                    HStack(spacing: 1) {
+                        Text("/\(Int(macroGoal.calculateGramGoal(from: calorieGoal)))")
+                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                            .foregroundColor(.secondary)
 
-                    Text("g")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary.opacity(0.8))
+                        Text("g")
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundColor(.secondary.opacity(0.8))
+                    }
+                    .frame(width: 52, alignment: .leading)
                 }
             }
         }
