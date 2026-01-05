@@ -127,42 +127,35 @@ struct DiaryDailySummaryCard: View {
     }
 
     private var microMacrosView: some View {
-        VStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: 6) {
             ForEach(macroGoals, id: \.macroType) { macroGoal in
-                HStack {
-                    // Macro name with colored dot
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(macroGoal.macroType.color)
-                            .frame(width: 8, height: 8)
+                HStack(spacing: 3) {
+                    Circle()
+                        .fill(macroGoal.macroType.color)
+                        .frame(width: 8, height: 8)
 
-                        Text(macroGoal.macroType.displayName)
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .foregroundColor(.primary)
-                    }
+                    Text(macroGoal.macroType.displayName)
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
 
                     Spacer()
 
-                    // Achieved value (fixed width, right aligned)
-                    Text("\(Int(calculateMacroTotal(for: macroGoal.macroType).rounded()))g")
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                    Text("\(Int(calculateMacroTotal(for: macroGoal.macroType).rounded()))")
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundColor(macroGoal.macroType.color)
-                        .frame(width: 50, alignment: .trailing)
 
-                    // Goal value (fixed width, right aligned)
-                    Text("/ \(Int(macroGoal.calculateGramGoal(from: calorieGoal)))g")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                    Text("/\(Int(macroGoal.calculateGramGoal(from: calorieGoal)))")
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
                         .foregroundColor(.secondary)
-                        .frame(width: 55, alignment: .trailing)
+
+                    Text("g")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary.opacity(0.8))
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(macroGoal.macroType.color.opacity(0.1))
-                )
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var stepsProgressView: some View {
