@@ -17,7 +17,6 @@ final class SubscriptionManager: ObservableObject {
     private var authObserver: NSObjectProtocol?
     private var transactionTask: Task<Void, Never>?
 
-    // TODO: Adjust to your final product ID in App Store Connect
     let productID = "com.nutrasafe.pro.monthly"
 
     init() {

@@ -104,23 +104,6 @@ struct EarlyEndModal: View {
                     }
                     .buttonStyle(.plain)
 
-                    // Add Note Button
-                    Button {
-                        // TODO: Add note functionality
-                    } label: {
-                        HStack {
-                            Image(systemName: "note.text")
-                            Text("Add Note")
-                                .fontWeight(.medium)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.gray.opacity(0.1))
-                        .foregroundColor(.primary)
-                        .cornerRadius(12)
-                    }
-                    .buttonStyle(.plain)
-
                     // Done Button
                     Button {
                         Task {

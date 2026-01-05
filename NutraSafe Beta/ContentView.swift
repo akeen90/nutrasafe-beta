@@ -2783,7 +2783,6 @@ struct AddWeightView: View {
                 await MainActor.run {
                     isUploading = false
                 }
-                // TODO: Show error alert to user
             }
         }
     }
@@ -3462,7 +3461,6 @@ struct EditWeightView: View {
                 await MainActor.run {
                     isUploading = false
                 }
-                // TODO: Show error alert to user
             }
         }
     }
@@ -3603,7 +3601,6 @@ struct HeightSetupView: View {
             } catch {
                 #if DEBUG
                 print("Error saving height: \(error)")
-                // TODO: Show error alert to user
                 #endif
             }
         }
