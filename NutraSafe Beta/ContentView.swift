@@ -747,6 +747,7 @@ struct ContentView: View {
                 }
             )
             .environmentObject(diaryDataManager)
+            .environmentObject(subscriptionManager)
         }
         .fullScreenCover(isPresented: $showingUseByAdd) {
             AddUseByItemSheet(onComplete: {
@@ -4022,6 +4023,13 @@ struct AddFoodMainView: View {
     var onComplete: ((TabItem) -> Void)?
     @State private var keyboardVisible = false
 
+    // Free tier limit checking
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
+    @State private var isCheckingLimit = true
+    @State private var canAddMore = true
+    @State private var currentDayEntryCount = 0
+    @State private var showingPaywall = false
+
     init(selectedTab: Binding<TabItem>, isPresented: Binding<Bool>, onDismiss: (() -> Void)? = nil, onComplete: ((TabItem) -> Void)? = nil) {
         self._selectedTab = selectedTab
         self._isPresented = isPresented
@@ -4082,78 +4090,103 @@ struct AddFoodMainView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                VStack(spacing: 0) {
-                    // Header
-                    VStack(spacing: 12) {
-                    // Option selector
-                    HStack(spacing: 0) {
-                        OptionSelectorButton(title: "Search", icon: "magnifyingglass", isSelected: selectedAddOption == .search) {
-                            selectedAddOption = .search
-                        }
-                        OptionSelectorButton(title: "AI/Manual", icon: "square.and.pencil", isSelected: selectedAddOption == .manual) {
-                            selectedAddOption = .manual
-                        }
-                        OptionSelectorButton(title: "Barcode", icon: "barcode.viewfinder", isSelected: selectedAddOption == .barcode) {
-                            selectedAddOption = .barcode
-                        }
+                if isCheckingLimit {
+                    // Loading state while checking limit
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                        Text("Loading...")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.secondary)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
-                    .background(Color.green.opacity(0.001)) // Ultra-transparent hit test helper
-                }
-                .background(Color.adaptiveBackground)
-                .zIndex(999)
-                .allowsHitTesting(true)
-
-                // Content based on selected option
-                Group {
-                    switch selectedAddOption {
-                    case .search:
-                        AnyView(
-                            AddFoodSearchView(
-                                selectedTab: $selectedTab,
-                                onComplete: onComplete,
-                                onSwitchToManual: {
-                                    selectedAddOption = .manual
-                                }
-                            )
-                        )
-                    case .manual:
-                        AnyView(
-                            AddFoodManualView(selectedTab: $selectedTab, prefilledBarcode: prefilledBarcode, onComplete: onComplete)
-                        )
-                    case .barcode:
-                        AnyView(
-                            AddFoodBarcodeView(selectedTab: $selectedTab, onSwitchToManual: { barcode in
-                                prefilledBarcode = barcode
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.adaptiveBackground)
+                } else if !canAddMore {
+                    // At limit - show upgrade prompt
+                    DiaryLimitReachedView(
+                        currentCount: currentDayEntryCount,
+                        maxCount: SubscriptionManager.freeDiaryEntriesPerDay,
+                        onUnlockTapped: { showingPaywall = true },
+                        onDismiss: { isPresented = false }
+                    )
+                } else {
+                    // Normal add food flow
+                    VStack(spacing: 0) {
+                        // Header
+                        VStack(spacing: 12) {
+                        // Option selector
+                        HStack(spacing: 0) {
+                            OptionSelectorButton(title: "Search", icon: "magnifyingglass", isSelected: selectedAddOption == .search) {
+                                selectedAddOption = .search
+                            }
+                            OptionSelectorButton(title: "AI/Manual", icon: "square.and.pencil", isSelected: selectedAddOption == .manual) {
                                 selectedAddOption = .manual
-                            })
-                        )
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .zIndex(0)
-                }
-                .background(Color.adaptiveBackground)
-                .navigationTitle("Diary")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button(action: {
-                            isPresented = false
-                        }) {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.primary)
+                            }
+                            OptionSelectorButton(title: "Barcode", icon: "barcode.viewfinder", isSelected: selectedAddOption == .barcode) {
+                                selectedAddOption = .barcode
+                            }
                         }
-                        .zIndex(1000)
-                        .allowsHitTesting(true)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                        .background(Color.green.opacity(0.001)) // Ultra-transparent hit test helper
                     }
+                    .background(Color.adaptiveBackground)
+                    .zIndex(999)
+                    .allowsHitTesting(true)
+
+                    // Content based on selected option
+                    Group {
+                        switch selectedAddOption {
+                        case .search:
+                            AnyView(
+                                AddFoodSearchView(
+                                    selectedTab: $selectedTab,
+                                    onComplete: onComplete,
+                                    onSwitchToManual: {
+                                        selectedAddOption = .manual
+                                    }
+                                )
+                            )
+                        case .manual:
+                            AnyView(
+                                AddFoodManualView(selectedTab: $selectedTab, prefilledBarcode: prefilledBarcode, onComplete: onComplete)
+                            )
+                        case .barcode:
+                            AnyView(
+                                AddFoodBarcodeView(selectedTab: $selectedTab, onSwitchToManual: { barcode in
+                                    prefilledBarcode = barcode
+                                    selectedAddOption = .manual
+                                })
+                            )
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .zIndex(0)
+                    }
+                    .background(Color.adaptiveBackground)
+                }
+            }
+            .navigationTitle("Diary")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        isPresented = false
+                    }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.primary)
+                    }
+                    .zIndex(1000)
+                    .allowsHitTesting(true)
                 }
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .onAppear {
+            // Check diary entry limit for free users
+            checkDiaryLimit()
+
             // Monitor keyboard
             NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main) { _ in
                 keyboardVisible = true
@@ -4162,6 +4195,194 @@ struct AddFoodMainView: View {
                 keyboardVisible = false
             }
         }
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView()
+                .environmentObject(subscriptionManager)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
+                .onDisappear {
+                    // Re-check limit after paywall dismisses (user may have subscribed)
+                    checkDiaryLimit()
+                }
+        }
+    }
+
+    private func checkDiaryLimit() {
+        Task {
+            isCheckingLimit = true
+            do {
+                let hasAccess = subscriptionManager.hasAccess
+                #if DEBUG
+                print("📊 Diary limit check - hasAccess: \(hasAccess), isSubscribed: \(subscriptionManager.isSubscribed), isInTrial: \(subscriptionManager.isInTrial), isPremiumOverride: \(subscriptionManager.isPremiumOverride)")
+                #endif
+                if hasAccess {
+                    canAddMore = true
+                    currentDayEntryCount = 0
+                    #if DEBUG
+                    print("📊 Premium user - unlimited entries allowed")
+                    #endif
+                } else {
+                    let count = try await FirebaseManager.shared.countFoodEntries(for: Date())
+                    currentDayEntryCount = count
+                    let limit = SubscriptionManager.freeDiaryEntriesPerDay
+                    canAddMore = count < limit
+                    #if DEBUG
+                    print("📊 Free user - count: \(count), limit: \(limit), canAddMore: \(canAddMore)")
+                    #endif
+                }
+            } catch {
+                // On error, allow adding (fail open)
+                canAddMore = true
+                #if DEBUG
+                print("❌ Error checking diary limit: \(error)")
+                #endif
+            }
+            isCheckingLimit = false
+        }
+    }
+}
+
+// MARK: - Diary Limit Reached View
+/// Shows when free user has hit their daily diary entry limit
+struct DiaryLimitReachedView: View {
+    let currentCount: Int
+    let maxCount: Int
+    let onUnlockTapped: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer()
+
+            VStack(spacing: 24) {
+                // Icon with gradient background
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.blue.opacity(0.2), Color.blue.opacity(0.1)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 100, height: 100)
+
+                    Image(systemName: "fork.knife.circle.fill")
+                        .font(.system(size: 44, weight: .medium))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [Color.blue, Color.blue.opacity(0.7)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
+
+                // Title and subtitle
+                VStack(spacing: 8) {
+                    Text("Daily Limit Reached")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.center)
+
+                    Text("You've added \(currentCount) of \(maxCount) free entries today")
+                        .font(.system(size: 16))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                }
+
+                // Benefits list
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "infinity")
+                            .font(.system(size: 20))
+                            .foregroundColor(.green)
+                            .frame(width: 24)
+
+                        Text("Unlimited diary entries")
+                            .font(.system(size: 15, weight: .medium, design: .rounded))
+                            .foregroundColor(.primary)
+
+                        Spacer()
+                    }
+
+                    HStack(spacing: 12) {
+                        Image(systemName: "chart.line.uptrend.xyaxis")
+                            .font(.system(size: 20))
+                            .foregroundColor(.green)
+                            .frame(width: 24)
+
+                        Text("Full progress history")
+                            .font(.system(size: 15, weight: .medium, design: .rounded))
+                            .foregroundColor(.primary)
+
+                        Spacer()
+                    }
+
+                    HStack(spacing: 12) {
+                        Image(systemName: "leaf.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.green)
+                            .frame(width: 24)
+
+                        Text("Complete nutrient insights")
+                            .font(.system(size: 15, weight: .medium, design: .rounded))
+                            .foregroundColor(.primary)
+
+                        Spacer()
+                    }
+                }
+                .padding(.horizontal, 32)
+                .padding(.vertical, 16)
+            }
+
+            Spacer()
+
+            // Unlock button
+            Button(action: onUnlockTapped) {
+                HStack(spacing: 10) {
+                    Image(systemName: "lock.open.fill")
+                        .font(.system(size: 18, weight: .semibold))
+
+                    Text("Unlock Unlimited")
+                        .font(.system(size: 18, weight: .semibold, design: .rounded))
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
+                .background(
+                    LinearGradient(
+                        colors: [Color.blue, Color.blue.opacity(0.8)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .cornerRadius(16)
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 16)
+
+            // Continue without upgrade (just dismiss)
+            Button(action: onDismiss) {
+                Text("Maybe Later")
+                    .font(.system(size: 16, weight: .medium, design: .rounded))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.bottom, 32)
+
+            // Pro badge
+            HStack(spacing: 6) {
+                Image(systemName: "star.fill")
+                    .font(.system(size: 12))
+                Text("NutraSafe Pro")
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+            }
+            .foregroundColor(.secondary)
+            .padding(.bottom, 60)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.adaptiveBackground)
     }
 }
 

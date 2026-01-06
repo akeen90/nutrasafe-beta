@@ -59,6 +59,10 @@ struct DiaryTabView: View {
     @State private var showingDiaryTip = false
     @State private var showingNutrientsTip = false
 
+    // MARK: - Diary Limit
+    @State private var showingDiaryLimitError = false
+    @State private var showingPaywall = false
+
     // MARK: - Food Lookup Cache (O(1) instead of O(n))
     @State private var foodLookupCache: [String: (food: DiaryFoodItem, meal: String)] = [:]
 
@@ -458,6 +462,15 @@ struct DiaryTabView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(Color(.systemBackground))
             }
+            .diaryLimitAlert(
+                isPresented: $showingDiaryLimitError,
+                showingPaywall: $showingPaywall
+            )
+            .sheet(isPresented: $showingPaywall) {
+                PaywallView()
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(Color(.systemBackground))
+            }
             .background(Color.adaptiveBackground)
             .featureTip(isPresented: $showingDiaryTip, tipKey: .diaryOverview)
             .featureTip(isPresented: $showingNutrientsTip, tipKey: .nutrientsOverview)
@@ -826,13 +839,23 @@ struct DiaryTabView: View {
         showingMoveSheet = false
 
         Task {
+            let hasAccess = subscriptionManager.hasAccess
             for food in itemsToMove {
                 // Remove from current date
                 diaryDataManager.deleteFoodItems([food], for: selectedDate)
                 // Add to destination date (new id to avoid collisions)
                 var moved = food
                 moved.id = UUID()
-                await diaryDataManager.addFoodItem(moved, to: destinationMeal, for: moveToDate)
+                do {
+                    try await diaryDataManager.addFoodItem(moved, to: destinationMeal, for: moveToDate, hasProAccess: hasAccess)
+                } catch is FirebaseManager.DiaryLimitError {
+                    await MainActor.run { showingDiaryLimitError = true }
+                    break
+                } catch {
+                    #if DEBUG
+                    print("Error moving food: \(error)")
+                    #endif
+                }
             }
         }
     }
@@ -844,10 +867,20 @@ struct DiaryTabView: View {
         showingCopySheet = false
 
         Task {
+            let hasAccess = subscriptionManager.hasAccess
             for food in itemsToCopy {
                 var copied = food
                 copied.id = UUID()
-                await diaryDataManager.addFoodItem(copied, to: destinationMeal, for: copyToDate)
+                do {
+                    try await diaryDataManager.addFoodItem(copied, to: destinationMeal, for: copyToDate, hasProAccess: hasAccess)
+                } catch is FirebaseManager.DiaryLimitError {
+                    await MainActor.run { showingDiaryLimitError = true }
+                    break
+                } catch {
+                    #if DEBUG
+                    print("Error copying food: \(error)")
+                    #endif
+                }
             }
         }
     }

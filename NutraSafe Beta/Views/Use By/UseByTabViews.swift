@@ -86,11 +86,13 @@ private class SimpleImageCache {
 
 struct UseByTabView: View {
     @Environment(\.colorScheme) var colorScheme
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
     @Binding var showingSettings: Bool
     @Binding var selectedTab: TabItem
     @State private var showingScanner = false
     @State private var showingCamera = false
     @State private var showingAddSheet = false
+    @State private var showingPaywall = false
     @State private var selectedFoodForUseBy: FoodSearchResult? // Hoisted to avoid nested presentations
 
     // MARK: - Feature Tips
@@ -112,18 +114,20 @@ struct UseByTabView: View {
 
                     Spacer()
 
-                        Button(action: { showingSettings = true }) {
-                            ZStack {
-                                Circle()
-                                    .fill(AppColors.cardBackgroundInteractive)
-                                    .frame(width: 44, height: 44)
-                                    .overlay(Circle().stroke(AppColors.borderLight, lineWidth: 1))
-                                Image(systemName: "gearshape.fill")
-                                    .font(.system(size: 20, weight: .semibold))
-                                    .foregroundColor(.primary)
-                            }
+                    Button(action: { showingSettings = true }) {
+                        ZStack {
+                            Circle()
+                                .fill(AppColors.cardBackgroundInteractive)
+                                .frame(width: 44, height: 44)
+                                .overlay(Circle().stroke(AppColors.borderLight, lineWidth: 1))
+                            Image(systemName: "gearshape.fill")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundColor(.primary)
                         }
+                    }
 
+                    // Only show add button for premium users
+                    if subscriptionManager.hasAccess {
                         Button(action: { showingAddSheet = true }) {
                             ZStack {
                                 Circle()
@@ -135,22 +139,41 @@ struct UseByTabView: View {
                             }
                         }
                         .buttonStyle(SpringyButtonStyle())
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
                 .padding(.bottom, 8)
 
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        // Main content
-                        UseByExpiryView(
-                            showingScanner: $showingScanner,
-                            showingCamera: $showingCamera,
-                            selectedTab: $selectedTab
-                        )
-                        .frame(maxWidth: .infinity)
+                // Check premium access
+                if subscriptionManager.hasAccess {
+                    // Premium users see full content
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            UseByExpiryView(
+                                showingScanner: $showingScanner,
+                                showingCamera: $showingCamera,
+                                selectedTab: $selectedTab
+                            )
+                            .frame(maxWidth: .infinity)
+                        }
+                        .padding(.bottom, 80)
                     }
-                    .padding(.bottom, 80) // Space for tab bar
+                } else {
+                    // Free users see unlock card
+                    PremiumUnlockCard(
+                        icon: "calendar.badge.clock",
+                        iconColor: .orange,
+                        title: "Track Expiry Dates",
+                        subtitle: "Never let opened food go to waste again",
+                        benefits: [
+                            "Track when opened food should be used by",
+                            "Get notifications before items expire",
+                            "Reduce food waste and save money",
+                            "Keep your fridge organized"
+                        ],
+                        onUnlockTapped: { showingPaywall = true }
+                    )
                 }
             }
             .tabGradientBackground(.useBy)
@@ -160,6 +183,12 @@ struct UseByTabView: View {
             AddUseByItemSheet(onComplete: {
                 showingAddSheet = false
             })
+        }
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView()
+                .environmentObject(subscriptionManager)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
         .sheet(isPresented: $showingScanner) {
             // Barcode scanner will be implemented
@@ -178,8 +207,8 @@ struct UseByTabView: View {
                 .presentationBackground(Color(.systemBackground))
         }
         .onAppear {
-            // Show feature tip on first visit
-            guard !hasShownTip else { return }
+            // Show feature tip on first visit (only for premium users)
+            guard subscriptionManager.hasAccess, !hasShownTip else { return }
             hasShownTip = true
             if !FeatureTipsManager.shared.hasSeenTip(.useByOverview) {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -586,7 +615,6 @@ struct UseByExpiryView: View {
     @Binding var showingScanner: Bool
     @Binding var showingCamera: Bool
     @Binding var selectedTab: TabItem
-    @EnvironmentObject var subscriptionManager: SubscriptionManager
 
     // PERFORMANCE: Use shared manager to persist data between tab switches
     @ObservedObject private var dataManager = UseByDataManager.shared
@@ -594,19 +622,8 @@ struct UseByExpiryView: View {
     @State private var isRefreshing: Bool = false
     @State private var showClearAlert: Bool = false
     @State private var showingAddSheet: Bool = false
-    @State private var showingPaywall: Bool = false
     @State private var selectedFoodForUseBy: FoodSearchResult? // Hoisted to avoid nested presentations
     @State private var searchText: String = ""
-
-    /// Check if user can add more items
-    private var canAddMoreItems: Bool {
-        subscriptionManager.hasAccess || dataManager.items.count < SubscriptionManager.freeUseByItemsLimit
-    }
-
-    /// Check if user is at the limit
-    private var isAtLimit: Bool {
-        !subscriptionManager.hasAccess && dataManager.items.count >= SubscriptionManager.freeUseByItemsLimit
-    }
 
     // PERFORMANCE: Debouncer to prevent search from running on every keystroke
     @StateObject private var searchDebouncer = Debouncer(milliseconds: 300)
@@ -877,18 +894,6 @@ struct UseByExpiryView: View {
                             .padding(.top, 18)
                             .padding(.bottom, 14)
 
-                            // Free tier limit banner
-                            if !subscriptionManager.hasAccess {
-                                FreeTierLimitBanner(
-                                    currentCount: dataManager.items.count,
-                                    maxCount: SubscriptionManager.freeUseByItemsLimit,
-                                    itemName: "items",
-                                    onUpgradeTapped: { showingPaywall = true }
-                                )
-                                .padding(.horizontal, 18)
-                                .padding(.bottom, 10)
-                            }
-
                             // Items list
                             if sortedItems.isEmpty {
                                 VStack(spacing: 16) {
@@ -998,20 +1003,9 @@ struct UseByExpiryView: View {
             Text("This will remove all items from your useBy inventory.")
         }
         .fullScreenCover(isPresented: $showingAddSheet) {
-            // Check limit when presenting the add sheet
-            if canAddMoreItems {
-                AddUseByItemSheet(onComplete: {
-                    showingAddSheet = false
-                })
-            } else {
-                // Show paywall instead
-                PaywallView()
-                    .environmentObject(subscriptionManager)
-            }
-        }
-        .sheet(isPresented: $showingPaywall) {
-            PaywallView()
-                .environmentObject(subscriptionManager)
+            AddUseByItemSheet(onComplete: {
+                showingAddSheet = false
+            })
         }
     } // End of var body: some View
 }

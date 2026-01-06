@@ -691,10 +691,12 @@ struct AIFoodSelectionRow: View {
 struct CombinedMealView: View {
     let foods: [FoodSearchResult]
     let onDismiss: () -> Void
-    
+
     @State private var servingSizes: [String: Double] = [:]
     @State private var selectedMealType: MealType = .lunch
     @State private var showingSuccessAlert = false
+    @State private var showingPaywall = false
+    @State private var showingLimitError = false
 
     // PERFORMANCE: Cache nutrition totals to prevent redundant calculations on every render
     // Pattern from Clay's production app: move expensive operations to cached state
@@ -704,6 +706,7 @@ struct CombinedMealView: View {
     @State private var cachedTotalFat: Double = 0
 
     @EnvironmentObject var firebaseManager: FirebaseManager
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
 
     // Update cached nutrition totals when data changes
     private func updateCachedNutritionTotals() {
@@ -826,6 +829,15 @@ struct CombinedMealView: View {
         } message: {
             Text("All \(foods.count) foods have been added to your diary.")
         }
+        .diaryLimitAlert(
+            isPresented: $showingLimitError,
+            showingPaywall: $showingPaywall
+        )
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
+        }
         .onAppear {
             // Initialize serving sizes
             for food in foods {
@@ -849,10 +861,11 @@ struct CombinedMealView: View {
         Task {
             do {
                 let currentDate = Date()
-                
+                let hasAccess = subscriptionManager.hasAccess
+
                 for food in foods {
                     let multiplier = servingSizes[food.id] ?? 1.0
-                    
+
                     let entry = FoodEntry(
                         userId: firebaseManager.currentUser?.uid ?? "anonymous",
                         foodName: food.name,
@@ -869,12 +882,19 @@ struct CombinedMealView: View {
                         mealType: selectedMealType,
                         date: currentDate
                     )
-                    
-                    try await firebaseManager.saveFoodEntry(entry)
+
+                    try await firebaseManager.saveFoodEntry(entry, hasProAccess: hasAccess)
                 }
-                
+
                 await MainActor.run {
                     showingSuccessAlert = true
+                }
+            } catch let error as FirebaseManager.DiaryLimitError {
+                #if DEBUG
+                print("Diary limit reached: \(error.localizedDescription)")
+                #endif
+                await MainActor.run {
+                    showingLimitError = true
                 }
             } catch {
                 #if DEBUG

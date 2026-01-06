@@ -267,6 +267,9 @@ struct ManualFoodDetailEntryView: View {
     var onComplete: ((TabItem) -> Void)?
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var diaryDataManager: DiaryDataManager
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
+    @State private var showingDiaryLimitError = false
+    @State private var showingPaywall = false
 
     // Basic Info
     @State private var foodName = ""
@@ -712,6 +715,15 @@ struct ManualFoodDetailEntryView: View {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(errorMessage)
+            }
+            .diaryLimitAlert(
+                isPresented: $showingDiaryLimitError,
+                showingPaywall: $showingPaywall
+            )
+            .sheet(isPresented: $showingPaywall) {
+                PaywallView()
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(Color(.systemBackground))
             }
             .sheet(isPresented: $showingBarcodeScanner) {
                 BarcodeScannerSheetView(barcode: $barcode, isPresented: $showingBarcodeScanner)
@@ -1166,7 +1178,8 @@ struct ManualFoodDetailEntryView: View {
 
             // Add to diary via DiaryDataManager using selected meal time
             let mealType = selectedMealTime.lowercased() // Convert to lowercase for storage
-            await diaryDataManager.addFoodItem(diaryEntry, to: mealType, for: Date())
+            let hasAccess = subscriptionManager.hasAccess
+            try await diaryDataManager.addFoodItem(diaryEntry, to: mealType, for: Date(), hasProAccess: hasAccess)
             #if DEBUG
             print("✅ Food added to user's diary (\(selectedMealTime))")
             #endif
@@ -1182,6 +1195,10 @@ struct ManualFoodDetailEntryView: View {
                 }
             }
 
+        } catch is FirebaseManager.DiaryLimitError {
+            await MainActor.run {
+                showingDiaryLimitError = true
+            }
         } catch {
             // Show error to user and re-throw to prevent dismissal
             await MainActor.run {

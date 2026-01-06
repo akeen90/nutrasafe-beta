@@ -491,9 +491,36 @@ class FirebaseManager: ObservableObject {
     }
 
     // MARK: - Food Diary
-    
-    func saveFoodEntry(_ entry: FoodEntry) async throws {
+
+    /// Error thrown when free user tries to exceed daily diary limit
+    enum DiaryLimitError: LocalizedError {
+        case dailyLimitReached(current: Int, limit: Int)
+
+        var errorDescription: String? {
+            switch self {
+            case .dailyLimitReached(let current, let limit):
+                return "Daily diary limit reached (\(current)/\(limit)). Upgrade to Pro for unlimited entries."
+            }
+        }
+    }
+
+    func saveFoodEntry(_ entry: FoodEntry, hasProAccess: Bool = false) async throws {
         guard let userId = currentUser?.uid else { return }
+
+        // Check daily limit for free users BEFORE saving
+        if !hasProAccess {
+            let currentCount = try await countFoodEntries(for: entry.date)
+            let limit = SubscriptionManager.freeDiaryEntriesPerDay
+            if currentCount >= limit {
+                #if DEBUG
+                print("🚫 Diary limit reached: \(currentCount)/\(limit) entries for \(entry.date)")
+                #endif
+                throw DiaryLimitError.dailyLimitReached(current: currentCount, limit: limit)
+            }
+            #if DEBUG
+            print("✅ Diary limit check passed: \(currentCount)/\(limit) entries, allowing save")
+            #endif
+        }
 
         // Validate food entry before saving to prevent corrupt data
         // Validate entry before saving
@@ -649,6 +676,30 @@ class FirebaseManager: ObservableObject {
         }
 
         return try await fetchTask.value
+    }
+
+    /// Count food entries for a specific date (used for free tier limit checking)
+    /// Note: Bypasses cache to get accurate count for limit enforcement
+    func countFoodEntries(for date: Date) async throws -> Int {
+        // Clear cache for this date to ensure fresh count
+        if let userId = currentUser?.uid {
+            invalidateFoodEntriesCache(for: date, userId: userId)
+        }
+
+        let entries = try await getFoodEntries(for: date)
+        #if DEBUG
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        print("📊 countFoodEntries for \(formatter.string(from: date)): found \(entries.count) entries")
+        #endif
+        return entries.count
+    }
+
+    /// Check if user can add more diary entries for today (free tier limit)
+    func canAddDiaryEntry(for date: Date, hasAccess: Bool) async throws -> Bool {
+        if hasAccess { return true }
+        let count = try await countFoodEntries(for: date)
+        return count < SubscriptionManager.freeDiaryEntriesPerDay
     }
 
     // MARK: - Period Cache (for Micronutrient Dashboard)

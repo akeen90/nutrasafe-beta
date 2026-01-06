@@ -77,6 +77,9 @@ struct FoodDetailViewFromSearch: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var diaryDataManager: DiaryDataManager
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
+    @State private var showingDiaryLimitError = false
+    @State private var showingPaywall = false
     @State private var gramsAmount: String
     @State private var servings: String = "1"
     @State private var quantity: Double = 1.0
@@ -1593,6 +1596,13 @@ struct FoodDetailViewFromSearch: View {
         } message: {
             Text(enhancementErrorMessage)
         }
+        .diaryLimitAlert(
+            isPresented: $showingDiaryLimitError,
+            showingPaywall: $showingPaywall
+        )
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView()
+        }
         .sheet(isPresented: $showingNutritionCamera) {
             IngredientCameraView(
                 foodName: food.name,
@@ -2046,13 +2056,14 @@ private var nutritionFactsSection: some View {
 
                 #endif
                 Task {
+                    let hasAccess = subscriptionManager.hasAccess
                     do {
                         // Decide: move across meals or replace within the same meal
                         if originalMealType.lowercased() != selectedMeal.lowercased() {
                             #if DEBUG
                             print("FoodDetailView: Moving food to new meal: \(selectedMeal)")
                             #endif
-                            try await diaryDataManager.moveFoodItem(diaryEntry, from: originalMealType, to: selectedMeal, for: targetDate)
+                            try await diaryDataManager.moveFoodItem(diaryEntry, from: originalMealType, to: selectedMeal, for: targetDate, hasProAccess: hasAccess)
                             #if DEBUG
                             print("FoodDetailView: Successfully moved \(diaryEntry.name) to \(selectedMeal) on \(targetDate)")
                             #endif
@@ -2060,7 +2071,7 @@ private var nutritionFactsSection: some View {
                             #if DEBUG
                             print("FoodDetailView: Replacing within same meal: \(selectedMeal)")
                             #endif
-                            try await diaryDataManager.replaceFoodItem(diaryEntry, to: selectedMeal, for: targetDate)
+                            try await diaryDataManager.replaceFoodItem(diaryEntry, to: selectedMeal, for: targetDate, hasProAccess: hasAccess)
                             #if DEBUG
                             print("FoodDetailView: Successfully replaced \(diaryEntry.name) in \(selectedMeal) on \(targetDate)")
                             #endif
@@ -2072,6 +2083,8 @@ private var nutritionFactsSection: some View {
                             dismiss()
                             onComplete?(.diary)
                         }
+                    } catch is FirebaseManager.DiaryLimitError {
+                        await MainActor.run { showingDiaryLimitError = true }
                     } catch {
                         #if DEBUG
                         print("FoodDetailView: Error updating food: \(error.localizedDescription)")
@@ -2089,15 +2102,24 @@ private var nutritionFactsSection: some View {
                 #endif
 
                 Task {
-                    await diaryDataManager.addFoodItem(diaryEntry, to: selectedMeal, for: targetDate)
-                    #if DEBUG
-                    print("FoodDetailView: Successfully added \(diaryEntry.name) to \(selectedMeal) on \(targetDate)")
-                    #endif
-                    await MainActor.run {
-                        // Dismiss keyboard before closing view
-                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                        dismiss()
-                        onComplete?(.diary)
+                    let hasAccess = subscriptionManager.hasAccess
+                    do {
+                        try await diaryDataManager.addFoodItem(diaryEntry, to: selectedMeal, for: targetDate, hasProAccess: hasAccess)
+                        #if DEBUG
+                        print("FoodDetailView: Successfully added \(diaryEntry.name) to \(selectedMeal) on \(targetDate)")
+                        #endif
+                        await MainActor.run {
+                            // Dismiss keyboard before closing view
+                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                            dismiss()
+                            onComplete?(.diary)
+                        }
+                    } catch is FirebaseManager.DiaryLimitError {
+                        await MainActor.run { showingDiaryLimitError = true }
+                    } catch {
+                        #if DEBUG
+                        print("FoodDetailView: Error adding food: \(error.localizedDescription)")
+                        #endif
                     }
                 }
             }

@@ -21,6 +21,8 @@ final class SubscriptionManager: ObservableObject {
     }
 
     // MARK: - Free Tier Limits
+    /// Maximum diary entries free users can add per day
+    static let freeDiaryEntriesPerDay = 5
     /// Maximum reactions visible to free users (older ones blurred)
     static let freeReactionsLimit = 5
     /// Maximum Use By items free users can add

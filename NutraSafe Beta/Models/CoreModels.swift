@@ -523,7 +523,7 @@ class DiaryDataManager: ObservableObject {
     }
     
     // Add a single food item to a specific meal
-    func addFoodItem(_ item: DiaryFoodItem, to meal: String, for date: Date) async {
+    func addFoodItem(_ item: DiaryFoodItem, to meal: String, for date: Date, hasProAccess: Bool = false) async throws {
         print("DiaryDataManager: Adding food item '\(item.name)' to meal '\(meal)' for date \(date)")
 
         // Create item with correct meal time (time property is immutable, so we need a new instance)
@@ -636,8 +636,8 @@ class DiaryDataManager: ObservableObject {
                 addToRecentFoods(item)
             }
 
-            // Sync to Firebase and wait for it to complete
-            await syncFoodItemToFirebase(item, meal: meal, date: date)
+            // Sync to Firebase and wait for it to complete - throws DiaryLimitError if limit reached
+            try await syncFoodItemToFirebase(item, meal: meal, date: date, hasProAccess: hasProAccess)
 
             // Process micronutrients for this food item
             await processMicronutrientsForFood(item, date: date)
@@ -648,10 +648,13 @@ class DiaryDataManager: ObservableObject {
                 self.dataReloadTrigger = UUID() // Trigger DiaryTabView to reload from Firebase
             }
 
+        } catch let error as FirebaseManager.DiaryLimitError {
+            // Re-throw diary limit errors so callers can handle them
+            throw error
         } catch {
             print("DiaryDataManager: Error loading current data from Firebase: \(error.localizedDescription)")
-            // Fallback: just sync to Firebase
-            await syncFoodItemToFirebase(item, meal: meal, date: date)
+            // Fallback: just sync to Firebase - still respects diary limit
+            try await syncFoodItemToFirebase(item, meal: meal, date: date, hasProAccess: hasProAccess)
             await MainActor.run {
                 addToRecentFoods(item)
                 self.objectWillChange.send()
@@ -661,7 +664,7 @@ class DiaryDataManager: ObservableObject {
     }
 
     // Replace an existing food item in the diary (used when enhancing from diary)
-    func replaceFoodItem(_ item: DiaryFoodItem, to meal: String, for date: Date) async throws {
+    func replaceFoodItem(_ item: DiaryFoodItem, to meal: String, for date: Date, hasProAccess: Bool = false) async throws {
         print("DiaryDataManager: Replacing food item '\(item.name)' (ID: \(item.id)) in meal '\(meal)' for date \(date)")
 
         // Load current data from Firebase (single source of truth)
@@ -721,7 +724,7 @@ class DiaryDataManager: ObservableObject {
 
         // FIX: Sync to Firebase and WAIT for it to complete before triggering reload
         // This ensures loadFoodData() will fetch the updated data from Firebase
-        await syncFoodItemToFirebase(item, meal: meal, date: date)
+        try await syncFoodItemToFirebase(item, meal: meal, date: date, hasProAccess: hasProAccess)
 
         // Process micronutrients for this food item
         await processMicronutrientsForFood(item, date: date)
@@ -736,7 +739,7 @@ class DiaryDataManager: ObservableObject {
     }
 
     // Move an existing food item from one meal to another for a given date
-    func moveFoodItem(_ item: DiaryFoodItem, from originalMeal: String, to newMeal: String, for date: Date) async throws {
+    func moveFoodItem(_ item: DiaryFoodItem, from originalMeal: String, to newMeal: String, for date: Date, hasProAccess: Bool = false) async throws {
         print("DiaryDataManager: Moving food item '\(item.name)' (ID: \(item.id)) from '\(originalMeal)' to '\(newMeal)' for date \(date)")
 
         // Load current data from Firebase (single source of truth)
@@ -839,7 +842,7 @@ class DiaryDataManager: ObservableObject {
 
         // FIX: Sync to Firebase and WAIT for it to complete before triggering reload
         // This ensures loadFoodData() will fetch the updated data from Firebase
-        await syncFoodItemToFirebase(item, meal: newMeal, date: date)
+        try await syncFoodItemToFirebase(item, meal: newMeal, date: date, hasProAccess: hasProAccess)
 
         // Process micronutrients for this food item
         await processMicronutrientsForFood(item, date: date)
@@ -888,36 +891,32 @@ class DiaryDataManager: ObservableObject {
 
     // MARK: - Firebase Sync
 
-    private func syncFoodItemToFirebase(_ item: DiaryFoodItem, meal: String, date: Date) async {
-        do {
-            // Get the current user ID from FirebaseManager
-            guard let userId = FirebaseManager.shared.currentUser?.uid else {
-                print("DiaryDataManager: Cannot sync to Firebase - no user logged in")
-                return
-            }
-
-            // Convert meal string to MealType enum
-            let mealType: MealType
-            switch meal.lowercased() {
-            case "breakfast": mealType = .breakfast
-            case "lunch": mealType = .lunch
-            case "dinner": mealType = .dinner
-            case "snacks": mealType = .snacks
-            default:
-                print("DiaryDataManager: Cannot sync to Firebase - invalid meal type: \(meal)")
-                return
-            }
-
-            // Convert DiaryFoodItem to FoodEntry
-            let foodEntry = item.toFoodEntry(userId: userId, mealType: mealType, date: date)
-
-            // Save to Firebase
-            try await FirebaseManager.shared.saveFoodEntry(foodEntry)
-
-            print("DiaryDataManager: Successfully synced '\(item.name)' to Firebase")
-        } catch {
-            print("DiaryDataManager: Failed to sync to Firebase: \(error.localizedDescription)")
+    private func syncFoodItemToFirebase(_ item: DiaryFoodItem, meal: String, date: Date, hasProAccess: Bool = false) async throws {
+        // Get the current user ID from FirebaseManager
+        guard let userId = FirebaseManager.shared.currentUser?.uid else {
+            print("DiaryDataManager: Cannot sync to Firebase - no user logged in")
+            return
         }
+
+        // Convert meal string to MealType enum
+        let mealType: MealType
+        switch meal.lowercased() {
+        case "breakfast": mealType = .breakfast
+        case "lunch": mealType = .lunch
+        case "dinner": mealType = .dinner
+        case "snacks": mealType = .snacks
+        default:
+            print("DiaryDataManager: Cannot sync to Firebase - invalid meal type: \(meal)")
+            return
+        }
+
+        // Convert DiaryFoodItem to FoodEntry
+        let foodEntry = item.toFoodEntry(userId: userId, mealType: mealType, date: date)
+
+        // Save to Firebase - this will throw DiaryLimitError if limit reached
+        try await FirebaseManager.shared.saveFoodEntry(foodEntry, hasProAccess: hasProAccess)
+
+        print("DiaryDataManager: Successfully synced '\(item.name)' to Firebase")
     }
     
     // MARK: - Hydration Data Management

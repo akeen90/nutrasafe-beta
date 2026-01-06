@@ -311,6 +311,120 @@ struct BlurredListSection<Item: Identifiable, Content: View>: View {
     }
 }
 
+// MARK: - Premium Unlock Card
+
+/// Full-page unlock card for premium-only features (like Use By tab)
+/// Shows feature explanation and unlock button
+struct PremiumUnlockCard: View {
+    let icon: String
+    let iconColor: Color
+    let title: String
+    let subtitle: String
+    let benefits: [String]
+    let onUnlockTapped: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer()
+
+            VStack(spacing: 24) {
+                // Icon with gradient background
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [iconColor.opacity(0.2), iconColor.opacity(0.1)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 100, height: 100)
+
+                    Image(systemName: icon)
+                        .font(.system(size: 44, weight: .medium))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [iconColor, iconColor.opacity(0.7)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
+
+                // Title and subtitle
+                VStack(spacing: 8) {
+                    Text(title)
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.center)
+
+                    Text(subtitle)
+                        .font(.system(size: 16))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                }
+
+                // Benefits list
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(benefits, id: \.self) { benefit in
+                        HStack(spacing: 12) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(.green)
+
+                            Text(benefit)
+                                .font(.system(size: 15, weight: .medium, design: .rounded))
+                                .foregroundColor(.primary)
+
+                            Spacer()
+                        }
+                    }
+                }
+                .padding(.horizontal, 32)
+                .padding(.vertical, 16)
+            }
+
+            Spacer()
+
+            // Unlock button
+            Button(action: onUnlockTapped) {
+                HStack(spacing: 10) {
+                    Image(systemName: "lock.open.fill")
+                        .font(.system(size: 18, weight: .semibold))
+
+                    Text("Unlock Feature")
+                        .font(.system(size: 18, weight: .semibold, design: .rounded))
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
+                .background(
+                    LinearGradient(
+                        colors: [iconColor, iconColor.opacity(0.8)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .cornerRadius(16)
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 32)
+
+            // Pro badge
+            HStack(spacing: 6) {
+                Image(systemName: "star.fill")
+                    .font(.system(size: 12))
+                Text("NutraSafe Pro Feature")
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+            }
+            .foregroundColor(.secondary)
+            .padding(.bottom, 60)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
 // MARK: - Previews
 
 #Preview("Premium Wrapper") {
@@ -366,4 +480,31 @@ struct BlurredListSection<Item: Identifiable, Content: View>: View {
         )
     }
     .padding()
+}
+
+// MARK: - Diary Limit Alert Modifier
+
+/// View modifier for showing the diary limit alert - helps reduce expression complexity in views
+struct DiaryLimitAlertModifier: ViewModifier {
+    @Binding var isPresented: Bool
+    @Binding var showingPaywall: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .alert("Daily Limit Reached", isPresented: $isPresented) {
+                Button("Upgrade to Pro") {
+                    showingPaywall = true
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("You've reached your daily limit of \(SubscriptionManager.freeDiaryEntriesPerDay) diary entries. Upgrade to NutraSafe Pro for unlimited entries.")
+            }
+    }
+}
+
+extension View {
+    /// Convenience modifier for showing diary limit alert
+    func diaryLimitAlert(isPresented: Binding<Bool>, showingPaywall: Binding<Bool>) -> some View {
+        modifier(DiaryLimitAlertModifier(isPresented: isPresented, showingPaywall: showingPaywall))
+    }
 }
