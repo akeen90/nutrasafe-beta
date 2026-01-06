@@ -89,38 +89,38 @@ struct PaywallView: View {
                         // Benefits list
                         VStack(spacing: 16) {
                             BenefitRow(
-                                icon: "chart.line.uptrend.xyaxis",
+                                icon: "fork.knife.circle.fill",
                                 iconColor: .blue,
-                                title: "Full Progress History",
-                                description: "Track your complete weight journey"
+                                title: "Unlimited Diary Entries",
+                                description: "Log as much food as you like, every day"
                             )
 
                             BenefitRow(
                                 icon: "waveform.path.ecg",
                                 iconColor: .pink,
                                 title: "Pattern Analysis",
-                                description: "Identify foods that cause reactions"
+                                description: "Spot which ingredients trigger reactions"
                             )
 
                             BenefitRow(
                                 icon: "calendar.badge.clock",
                                 iconColor: .orange,
-                                title: "Unlimited Expiry Tracking",
-                                description: "Never waste food again"
-                            )
-
-                            BenefitRow(
-                                icon: "leaf.fill",
-                                iconColor: .green,
-                                title: "Complete Nutrient Insights",
-                                description: "All vitamins and minerals tracked"
+                                title: "Use By Tracker",
+                                description: "Track opened food and cut waste"
                             )
 
                             BenefitRow(
                                 icon: "timer",
+                                iconColor: .green,
+                                title: "Intermittent Fasting",
+                                description: "Plans, timers, streaks and insights"
+                            )
+
+                            BenefitRow(
+                                icon: "chart.line.uptrend.xyaxis",
                                 iconColor: .purple,
-                                title: "Advanced Fasting Stats",
-                                description: "Full history and detailed analytics"
+                                title: "Full Weight History",
+                                description: "See your complete progress over time"
                             )
                         }
                         .padding(.horizontal, 4)
