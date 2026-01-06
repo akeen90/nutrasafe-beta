@@ -728,10 +728,8 @@ struct ContentView: View {
                 }
 
                 showOnboarding = false
-                // Only show paywall if not already subscribed
-                if !(subscriptionManager.isSubscribed || subscriptionManager.isInTrial || subscriptionManager.isPremiumOverride) {
-                    showingPaywall = true
-                }
+                // SOFT PAYWALL: Don't show paywall after onboarding
+                // Users can explore the free tier first; paywall shows when they hit limits
             })
         }
         .fullScreenCover(isPresented: $showingDiaryAdd) {
@@ -808,17 +806,8 @@ struct ContentView: View {
                 previousTabBeforeAdd = newTab
             }
 
-            // Enforce subscription gating for programmatic tab changes
-            // BUT allow notification-triggered navigation to proceed
-            if !(subscriptionManager.isSubscribed || subscriptionManager.isInTrial || subscriptionManager.isPremiumOverride) {
-                if !(newTab == .diary || newTab == .add) && !isNavigatingFromNotification {
-                    // Revert and show paywall
-                    selectedTab = .diary
-                    let generator = UINotificationFeedbackGenerator()
-                    generator.notificationOccurred(.warning)
-                    showingPaywall = true
-                }
-            }
+            // SOFT PAYWALL: All tabs are now accessible - premium features are gated within each tab
+            // No longer blocking tab access here
 
             // Reset the notification flag after navigation is handled
             if isNavigatingFromNotification {
