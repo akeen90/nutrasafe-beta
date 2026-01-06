@@ -4242,6 +4242,27 @@ struct AddFoodMainView: View {
     }
 }
 
+// MARK: - Benefit Item (for limit views)
+private struct BenefitItem: View {
+    let icon: String
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 18))
+                .foregroundColor(.green)
+                .frame(width: 24)
+
+            Text(text)
+                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .foregroundColor(.primary)
+
+            Spacer()
+        }
+    }
+}
+
 // MARK: - Diary Limit Reached View
 /// Shows when free user has hit their daily diary entry limit
 struct DiaryLimitReachedView: View {
@@ -4293,48 +4314,13 @@ struct DiaryLimitReachedView: View {
                 }
 
                 // Benefits list
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "infinity")
-                            .font(.system(size: 20))
-                            .foregroundColor(.green)
-                            .frame(width: 24)
-
-                        Text("Unlimited diary entries")
-                            .font(.system(size: 15, weight: .medium, design: .rounded))
-                            .foregroundColor(.primary)
-
-                        Spacer()
-                    }
-
-                    HStack(spacing: 12) {
-                        Image(systemName: "chart.line.uptrend.xyaxis")
-                            .font(.system(size: 20))
-                            .foregroundColor(.green)
-                            .frame(width: 24)
-
-                        Text("Full progress history")
-                            .font(.system(size: 15, weight: .medium, design: .rounded))
-                            .foregroundColor(.primary)
-
-                        Spacer()
-                    }
-
-                    HStack(spacing: 12) {
-                        Image(systemName: "leaf.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(.green)
-                            .frame(width: 24)
-
-                        Text("Complete nutrient insights")
-                            .font(.system(size: 15, weight: .medium, design: .rounded))
-                            .foregroundColor(.primary)
-
-                        Spacer()
-                    }
+                VStack(alignment: .leading, spacing: 10) {
+                    BenefitItem(icon: "infinity", text: "Unlimited diary entries")
+                    BenefitItem(icon: "waveform.path.ecg", text: "Pattern analysis for reactions")
+                    BenefitItem(icon: "timer", text: "Intermittent fasting tracker")
                 }
                 .padding(.horizontal, 32)
-                .padding(.vertical, 16)
+                .padding(.vertical, 12)
             }
 
             Spacer()
