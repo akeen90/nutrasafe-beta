@@ -1,230 +1,289 @@
+//
+//  PaywallView.swift
+//  NutraSafe Beta
+//
+//  Modern paywall design with clean aesthetic
+//
+
 import SwiftUI
 import StoreKit
 
 struct PaywallView: View {
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
 
     private var hasFreeTrial: Bool {
-        // Check if product has a free trial available AND user is eligible
-        // This ensures "Start Free Trial" only shows to users who can actually get the trial
         guard let offer = subscriptionManager.product?.subscription?.introductoryOffer else {
             return false
         }
-        // Must check BOTH: product has trial offer AND user hasn't used it before
         return offer.paymentMode == .freeTrial && subscriptionManager.isEligibleForTrial
     }
 
     private var priceText: String {
         if let product = subscriptionManager.product {
-            return "\(product.displayPrice)/month"
+            return product.displayPrice
         }
-        return "£2.99/month"
+        return "£2.99"
     }
 
     private var ctaText: String {
-        hasFreeTrial ? "Start Free Trial" : "Subscribe"
-    }
-
-    private var headerSubtitle: String {
-        // Keep dynamic - show trial message if eligible, otherwise show tagline
-        hasFreeTrial ? "Smarter tracking. Stronger nutrition habits." : "Smarter tracking. Stronger nutrition habits."
-    }
-
-    private var showTrialText: Bool {
-        hasFreeTrial
-    }
-
-    private var trialText: String {
-        "1 week free, then \(priceText)"
-    }
-
-    private var benefitTitle: String {
-        "Why Upgrade"
-    }
-
-    private var disclosureText: String {
-        if hasFreeTrial {
-            return "1 week free, then \(priceText)"
-        } else {
-            return "Auto\u{2011}renews at \(priceText). Cancel anytime in Settings."
-        }
+        hasFreeTrial ? "Start Free Trial" : "Continue"
     }
 
     var body: some View {
-        NavigationView {
-            ZStack {
-                LinearGradient(colors: [Color(.systemBackground), Color(.secondarySystemBackground)], startPoint: .top, endPoint: .bottom)
-                    .ignoresSafeArea()
+        ZStack {
+            // Background
+            Color(.systemBackground)
+                .ignoresSafeArea()
 
-                ScrollView {
-                    VStack(spacing: 24) {
+            VStack(spacing: 0) {
+                // Close button
+                HStack {
+                    Spacer()
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .frame(width: 32, height: 32)
+                            .background(Circle().fill(Color(.systemGray5)))
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 28) {
                         // Header
-                        VStack(spacing: 8) {
-                            Image(systemName: "star.circle.fill")
-                                .font(.system(size: 48))
-                                .foregroundColor(.purple)
-                            Text("NutraSafe Pro")
-                                .font(.system(size: 28, weight: .bold))
-                            Text(priceText)
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundColor(.primary)
-                            Text(headerSubtitle)
-                                .font(.system(size: 16))
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                        }
+                        VStack(spacing: 16) {
+                            // App icon or Pro badge
+                            ZStack {
+                                Circle()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [Color.blue, Color.purple],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .frame(width: 80, height: 80)
 
-                        // Benefits card
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text(benefitTitle)
-                                .font(.headline)
-                            VStack(alignment: .leading, spacing: 12) {
-                                Label("Access detailed nutrition information and data", systemImage: "chart.bar.doc.horizontal")
-                                Label("Track your nutrient intake against reference values", systemImage: "waveform.path.ecg")
-                                Label("Smart reminders for opened food expiry", systemImage: "calendar.badge.clock")
-                                Label("Log food reactions and identify patterns", systemImage: "heart.text.square")
+                                Image(systemName: "star.fill")
+                                    .font(.system(size: 36))
+                                    .foregroundColor(.white)
                             }
-                            .padding(16)
-                            .background(.ultraThinMaterial)
-                            .cornerRadius(16)
 
-                            // Disclaimer
-                            Text("For informational purposes only. Not medical advice. Consult healthcare professionals for dietary guidance.")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.leading)
-                                .padding(.horizontal, 8)
+                            VStack(spacing: 8) {
+                                Text("Unlock NutraSafe Pro")
+                                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                                    .foregroundColor(.primary)
 
-                            // Your Subscription section
-                            VStack(spacing: 12) {
-                                Text("Your Subscription")
-                                    .font(.subheadline)
-                                    .fontWeight(.semibold)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                                HStack(spacing: 6) {
-                                    Text("Cancel anytime")
-                                    Text("•")
-                                    Text("Private & secure")
-                                    Text("•")
-                                    Text("Restore easily")
-                                }
-                                .foregroundColor(.secondary)
-                                .font(.footnote)
+                                Text("Get the most out of your nutrition journey")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
                             }
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding()
-                        .background(Color(.systemBackground))
-                        .cornerRadius(20)
-                        .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 8)
+                        .padding(.top, 8)
 
-                        // Primary CTA
+                        // Benefits list
+                        VStack(spacing: 16) {
+                            BenefitRow(
+                                icon: "chart.line.uptrend.xyaxis",
+                                iconColor: .blue,
+                                title: "Full Progress History",
+                                description: "Track your complete weight journey"
+                            )
+
+                            BenefitRow(
+                                icon: "waveform.path.ecg",
+                                iconColor: .pink,
+                                title: "Pattern Analysis",
+                                description: "Identify foods that cause reactions"
+                            )
+
+                            BenefitRow(
+                                icon: "calendar.badge.clock",
+                                iconColor: .orange,
+                                title: "Unlimited Expiry Tracking",
+                                description: "Never waste food again"
+                            )
+
+                            BenefitRow(
+                                icon: "leaf.fill",
+                                iconColor: .green,
+                                title: "Complete Nutrient Insights",
+                                description: "All vitamins and minerals tracked"
+                            )
+
+                            BenefitRow(
+                                icon: "timer",
+                                iconColor: .purple,
+                                title: "Advanced Fasting Stats",
+                                description: "Full history and detailed analytics"
+                            )
+                        }
+                        .padding(.horizontal, 4)
+
+                        // Pricing card
+                        VStack(spacing: 16) {
+                            // Price display
+                            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                Text(priceText)
+                                    .font(.system(size: 42, weight: .bold, design: .rounded))
+                                    .foregroundColor(.primary)
+
+                                Text("/ month")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.secondary)
+                            }
+
+                            if hasFreeTrial {
+                                Text("7 days free, then \(priceText)/month")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.blue)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color.blue.opacity(0.1))
+                                    )
+                            }
+                        }
+
+                        // CTA Button
                         Button(action: {
                             Task {
                                 try? await subscriptionManager.purchase()
-                                // Auto-dismiss on successful subscription
                                 if subscriptionManager.isSubscribed {
                                     dismiss()
                                 }
                             }
                         }) {
-                            HStack {
-                                if subscriptionManager.isPurchasing {
-                                    ProgressView().scaleEffect(0.9)
-                                } else if !subscriptionManager.isProductLoaded {
-                                    ProgressView().scaleEffect(0.9)
-                                    Text("Loading...")
-                                        .font(.system(size: 18, weight: .semibold))
+                            HStack(spacing: 8) {
+                                if subscriptionManager.isPurchasing || !subscriptionManager.isProductLoaded {
+                                    ProgressView()
+                                        .tint(.white)
                                 } else {
                                     Text(ctaText)
                                         .font(.system(size: 18, weight: .semibold))
                                 }
                             }
+                            .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
-                            .padding()
+                            .frame(height: 56)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color.blue, Color.blue.opacity(0.8)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .cornerRadius(16)
                         }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
                         .disabled(!subscriptionManager.isProductLoaded || subscriptionManager.isPurchasing)
 
-                        // Error message with retry
+                        // Error message
                         if let error = subscriptionManager.purchaseError {
-                            VStack(spacing: 12) {
-                                Text(error)
-                                    .font(.caption)
-                                    .foregroundColor(.red)
-                                    .multilineTextAlignment(.center)
-                                    .padding(.horizontal)
-
-                                Button("Try Again") {
-                                    Task {
-                                        subscriptionManager.purchaseError = nil
-                                        try? await subscriptionManager.load()
-                                    }
-                                }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                            }
+                            Text(error)
+                                .font(.caption)
+                                .foregroundColor(.red)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
                         }
 
                         // Secondary actions
-                        HStack(spacing: 12) {
-                            Button("Restore Purchases") {
+                        HStack(spacing: 20) {
+                            Button("Restore") {
                                 Task {
                                     try? await subscriptionManager.restore()
-                                    // Auto-dismiss if subscription was restored
                                     if subscriptionManager.isSubscribed {
                                         dismiss()
                                     }
                                 }
                             }
-                            Button("Manage Subscription") { Task { await subscriptionManager.manageSubscriptions() } }
-                        }
-                        .buttonStyle(.bordered)
-
-                        // Disclosure
-                        Text(disclosureText)
-                            .font(.footnote)
+                            .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
 
-                        // Legal Links
-                        HStack(spacing: 8) {
-                            Button("Terms of Use") {
+                            Text("•")
+                                .foregroundColor(.secondary)
+
+                            Button("Terms") {
                                 if let url = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/") {
                                     UIApplication.shared.open(url)
                                 }
                             }
-                            .font(.caption)
-                            .foregroundColor(.blue)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.secondary)
 
                             Text("•")
-                                .font(.caption)
                                 .foregroundColor(.secondary)
 
-                            Button("Privacy Policy") {
+                            Button("Privacy") {
                                 if let url = URL(string: "https://nutrasafe-705c7.web.app/privacy") {
                                     UIApplication.shared.open(url)
                                 }
                             }
-                            .font(.caption)
-                            .foregroundColor(.blue)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.secondary)
                         }
-                        .padding(.top, 8)
+
+                        // Fine print
+                        Text(hasFreeTrial
+                            ? "Free trial auto-renews at \(priceText)/month. Cancel anytime."
+                            : "Auto-renews at \(priceText)/month. Cancel anytime in Settings.")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                            .padding(.bottom, 20)
                     }
-                    .padding()
+                    .padding(.horizontal, 24)
                 }
             }
-            .navigationTitle("Premium")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel", role: .cancel) { dismiss() }
-                }
+        }
+        .task { try? await subscriptionManager.load() }
+    }
+}
+
+// MARK: - Benefit Row
+
+private struct BenefitRow: View {
+    let icon: String
+    let iconColor: Color
+    let title: String
+    let description: String
+
+    var body: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(iconColor.opacity(0.12))
+                    .frame(width: 48, height: 48)
+
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundColor(iconColor)
             }
-            .task { try? await subscriptionManager.load() }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundColor(.primary)
+
+                Text(description)
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
         }
     }
+}
+
+// MARK: - Preview
+
+#Preview {
+    PaywallView()
+        .environmentObject(SubscriptionManager())
 }

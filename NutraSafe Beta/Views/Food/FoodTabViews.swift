@@ -259,13 +259,46 @@ struct FoodReactionsView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
 
-                // Recent Reactions
+                // Recent Reactions - limited for free users
                 FoodReactionListCard(
                     title: "Recent Reactions",
-                    reactions: Array(reactionManager.reactions.prefix(10))
+                    reactions: Array(reactionManager.reactions.prefix(
+                        subscriptionManager.hasAccess ? 10 : SubscriptionManager.freeReactionsLimit
+                    ))
                 )
                 .environmentObject(reactionManager)
                 .padding(.horizontal, 16)
+
+                // Show upgrade prompt if free user has more reactions
+                if !subscriptionManager.hasAccess && reactionManager.reactions.count > SubscriptionManager.freeReactionsLimit {
+                    Button(action: { showingPaywall = true }) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(.blue)
+
+                            Text("+\(reactionManager.reactions.count - SubscriptionManager.freeReactionsLimit) more reactions")
+                                .font(.system(size: 14, weight: .medium, design: .rounded))
+                                .foregroundColor(.primary)
+
+                            Spacer()
+
+                            Text("Unlock")
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Capsule().fill(Color.blue))
+                        }
+                        .padding(14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.blue.opacity(0.08))
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .padding(.horizontal, 16)
+                }
 
                 // Pattern Analysis - Premium Feature
                 PremiumFeatureWrapper(

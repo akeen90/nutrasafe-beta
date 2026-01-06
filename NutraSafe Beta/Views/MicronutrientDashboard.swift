@@ -13,18 +13,28 @@ struct MicronutrientDashboard: View {
     @StateObject private var trackingManager = MicronutrientTrackingManager.shared
     @StateObject private var recommendationEngine = NutrientRecommendationEngine.shared
     @StateObject private var diaryDataManager = DiaryDataManager.shared
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
     @Environment(\.colorScheme) private var colorScheme
     @State private var selectedFilter: DashboardFilter = .all
     @State private var selectedNutrient: MicronutrientSummary?
     @State private var showingTimeline = false
     @State private var showingRecommendations = false
     @State private var showingSources = false
+    @State private var showingPaywall = false
     @State private var insights: [String] = []
     @State private var nutrientSummaries: [MicronutrientSummary] = []
     @State private var hasLoadedData = false // Performance: Track if we've already loaded data
     @State private var isLoading = false // Performance: Prevent duplicate loads
     @State private var rhythmDays: [RhythmDay] = []
     @State private var showingGaps: Bool = false
+
+    /// Number of nutrients visible to free users
+    private let freeNutrientLimit = 5
+
+    /// Check if user has full access
+    private var hasFullAccess: Bool {
+        subscriptionManager.hasAccess
+    }
 
     enum DashboardFilter: String, CaseIterable {
     case all = "All"
@@ -104,6 +114,10 @@ struct MicronutrientDashboard: View {
             SourcesAndCitationsView()
                 .presentationDragIndicator(.visible)
                 .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
+        }
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView()
+                .environmentObject(subscriptionManager)
         }
         .task {
             // PERFORMANCE: Skip if already loaded - prevents redundant Firebase calls on tab switches
@@ -655,18 +669,55 @@ struct MicronutrientDashboard: View {
                         .stroke(Color(.systemGray4), lineWidth: 0.5)
                 )
             } else {
+                // Show limited nutrients for free users
+                let displaySummaries = hasFullAccess ? filteredSummaries : Array(filteredSummaries.prefix(freeNutrientLimit))
+
                 VStack(spacing: 1) {
-                    ForEach(filteredSummaries) { summary in
+                    ForEach(displaySummaries) { summary in
                         MicronutrientRow(summary: summary)
                             .contentShape(Rectangle())
                             .onTapGesture {
                                 selectedNutrient = summary
                             }
 
-                        if summary.id != filteredSummaries.last?.id {
+                        if summary.id != displaySummaries.last?.id {
                             Divider()
                                 .padding(.leading, 68)
                         }
+                    }
+
+                    // Show upgrade prompt if there are more nutrients
+                    if !hasFullAccess && filteredSummaries.count > freeNutrientLimit {
+                        Divider()
+
+                        Button(action: { showingPaywall = true }) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "lock.fill")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.blue)
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("+\(filteredSummaries.count - freeNutrientLimit) more nutrients")
+                                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                                        .foregroundColor(.primary)
+
+                                    Text("Upgrade to see all vitamins & minerals")
+                                        .font(.system(size: 13))
+                                        .foregroundColor(.secondary)
+                                }
+
+                                Spacer()
+
+                                Text("Unlock")
+                                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 8)
+                                    .background(Capsule().fill(Color.blue))
+                            }
+                            .padding(16)
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
                 .background(

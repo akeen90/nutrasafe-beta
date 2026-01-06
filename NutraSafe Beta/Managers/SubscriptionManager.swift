@@ -19,6 +19,16 @@ final class SubscriptionManager: ObservableObject {
     var hasAccess: Bool {
         isSubscribed || isInTrial || isPremiumOverride
     }
+
+    // MARK: - Free Tier Limits
+    /// Maximum reactions visible to free users (older ones blurred)
+    static let freeReactionsLimit = 5
+    /// Maximum Use By items free users can add
+    static let freeUseByItemsLimit = 5
+    /// Free users see limited fasting history (days)
+    static let freeFastingHistoryDays = 7
+    /// Free users see limited weight history entries
+    static let freeWeightHistoryLimit = 7
     private var authObserver: NSObjectProtocol?
     private var transactionTask: Task<Void, Never>?
 

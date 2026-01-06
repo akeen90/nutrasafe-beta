@@ -962,6 +962,7 @@ struct WeightTrackingView: View {
     @Binding var showingSettings: Bool
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var firebaseManager: FirebaseManager
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
     @AppStorage("unitSystem") private var unitSystem: UnitSystem = .metric
 
     @State private var currentWeight: Double = 0
@@ -982,6 +983,18 @@ struct WeightTrackingView: View {
 
     // MARK: - Feature Tips
     @State private var showingProgressTip = false
+
+    // MARK: - Paywall
+    @State private var showingPaywall = false
+
+    /// Free users can see limited entries
+    private var hasFullAccess: Bool {
+        subscriptionManager.hasAccess
+    }
+
+    private var visibleEntryCount: Int {
+        hasFullAccess ? weightHistory.count : min(weightHistory.count, SubscriptionManager.freeWeightHistoryLimit)
+    }
 
     private var needsHeightSetup: Bool {
         userHeight == 0 && hasCheckedHeight // Only prompt if height is truly not set
@@ -1290,7 +1303,12 @@ struct WeightTrackingView: View {
 
                             // Weight entries list
                             List {
-                                ForEach(Array(weightHistory.prefix(showAllWeightEntries ? weightHistory.count : 5).enumerated()), id: \.element.id) { index, entry in
+                                // Show entries based on access level
+                                let displayCount = hasFullAccess
+                                    ? (showAllWeightEntries ? weightHistory.count : min(5, weightHistory.count))
+                                    : min(SubscriptionManager.freeWeightHistoryLimit, weightHistory.count)
+
+                                ForEach(Array(weightHistory.prefix(displayCount).enumerated()), id: \.element.id) { index, entry in
                                     WeightEntryRow(
                                         entry: entry,
                                         previousEntry: weightHistory[safe: index + 1],
@@ -1329,7 +1347,41 @@ struct WeightTrackingView: View {
                                     .listRowBackground(Color.clear)
                                 }
 
-                                if weightHistory.count > 5 {
+                                // Show upgrade prompt for free users with more history
+                                if !hasFullAccess && weightHistory.count > SubscriptionManager.freeWeightHistoryLimit {
+                                    Button(action: { showingPaywall = true }) {
+                                        HStack(spacing: 10) {
+                                            Image(systemName: "lock.fill")
+                                                .font(.system(size: 14))
+                                                .foregroundColor(.blue)
+
+                                            Text("+\(weightHistory.count - SubscriptionManager.freeWeightHistoryLimit) more entries")
+                                                .font(.system(size: 14, weight: .medium, design: .rounded))
+                                                .foregroundColor(.primary)
+
+                                            Spacer()
+
+                                            Text("Unlock")
+                                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                                .foregroundColor(.white)
+                                                .padding(.horizontal, 12)
+                                                .padding(.vertical, 6)
+                                                .background(Capsule().fill(Color.blue))
+                                        }
+                                        .padding(14)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .fill(Color.blue.opacity(0.08))
+                                        )
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                    .listRowInsets(EdgeInsets())
+                                    .listRowSeparator(.hidden)
+                                    .listRowBackground(Color.clear)
+                                }
+
+                                // Show "View all" only for premium users with lots of entries
+                                if hasFullAccess && weightHistory.count > 5 {
                                     Button(action: {
                                         withAnimation(.easeInOut(duration: 0.3)) {
                                             showAllWeightEntries.toggle()
@@ -1347,7 +1399,14 @@ struct WeightTrackingView: View {
                                 }
                             }
                             .listStyle(.plain)
-                            .frame(height: CGFloat((showAllWeightEntries ? weightHistory.count : min(weightHistory.count, 5)) * 85 + (weightHistory.count > 5 ? 50 : 0)))
+                            .frame(height: CGFloat({
+                                let baseCount = hasFullAccess
+                                    ? (showAllWeightEntries ? weightHistory.count : min(weightHistory.count, 5))
+                                    : min(weightHistory.count, SubscriptionManager.freeWeightHistoryLimit)
+                                let hasExtraRow = (!hasFullAccess && weightHistory.count > SubscriptionManager.freeWeightHistoryLimit)
+                                    || (hasFullAccess && weightHistory.count > 5)
+                                return baseCount * 85 + (hasExtraRow ? 60 : 0)
+                            }()))
                             .padding(.horizontal, 20)
                         }
                         .padding(.top, 12)
@@ -1500,6 +1559,10 @@ struct WeightTrackingView: View {
             }
         }
         .featureTip(isPresented: $showingProgressTip, tipKey: .progressOverview)
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView()
+                .environmentObject(subscriptionManager)
+        }
         .onReceive(NotificationCenter.default.publisher(for: .goalWeightUpdated)) { notification in
             if let gw = notification.userInfo?["goalWeight"] as? Double {
                 goalWeight = gw

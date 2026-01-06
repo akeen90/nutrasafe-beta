@@ -586,6 +586,7 @@ struct UseByExpiryView: View {
     @Binding var showingScanner: Bool
     @Binding var showingCamera: Bool
     @Binding var selectedTab: TabItem
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
 
     // PERFORMANCE: Use shared manager to persist data between tab switches
     @ObservedObject private var dataManager = UseByDataManager.shared
@@ -593,8 +594,19 @@ struct UseByExpiryView: View {
     @State private var isRefreshing: Bool = false
     @State private var showClearAlert: Bool = false
     @State private var showingAddSheet: Bool = false
+    @State private var showingPaywall: Bool = false
     @State private var selectedFoodForUseBy: FoodSearchResult? // Hoisted to avoid nested presentations
     @State private var searchText: String = ""
+
+    /// Check if user can add more items
+    private var canAddMoreItems: Bool {
+        subscriptionManager.hasAccess || dataManager.items.count < SubscriptionManager.freeUseByItemsLimit
+    }
+
+    /// Check if user is at the limit
+    private var isAtLimit: Bool {
+        !subscriptionManager.hasAccess && dataManager.items.count >= SubscriptionManager.freeUseByItemsLimit
+    }
 
     // PERFORMANCE: Debouncer to prevent search from running on every keystroke
     @StateObject private var searchDebouncer = Debouncer(milliseconds: 300)
@@ -865,6 +877,18 @@ struct UseByExpiryView: View {
                             .padding(.top, 18)
                             .padding(.bottom, 14)
 
+                            // Free tier limit banner
+                            if !subscriptionManager.hasAccess {
+                                FreeTierLimitBanner(
+                                    currentCount: dataManager.items.count,
+                                    maxCount: SubscriptionManager.freeUseByItemsLimit,
+                                    itemName: "items",
+                                    onUpgradeTapped: { showingPaywall = true }
+                                )
+                                .padding(.horizontal, 18)
+                                .padding(.bottom, 10)
+                            }
+
                             // Items list
                             if sortedItems.isEmpty {
                                 VStack(spacing: 16) {
@@ -974,9 +998,20 @@ struct UseByExpiryView: View {
             Text("This will remove all items from your useBy inventory.")
         }
         .fullScreenCover(isPresented: $showingAddSheet) {
-            AddUseByItemSheet(onComplete: {
-                showingAddSheet = false
-            })
+            // Check limit when presenting the add sheet
+            if canAddMoreItems {
+                AddUseByItemSheet(onComplete: {
+                    showingAddSheet = false
+                })
+            } else {
+                // Show paywall instead
+                PaywallView()
+                    .environmentObject(subscriptionManager)
+            }
+        }
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView()
+                .environmentObject(subscriptionManager)
         }
     } // End of var body: some View
 }

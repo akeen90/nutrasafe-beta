@@ -41,69 +41,104 @@ struct PremiumFeatureWrapper<Content: View, Preview: View>: View {
             ZStack {
                 // Blurred preview content
                 blurredPreview
-                    .blur(radius: 8)
+                    .blur(radius: 6)
                     .allowsHitTesting(false)
 
-                // Premium lock overlay
-                VStack(spacing: 14) {
-                    // Lock icon with gradient background
-                    ZStack {
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [Color.blue, Color.purple],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 56, height: 56)
-                            .shadow(color: .blue.opacity(0.4), radius: 12, y: 6)
+                // Tappable overlay to show paywall
+                Button(action: onUpgradeTapped) {
+                    VStack(spacing: 12) {
+                        // Lock icon
+                        ZStack {
+                            Circle()
+                                .fill(Color.blue.opacity(0.15))
+                                .frame(width: 52, height: 52)
 
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 24, weight: .medium))
-                            .foregroundColor(.white)
-                    }
-
-                    // Feature name
-                    Text(featureName)
-                        .font(.system(size: 17, weight: .semibold, design: .rounded))
-                        .foregroundColor(.primary)
-
-                    // Premium label
-                    Text("Premium Feature")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary)
-
-                    // Upgrade button
-                    Button(action: onUpgradeTapped) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "crown.fill")
-                                .font(.system(size: 14))
-                            Text("Upgrade")
-                                .font(.system(size: 15, weight: .semibold))
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 22, weight: .medium))
+                                .foregroundColor(.blue)
                         }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 12)
-                        .background(
-                            Capsule()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [.blue, .purple],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                        )
-                        .shadow(color: .blue.opacity(0.3), radius: 8, y: 4)
+
+                        // Feature name
+                        Text(featureName)
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .foregroundColor(.primary)
+
+                        // Tap to unlock
+                        Text("Tap to unlock")
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .foregroundColor(.secondary)
                     }
+                    .padding(20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(.ultraThinMaterial)
+                    )
                 }
-                .padding(24)
-                .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(.ultraThinMaterial)
-                        .shadow(color: .black.opacity(0.1), radius: 10, y: 5)
-                )
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+    }
+}
+
+// MARK: - Simple wrapper without custom preview
+/// Simpler wrapper that just blurs its content
+struct SimplePremiumWrapper<Content: View>: View {
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
+
+    let featureName: String
+    let content: Content
+    let onUpgradeTapped: () -> Void
+
+    init(
+        featureName: String,
+        onUpgradeTapped: @escaping () -> Void,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.featureName = featureName
+        self.onUpgradeTapped = onUpgradeTapped
+        self.content = content()
+    }
+
+    private var hasAccess: Bool {
+        subscriptionManager.hasAccess
+    }
+
+    var body: some View {
+        if hasAccess {
+            content
+        } else {
+            ZStack {
+                content
+                    .blur(radius: 6)
+                    .allowsHitTesting(false)
+
+                Button(action: onUpgradeTapped) {
+                    VStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.blue.opacity(0.15))
+                                .frame(width: 52, height: 52)
+
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 22, weight: .medium))
+                                .foregroundColor(.blue)
+                        }
+
+                        Text(featureName)
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .foregroundColor(.primary)
+
+                        Text("Tap to unlock")
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(.ultraThinMaterial)
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
             }
         }
     }
@@ -119,9 +154,9 @@ struct InlineUpgradePrompt: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 10) {
-                Image(systemName: "crown.fill")
+                Image(systemName: "sparkles")
                     .font(.system(size: 14))
-                    .foregroundColor(.orange)
+                    .foregroundColor(.blue)
 
                 Text(message)
                     .font(.system(size: 14, weight: .medium, design: .rounded))
@@ -131,16 +166,15 @@ struct InlineUpgradePrompt: View {
 
                 Text("Upgrade")
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundColor(.blue)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(Color.blue))
             }
             .padding(14)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.orange.opacity(0.1))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .strokeBorder(Color.orange.opacity(0.3), lineWidth: 1)
-                    )
+                    .fill(Color.blue.opacity(0.08))
             )
         }
         .buttonStyle(PlainButtonStyle())
@@ -151,6 +185,7 @@ struct InlineUpgradePrompt: View {
 
 /// Banner showing item limit for free users
 struct FreeTierLimitBanner: View {
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
     let currentCount: Int
     let maxCount: Int
     let itemName: String
@@ -160,51 +195,118 @@ struct FreeTierLimitBanner: View {
         currentCount >= maxCount
     }
 
+    private var hasAccess: Bool {
+        subscriptionManager.hasAccess
+    }
+
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: isAtLimit ? "exclamationmark.circle.fill" : "info.circle.fill")
-                .font(.system(size: 18))
-                .foregroundColor(isAtLimit ? .orange : .blue)
+        // Don't show for premium users
+        if !hasAccess {
+            HStack(spacing: 12) {
+                Image(systemName: isAtLimit ? "exclamationmark.circle.fill" : "info.circle.fill")
+                    .font(.system(size: 18))
+                    .foregroundColor(isAtLimit ? .orange : .blue)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text("\(currentCount)/\(maxCount) \(itemName) used")
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundColor(.primary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(currentCount)/\(maxCount) \(itemName)")
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundColor(.primary)
 
-                if isAtLimit {
-                    Text("Upgrade for unlimited \(itemName)")
-                        .font(.system(size: 12, design: .rounded))
-                        .foregroundColor(.secondary)
+                    if isAtLimit {
+                        Text("Upgrade for unlimited")
+                            .font(.system(size: 12, design: .rounded))
+                            .foregroundColor(.secondary)
+                    }
                 }
-            }
 
-            Spacer()
+                Spacer()
 
-            if isAtLimit {
                 Button(action: onUpgradeTapped) {
-                    Text("Upgrade")
+                    Text(isAtLimit ? "Upgrade" : "Go Pro")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundColor(.white)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
-                        .background(
-                            Capsule()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [.blue, .purple],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                        )
+                        .background(Capsule().fill(Color.blue))
+                }
+            }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(isAtLimit ? Color.orange.opacity(0.1) : Color.blue.opacity(0.08))
+            )
+        }
+    }
+}
+
+// MARK: - Blurred List Items
+
+/// Shows first N items normally, then blurs remaining with upgrade prompt
+struct BlurredListSection<Item: Identifiable, Content: View>: View {
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
+
+    let items: [Item]
+    let freeLimit: Int
+    let featureName: String
+    let onUpgradeTapped: () -> Void
+    let content: (Item) -> Content
+
+    init(
+        items: [Item],
+        freeLimit: Int,
+        featureName: String,
+        onUpgradeTapped: @escaping () -> Void,
+        @ViewBuilder content: @escaping (Item) -> Content
+    ) {
+        self.items = items
+        self.freeLimit = freeLimit
+        self.featureName = featureName
+        self.onUpgradeTapped = onUpgradeTapped
+        self.content = content
+    }
+
+    private var hasAccess: Bool {
+        subscriptionManager.hasAccess
+    }
+
+    var body: some View {
+        if hasAccess {
+            // Premium: show all items
+            ForEach(items) { item in
+                content(item)
+            }
+        } else {
+            // Free: show first N items
+            ForEach(items.prefix(freeLimit)) { item in
+                content(item)
+            }
+
+            // If there are more items, show blurred preview with upgrade
+            if items.count > freeLimit {
+                ZStack {
+                    VStack(spacing: 8) {
+                        ForEach(items.dropFirst(freeLimit).prefix(2)) { item in
+                            content(item)
+                                .blur(radius: 4)
+                        }
+                    }
+                    .allowsHitTesting(false)
+
+                    Button(action: onUpgradeTapped) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 14))
+                            Text("+\(items.count - freeLimit) more")
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(Capsule().fill(Color.blue))
+                    }
                 }
             }
         }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(isAtLimit ? Color.orange.opacity(0.1) : Color.blue.opacity(0.08))
-        )
     }
 }
 
@@ -222,7 +324,7 @@ struct FreeTierLimitBanner: View {
             .cornerRadius(12)
     } blurredPreview: {
         VStack(spacing: 12) {
-            ForEach(0..<3) { _ in
+            ForEach(0..<3, id: \.self) { _ in
                 RoundedRectangle(cornerRadius: 8)
                     .fill(Color.gray.opacity(0.3))
                     .frame(height: 50)
