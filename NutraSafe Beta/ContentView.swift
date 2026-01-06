@@ -4316,8 +4316,8 @@ struct DiaryLimitReachedView: View {
                 // Benefits list
                 VStack(alignment: .leading, spacing: 10) {
                     BenefitItem(icon: "infinity", text: "Unlimited diary entries")
-                    BenefitItem(icon: "waveform.path.ecg", text: "Pattern analysis for reactions")
-                    BenefitItem(icon: "timer", text: "Intermittent fasting tracker")
+                    BenefitItem(icon: "flask.fill", text: "See additives and hidden ingredients")
+                    BenefitItem(icon: "leaf.fill", text: "Full vitamin and mineral breakdown")
                 }
                 .padding(.horizontal, 32)
                 .padding(.vertical, 12)
