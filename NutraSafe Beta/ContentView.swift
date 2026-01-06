@@ -578,16 +578,20 @@ struct ContentView: View {
             )
             .environmentObject(diaryDataManager)
             .environmentObject(healthKitManager)
+            .environmentObject(subscriptionManager)
 
         case .weight:
             WeightTrackingView(showingSettings: $showingSettings)
                 .environmentObject(healthKitManager)
+                .environmentObject(subscriptionManager)
 
         case .food:
             FoodTabView(showingSettings: $showingSettings, selectedTab: $selectedTab)
+                .environmentObject(subscriptionManager)
 
         case .useBy:
             UseByTabView(showingSettings: $showingSettings, selectedTab: $selectedTab)
+                .environmentObject(subscriptionManager)
 
         case .add:
             AddTabView(
