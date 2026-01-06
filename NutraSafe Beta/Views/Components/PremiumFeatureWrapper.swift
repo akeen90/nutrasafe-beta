@@ -183,7 +183,7 @@ struct InlineUpgradePrompt: View {
 
 // MARK: - Item Limit Banner
 
-/// Banner showing item limit for free users
+/// Banner showing item limit for free users - only shows when at or near limit
 struct FreeTierLimitBanner: View {
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     let currentCount: Int
@@ -195,13 +195,14 @@ struct FreeTierLimitBanner: View {
         currentCount >= maxCount
     }
 
-    private var hasAccess: Bool {
-        subscriptionManager.hasAccess
+    /// Show banner when user is at 80% of limit or more
+    private var shouldShow: Bool {
+        !subscriptionManager.hasAccess && currentCount >= max(1, Int(Double(maxCount) * 0.8))
     }
 
     var body: some View {
-        // Don't show for premium users
-        if !hasAccess {
+        // Only show for free users who are approaching or at their limit
+        if shouldShow {
             HStack(spacing: 12) {
                 Image(systemName: isAtLimit ? "exclamationmark.circle.fill" : "info.circle.fill")
                     .font(.system(size: 18))
@@ -212,22 +213,22 @@ struct FreeTierLimitBanner: View {
                         .font(.system(size: 14, weight: .medium, design: .rounded))
                         .foregroundColor(.primary)
 
-                    if isAtLimit {
-                        Text("Upgrade for unlimited")
-                            .font(.system(size: 12, design: .rounded))
-                            .foregroundColor(.secondary)
-                    }
+                    Text(isAtLimit ? "Upgrade for unlimited" : "Free tier limit")
+                        .font(.system(size: 12, design: .rounded))
+                        .foregroundColor(.secondary)
                 }
 
                 Spacer()
 
-                Button(action: onUpgradeTapped) {
-                    Text(isAtLimit ? "Upgrade" : "Go Pro")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(Capsule().fill(Color.blue))
+                if isAtLimit {
+                    Button(action: onUpgradeTapped) {
+                        Text("Upgrade")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(Capsule().fill(Color.blue))
+                    }
                 }
             }
             .padding(14)
