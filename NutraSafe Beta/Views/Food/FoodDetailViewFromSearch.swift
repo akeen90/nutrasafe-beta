@@ -3573,27 +3573,96 @@ private var nutritionFactsSection: some View {
     // MARK: - Additive Analysis Content
     private var additivesContent: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Use AdditiveWatchView for proper loading state and auto-expansion
-            if let ingredientsList = cachedIngredients, !ingredientsList.isEmpty {
-                AdditiveWatchView(ingredients: ingredientsList)
-            } else {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(alignment: .top, spacing: 8) {
-                        Image(systemName: "info.circle.fill")
-                            .foregroundColor(.secondary)
-                            .font(.system(size: 16))
-                        Text("No ingredient data available - unable to analyse additives and allergens")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.secondary)
-                            .lineLimit(nil)
-                    }
+            if subscriptionManager.hasAccess {
+                // Premium users see full additive analysis
+                if let ingredientsList = cachedIngredients, !ingredientsList.isEmpty {
+                    AdditiveWatchView(ingredients: ingredientsList)
+                } else {
+                    noIngredientDataView
                 }
-                .padding(12)
-                .background(Color.secondary.opacity(0.1))
-                .cornerRadius(8)
+            } else {
+                // Free users see locked preview
+                additivesLockedView
             }
         }
         .padding(16)
+    }
+
+    private var noIngredientDataView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "info.circle.fill")
+                    .foregroundColor(.secondary)
+                    .font(.system(size: 16))
+                Text("No ingredient data available - unable to analyse additives and allergens")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .lineLimit(nil)
+            }
+        }
+        .padding(12)
+        .background(Color.secondary.opacity(0.1))
+        .cornerRadius(8)
+    }
+
+    private var additivesLockedView: some View {
+        VStack(spacing: 16) {
+            // Blurred placeholder
+            VStack(spacing: 8) {
+                ForEach(0..<3, id: \.self) { _ in
+                    HStack(spacing: 12) {
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(width: 50, height: 24)
+                        VStack(alignment: .leading, spacing: 4) {
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.gray.opacity(0.15))
+                                .frame(height: 14)
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.gray.opacity(0.1))
+                                .frame(width: 120, height: 10)
+                        }
+                        Spacer()
+                    }
+                    .padding(10)
+                    .background(Color.gray.opacity(0.05))
+                    .cornerRadius(8)
+                }
+            }
+            .blur(radius: 3)
+            .allowsHitTesting(false)
+
+            // Lock overlay
+            VStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(Color.purple.opacity(0.12))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(.purple)
+                }
+
+                Text("Additive Analysis")
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundColor(.primary)
+
+                Text("See E-numbers and hidden additives")
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+
+                Button(action: { showingPaywall = true }) {
+                    Text("Unlock")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 8)
+                        .background(Capsule().fill(Color.purple))
+                }
+                .padding(.top, 4)
+            }
+            .padding(.vertical, 8)
+        }
     }
 
     // MARK: - Allergens Watch Content
