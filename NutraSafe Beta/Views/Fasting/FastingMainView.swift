@@ -3,116 +3,153 @@ import Charts
 
 struct FastingMainView: View {
     @ObservedObject var viewModel: FastingViewModel
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
     @Environment(\.colorScheme) private var colorScheme
     @State private var showingEditTimes = false
     @State private var showingEducation = false
     @State private var showingCitations = false
     @State private var showingActionSheet = false
     @State private var actionSheetSession: FastingSession?
+    @State private var showingPaywall = false
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    if viewModel.activeSession == nil {
-                        IdleStateView(viewModel: viewModel)
-                    } else {
-                        ActiveSessionView(viewModel: viewModel)
-                    }
-
-                    // Last Session card (only show when no active session)
-                    if viewModel.activeSession == nil, let lastSession = viewModel.recentSessions.first {
-                        LastSessionCard(session: lastSession)
-                    }
-
-                    // Bottom spacer for tab bar
-                    Spacer()
-                        .frame(height: 100)
+            Group {
+                if subscriptionManager.hasAccess {
+                    fastingContent
+                } else {
+                    premiumLockedView
                 }
-                .padding()
             }
             .navigationTitle("Fasting")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        showingCitations = true
-                    } label: {
-                        Image(systemName: "doc.text.fill")
-                    }
+        }
+    }
+
+    // MARK: - Premium Locked View
+    private var premiumLockedView: some View {
+        PremiumUnlockCard(
+            icon: "timer",
+            iconColor: .green,
+            title: "Intermittent Fasting",
+            subtitle: "Track your fasting windows with smart scheduling and insights",
+            benefits: [
+                "Choose from popular plans (16:8, 18:6, 20:4)",
+                "Live timer with stage notifications",
+                "Track streaks and fasting history",
+                "Personalized insights and analytics"
+            ],
+            onUnlockTapped: {
+                showingPaywall = true
+            }
+        )
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
+        }
+    }
+
+    // MARK: - Fasting Content (Premium)
+    private var fastingContent: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                if viewModel.activeSession == nil {
+                    IdleStateView(viewModel: viewModel)
+                } else {
+                    ActiveSessionView(viewModel: viewModel)
                 }
 
-                ToolbarItem(placement: .primaryAction) {
-                    NavigationLink {
-                        FastingPlanManagementView(viewModel: viewModel)
-                    } label: {
-                        Image(systemName: "clock.badge.checkmark")
-                    }
+                // Last Session card (only show when no active session)
+                if viewModel.activeSession == nil, let lastSession = viewModel.recentSessions.first {
+                    LastSessionCard(session: lastSession)
                 }
 
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink {
-                        FastingInsightsView(viewModel: viewModel)
-                    } label: {
-                        Image(systemName: "chart.line.uptrend.xyaxis")
-                    }
+                // Bottom spacer for tab bar
+                Spacer()
+                    .frame(height: 100)
+            }
+            .padding()
+        }
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button {
+                    showingCitations = true
+                } label: {
+                    Image(systemName: "doc.text.fill")
                 }
             }
-            .sheet(isPresented: $showingEducation) {
-                FastingEducationView()
+
+            ToolbarItem(placement: .primaryAction) {
+                NavigationLink {
+                    FastingPlanManagementView(viewModel: viewModel)
+                } label: {
+                    Image(systemName: "clock.badge.checkmark")
+                }
+            }
+
+            ToolbarItem(placement: .navigationBarTrailing) {
+                NavigationLink {
+                    FastingInsightsView(viewModel: viewModel)
+                } label: {
+                    Image(systemName: "chart.line.uptrend.xyaxis")
+                }
+            }
+        }
+        .sheet(isPresented: $showingEducation) {
+            FastingEducationView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
+        }
+        .sheet(isPresented: $showingCitations) {
+            FastingCitationsView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
+        }
+        .sheet(isPresented: $showingEditTimes) {
+            if let session = viewModel.activeSession {
+                EditSessionTimesView(viewModel: viewModel, session: session)
                     .presentationDragIndicator(.visible)
                     .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
             }
-            .sheet(isPresented: $showingCitations) {
-                FastingCitationsView()
-                    .presentationDragIndicator(.visible)
-                    .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
-            }
-            .sheet(isPresented: $showingEditTimes) {
-                if let session = viewModel.activeSession {
-                    EditSessionTimesView(viewModel: viewModel, session: session)
-                        .presentationDragIndicator(.visible)
-                        .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
-                }
-            }
-            .sheet(isPresented: $showingActionSheet) {
-                if let session = actionSheetSession {
-                    FastingActionSheet(
-                        session: session,
-                        onSnooze: { minutes in
-                            Task {
-                                await viewModel.snoozeSession(session, minutes: minutes)
-                            }
-                        },
-                        onSkip: {
-                            Task {
-                                await viewModel.skipSession(session)
-                            }
-                        },
-                        onStartNow: {
-                            Task {
-                                await viewModel.startSessionNow(session)
-                            }
-                        },
-                        onAdjustTime: { newStartTime in
-                            Task {
-                                await viewModel.adjustSessionStartTime(session, newTime: newStartTime)
-                            }
-                        },
-                        onDismiss: {
-                            showingActionSheet = false
-                            actionSheetSession = nil
+        }
+        .sheet(isPresented: $showingActionSheet) {
+            if let session = actionSheetSession {
+                FastingActionSheet(
+                    session: session,
+                    onSnooze: { minutes in
+                        Task {
+                            await viewModel.snoozeSession(session, minutes: minutes)
                         }
-                    )
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
-                    .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
-                }
+                    },
+                    onSkip: {
+                        Task {
+                            await viewModel.skipSession(session)
+                        }
+                    },
+                    onStartNow: {
+                        Task {
+                            await viewModel.startSessionNow(session)
+                        }
+                    },
+                    onAdjustTime: { newStartTime in
+                        Task {
+                            await viewModel.adjustSessionStartTime(session, newTime: newStartTime)
+                        }
+                    },
+                    onDismiss: {
+                        showingActionSheet = false
+                        actionSheetSession = nil
+                    }
+                )
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
             }
-            .onAppear {
-                Task {
-                    await viewModel.refreshActivePlan()
-                    checkForMissedScheduledFast()
-                }
+        }
+        .onAppear {
+            Task {
+                await viewModel.refreshActivePlan()
+                checkForMissedScheduledFast()
             }
         }
     }
