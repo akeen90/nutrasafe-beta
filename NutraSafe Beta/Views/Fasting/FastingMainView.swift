@@ -31,12 +31,12 @@ struct FastingMainView: View {
             icon: "timer",
             iconColor: .green,
             title: "Intermittent Fasting",
-            subtitle: "Track your fasting windows with smart scheduling and insights",
+            subtitle: "Give your body regular breaks from eating to support metabolism, energy levels, and overall wellbeing",
             benefits: [
-                "Choose from popular plans (16:8, 18:6, 20:4)",
-                "Live timer with stage notifications",
-                "Track streaks and fasting history",
-                "Personalized insights and analytics"
+                "Proven plans like 16:8 — fast 16 hours, eat within 8",
+                "Live timer shows fat-burning and autophagy stages",
+                "Build streaks to stay motivated and consistent",
+                "See your fasting history and track progress"
             ],
             onUnlockTapped: {
                 showingPaywall = true

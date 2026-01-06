@@ -164,13 +164,13 @@ struct UseByTabView: View {
                     PremiumUnlockCard(
                         icon: "calendar.badge.clock",
                         iconColor: .orange,
-                        title: "Track Expiry Dates",
-                        subtitle: "Never let opened food go to waste again",
+                        title: "Use By Tracker",
+                        subtitle: "UK households waste £700+ of food yearly. Track opened items and get reminded before they go off",
                         benefits: [
-                            "Track when opened food should be used by",
-                            "Get notifications before items expire",
-                            "Reduce food waste and save money",
-                            "Keep your fridge organized"
+                            "Add opened foods with their use-by dates",
+                            "Get reminders before items expire",
+                            "Cut food waste and save money each week",
+                            "See what needs eating first at a glance"
                         ],
                         onUnlockTapped: { showingPaywall = true }
                     )
