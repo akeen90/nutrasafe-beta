@@ -3606,7 +3606,7 @@ private var nutritionFactsSection: some View {
     }
 
     private var additivesLockedView: some View {
-        VStack(spacing: 16) {
+        ZStack {
             // Blurred placeholder
             VStack(spacing: 8) {
                 ForEach(0..<3, id: \.self) { _ in
@@ -3629,10 +3629,10 @@ private var nutritionFactsSection: some View {
                     .cornerRadius(8)
                 }
             }
-            .blur(radius: 3)
+            .blur(radius: 4)
             .allowsHitTesting(false)
 
-            // Lock overlay
+            // Lock overlay on top
             VStack(spacing: 10) {
                 ZStack {
                     Circle()
@@ -3661,7 +3661,11 @@ private var nutritionFactsSection: some View {
                 }
                 .padding(.top, 4)
             }
-            .padding(.vertical, 8)
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.ultraThinMaterial)
+            )
         }
     }
 
