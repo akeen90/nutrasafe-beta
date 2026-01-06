@@ -75,28 +75,15 @@ struct MicronutrientDashboard: View {
             .padding(.bottom, 100)
         }
         .background(
-            ZStack {
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.92, green: 0.96, blue: 1.0),
-                        Color(red: 0.93, green: 0.88, blue: 1.0)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                RadialGradient(
-                    colors: [Color.blue.opacity(0.10), Color.clear],
-                    center: .topLeading,
-                    startRadius: 0,
-                    endRadius: 300
-                )
-                RadialGradient(
-                    colors: [Color.purple.opacity(0.08), Color.clear],
-                    center: .bottomTrailing,
-                    startRadius: 0,
-                    endRadius: 280
-                )
-            }
+            LinearGradient(
+                colors: [
+                    Color(red: 0.90, green: 0.94, blue: 1.0),
+                    Color(red: 0.95, green: 0.90, blue: 1.0)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
         )
         .sheet(item: $selectedNutrient) { nutrient in
             NutrientInfoSheet(summary: nutrient)

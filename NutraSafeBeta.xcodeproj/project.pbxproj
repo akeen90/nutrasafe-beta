@@ -109,6 +109,10 @@
 		RECOM456E67696E65426C64 /* NutrientRecommendationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = RECOM456E67696E6546696C65 /* NutrientRecommendationEngine.swift */; };
 		RECOM566965774275696C64 /* SmartRecommendationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = RECOM5669657746696C65 /* SmartRecommendationsView.swift */; };
 		SUBS0001BUILD /* Managers/SubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = SUBS0001FILE /* Managers/SubscriptionManager.swift */; };
+		FEATTIPS001BUILD /* Managers/FeatureTipsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEATTIPS001FILE /* Managers/FeatureTipsManager.swift */; };
+		MIGRMGR001BUILD /* Managers/MigrationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = MIGRMGR001FILE /* Managers/MigrationManager.swift */; };
+		FEATTIPOVER001BUILD /* Views/Components/FeatureTipOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEATTIPOVER001FILE /* Views/Components/FeatureTipOverlay.swift */; };
+		PREMWRAP001BUILD /* Views/Components/PremiumFeatureWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = PREMWRAP001FILE /* Views/Components/PremiumFeatureWrapper.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -212,6 +216,10 @@
 		RECOM456E67696E6546696C65 /* NutrientRecommendationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutrientRecommendationEngine.swift; sourceTree = "<group>"; };
 		RECOM5669657746696C65 /* SmartRecommendationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartRecommendationsView.swift; sourceTree = "<group>"; };
 		SUBS0001FILE /* Managers/SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/SubscriptionManager.swift; sourceTree = "<group>"; };
+		FEATTIPS001FILE /* Managers/FeatureTipsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Managers/FeatureTipsManager.swift"; sourceTree = SOURCE_ROOT; };
+		MIGRMGR001FILE /* Managers/MigrationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Managers/MigrationManager.swift"; sourceTree = SOURCE_ROOT; };
+		FEATTIPOVER001FILE /* Views/Components/FeatureTipOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Components/FeatureTipOverlay.swift"; sourceTree = SOURCE_ROOT; };
+		PREMWRAP001FILE /* Views/Components/PremiumFeatureWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NutraSafe Beta/Views/Components/PremiumFeatureWrapper.swift"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -581,6 +589,10 @@
 				A1234567890123456789012305 /* FirebaseManager.swift in Sources */,
 				A1234567890123456789012307 /* HealthKitManager.swift in Sources */,
 				SUBS0001BUILD /* Managers/SubscriptionManager.swift in Sources */,
+				FEATTIPS001BUILD /* Managers/FeatureTipsManager.swift in Sources */,
+				MIGRMGR001BUILD /* Managers/MigrationManager.swift in Sources */,
+				FEATTIPOVER001BUILD /* Views/Components/FeatureTipOverlay.swift in Sources */,
+				PREMWRAP001BUILD /* Views/Components/PremiumFeatureWrapper.swift in Sources */,
 				FASTMGR0001BUILD /* Managers/FastingManager.swift in Sources */,
 				IMGCACHE001BUILD /* Managers/ImageCacheManager.swift in Sources */,
 				ALGOLIA001BUILD /* Managers/AlgoliaSearchManager.swift in Sources */,

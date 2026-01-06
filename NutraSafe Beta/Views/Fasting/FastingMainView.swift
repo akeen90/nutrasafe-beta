@@ -1371,15 +1371,16 @@ struct ProgressRingCard: View {
                 Circle()
                     .trim(from: 0, to: CGFloat(viewModel.currentProgress))
                     .stroke(
-                        AngularGradient(
-                            gradient: Gradient(colors: [.blue, .purple, .pink]),
-                            center: .center
+                        LinearGradient(
+                            colors: [.blue, .purple],
+                            startPoint: .leading,
+                            endPoint: .trailing
                         ),
                         style: StrokeStyle(lineWidth: 12, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
                     .frame(width: 200, height: 200)
-                    .animation(.easeInOut(duration: 0.5), value: viewModel.currentProgress)
+                    .animation(.linear(duration: 0.15), value: viewModel.currentProgress)
                 
                 VStack(spacing: 8) {
                     // Time IN fast (current)

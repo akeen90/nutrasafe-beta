@@ -93,6 +93,10 @@ struct UseByTabView: View {
     @State private var showingAddSheet = false
     @State private var selectedFoodForUseBy: FoodSearchResult? // Hoisted to avoid nested presentations
 
+    // MARK: - Feature Tips
+    @State private var showingUseByTip = false
+    @State private var hasShownTip = false
+
     // Temporary header counter until data is lifted to parent scope
     private var expiringSoonCount: Int { 0 }
 
@@ -173,6 +177,17 @@ struct UseByTabView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(Color(.systemBackground))
         }
+        .onAppear {
+            // Show feature tip on first visit
+            guard !hasShownTip else { return }
+            hasShownTip = true
+            if !FeatureTipsManager.shared.hasSeenTip(.useByOverview) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    showingUseByTip = true
+                }
+            }
+        }
+        .featureTip(isPresented: $showingUseByTip, tipKey: .useByOverview)
     }
 }
 

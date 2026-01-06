@@ -197,7 +197,8 @@ struct MainAppView: View {
                     } else {
                         await MainActor.run { healthKitManager.exerciseCalories = 0 }
                     }
-                    await requestNotificationPermission()
+                    // Don't auto-request notification permission on launch
+                    // Let the user choose during onboarding or when they use features that need it
                     await clearAppBadge()
 
                     // Check and refresh notification queue on app launch

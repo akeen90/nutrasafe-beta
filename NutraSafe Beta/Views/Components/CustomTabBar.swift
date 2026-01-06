@@ -9,9 +9,8 @@ import SwiftUI
 
 struct CustomTabBar: View {
     @Binding var selectedTab: TabItem
-    @EnvironmentObject var subscriptionManager: SubscriptionManager
-    var onBlockedTabAttempt: (() -> Void)? = nil
     @Binding var showingAddMenu: Bool
+    // Note: onBlockedTabAttempt removed - soft paywall now allows all tab access
 
     var body: some View {
         HStack(spacing: 0) {
@@ -19,19 +18,13 @@ struct CustomTabBar: View {
                 if tab == .add {
                     // Special Add button with circular design - shows menu instead of switching tabs
                     Button(action: {
-                        withAnimation(.easeInOut(duration: 0.25)) {
-                            showingAddMenu = true
-                        }
+                        showingAddMenu = true
                         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
                         impactFeedback.impactOccurred()
                     }) {
                         ZStack {
                             Circle()
-                                .fill(LinearGradient(
-                                    gradient: Gradient(colors: [Color.blue, Color.blue.opacity(0.8)]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ))
+                                .fill(Color.blue)
                                 .frame(width: 56, height: 56)
                                 .shadow(color: Color.blue.opacity(0.3), radius: 8, x: 0, y: 4)
 
@@ -39,7 +32,7 @@ struct CustomTabBar: View {
                                 .font(.system(size: 28, weight: .semibold))
                                 .foregroundColor(.white)
                                 .rotationEffect(.degrees(showingAddMenu ? 45 : 0))
-                                .animation(.easeOut(duration: 0.25), value: showingAddMenu)
+                                .animation(.interactiveSpring(response: 0.15, dampingFraction: 0.8), value: showingAddMenu)
                         }
                     }
                     .frame(maxWidth: .infinity)
@@ -47,25 +40,16 @@ struct CustomTabBar: View {
                     .buttonStyle(PlainButtonStyle())
                 } else {
                     // Regular tab buttons with large tap targets
+                    // SOFT PAYWALL: All tabs are now accessible - premium features are blurred within each tab
                     Button(action: {
-                        let allowed = subscriptionManager.isSubscribed || subscriptionManager.isInTrial || subscriptionManager.isPremiumOverride || tab == .diary
-                        if allowed {
-                            // PERFORMANCE: Instant tab switch - no animation delay
-                            selectedTab = tab
-                            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                            impactFeedback.impactOccurred()
-                        } else {
-                            onBlockedTabAttempt?()
-                            let notif = UINotificationFeedbackGenerator()
-                            notif.notificationOccurred(.warning)
-                        }
+                        selectedTab = tab
+                        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                        impactFeedback.impactOccurred()
                     }) {
                         VStack(alignment: .center, spacing: 4) {
                             Image(systemName: tab.icon)
                                 .font(.system(size: 22, weight: selectedTab == tab ? .semibold : .regular))
                                 .foregroundColor(selectedTab == tab ? .blue : Color.gray)
-                                .scaleEffect(selectedTab == tab ? 1.08 : 1.0)
-                                .animation(.easeOut(duration: 0.1), value: selectedTab)
 
                             if !tab.title.isEmpty {
                                 Text(tab.title)

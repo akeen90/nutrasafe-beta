@@ -55,6 +55,10 @@ struct DiaryTabView: View {
     private let healthKitRefreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
     @State private var isTimerActive = true
 
+    // MARK: - Feature Tips
+    @State private var showingDiaryTip = false
+    @State private var showingNutrientsTip = false
+
     // MARK: - Food Lookup Cache (O(1) instead of O(n))
     @State private var foodLookupCache: [String: (food: DiaryFoodItem, meal: String)] = [:]
 
@@ -455,6 +459,8 @@ struct DiaryTabView: View {
                 .presentationBackground(Color(.systemBackground))
             }
             .background(Color.adaptiveBackground)
+            .featureTip(isPresented: $showingDiaryTip, tipKey: .diaryOverview)
+            .featureTip(isPresented: $showingNutrientsTip, tipKey: .nutrientsOverview)
     }
 
     // MARK: - Content with Lifecycle Modifiers
@@ -471,6 +477,17 @@ struct DiaryTabView: View {
                 guard !hasLoadedOnce else { return }
                 hasLoadedOnce = true
                 loadFoodData() // Initial load doesn't need debounce
+
+                // Show feature tip on first visit
+                // Use longer delay if user just completed onboarding to avoid immediate tip after permissions
+                if !FeatureTipsManager.shared.hasSeenTip(.diaryOverview) {
+                    let delay: Double = OnboardingManager.shared.justCompletedOnboarding ? 2.0 : 0.5
+                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                        showingDiaryTip = true
+                        // Reset the flag after showing the first tip
+                        OnboardingManager.shared.justCompletedOnboarding = false
+                    }
+                }
             }
             .onChange(of: selectedTab) { _, newTab in
                 handleSelectedTabChange(newTab)
@@ -583,15 +600,12 @@ struct DiaryTabView: View {
     }
 
     private func handleDiarySubTabChange(_ newTab: DiarySubTab) {
-        let hasAccess = subscriptionManager.isSubscribed ||
-                        subscriptionManager.isInTrial ||
-                        subscriptionManager.isPremiumOverride
-
-        if newTab == .nutrients && !hasAccess {
-            diarySubTab = .overview
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.warning)
-            onBlockedNutrientsAttempt?()
+        // SOFT PAYWALL: Allow navigation to nutrients tab (premium features are blurred within)
+        // Show feature tip on first visit to nutrients sub-tab
+        if newTab == .nutrients && !FeatureTipsManager.shared.hasSeenTip(.nutrientsOverview) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                showingNutrientsTip = true
+            }
         }
     }
 

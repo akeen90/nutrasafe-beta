@@ -14,6 +14,11 @@ final class SubscriptionManager: ObservableObject {
     @Published var isPremiumOverride = false
     @Published var purchaseError: String?
     @Published var isProductLoaded: Bool = false
+
+    /// Convenience property to check if user has premium access (subscribed, in trial, or override)
+    var hasAccess: Bool {
+        isSubscribed || isInTrial || isPremiumOverride
+    }
     private var authObserver: NSObjectProtocol?
     private var transactionTask: Task<Void, Never>?
 

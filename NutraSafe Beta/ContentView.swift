@@ -638,7 +638,7 @@ struct ContentView: View {
             // Custom Tab Bar positioned at bottom
             VStack {
                 Spacer()
-                CustomTabBar(selectedTab: $selectedTab, onBlockedTabAttempt: { showingPaywall = true }, showingAddMenu: $showingAddMenu)
+                CustomTabBar(selectedTab: $selectedTab, showingAddMenu: $showingAddMenu)
                     .offset(y: 34) // Lower the tab bar to bottom edge
             }
 
@@ -979,6 +979,9 @@ struct WeightTrackingView: View {
     @State private var entryToDelete: WeightEntry?
     @State private var showingDeleteConfirmation = false
     @State private var showAllWeightEntries = false
+
+    // MARK: - Feature Tips
+    @State private var showingProgressTip = false
 
     private var needsHeightSetup: Bool {
         userHeight == 0 && hasCheckedHeight // Only prompt if height is truly not set
@@ -1488,7 +1491,15 @@ struct WeightTrackingView: View {
                     showingHeightSetup = true
                 }
             }
+
+            // Show feature tip on first visit (after height setup if needed)
+            if !FeatureTipsManager.shared.hasSeenTip(.progressOverview) && !needsHeightSetup {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    showingProgressTip = true
+                }
+            }
         }
+        .featureTip(isPresented: $showingProgressTip, tipKey: .progressOverview)
         .onReceive(NotificationCenter.default.publisher(for: .goalWeightUpdated)) { notification in
             if let gw = notification.userInfo?["goalWeight"] as? Double {
                 goalWeight = gw

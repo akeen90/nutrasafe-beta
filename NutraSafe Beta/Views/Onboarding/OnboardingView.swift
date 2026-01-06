@@ -2,284 +2,752 @@
 //  OnboardingView.swift
 //  NutraSafe Beta
 //
-//  Modern button-based onboarding with integrated screenshots
+//  Lean 3-page onboarding: Welcome → Permissions → Disclaimer/Email
 //
 
 import SwiftUI
+import UserNotifications
 
-// MARK: - Scroll Tracking
-struct ScrollOffsetPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
-
+// MARK: - Main Onboarding View
 struct OnboardingView: View {
+    @Environment(\.colorScheme) var colorScheme
     @State private var currentPage = 0
-    @State private var hasScrolledToBottom: [Int: Bool] = [:] // User must scroll to bottom of each page
-    @State private var emailMarketingConsent = false // GDPR email consent
-    let totalPages = 13 // 11 content pages + 1 disclaimer + 1 email consent
-    let onComplete: (Bool) -> Void // Pass email consent to completion handler
+    @State private var emailMarketingConsent = false
+    let totalPages = 3
+    let onComplete: (Bool) -> Void
 
     var body: some View {
         ZStack {
-            // Modern gradient background
-            LinearGradient(
-                colors: [
-                    Color(red: 0.95, green: 0.97, blue: 1.0),
-                    Color(red: 0.98, green: 0.96, blue: 1.0)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            // Clean adaptive background
+            Color(.systemBackground)
+                .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // Page content
                 Group {
                     switch currentPage {
-                    case 0: WelcomePage(
-                        currentPage: 0,
-                        onScrolledToBottom: { hasScrolledToBottom[0] = true },
-                        onBack: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } },
-                        onContinue: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }
-                    )
-                    case 1: DiaryPage(
-                        currentPage: 1,
-                        onScrolledToBottom: { hasScrolledToBottom[1] = true },
-                        onBack: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } },
-                        onContinue: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }
-                    )
-                    case 2: FoodDetailPage(
-                        currentPage: 2,
-                        onScrolledToBottom: { hasScrolledToBottom[2] = true },
-                        onBack: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } },
-                        onContinue: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }
-                    )
-                    case 3: NutrientsPage(
-                        currentPage: 3,
-                        onScrolledToBottom: { hasScrolledToBottom[3] = true },
-                        onBack: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } },
-                        onContinue: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }
-                    )
-                    case 4: ReactionsPage(
-                        currentPage: 4,
-                        onScrolledToBottom: { hasScrolledToBottom[4] = true },
-                        onBack: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } },
-                        onContinue: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }
-                    )
-                    case 5: PatternsPage(
-                        currentPage: 5,
-                        onScrolledToBottom: { hasScrolledToBottom[5] = true },
-                        onBack: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } },
-                        onContinue: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }
-                    )
-                    case 6: FastingPage(
-                        currentPage: 6,
-                        onScrolledToBottom: { hasScrolledToBottom[6] = true },
-                        onBack: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } },
-                        onContinue: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }
-                    )
-                    case 7: ProgressPage(
-                        currentPage: 7,
-                        onScrolledToBottom: { hasScrolledToBottom[7] = true },
-                        onBack: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } },
-                        onContinue: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }
-                    )
-                    case 8: HealthPermissionsPage(
-                        currentPage: 8,
-                        onScrolledToBottom: { hasScrolledToBottom[8] = true },
-                        onBack: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } },
-                        onContinue: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }
-                    )
-                    case 9: UseByPage(
-                        currentPage: 9,
-                        onScrolledToBottom: { hasScrolledToBottom[9] = true },
-                        onBack: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } },
-                        onContinue: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }
-                    )
-                    case 10: FinalMessagePage(
-                        currentPage: 10,
-                        onScrolledToBottom: { hasScrolledToBottom[10] = true },
-                        onBack: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } },
-                        onContinue: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }
-                    )
-                    case 11: DisclaimerPage(onAccept: {
-                        OnboardingManager.shared.acceptDisclaimer()
-                        withAnimation(.spring(response: 0.3)) { currentPage = 12 }
-                    })
-                    case 12: EmailConsentPage(hasConsented: $emailMarketingConsent, onContinue: {
-                        OnboardingManager.shared.completeOnboarding()
-                        onComplete(emailMarketingConsent) // Pass consent state
-                    })
-                    default: WelcomePage(
-                        currentPage: 0,
-                        onScrolledToBottom: { hasScrolledToBottom[0] = true },
-                        onBack: { withAnimation(.spring(response: 0.3)) { currentPage -= 1 } },
-                        onContinue: { withAnimation(.spring(response: 0.3)) { currentPage += 1 } }
-                    )
+                    case 0:
+                        LeanWelcomePage(
+                            onContinue: { withAnimation(.easeInOut(duration: 0.25)) { currentPage = 1 } }
+                        )
+                    case 1:
+                        LeanPermissionsPage(
+                            onBack: { withAnimation(.easeInOut(duration: 0.25)) { currentPage = 0 } },
+                            onContinue: { withAnimation(.easeInOut(duration: 0.25)) { currentPage = 2 } }
+                        )
+                    case 2:
+                        LeanDisclaimerPage(
+                            emailMarketingConsent: $emailMarketingConsent,
+                            onBack: { withAnimation(.easeInOut(duration: 0.25)) { currentPage = 1 } },
+                            onComplete: {
+                                OnboardingManager.shared.acceptDisclaimer()
+                                OnboardingManager.shared.completeOnboarding()
+                                onComplete(emailMarketingConsent)
+                            }
+                        )
+                    default:
+                        LeanWelcomePage(
+                            onContinue: { withAnimation(.easeInOut(duration: 0.25)) { currentPage = 1 } }
+                        )
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .transition(.asymmetric(
-                    insertion: .move(edge: .trailing).combined(with: .opacity),
-                    removal: .move(edge: .leading).combined(with: .opacity)
-                ))
 
-                // Progress indicator (only for main pages, not disclaimer or email consent)
-                if currentPage < 11 {
-                    HStack(spacing: 8) {
-                        ForEach(0..<11) { index in
-                            Capsule()
-                                .fill(index == currentPage ? Color.blue : Color.gray.opacity(0.3))
-                                .frame(width: index == currentPage ? 24 : 8, height: 8)
-                                .animation(.spring(response: 0.3), value: currentPage)
-                        }
+                // Clean progress dots
+                HStack(spacing: 8) {
+                    ForEach(0..<totalPages, id: \.self) { index in
+                        Circle()
+                            .fill(index == currentPage ? Color.accentColor : Color.primary.opacity(0.2))
+                            .frame(width: index == currentPage ? 10 : 8, height: index == currentPage ? 10 : 8)
+                            .animation(.easeInOut(duration: 0.2), value: currentPage)
                     }
-                    .padding(.bottom, 20)
-                    .layoutPriority(1)
                 }
+                .padding(.bottom, 24)
             }
         }
     }
 }
 
-// MARK: - Welcome Page
-struct WelcomePage: View {
-    let currentPage: Int
-    let onScrolledToBottom: () -> Void
-    let onBack: () -> Void
+// MARK: - Page 1: Welcome
+struct LeanWelcomePage: View {
+    @Environment(\.colorScheme) var colorScheme
     let onContinue: () -> Void
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                Spacer().frame(height: 30)
+        VStack(spacing: 0) {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 28) {
+                    Spacer().frame(height: 50)
 
-                // App icon - matching actual design
-                ZStack {
-                    RoundedRectangle(cornerRadius: 26)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.40, green: 0.58, blue: 0.93), // Blue
-                                    Color(red: 0.68, green: 0.45, blue: 0.93)  // Purple
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+                    // Real app icon from assets
+                    Image("AppIconImage")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
                         .frame(width: 120, height: 120)
-                        .shadow(color: Color.black.opacity(0.2), radius: 20, y: 10)
+                        .clipShape(RoundedRectangle(cornerRadius: 28))
+                        .shadow(color: Color.black.opacity(0.15), radius: 20, y: 10)
 
-                    VStack(spacing: 10) {
-                        Image(systemName: "heart.fill")
-                            .font(.system(size: 32, weight: .medium))
-                            .foregroundColor(.white)
+                    // Title
+                    VStack(spacing: 8) {
+                        Text("Welcome to")
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundColor(.secondary)
 
-                        VStack(spacing: 6) {
-                            RoundedRectangle(cornerRadius: 2)
-                                .fill(Color.white)
-                                .frame(width: 50, height: 4)
-                            RoundedRectangle(cornerRadius: 2)
-                                .fill(Color.white)
-                                .frame(width: 50, height: 4)
+                        Text("NutraSafe")
+                            .font(.system(size: 36, weight: .bold))
+                            .foregroundColor(.primary)
+
+                        Text("Your personal food safety companion")
+                            .font(.system(size: 15))
+                            .foregroundColor(.secondary)
+                            .padding(.top, 4)
+                    }
+
+                    // Feature list - clean and simple
+                    VStack(spacing: 12) {
+                        FeatureRow(
+                            icon: "magnifyingglass",
+                            color: .blue,
+                            title: "Search & Scan",
+                            description: "Find food by name, barcode, or photo"
+                        )
+                        FeatureRow(
+                            icon: "chart.bar.fill",
+                            color: .green,
+                            title: "Track Everything",
+                            description: "Calories, nutrients, reactions & weight"
+                        )
+                        FeatureRow(
+                            icon: "bell.badge.fill",
+                            color: .orange,
+                            title: "Smart Reminders",
+                            description: "Food expiry and fasting notifications"
+                        )
+                    }
+                    .padding(.horizontal, 24)
+
+                    Spacer().frame(height: 20)
+                }
+            }
+
+            // Get Started button
+            Button(action: onContinue) {
+                Text("Get Started")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 54)
+                    .background(Color.blue)
+                    .cornerRadius(14)
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 16)
+        }
+    }
+}
+
+// MARK: - Feature Row
+struct FeatureRow: View {
+    @Environment(\.colorScheme) var colorScheme
+    let icon: String
+    let color: Color
+    let title: String
+    let description: String
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 20, weight: .medium))
+                .foregroundColor(color)
+                .frame(width: 44, height: 44)
+                .background(color.opacity(colorScheme == .dark ? 0.2 : 0.12))
+                .cornerRadius(12)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.primary)
+
+                Text(description)
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+        }
+        .padding(14)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(14)
+    }
+}
+
+// MARK: - Page 2: Permissions
+struct LeanPermissionsPage: View {
+    let onBack: () -> Void
+    let onContinue: () -> Void
+
+    @State private var notificationsRequested = false
+    @State private var notificationsGranted = false
+    @State private var healthKitRequested = false
+    @State private var healthKitGranted = false
+    @EnvironmentObject var healthKitManager: HealthKitManager
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    Spacer().frame(height: 30)
+
+                    // Header
+                    VStack(spacing: 8) {
+                        Image(systemName: "gearshape.2.fill")
+                            .font(.system(size: 40))
+                            .foregroundColor(.blue)
+                            .padding(.bottom, 8)
+
+                        Text("Enhance Your Experience")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(.primary)
+
+                        Text("Optional permissions to get the most from NutraSafe")
+                            .font(.system(size: 15))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 20)
+                    }
+
+                    // Notifications - with more detail
+                    PermissionCardDetailed(
+                        icon: "bell.badge.fill",
+                        iconColor: .orange,
+                        title: "Notifications",
+                        benefits: [
+                            "Food expiry reminders before items go bad",
+                            "Fasting stage updates & completion alerts",
+                            "Weekly nutrition summaries"
+                        ],
+                        isRequested: notificationsRequested,
+                        isGranted: notificationsGranted,
+                        onEnable: { requestNotifications() },
+                        onSkip: { notificationsRequested = true }
+                    )
+                    .padding(.horizontal, 24)
+
+                    // Health - with more detail
+                    PermissionCardDetailed(
+                        icon: "heart.fill",
+                        iconColor: .pink,
+                        title: "Apple Health",
+                        benefits: [
+                            "Sync weight to track progress automatically",
+                            "Import steps & active calories burned",
+                            "See exercise data alongside nutrition"
+                        ],
+                        isRequested: healthKitRequested,
+                        isGranted: healthKitGranted,
+                        onEnable: {
+                            Task {
+                                await healthKitManager.requestAuthorization()
+                                await MainActor.run {
+                                    healthKitRequested = true
+                                    healthKitGranted = healthKitManager.isAuthorized
+                                }
+                            }
+                        },
+                        onSkip: { healthKitRequested = true }
+                    )
+                    .padding(.horizontal, 24)
+
+                    // Info
+                    HStack(spacing: 10) {
+                        Image(systemName: "info.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.secondary)
+
+                        Text("Both optional • Change anytime in Settings")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.top, 4)
+
+                    Spacer().frame(height: 20)
+                }
+            }
+
+            // Navigation
+            HStack(spacing: 12) {
+                Button(action: onBack) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                        Text("Back")
+                    }
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.primary)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(12)
+                }
+
+                Button(action: onContinue) {
+                    Text("Continue")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(Color.blue)
+                        .cornerRadius(12)
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 16)
+        }
+        .onAppear {
+            checkExistingNotificationStatus()
+            checkExistingHealthKitStatus()
+        }
+    }
+
+    private func checkExistingHealthKitStatus() {
+        Task {
+            await healthKitManager.checkExistingAuthorization()
+            await MainActor.run {
+                if healthKitManager.isAuthorized {
+                    healthKitRequested = true
+                    healthKitGranted = true
+                }
+            }
+        }
+    }
+
+    private func requestNotifications() {
+        #if DEBUG
+        print("🔔 Requesting notification permissions...")
+        #endif
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+            DispatchQueue.main.async {
+                notificationsRequested = true
+                notificationsGranted = granted
+                #if DEBUG
+                if let error = error {
+                    print("🔔 Notification permission error: \(error.localizedDescription)")
+                } else {
+                    print("🔔 Notification permission result: \(granted ? "granted" : "denied")")
+                }
+                #endif
+            }
+        }
+    }
+
+    private func checkExistingNotificationStatus() {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            DispatchQueue.main.async {
+                if settings.authorizationStatus == .authorized {
+                    notificationsRequested = true
+                    notificationsGranted = true
+                } else if settings.authorizationStatus == .denied {
+                    notificationsRequested = true
+                    notificationsGranted = false
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Permission Card with Detailed Benefits
+struct PermissionCardDetailed: View {
+    @Environment(\.colorScheme) var colorScheme
+    let icon: String
+    let iconColor: Color
+    let title: String
+    let benefits: [String]
+    let isRequested: Bool
+    let isGranted: Bool
+    let onEnable: () -> Void
+    let onSkip: () -> Void
+
+    var body: some View {
+        VStack(spacing: 14) {
+            // Header
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 24))
+                    .foregroundColor(iconColor)
+                    .frame(width: 48, height: 48)
+                    .background(iconColor.opacity(colorScheme == .dark ? 0.2 : 0.12))
+                    .cornerRadius(12)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(title)
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.primary)
+
+                        if isGranted {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 16))
+                                .foregroundColor(.green)
                         }
                     }
                 }
 
-                VStack(spacing: 12) {
-                    Text("Welcome to")
-                        .font(.system(size: 24, weight: .medium))
-                        .foregroundColor(.secondary)
+                Spacer()
+            }
 
-                    Text("NutraSafe")
-                        .font(.system(size: 48, weight: .bold))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [.blue, .purple],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
+            // Benefits list
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(benefits, id: \.self) { benefit in
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(iconColor)
+                            .frame(width: 16)
+                            .offset(y: 2)
 
-                    Text("Your complete nutrition & food safety companion")
-                        .font(.system(size: 18, weight: .regular))
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 40)
+                        Text(benefit)
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
+            }
+            .padding(.leading, 4)
 
-                Spacer().frame(height: 20)
-
-                VStack(alignment: .leading, spacing: 20) {
-                    FeatureRow(icon: "doc.text.fill", color: .blue, text: "Log food, understand ingredients")
-                    FeatureRow(icon: "chart.bar.fill", color: .green, text: "Track patterns & nutrition")
-                    FeatureRow(icon: "shield.fill", color: .orange, text: "Stay informed & safe")
+            // Action buttons
+            if isRequested {
+                HStack(spacing: 6) {
+                    Image(systemName: isGranted ? "checkmark.circle.fill" : "xmark.circle.fill")
+                        .foregroundColor(isGranted ? .green : .secondary)
+                    Text(isGranted ? "Enabled" : "Not enabled")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(isGranted ? .green : .secondary)
                 }
-                .padding(.horizontal, 32)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(isGranted ? Color.green.opacity(0.12) : Color(.tertiarySystemBackground))
+                .cornerRadius(10)
+            } else {
+                HStack(spacing: 10) {
+                    Button(action: onEnable) {
+                        Text("Enable")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 44)
+                            .background(iconColor)
+                            .cornerRadius(10)
+                    }
 
-                // Navigation buttons
-                OnboardingNavigationButtons(
-                    currentPage: currentPage,
-                    totalPages: 11,
-                    onBack: onBack,
-                    onContinue: onContinue
-                )
-
-                // Scroll detector - triggers when navigation buttons are visible
-                GeometryReader { geometry in
-                    Color.clear
-                        .preference(key: WelcomeScrollOffsetKey.self, value: geometry.frame(in: .named("welcomeScroll")).minY)
-                        .onPreferenceChange(WelcomeScrollOffsetKey.self) { offset in
-                            if offset < UIScreen.main.bounds.height {
-                                onScrolledToBottom()
-                            }
-                        }
+                    Button(action: onSkip) {
+                        Text("Skip")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .frame(width: 60)
+                            .frame(height: 44)
+                            .background(Color(.tertiarySystemBackground))
+                            .cornerRadius(10)
+                    }
                 }
-                .frame(height: 1)
             }
         }
-        .coordinateSpace(name: "welcomeScroll")
+        .padding(16)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(16)
     }
 }
 
-struct WelcomeScrollOffsetKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
-
-struct FeatureRow: View {
+// MARK: - Simple Permission Card (for compatibility)
+struct PermissionCard: View {
+    @Environment(\.colorScheme) var colorScheme
     let icon: String
-    let color: Color
-    let text: String
+    let iconColor: Color
+    let title: String
+    let description: String
+    let isRequested: Bool
+    let isGranted: Bool
+    let onEnable: () -> Void
+    let onSkip: () -> Void
 
     var body: some View {
-        HStack(spacing: 16) {
-            Image(systemName: icon)
-                .font(.system(size: 24))
-                .foregroundColor(.white)
-                .frame(width: 50, height: 50)
-                .background(
-                    LinearGradient(
-                        colors: [color, color.opacity(0.7)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+        PermissionCardDetailed(
+            icon: icon,
+            iconColor: iconColor,
+            title: title,
+            benefits: [description],
+            isRequested: isRequested,
+            isGranted: isGranted,
+            onEnable: onEnable,
+            onSkip: onSkip
+        )
+    }
+}
+
+// MARK: - Page 3: Disclaimer + Email Consent
+struct LeanDisclaimerPage: View {
+    @Environment(\.colorScheme) var colorScheme
+    @Binding var emailMarketingConsent: Bool
+    let onBack: () -> Void
+    let onComplete: () -> Void
+
+    @State private var hasAcceptedDisclaimer = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    Spacer().frame(height: 40)
+
+                    // Header
+                    VStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 40))
+                            .foregroundColor(.orange)
+                            .padding(.bottom, 8)
+
+                        Text("Before You Start")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(.primary)
+
+                        Text("Please read and acknowledge")
+                            .font(.system(size: 15))
+                            .foregroundColor(.secondary)
+                    }
+
+                    // Disclaimer points
+                    VStack(spacing: 10) {
+                        DisclaimerPoint(
+                            icon: "info.circle.fill",
+                            text: "NutraSafe helps track nutrition and food safety",
+                            color: .blue
+                        )
+                        DisclaimerPoint(
+                            icon: "cross.circle.fill",
+                            text: "This is NOT medical advice",
+                            color: .red,
+                            isBold: true
+                        )
+                        DisclaimerPoint(
+                            icon: "eye.fill",
+                            text: "Always verify food labels yourself",
+                            color: .orange
+                        )
+                        DisclaimerPoint(
+                            icon: "exclamationmark.circle.fill",
+                            text: "Nutrition data may vary from actual products",
+                            color: .yellow
+                        )
+                    }
+                    .padding(.horizontal, 24)
+
+                    // Required checkbox
+                    Button(action: { hasAcceptedDisclaimer.toggle() }) {
+                        HStack(spacing: 12) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(hasAcceptedDisclaimer ? Color.blue : Color.secondary.opacity(0.4), lineWidth: 2)
+                                    .frame(width: 24, height: 24)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .fill(hasAcceptedDisclaimer ? Color.blue : Color.clear)
+                                    )
+
+                                if hasAcceptedDisclaimer {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundColor(.white)
+                                }
+                            }
+
+                            Text("I understand this app is for informational purposes only")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(.primary)
+                                .multilineTextAlignment(.leading)
+
+                            Spacer()
+                        }
+                    }
+                    .padding(16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(hasAcceptedDisclaimer ? Color.blue.opacity(0.1) : Color(.secondarySystemBackground))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .stroke(hasAcceptedDisclaimer ? Color.blue.opacity(0.3) : Color.clear, lineWidth: 1.5)
+                            )
                     )
-                )
-                .cornerRadius(12)
+                    .padding(.horizontal, 24)
+
+                    // Divider
+                    Rectangle()
+                        .fill(Color.secondary.opacity(0.2))
+                        .frame(height: 1)
+                        .padding(.horizontal, 40)
+                        .padding(.vertical, 4)
+
+                    // Email consent (optional)
+                    Button(action: { emailMarketingConsent.toggle() }) {
+                        HStack(spacing: 12) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(emailMarketingConsent ? Color.blue : Color.secondary.opacity(0.4), lineWidth: 2)
+                                    .frame(width: 24, height: 24)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .fill(emailMarketingConsent ? Color.blue : Color.clear)
+                                    )
+
+                                if emailMarketingConsent {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundColor(.white)
+                                }
+                            }
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Send me updates & tips")
+                                    .font(.system(size: 15, weight: .medium))
+                                    .foregroundColor(.primary)
+                                Text("Optional • Unsubscribe anytime")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Spacer()
+                        }
+                    }
+                    .padding(16)
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(14)
+                    .padding(.horizontal, 24)
+
+                    Spacer().frame(height: 20)
+                }
+            }
+
+            // Navigation
+            HStack(spacing: 12) {
+                Button(action: onBack) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                        Text("Back")
+                    }
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.primary)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(12)
+                }
+
+                Button(action: {
+                    if hasAcceptedDisclaimer {
+                        onComplete()
+                    }
+                }) {
+                    Text("Let's Go!")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(hasAcceptedDisclaimer ? .white : .secondary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(hasAcceptedDisclaimer ? Color.blue : Color(.tertiarySystemBackground))
+                        .cornerRadius(12)
+                }
+                .disabled(!hasAcceptedDisclaimer)
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 16)
+        }
+    }
+}
+
+// MARK: - Disclaimer Point
+struct DisclaimerPoint: View {
+    @Environment(\.colorScheme) var colorScheme
+    let icon: String
+    let text: String
+    let color: Color
+    var isBold: Bool = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 18))
+                .foregroundColor(color)
+                .frame(width: 24)
 
             Text(text)
-                .font(.system(size: 17, weight: .medium))
-                .foregroundColor(.primary)
+                .font(.system(size: 14, weight: isBold ? .semibold : .regular))
+                .foregroundColor(isBold ? .primary : .secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(Color.white)
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.05), radius: 10, y: 4)
+        .padding(12)
+        .background(isBold ? color.opacity(colorScheme == .dark ? 0.15 : 0.08) : Color(.secondarySystemBackground))
+        .cornerRadius(10)
     }
+}
+
+// MARK: - Legacy Components (for compatibility)
+struct WelcomeFeatureRow: View {
+    @Environment(\.colorScheme) var colorScheme
+    let icon: String
+    let color: Color
+    let title: String
+    let description: String
+
+    var body: some View {
+        FeatureRow(icon: icon, color: color, title: title, description: description)
+    }
+}
+
+struct EnhancedPermissionCard: View {
+    @Environment(\.colorScheme) var colorScheme
+    let icon: String
+    let iconColor: Color
+    let title: String
+    let benefits: [String]
+    let buttonText: String
+    let isRequested: Bool
+    let isGranted: Bool
+    let onRequest: () -> Void
+    let onSkip: () -> Void
+
+    var body: some View {
+        PermissionCardDetailed(
+            icon: icon,
+            iconColor: iconColor,
+            title: title,
+            benefits: benefits,
+            isRequested: isRequested,
+            isGranted: isGranted,
+            onEnable: onRequest,
+            onSkip: onSkip
+        )
+    }
+}
+
+struct DisclaimerRow: View {
+    let icon: String
+    let text: String
+    let color: Color
+    var isImportant: Bool = false
+
+    var body: some View {
+        DisclaimerPoint(icon: icon, text: text, color: color, isBold: isImportant)
+    }
+}
+
+struct OnboardingBackground: View {
+    @Environment(\.colorScheme) var colorScheme
+
+    var body: some View {
+        Color(.systemBackground)
+    }
+}
+
+// MARK: - Preview
+#Preview {
+    OnboardingView { consent in
+        print("Onboarding complete, email consent: \(consent)")
+    }
+    .environmentObject(HealthKitManager.shared)
 }

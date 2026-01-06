@@ -23,7 +23,12 @@ struct FoodTabView: View {
     @Binding var selectedTab: TabItem
     @State private var selectedFoodSubTab: FoodSubTab = .reactions
     @EnvironmentObject var firebaseManager: FirebaseManager
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
     @StateObject private var fastingViewModelWrapper = FastingViewModelWrapper()
+
+    // MARK: - Feature Tips
+    @State private var showingHealthTip = false
+    @State private var showingFastingTip = false
 
     enum FoodSubTab: String, CaseIterable {
         case reactions = "Reactions"
@@ -99,10 +104,27 @@ struct FoodTabView: View {
             if fastingViewModelWrapper.viewModel == nil, let userId = firebaseManager.currentUser?.uid {
                 fastingViewModelWrapper.viewModel = FastingViewModel(firebaseManager: firebaseManager, userId: userId)
             }
+
+            // Show feature tip on first visit
+            if !FeatureTipsManager.shared.hasSeenTip(.healthOverview) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    showingHealthTip = true
+                }
+            }
+        }
+        .onChange(of: selectedFoodSubTab) { _, newTab in
+            // Show fasting tip on first visit to fasting sub-tab
+            if newTab == .fasting && !FeatureTipsManager.shared.hasSeenTip(.healthFasting) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    showingFastingTip = true
+                }
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToFasting)) { _ in
             selectedFoodSubTab = .fasting
         }
+        .featureTip(isPresented: $showingHealthTip, tipKey: .healthOverview)
+        .featureTip(isPresented: $showingFastingTip, tipKey: .healthFasting)
     }
 }
 
@@ -216,7 +238,9 @@ struct SegmentedControlView<Tab: Hashable & CaseIterable & RawRepresentable>: Vi
 struct FoodReactionsView: View {
     @Binding var selectedTab: TabItem
     @ObservedObject private var reactionManager = ReactionManager.shared
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
     @State private var hasLoadedOnce = false // PERFORMANCE: Guard flag to prevent redundant loads
+    @State private var showingPaywall = false
 
     var body: some View {
         GeometryReader { geometry in
@@ -243,13 +267,39 @@ struct FoodReactionsView: View {
                 .environmentObject(reactionManager)
                 .padding(.horizontal, 16)
 
-                // Pattern Analysis
-                FoodPatternAnalysisCard()
-                    .environmentObject(reactionManager)
-                    .padding(.horizontal, 16)
+                // Pattern Analysis - Premium Feature
+                PremiumFeatureWrapper(
+                    featureName: "Pattern Analysis",
+                    onUpgradeTapped: { showingPaywall = true }
+                ) {
+                    FoodPatternAnalysisCard()
+                        .environmentObject(reactionManager)
+                } blurredPreview: {
+                    // Blurred preview of pattern card
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Image(systemName: "chart.bar.doc.horizontal.fill")
+                                .foregroundColor(.purple)
+                            Text("Patterns")
+                                .font(.headline)
+                            Spacer()
+                        }
+                        ForEach(0..<3, id: \.self) { _ in
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.gray.opacity(0.3))
+                                .frame(height: 44)
+                        }
+                    }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(.systemBackground))
+                    )
+                }
+                .padding(.horizontal, 16)
 
-                // Info Notice for Patterns
-                if reactionManager.reactions.count < 3 {
+                // Info Notice for Patterns (only show for premium users with < 3 reactions)
+                if subscriptionManager.hasAccess && reactionManager.reactions.count < 3 {
                     VStack(spacing: 8) {
                         Image(systemName: "info.circle")
                             .font(.system(size: 20))
@@ -300,6 +350,12 @@ struct FoodReactionsView: View {
             }
         } message: {
             Text(reactionManager.errorMessage ?? "Unknown error occurred")
+        }
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView()
+                .environmentObject(subscriptionManager)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color(.systemBackground))
         }
     }
 }

@@ -1796,6 +1796,33 @@ struct AppPreferencesSection: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                 }
+
+                Divider()
+                    .padding(.leading, 52)
+
+                // Reset Feature Tips
+                Button(action: {
+                    FeatureTipsManager.shared.resetAllTips()
+                    // Provide haptic feedback
+                    let generator = UINotificationFeedbackGenerator()
+                    generator.notificationOccurred(.success)
+                }) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "lightbulb.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.orange)
+                            .frame(width: 24)
+
+                        Text("Reset Feature Tips")
+                            .font(.system(size: 16))
+                            .foregroundColor(.primary)
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                }
+                .buttonStyle(PlainButtonStyle())
             }
         }
         .sheet(isPresented: $showingThemeSelector) {

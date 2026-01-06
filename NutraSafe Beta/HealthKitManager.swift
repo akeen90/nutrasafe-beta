@@ -74,6 +74,30 @@ class HealthKitManager: ObservableObject {
 
     private init() {}
 
+    /// Check if HealthKit authorization has already been granted
+    /// This checks the authorization status without prompting the user
+    func checkExistingAuthorization() async {
+        guard HKHealthStore.isHealthDataAvailable() else {
+            await MainActor.run {
+                self.isAuthorized = false
+            }
+            return
+        }
+
+        // Check authorization status for a key type (bodyMass)
+        // If we can read it, we have authorization
+        guard let bodyMassType = HKQuantityType.quantityType(forIdentifier: .bodyMass) else {
+            return
+        }
+
+        let status = healthStore.authorizationStatus(for: bodyMassType)
+
+        await MainActor.run {
+            // sharingAuthorized means we have write permission (which implies read was also granted)
+            self.isAuthorized = (status == .sharingAuthorized)
+        }
+    }
+
     /// Set the currently displayed date before fetching HealthKit data
     /// This prevents stale async responses from overwriting current data
     func setCurrentDisplayDate(_ date: Date) {

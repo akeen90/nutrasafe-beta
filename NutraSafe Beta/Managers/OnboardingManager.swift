@@ -14,6 +14,9 @@ class OnboardingManager: ObservableObject {
     private let hasCompletedKey = "hasCompletedOnboarding"
     private let hasAcceptedDisclaimerKey = "hasAcceptedDisclaimer"
 
+    /// Tracks if onboarding was just completed in this session (for tip delay)
+    @Published var justCompletedOnboarding = false
+
     private init() {}
 
     /// Check if user has completed onboarding
@@ -29,6 +32,7 @@ class OnboardingManager: ObservableObject {
     /// Mark onboarding as completed
     func completeOnboarding() {
         UserDefaults.standard.set(true, forKey: hasCompletedKey)
+        justCompletedOnboarding = true
         #if DEBUG
         print("✅ Onboarding completed")
         #endif
