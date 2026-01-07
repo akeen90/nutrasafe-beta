@@ -303,6 +303,7 @@ struct FoodReactionsView: View {
                 // Pattern Analysis - Premium Feature
                 PremiumFeatureWrapper(
                     featureName: "Pattern Analysis",
+                    featureDescription: "Discover which ingredients keep appearing in your reactions to uncover possible food intolerances",
                     onUpgradeTapped: { showingPaywall = true }
                 ) {
                     FoodPatternAnalysisCard()
@@ -313,14 +314,35 @@ struct FoodReactionsView: View {
                         HStack {
                             Image(systemName: "chart.bar.doc.horizontal.fill")
                                 .foregroundColor(.purple)
-                            Text("Patterns")
+                            Text("Ingredient Patterns")
                                 .font(.headline)
                             Spacer()
                         }
-                        ForEach(0..<3, id: \.self) { _ in
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.gray.opacity(0.3))
-                                .frame(height: 44)
+
+                        // Show fake ingredient patterns to tease the feature
+                        ForEach(["Gluten", "Dairy", "Soy"], id: \.self) { ingredient in
+                            HStack(spacing: 12) {
+                                Circle()
+                                    .fill(Color.orange)
+                                    .frame(width: 10, height: 10)
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(ingredient)
+                                        .font(.system(size: 15, weight: .medium))
+                                    Text("Found in multiple reactions")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+
+                                Spacer()
+
+                                Text("67%")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundColor(.orange)
+                            }
+                            .padding(10)
+                            .background(Color(.systemBackground))
+                            .cornerRadius(8)
                         }
                     }
                     .padding()

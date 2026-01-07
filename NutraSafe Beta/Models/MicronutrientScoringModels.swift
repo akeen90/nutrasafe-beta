@@ -143,9 +143,9 @@ enum MicronutrientStatus {
     var label: String {
         switch self {
         case .none: return "None"
-        case .low: return "Low"
-        case .adequate: return "Moderate"
-        case .strong: return "Strong"
+        case .low: return "Rare"
+        case .adequate: return "Occasional"
+        case .strong: return "Regular"
         }
     }
 

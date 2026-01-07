@@ -385,13 +385,35 @@ struct DiaryTabView: View {
 
     // MARK: - Tab Picker Section
     private var tabPickerSection: some View {
-        Picker("", selection: $diarySubTab) {
+        // Custom tab picker without iOS bounce animation
+        HStack(spacing: 0) {
             ForEach(DiarySubTab.allCases, id: \.self) { tab in
-                Text(tab.rawValue).tag(tab)
+                Button(action: {
+                    diarySubTab = tab
+                }) {
+                    Text(tab.rawValue)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(diarySubTab == tab ? .primary : .secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(
+                            Group {
+                                if diarySubTab == tab {
+                                    RoundedRectangle(cornerRadius: 7)
+                                        .fill(Color(.systemBackground))
+                                        .shadow(color: .black.opacity(0.08), radius: 2, x: 0, y: 1)
+                                }
+                            }
+                        )
+                }
+                .buttonStyle(.plain)
             }
         }
-        .pickerStyle(.segmented)
-        .backgroundStyle(.ultraThinMaterial)
+        .padding(3)
+        .background(
+            RoundedRectangle(cornerRadius: 9)
+                .fill(.ultraThinMaterial)
+        )
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .padding(.bottom, 12)
@@ -420,14 +442,24 @@ struct DiaryTabView: View {
     @ViewBuilder
     private var mainContentSection: some View {
         if !(isLoadingData && !hasLoadedOnce) {
-            ScrollView {
-                LazyVStack(spacing: 16) {
-                    if diarySubTab == .overview {
+            ZStack {
+                // Overview tab - show/hide with opacity (no animation)
+                ScrollView {
+                    LazyVStack(spacing: 16) {
                         overviewTabContent
-                    } else {
+                    }
+                }
+                .opacity(diarySubTab == .overview ? 1 : 0)
+                .allowsHitTesting(diarySubTab == .overview)
+
+                // Nutrients tab - show/hide with opacity (no animation)
+                ScrollView {
+                    LazyVStack(spacing: 16) {
                         nutrientsTabContent
                     }
                 }
+                .opacity(diarySubTab == .nutrients ? 1 : 0)
+                .allowsHitTesting(diarySubTab == .nutrients)
             }
             .background(diaryBlueBackground)
             .navigationBarHidden(true)
@@ -1353,34 +1385,25 @@ struct CategoricalNutrientTrackingView: View {
                     Spacer()
                 }
 
-                Text("Last 7 days of nutrient coverage")
+                Text("Estimated from food composition")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.secondary)
-
-                // Clear legend with labels
-                HStack(spacing: 16) {
-                    legendItem(color: Color(hex: "#3FD17C"), label: "Strong")
-                    legendItem(color: Color(hex: "#FFA93A"), label: "Moderate")
-                    legendItem(color: Color(hex: "#57A5FF"), label: "Low")
-                    legendItem(color: Color(hex: "#CFCFCF"), label: "None")
-                }
-                .padding(.top, 8)
             }
             .padding(.horizontal, 20)
             .padding(.top, 20)
             .padding(.bottom, 16)
 
-            // Enhanced rhythm visualization
+            // Enhanced rhythm visualization - now shows nutrients per day
             VStack(spacing: 16) {
-                // Rhythm bar with enhanced context
-                HStack(spacing: 0) {
+                // Day summary cards - fixed layout, no scrolling
+                HStack(spacing: 4) {
                     ForEach(vm.rhythmDays, id: \.date) { day in
                         let isToday = Calendar.current.isDateInToday(day.date)
-                        rhythmColumn(day: day, isToday: isToday)
+                        let nutrientCount = countNutrientsForDay(day.date)
+                        compactDaySummaryCard(day: day, nutrientCount: nutrientCount, isToday: isToday)
                     }
                 }
-                .padding(.horizontal, 20)
-                .frame(height: 100)
+                .padding(.horizontal, 16)
 
                 // Week summary stats
                 weekSummaryStats
@@ -1399,29 +1422,68 @@ struct CategoricalNutrientTrackingView: View {
         .padding(.bottom, 24)
     }
 
-    private func legendItem(color: Color, label: String) -> some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(color)
-                .frame(width: 10, height: 10)
-                .overlay(
-                    Circle()
-                        .stroke(Color.black.opacity(0.1), lineWidth: 0.5)
-                )
-
-            Text(label)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.secondary)
+    /// Count how many unique nutrients were consumed on a given day
+    private func countNutrientsForDay(_ date: Date) -> Int {
+        var count = 0
+        for row in vm.nutrientCoverageRows {
+            if let segment = row.segments.first(where: { Calendar.current.isDate($0.date, inSameDayAs: date) }),
+               let foods = segment.foods, !foods.isEmpty {
+                count += 1
+            }
         }
+        return count
+    }
+
+    /// Count food sources for a nutrient on a specific day
+    private func countFoodsForNutrientOnDay(_ row: CoverageRow, date: Date) -> Int {
+        if let segment = row.segments.first(where: { Calendar.current.isDate($0.date, inSameDayAs: date) }),
+           let foods = segment.foods {
+            return foods.count
+        }
+        return 0
+    }
+
+    /// Compact day summary card that fits 7 days without scrolling
+    private func compactDaySummaryCard(day: RhythmDay, nutrientCount: Int, isToday: Bool) -> some View {
+        VStack(spacing: 4) {
+            // Day label (single letter)
+            Text(String(vm.shortDateLabel(day.date).prefix(1)))
+                .font(.system(size: 11, weight: isToday ? .bold : .medium))
+                .foregroundColor(isToday ? .primary : .secondary)
+
+            // Nutrient count in circle
+            ZStack {
+                Circle()
+                    .fill(
+                        nutrientCount > 0
+                            ? Color(hex: "#3FD17C")
+                            : Color(.systemGray5)
+                    )
+                    .frame(width: 36, height: 36)
+                    .overlay(
+                        Circle()
+                            .stroke(isToday ? Color(hex: "#3FD17C") : Color.clear, lineWidth: 2)
+                            .padding(-2)
+                    )
+
+                Text("\(nutrientCount)")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(nutrientCount > 0 ? .white : .secondary)
+            }
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private var weekSummaryStats: some View {
         HStack(spacing: 20) {
             let daysLogged = vm.rhythmDays.filter { $0.level != .none }.count
-            let strongDays = vm.rhythmDays.filter { $0.level == .strong }.count
+            let totalNutrients = vm.nutrientCoverageRows.count
+            let nutrientsFound = vm.nutrientCoverageRows.filter { row in
+                row.segments.contains { $0.foods != nil && !($0.foods?.isEmpty ?? true) }
+            }.count
 
             statPill(icon: "calendar", value: "\(daysLogged)", label: "Days logged", color: Color(hex: "#57A5FF"))
-            statPill(icon: "checkmark.circle.fill", value: "\(strongDays)", label: "Strong days", color: Color(hex: "#3FD17C"))
+            statPill(icon: "leaf.fill", value: "\(nutrientsFound)/\(totalNutrients)", label: "Nutrients found", color: Color(hex: "#3FD17C"))
 
             Spacer()
         }
@@ -1450,77 +1512,6 @@ struct CategoricalNutrientTrackingView: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(color.opacity(0.08))
         )
-    }
-
-    private func rhythmColumn(day: RhythmDay, isToday: Bool) -> some View {
-        VStack(spacing: 6) {
-            // Date label on top
-            Text(vm.shortDateLabel(day.date))
-                .font(.system(size: 11, weight: isToday ? .bold : .medium))
-                .foregroundColor(isToday ? .primary : .secondary)
-                .frame(height: 16)
-
-            Spacer()
-
-            // Enhanced column with gradient
-            ZStack(alignment: .bottom) {
-                // Background track
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(.systemGray6))
-                    .frame(height: 56)
-
-                // Colored bar
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(
-                        LinearGradient(
-                            colors: [day.level.color.opacity(0.8), day.level.color],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .frame(height: heightForLevel(day.level))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(
-                                LinearGradient(
-                                    colors: [Color.white.opacity(0.3), Color.clear],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                ),
-                                lineWidth: 1.5
-                            )
-                    )
-                    .shadow(
-                        color: isToday ? day.level.color.opacity(0.4) : Color.clear,
-                        radius: isToday ? 10 : 0,
-                        x: 0,
-                        y: isToday ? 4 : 0
-                    )
-
-                // Today indicator
-                if isToday {
-                    VStack {
-                        Image(systemName: "circlebadge.fill")
-                            .font(.system(size: 8))
-                            .foregroundColor(.white)
-                            .padding(4)
-                        Spacer()
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 56)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: day.level)
-        }
-    }
-
-    private func heightForLevel(_ level: SourceLevel) -> CGFloat {
-        switch level {
-        case .strong: return 56
-        case .moderate: return 40
-        case .trace: return 24
-        case .none: return 8
-        }
     }
 
     struct ScaleButtonStyle: ButtonStyle {
@@ -1593,7 +1584,8 @@ struct CategoricalNutrientTrackingView: View {
                     Spacer()
 
                     HStack(spacing: 8) {
-                        statusBadge(row.status)
+                        // Show total food sources this week
+                        foodCountBadge(row)
 
                         Image(systemName: "chevron.right")
                             .font(.system(size: 12, weight: .semibold))
@@ -1601,26 +1593,38 @@ struct CategoricalNutrientTrackingView: View {
                     }
                 }
 
-                // Enhanced 7-day bar with labels
+                // 7-day view showing food count per day
                 VStack(spacing: 6) {
                     HStack(spacing: 4) {
                         ForEach(row.segments, id: \.date) { seg in
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            (seg.level?.color ?? Color(.systemGray5)).opacity(0.8),
-                                            seg.level?.color ?? Color(.systemGray5)
-                                        ],
-                                        startPoint: .top,
-                                        endPoint: .bottom
+                            let foodCount = seg.foods?.count ?? 0
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(
+                                        foodCount > 0
+                                            ? LinearGradient(
+                                                colors: [Color(hex: "#3FD17C").opacity(0.8), Color(hex: "#3FD17C")],
+                                                startPoint: .top,
+                                                endPoint: .bottom
+                                            )
+                                            : LinearGradient(
+                                                colors: [Color(.systemGray5), Color(.systemGray5)],
+                                                startPoint: .top,
+                                                endPoint: .bottom
+                                            )
                                     )
-                                )
-                                .frame(height: 14)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
-                                )
+                                    .frame(height: 28)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                                    )
+
+                                if foodCount > 0 {
+                                    Text("\(foodCount)")
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundColor(.white)
+                                }
+                            }
                         }
                     }
 
@@ -1654,26 +1658,28 @@ struct CategoricalNutrientTrackingView: View {
         return String(full.prefix(1))
     }
 
-    private func statusBadge(_ status: CoverageStatus) -> some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(status.color)
-                .frame(width: 6, height: 6)
+    /// Badge showing total food sources for a nutrient this week
+    private func foodCountBadge(_ row: CoverageRow) -> some View {
+        let totalFoods = row.segments.compactMap { $0.foods?.count }.reduce(0, +)
 
-            Text(status.rawValue)
+        return HStack(spacing: 4) {
+            Image(systemName: "fork.knife")
+                .font(.system(size: 10, weight: .semibold))
+
+            Text("From \(totalFoods) \(totalFoods == 1 ? "food" : "foods")")
                 .font(.system(size: 12, weight: .bold))
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(
             Capsule()
-                .fill(status.color.opacity(0.12))
+                .fill(totalFoods > 0 ? Color(hex: "#3FD17C").opacity(0.12) : Color(.systemGray5).opacity(0.3))
         )
         .overlay(
             Capsule()
-                .stroke(status.color.opacity(0.3), lineWidth: 1)
+                .stroke(totalFoods > 0 ? Color(hex: "#3FD17C").opacity(0.3) : Color.clear, lineWidth: 1)
         )
-        .foregroundColor(status.color)
+        .foregroundColor(totalFoods > 0 ? Color(hex: "#3FD17C") : .secondary)
     }
 
     private var emptyState: some View {
@@ -2196,13 +2202,13 @@ final class CategoricalNutrientViewModel: ObservableObject {
             return "These vary day-to-day: \(names) — tap for daily breakdown."
         }
 
-        // Priority 4: Mostly strong coverage
+        // Priority 4: Mostly good coverage
         if consistent.count >= nutrientCoverageRows.count * 70 / 100 {
             let percentage = (consistent.count * 100) / max(1, nutrientCoverageRows.count)
             if percentage >= 90 {
-                return "Excellent nutrient coverage this week — \(consistent.count) of \(nutrientCoverageRows.count) nutrients strong."
+                return "Excellent variety this week — \(consistent.count) of \(nutrientCoverageRows.count) nutrients found in your foods."
             } else {
-                return "Strong coverage across most nutrients — great consistency this week."
+                return "Good variety across most nutrients — great consistency this week."
             }
         }
 
@@ -2370,9 +2376,12 @@ final class CategoricalNutrientViewModel: ObservableObject {
                 #endif
             }
 
+            // Require at least 10% DV to count as a meaningful contribution
+            // This prevents trace amounts from inflating nutrient counts
             if percent >= 70 { return .strong }
             if percent >= 30 { return .moderate }
-            return .trace
+            if percent >= 10 { return .trace }
+            return .none // Less than 10% DV - not a meaningful source
         }
 
         if isVitC {
@@ -2381,7 +2390,8 @@ final class CategoricalNutrientViewModel: ObservableObject {
             #endif
         }
 
-        return .trace
+        // Can't determine percentage - don't count as a source
+        return .none
     }
 
     /// Converts NutrientDatabase ID format to MicronutrientProfile key format
@@ -2639,132 +2649,437 @@ struct NutrientDetailModal: View {
     @Environment(\.dismiss) private var dismiss
     @State private var nutrientInfo: NutrientInfo?
     @State private var showingCitations = false
+    @State private var showingHealthClaims = false
+
+    // Get nutrient metadata for styling
+    private var trackedNutrient: TrackedNutrient? {
+        NutrientDatabase.nutrient(for: row.id)
+    }
+
+    private var nutrientColor: Color {
+        trackedNutrient?.glowColor ?? .blue
+    }
+
+    private var nutrientIcon: String {
+        trackedNutrient?.icon ?? "leaf.fill"
+    }
+
+    private var totalFoods: Int {
+        row.segments.compactMap { $0.foods?.count }.reduce(0, +)
+    }
+
+    private var daysWithFood: Int {
+        row.segments.filter { ($0.foods?.count ?? 0) > 0 }.count
+    }
 
     var body: some View {
         NavigationView {
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 24) {
-                    // Status card
-                    statusCard
+                VStack(spacing: 0) {
+                    // Hero header with gradient
+                    heroHeader
 
-                    // Good food sources (from database)
-                    if nutrientInfo != nil {
-                        goodFoodSourcesSection
+                    // Content sections
+                    VStack(spacing: 20) {
+                        // Quick stats row
+                        quickStatsRow
+
+                        // Week calendar view
+                        weekCalendarView
+
+                        // Good food sources (from database)
+                        if nutrientInfo != nil {
+                            goodFoodSourcesSection
+                        }
+
+                        // Official health claims (collapsible)
+                        if let claims = getOfficialHealthClaims(for: row.name), !claims.isEmpty {
+                            healthClaimsSection(claims: claims)
+                        }
+
+                        // Contributing foods you ate
+                        if !allFoods.isEmpty {
+                            foodsSection
+                        }
                     }
-
-                    // 7-day breakdown
-                    weekBreakdown
-
-                    // Contributing foods
-                    if !allFoods.isEmpty {
-                        foodsSection
-                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
+                    .padding(.bottom, 32)
                 }
-                .padding(20)
             }
             .background(Color.adaptiveBackground)
-            .navigationTitle(row.name)
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") { dismiss() }
+                        .fontWeight(.semibold)
                 }
             }
             .task {
                 await loadNutrientInfo()
             }
             .sheet(isPresented: $showingCitations) {
-                NavigationView {
-                    List {
-                        Section(header: Text("Food Sources Data")) {
-                            Text("Food sources listed in this app are based on official nutrition databases.")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-
-                        ForEach([
-                            CitationManager.Citation(
-                                title: "FoodData Central",
-                                organization: "U.S. Department of Agriculture (USDA)",
-                                url: "https://fdc.nal.usda.gov/",
-                                description: "Official USDA nutrient database providing comprehensive food composition data including vitamins, minerals, and other nutrients.",
-                                category: .nutritionData
-                            ),
-                            CitationManager.Citation(
-                                title: "UK Composition of Foods Integrated Dataset (CoFID)",
-                                organization: "UK Food Standards Agency & Public Health England",
-                                url: "https://www.gov.uk/government/publications/composition-of-foods-integrated-dataset-cofid",
-                                description: "UK's official database of nutrient content in foods, providing comprehensive nutrition data for British food products.",
-                                category: .nutritionData
-                            )
-                        ]) { citation in
-                            Button(action: {
-                                if let url = URL(string: citation.url) {
-                                    UIApplication.shared.open(url)
-                                }
-                            }) {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    HStack {
-                                        Image(systemName: "doc.text.fill")
-                                            .foregroundColor(.blue)
-                                            .font(.system(size: 14))
-                                        Text(citation.organization)
-                                            .font(.system(size: 13, weight: .semibold))
-                                            .foregroundColor(.primary)
-                                        Spacer()
-                                        Image(systemName: "arrow.up.right.square")
-                                            .font(.caption)
-                                            .foregroundColor(.blue)
-                                    }
-                                    Text(citation.title)
-                                        .font(.caption)
-                                        .foregroundColor(.blue)
-                                    Text(citation.description)
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                        .lineLimit(3)
-                                }
-                                .padding(.vertical, 4)
-                            }
-                        }
-                    }
-                    .navigationTitle("Official Sources")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            Button("Done") {
-                                showingCitations = false
-                            }
-                        }
-                    }
-                }
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
+                citationsSheet
             }
         }
     }
 
-    private var statusCard: some View {
+    // MARK: - Hero Header
+
+    private var heroHeader: some View {
         VStack(spacing: 16) {
+            // Icon with gradient background
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [nutrientColor.opacity(0.3), nutrientColor.opacity(0.1)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 80, height: 80)
+
+                Image(systemName: nutrientIcon)
+                    .font(.system(size: 36, weight: .medium))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [nutrientColor, nutrientColor.opacity(0.7)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+
+            // Nutrient name
+            Text(row.name)
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .foregroundColor(.primary)
+
+            // Category badge
+            if let nutrient = trackedNutrient {
+                Text(nutrient.category == .vitamin ? "Vitamin" : nutrient.category == .mineral ? "Mineral" : "Nutrient")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(nutrientColor)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 5)
+                    .background(
+                        Capsule()
+                            .fill(nutrientColor.opacity(0.12))
+                    )
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+        .background(
+            LinearGradient(
+                colors: [nutrientColor.opacity(0.08), Color.clear],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+    }
+
+    // MARK: - Quick Stats Row
+
+    private var quickStatsRow: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header explaining the stats
+            Text("Sources of \(row.name) This Week")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.secondary)
+
+            HStack(spacing: 12) {
+                // Foods count stat
+                statCard(
+                    value: "\(totalFoods)",
+                    label: totalFoods == 1 ? "Food" : "Foods",
+                    icon: "fork.knife",
+                    color: totalFoods > 0 ? .green : .gray
+                )
+
+                // Days count stat
+                statCard(
+                    value: "\(daysWithFood)",
+                    label: daysWithFood == 1 ? "Day" : "Days",
+                    icon: "calendar",
+                    color: daysWithFood >= 5 ? .green : daysWithFood >= 3 ? .orange : .gray
+                )
+
+                // Coverage stat
+                let coveragePercent = Int((Double(daysWithFood) / 7.0) * 100)
+                statCard(
+                    value: "\(coveragePercent)%",
+                    label: "Coverage",
+                    icon: "chart.pie.fill",
+                    color: coveragePercent >= 70 ? .green : coveragePercent >= 40 ? .orange : .gray
+                )
+            }
+        }
+    }
+
+    private func statCard(value: String, label: String, icon: String, color: Color) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(color)
+
+            Text(value)
+                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .foregroundColor(.primary)
+
+            Text(label)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.secondarySystemBackground))
+        )
+    }
+
+    // MARK: - Week Calendar View
+
+    private var weekCalendarView: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader(title: "This Week", icon: "calendar")
+
+            // Calendar grid
+            HStack(spacing: 8) {
+                ForEach(row.segments.reversed(), id: \.date) { segment in
+                    let foodCount = segment.foods?.count ?? 0
+                    let isToday = Calendar.current.isDateInToday(segment.date)
+
+                    VStack(spacing: 6) {
+                        // Day label
+                        Text(shortDayLabel(segment.date))
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(isToday ? nutrientColor : .secondary)
+
+                        // Circle indicator
+                        ZStack {
+                            Circle()
+                                .fill(foodCount > 0 ? nutrientColor : Color(.systemGray5))
+                                .frame(width: 36, height: 36)
+
+                            if foodCount > 0 {
+                                Text("\(foodCount)")
+                                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                                    .foregroundColor(.white)
+                            } else {
+                                Text("–")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+
+                        // Date number
+                        Text(dayNumber(segment.date))
+                            .font(.system(size: 12, weight: isToday ? .bold : .regular))
+                            .foregroundColor(isToday ? .primary : .secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.secondarySystemBackground))
+            )
+        }
+    }
+
+    // MARK: - Food Sources Section
+
+    private var goodFoodSourcesSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
             HStack {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("This Week's Status")
+                sectionHeader(title: "Good Sources", icon: "leaf.fill")
+                Spacer()
+                Button(action: { showingCitations = true }) {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 16))
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            if let info = nutrientInfo {
+                let sources = parseArrayContent(info.commonSources)
+                if !sources.isEmpty {
+                    FlowLayout(spacing: 8) {
+                        ForEach(sources, id: \.self) { source in
+                            HStack(spacing: 6) {
+                                Image(systemName: foodIcon(for: source))
+                                    .font(.system(size: 12))
+                                Text(source)
+                                    .font(.system(size: 14, weight: .medium))
+                            }
+                            .foregroundColor(nutrientColor)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(nutrientColor.opacity(0.1))
+                            )
+                        }
+                    }
+                    .padding(16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(.secondarySystemBackground))
+                    )
+                }
+            }
+        }
+    }
+
+    // MARK: - Health Claims Section
+
+    private func healthClaimsSection(claims: [HealthClaim]) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header button (always visible)
+            Button(action: { withAnimation(.easeInOut(duration: 0.25)) { showingHealthClaims.toggle() } }) {
+                HStack {
+                    sectionHeader(title: "Health Benefits", icon: "checkmark.seal.fill")
+                    Spacer()
+                    Image(systemName: "chevron.right")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.secondary)
-                        .textCase(.uppercase)
-                        .tracking(0.5)
+                        .rotationEffect(.degrees(showingHealthClaims ? 90 : 0))
+                }
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: showingHealthClaims ? 0 : 16)
+                        .fill(Color(.secondarySystemBackground))
+                )
+                .clipShape(
+                    RoundedCorners(
+                        topLeft: 16,
+                        topRight: 16,
+                        bottomLeft: showingHealthClaims ? 0 : 16,
+                        bottomRight: showingHealthClaims ? 0 : 16
+                    )
+                )
+            }
+            .buttonStyle(PlainButtonStyle())
 
+            // Expandable content
+            if showingHealthClaims {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(Array(claims.enumerated()), id: \.offset) { _, claim in
+                        HStack(alignment: .top, spacing: 12) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 16))
+                                .foregroundColor(.green)
+                                .padding(.top, 2)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(claim.text)
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.primary)
+                                    .fixedSize(horizontal: false, vertical: true)
+
+                                Text(claim.source)
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(.blue)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color.blue.opacity(0.1))
+                                    )
+                            }
+                        }
+                    }
+                }
+                .padding(16)
+                .background(
+                    RoundedCorners(topLeft: 0, topRight: 0, bottomLeft: 16, bottomRight: 16)
+                        .fill(Color(.secondarySystemBackground))
+                )
+            }
+        }
+    }
+
+    // Custom shape for rounded corners on specific sides
+    private struct RoundedCorners: Shape {
+        var topLeft: CGFloat
+        var topRight: CGFloat
+        var bottomLeft: CGFloat
+        var bottomRight: CGFloat
+
+        func path(in rect: CGRect) -> Path {
+            var path = Path()
+            let w = rect.size.width
+            let h = rect.size.height
+
+            path.move(to: CGPoint(x: topLeft, y: 0))
+            path.addLine(to: CGPoint(x: w - topRight, y: 0))
+            path.addArc(center: CGPoint(x: w - topRight, y: topRight), radius: topRight, startAngle: .degrees(-90), endAngle: .degrees(0), clockwise: false)
+            path.addLine(to: CGPoint(x: w, y: h - bottomRight))
+            path.addArc(center: CGPoint(x: w - bottomRight, y: h - bottomRight), radius: bottomRight, startAngle: .degrees(0), endAngle: .degrees(90), clockwise: false)
+            path.addLine(to: CGPoint(x: bottomLeft, y: h))
+            path.addArc(center: CGPoint(x: bottomLeft, y: h - bottomLeft), radius: bottomLeft, startAngle: .degrees(90), endAngle: .degrees(180), clockwise: false)
+            path.addLine(to: CGPoint(x: 0, y: topLeft))
+            path.addArc(center: CGPoint(x: topLeft, y: topLeft), radius: topLeft, startAngle: .degrees(180), endAngle: .degrees(270), clockwise: false)
+            path.closeSubpath()
+
+            return path
+        }
+    }
+
+    // MARK: - Foods Section
+
+    private var foodsSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader(title: "Your Sources This Week", icon: "fork.knife")
+
+            VStack(spacing: 0) {
+                ForEach(Array(allFoods.prefix(8).enumerated()), id: \.element) { index, food in
                     HStack(spacing: 12) {
-                        statusBadge(row.status)
-                        Text(row.status.description)
-                            .font(.system(size: 15))
-                            .foregroundColor(.secondary)
+                        ZStack {
+                            Circle()
+                                .fill(nutrientColor.opacity(0.15))
+                                .frame(width: 32, height: 32)
+
+                            Text("\(index + 1)")
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                .foregroundColor(nutrientColor)
+                        }
+
+                        Text(food)
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
+
+                        Spacer()
+
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.green)
+                    }
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 14)
+
+                    if index < min(allFoods.count - 1, 7) {
+                        Divider()
+                            .padding(.leading, 56)
                     }
                 }
 
-                Spacer()
+                if allFoods.count > 8 {
+                    HStack {
+                        Spacer()
+                        Text("+ \(allFoods.count - 8) more")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.secondary)
+                        Spacer()
+                    }
+                    .padding(.vertical, 12)
+                }
             }
-            .padding(18)
             .background(
                 RoundedRectangle(cornerRadius: 16)
                     .fill(Color(.secondarySystemBackground))
@@ -2772,82 +3087,82 @@ struct NutrientDetailModal: View {
         }
     }
 
-    private var weekBreakdown: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("7-Day Breakdown")
-                .font(.system(size: 18, weight: .bold))
+    // MARK: - Citations Sheet
 
-            VStack(spacing: 12) {
-                ForEach(row.segments, id: \.date) { segment in
-                    HStack {
-                        Text(fullDateLabel(segment.date))
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(.primary)
-                            .frame(width: 100, alignment: .leading)
+    private var citationsSheet: some View {
+        NavigationView {
+            List {
+                Section(header: Text("Food Sources Data")) {
+                    Text("Food sources listed in this app are based on official nutrition databases.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
 
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(segment.level?.color ?? Color(.systemGray5))
-                            .frame(height: 28)
-                            .overlay(
-                                Text(segment.level?.rawValue ?? "None")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(.white)
-                            )
-
-                        Spacer()
-
-                        if let foods = segment.foods, !foods.isEmpty {
-                            Text("\(foods.count)")
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundColor(.secondary)
-                                .frame(width: 30)
+                ForEach([
+                    CitationManager.Citation(
+                        title: "FoodData Central",
+                        organization: "U.S. Department of Agriculture (USDA)",
+                        url: "https://fdc.nal.usda.gov/",
+                        description: "Official USDA nutrient database providing comprehensive food composition data.",
+                        category: .nutritionData
+                    ),
+                    CitationManager.Citation(
+                        title: "UK Composition of Foods Integrated Dataset (CoFID)",
+                        organization: "UK Food Standards Agency & Public Health England",
+                        url: "https://www.gov.uk/government/publications/composition-of-foods-integrated-dataset-cofid",
+                        description: "UK's official database of nutrient content in foods.",
+                        category: .nutritionData
+                    )
+                ]) { citation in
+                    Button(action: {
+                        if let url = URL(string: citation.url) {
+                            UIApplication.shared.open(url)
+                        }
+                    }) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(citation.organization)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(.primary)
+                                Text(citation.title)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "arrow.up.right.square")
+                                .font(.caption)
+                                .foregroundColor(.blue)
                         }
                     }
                 }
             }
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.secondarySystemBackground))
-            )
-        }
-    }
-
-    private var foodsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Contributing Foods")
-                .font(.system(size: 18, weight: .bold))
-
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(Array(allFoods.prefix(10)), id: \.self) { food in
-                    HStack(spacing: 10) {
-                        Circle()
-                            .fill(Color.blue.opacity(0.2))
-                            .frame(width: 8, height: 8)
-
-                        Text(food)
-                            .font(.system(size: 15))
-                            .foregroundColor(.primary)
-
-                        Spacer()
-                    }
-                    .padding(.vertical, 4)
-                }
-
-                if allFoods.count > 10 {
-                    Text("+ \(allFoods.count - 10) more")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.secondary)
-                        .padding(.top, 4)
+            .navigationTitle("Sources")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { showingCitations = false }
                 }
             }
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.secondarySystemBackground))
-            )
+        }
+        .presentationDragIndicator(.visible)
+        .presentationBackground(Color(.systemBackground))
+    }
+
+    // MARK: - Helper Views
+
+    private func sectionHeader(title: String, icon: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(nutrientColor)
+
+            Text(title)
+                .font(.system(size: 17, weight: .bold))
+                .foregroundColor(.primary)
         }
     }
+
+    // MARK: - Helper Functions
 
     private var allFoods: [String] {
         var foods = Set<String>()
@@ -2859,129 +3174,29 @@ struct NutrientDetailModal: View {
         return Array(foods).sorted()
     }
 
-    private func statusBadge(_ status: CoverageStatus) -> some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(status.color)
-                .frame(width: 6, height: 6)
-
-            Text(status.rawValue)
-                .font(.system(size: 12, weight: .bold))
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(
-            Capsule()
-                .fill(status.color.opacity(0.12))
-        )
-        .overlay(
-            Capsule()
-                .stroke(status.color.opacity(0.3), lineWidth: 1)
-        )
-        .foregroundColor(status.color)
+    private func shortDayLabel(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE"
+        return String(formatter.string(from: date).prefix(3))
     }
 
-    private func fullDateLabel(_ date: Date) -> String {
-        // PERFORMANCE: Use cached static formatter
-        DateHelper.dayCommaMonthDayFormatter.string(from: date)
+    private func dayNumber(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d"
+        return formatter.string(from: date)
     }
 
-    // MARK: - Good Food Sources Section
-
-    private var goodFoodSourcesSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Good Food Sources")
-                .font(.system(size: 18, weight: .bold))
-
-            if let info = nutrientInfo {
-                VStack(alignment: .leading, spacing: 12) {
-                    let sources = parseArrayContent(info.commonSources)
-                    if !sources.isEmpty {
-                        FlowLayout(spacing: 8) {
-                            ForEach(sources, id: \.self) { source in
-                                Text(source)
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(.blue)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(
-                                        Capsule()
-                                            .fill(Color.blue.opacity(0.1))
-                                    )
-                            }
-                        }
-                    } else {
-                        Text("No food source information available")
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
-                            .italic()
-                    }
-                }
-                .padding(16)
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color(.secondarySystemBackground))
-                )
-
-                // Citations for food sources - Clickable button
-                Button(action: {
-                    showingCitations = true
-                }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "info.circle.fill")
-                            .font(.system(size: 11))
-                            .foregroundColor(.blue)
-                        Text("Food sources from USDA FoodData Central and UK CoFID database")
-                            .font(.system(size: 11))
-                            .foregroundColor(.blue)
-                            .lineLimit(2)
-                        Image(systemName: "arrow.up.right.square")
-                            .font(.system(size: 10))
-                            .foregroundColor(.blue)
-                    }
-                }
-                .padding(.top, 8)
-
-                // Official Health Claims Section (EFSA/NHS Verbatim)
-                if let officialClaims = getOfficialHealthClaims(for: row.name) {
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "checkmark.seal.fill")
-                                .font(.system(size: 16))
-                                .foregroundColor(.blue)
-                            Text("Official Health Claims")
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundColor(.primary)
-                        }
-                        .padding(.top, 24)
-
-                        VStack(alignment: .leading, spacing: 12) {
-                            ForEach(Array(officialClaims.enumerated()), id: \.offset) { index, claim in
-                                HStack(alignment: .top, spacing: 10) {
-                                    Text("•")
-                                        .font(.system(size: 15))
-                                        .foregroundColor(.secondary)
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(claim.text)
-                                            .font(.system(size: 15))
-                                            .foregroundColor(.primary)
-                                            .fixedSize(horizontal: false, vertical: true)
-                                        Text(claim.source)
-                                            .font(.system(size: 12, weight: .medium))
-                                            .foregroundColor(.blue)
-                                    }
-                                }
-                            }
-                        }
-                        .padding(16)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.blue.opacity(0.05))
-                        )
-                    }
-                }
-            }
-        }
+    private func foodIcon(for food: String) -> String {
+        let lower = food.lowercased()
+        if lower.contains("fish") || lower.contains("salmon") || lower.contains("tuna") { return "fish.fill" }
+        if lower.contains("egg") { return "oval.fill" }
+        if lower.contains("milk") || lower.contains("dairy") || lower.contains("yogurt") { return "cup.and.saucer.fill" }
+        if lower.contains("meat") || lower.contains("beef") || lower.contains("chicken") || lower.contains("pork") { return "fork.knife" }
+        if lower.contains("nut") || lower.contains("almond") || lower.contains("walnut") { return "leaf.fill" }
+        if lower.contains("fruit") || lower.contains("orange") || lower.contains("berry") { return "apple.logo" }
+        if lower.contains("vegetable") || lower.contains("spinach") || lower.contains("broccoli") { return "leaf.fill" }
+        if lower.contains("cereal") || lower.contains("bread") || lower.contains("grain") { return "birthday.cake.fill" }
+        return "circle.fill"
     }
 
     private func loadNutrientInfo() async {

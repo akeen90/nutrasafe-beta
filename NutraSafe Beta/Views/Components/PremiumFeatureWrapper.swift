@@ -12,17 +12,20 @@ struct PremiumFeatureWrapper<Content: View, Preview: View>: View {
     @EnvironmentObject var subscriptionManager: SubscriptionManager
 
     let featureName: String
+    let featureDescription: String?
     let content: Content
     let blurredPreview: Preview
     let onUpgradeTapped: () -> Void
 
     init(
         featureName: String,
+        featureDescription: String? = nil,
         onUpgradeTapped: @escaping () -> Void,
         @ViewBuilder content: () -> Content,
         @ViewBuilder blurredPreview: () -> Preview
     ) {
         self.featureName = featureName
+        self.featureDescription = featureDescription
         self.onUpgradeTapped = onUpgradeTapped
         self.content = content()
         self.blurredPreview = blurredPreview()
@@ -46,15 +49,15 @@ struct PremiumFeatureWrapper<Content: View, Preview: View>: View {
 
                 // Tappable overlay to show paywall
                 Button(action: onUpgradeTapped) {
-                    VStack(spacing: 12) {
+                    VStack(spacing: 10) {
                         // Lock icon
                         ZStack {
                             Circle()
                                 .fill(Color.blue.opacity(0.15))
-                                .frame(width: 52, height: 52)
+                                .frame(width: 48, height: 48)
 
                             Image(systemName: "lock.fill")
-                                .font(.system(size: 22, weight: .medium))
+                                .font(.system(size: 20, weight: .medium))
                                 .foregroundColor(.blue)
                         }
 
@@ -63,12 +66,24 @@ struct PremiumFeatureWrapper<Content: View, Preview: View>: View {
                             .font(.system(size: 16, weight: .semibold, design: .rounded))
                             .foregroundColor(.primary)
 
+                        // Feature description (if provided)
+                        if let description = featureDescription {
+                            Text(description)
+                                .font(.system(size: 13, design: .rounded))
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .lineLimit(3)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+
                         // Tap to unlock
                         Text("Tap to unlock")
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundColor(.secondary)
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundColor(.blue)
+                            .padding(.top, 4)
                     }
-                    .padding(20)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 18)
                     .background(
                         RoundedRectangle(cornerRadius: 16)
                             .fill(.ultraThinMaterial)

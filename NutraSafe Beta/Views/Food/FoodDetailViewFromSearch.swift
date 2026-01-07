@@ -3766,6 +3766,23 @@ private var nutritionFactsSection: some View {
 
         #endif
         return VStack(alignment: .leading, spacing: 12) {
+            // Estimation disclaimer
+            HStack(spacing: 8) {
+                Image(systemName: "info.circle.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(.blue)
+                Text("Estimated from food composition")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.blue.opacity(0.08))
+            )
+
             if !sortedDetected.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(sortedDetected, id: \.self) { nutrientId in
@@ -3852,45 +3869,37 @@ private var nutritionFactsSection: some View {
         }
     }
 
-    // NEW: Detect nutrients from ingredients using NutrientDetector and MicronutrientDatabase
+    // NEW: Detect nutrients from ingredients and micronutrient profile
     private func getDetectedNutrients() -> [String] {
         #if DEBUG
         print("  📝 Ingredients: \(food.ingredients ?? [])")
-
+        print("  📊 Micronutrient profile: \(food.micronutrientProfile != nil ? "Available" : "None")")
         #endif
-        var detectedNutrients: [String] = []
 
-        // Detect from ingredients if available
-        if let ingredients = food.ingredients, !ingredients.isEmpty {
-            // Create a temporary DiaryFoodItem for nutrient detection
-            let tempFood = DiaryFoodItem(
-                name: food.name,
-                brand: food.brand,
-                calories: 0,
-                protein: 0,
-                carbs: 0,
-                fat: 0,
-                servingDescription: "",
-                quantity: 1,
-                ingredients: ingredients,
-                barcode: food.barcode,
-                micronutrientProfile: nil
-            )
+        // Create a temporary DiaryFoodItem for nutrient detection
+        // Include both ingredients AND micronutrient profile for accurate detection
+        let tempFood = DiaryFoodItem(
+            name: food.name,
+            brand: food.brand,
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            servingDescription: "",
+            quantity: 1,
+            ingredients: food.ingredients,
+            barcode: food.barcode,
+            micronutrientProfile: food.micronutrientProfile  // Pass actual profile!
+        )
 
-            // Use NutrientDetector to detect nutrients from ingredients
-            detectedNutrients = NutrientDetector.detectNutrients(in: tempFood)
-            #if DEBUG
-            print("  ✅ Detected \(detectedNutrients.count) nutrients from ingredients: \(detectedNutrients)")
-            #endif
-        } else {
-            #if DEBUG
-            print("  ⚠️ No ingredients found")
-            #endif
-        }
+        // Use NutrientDetector to detect nutrients from ingredients AND micronutrient profile
+        // Use non-strict thresholds for display (show any nutrients present, not just 10%+ DV)
+        let detectedNutrients = NutrientDetector.detectNutrients(in: tempFood, strictThresholds: false)
 
         #if DEBUG
-        print("  ✅ Total nutrients to display: \(detectedNutrients.count)")
+        print("  ✅ Detected \(detectedNutrients.count) nutrients: \(detectedNutrients)")
         #endif
+
         return detectedNutrients
     }
 

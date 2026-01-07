@@ -334,40 +334,44 @@ struct NutrientDetector {
         "omega_3": ["salmon", "sardines", "mackerel", "herring", "anchovies", "trout", "walnuts", "flaxseed", "chia seeds"]
     ]
 
-    /// Minimum meaningful thresholds (skip trace amounts)
+    /// Minimum meaningful thresholds - requires 10% Daily Value to count as a source
+    /// This matches the DiaryTabView classify function for consistency
     /// Units match MicronutrientProfile fields (mg or mcg as annotated in the model)
     private static let nutrientThresholds: [String: Double] = [
-        // Vitamins
-        "vitamin_a": 90,       // mcg RAE (~10% DV)
-        "vitamin_c": 5,        // mg
-        "vitamin_d": 1,        // mcg
-        "vitamin_e": 1.5,      // mg
-        "vitamin_k": 12,       // mcg
-        "vitamin_b1": 0.12,    // mg
-        "vitamin_b2": 0.13,    // mg
-        "vitamin_b3": 1.6,     // mg
-        "vitamin_b6": 0.17,    // mg
-        "vitamin_b12": 0.24,   // mcg
-        "folate": 40,          // mcg
-        "biotin": 3,           // mcg
-        "vitamin_b5": 0.5,     // mg
-        // Minerals
-        "calcium": 50,         // mg
-        "iron": 0.9,           // mg
-        "magnesium": 20,       // mg
-        "phosphorus": 50,      // mg
-        "potassium": 150,      // mg
-        "zinc": 0.8,           // mg
-        "selenium": 5,         // mcg
-        "copper": 0.09,        // mg
-        "manganese": 0.2,      // mg
-        "iodine": 15,          // mcg
-        "chromium": 3,         // mcg
-        "molybdenum": 4        // mcg
+        // Vitamins (10% of Daily Value)
+        "vitamin_a": 90,       // mcg RAE (DV: 900mcg)
+        "vitamin_c": 9,        // mg (DV: 90mg)
+        "vitamin_d": 2,        // mcg (DV: 20mcg)
+        "vitamin_e": 1.5,      // mg (DV: 15mg)
+        "vitamin_k": 12,       // mcg (DV: 120mcg)
+        "vitamin_b1": 0.12,    // mg (DV: 1.2mg)
+        "vitamin_b2": 0.13,    // mg (DV: 1.3mg)
+        "vitamin_b3": 1.6,     // mg (DV: 16mg)
+        "vitamin_b6": 0.17,    // mg (DV: 1.7mg)
+        "vitamin_b12": 0.24,   // mcg (DV: 2.4mcg)
+        "folate": 40,          // mcg (DV: 400mcg)
+        "biotin": 3,           // mcg (DV: 30mcg)
+        "vitamin_b5": 0.5,     // mg (DV: 5mg)
+        // Minerals (10% of Daily Value)
+        "calcium": 100,        // mg (DV: 1000mg)
+        "iron": 1.8,           // mg (DV: 18mg)
+        "magnesium": 42,       // mg (DV: 420mg)
+        "phosphorus": 125,     // mg (DV: 1250mg)
+        "potassium": 470,      // mg (DV: 4700mg)
+        "zinc": 1.1,           // mg (DV: 11mg)
+        "selenium": 5.5,       // mcg (DV: 55mcg)
+        "copper": 0.09,        // mg (DV: 0.9mg)
+        "manganese": 0.23,     // mg (DV: 2.3mg)
+        "iodine": 15,          // mcg (DV: 150mcg)
+        "chromium": 3.5,       // mcg (DV: 35mcg)
+        "molybdenum": 4.5      // mcg (DV: 45mcg)
     ]
 
     /// Detect which nutrients are present in a food item based on its micronutrient profile
-    static func detectNutrients(in food: DiaryFoodItem) -> [String] {
+    /// - Parameters:
+    ///   - food: The food item to analyze
+    ///   - strictThresholds: If true, requires 10% DV (for diary tracking). If false, shows any non-zero amounts (for display).
+    static func detectNutrients(in food: DiaryFoodItem, strictThresholds: Bool = true) -> [String] {
         var detectedNutrients: Set<String> = []
 
         // Use actual micronutrient data if available
@@ -376,8 +380,12 @@ struct NutrientDetector {
             for (vitaminKey, amount) in profile.vitamins {
                 if amount > 0 {
                     let nutrientId = mapVitaminKeyToNutrientId(vitaminKey)
-                    if !nutrientId.isEmpty, passesThreshold(nutrientId: nutrientId, amount: amount) {
-                        detectedNutrients.insert(nutrientId)
+                    if !nutrientId.isEmpty {
+                        // For display (non-strict), show any non-zero value
+                        // For diary tracking (strict), require 10% DV
+                        if !strictThresholds || passesThreshold(nutrientId: nutrientId, amount: amount) {
+                            detectedNutrients.insert(nutrientId)
+                        }
                     }
                 }
             }
@@ -386,8 +394,10 @@ struct NutrientDetector {
             for (mineralKey, amount) in profile.minerals {
                 if amount > 0 {
                     let nutrientId = mapMineralKeyToNutrientId(mineralKey)
-                    if !nutrientId.isEmpty, passesThreshold(nutrientId: nutrientId, amount: amount) {
-                        detectedNutrients.insert(nutrientId)
+                    if !nutrientId.isEmpty {
+                        if !strictThresholds || passesThreshold(nutrientId: nutrientId, amount: amount) {
+                            detectedNutrients.insert(nutrientId)
+                        }
                     }
                 }
             }
@@ -401,7 +411,7 @@ struct NutrientDetector {
             }
         }
 
-        // Only do keyword-based detection if we have ingredient text
+        // Keyword-based detection from ingredients
         if let ingredients = food.ingredients, !ingredients.isEmpty {
             let lowerIngredients = ingredients.map { $0.lowercased() }
             let topIngredients = Array(lowerIngredients.prefix(5)) // focus on primary ingredients to reduce false positives
@@ -419,6 +429,17 @@ struct NutrientDetector {
                 }
                 if matched {
                     detectedNutrients.insert(nutrientId)
+                }
+            }
+        }
+
+        // ALSO check food name for whole food matches (e.g., "Apple" as food name)
+        let lowerName = food.name.lowercased()
+        for (nutrientId, keywords) in nutrientFoodSources {
+            for keyword in keywords {
+                if containsWholeWord(in: lowerName, keyword: keyword) {
+                    detectedNutrients.insert(nutrientId)
+                    break
                 }
             }
         }

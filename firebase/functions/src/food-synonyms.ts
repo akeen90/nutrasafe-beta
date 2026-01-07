@@ -182,6 +182,34 @@ const FOOD_TYPE_SYNONYMS: RegularSynonym[] = [
 ];
 
 /**
+ * G. Generic Meat Cuts (One-way synonyms)
+ * Common search terms that should find specific database entries
+ */
+const MEAT_CUT_SYNONYMS: OneWaySynonym[] = [
+  // Steak cuts - user searches simple name, finds full database name
+  {objectID: "meat-fillet-steak", type: "onewaysynonym", input: "fillet steak", synonyms: ["beef steak fillet grilled", "beef fillet grilled", "beef fillet"]},
+  {objectID: "meat-sirloin-steak", type: "onewaysynonym", input: "sirloin steak", synonyms: ["beef steak sirloin grilled", "beef sirloin grilled", "beef sirloin"]},
+  {objectID: "meat-ribeye-steak", type: "onewaysynonym", input: "ribeye steak", synonyms: ["beef steak ribeye grilled", "beef ribeye grilled", "beef ribeye"]},
+  {objectID: "meat-rump-steak", type: "onewaysynonym", input: "rump steak", synonyms: ["beef steak rump grilled", "beef rump grilled", "beef rump"]},
+  {objectID: "meat-tbone-steak", type: "onewaysynonym", input: "t-bone steak", synonyms: ["beef t-bone steak", "t bone steak"]},
+  // Reverse - database name finds simple search
+  {objectID: "meat-beef-fillet", type: "onewaysynonym", input: "beef fillet", synonyms: ["fillet steak", "fillet steak grilled"]},
+  // Chicken
+  {objectID: "meat-chicken-breast", type: "onewaysynonym", input: "chicken breast", synonyms: ["chicken breast grilled", "chicken breast fried", "chicken breast roasted"]},
+  {objectID: "meat-chicken-thigh", type: "onewaysynonym", input: "chicken thigh", synonyms: ["chicken thigh grilled", "chicken thigh roasted"]},
+  // Pork
+  {objectID: "meat-pork-chop", type: "onewaysynonym", input: "pork chop", synonyms: ["pork chop grilled", "pork chop fried", "pork loin chop grilled"]},
+  {objectID: "meat-pork-loin", type: "onewaysynonym", input: "pork loin", synonyms: ["pork loin roasted", "pork loin grilled"]},
+  // Lamb
+  {objectID: "meat-lamb-chop", type: "onewaysynonym", input: "lamb chop", synonyms: ["lamb chop grilled", "lamb loin chop grilled"]},
+  {objectID: "meat-leg-lamb", type: "onewaysynonym", input: "leg of lamb", synonyms: ["lamb leg roasted", "roast lamb leg"]},
+  // Fish
+  {objectID: "meat-salmon-fillet", type: "onewaysynonym", input: "salmon fillet", synonyms: ["salmon fillet grilled", "salmon fillet baked", "salmon fillet poached"]},
+  {objectID: "meat-cod-fillet", type: "onewaysynonym", input: "cod fillet", synonyms: ["cod fillet baked", "cod fillet grilled", "cod fillet fried"]},
+  {objectID: "meat-tuna-steak", type: "onewaysynonym", input: "tuna steak", synonyms: ["tuna steak grilled"]},
+];
+
+/**
  * F. Common Misspellings (as regular synonyms since alt corrections don't support multi-word)
  * Using regular synonyms means these are treated equally in results
  */
@@ -219,6 +247,7 @@ const ALL_SYNONYMS: FoodSynonym[] = [
   ...UK_US_SPELLING_SYNONYMS,
   ...COMMON_MEAL_SYNONYMS,
   ...FOOD_TYPE_SYNONYMS,
+  ...MEAT_CUT_SYNONYMS,
   ...MISSPELLING_SYNONYMS,
 ];
 
@@ -274,6 +303,7 @@ export const syncSynonymsToAlgolia = functions.https.onRequest({
       ukUsSpellings: UK_US_SPELLING_SYNONYMS.length,
       commonMeals: COMMON_MEAL_SYNONYMS.length,
       foodTypes: FOOD_TYPE_SYNONYMS.length,
+      meatCuts: MEAT_CUT_SYNONYMS.length,
       misspellings: MISSPELLING_SYNONYMS.length,
     },
     results,

@@ -38,9 +38,9 @@ struct MicronutrientDashboard: View {
 
     enum DashboardFilter: String, CaseIterable {
     case all = "All"
-    case strong = "Strong"
-    case moderate = "Moderate"
-    case traceMissing = "Low/Missing"
+    case strong = "Regular"
+    case moderate = "Occasional"
+    case traceMissing = "Rare"
 }
 
     var body: some View {
@@ -189,7 +189,7 @@ struct MicronutrientDashboard: View {
                         }
                     }
 
-                    Text("Based on NHS RNI values")
+                    Text("Estimated from food composition")
                         .font(.system(size: 14))
                         .foregroundColor(.secondary)
                 }
@@ -362,8 +362,8 @@ struct MicronutrientDashboard: View {
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(balance.balanceStatus.color)
 
-                    // Labels line e.g. 🟢 27 Strong 🟡 1 Moderate 🟠 0 Trace
-                    Text("🟢 \(balance.strongCount) Strong 🟡 \(balance.adequateCount) Moderate 🟠 \(balance.lowCount) Trace")
+                    // Labels line e.g. 🟢 27 Regular 🟡 1 Occasional 🟠 0 Rare
+                    Text("🟢 \(balance.strongCount) Regular 🟡 \(balance.adequateCount) Occasional 🟠 \(balance.lowCount) Rare")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.secondary)
                 }
@@ -375,19 +375,19 @@ struct MicronutrientDashboard: View {
             HStack(spacing: 12) {
                 balanceBreakdownItem(
                     count: balance.strongCount,
-                    label: "Strong",
+                    label: "Regular",
                     color: .green
                 )
 
                 balanceBreakdownItem(
                     count: balance.adequateCount,
-                    label: "Moderate",
+                    label: "Occasional",
                     color: .yellow
                 )
 
                 balanceBreakdownItem(
                     count: balance.lowCount,
-                    label: "Low",
+                    label: "Rare",
                     color: .orange
                 )
             }
