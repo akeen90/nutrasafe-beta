@@ -198,8 +198,15 @@ class ProcessingScorer {
         let ingredientsText = (food.ingredients?.joined(separator: ", ") ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let analysisText = (ingredientsText.isEmpty ? food.name : "\(food.name) \(ingredientsText)")
         let lowerText = analysisText.lowercased()
+        let lowerName = food.name.lowercased()
 
-        // VALIDATION: Filter out whole food names to prevent false positives
+        // TOTAL ingredient count (for complexity scoring - don't filter these)
+        let totalIngredientCount = (food.ingredients ?? []).filter {
+            !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }.count
+
+        // For additive analysis, we still filter to avoid false positives on additive detection
+        // But we use TOTAL count for complexity scoring
         let filteredIngredients = (food.ingredients ?? []).filter { ingredient in
             let trimmed = ingredient.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 
@@ -208,51 +215,29 @@ class ProcessingScorer {
                 return false
             }
 
-            // Skip if ingredient is a common single whole food name (data quality issue)
-            let commonWholeFoods = [
-                "apple", "apples", "banana", "bananas", "orange", "oranges",
-                "carrot", "carrots", "potato", "potatoes", "tomato", "tomatoes",
-                "cucumber", "cucumbers", "lettuce", "spinach", "broccoli",
-                "chicken", "beef", "pork", "fish", "salmon", "tuna",
-                "rice", "water", "milk", "egg", "eggs"
+            // Skip ONLY exact matches of simple whole food names for ADDITIVE detection
+            // This prevents "chicken" being detected as an additive, but doesn't affect ingredient COUNT
+            let simpleWholeFoods = [
+                "apple", "banana", "orange", "carrot", "potato", "tomato",
+                "cucumber", "lettuce", "spinach", "broccoli", "rice", "water"
             ]
 
-            if commonWholeFoods.contains(trimmed) {
-                #if DEBUG
-                print("⚠️ [ProcessingScorer] Skipping whole food name: '\(ingredient)'")
-                #endif
+            // Only skip exact single-word matches
+            if simpleWholeFoods.contains(trimmed) && !trimmed.contains(" ") {
                 return false
             }
 
             return true
         }
 
+        // CRITICAL FIX: Detect ready meals and prepared dishes by name
+        let isReadyMeal = detectReadyMeal(name: lowerName, ingredientCount: totalIngredientCount)
+
         // Additive count (prefer provided additives; fallback to analysis with filtered ingredients)
         // CRITICAL FIX: Include ultra-processed ingredients as additives in the count
         let fullAnalysis: AdditiveAnalysis
-        if filteredIngredients.isEmpty {
-            // No valid ingredients to analyze - whole food
-            #if DEBUG
-            print("⚠️ [ProcessingScorer] No valid ingredients to analyze for '\(food.name)' - treating as whole food")
-            #endif
-            fullAnalysis = AdditiveAnalysis(
-                eNumbers: [],
-                additives: [],
-                preservatives: [],
-                goodAdditives: [],
-                comprehensiveAdditives: [],
-                totalHealthScore: 0,
-                worstVerdict: "neutral",
-                hasChildWarnings: false,
-                hasAllergenWarnings: false,
-                ultraProcessedIngredients: [],
-                ultraProcessedPenalty: 0
-            )
-        } else {
-            // Analyze only filtered ingredients
-            let filteredAnalysisText = filteredIngredients.joined(separator: ", ")
-            fullAnalysis = analyseAdditives(in: filteredAnalysisText)
-        }
+        let filteredAnalysisText = filteredIngredients.joined(separator: ", ")
+        fullAnalysis = analyseAdditives(in: filteredAnalysisText)
 
         let additiveCount: Int = {
             if let additives = food.additives {
@@ -263,17 +248,37 @@ class ProcessingScorer {
             }
         }()
 
-        // Ingredient complexity weight (use filtered ingredients to exclude whole food names)
-        let ingredientCount = filteredIngredients.count
-        let ingredientComplexityWeight: Double = ingredientCount > 20 ? 1.0 : (ingredientCount > 10 ? 0.5 : 0.0)
+        // CRITICAL FIX: Use TOTAL ingredient count for complexity, not filtered
+        // Foods with many ingredients are inherently more processed
+        let ingredientComplexityWeight: Double = {
+            if totalIngredientCount >= 15 { return 1.5 }      // Very complex recipe
+            else if totalIngredientCount >= 10 { return 1.0 } // Complex recipe
+            else if totalIngredientCount >= 6 { return 0.5 }  // Moderate complexity
+            else { return 0.0 }
+        }()
 
-        // Industrial process weight
+        // CRITICAL FIX: Detect processed cooking ingredients (cream, butter, wine, stock)
+        let processedCookingWeight = detectProcessedCookingIngredients(in: lowerText)
+
+        // Industrial process weight - ENHANCED with ready meal detection
         let industrialProcessWeight: Double = {
+            var weight = 0.0
+
+            // Original industrial keywords
             let industrialKeywords = [
                 "powder", "powdered", "protein powder", "isolate", "extruded",
                 "blend", "blended", "shake", "smoothie", "instant mix", "meal replacement", "bar"
             ]
-            return industrialKeywords.contains(where: { lowerText.contains($0) }) ? 0.5 : 0.0
+            if industrialKeywords.contains(where: { lowerText.contains($0) }) {
+                weight += 0.5
+            }
+
+            // Ready meal penalty
+            if isReadyMeal {
+                weight += 1.0
+            }
+
+            return min(weight, 1.5)
         }()
 
         // Additive weight
@@ -305,11 +310,23 @@ class ProcessingScorer {
         // CRITICAL FIX: Empty calorie penalty for nutritionally void products (like Coke)
         let emptyCalorieWeight: Double = isEmptyCalorie(food: food) ? 1.5 : 0.0
 
-        // Processing Intensity: clamp(1 + additive_weight + ingredient_complexity_weight + industrial_process_weight + extreme_sugar_weight + empty_calorie_weight, 1, 5)
-        let processingIntensity = clamp(1.0 + additiveWeight + ingredientComplexityWeight + industrialProcessWeight + extremeSugarWeight + emptyCalorieWeight, min: 1.0, max: 5.0)
+        // Processing Intensity: clamp(1 + all weights, 1, 5)
+        // ENHANCED: Now includes processedCookingWeight for cream, butter, wine, stock etc.
+        let processingIntensity = clamp(
+            1.0 + additiveWeight + ingredientComplexityWeight + industrialProcessWeight +
+            extremeSugarWeight + emptyCalorieWeight + processedCookingWeight,
+            min: 1.0, max: 5.0
+        )
 
         // CRITICAL FIX: Detect whole, unprocessed foods (fruits, vegetables, etc.)
-        let isWholeUnprocessedFood = (additiveCount == 0 && ingredientCount <= 1 && industrialProcessWeight == 0.0)
+        // Must have: no additives, 1 or fewer ingredients, no industrial processing, no ready meal indicators
+        let isWholeUnprocessedFood = (
+            additiveCount == 0 &&
+            totalIngredientCount <= 1 &&
+            industrialProcessWeight == 0.0 &&
+            processedCookingWeight == 0.0 &&
+            !isReadyMeal
+        )
 
         // Nutrient Integrity
         let base: Double = 2.0
@@ -354,7 +371,7 @@ class ProcessingScorer {
             finalIndex: finalIndex,
             grade: grade,
             additiveCount: additiveCount,
-            ingredientCount: ingredientCount,
+            ingredientCount: totalIngredientCount,
             fortifiedCount: fortifiedCount,
             sugarPer100g: food.sugar,
             fiberPer100g: food.fiber,
@@ -363,7 +380,9 @@ class ProcessingScorer {
             isWholeUnprocessedFood: isWholeUnprocessedFood,
             extremeSugarApplied: extremeSugarWeight > 0,
             isBeverageProduct: isBeverageProduct,
-            emptyCalorieApplied: emptyCalorieWeight > 0
+            emptyCalorieApplied: emptyCalorieWeight > 0,
+            isReadyMeal: isReadyMeal,
+            processedCookingApplied: processedCookingWeight > 0
         )
 
         return NutraSafeProcessingGradeResult(
@@ -387,6 +406,95 @@ class ProcessingScorer {
         return vitaminCount + mineralCount
     }
 
+    // MARK: - Ready Meal Detection
+
+    /// Detects if a food is a ready meal or prepared dish based on name patterns and ingredient complexity
+    private func detectReadyMeal(name: String, ingredientCount: Int) -> Bool {
+        // Ready meal name patterns (brands and dish types)
+        let readyMealPatterns = [
+            // UK Ready Meal Brands
+            "charlie bigham", "cook", "m&s", "marks & spencer", "marks and spencer",
+            "waitrose", "tesco finest", "sainsbury's taste", "aldi specially selected",
+            "lidl deluxe", "asda extra special", "morrisons the best",
+
+            // Dish Types (typically ready meals)
+            "cottage pie", "shepherd's pie", "shepherds pie", "fish pie", "chicken pie",
+            "lasagne", "lasagna", "moussaka", "carbonara", "bolognese", "bolognaise",
+            "tikka masala", "korma", "madras", "vindaloo", "jalfrezi", "biryani",
+            "kung pao", "sweet and sour", "chow mein", "fried rice",
+            "enchilada", "burrito", "fajita",
+            "casserole", "stew", "hotpot", "pot pie",
+            "risotto", "paella", "goulash",
+            "mac and cheese", "macaroni cheese",
+            "roast dinner", "sunday roast",
+
+            // Ready Meal Indicators
+            "ready meal", "microwave meal", "heat and eat", "heat & eat",
+            "meal for one", "meal for two", "family meal", "meal deal",
+            "prepared meal", "pre-made", "pre-cooked"
+        ]
+
+        let nameMatches = readyMealPatterns.contains(where: { name.contains($0) })
+
+        // Also consider high ingredient count as ready meal indicator
+        // Real ready meals typically have 10+ ingredients
+        let highIngredientCount = ingredientCount >= 10
+
+        return nameMatches || (highIngredientCount && ingredientCount >= 12)
+    }
+
+    /// Detects processed cooking ingredients that indicate a prepared/processed food
+    private func detectProcessedCookingIngredients(in text: String) -> Double {
+        var weight = 0.0
+
+        // Processed cooking ingredients found in ready meals
+        let processedCookingIngredients: [(pattern: String, weight: Double)] = [
+            // Dairy processing
+            ("double cream", 0.15), ("single cream", 0.15), ("cream", 0.1),
+            ("crème fraîche", 0.15), ("creme fraiche", 0.15),
+            ("mascarpone", 0.15), ("cheese sauce", 0.2),
+
+            // Fats and oils
+            ("butter", 0.1), ("margarine", 0.2),
+            ("vegetable oil", 0.1), ("rapeseed oil", 0.1),
+
+            // Stocks and sauces
+            ("beef stock", 0.15), ("chicken stock", 0.15), ("vegetable stock", 0.15),
+            ("stock cube", 0.2), ("bouillon", 0.15),
+            ("worcestershire sauce", 0.1), ("soy sauce", 0.1),
+            ("tomato paste", 0.1), ("tomato puree", 0.1), ("tomato purée", 0.1),
+
+            // Wine and alcohol (cooking)
+            ("white wine", 0.15), ("red wine", 0.15), ("sherry", 0.15),
+            ("brandy", 0.15), ("marsala", 0.15),
+
+            // Thickeners and binders
+            ("cornflour", 0.1), ("corn flour", 0.1), ("cornstarch", 0.1),
+            ("plain flour", 0.05), ("wheat flour", 0.05),
+            ("breadcrumb", 0.1), ("breadcrumbs", 0.1),
+            ("egg wash", 0.1),
+
+            // Seasonings (industrial scale)
+            ("garlic puree", 0.1), ("garlic purée", 0.1),
+            ("onion powder", 0.15), ("garlic powder", 0.15),
+            ("mixed herbs", 0.05), ("dried herbs", 0.05),
+
+            // Other processed indicators
+            ("concentrated", 0.15), ("reconstituted", 0.2),
+            ("from concentrate", 0.15), ("pasteurised", 0.1),
+            ("smoked", 0.1), ("cured", 0.15)
+        ]
+
+        for (pattern, patternWeight) in processedCookingIngredients {
+            if text.contains(pattern) {
+                weight += patternWeight
+            }
+        }
+
+        // Cap at 1.0 to prevent over-penalization
+        return min(weight, 1.0)
+    }
+
     private func buildNutraSafeExplanation(
         foodName: String,
         processingIntensity: Double,
@@ -403,7 +511,9 @@ class ProcessingScorer {
         isWholeUnprocessedFood: Bool,
         extremeSugarApplied: Bool,
         isBeverageProduct: Bool,
-        emptyCalorieApplied: Bool
+        emptyCalorieApplied: Bool,
+        isReadyMeal: Bool = false,
+        processedCookingApplied: Bool = false
     ) -> String {
         var parts: [String] = []
         parts.append("NutraSafe Processing Grade™ for '\(foodName)': \(grade).")
@@ -412,10 +522,24 @@ class ProcessingScorer {
             parts.append("This is a whole, unprocessed food with no additives.")
         } else {
             var processingFactors: [String] = []
-            processingFactors.append("\(additiveCount) additive(s)")
-            if industrialProcessApplied {
+
+            // Ready meal is the most significant factor
+            if isReadyMeal {
+                processingFactors.append("prepared/ready meal")
+            }
+
+            if additiveCount > 0 {
+                processingFactors.append("\(additiveCount) additive(s)")
+            }
+
+            if industrialProcessApplied && !isReadyMeal {
                 processingFactors.append("industrial processing indicators")
             }
+
+            if processedCookingApplied {
+                processingFactors.append("processed cooking ingredients")
+            }
+
             if extremeSugarApplied {
                 if isBeverageProduct {
                     processingFactors.append("high sugar per serving (beverage)")
@@ -423,10 +547,17 @@ class ProcessingScorer {
                     processingFactors.append("extreme sugar content")
                 }
             }
+
             if emptyCalorieApplied {
                 processingFactors.append("empty calories (zero nutrition)")
             }
-            processingFactors.append("\(ingredientCount) ingredient(s)")
+
+            // Always show ingredient count for complex foods
+            if ingredientCount >= 5 {
+                processingFactors.append("\(ingredientCount) ingredients (complex recipe)")
+            } else {
+                processingFactors.append("\(ingredientCount) ingredient(s)")
+            }
 
             parts.append("Processing intensity \(String(format: "%.1f", processingIntensity)) driven by \(processingFactors.joined(separator: ", ")).")
         }

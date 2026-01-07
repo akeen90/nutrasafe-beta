@@ -3147,42 +3147,56 @@ struct NutrientDetailModal: View {
             sectionHeader(title: "Your Sources This Week", icon: "fork.knife")
 
             VStack(spacing: 0) {
-                ForEach(Array(allFoods.prefix(8).enumerated()), id: \.element) { index, food in
+                ForEach(Array(foodsWithCounts.prefix(8).enumerated()), id: \.element.name) { index, foodItem in
                     HStack(spacing: 12) {
+                        // Food icon
                         ZStack {
                             Circle()
                                 .fill(nutrientColor.opacity(0.15))
                                 .frame(width: 32, height: 32)
 
-                            Text("\(index + 1)")
-                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                            Image(systemName: foodIcon(for: foodItem.name))
+                                .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(nutrientColor)
                         }
 
-                        Text(food)
+                        Text(foodItem.name)
                             .font(.system(size: 15, weight: .medium))
                             .foregroundColor(.primary)
                             .lineLimit(1)
 
                         Spacer()
 
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.green)
+                        // Serving count badge
+                        if foodItem.count > 1 {
+                            Text("×\(foodItem.count)")
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                .foregroundColor(nutrientColor)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(nutrientColor.opacity(0.12))
+                                )
+                        } else {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.green)
+                        }
                     }
                     .padding(.vertical, 10)
                     .padding(.horizontal, 14)
 
-                    if index < min(allFoods.count - 1, 7) {
+                    if index < min(foodsWithCounts.count - 1, 7) {
                         Divider()
                             .padding(.leading, 56)
                     }
                 }
 
-                if allFoods.count > 8 {
+                if foodsWithCounts.count > 8 {
                     HStack {
                         Spacer()
-                        Text("+ \(allFoods.count - 8) more")
+                        Text("+ \(foodsWithCounts.count - 8) more")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(.secondary)
                         Spacer()
@@ -3275,13 +3289,21 @@ struct NutrientDetailModal: View {
     // MARK: - Helper Functions
 
     private var allFoods: [String] {
-        var foods = Set<String>()
+        foodsWithCounts.map { $0.name }
+    }
+
+    /// Foods with their serving counts, sorted by count (highest first)
+    private var foodsWithCounts: [(name: String, count: Int)] {
+        var counts: [String: Int] = [:]
         for segment in row.segments {
             if let segmentFoods = segment.foods {
-                foods.formUnion(segmentFoods)
+                for food in segmentFoods {
+                    counts[food, default: 0] += 1
+                }
             }
         }
-        return Array(foods).sorted()
+        return counts.map { (name: $0.key, count: $0.value) }
+            .sorted { $0.count > $1.count }
     }
 
     private func shortDayLabel(_ date: Date) -> String {
