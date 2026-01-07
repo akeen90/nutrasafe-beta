@@ -434,22 +434,18 @@ struct FastingTimerView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingSettings) {
+        .fullScreenCover(isPresented: $showingSettings) {
             FastingSettingsView(
                 fastingGoal: $fastingGoal,
                 notificationsEnabled: $notificationsEnabled,
                 onSave: saveFastingSettings
             )
             .environmentObject(firebaseManager)
-            .presentationDragIndicator(.visible)
-            .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
-        .sheet(isPresented: $showingCitations) {
+        .fullScreenCover(isPresented: $showingCitations) {
             FastingCitationsView()
-                .presentationDragIndicator(.visible)
-                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
-        .sheet(isPresented: $showingStartOptions) {
+        .fullScreenCover(isPresented: $showingStartOptions) {
             VStack(spacing: 16) {
                 DatePicker("Started At", selection: $startOverride, in: ...Date(), displayedComponents: .hourAndMinute)
                 HStack {
@@ -467,11 +463,8 @@ struct FastingTimerView: View {
                 .buttonStyle(.borderedProminent)
             }
             .padding()
-            .presentationDetents([.height(200)])
-            .presentationDragIndicator(.visible)
-            .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
-        .sheet(isPresented: $showingEditFast) {
+        .fullScreenCover(isPresented: $showingEditFast) {
             VStack(spacing: 16) {
                 DatePicker("Start Time", selection: $editStartTime, in: ...Date(), displayedComponents: .hourAndMinute)
                 Stepper("Goal: \(editTargetHours)h", value: $editTargetHours, in: 8...24)
@@ -486,9 +479,6 @@ struct FastingTimerView: View {
                 .buttonStyle(.borderedProminent)
             }
             .padding()
-            .presentationDetents([.height(200)])
-            .presentationDragIndicator(.visible)
-            .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
     }
 

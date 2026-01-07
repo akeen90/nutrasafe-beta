@@ -406,11 +406,9 @@ struct FoodReactionsView: View {
         } message: {
             Text(reactionManager.errorMessage ?? "Unknown error occurred")
         }
-        .sheet(isPresented: $showingPaywall) {
+        .fullScreenCover(isPresented: $showingPaywall) {
             PaywallView()
                 .environmentObject(subscriptionManager)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
     }
 }
@@ -511,10 +509,8 @@ struct FoodReactionSummaryCard: View {
                 )
         )
         .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
-        .sheet(isPresented: $showingLogReaction) {
+        .fullScreenCover(isPresented: $showingLogReaction) {
             navigationContainer { LogReactionView(reactionManager: reactionManager, selectedTab: $selectedTab) }
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
     }
 }
@@ -655,10 +651,8 @@ struct FoodReactionListCard: View {
                 )
         )
         .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
-        .sheet(isPresented: $showingPDFExportSheet) {
+        .fullScreenCover(isPresented: $showingPDFExportSheet) {
             MultipleFoodReactionsPDFExportSheet(reactions: reactions)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
     }
 }
@@ -709,10 +703,8 @@ struct FoodReactionRow: View {
             .padding(.vertical, 8)
         }
         .buttonStyle(PlainButtonStyle())
-        .sheet(isPresented: $showingDetail) {
+        .fullScreenCover(isPresented: $showingDetail) {
             ReactionDetailView(reaction: reaction)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
     }
 
@@ -1253,10 +1245,10 @@ struct FoodPatternAnalysisCard: View {
                 )
         )
         .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
-        .sheet(isPresented: $showingPDFExportSheet) {
+        .fullScreenCover(isPresented: $showingPDFExportSheet) {
             MultipleFoodReactionsPDFExportSheet(reactions: Array(reactionManager.reactions))
         }
-        .sheet(isPresented: $showingPaywall) {
+        .fullScreenCover(isPresented: $showingPaywall) {
             PaywallView()
                 .environmentObject(subscriptionManager)
         }
@@ -1682,10 +1674,8 @@ struct ReactionDetailView: View {
                     dismiss()
                 }
             )
-            .sheet(isPresented: $showingExportSheet) {
+            .fullScreenCover(isPresented: $showingExportSheet) {
                 FoodReactionPDFExportSheet(reaction: reaction)
-                    .presentationDragIndicator(.visible)
-                    .presentationBackground(Color(.systemBackground))
             }
         }
     }
@@ -2295,10 +2285,8 @@ struct LogReactionView: View {
             }
             .disabled(selectedFood == nil || symptoms.isEmpty)
         )
-        .sheet(isPresented: $showingFoodSearch) {
+        .fullScreenCover(isPresented: $showingFoodSearch) {
             navigationContainer { FoodReactionSearchView(selectedFood: $selectedFood) }
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
     }
 
@@ -2617,15 +2605,13 @@ struct FoodReactionSearchView: View {
                 dismiss()
             }
         )
-        .sheet(isPresented: $showingManualEntry) {
+        .fullScreenCover(isPresented: $showingManualEntry) {
             navigationContainer {
                 ManualReactionFoodEntryView(prefilledName: searchText) { manualFood in
                     selectedFood = manualFood
                     DispatchQueue.main.async { dismiss() }
                 }
             }
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
         .onAppear {
             if diaryEntries.isEmpty && !isLoadingDiary {
@@ -3399,11 +3385,9 @@ struct FoodReactionPDFExportSheet: View {
             .navigationTitle("Export Report")
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarItems(trailing: Button("Done") { dismiss() })
-            .sheet(isPresented: $showingShareSheet) {
+            .fullScreenCover(isPresented: $showingShareSheet) {
                 if let url = pdfURL {
                     ShareSheet(items: [url])
-                        .presentationDragIndicator(.visible)
-                        .presentationBackground(Color(.systemBackground))
                 }
             }
         }
@@ -3587,11 +3571,9 @@ struct MultipleFoodReactionsPDFExportSheet: View {
             .padding()
             .navigationTitle("Export Report")
             .navigationBarTitleDisplayMode(.inline)
-            .sheet(isPresented: $showShareSheet) {
+            .fullScreenCover(isPresented: $showShareSheet) {
                 if let url = pdfURL {
                     ShareSheet(items: [url])
-                        .presentationDragIndicator(.visible)
-                        .presentationBackground(Color(.systemBackground))
                 }
             }
             .alert("Add Name to Report (Optional)", isPresented: $showingNameAlert) {

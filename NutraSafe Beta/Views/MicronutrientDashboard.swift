@@ -95,27 +95,19 @@ struct MicronutrientDashboard: View {
             )
             .ignoresSafeArea()
         )
-        .sheet(item: $selectedNutrient) { nutrient in
+        .fullScreenCover(item: $selectedNutrient) { nutrient in
             NutrientInfoSheet(summary: nutrient)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
-        .sheet(isPresented: $showingTimeline) {
+        .fullScreenCover(isPresented: $showingTimeline) {
             MicronutrientTimelineView()
-                .presentationDragIndicator(.visible)
-                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
-        .sheet(isPresented: $showingRecommendations) {
+        .fullScreenCover(isPresented: $showingRecommendations) {
             SmartRecommendationsView()
-                .presentationDragIndicator(.visible)
-                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
-        .sheet(isPresented: $showingSources) {
+        .fullScreenCover(isPresented: $showingSources) {
             SourcesAndCitationsView()
-                .presentationDragIndicator(.visible)
-                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
-        .sheet(isPresented: $showingPaywall) {
+        .fullScreenCover(isPresented: $showingPaywall) {
             PaywallView()
                 .environmentObject(subscriptionManager)
         }

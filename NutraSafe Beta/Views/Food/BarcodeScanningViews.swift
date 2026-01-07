@@ -186,7 +186,7 @@ struct AddFoodBarcodeView: View {
         }
         .navigationTitle("Scan Barcode")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showingContributionForm, onDismiss: {
+        .fullScreenCover(isPresented: $showingContributionForm, onDismiss: {
             // Clean up state when sheet is dismissed
             pendingContribution = nil
             errorMessage = nil
@@ -202,8 +202,6 @@ struct AddFoodBarcodeView: View {
                         pendingContribution = nil
                     })
                 }
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
             }
         }
     }

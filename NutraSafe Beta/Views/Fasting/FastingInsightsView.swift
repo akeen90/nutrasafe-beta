@@ -77,10 +77,8 @@ struct FastingInsightsView: View {
             }
             .navigationTitle("Insights")
             .navigationBarTitleDisplayMode(.large)
-            .sheet(isPresented: $showingAllSessions) {
+            .fullScreenCover(isPresented: $showingAllSessions) {
                 AllSessionsView(viewModel: viewModel)
-                    .presentationDragIndicator(.visible)
-                    .presentationBackground(Color(.systemBackground))
             }
         }
     }

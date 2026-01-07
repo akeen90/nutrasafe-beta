@@ -218,10 +218,8 @@ struct SignInView: View {
         } message: {
             Text(errorMessage)
         }
-        .sheet(isPresented: $showingPasswordReset) {
+        .fullScreenCover(isPresented: $showingPasswordReset) {
             PasswordResetView()
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
     }
 

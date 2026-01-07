@@ -98,6 +98,7 @@ struct UseByTabView: View {
     // MARK: - Feature Tips
     @State private var showingUseByTip = false
     @State private var hasShownTip = false
+    @ObservedObject private var featureTipsManager = FeatureTipsManager.shared
 
     // Temporary header counter until data is lifted to parent scope
     private var expiringSoonCount: Int { 0 }
@@ -184,27 +185,21 @@ struct UseByTabView: View {
                 showingAddSheet = false
             })
         }
-        .sheet(isPresented: $showingPaywall) {
+        .fullScreenCover(isPresented: $showingPaywall) {
             PaywallView()
                 .environmentObject(subscriptionManager)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
-        .sheet(isPresented: $showingScanner) {
+        .fullScreenCover(isPresented: $showingScanner) {
             // Barcode scanner will be implemented
             Text("Barcode Scanner Coming Soon")
                 .font(.title)
                 .padding()
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
-        .sheet(isPresented: $showingCamera) {
+        .fullScreenCover(isPresented: $showingCamera) {
             // Camera scanner will be implemented
             Text("Camera Scanner Coming Soon")
                 .font(.title)
                 .padding()
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
         .onAppear {
             // Show feature tip on first visit (only for premium users)
@@ -217,6 +212,17 @@ struct UseByTabView: View {
             }
         }
         .featureTip(isPresented: $showingUseByTip, tipKey: .useByOverview)
+        .onChange(of: featureTipsManager.resetTrigger) { _, _ in
+            // Reset the guard flag so tip can show again
+            hasShownTip = false
+            // Show the tip if this tab is visible and user has access
+            if subscriptionManager.hasAccess {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    showingUseByTip = true
+                    hasShownTip = true
+                }
+            }
+        }
     }
 }
 
@@ -474,7 +480,7 @@ struct AddFoundFoodToUseBySheet: View {
                 }
                 Button("Cancel", role: .cancel) {}
             }
-            .sheet(isPresented: $showCameraPicker) {
+            .fullScreenCover(isPresented: $showCameraPicker) {
                 ImagePicker(selectedImage: nil, sourceType: .camera) { image in
                     if let image = image {
                         capturedImage = image
@@ -488,10 +494,8 @@ struct AddFoundFoodToUseBySheet: View {
                         showCameraPicker = false
                     }
                 }
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
             }
-            .sheet(isPresented: $showPhotoPicker) {
+            .fullScreenCover(isPresented: $showPhotoPicker) {
                 PhotoLibraryPicker { image in
                     showPhotoPicker = false
                     if let image = image {
@@ -501,8 +505,6 @@ struct AddFoundFoodToUseBySheet: View {
                         }
                     }
                 }
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
             }
         }
     }
@@ -1909,10 +1911,8 @@ struct ModernExpiryRow: View {
                 Label("Delete", systemImage: "trash.fill")
             }
         }
-        .sheet(isPresented: $showingDetail) {
+        .fullScreenCover(isPresented: $showingDetail) {
             UseByItemDetailView(item: item)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
         .alert("Delete Item", isPresented: $showingDeleteAlert) {
             Button("Delete", role: .destructive) { confirmDelete() }
@@ -2270,12 +2270,10 @@ struct UseByBarcodeScanSheet: View {
             .toolbar { ToolbarItem(placement: .navigationBarLeading) { Button("Close") { dismiss() } } }
         }
         .navigationViewStyle(StackNavigationViewStyle())
-.sheet(item: $scannedFood) { food in
+.fullScreenCover(item: $scannedFood) { food in
             AddFoundFoodToUseBySheet(food: food)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
-        .sheet(isPresented: $showAddForm) {
+        .fullScreenCover(isPresented: $showAddForm) {
             VStack(spacing: 16) {
                 Image(systemName: "square.and.pencil").font(.system(size: 50)).foregroundColor(.blue)
                 Text("Product Not Found").font(.system(size: 20, weight: .semibold))
@@ -2288,8 +2286,6 @@ struct UseByBarcodeScanSheet: View {
             .padding()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
     }
 
@@ -2593,14 +2589,12 @@ struct UseByInlineSearchView: View {
             .scrollDismissesKeyboard(.interactively)
         }
         .background(Color.adaptiveBackground)
-        .sheet(isPresented: $showingFoodDetail) {
+        .fullScreenCover(isPresented: $showingFoodDetail) {
             if let food = selectedFood {
                 UseByFoodDetailSheet(food: food, onComplete: onComplete)
                     .onAppear {
                         print("🟢 [UseBy Search] UseByFoodDetailSheet appeared for: \(food.name)")
                     }
-                    .presentationDragIndicator(.visible)
-                    .presentationBackground(Color(.systemBackground))
             }
         }
         .onChange(of: showingFoodDetail) { _, newValue in
@@ -2747,10 +2741,8 @@ Text(food.name)
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
-.sheet(item: $selectedFood) { selectedFood in
+.fullScreenCover(item: $selectedFood) { selectedFood in
             AddFoundFoodToUseBySheet(food: selectedFood)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
     }
 
@@ -3608,7 +3600,7 @@ struct UseByItemDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
         }
         .navigationViewStyle(StackNavigationViewStyle())
-        .sheet(isPresented: $showDatePicker) {
+        .fullScreenCover(isPresented: $showDatePicker) {
             VStack {
                 HStack {
                     Button("Cancel") { showDatePicker = false }
@@ -3626,8 +3618,6 @@ struct UseByItemDetailView: View {
                     .padding()
                 Spacer()
             }
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
         .onAppear {
             // Load existing photo from URL if available (edit mode only)
@@ -3676,7 +3666,7 @@ struct UseByItemDetailView: View {
             }
             Button("Cancel", role: .cancel) {}
         }
-        .sheet(isPresented: $showCameraPicker) {
+        .fullScreenCover(isPresented: $showCameraPicker) {
             ImagePicker(selectedImage: nil, sourceType: .camera) { image in
                 if let image = image {
                     capturedImage = image
@@ -3690,10 +3680,8 @@ struct UseByItemDetailView: View {
                     showCameraPicker = false
                 }
             }
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
-        .sheet(isPresented: $showPhotoPicker) {
+        .fullScreenCover(isPresented: $showPhotoPicker) {
             PhotoLibraryPicker { image in
                 showPhotoPicker = false
                 if let image = image {
@@ -3703,8 +3691,6 @@ struct UseByItemDetailView: View {
                     }
                 }
             }
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
     }
 
@@ -4524,10 +4510,8 @@ struct CleanUseByRow: View {
                 }
             }
         }
-        .sheet(isPresented: $showingDetail) {
+        .fullScreenCover(isPresented: $showingDetail) {
             UseByItemDetailView(item: item)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
     }
 

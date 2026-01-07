@@ -119,7 +119,7 @@ struct AddFoodAIView: View {
             Spacer()
         }
         .padding(.top, 20)
-        .sheet(isPresented: $showingImagePicker) {
+        .fullScreenCover(isPresented: $showingImagePicker) {
             ImagePicker(selectedImage: $selectedImage, sourceType: .camera) { image in
                 showingImagePicker = false
                 if let image = image {
@@ -127,13 +127,13 @@ struct AddFoodAIView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingCombinedMealView) {
+        .fullScreenCover(isPresented: $showingCombinedMealView) {
             CombinedMealView(foods: combinedMealFoods) {
                 showingCombinedMealView = false
                 combinedMealFoods = []
             }
         }
-        .sheet(isPresented: $showingFoodDetail) {
+        .fullScreenCover(isPresented: $showingFoodDetail) {
             if let food = selectedFoodForDetail {
                 NavigationView {
                     FoodDetailViewFromSearch(food: food, selectedTab: $selectedTab)
@@ -528,7 +528,7 @@ struct AIFoodSelectionView: View {
                 .padding(.bottom, 16)
             }
         }
-        .sheet(isPresented: $showingFoodDetail) {
+        .fullScreenCover(isPresented: $showingFoodDetail) {
             if let food = selectedFood {
                 NavigationView {
                     FoodDetailViewFromSearch(food: food, selectedTab: $selectedTab)
@@ -536,7 +536,7 @@ struct AIFoodSelectionView: View {
             }
         }
     }
-    
+
     private func toggleFoodSelection(_ food: FoodSearchResult) {
         if selectedFoods.contains(food.id) {
             selectedFoods.remove(food.id)
@@ -833,10 +833,8 @@ struct CombinedMealView: View {
             isPresented: $showingLimitError,
             showingPaywall: $showingPaywall
         )
-        .sheet(isPresented: $showingPaywall) {
+        .fullScreenCover(isPresented: $showingPaywall) {
             PaywallView()
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
         .onAppear {
             // Initialize serving sizes

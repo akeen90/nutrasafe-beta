@@ -42,10 +42,8 @@ struct FastingMainView: View {
                 showingPaywall = true
             }
         )
-        .sheet(isPresented: $showingPaywall) {
+        .fullScreenCover(isPresented: $showingPaywall) {
             PaywallView()
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
     }
 
@@ -95,24 +93,18 @@ struct FastingMainView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingEducation) {
+        .fullScreenCover(isPresented: $showingEducation) {
             FastingEducationView()
-                .presentationDragIndicator(.visible)
-                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
-        .sheet(isPresented: $showingCitations) {
+        .fullScreenCover(isPresented: $showingCitations) {
             FastingCitationsView()
-                .presentationDragIndicator(.visible)
-                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
-        .sheet(isPresented: $showingEditTimes) {
+        .fullScreenCover(isPresented: $showingEditTimes) {
             if let session = viewModel.activeSession {
                 EditSessionTimesView(viewModel: viewModel, session: session)
-                    .presentationDragIndicator(.visible)
-                    .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
             }
         }
-        .sheet(isPresented: $showingActionSheet) {
+        .fullScreenCover(isPresented: $showingActionSheet) {
             if let session = actionSheetSession {
                 FastingActionSheet(
                     session: session,
@@ -141,9 +133,6 @@ struct FastingMainView: View {
                         actionSheetSession = nil
                     }
                 )
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
-                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
             }
         }
         .onAppear {
@@ -258,10 +247,10 @@ struct NoPlanView: View {
             }
             .buttonStyle(.plain)
         }
-        .sheet(isPresented: $showingEducation) {
+        .fullScreenCover(isPresented: $showingEducation) {
             FastingEducationView()
         }
-        .sheet(isPresented: $showingPlanCreation) {
+        .fullScreenCover(isPresented: $showingPlanCreation) {
             FastingPlanCreationView(viewModel: viewModel)
         }
     }
@@ -670,16 +659,16 @@ struct PlanDashboardView: View {
 
             fastingHistorySection
         }
-        .sheet(isPresented: $showRegimeDetails) {
+        .fullScreenCover(isPresented: $showRegimeDetails) {
             RegimeDetailView(viewModel: viewModel, plan: plan)
         }
-        .sheet(isPresented: $showFastSettings) {
+        .fullScreenCover(isPresented: $showFastSettings) {
             FastingPlanCreationView(viewModel: viewModel)
         }
-        .sheet(isPresented: $showingCitations) {
+        .fullScreenCover(isPresented: $showingCitations) {
             FastingCitationsView()
         }
-        .sheet(isPresented: $showSnoozePicker) {
+        .fullScreenCover(isPresented: $showSnoozePicker) {
             NavigationStack {
                 VStack(spacing: 20) {
                     Text("Resume fasting at:")
@@ -881,10 +870,10 @@ struct RegimeDetailView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingCitations) {
+            .fullScreenCover(isPresented: $showingCitations) {
                 FastingCitationsView()
             }
-            .sheet(isPresented: $showingEditTimes) {
+            .fullScreenCover(isPresented: $showingEditTimes) {
                 NavigationStack {
                     Form {
                         Section("Current Fast") {
@@ -1362,17 +1351,17 @@ struct ActiveSessionView: View {
             }
             .padding(.bottom, 30) // Add space above tab bar
         }
-        .sheet(isPresented: $showingEditTimes) {
+        .fullScreenCover(isPresented: $showingEditTimes) {
             if let session = viewModel.activeSession {
                 EditSessionTimesView(viewModel: viewModel, session: session)
             }
         }
-        .sheet(isPresented: $showingEarlyEndModal) {
+        .fullScreenCover(isPresented: $showingEarlyEndModal) {
             if let session = endedSession {
                 EarlyEndModal(viewModel: viewModel, session: session)
             }
         }
-        .sheet(isPresented: $showingCitations) {
+        .fullScreenCover(isPresented: $showingCitations) {
             FastingCitationsView()
         }
         .alert("End Fasting Regime?", isPresented: $showingEndRegimeAlert) {

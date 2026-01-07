@@ -510,6 +510,7 @@ struct ContentView: View {
     @State private var currentWeight: Double = 0
     @State private var weightHistory: [WeightEntry] = []
     @State private var userHeight: Double = 0
+    @State private var goalWeightMain: Double = 0
 
     // Track notification-triggered navigation to bypass subscription gate
     @State private var isNavigatingFromNotification = false
@@ -693,12 +694,10 @@ struct ContentView: View {
             }
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
-        .sheet(isPresented: $showingSettings) {
-            SettingsView()
+        .fullScreenCover(isPresented: $showingSettings) {
+            SettingsView(selectedTab: $selectedTab)
                 .environmentObject(firebaseManager)
                 .environmentObject(subscriptionManager)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
         .fullScreenCover(isPresented: $showingPaywall) {
             PaywallView()
@@ -767,16 +766,25 @@ struct ContentView: View {
                 showingReactionLog = false
             }
         }
-        .sheet(isPresented: $showingWeightAdd) {
-            AddWeightView(currentWeight: $currentWeight, weightHistory: $weightHistory, userHeight: $userHeight)
+        .fullScreenCover(isPresented: $showingWeightAdd) {
+            AddWeightView(
+                currentWeight: $currentWeight,
+                weightHistory: $weightHistory,
+                userHeight: $userHeight,
+                goalWeight: $goalWeightMain,
+                onInstantDismiss: {
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        showingWeightAdd = false
+                    }
+                }
+            )
                 .environmentObject(FirebaseManager.shared)
                 .onDisappear {
-                    showingWeightAdd = false
                     // Switch to weight tab after adding weight
                     selectedTab = .weight
                 }
-                .presentationDragIndicator(.visible)
-                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToUseBy)) { _ in
             #if DEBUG
@@ -1487,29 +1495,43 @@ struct WeightTrackingView: View {
                 } // End of loading else block
             }
             .tabGradientBackground(.progress)
-        .sheet(isPresented: $showingAddWeight) {
-            AddWeightView(currentWeight: $currentWeight, weightHistory: $weightHistory, userHeight: $userHeight)
+        .fullScreenCover(isPresented: $showingAddWeight) {
+            AddWeightView(
+                currentWeight: $currentWeight,
+                weightHistory: $weightHistory,
+                userHeight: $userHeight,
+                goalWeight: $goalWeight,
+                onInstantDismiss: {
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        showingAddWeight = false
+                    }
+                }
+            )
                 .environmentObject(firebaseManager)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
-        .sheet(isPresented: $showingHeightSetup) {
+        .fullScreenCover(isPresented: $showingHeightSetup) {
             HeightSetupView(userHeight: $userHeight)
                 .environmentObject(firebaseManager)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
-        .sheet(item: $editingEntry) { entry in
+        .fullScreenCover(item: $editingEntry) { entry in
             EditWeightView(
                 entry: entry,
                 currentWeight: $currentWeight,
                 weightHistory: $weightHistory,
                 userHeight: $userHeight,
-                onSave: { loadWeightHistory() }
+                goalWeight: $goalWeight,
+                onSave: { loadWeightHistory() },
+                onInstantDismiss: {
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        editingEntry = nil
+                    }
+                }
             )
             .environmentObject(firebaseManager)
-            .presentationDragIndicator(.visible)
-            .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
         .alert("Delete Weight Entry?", isPresented: $showingDeleteConfirmation) {
             Button("Cancel", role: .cancel) {
@@ -1553,7 +1575,7 @@ struct WeightTrackingView: View {
             }
         }
         .featureTip(isPresented: $showingProgressTip, tipKey: .progressOverview)
-        .sheet(isPresented: $showingPaywall) {
+        .fullScreenCover(isPresented: $showingPaywall) {
             PaywallView()
                 .environmentObject(subscriptionManager)
         }
@@ -2432,6 +2454,8 @@ struct AddWeightView: View {
     @Binding var currentWeight: Double
     @Binding var weightHistory: [WeightEntry]
     @Binding var userHeight: Double
+    @Binding var goalWeight: Double
+    var onInstantDismiss: (() -> Void)? = nil  // For instant dismiss without animation
 
     var existingEntry: WeightEntry? = nil // For editing existing entries
 
@@ -2444,6 +2468,10 @@ struct AddWeightView: View {
     @State private var secondaryHeight: String = "" // inches (for ft/in only)
     @State private var note: String = ""
     @State private var date = Date()
+
+    // Goal weight
+    @State private var goalWeightText: String = ""
+    @State private var initialGoalWeight: Double = 0
 
     // Photo picker
     @State private var selectedPhotos: [IdentifiableImage] = []
@@ -2475,6 +2503,37 @@ struct AddWeightView: View {
         guard let heightCm = heightInCm, heightCm > 0 else { return nil }
         let heightInMeters = heightCm / 100
         return weightKg / (heightInMeters * heightInMeters)
+    }
+
+    // Goal weight conversion helpers
+    private var goalWeightInKg: Double? {
+        let sanitized = goalWeightText.replacingOccurrences(of: ",", with: ".")
+        guard let value = Double(sanitized), value > 0 else { return nil }
+        // Convert from display unit to kg
+        switch selectedUnit {
+        case .kg:
+            return value
+        case .lbs:
+            return value / 2.20462
+        case .stones:
+            // For stones, we only use a single input for simplicity (total weight in stones)
+            return value * 6.35029 // 1 stone = 6.35 kg
+        }
+    }
+
+    private func goalWeightDisplayValue(_ kg: Double) -> String {
+        switch selectedUnit {
+        case .kg:
+            return String(format: "%.1f", kg)
+        case .lbs:
+            return String(format: "%.1f", kg * 2.20462)
+        case .stones:
+            return String(format: "%.1f", kg / 6.35029)
+        }
+    }
+
+    private var goalWeightUnitLabel: String {
+        selectedUnit.shortName
     }
 
     var body: some View {
@@ -2560,11 +2619,35 @@ struct AddWeightView: View {
                     }
                 }
 
+                // Goal Weight Section
+                Section(header: Text("Goal Weight (Optional)")) {
+                    HStack {
+                        TextField("Goal weight", text: $goalWeightText)
+                            .keyboardType(.decimalPad)
+                            .font(.system(size: 20, weight: .semibold))
+
+                        Text(goalWeightUnitLabel)
+                            .foregroundColor(.secondary)
+                    }
+
+                    if let currentKg = weightInKg, let goalKg = goalWeightInKg {
+                        let difference = currentKg - goalKg
+                        HStack {
+                            Text(difference > 0 ? "To lose" : "To gain")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text(String(format: "%.1f %@", abs(difference), selectedUnit == .kg ? "kg" : selectedUnit == .lbs ? "lbs" : "st"))
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundColor(difference > 0 ? .green : .blue)
+                        }
+                    }
+                }
+
                 Section(header: Text("Date")) {
                     DatePicker("Date", selection: $date, displayedComponents: [.date, .hourAndMinute])
                 }
 
-                // Photo Section
+                // Photo Section - AddWeightView
                 Section(header: Text("Progress Photos (Optional - up to 3)")) {
                     // Show selected photos in a grid
                     if !selectedPhotos.isEmpty {
@@ -2665,7 +2748,11 @@ struct AddWeightView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        dismiss()
+                        if let instantDismiss = onInstantDismiss {
+                            instantDismiss()
+                        } else {
+                            dismiss()
+                        }
                     }
                 }
 
@@ -2704,6 +2791,11 @@ struct AddWeightView: View {
                         secondaryHeight = String(format: "%.1f", secondary)
                     }
                 }
+                // Pre-populate goal weight if set
+                if goalWeight > 0 {
+                    initialGoalWeight = goalWeight
+                    goalWeightText = goalWeightDisplayValue(goalWeight)
+                }
             }
             .fullScreenCover(item: $activePickerType) { pickerType in
                 // Only use this for camera - library uses MultiImagePicker
@@ -2719,7 +2811,7 @@ struct AddWeightView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingMultiImagePicker) {
+            .fullScreenCover(isPresented: $showingMultiImagePicker) {
                 MultiImagePicker(maxSelection: 3 - selectedPhotos.count) { images in
                     #if DEBUG
                     print("   Current photo count before adding: \(selectedPhotos.count)")
@@ -2742,8 +2834,6 @@ struct AddWeightView: View {
                         #endif
                     }
                 }
-                .presentationDragIndicator(.visible)
-                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
             }
             .confirmationDialog("Choose Photo Source", isPresented: $showingPhotoOptions) {
                 Button("Take Photo") {
@@ -2826,6 +2916,20 @@ struct AddWeightView: View {
                     try await firebaseManager.saveUserSettings(height: heightCm, goalWeight: nil)
                 }
 
+                // Save goal weight if changed
+                let newGoalKg = goalWeightInKg
+                if let newGoal = newGoalKg, newGoal != initialGoalWeight {
+                    try await firebaseManager.saveUserSettings(height: nil, goalWeight: newGoal)
+                    // Notify other views about goal weight change
+                    await MainActor.run {
+                        NotificationCenter.default.post(
+                            name: .goalWeightUpdated,
+                            object: nil,
+                            userInfo: ["goalWeight": newGoal]
+                        )
+                    }
+                }
+
                 await MainActor.run {
                     // FIX: Don't insert locally - NotificationCenter listener handles it
                     // This prevents duplicate entries
@@ -2834,6 +2938,11 @@ struct AddWeightView: View {
                     // Update height if changed
                     if let heightCm = heightInCm, heightCm != userHeight {
                         userHeight = heightCm
+                    }
+
+                    // Update goal weight binding if changed
+                    if let newGoal = newGoalKg, newGoal != initialGoalWeight {
+                        goalWeight = newGoal
                     }
 
                     isUploading = false
@@ -2860,7 +2969,9 @@ struct EditWeightView: View {
     @Binding var currentWeight: Double
     @Binding var weightHistory: [WeightEntry]
     @Binding var userHeight: Double  // Changed from let to @Binding
+    @Binding var goalWeight: Double
     let onSave: () -> Void
+    var onInstantDismiss: (() -> Void)? = nil  // For instant dismiss without animation
 
     @AppStorage("weightUnit") private var selectedUnit: WeightUnit = .kg
     @AppStorage("heightUnit") private var selectedHeightUnit: HeightUnit = .cm  // NEW
@@ -2873,6 +2984,10 @@ struct EditWeightView: View {
     @State private var date = Date()
     @State private var previousUnit: WeightUnit = .kg  // Track previous unit for conversions
     @State private var previousHeightUnit: HeightUnit = .cm  // Track previous height unit
+
+    // Goal weight
+    @State private var goalWeightText: String = ""
+    @State private var initialGoalWeight: Double = 0
 
     // Photo picker
     @State private var selectedPhotos: [IdentifiableImage] = []
@@ -2904,6 +3019,36 @@ struct EditWeightView: View {
         guard let heightCm = heightInCm, heightCm > 0 else { return nil }  // Updated to use heightInCm
         let heightInMeters = heightCm / 100
         return weightKg / (heightInMeters * heightInMeters)
+    }
+
+    // Goal weight conversion helpers
+    private var goalWeightInKg: Double? {
+        let sanitized = goalWeightText.replacingOccurrences(of: ",", with: ".")
+        guard let value = Double(sanitized), value > 0 else { return nil }
+        // Convert from display unit to kg
+        switch selectedUnit {
+        case .kg:
+            return value
+        case .lbs:
+            return value / 2.20462
+        case .stones:
+            return value * 6.35029
+        }
+    }
+
+    private func goalWeightDisplayValue(_ kg: Double) -> String {
+        switch selectedUnit {
+        case .kg:
+            return String(format: "%.1f", kg)
+        case .lbs:
+            return String(format: "%.1f", kg * 2.20462)
+        case .stones:
+            return String(format: "%.1f", kg / 6.35029)
+        }
+    }
+
+    private var goalWeightUnitLabel: String {
+        selectedUnit.shortName
     }
 
     var body: some View {
@@ -2996,11 +3141,35 @@ struct EditWeightView: View {
                     }
                 }
 
+                // Goal Weight Section
+                Section(header: Text("Goal Weight (Optional)")) {
+                    HStack {
+                        TextField("Goal weight", text: $goalWeightText)
+                            .keyboardType(.decimalPad)
+                            .font(.system(size: 20, weight: .semibold))
+
+                        Text(goalWeightUnitLabel)
+                            .foregroundColor(.secondary)
+                    }
+
+                    if let currentKg = weightInKg, let goalKg = goalWeightInKg {
+                        let difference = currentKg - goalKg
+                        HStack {
+                            Text(difference > 0 ? "To lose" : "To gain")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text(String(format: "%.1f %@", abs(difference), selectedUnit == .kg ? "kg" : selectedUnit == .lbs ? "lbs" : "st"))
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundColor(difference > 0 ? .green : .blue)
+                        }
+                    }
+                }
+
                 Section(header: Text("Date")) {
                     DatePicker("Date", selection: $date, displayedComponents: [.date, .hourAndMinute])
                 }
 
-                // Photo Section
+                // Photo Section - EditWeightView
                 Section(header: Text("Progress Photos (Optional - up to 3)")) {
                     // Show loading indicator while photos are being downloaded
                     if isLoadingPhotos {
@@ -3107,7 +3276,11 @@ struct EditWeightView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        dismiss()
+                        if let instantDismiss = onInstantDismiss {
+                            instantDismiss()
+                        } else {
+                            dismiss()
+                        }
                     }
                 }
 
@@ -3177,6 +3350,12 @@ struct EditWeightView: View {
                     dressSize = dress
                 }
 
+                // Pre-populate goal weight if set
+                if goalWeight > 0 {
+                    initialGoalWeight = goalWeight
+                    goalWeightText = goalWeightDisplayValue(goalWeight)
+                }
+
                 // Load existing photos
                 loadExistingPhotos()
             }
@@ -3206,7 +3385,7 @@ struct EditWeightView: View {
                 }
                 Button("Cancel", role: .cancel) { }
             }
-            .sheet(isPresented: $showingMultiImagePicker) {
+            .fullScreenCover(isPresented: $showingMultiImagePicker) {
                 MultiImagePicker(maxSelection: 3 - selectedPhotos.count) { images in
                     #if DEBUG
                     print("   Current photo count before adding: \(selectedPhotos.count)")
@@ -3229,8 +3408,6 @@ struct EditWeightView: View {
                         #endif
                     }
                 }
-                .presentationDragIndicator(.visible)
-                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
             }
             .fullScreenCover(item: $selectedPhotoForViewing) { photo in
                 ZStack {
@@ -3496,6 +3673,20 @@ struct EditWeightView: View {
                     try await firebaseManager.saveUserSettings(height: heightCm, goalWeight: nil)
                 }
 
+                // Save goal weight if changed
+                let newGoalKg = goalWeightInKg
+                if let newGoal = newGoalKg, newGoal != initialGoalWeight {
+                    try await firebaseManager.saveUserSettings(height: nil, goalWeight: newGoal)
+                    // Notify other views about goal weight change
+                    await MainActor.run {
+                        NotificationCenter.default.post(
+                            name: .goalWeightUpdated,
+                            object: nil,
+                            userInfo: ["goalWeight": newGoal]
+                        )
+                    }
+                }
+
                 await MainActor.run {
                     // Update local state
                     if let index = weightHistory.firstIndex(where: { $0.id == entry.id }) {
@@ -3511,6 +3702,11 @@ struct EditWeightView: View {
                     // Update height if changed
                     if let heightCm = heightInCm, heightCm != userHeight {
                         userHeight = heightCm
+                    }
+
+                    // Update goal weight binding if changed
+                    if let newGoal = newGoalKg, newGoal != initialGoalWeight {
+                        goalWeight = newGoal
                     }
 
                     isUploading = false
@@ -4195,11 +4391,9 @@ struct AddFoodMainView: View {
                 keyboardVisible = false
             }
         }
-        .sheet(isPresented: $showingPaywall) {
+        .fullScreenCover(isPresented: $showingPaywall) {
             PaywallView()
                 .environmentObject(subscriptionManager)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
                 .onDisappear {
                     // Re-check limit after paywall dismisses (user may have subscribed)
                     checkDiaryLimit()
@@ -4575,13 +4769,11 @@ struct IngredientCameraView: View {
                 }
             )
         }
-        .sheet(isPresented: $showingImagePicker) {
+        .fullScreenCover(isPresented: $showingImagePicker) {
             ImagePicker(selectedImage: $capturedImage, sourceType: .camera) { image in
                 showingImagePicker = false // Dismiss picker
                 capturedImage = image
             }
-            .presentationDragIndicator(.visible)
-            .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
     }
 }
@@ -4687,7 +4879,7 @@ struct PendingVerificationRow: View {
                         .background(Color.blue)
                         .cornerRadius(8)
                     }
-                    .sheet(isPresented: $showingCompletionSheet) {
+                    .fullScreenCover(isPresented: $showingCompletionSheet) {
                         DatabasePhotoPromptView(
                             foodName: verification.foodName,
                             brandName: verification.brandName,
@@ -4714,8 +4906,6 @@ struct PendingVerificationRow: View {
                                 showingCompletionSheet = false
                             }
                         )
-                        .presentationDragIndicator(.visible)
-                        .presentationBackground(Color(.systemBackground))
                     }
                 }
                 

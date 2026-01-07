@@ -194,7 +194,7 @@ struct DiaryFoodRow: View {
 
     var body: some View {
         Button(action: {
-            // Tap always toggles selection
+            // Tap always tog gles selection
             onTap()
         }) {
             HStack(spacing: 8) {
@@ -285,7 +285,7 @@ struct DiaryFoodRow: View {
             }
             .tint(.red)
         }
-        .sheet(isPresented: $showingFoodDetail) {
+        .fullScreenCover(isPresented: $showingFoodDetail) {
             FoodDetailViewFromSearch(
                 food: food.toFoodSearchResult(),
                 sourceType: .diary,
@@ -294,8 +294,6 @@ struct DiaryFoodRow: View {
                 diaryMealType: mealType,
                 diaryQuantity: food.quantity
             )
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
     }
     

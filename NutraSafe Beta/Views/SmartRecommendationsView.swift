@@ -51,10 +51,8 @@ struct SmartRecommendationsView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingSources) {
+            .fullScreenCover(isPresented: $showingSources) {
                 SourcesAndCitationsView()
-                    .presentationDragIndicator(.visible)
-                    .presentationBackground(Color(.systemBackground))
             }
             .refreshable {
                 await refreshRecommendations()

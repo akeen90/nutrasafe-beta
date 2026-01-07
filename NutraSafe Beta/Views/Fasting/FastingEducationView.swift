@@ -96,10 +96,8 @@ struct FastingEducationView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingSources) {
+            .fullScreenCover(isPresented: $showingSources) {
                 FastingCitationsView()
-                    .presentationDragIndicator(.visible)
-                    .presentationBackground(Color(.systemBackground))
             }
         }
     }

@@ -58,6 +58,7 @@ struct DiaryTabView: View {
     // MARK: - Feature Tips
     @State private var showingDiaryTip = false
     @State private var showingNutrientsTip = false
+    @ObservedObject private var featureTipsManager = FeatureTipsManager.shared
 
     // MARK: - Diary Limit
     @State private var showingDiaryLimitError = false
@@ -395,7 +396,8 @@ struct DiaryTabView: View {
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(diarySubTab == tab ? .primary : .secondary)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
+                        .frame(minHeight: 36) // Ensure minimum tap target height
+                        .contentShape(Rectangle()) // Make entire area tappable
                         .background(
                             Group {
                                 if diarySubTab == tab {
@@ -468,17 +470,13 @@ struct DiaryTabView: View {
 
     var body: some View {
         contentWithLifecycleModifiers
-            .sheet(isPresented: $showingMoveSheet) {
+            .fullScreenCover(isPresented: $showingMoveSheet) {
                 moveFoodSheet
-                    .presentationDragIndicator(.visible)
-                    .presentationBackground(Color(.systemBackground))
             }
-            .sheet(isPresented: $showingCopySheet) {
+            .fullScreenCover(isPresented: $showingCopySheet) {
                 copyFoodSheet
-                    .presentationDragIndicator(.visible)
-                    .presentationBackground(Color(.systemBackground))
             }
-            .sheet(item: $editingFood, onDismiss: {
+            .fullScreenCover(item: $editingFood, onDismiss: {
                 editingFood = nil
                 editingMealType = ""
             }) { food in
@@ -491,17 +489,13 @@ struct DiaryTabView: View {
                     diaryQuantity: food.quantity,
                     diaryDate: selectedDate
                 )
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
             }
             .diaryLimitAlert(
                 isPresented: $showingDiaryLimitError,
                 showingPaywall: $showingPaywall
             )
-            .sheet(isPresented: $showingPaywall) {
+            .fullScreenCover(isPresented: $showingPaywall) {
                 PaywallView()
-                    .presentationDragIndicator(.visible)
-                    .presentationBackground(Color(.systemBackground))
             }
             .background(Color.adaptiveBackground)
             .featureTip(isPresented: $showingDiaryTip, tipKey: .diaryOverview)
@@ -575,6 +569,13 @@ struct DiaryTabView: View {
                 guard newValue else { return }
                 deleteSelectedFoods()
                 deleteTrigger = false
+            }
+            .onChange(of: featureTipsManager.resetTrigger) { _, _ in
+                // When tips are reset, switch to overview sub-tab and show the diary tip
+                diarySubTab = .overview
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    showingDiaryTip = true
+                }
             }
     }
 
@@ -1230,20 +1231,16 @@ struct CategoricalNutrientTrackingView: View {
             // Cancel any in-flight tasks - but KEEP data in memory for instant re-display
             vm.cancelLoading()
         }
-        .sheet(isPresented: $showingGaps) {
+        .fullScreenCover(isPresented: $showingGaps) {
             if #available(iOS 16.0, *) {
                 NutrientGapsView(rows: vm.nutrientCoverageRows)
-                    .presentationDragIndicator(.visible)
-                    .presentationBackground(Color(.systemBackground))
             } else {
                 Text("Nutrient gaps requires iOS 16.0 or later")
             }
         }
-        .sheet(item: $selectedNutrientRow) { row in
+        .fullScreenCover(item: $selectedNutrientRow) { row in
             if #available(iOS 16.0, *) {
                 NutrientDetailModal(row: row)
-                    .presentationDragIndicator(.visible)
-                    .presentationBackground(Color(.systemBackground))
             } else {
                 Text(row.name)
             }
@@ -1365,36 +1362,35 @@ struct CategoricalNutrientTrackingView: View {
     @ViewBuilder
     private var rhythmSection: some View {
         VStack(spacing: 0) {
-            // Premium header with context
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .center, spacing: 8) {
-                    Image(systemName: "chart.bar.fill")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [Color(hex: "#3FD17C"), Color(hex: "#57A5FF")],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-
-                    Text("Your Nutrient Overview")
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundColor(.primary)
-
-                    Spacer()
-                }
-
-                Text("Estimated from food composition")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 20)
-            .padding(.bottom, 16)
-
             // Enhanced rhythm visualization - now shows nutrients per day
             VStack(spacing: 16) {
+                // Header inside the card
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .center, spacing: 8) {
+                        Image(systemName: "leaf.circle.fill")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [Color(hex: "#3FD17C"), Color(hex: "#57A5FF")],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+
+                        Text("Your Daily Nutrients")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.primary)
+
+                        Spacer()
+                    }
+
+                    Text("Vitamins & minerals from your food")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 4)
+
                 // Day summary cards - fixed layout, no scrolling
                 HStack(spacing: 4) {
                     ForEach(vm.rhythmDays, id: \.date) { day in
@@ -1405,8 +1401,8 @@ struct CategoricalNutrientTrackingView: View {
                 }
                 .padding(.horizontal, 16)
 
-                // Week summary stats
-                weekSummaryStats
+                // Intelligent summary instead of stats
+                intelligentNutrientSummary
             }
             .padding(.vertical, 16)
             .background(
@@ -1420,6 +1416,160 @@ struct CategoricalNutrientTrackingView: View {
             .padding(.horizontal, 16)
         }
         .padding(.bottom, 24)
+    }
+
+    /// Intelligent summary text based on nutrient status
+    private var intelligentNutrientSummary: some View {
+        let summary = generateNutrientSummaryText()
+
+        return HStack(spacing: 10) {
+            Image(systemName: summary.icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(summary.color)
+
+            Text(summary.text)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.primary)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(summary.color.opacity(0.08))
+        )
+        .padding(.horizontal, 16)
+    }
+
+    /// Generate intelligent summary text based on nutrient coverage
+    /// Only provides actionable feedback based on days with actual logged food
+    /// Also checks recency - stale data (>3 days old) gets different messaging
+    private func generateNutrientSummaryText() -> (text: String, icon: String, color: Color) {
+        let loggedDays = vm.rhythmDays.filter { $0.level != .none }
+        let daysLogged = loggedDays.count
+        let totalNutrients = vm.nutrientCoverageRows.count
+        let nutrientsFound = vm.nutrientCoverageRows.filter { row in
+            row.segments.contains { $0.foods != nil && !($0.foods?.isEmpty ?? true) }
+        }.count
+
+        let consistent = vm.nutrientCoverageRows.filter { $0.status == .consistent }
+
+        // Check how recent the data is
+        let mostRecentLoggedDay = loggedDays.map { $0.date }.max()
+        let daysSinceLastLog: Int
+        if let lastDate = mostRecentLoggedDay {
+            daysSinceLastLog = Calendar.current.dateComponents([.day], from: lastDate, to: Date()).day ?? 0
+        } else {
+            daysSinceLastLog = Int.max
+        }
+
+        // No data logged yet
+        if daysLogged == 0 {
+            return (
+                text: "Log meals to see which vitamins and minerals you're getting.",
+                icon: "plus.circle.fill",
+                color: .blue
+            )
+        }
+
+        // Data is stale (nothing logged in 4+ days) - encourage fresh logging
+        if daysSinceLastLog >= 4 {
+            return (
+                text: "Last logged \(daysSinceLastLog) days ago. Add today's meals for current insights.",
+                icon: "clock.arrow.circlepath",
+                color: .secondary
+            )
+        }
+
+        // Data is getting old (3 days since last log) - gentle nudge
+        if daysSinceLastLog == 3 {
+            return (
+                text: "Haven't logged in a few days. Add meals to keep your profile current.",
+                icon: "calendar.badge.clock",
+                color: .orange
+            )
+        }
+
+        // Fresh data (logged within last 2 days) - provide meaningful insights
+
+        // Only 1 day logged - celebrate what they found
+        if daysLogged == 1 {
+            if nutrientsFound > 0 {
+                return (
+                    text: "Great start! Found \(nutrientsFound) nutrients in your meals.",
+                    icon: "leaf.fill",
+                    color: Color(hex: "#3FD17C")
+                )
+            } else {
+                return (
+                    text: "Keep logging to build your nutrient profile.",
+                    icon: "chart.line.uptrend.xyaxis",
+                    color: .blue
+                )
+            }
+        }
+
+        // 2 days logged - still building data, no gap suggestions
+        if daysLogged == 2 {
+            return (
+                text: "\(nutrientsFound) nutrients found so far. Log more days to see patterns.",
+                icon: "chart.line.uptrend.xyaxis",
+                color: .blue
+            )
+        }
+
+        // 3+ days logged with recent data - now we can make meaningful observations
+
+        // Excellent coverage (90%+ consistent)
+        if totalNutrients > 0 && consistent.count >= totalNutrients * 9 / 10 {
+            return (
+                text: "Excellent variety! \(consistent.count) nutrients appearing consistently.",
+                icon: "star.fill",
+                color: Color(hex: "#3FD17C")
+            )
+        }
+
+        // Good coverage (70%+ consistent)
+        if totalNutrients > 0 && consistent.count >= totalNutrients * 7 / 10 {
+            return (
+                text: "Good balance with \(consistent.count) nutrients this week.",
+                icon: "checkmark.circle.fill",
+                color: Color(hex: "#3FD17C")
+            )
+        }
+
+        // With 3+ days of recent data, we can suggest improvements
+        // Only suggest gaps if user has found some nutrients (so we know they're logging properly)
+        if nutrientsFound >= 3 {
+            let inconsistent = vm.nutrientCoverageRows.filter { $0.status == .occasional || $0.status == .missing }
+            if !inconsistent.isEmpty {
+                let gapNames = inconsistent.prefix(2).map { $0.name }.joined(separator: " and ")
+                return (
+                    text: "Good coverage! Try adding variety for \(gapNames).",
+                    icon: "lightbulb.fill",
+                    color: .orange
+                )
+            }
+        }
+
+        // Default - show positive summary of what we found
+        if nutrientsFound > 0 {
+            return (
+                text: "\(nutrientsFound) nutrients found across \(daysLogged) days of logging.",
+                icon: "leaf.fill",
+                color: Color(hex: "#57A5FF")
+            )
+        }
+
+        // Fallback
+        return (
+            text: "Add more foods to see your nutrient breakdown.",
+            icon: "plus.circle.fill",
+            color: .blue
+        )
     }
 
     /// Count how many unique nutrients were consumed on a given day
@@ -1472,46 +1622,6 @@ struct CategoricalNutrientTrackingView: View {
             }
         }
         .frame(maxWidth: .infinity)
-    }
-
-    private var weekSummaryStats: some View {
-        HStack(spacing: 20) {
-            let daysLogged = vm.rhythmDays.filter { $0.level != .none }.count
-            let totalNutrients = vm.nutrientCoverageRows.count
-            let nutrientsFound = vm.nutrientCoverageRows.filter { row in
-                row.segments.contains { $0.foods != nil && !($0.foods?.isEmpty ?? true) }
-            }.count
-
-            statPill(icon: "calendar", value: "\(daysLogged)", label: "Days logged", color: Color(hex: "#57A5FF"))
-            statPill(icon: "leaf.fill", value: "\(nutrientsFound)/\(totalNutrients)", label: "Nutrients found", color: Color(hex: "#3FD17C"))
-
-            Spacer()
-        }
-        .padding(.horizontal, 20)
-    }
-
-    private func statPill(icon: String, value: String, label: String, color: Color) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(color)
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(value)
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(.primary)
-
-                Text(label)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.secondary)
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(color.opacity(0.08))
-        )
     }
 
     struct ScaleButtonStyle: ButtonStyle {
@@ -2718,7 +2828,7 @@ struct NutrientDetailModal: View {
             .task {
                 await loadNutrientInfo()
             }
-            .sheet(isPresented: $showingCitations) {
+            .fullScreenCover(isPresented: $showingCitations) {
                 citationsSheet
             }
         }

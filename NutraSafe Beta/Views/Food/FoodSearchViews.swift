@@ -167,14 +167,12 @@ struct FoodSearchResultRowEnhanced: View {
         .scaleEffect(isPressed ? 0.98 : 1.0)
         .animation(.easeInOut(duration: 0.1), value: isPressed)
         .buttonStyle(PlainButtonStyle())
-        .sheet(isPresented: $showingFoodDetail) {
+        .fullScreenCover(isPresented: $showingFoodDetail) {
             FoodDetailViewFromSearch(food: food, sourceType: sourceType, selectedTab: $selectedTab) { tab in
                 onComplete?(tab)
             }
             .environmentObject(diaryDataManager)
             .interactiveDismissDisabled(false) // Enable smooth interactive dismiss
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
     }
 }

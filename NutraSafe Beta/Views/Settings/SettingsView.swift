@@ -17,6 +17,9 @@ struct SettingsView: View {
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @AppStorage("appearanceMode") private var appearanceMode: AppearanceMode = .system
 
+    /// Binding to navigate to a specific tab after dismissing
+    var selectedTab: Binding<TabItem>?
+
     @State private var showingSignOutAlert = false
     @State private var showingPasswordResetAlert = false
     @State private var showingError = false
@@ -47,7 +50,7 @@ struct SettingsView: View {
                     HealthSafetySection()
 
                     // PHASE 5: App Preferences Section
-                    AppPreferencesSection()
+                    AppPreferencesSection(selectedTab: selectedTab)
 
                     // Premium Subscription Section
                     SettingsSection(title: "Premium Subscription") {
@@ -338,15 +341,11 @@ struct AboutSection: View {
                 }
             )
         }
-        .sheet(isPresented: $showingHealthDisclaimer) {
+        .fullScreenCover(isPresented: $showingHealthDisclaimer) {
             HealthDisclaimerView()
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
-        .sheet(isPresented: $showingDataSources) {
+        .fullScreenCover(isPresented: $showingDataSources) {
             SourcesAndCitationsView()
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
     }
 
@@ -586,13 +585,11 @@ struct NutritionGoalsSection: View {
             stepGoal = cachedStepGoal
             Task { await loadNutritionGoals() }
         }
-        .sheet(isPresented: $showingMacroManagement) {
+        .fullScreenCover(isPresented: $showingMacroManagement) {
             MacroManagementView(
                 macroGoals: $macroGoals,
                 onSave: saveMacroGoals
             )
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
         .alert("Error", isPresented: $showingError) {
             Button("OK", role: .cancel) { }
@@ -958,11 +955,9 @@ struct ProgressGoalsSection: View {
         .onReceive(NotificationCenter.default.publisher(for: .weightHistoryUpdated)) { _ in
             Task { await loadProgressData() }
         }
-        .sheet(isPresented: $showingWeightHistory) {
+        .fullScreenCover(isPresented: $showingWeightHistory) {
             WeightTrackingView(showingSettings: $showingWeightHistory)
                 .environmentObject(firebaseManager)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
         .onChange(of: showingWeightHistory) { _, isShowing in
             if !isShowing {
@@ -972,28 +967,22 @@ struct ProgressGoalsSection: View {
                 }
             }
         }
-        .sheet(isPresented: $showingWeightEditor) {
+        .fullScreenCover(isPresented: $showingWeightEditor) {
             CurrentWeightEditorView(
                 currentWeight: $currentWeight,
                 onSave: saveCurrentWeight
             )
             .environmentObject(firebaseManager)
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
-        .sheet(isPresented: $showingHeightEditor) {
+        .fullScreenCover(isPresented: $showingHeightEditor) {
             HeightEditorView(height: $height, onSave: saveHeight)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
-        .sheet(isPresented: $showingGoalEditor) {
+        .fullScreenCover(isPresented: $showingGoalEditor) {
             GoalWeightEditorView(
                 currentWeight: currentWeight,
                 goalWeight: $goalWeight,
                 onSave: saveGoalWeight
             )
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
         .alert("Error", isPresented: $showingError) {
             Button("OK", role: .cancel) { }
@@ -1591,17 +1580,13 @@ struct HealthSafetySection: View {
         } message: {
             Text(errorMessage)
         }
-        .sheet(isPresented: $showingAllergenManagement) {
+        .fullScreenCover(isPresented: $showingAllergenManagement) {
             AllergenManagementView()
                 .environmentObject(firebaseManager)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
-        .sheet(isPresented: $showingReactionsHistory) {
+        .fullScreenCover(isPresented: $showingReactionsHistory) {
             FoodReactionsHistoryView()
                 .environmentObject(firebaseManager)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
     }
 
@@ -1627,6 +1612,7 @@ struct HealthSafetySection: View {
 // MARK: - App Preferences Section (PHASE 5)
 
 struct AppPreferencesSection: View {
+    @Environment(\.dismiss) private var dismiss
     @AppStorage("appearanceMode") private var appearanceMode: AppearanceMode = .system
     @AppStorage("unitSystem") private var unitSystem: UnitSystem = .metric
     @AppStorage("notificationsEnabled") private var notificationsEnabled = false
@@ -1635,6 +1621,9 @@ struct AppPreferencesSection: View {
     @AppStorage("healthKitRingsEnabled") private var healthKitRingsEnabled = false
 
     @EnvironmentObject var healthKitManager: HealthKitManager
+
+    /// Binding to navigate to a specific tab after dismissing (passed from parent)
+    var selectedTab: Binding<TabItem>?
 
     @State private var showingThemeSelector = false
     @State private var showingUnitsSelector = false
@@ -1806,6 +1795,9 @@ struct AppPreferencesSection: View {
                     // Provide haptic feedback
                     let generator = UINotificationFeedbackGenerator()
                     generator.notificationOccurred(.success)
+                    // Navigate to diary tab and dismiss settings
+                    selectedTab?.wrappedValue = .diary
+                    dismiss()
                 }) {
                     HStack(spacing: 12) {
                         Image(systemName: "lightbulb.fill")
@@ -1825,29 +1817,21 @@ struct AppPreferencesSection: View {
                 .buttonStyle(PlainButtonStyle())
             }
         }
-        .sheet(isPresented: $showingThemeSelector) {
+        .fullScreenCover(isPresented: $showingThemeSelector) {
             ThemeSelectorView(selectedTheme: $appearanceMode)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
-        .sheet(isPresented: $showingUnitsSelector) {
+        .fullScreenCover(isPresented: $showingUnitsSelector) {
             UnitsSelectorView(selectedUnit: $unitSystem)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
-        .sheet(isPresented: $showingNotificationSettings) {
+        .fullScreenCover(isPresented: $showingNotificationSettings) {
             NotificationSettingsView(
                 notificationsEnabled: $notificationsEnabled,
                 useByNotificationsEnabled: $useByNotificationsEnabled,
                 fastingNotificationsEnabled: $fastingNotificationsEnabled
             )
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
-        .sheet(isPresented: $showingDataPrivacy) {
+        .fullScreenCover(isPresented: $showingDataPrivacy) {
             DataPrivacyView()
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
     }
 }
@@ -2269,7 +2253,7 @@ struct DataPrivacyView: View {
         } message: {
             Text("This will scan all your food entries and delete any that are corrupted. Valid entries will remain untouched.")
         }
-        .sheet(isPresented: $showingReauthPrompt) {
+        .fullScreenCover(isPresented: $showingReauthPrompt) {
             NavigationView {
                 VStack(spacing: 16) {
                     Text("Re-authenticate to Delete Account")
@@ -2317,8 +2301,6 @@ struct DataPrivacyView: View {
                 .navigationTitle("Confirm Deletion")
                 .navigationBarTitleDisplayMode(.inline)
             }
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
     }
 
@@ -3073,10 +3055,8 @@ struct FoodReactionsHistoryView: View {
                 await loadReactions()
             }
         }
-        .sheet(item: $selectedReaction) { reaction in
+        .fullScreenCover(item: $selectedReaction) { reaction in
             ReactionDetailView(reaction: reaction)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
         .alert("Error", isPresented: $showingError) {
             Button("OK", role: .cancel) { }

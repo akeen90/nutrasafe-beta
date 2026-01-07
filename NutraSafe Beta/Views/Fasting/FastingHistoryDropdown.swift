@@ -95,13 +95,11 @@ struct FastingHistoryDropdown: View {
                 reload()
             }
         }
-        .sheet(item: $selectedSession, onDismiss: { selectedSession = nil }) { session in
+        .fullScreenCover(item: $selectedSession, onDismiss: { selectedSession = nil }) { session in
             FastingHistoryDetailSheet(session: session) { updated in
                 Task { await save(updated) }
             }
             .environmentObject(firebaseManager)
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
     }
 

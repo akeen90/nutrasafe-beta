@@ -73,7 +73,7 @@ struct DiaryDailySummaryCard: View {
         .onReceive(NotificationCenter.default.publisher(for: .nutritionGoalsUpdated)) { _ in
             Task { await loadNutritionGoals() }
         }
-        .sheet(isPresented: $showWeeklySummary) {
+        .fullScreenCover(isPresented: $showWeeklySummary) {
             WeeklySummarySheet(
                 initialDate: currentDate,
                 calorieGoal: calorieGoal,
@@ -81,8 +81,6 @@ struct DiaryDailySummaryCard: View {
                 fetchWeeklySummary: fetchWeeklySummary,
                 setSelectedDate: setSelectedDate
             )
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
     }
 

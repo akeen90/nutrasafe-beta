@@ -124,10 +124,8 @@ struct EarlyEndModal: View {
             .navigationTitle("Early End")
             .navigationBarTitleDisplayMode(.inline)
         }
-        .sheet(isPresented: $showingRestartDecision) {
+        .fullScreenCover(isPresented: $showingRestartDecision) {
             RestartDecisionModal(viewModel: viewModel, previousSession: session)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
     }
 

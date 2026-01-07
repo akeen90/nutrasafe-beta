@@ -12,6 +12,9 @@ import SwiftUI
 class FeatureTipsManager: ObservableObject {
     static let shared = FeatureTipsManager()
 
+    /// Trigger to force-show the first tip after reset (incremented on reset)
+    @Published var resetTrigger: Int = 0
+
     /// Keys for tracking which tips have been seen
     enum TipKey: String, CaseIterable {
         // Diary Tab
@@ -151,14 +154,14 @@ class FeatureTipsManager: ObservableObject {
         ),
         .nutrientsOverview: TipContent(
             title: "Micronutrient Dashboard",
-            message: "See your vitamin and mineral intake over the past 7 days based on what you've logged.",
+            message: "Track your vitamin and mineral intake based on what you've logged in your diary.",
             icon: "leaf.circle.fill",
             accentColor: .green,
             bulletPoints: [
-                "Track vitamins A, C, D, E, K, B-complex",
-                "Monitor minerals like iron, calcium, zinc",
-                "See which nutrients need attention",
-                "Log more foods to improve accuracy"
+                "See nutrients grouped by intake frequency",
+                "Tap any nutrient for detailed info",
+                "View your 7-day nutrient rhythm",
+                "Get smart food recommendations"
             ]
         )
     ]
@@ -177,10 +180,12 @@ class FeatureTipsManager: ObservableObject {
     }
 
     /// Reset all tips (for testing or settings)
+    /// Increments resetTrigger to notify observers to show the first tip
     func resetAllTips() {
         TipKey.allCases.forEach {
             UserDefaults.standard.set(false, forKey: $0.rawValue)
         }
+        resetTrigger += 1
         objectWillChange.send()
     }
 

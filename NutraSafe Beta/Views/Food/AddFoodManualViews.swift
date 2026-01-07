@@ -246,7 +246,7 @@ struct AddFoodManualView: View {
 
             Spacer()
         }
-        .sheet(isPresented: $showingDetailEntry) {
+        .fullScreenCover(isPresented: $showingDetailEntry) {
             ManualFoodDetailEntryView(selectedTab: $selectedTab, prefilledBarcode: prefilledBarcode, onComplete: onComplete)
         }
         .onAppear {
@@ -720,15 +720,13 @@ struct ManualFoodDetailEntryView: View {
                 isPresented: $showingDiaryLimitError,
                 showingPaywall: $showingPaywall
             )
-            .sheet(isPresented: $showingPaywall) {
+            .fullScreenCover(isPresented: $showingPaywall) {
                 PaywallView()
-                    .presentationDragIndicator(.visible)
-                    .presentationBackground(Color(.systemBackground))
             }
-            .sheet(isPresented: $showingBarcodeScanner) {
+            .fullScreenCover(isPresented: $showingBarcodeScanner) {
                 BarcodeScannerSheetView(barcode: $barcode, isPresented: $showingBarcodeScanner)
             }
-            .sheet(isPresented: $showIngredientConfirmation) {
+            .fullScreenCover(isPresented: $showIngredientConfirmation) {
                 IngredientConfirmationModal(
                     response: foundIngredients,
                     onUse: {

@@ -138,7 +138,7 @@ struct DatabasePhotoPromptView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingIngredientsCamera) {
+        .fullScreenCover(isPresented: $showingIngredientsCamera) {
             IngredientCameraView(
                 foodName: foodName,
                 onImageCaptured: { image in
@@ -150,10 +150,8 @@ struct DatabasePhotoPromptView: View {
                 },
                 photoType: .ingredients
             )
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
-        .sheet(isPresented: $showingNutritionCamera) {
+        .fullScreenCover(isPresented: $showingNutritionCamera) {
             IngredientCameraView(
                 foodName: foodName,
                 onImageCaptured: { image in
@@ -165,10 +163,8 @@ struct DatabasePhotoPromptView: View {
                 },
                 photoType: .nutrition
             )
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
-        .sheet(isPresented: $showingBarcodeCamera) {
+        .fullScreenCover(isPresented: $showingBarcodeCamera) {
             IngredientCameraView(
                 foodName: foodName,
                 onImageCaptured: { image in
@@ -180,8 +176,6 @@ struct DatabasePhotoPromptView: View {
                 },
                 photoType: .barcode
             )
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
     }
     

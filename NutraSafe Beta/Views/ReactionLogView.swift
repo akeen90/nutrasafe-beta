@@ -68,20 +68,14 @@ struct ReactionLogView: View {
             .padding(.bottom, 32)
         }
         .background(Color.adaptiveBackground)
-        .sheet(isPresented: $showingLogSheet) {
+        .fullScreenCover(isPresented: $showingLogSheet) {
             LogReactionSheet(selectedDayRange: selectedDayRange)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
-        .sheet(item: $selectedEntry) { entry in
+        .fullScreenCover(item: $selectedEntry) { entry in
             ReactionLogDetailView(entry: entry, selectedDayRange: selectedDayRange)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
-        .sheet(isPresented: $showingPDFExportSheet) {
+        .fullScreenCover(isPresented: $showingPDFExportSheet) {
             MultiReactionPDFExportSheet()
-                .presentationDragIndicator(.visible)
-                .presentationBackground(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
         .task {
             isLoadingData = true
@@ -628,7 +622,7 @@ struct LogReactionSheet: View {
                 }
             }
         }
-        .sheet(isPresented: $showMealSelection) {
+        .fullScreenCover(isPresented: $showMealSelection) {
             NavigationView {
                 List {
                     Button(action: {
@@ -868,16 +862,16 @@ struct ReactionLogDetailView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingExportSheet) {
+            .fullScreenCover(isPresented: $showingExportSheet) {
                 PDFExportSheet(entry: entry)
             }
-            .sheet(item: $selectedFood) { food in
+            .fullScreenCover(item: $selectedFood) { food in
                 FoodHistoryDetailView(food: food, reactionDate: entry.reactionDate)
             }
-            .sheet(item: $selectedIngredient) { ingredient in
+            .fullScreenCover(item: $selectedIngredient) { ingredient in
                 IngredientHistoryDetailView(ingredient: ingredient, reactionDate: entry.reactionDate)
             }
-            .sheet(item: $selectedAllergenCategory) { category in
+            .fullScreenCover(item: $selectedAllergenCategory) { category in
                 AllergenCategoryDetailView(category: category, entry: entry)
             }
         }
@@ -1625,7 +1619,7 @@ struct PDFExportSheet: View {
             .padding()
             .navigationTitle("Export Report")
             .navigationBarTitleDisplayMode(.inline)
-            .sheet(isPresented: $showShareSheet) {
+            .fullScreenCover(isPresented: $showShareSheet) {
                 if let url = pdfURL {
                     ShareSheet(items: [url])
                 }
@@ -2587,7 +2581,7 @@ struct MultiReactionPDFExportSheet: View {
             .padding()
             .navigationTitle("Export Report")
             .navigationBarTitleDisplayMode(.inline)
-            .sheet(isPresented: $showShareSheet) {
+            .fullScreenCover(isPresented: $showShareSheet) {
                 if let url = pdfURL {
                     ShareSheet(items: [url])
                 }

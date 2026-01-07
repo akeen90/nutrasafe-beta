@@ -1600,10 +1600,10 @@ struct FoodDetailViewFromSearch: View {
             isPresented: $showingDiaryLimitError,
             showingPaywall: $showingPaywall
         )
-        .sheet(isPresented: $showingPaywall) {
+        .fullScreenCover(isPresented: $showingPaywall) {
             PaywallView()
         }
-        .sheet(isPresented: $showingNutritionCamera) {
+        .fullScreenCover(isPresented: $showingNutritionCamera) {
             IngredientCameraView(
                 foodName: food.name,
                 onImageCaptured: { image in
@@ -1615,10 +1615,8 @@ struct FoodDetailViewFromSearch: View {
                 },
                 photoType: .nutrition
             )
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
-        .sheet(isPresented: $showingBarcodeCamera) {
+        .fullScreenCover(isPresented: $showingBarcodeCamera) {
             IngredientCameraView(
                 foodName: food.name,
                 onImageCaptured: { image in
@@ -1630,34 +1628,26 @@ struct FoodDetailViewFromSearch: View {
                 },
                 photoType: .barcode
             )
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
         // UseBy add flow
-        .sheet(isPresented: $showingUseByAddSheet) {
+        .fullScreenCover(isPresented: $showingUseByAddSheet) {
             // Reuse UseBy add sheet for details like expiry/location
             AddFoundFoodToUseBySheet(food: food) { tab in
                 selectedTab = tab
                 dismiss()
             }
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
-        .sheet(isPresented: $showingNutraSafeInfo) {
+        .fullScreenCover(isPresented: $showingNutraSafeInfo) {
             NutraSafeGradeInfoView(result: nutraSafeGrade, food: displayFood)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color(.systemBackground))
         }
-        .sheet(isPresented: $showingSugarInfo) {
+        .fullScreenCover(isPresented: $showingSugarInfo) {
             SugarScoreInfoView(
                 score: sugarScore,
                 food: displayFood,
                 perServingSugar: displayFood.sugar * perServingMultiplier * quantityMultiplier
             )
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
-        .sheet(isPresented: $showingVitaminCitations) {
+        .fullScreenCover(isPresented: $showingVitaminCitations) {
             NavigationView {
                 List {
                     Section(header: Text("Vitamin & Mineral Health Claims")) {
@@ -1710,10 +1700,8 @@ struct FoodDetailViewFromSearch: View {
                     }
                 }
             }
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
-        .sheet(isPresented: $showingAllergenCitations) {
+        .fullScreenCover(isPresented: $showingAllergenCitations) {
             NavigationView {
                 List {
                     Section(header: Text("Allergen Detection")) {
@@ -1764,11 +1752,9 @@ struct FoodDetailViewFromSearch: View {
                     }
                 }
             }
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
         // Barcode scanner for enhancement
-        .sheet(isPresented: $showingBarcodeScannerForEnhancement) {
+        .fullScreenCover(isPresented: $showingBarcodeScannerForEnhancement) {
             BarcodeScannerForEnhancement(
                 onBarcodeScanned: { barcode in
                     showingBarcodeScannerForEnhancement = false
@@ -1778,11 +1764,9 @@ struct FoodDetailViewFromSearch: View {
                     showingBarcodeScannerForEnhancement = false
                 }
             )
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
         // Manual search for enhancement
-        .sheet(isPresented: $showingManualSearchForEnhancement) {
+        .fullScreenCover(isPresented: $showingManualSearchForEnhancement) {
             NavigationView {
                 VStack(spacing: 20) {
                     Text("Search for Product")
@@ -1842,8 +1826,6 @@ struct FoodDetailViewFromSearch: View {
                     }
                 }
             }
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
     }
 
@@ -4686,7 +4668,7 @@ struct NutrientInfoCard: View {
                         .strokeBorder(Color.green.opacity(0.3), lineWidth: 1.5)
                 )
         )
-        .sheet(isPresented: $showingCitations) {
+        .fullScreenCover(isPresented: $showingCitations) {
             NavigationView {
                 List {
                     Section(header: Text("Vitamin & Mineral Health Claims")) {
@@ -4738,8 +4720,6 @@ struct NutrientInfoCard: View {
                     }
                 }
             }
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(.systemBackground))
         }
     }
 
