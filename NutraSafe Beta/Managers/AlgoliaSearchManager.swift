@@ -702,6 +702,12 @@ final class AlgoliaSearchManager {
                 ingredients = ingredientsArray
             }
 
+            // Extract micronutrient profile if available
+            var micronutrientProfile: MicronutrientProfile? = nil
+            if let profileData = hit["micronutrientProfile"] as? [String: Any] {
+                micronutrientProfile = parseMicronutrientProfile(profileData)
+            }
+
             return FoodSearchResult(
                 id: objectID,
                 name: name,
@@ -718,9 +724,77 @@ final class AlgoliaSearchManager {
                 isPerUnit: isPerUnit,
                 ingredients: ingredients,
                 isVerified: verified,
-                barcode: barcode
+                barcode: barcode,
+                micronutrientProfile: micronutrientProfile
             )
         }
+    }
+
+    /// Parse micronutrient profile from Algolia JSON
+    private func parseMicronutrientProfile(_ data: [String: Any]) -> MicronutrientProfile? {
+        // Extract vitamins dictionary
+        var vitamins: [String: Double] = [:]
+        if let vitaminsData = data["vitamins"] as? [String: Any] {
+            for (key, value) in vitaminsData {
+                if let doubleValue = value as? Double {
+                    vitamins[key] = doubleValue
+                } else if let intValue = value as? Int {
+                    vitamins[key] = Double(intValue)
+                }
+            }
+        }
+
+        // Extract minerals dictionary
+        var minerals: [String: Double] = [:]
+        if let mineralsData = data["minerals"] as? [String: Any] {
+            for (key, value) in mineralsData {
+                if let doubleValue = value as? Double {
+                    minerals[key] = doubleValue
+                } else if let intValue = value as? Int {
+                    minerals[key] = Double(intValue)
+                }
+            }
+        }
+
+        // If no vitamins or minerals, return nil
+        guard !vitamins.isEmpty || !minerals.isEmpty else { return nil }
+
+        // Build daily values dictionary with standard FDA values
+        let dailyValues: [String: Double] = [
+            "vitaminA": 900, "vitaminC": 90, "vitaminD": 20, "vitaminE": 15, "vitaminK": 120,
+            "thiamine": 1.2, "riboflavin": 1.3, "niacin": 16, "pantothenicAcid": 5,
+            "vitaminB6": 1.7, "biotin": 30, "folate": 400, "vitaminB12": 2.4, "choline": 550,
+            "calcium": 1000, "iron": 18, "magnesium": 420, "phosphorus": 1250, "potassium": 4700,
+            "sodium": 2300, "zinc": 11, "copper": 0.9, "manganese": 2.3, "selenium": 55,
+            "chromium": 35, "molybdenum": 45, "iodine": 150
+        ]
+
+        // Create recommended intakes with default adult values
+        let recommendedIntakes = RecommendedIntakes(
+            age: 30,
+            gender: .other,
+            dailyValues: dailyValues
+        )
+
+        // Extract confidence score or default to medium
+        let confidenceScore: MicronutrientConfidence
+        if let confidenceString = data["confidenceScore"] as? String {
+            switch confidenceString.lowercased() {
+            case "high": confidenceScore = .high
+            case "low": confidenceScore = .low
+            case "estimated": confidenceScore = .estimated
+            default: confidenceScore = .medium
+            }
+        } else {
+            confidenceScore = .medium
+        }
+
+        return MicronutrientProfile(
+            vitamins: vitamins,
+            minerals: minerals,
+            recommendedIntakes: recommendedIntakes,
+            confidenceScore: confidenceScore
+        )
     }
 
     // MARK: - Barcode Search
