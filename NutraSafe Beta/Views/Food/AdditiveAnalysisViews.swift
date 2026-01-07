@@ -400,6 +400,57 @@ struct AdditiveWatchView: View {
         .padding(.vertical, 8)
     }
     
+    /// Check if an additive is a fortification (vitamin/mineral) that shouldn't be penalized
+    private func isFortificationAdditive(name: String, eNumber: String) -> Bool {
+        let nameLower = name.lowercased()
+        let eNumberLower = eNumber.lowercased()
+
+        // Vitamin E-numbers (E300 series are mostly vitamins/antioxidants)
+        let vitaminENumbers = [
+            "e300", "e301", "e302", "e303", "e304",  // Vitamin C (ascorbic acid)
+            "e306", "e307", "e308", "e309",          // Vitamin E (tocopherols)
+            "e101",                                   // Vitamin B2 (riboflavin)
+            "e160a",                                  // Beta-carotene (pro-vitamin A)
+            "e375",                                   // Niacin (Vitamin B3)
+        ]
+
+        // Mineral E-numbers
+        let mineralENumbers = [
+            "e341", "e342", "e343",  // Calcium phosphates
+            "e170",                   // Calcium carbonate
+            "e574", "e575", "e576", "e577",  // Gluconates (calcium, iron, etc.)
+        ]
+
+        // Check E-number match
+        for vitaminE in vitaminENumbers {
+            if eNumberLower == vitaminE || eNumberLower.contains(vitaminE) {
+                return true
+            }
+        }
+        for mineralE in mineralENumbers {
+            if eNumberLower == mineralE || eNumberLower.contains(mineralE) {
+                return true
+            }
+        }
+
+        // Check name for vitamin/mineral keywords
+        let fortificationKeywords = [
+            "vitamin", "ascorbic acid", "riboflavin", "thiamin", "niacin",
+            "folic acid", "folate", "pyridoxine", "cobalamin", "biotin",
+            "tocopherol", "beta-carotene", "beta carotene", "retinol",
+            "calcium carbonate", "calcium phosphate", "iron", "zinc",
+            "iodine", "selenium", "magnesium", "potassium"
+        ]
+
+        for keyword in fortificationKeywords {
+            if nameLower.contains(keyword) {
+                return true
+            }
+        }
+
+        return false
+    }
+
     /// Calculate the additive score summary for the traffic light display
     private func calculateScoreSummary(result: AdditiveDetectionResult) -> AdditiveScoreSummary {
         var riskBreakdown: [AdditiveRiskLevel: Int] = [
@@ -410,8 +461,21 @@ struct AdditiveWatchView: View {
         var countedNames = Set<String>()
         var countedENumbers = Set<String>()
 
+        // Track fortification additives separately (vitamins/minerals don't penalize)
+        var fortificationCount = 0
+
         // Count additives by risk level
         for additive in result.detectedAdditives {
+            // Check if this is a fortification additive (vitamin/mineral)
+            if isFortificationAdditive(name: additive.name, eNumber: additive.eNumber) {
+                fortificationCount += 1
+                countedNames.insert(additive.name.lowercased())
+                if !additive.eNumber.isEmpty {
+                    countedENumbers.insert(additive.eNumber.lowercased())
+                }
+                continue  // Don't add to risk breakdown - fortifications are free
+            }
+
             let level = AdditiveOverrides.getRiskLevel(for: additive)
             riskBreakdown[level, default: 0] += 1
             countedNames.insert(additive.name.lowercased())
@@ -443,22 +507,27 @@ struct AdditiveWatchView: View {
             }
         }
 
-        // Total unique additives (after deduplication)
-        let totalAdditives = riskBreakdown.values.reduce(0, +)
+        // Total non-fortification additives (these affect the score)
+        let penalizedAdditives = riskBreakdown.values.reduce(0, +)
+        // Total including fortifications (for display purposes)
+        let totalAdditives = penalizedAdditives + fortificationCount
 
         // Calculate score (100 = perfect, 0 = many high-risk additives)
-        // ENHANCED SCORING: More aggressive penalties
+        // STRICT SCORING: 5+ non-fortification additives can't be "Good" (60+)
         let score: Int
-        if totalAdditives == 0 {
+        if penalizedAdditives == 0 {
             score = 100
         } else {
             // Weighted scoring: high risk costs more points
-            let highRiskPenalty = (riskBreakdown[.highRisk] ?? 0) * 20
-            let moderatePenalty = (riskBreakdown[.moderateRisk] ?? 0) * 10
-            let lowRiskPenalty = (riskBreakdown[.lowRisk] ?? 0) * 5    // Increased from 3 to 5
-            let noRiskPenalty = (riskBreakdown[.noRisk] ?? 0) * 1     // Even safe additives cost 1 point each
-            // Base penalty for having additives at all (encourages whole foods)
-            let basePenalty = min(totalAdditives * 2, 20)  // Up to 20 point penalty just for having additives
+            let highRiskPenalty = (riskBreakdown[.highRisk] ?? 0) * 25   // Very harsh for high risk
+            let moderatePenalty = (riskBreakdown[.moderateRisk] ?? 0) * 12
+            let lowRiskPenalty = (riskBreakdown[.lowRisk] ?? 0) * 6
+            let noRiskPenalty = (riskBreakdown[.noRisk] ?? 0) * 2
+
+            // Stricter base penalty - 5+ additives pushes below "Good" threshold (60)
+            // With 5 low-risk additives: 100 - (5*6) - 15 = 55 = "Mediocre" ✓
+            let basePenalty = min(penalizedAdditives * 3, 25)
+
             score = max(0, 100 - highRiskPenalty - moderatePenalty - lowRiskPenalty - noRiskPenalty - basePenalty)
         }
 
