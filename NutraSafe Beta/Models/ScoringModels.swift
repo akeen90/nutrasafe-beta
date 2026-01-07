@@ -239,12 +239,45 @@ class ProcessingScorer {
         let filteredAnalysisText = filteredIngredients.joined(separator: ", ")
         fullAnalysis = analyseAdditives(in: filteredAnalysisText)
 
+        // CRITICAL FIX: Deduplicate additives - many items appear in BOTH comprehensive and ultra-processed databases
+        // E.g., lecithin (E322), glucose syrup, palm oil, xanthan gum all appear in both
         let additiveCount: Int = {
             if let additives = food.additives {
-                // Even if we have provided additives, add ultra-processed ingredients count
-                return additives.count + fullAnalysis.ultraProcessedIngredients.count
+                // When we have provided additives, deduplicate against ultra-processed
+                // NutritionAdditiveInfo uses 'code' not 'eNumber'
+                let providedNames = Set(additives.map { $0.name.lowercased() })
+                let providedCodes = Set(additives.map { $0.code.lowercased() }.filter { !$0.isEmpty })
+
+                // Only count ultra-processed that aren't already in provided additives
+                let uniqueUltraProcessed = fullAnalysis.ultraProcessedIngredients.filter { ultra in
+                    let ultraNameLower = ultra.name.lowercased()
+                    // Check if this ultra-processed ingredient is already counted
+                    let isAlreadyCounted = providedNames.contains(ultraNameLower) ||
+                        providedCodes.contains(where: { ultraNameLower.contains($0) || $0.contains(ultraNameLower) })
+                    return !isAlreadyCounted
+                }
+                return additives.count + uniqueUltraProcessed.count
             } else {
-                return fullAnalysis.comprehensiveAdditives.count + fullAnalysis.ultraProcessedIngredients.count
+                // Deduplicate between comprehensive additives and ultra-processed
+                let comprehensiveNames = Set(fullAnalysis.comprehensiveAdditives.map { $0.name.lowercased() })
+                let comprehensiveENumbers = Set(fullAnalysis.comprehensiveAdditives.map { $0.eNumber.lowercased() }.filter { !$0.isEmpty })
+
+                // Only count ultra-processed that aren't already in comprehensive additives
+                let uniqueUltraProcessed = fullAnalysis.ultraProcessedIngredients.filter { ultra in
+                    let ultraNameLower = ultra.name.lowercased()
+                    // Check if this ultra-processed ingredient has a matching E-number or name in comprehensive
+                    let isAlreadyCounted = comprehensiveNames.contains(ultraNameLower) ||
+                        comprehensiveENumbers.contains(where: { eNum in
+                            // Match by E-number if ultra-processed has one associated
+                            ultraNameLower.contains(eNum)
+                        }) ||
+                        comprehensiveNames.contains(where: { name in
+                            // Match by name similarity (e.g., "Lecithins" matches "lecithin")
+                            name.contains(ultraNameLower) || ultraNameLower.contains(name)
+                        })
+                    return !isAlreadyCounted
+                }
+                return fullAnalysis.comprehensiveAdditives.count + uniqueUltraProcessed.count
             }
         }()
 

@@ -406,26 +406,48 @@ struct AdditiveWatchView: View {
             .noRisk: 0, .lowRisk: 0, .moderateRisk: 0, .highRisk: 0
         ]
 
+        // Track what we've already counted to avoid double-counting
+        var countedNames = Set<String>()
+        var countedENumbers = Set<String>()
+
         // Count additives by risk level
         for additive in result.detectedAdditives {
             let level = AdditiveOverrides.getRiskLevel(for: additive)
             riskBreakdown[level, default: 0] += 1
-        }
-
-        // Ultra-processed ingredients are typically moderate to high risk
-        for ingredient in result.ultraProcessedIngredients {
-            if ingredient.novaGroup >= 4 {
-                riskBreakdown[.highRisk, default: 0] += 1
-            } else if ingredient.processingPenalty >= 10 {
-                riskBreakdown[.moderateRisk, default: 0] += 1
-            } else {
-                riskBreakdown[.lowRisk, default: 0] += 1
+            countedNames.insert(additive.name.lowercased())
+            if !additive.eNumber.isEmpty {
+                countedENumbers.insert(additive.eNumber.lowercased())
             }
         }
 
-        let totalAdditives = result.detectedAdditives.count + result.ultraProcessedIngredients.count
+        // Ultra-processed ingredients - ONLY count if not already counted in detectedAdditives
+        // This prevents double-counting things like lecithin (E322), glucose syrup, etc.
+        for ingredient in result.ultraProcessedIngredients {
+            let nameLower = ingredient.name.lowercased()
+
+            // Check if already counted
+            let isAlreadyCounted = countedNames.contains(nameLower) ||
+                countedNames.contains(where: { $0.contains(nameLower) || nameLower.contains($0) }) ||
+                countedENumbers.contains(where: { nameLower.contains($0) })
+
+            if !isAlreadyCounted {
+                // Assign risk level based on NOVA group and processing penalty
+                if ingredient.novaGroup >= 4 {
+                    riskBreakdown[.highRisk, default: 0] += 1
+                } else if ingredient.processingPenalty >= 10 {
+                    riskBreakdown[.moderateRisk, default: 0] += 1
+                } else {
+                    riskBreakdown[.lowRisk, default: 0] += 1
+                }
+                countedNames.insert(nameLower)
+            }
+        }
+
+        // Total unique additives (after deduplication)
+        let totalAdditives = riskBreakdown.values.reduce(0, +)
 
         // Calculate score (100 = perfect, 0 = many high-risk additives)
+        // ENHANCED SCORING: More aggressive penalties
         let score: Int
         if totalAdditives == 0 {
             score = 100
@@ -433,9 +455,11 @@ struct AdditiveWatchView: View {
             // Weighted scoring: high risk costs more points
             let highRiskPenalty = (riskBreakdown[.highRisk] ?? 0) * 20
             let moderatePenalty = (riskBreakdown[.moderateRisk] ?? 0) * 10
-            let lowRiskPenalty = (riskBreakdown[.lowRisk] ?? 0) * 3
-            // No penalty for noRisk additives
-            score = max(0, 100 - highRiskPenalty - moderatePenalty - lowRiskPenalty)
+            let lowRiskPenalty = (riskBreakdown[.lowRisk] ?? 0) * 5    // Increased from 3 to 5
+            let noRiskPenalty = (riskBreakdown[.noRisk] ?? 0) * 1     // Even safe additives cost 1 point each
+            // Base penalty for having additives at all (encourages whole foods)
+            let basePenalty = min(totalAdditives * 2, 20)  // Up to 20 point penalty just for having additives
+            score = max(0, 100 - highRiskPenalty - moderatePenalty - lowRiskPenalty - noRiskPenalty - basePenalty)
         }
 
         // Determine overall risk level
