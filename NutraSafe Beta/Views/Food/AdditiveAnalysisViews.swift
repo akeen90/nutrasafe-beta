@@ -10,6 +10,88 @@ import SwiftUI
 import Foundation
 import UIKit
 
+// MARK: - Additive Risk Level (Traffic Light System)
+
+/// Risk levels for additives, inspired by Yuka's traffic light scoring
+enum AdditiveRiskLevel: Int, Comparable, CaseIterable {
+    case noRisk = 0       // Green - vitamins, natural ingredients, completely safe
+    case lowRisk = 1      // Light green - generally safe, minor considerations
+    case moderateRisk = 2 // Yellow/Orange - use in moderation, some concerns
+    case highRisk = 3     // Red - best avoided or limited
+
+    static func < (lhs: AdditiveRiskLevel, rhs: AdditiveRiskLevel) -> Bool {
+        lhs.rawValue < rhs.rawValue
+    }
+
+    var color: Color {
+        switch self {
+        case .noRisk: return Color(red: 0.2, green: 0.7, blue: 0.3)      // Bright green
+        case .lowRisk: return Color(red: 0.5, green: 0.75, blue: 0.3)    // Yellow-green
+        case .moderateRisk: return Color(red: 0.95, green: 0.6, blue: 0.1) // Orange
+        case .highRisk: return Color(red: 0.9, green: 0.25, blue: 0.2)   // Red
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .noRisk: return "No Risk"
+        case .lowRisk: return "Low Risk"
+        case .moderateRisk: return "Moderate"
+        case .highRisk: return "High Risk"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .noRisk: return "checkmark.circle.fill"
+        case .lowRisk: return "checkmark.circle"
+        case .moderateRisk: return "exclamationmark.circle.fill"
+        case .highRisk: return "xmark.circle.fill"
+        }
+    }
+
+    var shortDescription: String {
+        switch self {
+        case .noRisk: return "Safe to consume"
+        case .lowRisk: return "Generally safe"
+        case .moderateRisk: return "Use in moderation"
+        case .highRisk: return "Best avoided"
+        }
+    }
+}
+
+// MARK: - Additive Score Summary
+
+/// Overall additive score for a food product (0-100, like Yuka)
+struct AdditiveScoreSummary {
+    let score: Int                    // 0-100 score (100 = no additives/all safe)
+    let overallRisk: AdditiveRiskLevel
+    let totalAdditives: Int
+    let riskBreakdown: [AdditiveRiskLevel: Int]  // Count per risk level
+    let hasChildWarnings: Bool
+    let hasSulphiteWarnings: Bool
+
+    var gradeLabel: String {
+        switch score {
+        case 80...100: return "Excellent"
+        case 60..<80: return "Good"
+        case 40..<60: return "Mediocre"
+        case 20..<40: return "Poor"
+        default: return "Bad"
+        }
+    }
+
+    var gradeColor: Color {
+        switch score {
+        case 80...100: return Color(red: 0.2, green: 0.7, blue: 0.3)
+        case 60..<80: return Color(red: 0.5, green: 0.75, blue: 0.3)
+        case 40..<60: return Color(red: 0.95, green: 0.6, blue: 0.1)
+        case 20..<40: return Color(red: 0.9, green: 0.5, blue: 0.2)
+        default: return Color(red: 0.9, green: 0.25, blue: 0.2)
+        }
+    }
+}
+
 // MARK: - Shared additive overrides (friendly names/descriptions)
 
 struct AdditiveOverrideData {
@@ -17,77 +99,89 @@ struct AdditiveOverrideData {
     let whatItIs: String?
     let originSummary: String?
     let riskSummary: String?
+    let riskLevel: AdditiveRiskLevel?
 }
 
 enum AdditiveOverrides {
     // Lookup by lowercase E-number or name
     private static let overrides: [String: AdditiveOverrideData] = [
-        // Vitamins / fortification
-        "e300": .init(displayName: "Vitamin C (Ascorbic acid)", whatItIs: "Essential vitamin C antioxidant that stops foods turning brown or stale.", originSummary: "Typically synthesised for food use or from fermentation.", riskSummary: "Generally recognised as safe at permitted levels."),
-        "ascorbic acid": .init(displayName: "Vitamin C (Ascorbic acid)", whatItIs: "Essential vitamin C antioxidant that stops foods turning brown or stale.", originSummary: "Typically synthesised for food use or from fermentation.", riskSummary: "Generally recognised as safe at permitted levels."),
-        "e375": .init(displayName: "Vitamin B3 (Nicotinic acid)", whatItIs: "Essential B vitamin (niacin) added to fortified foods to prevent deficiency.", originSummary: "Usually synthesised for fortification.", riskSummary: "High supplement doses may cause flushing; food levels are safe."),
-        "nicotinic acid": .init(displayName: "Vitamin B3 (Nicotinic acid)", whatItIs: "Essential B vitamin (niacin) added to fortified foods to prevent deficiency.", originSummary: "Usually synthesised for fortification.", riskSummary: "High supplement doses may cause flushing; food levels are safe."),
-        "e101": .init(displayName: "Vitamin B2 (Riboflavin)", whatItIs: "Vitamin B2 used as a yellow-orange colour and nutrient.", originSummary: "Produced via fermentation or synthetic routes.", riskSummary: "Essential vitamin; generally safe."),
-        "riboflavin": .init(displayName: "Vitamin B2 (Riboflavin)", whatItIs: "Vitamin B2 used as a yellow-orange colour and nutrient.", originSummary: "Produced via fermentation or synthetic routes.", riskSummary: "Essential vitamin; generally safe."),
-        "e160a": .init(displayName: "Beta-carotene (Provitamin A)", whatItIs: "Natural orange pigment that the body can convert to vitamin A.", originSummary: "Usually from plant sources like carrots or algae; sometimes synthetic.", riskSummary: "Generally safe; very high doses may tint skin."),
-        "beta-carotene": .init(displayName: "Beta-carotene (Provitamin A)", whatItIs: "Natural orange pigment that the body can convert to vitamin A.", originSummary: "Usually from plant sources like carrots or algae; sometimes synthetic.", riskSummary: "Generally safe; very high doses may tint skin."),
-        "e306": .init(displayName: "Vitamin E (Mixed tocopherols)", whatItIs: "Vitamin E antioxidants that protect fats from going rancid.", originSummary: "Commonly from vegetable oils or produced by purification.", riskSummary: "Generally recognised as safe at food levels."),
-        "e307": .init(displayName: "Vitamin E (Alpha-tocopherol)", whatItIs: "Vitamin E antioxidant that protects fats from oxidation.", originSummary: "Usually from vegetable oils or synthetic.", riskSummary: "Generally recognised as safe at food levels."),
-        "e308": .init(displayName: "Vitamin E (Gamma-tocopherol)", whatItIs: "Vitamin E antioxidant that protects fats from oxidation.", originSummary: "Usually from vegetable oils or synthetic.", riskSummary: "Generally recognised as safe at food levels."),
-        "e309": .init(displayName: "Vitamin E (Delta-tocopherol)", whatItIs: "Vitamin E antioxidant that protects fats from oxidation.", originSummary: "Usually from vegetable oils or synthetic.", riskSummary: "Generally recognised as safe at food levels."),
+        // Vitamins / fortification - NO RISK (natural/beneficial)
+        "e300": .init(displayName: "Vitamin C (Ascorbic acid)", whatItIs: "Essential vitamin C - a powerful antioxidant that prevents browning and extends freshness. Your body needs it daily for immune function and collagen production.", originSummary: "Naturally found in citrus fruits; commercially produced via fermentation of glucose.", riskSummary: "Safe and beneficial. This is the same vitamin C found in oranges and lemons.", riskLevel: .noRisk),
+        "ascorbic acid": .init(displayName: "Vitamin C (Ascorbic acid)", whatItIs: "Essential vitamin C - a powerful antioxidant that prevents browning and extends freshness. Your body needs it daily for immune function and collagen production.", originSummary: "Naturally found in citrus fruits; commercially produced via fermentation of glucose.", riskSummary: "Safe and beneficial. This is the same vitamin C found in oranges and lemons.", riskLevel: .noRisk),
+        "e375": .init(displayName: "Vitamin B3 (Niacin)", whatItIs: "Essential B vitamin that helps convert food into energy. Added to cereals and bread to prevent deficiency diseases.", originSummary: "Found naturally in meat, fish, and nuts; commercially synthesised.", riskSummary: "Essential nutrient. The amounts in food are well within safe limits.", riskLevel: .noRisk),
+        "nicotinic acid": .init(displayName: "Vitamin B3 (Niacin)", whatItIs: "Essential B vitamin that helps convert food into energy. Added to cereals and bread to prevent deficiency diseases.", originSummary: "Found naturally in meat, fish, and nuts; commercially synthesised.", riskSummary: "Essential nutrient. The amounts in food are well within safe limits.", riskLevel: .noRisk),
+        "e101": .init(displayName: "Vitamin B2 (Riboflavin)", whatItIs: "Essential B vitamin that gives foods a yellow-orange colour. Important for energy metabolism and healthy skin.", originSummary: "Found in eggs, dairy, and leafy greens; produced via bacterial fermentation.", riskSummary: "Completely safe. This is the same vitamin B2 found naturally in dairy and eggs.", riskLevel: .noRisk),
+        "riboflavin": .init(displayName: "Vitamin B2 (Riboflavin)", whatItIs: "Essential B vitamin that gives foods a yellow-orange colour. Important for energy metabolism and healthy skin.", originSummary: "Found in eggs, dairy, and leafy greens; produced via bacterial fermentation.", riskSummary: "Completely safe. This is the same vitamin B2 found naturally in dairy and eggs.", riskLevel: .noRisk),
+        "e160a": .init(displayName: "Beta-carotene", whatItIs: "Natural orange pigment from carrots and sweet potatoes. Your body converts it to vitamin A for healthy eyes and immune function.", originSummary: "Extracted from carrots, palm oil, or algae; sometimes synthetic.", riskSummary: "Safe and beneficial. Provides vitamin A activity without toxicity risk.", riskLevel: .noRisk),
+        "beta-carotene": .init(displayName: "Beta-carotene", whatItIs: "Natural orange pigment from carrots and sweet potatoes. Your body converts it to vitamin A for healthy eyes and immune function.", originSummary: "Extracted from carrots, palm oil, or algae; sometimes synthetic.", riskSummary: "Safe and beneficial. Provides vitamin A activity without toxicity risk.", riskLevel: .noRisk),
+        "e306": .init(displayName: "Vitamin E (Tocopherols)", whatItIs: "Natural antioxidant that protects fats from going rancid and protects your cells from damage.", originSummary: "Extracted from vegetable oils like sunflower and wheat germ.", riskSummary: "Safe and beneficial. A natural preservative with health benefits.", riskLevel: .noRisk),
+        "e307": .init(displayName: "Vitamin E (Alpha-tocopherol)", whatItIs: "The most active form of vitamin E - protects cell membranes and keeps oils fresh.", originSummary: "From vegetable oils or synthetic.", riskSummary: "Safe and beneficial.", riskLevel: .noRisk),
+        "e308": .init(displayName: "Vitamin E (Gamma-tocopherol)", whatItIs: "A form of vitamin E with antioxidant properties.", originSummary: "From vegetable oils.", riskSummary: "Safe and beneficial.", riskLevel: .noRisk),
+        "e309": .init(displayName: "Vitamin E (Delta-tocopherol)", whatItIs: "A form of vitamin E with antioxidant properties.", originSummary: "From vegetable oils.", riskSummary: "Safe and beneficial.", riskLevel: .noRisk),
 
-        // Sweeteners
-        "e951": .init(displayName: "Aspartame", whatItIs: "Intense low-calorie sweetener used in drinks and diet foods.", originSummary: "Synthetic.", riskSummary: "Not suitable for people with PKU; otherwise permitted within limits."),
-        "e950": .init(displayName: "Acesulfame K", whatItIs: "Intense zero-calorie sweetener often blended with others.", originSummary: "Synthetic.", riskSummary: "Permitted within limits; can leave a bitter aftertaste."),
-        "e955": .init(displayName: "Sucralose", whatItIs: "High-intensity sweetener about 600x sweeter than sugar.", originSummary: "Synthetic (modified sucrose).", riskSummary: "Permitted within limits; generally well tolerated."),
-        "e954": .init(displayName: "Saccharin", whatItIs: "Zero-calorie sweetener used in diet products.", originSummary: "Synthetic.", riskSummary: "Permitted within limits; can taste metallic at high levels."),
-        "e960": .init(displayName: "Steviol glycosides (Stevia)", whatItIs: "Plant-based zero-calorie sweetener from stevia leaves.", originSummary: "Plant-derived then purified.", riskSummary: "Generally well tolerated at permitted levels."),
-        "e420": .init(displayName: "Sorbitol", whatItIs: "Sugar alcohol sweetener and humectant.", originSummary: "Typically from glucose hydrogenation (plant origin).", riskSummary: "Excess can cause laxative effects."),
-        "e421": .init(displayName: "Mannitol", whatItIs: "Sugar alcohol sweetener and bulking agent.", originSummary: "Typically produced from fructose (plant origin).", riskSummary: "Excess can cause laxative effects."),
-        "e965": .init(displayName: "Maltitol", whatItIs: "Sugar alcohol sweetener used in sugar-free confectionery.", originSummary: "Made from maltose (starch).", riskSummary: "Excess can cause laxative effects."),
-        "e967": .init(displayName: "Xylitol", whatItIs: "Sugar alcohol sweetener often used in gum.", originSummary: "Usually from birch or corn.", riskSummary: "Excess can cause laxative effects; toxic to dogs."),
-        "e968": .init(displayName: "Erythritol", whatItIs: "Low-calorie sugar alcohol sweetener.", originSummary: "Made via fermentation of plant sugars.", riskSummary: "Generally well tolerated; large amounts may cause mild GI upset."),
+        // Natural ingredients - NO RISK
+        "e330": .init(displayName: "Citric acid", whatItIs: "The same natural acid found in lemons and oranges. Gives foods a tangy taste and helps preserve them.", originSummary: "Originally from citrus; now produced by fermenting sugar with a harmless mould.", riskSummary: "Completely safe. Identical to the citric acid in citrus fruits.", riskLevel: .noRisk),
+        "e322": .init(displayName: "Lecithin", whatItIs: "Natural emulsifier found in egg yolks and soybeans. Helps oil and water mix smoothly in chocolate, margarine, and baked goods.", originSummary: "Usually from soybeans or sunflower seeds; occasionally from eggs.", riskSummary: "Safe and natural. An important nutrient for brain health.", riskLevel: .noRisk),
+        "lecithin": .init(displayName: "Lecithin", whatItIs: "Natural emulsifier found in egg yolks and soybeans. Helps oil and water mix smoothly in chocolate, margarine, and baked goods.", originSummary: "Usually from soybeans or sunflower seeds; occasionally from eggs.", riskSummary: "Safe and natural. An important nutrient for brain health.", riskLevel: .noRisk),
 
-        // Preservatives / acids
-        "e211": .init(displayName: "Sodium benzoate", whatItIs: "Preservative that stops moulds and yeasts.", originSummary: "Synthetic.", riskSummary: "Generally recognised as safe; avoid pairing with vitamin C at high heat to minimise benzene formation."),
-        "e202": .init(displayName: "Potassium sorbate", whatItIs: "Preservative that prevents mould and yeast growth.", originSummary: "Synthetic (salt of sorbic acid).", riskSummary: "Generally recognised as safe at permitted levels."),
-        "e200": .init(displayName: "Sorbic acid", whatItIs: "Preservative that prevents mould and yeast growth.", originSummary: "Synthetic or from rowan berries originally.", riskSummary: "Generally recognised as safe at permitted levels."),
-        "e223": .init(displayName: "Sodium metabisulfite", whatItIs: "Preservative and antioxidant.", originSummary: "Synthetic.", riskSummary: "Can trigger reactions in sulphite-sensitive individuals."),
-        "e220": .init(displayName: "Sulphur dioxide", whatItIs: "Preservative and antioxidant.", originSummary: "Synthetic gas used in winemaking and dried fruits.", riskSummary: "Can trigger reactions in sulphite-sensitive individuals."),
-        "e250": .init(displayName: "Sodium nitrite", whatItIs: "Curing salt for processed meats; prevents botulism and sets colour.", originSummary: "Synthetic.", riskSummary: "Forms nitrosamines at high heat; eat cured meats in moderation."),
-        "e251": .init(displayName: "Sodium nitrate", whatItIs: "Curing salt precursor used in some meats.", originSummary: "Synthetic.", riskSummary: "Converted to nitrite in the body; cured meats best in moderation."),
-        "e200-e203": .init(displayName: "Sorbates (preservatives)", whatItIs: "Group of mould/yeast inhibitors used in baked goods and cheese.", originSummary: "Synthetic.", riskSummary: "Generally recognised as safe at permitted levels."),
-        "e338": .init(displayName: "Phosphoric acid", whatItIs: "Acidulant for tangy taste and pH control in colas and foods.", originSummary: "Synthetic.", riskSummary: "High intake may affect tooth enamel; acceptable at food levels."),
-        "e330": .init(displayName: "Citric acid", whatItIs: "Natural-tasting acid that adds tartness and preserves freshness.", originSummary: "Usually produced via fermentation from sugar sources.", riskSummary: "Generally safe; large amounts can irritate sensitive mouths."),
-        "e300-e304": .init(displayName: "Vitamin C antioxidants", whatItIs: "Antioxidants that prevent browning and rancidity.", originSummary: "Typically synthesised for food use or from fermentation.", riskSummary: "Generally recognised as safe at permitted levels."),
+        // Low risk - plant-derived gums and thickeners
+        "e415": .init(displayName: "Xanthan gum", whatItIs: "Natural thickener that gives foods a smooth, creamy texture. Used in salad dressings, sauces, and gluten-free baking.", originSummary: "Made by fermenting sugar with a natural bacterium.", riskSummary: "Generally safe. Very high amounts may cause mild digestive effects in sensitive people.", riskLevel: .lowRisk),
+        "e412": .init(displayName: "Guar gum", whatItIs: "Plant-based thickener from guar beans. Creates smooth texture in ice cream, sauces, and gluten-free products.", originSummary: "Ground from the seeds of the guar plant, grown mainly in India.", riskSummary: "Generally safe. May cause mild bloating if consumed in very large amounts.", riskLevel: .lowRisk),
+        "e407": .init(displayName: "Carrageenan", whatItIs: "Seaweed extract used to thicken and stabilise dairy products, plant milks, and desserts.", originSummary: "Extracted from red seaweed (Irish moss).", riskSummary: "Food-grade carrageenan is approved as safe. Some people with digestive sensitivity may prefer to limit it.", riskLevel: .lowRisk),
+        "e466": .init(displayName: "Cellulose gum", whatItIs: "Plant fibre derivative that thickens and stabilises foods. Also helps ice cream stay smooth.", originSummary: "Made from plant cellulose (wood pulp or cotton).", riskSummary: "Safe. Passes through the body undigested like dietary fibre.", riskLevel: .lowRisk),
 
-        // Colours
-        "e102": .init(displayName: "Tartrazine", whatItIs: "Synthetic yellow azo dye used in drinks and snacks.", originSummary: "Synthetic.", riskSummary: "May affect sensitive children; some people avoid it."),
-        "e110": .init(displayName: "Sunset Yellow", whatItIs: "Synthetic orange azo dye used in beverages and sweets.", originSummary: "Synthetic.", riskSummary: "May affect sensitive children; some people avoid it."),
-        "e129": .init(displayName: "Allura Red", whatItIs: "Synthetic red dye used in drinks and confectionery.", originSummary: "Synthetic.", riskSummary: "May affect sensitive children; some people avoid it."),
-        "e133": .init(displayName: "Brilliant Blue", whatItIs: "Synthetic blue dye used in confectionery and drinks.", originSummary: "Synthetic.", riskSummary: "Permitted within limits; may affect sensitive individuals."),
-        "e104": .init(displayName: "Quinoline Yellow", whatItIs: "Synthetic yellow dye used in desserts and snacks.", originSummary: "Synthetic.", riskSummary: "May affect sensitive children; some people avoid it."),
+        // Sweeteners - LOW to MODERATE risk
+        "e960": .init(displayName: "Stevia (Steviol glycosides)", whatItIs: "Natural zero-calorie sweetener from the stevia plant. About 200-300x sweeter than sugar.", originSummary: "Extracted and purified from stevia leaves, a plant native to South America.", riskSummary: "Safe plant-based alternative to sugar. No known health concerns at normal consumption.", riskLevel: .lowRisk),
+        "e968": .init(displayName: "Erythritol", whatItIs: "Sugar alcohol with almost zero calories. Tastes like sugar but doesn't spike blood sugar or harm teeth.", originSummary: "Made by fermenting glucose, often from corn.", riskSummary: "Well tolerated. Very large amounts may cause mild digestive upset.", riskLevel: .lowRisk),
+        "e420": .init(displayName: "Sorbitol", whatItIs: "Sugar alcohol used in sugar-free sweets and chewing gum. Provides sweetness with fewer calories.", originSummary: "Made from glucose, originally from mountain ash berries.", riskSummary: "Can cause laxative effects if consumed in excess (>20g). Products must carry a warning.", riskLevel: .moderateRisk),
+        "e421": .init(displayName: "Mannitol", whatItIs: "Sugar alcohol used in sugar-free confectionery. Provides sweetness without affecting blood sugar.", originSummary: "Made from fructose or extracted from seaweed.", riskSummary: "Can cause laxative effects if consumed in excess. Products must carry a warning.", riskLevel: .moderateRisk),
+        "e965": .init(displayName: "Maltitol", whatItIs: "Sugar alcohol commonly used in sugar-free chocolate and biscuits.", originSummary: "Made from maltose (malt sugar) derived from starch.", riskSummary: "Can cause significant digestive issues in some people. Limit intake to avoid discomfort.", riskLevel: .moderateRisk),
+        "e967": .init(displayName: "Xylitol", whatItIs: "Sugar alcohol that's actually good for teeth - used in sugar-free gum and dental products.", originSummary: "Usually made from birch bark or corn cobs.", riskSummary: "Safe for humans. Can cause digestive issues in excess. TOXIC TO DOGS - keep away from pets.", riskLevel: .moderateRisk),
+        "e951": .init(displayName: "Aspartame", whatItIs: "Artificial sweetener about 200x sweeter than sugar. Used in diet drinks and sugar-free foods.", originSummary: "Synthetic. Made from two amino acids.", riskSummary: "Safe for most people at normal consumption. NOT suitable for people with PKU (phenylketonuria).", riskLevel: .moderateRisk),
+        "e950": .init(displayName: "Acesulfame K", whatItIs: "Artificial sweetener often combined with aspartame for a more sugar-like taste.", originSummary: "Synthetic.", riskSummary: "Approved as safe. Can have a bitter aftertaste at high concentrations.", riskLevel: .moderateRisk),
+        "e955": .init(displayName: "Sucralose", whatItIs: "Artificial sweetener made from sugar, about 600x sweeter. Stable for cooking.", originSummary: "Synthetic - modified sucrose molecule.", riskSummary: "Well tolerated. Some concerns about long-term effects, but approved as safe.", riskLevel: .moderateRisk),
+        "e954": .init(displayName: "Saccharin", whatItIs: "The oldest artificial sweetener, about 300x sweeter than sugar.", originSummary: "Synthetic. Discovered in 1879.", riskSummary: "Previous cancer concerns were disproved. Can have a metallic aftertaste.", riskLevel: .moderateRisk),
 
-        // Emulsifiers / thickeners / gums
-        "e322": .init(displayName: "Lecithin", whatItIs: "Emulsifier that helps oil and water stay mixed.", originSummary: "Usually from soy or sunflower; sometimes egg.", riskSummary: "Generally recognised as safe at food levels."),
-        "lecithin": .init(displayName: "Lecithin", whatItIs: "Emulsifier that helps oil and water stay mixed.", originSummary: "Usually from soy or sunflower; sometimes egg.", riskSummary: "Generally recognised as safe at food levels."),
-        "e466": .init(displayName: "Cellulose gum (CMC)", whatItIs: "Thickener and stabiliser for texture and moisture retention.", originSummary: "Derived from plant cellulose.", riskSummary: "Generally recognised as safe at food levels."),
-        "e415": .init(displayName: "Xanthan gum", whatItIs: "Fermentation-derived gum used to thicken and stabilise.", originSummary: "Produced by fermenting sugars.", riskSummary: "Generally safe; large amounts may cause gas in sensitive people."),
-        "e412": .init(displayName: "Guar gum", whatItIs: "Plant-based thickener and stabiliser.", originSummary: "From guar bean seeds.", riskSummary: "Generally safe; very high doses can cause bloating."),
-        "e407": .init(displayName: "Carrageenan", whatItIs: "Seaweed-derived thickener and stabiliser.", originSummary: "Extracted from red seaweed.", riskSummary: "Food-grade carrageenan is permitted; some people with sensitive guts prefer to limit it."),
+        // Preservatives - varied risk
+        "e202": .init(displayName: "Potassium sorbate", whatItIs: "Effective preservative that prevents mould and yeast growth in cheese, wine, and baked goods.", originSummary: "Synthetic salt of sorbic acid, which occurs naturally in some berries.", riskSummary: "Very safe. One of the most studied and well-tolerated preservatives.", riskLevel: .lowRisk),
+        "e200": .init(displayName: "Sorbic acid", whatItIs: "Natural preservative that prevents mould and yeast growth.", originSummary: "Originally from rowan berries; now mostly synthetic.", riskSummary: "Very safe. Well tolerated with no known adverse effects.", riskLevel: .lowRisk),
+        "e211": .init(displayName: "Sodium benzoate", whatItIs: "Preservative that prevents bacterial growth in acidic foods like soft drinks, pickles, and sauces.", originSummary: "Synthetic. Related to benzoic acid found naturally in berries.", riskSummary: "Safe at permitted levels. Avoid combining with vitamin C in acidic conditions at high temperatures (rare in normal use).", riskLevel: .lowRisk),
+        "e220": .init(displayName: "Sulphur dioxide", whatItIs: "Preservative and antioxidant used in wine, dried fruits, and some juices.", originSummary: "Synthetic gas.", riskSummary: "Can trigger asthma or allergic reactions in sensitive individuals. Must be declared on labels.", riskLevel: .moderateRisk),
+        "e223": .init(displayName: "Sodium metabisulphite", whatItIs: "Preservative and antioxidant used in wine, dried fruits, and processed foods.", originSummary: "Synthetic.", riskSummary: "Can trigger reactions in sulphite-sensitive people (especially asthmatics). Must be declared on labels.", riskLevel: .moderateRisk),
+        "e250": .init(displayName: "Sodium nitrite", whatItIs: "Curing salt used in bacon, ham, and processed meats. Prevents deadly botulism bacteria and gives meat its pink colour.", originSummary: "Synthetic.", riskSummary: "Essential for meat safety but can form nitrosamines when cooked at high heat. Limit processed meat intake.", riskLevel: .highRisk),
+        "e251": .init(displayName: "Sodium nitrate", whatItIs: "Curing agent used in some cured meats. Converts to nitrite during curing.", originSummary: "Synthetic or from mineral sources.", riskSummary: "Similar concerns to nitrite. Limit intake of processed meats.", riskLevel: .highRisk),
+
+        // Colours - varied risk (synthetic colours higher risk)
+        "e160b": .init(displayName: "Annatto", whatItIs: "Natural orange-red colour from the achiote tree. Used in cheese, butter, and snacks.", originSummary: "Extracted from the seeds of the tropical achiote tree.", riskSummary: "Natural colour. Generally safe, though rare sensitivity has been reported.", riskLevel: .lowRisk),
+        "e162": .init(displayName: "Beetroot red", whatItIs: "Natural red colour extracted from beetroot.", originSummary: "From beetroot juice.", riskSummary: "Completely safe and natural.", riskLevel: .noRisk),
+        "e140": .init(displayName: "Chlorophyll", whatItIs: "Natural green colour - the same pigment that makes plants green.", originSummary: "Extracted from nettles, grass, or alfalfa.", riskSummary: "Completely safe and natural.", riskLevel: .noRisk),
+        "e102": .init(displayName: "Tartrazine (Yellow 5)", whatItIs: "Synthetic lemon-yellow dye used in drinks, sweets, and snacks.", originSummary: "Synthetic azo dye made from petroleum.", riskSummary: "May affect activity and attention in some children. Products must carry a warning in the UK/EU.", riskLevel: .highRisk),
+        "e110": .init(displayName: "Sunset Yellow", whatItIs: "Synthetic orange-yellow dye used in soft drinks and confectionery.", originSummary: "Synthetic azo dye.", riskSummary: "May affect activity and attention in some children. Requires warning label.", riskLevel: .highRisk),
+        "e129": .init(displayName: "Allura Red", whatItIs: "Synthetic red dye widely used in soft drinks, sweets, and sauces.", originSummary: "Synthetic azo dye.", riskSummary: "May affect activity and attention in some children. Requires warning label.", riskLevel: .highRisk),
+        "e104": .init(displayName: "Quinoline Yellow", whatItIs: "Synthetic greenish-yellow dye used in desserts and ice lollies.", originSummary: "Synthetic.", riskSummary: "May affect activity and attention in some children. Requires warning label.", riskLevel: .highRisk),
+        "e122": .init(displayName: "Carmoisine (Azorubine)", whatItIs: "Synthetic red dye used in jams, jellies, and confectionery.", originSummary: "Synthetic azo dye.", riskSummary: "May affect activity and attention in some children. Requires warning label.", riskLevel: .highRisk),
+        "e124": .init(displayName: "Ponceau 4R", whatItIs: "Synthetic red dye used in desserts and meat products.", originSummary: "Synthetic azo dye.", riskSummary: "May affect activity and attention in some children. Requires warning label.", riskLevel: .highRisk),
+        "e133": .init(displayName: "Brilliant Blue", whatItIs: "Synthetic blue dye used in confectionery and drinks.", originSummary: "Synthetic.", riskSummary: "Generally considered safer than azo dyes. Permitted within limits.", riskLevel: .moderateRisk),
+        "e150a": .init(displayName: "Plain caramel", whatItIs: "Brown colour made by heating sugar - the same process as making caramel at home.", originSummary: "Made from heated sugar.", riskSummary: "Safe and natural.", riskLevel: .noRisk),
+        "e150d": .init(displayName: "Sulphite ammonia caramel", whatItIs: "Brown colour used in cola drinks and soy sauce.", originSummary: "Made from sugar treated with ammonia and sulphites.", riskSummary: "Contains 4-MEI as a byproduct. Approved as safe within limits.", riskLevel: .moderateRisk),
 
         // Flavour enhancers
-        "e621": .init(displayName: "MSG (Monosodium glutamate)", whatItIs: "Umami flavour enhancer.", originSummary: "Produced by fermenting plant sugars/starches.", riskSummary: "Considered safe; a small subset reports sensitivity."),
-        "monosodium glutamate": .init(displayName: "MSG (Monosodium glutamate)", whatItIs: "Umami flavour enhancer.", originSummary: "Produced by fermenting plant sugars/starches.", riskSummary: "Considered safe; a small subset reports sensitivity."),
+        "e621": .init(displayName: "MSG (Monosodium glutamate)", whatItIs: "Umami flavour enhancer that makes savoury foods taste richer and more satisfying.", originSummary: "Made by fermenting starches - the same glutamate found naturally in tomatoes and parmesan.", riskSummary: "Safe for most people. 'Chinese Restaurant Syndrome' was never scientifically proven. Some sensitive individuals may react.", riskLevel: .lowRisk),
+        "monosodium glutamate": .init(displayName: "MSG (Monosodium glutamate)", whatItIs: "Umami flavour enhancer that makes savoury foods taste richer and more satisfying.", originSummary: "Made by fermenting starches - the same glutamate found naturally in tomatoes and parmesan.", riskSummary: "Safe for most people. 'Chinese Restaurant Syndrome' was never scientifically proven. Some sensitive individuals may react.", riskLevel: .lowRisk),
 
         // Antioxidants
-        "e320": .init(displayName: "BHA", whatItIs: "Antioxidant that prevents fats from going rancid.", originSummary: "Synthetic.", riskSummary: "Permitted within limits; monitored by regulators."),
-        "e321": .init(displayName: "BHT", whatItIs: "Antioxidant that prevents fats from going rancid.", originSummary: "Synthetic.", riskSummary: "Permitted within limits; monitored by regulators."),
+        "e320": .init(displayName: "BHA (Butylated hydroxyanisole)", whatItIs: "Synthetic antioxidant that prevents fats and oils from going rancid.", originSummary: "Synthetic.", riskSummary: "Some studies raised concerns. Strictly limited in foods. Being phased out in favour of natural alternatives.", riskLevel: .highRisk),
+        "e321": .init(displayName: "BHT (Butylated hydroxytoluene)", whatItIs: "Synthetic antioxidant that prevents fats and oils from going rancid.", originSummary: "Synthetic.", riskSummary: "Some studies raised concerns. Strictly limited in foods. Being phased out in favour of natural alternatives.", riskLevel: .highRisk),
+
+        // Phosphates
+        "e338": .init(displayName: "Phosphoric acid", whatItIs: "Gives cola drinks their sharp, tangy taste. Also used as an acidifier in processed foods.", originSummary: "Synthetic.", riskSummary: "Safe at food levels. High cola consumption may affect bone and tooth health.", riskLevel: .moderateRisk),
+        "e450": .init(displayName: "Diphosphates", whatItIs: "Emulsifier and stabiliser used in processed cheese, meat, and baking powder.", originSummary: "Synthetic.", riskSummary: "Safe within limits. High phosphate intake from all sources may affect kidney patients.", riskLevel: .moderateRisk),
 
         // Misc
-        "e570": .init(displayName: "Fatty acids", whatItIs: "Purified fatty acids used as a processing aid or anti-caking agent.", originSummary: "Varied origin (plant or animal fats).", riskSummary: "Generally recognised as safe at permitted food use levels."),
-        "fatty acids": .init(displayName: "Fatty acids", whatItIs: "Purified fatty acids used as a processing aid or anti-caking agent.", originSummary: "Varied origin (plant or animal fats).", riskSummary: "Generally recognised as safe at permitted food use levels."),
-        "caffeine": .init(displayName: "Caffeine", whatItIs: "Stimulant naturally found in coffee, tea, and added to energy drinks.", originSummary: "Natural or synthetic.", riskSummary: "Can affect sleep and heart rate; limit if sensitive.")
+        "e570": .init(displayName: "Fatty acids", whatItIs: "Natural fats used as anti-caking agents and in food processing.", originSummary: "From plant or animal fats.", riskSummary: "Safe and natural.", riskLevel: .noRisk),
+        "fatty acids": .init(displayName: "Fatty acids", whatItIs: "Natural fats used as anti-caking agents and in food processing.", originSummary: "From plant or animal fats.", riskSummary: "Safe and natural.", riskLevel: .noRisk),
+        "caffeine": .init(displayName: "Caffeine", whatItIs: "Natural stimulant found in coffee, tea, and chocolate. Added to energy drinks and some soft drinks.", originSummary: "From coffee beans, tea leaves, or synthetic.", riskSummary: "Safe for most adults in moderation. Limit intake if sensitive to stimulants, pregnant, or for children.", riskLevel: .moderateRisk),
+        "e471": .init(displayName: "Mono- and diglycerides", whatItIs: "Emulsifiers that help oil and water mix. Used in bread, ice cream, and margarine.", originSummary: "From vegetable or animal fats.", riskSummary: "Safe and well tolerated. One of the most common emulsifiers.", riskLevel: .lowRisk)
     ]
 
     static func override(for additive: AdditiveInfo) -> AdditiveOverrideData? {
@@ -97,6 +191,31 @@ enum AdditiveOverrides {
             }
         }
         return overrides[additive.name.lowercased()]
+    }
+
+    /// Get risk level for an additive
+    static func getRiskLevel(for additive: AdditiveInfo) -> AdditiveRiskLevel {
+        // First check if we have an override with explicit risk level
+        if let override = AdditiveOverrides.override(for: additive), let level = override.riskLevel {
+            return level
+        }
+
+        // Fall back to verdict-based risk assessment
+        switch additive.effectsVerdict {
+        case .avoid:
+            return .highRisk
+        case .caution:
+            return additive.hasChildWarning ? .highRisk : .moderateRisk
+        case .neutral:
+            // Check origin for natural vs synthetic
+            let originLower = additive.origin.rawValue.lowercased()
+            if originLower.contains("plant") || originLower.contains("natural") {
+                return .noRisk
+            } else if originLower.contains("synthetic") {
+                return .lowRisk
+            }
+            return .lowRisk
+        }
     }
 }
 
@@ -193,8 +312,73 @@ struct AdditiveWatchView: View {
         .padding(.vertical, 8)
     }
     
+    /// Calculate the additive score summary for the traffic light display
+    private func calculateScoreSummary(result: AdditiveDetectionResult) -> AdditiveScoreSummary {
+        var riskBreakdown: [AdditiveRiskLevel: Int] = [
+            .noRisk: 0, .lowRisk: 0, .moderateRisk: 0, .highRisk: 0
+        ]
+
+        // Count additives by risk level
+        for additive in result.detectedAdditives {
+            let level = AdditiveOverrides.getRiskLevel(for: additive)
+            riskBreakdown[level, default: 0] += 1
+        }
+
+        // Ultra-processed ingredients are typically moderate to high risk
+        for ingredient in result.ultraProcessedIngredients {
+            if ingredient.novaGroup >= 4 {
+                riskBreakdown[.highRisk, default: 0] += 1
+            } else if ingredient.processingPenalty >= 10 {
+                riskBreakdown[.moderateRisk, default: 0] += 1
+            } else {
+                riskBreakdown[.lowRisk, default: 0] += 1
+            }
+        }
+
+        let totalAdditives = result.detectedAdditives.count + result.ultraProcessedIngredients.count
+
+        // Calculate score (100 = perfect, 0 = many high-risk additives)
+        let score: Int
+        if totalAdditives == 0 {
+            score = 100
+        } else {
+            // Weighted scoring: high risk costs more points
+            let highRiskPenalty = (riskBreakdown[.highRisk] ?? 0) * 20
+            let moderatePenalty = (riskBreakdown[.moderateRisk] ?? 0) * 10
+            let lowRiskPenalty = (riskBreakdown[.lowRisk] ?? 0) * 3
+            // No penalty for noRisk additives
+            score = max(0, 100 - highRiskPenalty - moderatePenalty - lowRiskPenalty)
+        }
+
+        // Determine overall risk level
+        let overallRisk: AdditiveRiskLevel
+        if (riskBreakdown[.highRisk] ?? 0) > 0 {
+            overallRisk = .highRisk
+        } else if (riskBreakdown[.moderateRisk] ?? 0) > 0 {
+            overallRisk = .moderateRisk
+        } else if (riskBreakdown[.lowRisk] ?? 0) > 0 {
+            overallRisk = .lowRisk
+        } else {
+            overallRisk = .noRisk
+        }
+
+        return AdditiveScoreSummary(
+            score: score,
+            overallRisk: overallRisk,
+            totalAdditives: totalAdditives,
+            riskBreakdown: riskBreakdown,
+            hasChildWarnings: result.hasChildConcernAdditives,
+            hasSulphiteWarnings: result.detectedAdditives.contains { $0.hasSulphitesAllergenLabel }
+        )
+    }
+
     private func additiveContent(result: AdditiveDetectionResult) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
+        let summary = calculateScoreSummary(result: result)
+
+        return VStack(alignment: .leading, spacing: 16) {
+            // TRAFFIC LIGHT SCORE HEADER
+            AdditiveScoreHeader(summary: summary)
+
             // Child warning message if present
             if let warningMessage = result.childWarningMessage {
                 VStack(alignment: .leading, spacing: 8) {
@@ -231,45 +415,97 @@ struct AdditiveWatchView: View {
                 .background(Color.orange.opacity(0.1))
                 .cornerRadius(8)
             }
-            
-            // Detected additives and ultra-processed ingredients combined
+
+            // Detected additives and ultra-processed ingredients
             let totalIssues = result.detectedAdditives.count + result.ultraProcessedIngredients.count
 
             if totalIssues > 0 {
-                VStack(alignment: .leading, spacing: 12) {
-                    // Regular additives (E-numbers) — use AdditiveCardView for better UI
-                    ForEach(Array(result.detectedAdditives.enumerated()), id: \.element.eNumber) { index, additive in
-                        AdditiveCardView(additive: convertToDetailedAdditive(additive))
+                // Group additives by risk level for better organization
+                let groupedAdditives = groupAdditivesByRisk(result.detectedAdditives)
+
+                VStack(alignment: .leading, spacing: 16) {
+                    // Show high risk first (if any)
+                    if let highRisk = groupedAdditives[.highRisk], !highRisk.isEmpty {
+                        AdditiveRiskSection(
+                            riskLevel: .highRisk,
+                            additives: highRisk,
+                            convertToDetailedAdditive: convertToDetailedAdditive
+                        )
                     }
 
-                    // Ultra-processed ingredients — collapsed by default
-                    ForEach(result.ultraProcessedIngredients) { ingredient in
-                        UltraProcessedIngredientCard(ingredient: ingredient, initialExpanded: false)
+                    // Then moderate risk
+                    if let moderateRisk = groupedAdditives[.moderateRisk], !moderateRisk.isEmpty {
+                        AdditiveRiskSection(
+                            riskLevel: .moderateRisk,
+                            additives: moderateRisk,
+                            convertToDetailedAdditive: convertToDetailedAdditive
+                        )
+                    }
+
+                    // Then low risk
+                    if let lowRisk = groupedAdditives[.lowRisk], !lowRisk.isEmpty {
+                        AdditiveRiskSection(
+                            riskLevel: .lowRisk,
+                            additives: lowRisk,
+                            convertToDetailedAdditive: convertToDetailedAdditive
+                        )
+                    }
+
+                    // Then no risk (vitamins, etc.)
+                    if let noRisk = groupedAdditives[.noRisk], !noRisk.isEmpty {
+                        AdditiveRiskSection(
+                            riskLevel: .noRisk,
+                            additives: noRisk,
+                            convertToDetailedAdditive: convertToDetailedAdditive
+                        )
+                    }
+
+                    // Ultra-processed ingredients section
+                    if !result.ultraProcessedIngredients.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "cube.box.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.purple)
+                                Text("Ultra-Processed Ingredients")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(.primary)
+                                Text("(\(result.ultraProcessedIngredients.count))")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            }
+
+                            ForEach(result.ultraProcessedIngredients) { ingredient in
+                                UltraProcessedIngredientCard(ingredient: ingredient, initialExpanded: false)
+                            }
+                        }
                     }
                 }
             } else {
+                // No additives found - show positive message
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Image(systemName: "info.circle.fill")
-                            .foregroundColor(.secondary)
-                            .font(.system(size: 16))
-                        Text("No identifiable additives found")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.secondary)
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(AdditiveRiskLevel.noRisk.color)
+                            .font(.system(size: 18))
+                        Text("No additives detected")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.primary)
                     }
 
-                    Text("No additives detected in available data - this does not guarantee the product is additive-free, as additives may be present but not identified.")
-                        .font(.system(size: 12))
+                    Text("This product appears to have no identifiable additives in the available ingredient data.")
+                        .font(.system(size: 13))
                         .foregroundColor(.secondary)
                 }
-                .padding(12)
-                .background(Color.secondary.opacity(0.1))
-                .cornerRadius(8)
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(AdditiveRiskLevel.noRisk.color.opacity(0.1))
+                .cornerRadius(12)
             }
 
             // Educational footer with citation link
             VStack(alignment: .leading, spacing: 8) {
-                Text("This information is provided for educational purposes to help you understand food additives. All listed additives are approved for use in food.")
+                Text("This information is provided for educational purposes. All listed additives are approved for use in food within regulatory limits.")
                     .font(.system(size: 11).italic())
                     .foregroundColor(.secondary)
 
@@ -286,6 +522,16 @@ struct AdditiveWatchView: View {
                 }
             }
         }
+    }
+
+    /// Group additives by their risk level
+    private func groupAdditivesByRisk(_ additives: [AdditiveInfo]) -> [AdditiveRiskLevel: [AdditiveInfo]] {
+        var grouped: [AdditiveRiskLevel: [AdditiveInfo]] = [:]
+        for additive in additives {
+            let level = AdditiveOverrides.getRiskLevel(for: additive)
+            grouped[level, default: []].append(additive)
+        }
+        return grouped
     }
     
     private func analyzeAdditives() {
@@ -1447,6 +1693,408 @@ struct UltraProcessedIngredientCard: View {
         case 3: return "Processed"
         case 4: return "Ultra-Processed"
         default: return "Unknown"
+        }
+    }
+}
+
+// MARK: - Additive Score Header (Traffic Light Style)
+
+/// Yuka-style score header showing overall additive risk assessment
+struct AdditiveScoreHeader: View {
+    let summary: AdditiveScoreSummary
+    @Environment(\.colorScheme) var colorScheme
+
+    var body: some View {
+        VStack(spacing: 12) {
+            // Main score display
+            HStack(spacing: 16) {
+                // Circular score indicator
+                ZStack {
+                    // Background circle
+                    Circle()
+                        .stroke(Color.gray.opacity(0.2), lineWidth: 6)
+                        .frame(width: 70, height: 70)
+
+                    // Progress arc
+                    Circle()
+                        .trim(from: 0, to: CGFloat(summary.score) / 100)
+                        .stroke(
+                            summary.gradeColor,
+                            style: StrokeStyle(lineWidth: 6, lineCap: .round)
+                        )
+                        .frame(width: 70, height: 70)
+                        .rotationEffect(.degrees(-90))
+
+                    // Score text
+                    VStack(spacing: 0) {
+                        Text("\(summary.score)")
+                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                            .foregroundColor(summary.gradeColor)
+                        Text("/100")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                // Grade label and description
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Image(systemName: summary.overallRisk.icon)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(summary.overallRisk.color)
+
+                        Text(summary.gradeLabel)
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundColor(summary.gradeColor)
+                    }
+
+                    Text(scoreDescription)
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    // Additive count breakdown
+                    if summary.totalAdditives > 0 {
+                        HStack(spacing: 8) {
+                            Text("\(summary.totalAdditives) additive\(summary.totalAdditives == 1 ? "" : "s")")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(.secondary)
+
+                            // Warning badges
+                            if summary.hasChildWarnings {
+                                HStack(spacing: 3) {
+                                    Image(systemName: "figure.child")
+                                        .font(.system(size: 9))
+                                    Text("Child concern")
+                                        .font(.system(size: 9, weight: .medium))
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.orange)
+                                .cornerRadius(4)
+                            }
+
+                            if summary.hasSulphiteWarnings {
+                                HStack(spacing: 3) {
+                                    Image(systemName: "allergens")
+                                        .font(.system(size: 9))
+                                    Text("Sulphites")
+                                        .font(.system(size: 9, weight: .medium))
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.purple)
+                                .cornerRadius(4)
+                            }
+                        }
+                        .padding(.top, 2)
+                    }
+                }
+
+                Spacer()
+            }
+
+            // Traffic light breakdown bar
+            if summary.totalAdditives > 0 {
+                trafficLightBar
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+                .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 2)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(summary.gradeColor.opacity(0.3), lineWidth: 1.5)
+        )
+    }
+
+    private var scoreDescription: String {
+        switch summary.score {
+        case 90...100:
+            return summary.totalAdditives == 0 ? "No additives detected" : "Only safe, natural additives"
+        case 70..<90:
+            return "Mostly safe additives with minor considerations"
+        case 50..<70:
+            return "Some additives to use in moderation"
+        case 30..<50:
+            return "Contains additives worth limiting"
+        default:
+            return "Contains additives best avoided"
+        }
+    }
+
+    private var trafficLightBar: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            // Risk level legend
+            HStack(spacing: 12) {
+                ForEach(AdditiveRiskLevel.allCases.reversed(), id: \.self) { level in
+                    if let count = summary.riskBreakdown[level], count > 0 {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(level.color)
+                                .frame(width: 8, height: 8)
+                            Text("\(count) \(level.label)")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                Spacer()
+            }
+
+            // Progress bar showing distribution
+            GeometryReader { geometry in
+                HStack(spacing: 2) {
+                    ForEach(AdditiveRiskLevel.allCases.reversed(), id: \.self) { level in
+                        if let count = summary.riskBreakdown[level], count > 0 {
+                            let width = (CGFloat(count) / CGFloat(max(1, summary.totalAdditives))) * geometry.size.width
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(level.color)
+                                .frame(width: max(4, width - 2))
+                        }
+                    }
+                }
+            }
+            .frame(height: 8)
+        }
+    }
+}
+
+// MARK: - Additive Risk Section
+
+/// Groups additives by risk level with a colored header
+struct AdditiveRiskSection: View {
+    let riskLevel: AdditiveRiskLevel
+    let additives: [AdditiveInfo]
+    let convertToDetailedAdditive: (AdditiveInfo) -> DetailedAdditive
+    @State private var isExpanded = true
+    @Environment(\.colorScheme) var colorScheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Section header
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isExpanded.toggle()
+                }
+            }) {
+                HStack(spacing: 8) {
+                    // Risk indicator dot
+                    Circle()
+                        .fill(riskLevel.color)
+                        .frame(width: 10, height: 10)
+
+                    // Risk label
+                    Text(riskLevel.label)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(riskLevel.color)
+
+                    // Count
+                    Text("(\(additives.count))")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+
+                    Spacer()
+
+                    // Short description
+                    Text(riskLevel.shortDescription)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+
+                    // Expand/collapse chevron
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 6)
+                .padding(.horizontal, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(riskLevel.color.opacity(0.1))
+                )
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            // Additive cards
+            if isExpanded {
+                VStack(spacing: 8) {
+                    ForEach(additives, id: \.id) { additive in
+                        EnhancedAdditiveCard(
+                            additive: additive,
+                            detailedAdditive: convertToDetailedAdditive(additive),
+                            riskLevel: AdditiveOverrides.getRiskLevel(for: additive)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Enhanced Additive Card with Risk Indicator
+
+/// A single additive card with enhanced descriptions and risk indicator
+struct EnhancedAdditiveCard: View {
+    let additive: AdditiveInfo
+    let detailedAdditive: DetailedAdditive
+    let riskLevel: AdditiveRiskLevel
+    @State private var isExpanded = false
+    @State private var showingSources = false
+    @Environment(\.colorScheme) var colorScheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header row
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isExpanded.toggle()
+                }
+            }) {
+                HStack(alignment: .center, spacing: 10) {
+                    // Risk indicator line
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(riskLevel.color)
+                        .frame(width: 4, height: 36)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text(detailedAdditive.name)
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.primary)
+                                .lineLimit(1)
+
+                            if additive.hasChildWarning {
+                                Image(systemName: "figure.child")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.orange)
+                            }
+                        }
+
+                        // E-number and category
+                        HStack(spacing: 6) {
+                            if let code = detailedAdditive.code, !code.isEmpty {
+                                Text(code)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 2)
+                                    .background(riskLevel.color)
+                                    .cornerRadius(4)
+                            }
+
+                            Text(additive.group.displayName)
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    Spacer()
+
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 10)
+                .padding(.horizontal, 12)
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            // Expanded details
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 12) {
+                    Divider()
+                        .padding(.horizontal, 12)
+
+                    // What it is
+                    VStack(alignment: .leading, spacing: 4) {
+                        Label("What it is", systemImage: "info.circle.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.blue)
+
+                        Text(detailedAdditive.whatItIs)
+                            .font(.system(size: 13))
+                            .foregroundColor(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.horizontal, 12)
+
+                    // Where it comes from
+                    VStack(alignment: .leading, spacing: 4) {
+                        Label("Origin", systemImage: "leaf.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.green)
+
+                        Text(detailedAdditive.originSummary)
+                            .font(.system(size: 13))
+                            .foregroundColor(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.horizontal, 12)
+
+                    // Risk assessment
+                    VStack(alignment: .leading, spacing: 4) {
+                        Label("Safety Assessment", systemImage: riskLevel.icon)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(riskLevel.color)
+
+                        Text(detailedAdditive.riskSummary)
+                            .font(.system(size: 13))
+                            .foregroundColor(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.horizontal, 12)
+
+                    // Child warning callout
+                    if additive.hasChildWarning {
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 12))
+                                .foregroundColor(.orange)
+
+                            Text("May affect activity and attention in children. Products in the UK/EU must carry a warning label.")
+                                .font(.system(size: 12))
+                                .foregroundColor(.orange)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(10)
+                        .background(Color.orange.opacity(0.1))
+                        .cornerRadius(8)
+                        .padding(.horizontal, 12)
+                    }
+
+                    // Sources button
+                    if !additive.sources.isEmpty {
+                        Button(action: { showingSources = true }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "doc.text.magnifyingglass")
+                                    .font(.system(size: 10))
+                                Text("View \(additive.sources.count) source\(additive.sources.count == 1 ? "" : "s")")
+                                    .font(.system(size: 11, weight: .medium))
+                            }
+                            .foregroundColor(.blue)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 4)
+                    }
+                }
+                .padding(.bottom, 10)
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(colorScheme == .dark ? Color.midnightCard.opacity(0.6) : Color(.systemGray6))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(riskLevel.color.opacity(0.2), lineWidth: 1)
+        )
+        .fullScreenCover(isPresented: $showingSources) {
+            SourcesAndCitationsView()
         }
     }
 }
