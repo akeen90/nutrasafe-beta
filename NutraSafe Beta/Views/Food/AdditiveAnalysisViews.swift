@@ -181,7 +181,95 @@ enum AdditiveOverrides {
         "e570": .init(displayName: "Fatty acids", whatItIs: "Natural fats used as anti-caking agents and in food processing.", originSummary: "From plant or animal fats.", riskSummary: "Safe and natural.", riskLevel: .noRisk),
         "fatty acids": .init(displayName: "Fatty acids", whatItIs: "Natural fats used as anti-caking agents and in food processing.", originSummary: "From plant or animal fats.", riskSummary: "Safe and natural.", riskLevel: .noRisk),
         "caffeine": .init(displayName: "Caffeine", whatItIs: "Natural stimulant found in coffee, tea, and chocolate. Added to energy drinks and some soft drinks.", originSummary: "From coffee beans, tea leaves, or synthetic.", riskSummary: "Safe for most adults in moderation. Limit intake if sensitive to stimulants, pregnant, or for children.", riskLevel: .moderateRisk),
-        "e471": .init(displayName: "Mono- and diglycerides", whatItIs: "Emulsifiers that help oil and water mix. Used in bread, ice cream, and margarine.", originSummary: "From vegetable or animal fats.", riskSummary: "Safe and well tolerated. One of the most common emulsifiers.", riskLevel: .lowRisk)
+        "e471": .init(displayName: "Mono- and diglycerides", whatItIs: "Emulsifiers that help oil and water mix. Used in bread, ice cream, and margarine.", originSummary: "From vegetable or animal fats.", riskSummary: "Safe and well tolerated. One of the most common emulsifiers.", riskLevel: .lowRisk),
+
+        // More common additives with proper descriptions
+        "e441": .init(displayName: "Gelatin", whatItIs: "A gelling agent derived from animal collagen. Creates the wobbly texture in jellies, marshmallows, and gummy sweets.", originSummary: "Made from animal bones, skin, and connective tissue - typically from pigs or cows.", riskSummary: "Safe to consume. Not suitable for vegetarians, vegans, or those avoiding pork/beef for religious reasons.", riskLevel: .lowRisk),
+        "gelatin": .init(displayName: "Gelatin", whatItIs: "A gelling agent derived from animal collagen. Creates the wobbly texture in jellies, marshmallows, and gummy sweets.", originSummary: "Made from animal bones, skin, and connective tissue - typically from pigs or cows.", riskSummary: "Safe to consume. Not suitable for vegetarians, vegans, or those avoiding pork/beef for religious reasons.", riskLevel: .lowRisk),
+        "gelatine": .init(displayName: "Gelatin", whatItIs: "A gelling agent derived from animal collagen. Creates the wobbly texture in jellies, marshmallows, and gummy sweets.", originSummary: "Made from animal bones, skin, and connective tissue - typically from pigs or cows.", riskSummary: "Safe to consume. Not suitable for vegetarians, vegans, or those avoiding pork/beef for religious reasons.", riskLevel: .lowRisk),
+
+        "e418": .init(displayName: "Gellan gum", whatItIs: "A plant-based gelling agent used as a vegan alternative to gelatin. Creates firm, clear gels.", originSummary: "Produced by bacterial fermentation.", riskSummary: "Safe and vegan-friendly. A good alternative to animal-derived gelatin.", riskLevel: .noRisk),
+
+        "e440": .init(displayName: "Pectin", whatItIs: "Natural plant fibre that makes jams and jellies set. Also used in fruit drinks and dairy desserts.", originSummary: "Extracted from apple pomace or citrus peel.", riskSummary: "Completely safe and natural. Actually a beneficial dietary fibre.", riskLevel: .noRisk),
+        "pectin": .init(displayName: "Pectin", whatItIs: "Natural plant fibre that makes jams and jellies set. Also used in fruit drinks and dairy desserts.", originSummary: "Extracted from apple pomace or citrus peel.", riskSummary: "Completely safe and natural. Actually a beneficial dietary fibre.", riskLevel: .noRisk),
+
+        "e500": .init(displayName: "Sodium bicarbonate (Baking soda)", whatItIs: "A raising agent that makes cakes and bread rise. Also neutralises acidity.", originSummary: "Mineral-based, can be mined or produced industrially.", riskSummary: "Completely safe. The same baking soda used in home cooking.", riskLevel: .noRisk),
+        "sodium bicarbonate": .init(displayName: "Sodium bicarbonate (Baking soda)", whatItIs: "A raising agent that makes cakes and bread rise. Also neutralises acidity.", originSummary: "Mineral-based, can be mined or produced industrially.", riskSummary: "Completely safe. The same baking soda used in home cooking.", riskLevel: .noRisk),
+        "bicarbonate of soda": .init(displayName: "Sodium bicarbonate (Baking soda)", whatItIs: "A raising agent that makes cakes and bread rise. Also neutralises acidity.", originSummary: "Mineral-based, can be mined or produced industrially.", riskSummary: "Completely safe. The same baking soda used in home cooking.", riskLevel: .noRisk),
+
+        "e503": .init(displayName: "Ammonium carbonate", whatItIs: "A raising agent used in flat baked goods like crackers and cookies. Evaporates during baking.", originSummary: "Synthetic.", riskSummary: "Safe. Completely dissipates during baking leaving no residue.", riskLevel: .noRisk),
+
+        "e170": .init(displayName: "Calcium carbonate (Chalk)", whatItIs: "Used as a white colour, anti-caking agent, and calcium fortification. Also neutralises acidity.", originSummary: "Natural mineral - the same compound found in limestone, chalk, and eggshells.", riskSummary: "Completely safe. Provides dietary calcium.", riskLevel: .noRisk),
+
+        "e270": .init(displayName: "Lactic acid", whatItIs: "A natural acid that adds tartness and acts as a preservative. Found naturally in yogurt and fermented foods.", originSummary: "Produced by fermenting sugars - the same process that makes yogurt tangy.", riskSummary: "Completely safe and natural.", riskLevel: .noRisk),
+        "lactic acid": .init(displayName: "Lactic acid", whatItIs: "A natural acid that adds tartness and acts as a preservative. Found naturally in yogurt and fermented foods.", originSummary: "Produced by fermenting sugars - the same process that makes yogurt tangy.", riskSummary: "Completely safe and natural.", riskLevel: .noRisk),
+
+        "e296": .init(displayName: "Malic acid", whatItIs: "A natural acid that gives green apples their sour taste. Used to add tartness to sweets and drinks.", originSummary: "Found naturally in apples and many fruits; commercially produced.", riskSummary: "Completely safe and natural.", riskLevel: .noRisk),
+        "malic acid": .init(displayName: "Malic acid", whatItIs: "A natural acid that gives green apples their sour taste. Used to add tartness to sweets and drinks.", originSummary: "Found naturally in apples and many fruits; commercially produced.", riskSummary: "Completely safe and natural.", riskLevel: .noRisk),
+
+        "e334": .init(displayName: "Tartaric acid", whatItIs: "A natural acid found in grapes. Used in wine-making and to add tartness to foods.", originSummary: "Extracted from grapes or produced during wine-making.", riskSummary: "Completely safe and natural.", riskLevel: .noRisk),
+
+        "e262": .init(displayName: "Sodium acetate", whatItIs: "Salt of acetic acid (vinegar). Used to add a vinegary flavour and as a preservative.", originSummary: "Derived from vinegar.", riskSummary: "Safe. Essentially the salt form of vinegar.", riskLevel: .noRisk),
+
+        "e150c": .init(displayName: "Ammonia caramel", whatItIs: "Brown colour used in beer, soy sauce, and dark breads.", originSummary: "Made from sugar treated with ammonia.", riskSummary: "Safe within permitted limits. Contains 4-MEI as a byproduct but at safe levels.", riskLevel: .lowRisk),
+
+        "e171": .init(displayName: "Titanium dioxide", whatItIs: "Bright white colour used in confectionery, icing, and some medications.", originSummary: "Mineral-based, derived from titanium ore.", riskSummary: "Banned in EU since 2022 due to concerns about nanoparticles. Still permitted in some countries.", riskLevel: .highRisk),
+
+        "e172": .init(displayName: "Iron oxides", whatItIs: "Natural mineral colours ranging from yellow to red to black. Used in confectionery and cake decorations.", originSummary: "Mineral-based, the same compounds that give rust its colour.", riskSummary: "Safe and natural mineral pigments.", riskLevel: .noRisk),
+
+        "e163": .init(displayName: "Anthocyanins", whatItIs: "Natural purple-red colours from berries, grapes, and red cabbage.", originSummary: "Extracted from purple/red fruits and vegetables.", riskSummary: "Completely safe and natural. These are the same pigments in blueberries.", riskLevel: .noRisk),
+
+        "e160c": .init(displayName: "Paprika extract", whatItIs: "Natural orange-red colour from paprika peppers.", originSummary: "Extracted from paprika peppers.", riskSummary: "Completely safe and natural.", riskLevel: .noRisk),
+
+        "e100": .init(displayName: "Curcumin (Turmeric)", whatItIs: "Natural yellow colour from turmeric root. The same spice used in curry.", originSummary: "Extracted from turmeric root.", riskSummary: "Completely safe and natural. Turmeric has been used in cooking for thousands of years.", riskLevel: .noRisk),
+        "curcumin": .init(displayName: "Curcumin (Turmeric)", whatItIs: "Natural yellow colour from turmeric root. The same spice used in curry.", originSummary: "Extracted from turmeric root.", riskSummary: "Completely safe and natural. Turmeric has been used in cooking for thousands of years.", riskLevel: .noRisk),
+
+        "e120": .init(displayName: "Cochineal (Carmine)", whatItIs: "Natural red colour used in drinks, sweets, and cosmetics.", originSummary: "Derived from crushed cochineal insects.", riskSummary: "Safe but not suitable for vegetarians or vegans. Rare allergic reactions reported.", riskLevel: .lowRisk),
+        "carmine": .init(displayName: "Cochineal (Carmine)", whatItIs: "Natural red colour used in drinks, sweets, and cosmetics.", originSummary: "Derived from crushed cochineal insects.", riskSummary: "Safe but not suitable for vegetarians or vegans. Rare allergic reactions reported.", riskLevel: .lowRisk),
+
+        "e410": .init(displayName: "Locust bean gum", whatItIs: "Natural thickener that creates a smooth, creamy texture in ice cream and dairy products.", originSummary: "Ground from the seeds of the carob tree.", riskSummary: "Safe and natural. Also known as carob gum.", riskLevel: .noRisk),
+        "locust bean gum": .init(displayName: "Locust bean gum", whatItIs: "Natural thickener that creates a smooth, creamy texture in ice cream and dairy products.", originSummary: "Ground from the seeds of the carob tree.", riskSummary: "Safe and natural. Also known as carob gum.", riskLevel: .noRisk),
+
+        "e414": .init(displayName: "Gum arabic (Acacia gum)", whatItIs: "Natural gum used to stabilise soft drinks, glazes, and confectionery.", originSummary: "Natural sap from acacia trees, harvested in Africa.", riskSummary: "Completely safe and natural. Used for thousands of years.", riskLevel: .noRisk),
+        "gum arabic": .init(displayName: "Gum arabic (Acacia gum)", whatItIs: "Natural gum used to stabilise soft drinks, glazes, and confectionery.", originSummary: "Natural sap from acacia trees, harvested in Africa.", riskSummary: "Completely safe and natural. Used for thousands of years.", riskLevel: .noRisk),
+
+        "e401": .init(displayName: "Sodium alginate", whatItIs: "Natural thickener from seaweed. Creates gel-like textures and is used in molecular gastronomy.", originSummary: "Extracted from brown seaweed.", riskSummary: "Safe and natural. Popular in modern cooking for creating 'spherification'.", riskLevel: .noRisk),
+
+        "e509": .init(displayName: "Calcium chloride", whatItIs: "Mineral salt that firms up canned vegetables and helps cheese set.", originSummary: "Mineral-based, produced from limestone.", riskSummary: "Safe within food use limits.", riskLevel: .lowRisk),
+
+        "e516": .init(displayName: "Calcium sulphate", whatItIs: "Mineral used to make tofu and as a dough conditioner in bread.", originSummary: "Mineral-based, also known as gypsum.", riskSummary: "Safe. Used in tofu-making for centuries.", riskLevel: .noRisk),
+
+        "e460": .init(displayName: "Cellulose", whatItIs: "Plant fibre used as a bulking agent and anti-caking agent in grated cheese.", originSummary: "From plant cell walls - wood pulp or cotton.", riskSummary: "Safe. Passes through the body as indigestible fibre.", riskLevel: .noRisk),
+        "cellulose": .init(displayName: "Cellulose", whatItIs: "Plant fibre used as a bulking agent and anti-caking agent in grated cheese.", originSummary: "From plant cell walls - wood pulp or cotton.", riskSummary: "Safe. Passes through the body as indigestible fibre.", riskLevel: .noRisk),
+
+        "e551": .init(displayName: "Silicon dioxide", whatItIs: "Anti-caking agent that keeps powders flowing freely.", originSummary: "Mineral-based - the same compound as sand and quartz.", riskSummary: "Safe. Used in tiny amounts to prevent clumping.", riskLevel: .noRisk),
+
+        "e1200": .init(displayName: "Polydextrose", whatItIs: "Synthetic fibre used as a low-calorie bulking agent in reduced-sugar foods.", originSummary: "Synthetic, made from glucose and sorbitol.", riskSummary: "Safe. Can cause digestive issues if consumed in very large amounts.", riskLevel: .lowRisk),
+
+        "e1520": .init(displayName: "Propylene glycol", whatItIs: "Humectant that keeps food moist. Also used to carry flavours.", originSummary: "Synthetic.", riskSummary: "Safe within permitted limits. Different from antifreeze (ethylene glycol).", riskLevel: .lowRisk),
+
+        "e422": .init(displayName: "Glycerol (Glycerine)", whatItIs: "Sweet-tasting humectant that keeps food moist. Used in cakes, confectionery, and vaping liquids.", originSummary: "From vegetable oils or as a byproduct of soap-making.", riskSummary: "Safe and widely used.", riskLevel: .noRisk),
+        "glycerol": .init(displayName: "Glycerol (Glycerine)", whatItIs: "Sweet-tasting humectant that keeps food moist. Used in cakes, confectionery, and vaping liquids.", originSummary: "From vegetable oils or as a byproduct of soap-making.", riskSummary: "Safe and widely used.", riskLevel: .noRisk),
+        "glycerine": .init(displayName: "Glycerol (Glycerine)", whatItIs: "Sweet-tasting humectant that keeps food moist. Used in cakes, confectionery, and vaping liquids.", originSummary: "From vegetable oils or as a byproduct of soap-making.", riskSummary: "Safe and widely used.", riskLevel: .noRisk),
+
+        "e901": .init(displayName: "Beeswax", whatItIs: "Natural wax used to coat sweets and fresh produce for a shiny finish.", originSummary: "From honeybee hives.", riskSummary: "Safe and natural. Not suitable for strict vegans.", riskLevel: .noRisk),
+        "beeswax": .init(displayName: "Beeswax", whatItIs: "Natural wax used to coat sweets and fresh produce for a shiny finish.", originSummary: "From honeybee hives.", riskSummary: "Safe and natural. Not suitable for strict vegans.", riskLevel: .noRisk),
+
+        "e903": .init(displayName: "Carnauba wax", whatItIs: "Natural plant wax that gives confectionery and pills a glossy coating.", originSummary: "From the leaves of the Brazilian carnauba palm.", riskSummary: "Safe and vegan-friendly.", riskLevel: .noRisk),
+        "carnauba wax": .init(displayName: "Carnauba wax", whatItIs: "Natural plant wax that gives confectionery and pills a glossy coating.", originSummary: "From the leaves of the Brazilian carnauba palm.", riskSummary: "Safe and vegan-friendly.", riskLevel: .noRisk),
+
+        "e904": .init(displayName: "Shellac", whatItIs: "Natural resin used to coat sweets, pills, and citrus fruits for shine.", originSummary: "Secreted by the lac insect on trees in India and Thailand.", riskSummary: "Safe but not suitable for vegetarians or vegans.", riskLevel: .noRisk),
+        "shellac": .init(displayName: "Shellac", whatItIs: "Natural resin used to coat sweets, pills, and citrus fruits for shine.", originSummary: "Secreted by the lac insect on trees in India and Thailand.", riskSummary: "Safe but not suitable for vegetarians or vegans.", riskLevel: .noRisk),
+
+        "e476": .init(displayName: "Polyglycerol polyricinoleate (PGPR)", whatItIs: "Emulsifier that reduces the amount of cocoa butter needed in chocolate.", originSummary: "Made from castor oil and glycerol.", riskSummary: "Safe. Allows chocolate makers to use less cocoa butter.", riskLevel: .lowRisk),
+
+        "e473": .init(displayName: "Sucrose esters", whatItIs: "Emulsifiers made from sugar and fats. Used in baked goods and ice cream.", originSummary: "Made from sucrose (sugar) and fatty acids.", riskSummary: "Safe and well tolerated.", riskLevel: .lowRisk),
+
+        "e627": .init(displayName: "Disodium guanylate", whatItIs: "Flavour enhancer that works with MSG to create umami taste.", originSummary: "Usually from yeast extract or fish.", riskSummary: "Safe. Not suitable for gout sufferers due to purine content.", riskLevel: .lowRisk),
+
+        "e631": .init(displayName: "Disodium inosinate", whatItIs: "Flavour enhancer that works with MSG to create umami taste.", originSummary: "Usually from meat or fish extracts.", riskSummary: "Safe. Not suitable for gout sufferers due to purine content.", riskLevel: .lowRisk),
+
+        "e635": .init(displayName: "Disodium 5'-ribonucleotides", whatItIs: "Combination flavour enhancer containing E627 and E631. Boosts umami flavour.", originSummary: "From yeast, meat, or fish extracts.", riskSummary: "Safe. Not suitable for gout sufferers due to purine content.", riskLevel: .lowRisk)
     ]
 
     static func override(for additive: AdditiveInfo) -> AdditiveOverrideData? {
@@ -641,6 +729,167 @@ struct AdditiveWatchView: View {
         }
     }
 
+    // MARK: - Helper Functions for Description Generation
+
+    /// Checks if a string looks like a list of products rather than a proper description
+    private func looksLikeProductList(_ text: String) -> Bool {
+        let lower = text.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Empty or very short strings aren't useful descriptions
+        if lower.count < 10 { return true }
+
+        // Product-like patterns: comma-separated items without verbs
+        let productPatterns = [
+            "candy", "candies", "sweets", "cakes", "biscuits", "cookies",
+            "desserts", "drinks", "beverages", "sauces", "soups",
+            "ice cream", "yogurt", "yoghurt", "jams", "jellies",
+            "meats", "sausages", "processed foods", "snacks",
+            "confectionery", "bakery", "dairy products", "soft drinks",
+            "marshmallows", "gummy", "chocolate", "cereals"
+        ]
+
+        var productMatchCount = 0
+        for pattern in productPatterns {
+            if lower.contains(pattern) {
+                productMatchCount += 1
+            }
+        }
+
+        // If text has multiple product words and no descriptive verbs, it's likely a product list
+        let descriptiveWords = ["is a", "is an", "are ", "used to", "helps", "prevents", "made from", "derived from", "produced", "natural", "synthetic", "chemical"]
+        let hasDescriptiveContent = descriptiveWords.contains { lower.contains($0) }
+
+        // More than 2 product words without descriptive content = product list
+        if productMatchCount >= 2 && !hasDescriptiveContent {
+            return true
+        }
+
+        // Check for comma-separated short words (typical of product lists)
+        let commaCount = text.filter { $0 == "," }.count
+        let wordCount = text.split(separator: " ").count
+        if commaCount >= 2 && wordCount < 15 && !hasDescriptiveContent {
+            return true
+        }
+
+        return false
+    }
+
+    /// Generates a sensible description based on the additive's group/category
+    private func generateGroupDescription(for additive: AdditiveInfo) -> String {
+        let group = additive.group.rawValue.lowercased()
+        let name = additive.name
+
+        // Color-related groups
+        if group.contains("colour") || group.contains("color") {
+            if additive.origin.rawValue.lowercased().contains("synthetic") {
+                return "A synthetic food colouring used to give foods an attractive appearance"
+            } else if additive.origin.rawValue.lowercased().contains("plant") {
+                return "A natural food colouring derived from plants"
+            } else if additive.origin.rawValue.lowercased().contains("animal") {
+                return "A food colouring derived from animal sources"
+            }
+            return "A food colouring used to give foods an attractive appearance"
+        }
+
+        // Preservatives
+        if group.contains("preserv") {
+            return "A preservative that helps extend shelf life by preventing spoilage"
+        }
+
+        // Emulsifiers
+        if group.contains("emulsif") {
+            return "An emulsifier that helps blend ingredients that normally don't mix, like oil and water"
+        }
+
+        // Stabilisers
+        if group.contains("stabilis") || group.contains("stabiliz") {
+            return "A stabiliser that helps maintain the texture and consistency of food"
+        }
+
+        // Thickeners
+        if group.contains("thicken") {
+            return "A thickening agent used to give foods a thicker, more appealing texture"
+        }
+
+        // Gelling agents
+        if group.contains("gel") {
+            return "A gelling agent that helps foods set into a solid or semi-solid texture"
+        }
+
+        // Antioxidants
+        if group.contains("antioxid") {
+            return "An antioxidant that helps prevent food from going rancid or changing colour"
+        }
+
+        // Acidity regulators
+        if group.contains("acid") && group.contains("regul") {
+            return "An acidity regulator that controls the pH level of food"
+        }
+
+        // Flavour enhancers
+        if group.contains("flavour") || group.contains("flavor") {
+            return "A flavour enhancer that intensifies the taste of food"
+        }
+
+        // Sweeteners
+        if group.contains("sweeten") {
+            return "A sweetener used as an alternative to sugar"
+        }
+
+        // Raising agents
+        if group.contains("raising") || group.contains("leavening") {
+            return "A raising agent that helps baked goods rise and become light and fluffy"
+        }
+
+        // Humectants
+        if group.contains("humect") {
+            return "A humectant that helps food retain moisture and stay fresh"
+        }
+
+        // Glazing agents
+        if group.contains("glaz") {
+            return "A glazing agent that gives foods a shiny, protective coating"
+        }
+
+        // Anti-caking agents
+        if group.contains("anti-cak") || group.contains("anticak") {
+            return "An anti-caking agent that prevents powders from clumping together"
+        }
+
+        // Bulking agents
+        if group.contains("bulk") {
+            return "A bulking agent that adds volume to food without significantly increasing calories"
+        }
+
+        // Firming agents
+        if group.contains("firm") {
+            return "A firming agent that helps maintain the texture and crispness of food"
+        }
+
+        // Carrier/carrier solvents
+        if group.contains("carrier") || group.contains("solvent") {
+            return "A carrier substance used to deliver other additives evenly throughout food"
+        }
+
+        // Sequestrants
+        if group.contains("sequest") {
+            return "A sequestrant that binds to metal ions to prevent food discolouration"
+        }
+
+        // Vitamins and minerals
+        if group.contains("vitamin") || group.contains("mineral") || group.contains("nutrient") {
+            return "A vitamin or mineral added to improve nutritional value"
+        }
+
+        // Default fallback using the group name
+        if !group.isEmpty && group != "unknown" {
+            return "A food additive classified as \(additive.group.rawValue.lowercased())"
+        }
+
+        // Last resort
+        return "A food additive used in food processing"
+    }
+
     // Convert AdditiveInfo to DetailedAdditive for UI display
     private func convertToDetailedAdditive(_ additive: AdditiveInfo) -> DetailedAdditive {
         // Prefer the human-friendly overview from the consolidated DB; fall back to typical uses or group label
@@ -653,13 +902,22 @@ struct AdditiveWatchView: View {
         // Show consumer-friendly name for known vitamins/aliases
         let displayName = override?.displayName ?? additive.name
 
-        // Build “What is it?” sentence(s)
-        var whatItIs = override?.whatItIs ?? (!overview.isEmpty ? overview : (!uses.isEmpty ? uses : additive.group.rawValue.capitalized))
-        if !uses.isEmpty && override?.whatItIs == nil {
-            // Avoid awkward “used to ...” phrasing
+        // Build "What is it?" sentence(s)
+        var whatItIs: String
+        if let overrideWhatItIs = override?.whatItIs {
+            whatItIs = overrideWhatItIs
+        } else if !overview.isEmpty && !looksLikeProductList(overview) {
+            whatItIs = overview
+        } else {
+            // Generate a sensible description based on the additive group
+            whatItIs = generateGroupDescription(for: additive)
+        }
+
+        // Add typical uses if we have them and they're not already mentioned
+        if !uses.isEmpty && override?.whatItIs == nil && !looksLikeProductList(whatItIs) {
             let cleanedUses = uses.trimmingCharacters(in: .punctuationCharacters)
             if !whatItIs.lowercased().contains(cleanedUses.lowercased()) {
-                whatItIs += (whatItIs.isEmpty ? "" : ". ") + "Commonly used in \(cleanedUses)"
+                whatItIs += (whatItIs.isEmpty ? "" : " ") + "Commonly found in \(cleanedUses)."
             }
         }
         if !whatItIs.isEmpty && !whatItIs.hasSuffix(".") { whatItIs += "." }
