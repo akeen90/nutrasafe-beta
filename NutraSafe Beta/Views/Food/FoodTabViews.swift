@@ -762,7 +762,51 @@ struct FoodReactionRow: View {
 
 struct FoodPatternAnalysisCard: View {
     @EnvironmentObject var reactionManager: ReactionManager
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
     @State private var showOtherIngredients = false
+    @State private var showingPDFExportSheet = false
+    @State private var showingPaywall = false
+
+    // Confidence level based on data points
+    private var confidenceLevel: (label: String, color: Color, description: String) {
+        let count = reactionManager.reactions.count
+        switch count {
+        case 0...2:
+            return ("Not enough data", .gray, "Log at least 3 reactions")
+        case 3...5:
+            return ("Low", .orange, "Based on \(count) reactions")
+        case 6...10:
+            return ("Moderate", .yellow, "Based on \(count) reactions")
+        case 11...20:
+            return ("Good", .green, "Based on \(count) reactions")
+        default:
+            return ("High", .green, "Based on \(count)+ reactions")
+        }
+    }
+
+    // Get symptoms associated with a specific allergen category
+    private func symptomsForCategory(_ category: String) -> [(symptom: String, count: Int)] {
+        var symptomCounts: [String: Int] = [:]
+
+        for reaction in reactionManager.reactions {
+            // Check if any suspected ingredient in this reaction matches the category
+            let matchesCategory = reaction.suspectedIngredients.contains { ingredient in
+                getBaseAllergen(for: ingredient) == category
+            }
+
+            if matchesCategory {
+                for symptom in reaction.symptoms {
+                    symptomCounts[symptom, default: 0] += 1
+                }
+            }
+        }
+
+        // Return sorted by count (most common first), limited to top 3
+        return symptomCounts
+            .sorted { $0.value > $1.value }
+            .prefix(3)
+            .map { (symptom: $0.key, count: $0.value) }
+    }
 
     // UK's 14 Major Allergens - Base Categories
     private func getBaseAllergen(for ingredient: String) -> String? {
@@ -972,31 +1016,139 @@ struct FoodPatternAnalysisCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Patterns")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundColor(.primary)
+            // Header with title and export button
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Patterns")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(.primary)
 
-                Text("Common Ingredients from Your Reactions")
-                    .font(.system(size: 13))
-                    .italic()
-                    .foregroundColor(.secondary)
+                    Text("Common Ingredients from Your Reactions")
+                        .font(.system(size: 13))
+                        .italic()
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                // PDF Export button - prominent and conditional on subscription
+                if !allTriggers.isEmpty {
+                    Button(action: {
+                        if subscriptionManager.hasAccess {
+                            showingPDFExportSheet = true
+                        } else {
+                            showingPaywall = true
+                        }
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: subscriptionManager.hasAccess ? "doc.text.fill" : "lock.fill")
+                                .font(.system(size: 14, weight: .medium))
+                            Text("Export")
+                                .font(.system(size: 13, weight: .semibold))
+                        }
+                        .foregroundColor(subscriptionManager.hasAccess ? .blue : .secondary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            Capsule()
+                                .fill(subscriptionManager.hasAccess ? Color.blue.opacity(0.12) : Color.gray.opacity(0.1))
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+
+            // Confidence indicator
+            if !allTriggers.isEmpty {
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(confidenceLevel.color)
+                        .frame(width: 8, height: 8)
+
+                    Text("Confidence: \(confidenceLevel.label)")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(confidenceLevel.color)
+
+                    Text("•")
+                        .foregroundColor(.secondary.opacity(0.5))
+
+                    Text(confidenceLevel.description)
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(confidenceLevel.color.opacity(0.08))
+                )
             }
 
             if allTriggers.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "chart.bar")
-                        .font(.system(size: 48))
-                        .foregroundColor(.secondary.opacity(0.6))
-                    Text("Not enough data")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.secondary)
-                    Text("Log more reactions to see patterns")
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
+                // Enhanced empty state with specific suggestions
+                VStack(spacing: 16) {
+                    Image(systemName: "chart.bar.doc.horizontal")
+                        .font(.system(size: 52))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [Color.purple.opacity(0.6), Color.blue.opacity(0.6)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+
+                    VStack(spacing: 6) {
+                        Text("Build Your Pattern Profile")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundColor(.primary)
+
+                        Text("Log at least 3 reactions to start seeing which ingredients may be causing issues")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+
+                    // Meal logging suggestions
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Tips for better patterns:")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.secondary)
+
+                        HStack(spacing: 8) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(.green)
+                            Text("Log reactions within 24 hours")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                        }
+
+                        HStack(spacing: 8) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(.green)
+                            Text("Include all foods eaten before symptoms")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                        }
+
+                        HStack(spacing: 8) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(.green)
+                            Text("Note specific symptoms for each reaction")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(.systemGray6))
+                    )
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 30)
+                .padding(.vertical, 24)
             } else {
                 VStack(alignment: .leading, spacing: 0) {
                     // Recognised Allergens Section (Simplified)
@@ -1012,7 +1164,8 @@ struct FoodPatternAnalysisCard: View {
                                     SimplifiedAllergenGroup(
                                         allergenCategory: group.category,
                                         categoryPercentage: group.percentage,
-                                        ingredients: group.ingredients
+                                        ingredients: group.ingredients,
+                                        symptoms: symptomsForCategory(group.category)
                                     )
                                     .id(group.category)  // Stable identity to prevent re-rendering
                                 }
@@ -1100,6 +1253,13 @@ struct FoodPatternAnalysisCard: View {
                 )
         )
         .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
+        .sheet(isPresented: $showingPDFExportSheet) {
+            MultipleFoodReactionsPDFExportSheet(reactions: Array(reactionManager.reactions))
+        }
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView()
+                .environmentObject(subscriptionManager)
+        }
     }
 }
 
@@ -1108,6 +1268,7 @@ struct SimplifiedAllergenGroup: View {
     let allergenCategory: String
     let categoryPercentage: Int
     let ingredients: [(ingredient: String, count: Int, percentage: Int, trend: PatternRow.Trend)]
+    let symptoms: [(symptom: String, count: Int)]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -1172,6 +1333,35 @@ struct SimplifiedAllergenGroup: View {
                     .padding(.leading, 2)
                 }
             }
+
+            // Symptom correlation section
+            if !symptoms.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Common symptoms")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .padding(.top, 12)
+
+                    // Display symptoms as tags
+                    HStack(spacing: 6) {
+                        ForEach(symptoms, id: \.symptom) { symptomData in
+                            HStack(spacing: 4) {
+                                Image(systemName: symptomIcon(for: symptomData.symptom))
+                                    .font(.system(size: 10))
+                                Text(symptomData.symptom)
+                                    .font(.system(size: 11, weight: .medium))
+                            }
+                            .foregroundColor(.orange)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                Capsule()
+                                    .fill(Color.orange.opacity(0.12))
+                            )
+                        }
+                    }
+                }
+            }
         }
         .padding(.vertical, 18)
         .padding(.horizontal, 2)
@@ -1188,6 +1378,28 @@ struct SimplifiedAllergenGroup: View {
                 .frame(height: 1),
             alignment: .bottom
         )
+    }
+
+    // Map symptom names to appropriate icons
+    private func symptomIcon(for symptom: String) -> String {
+        let lower = symptom.lowercased()
+        if lower.contains("stomach") || lower.contains("nausea") || lower.contains("cramp") || lower.contains("bloat") {
+            return "stomach.fill"
+        } else if lower.contains("headache") || lower.contains("migraine") {
+            return "brain.head.profile"
+        } else if lower.contains("skin") || lower.contains("rash") || lower.contains("hive") || lower.contains("itch") {
+            return "hand.raised.fill"
+        } else if lower.contains("breath") || lower.contains("wheez") || lower.contains("throat") {
+            return "lungs.fill"
+        } else if lower.contains("fatigue") || lower.contains("tired") {
+            return "battery.25"
+        } else if lower.contains("diarr") || lower.contains("bowel") {
+            return "arrow.down.circle.fill"
+        } else if lower.contains("swell") {
+            return "circle.fill"
+        } else {
+            return "cross.case.fill"
+        }
     }
 }
 
