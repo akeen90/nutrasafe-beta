@@ -312,6 +312,7 @@ struct ManualFoodDetailEntryView: View {
     // UI State
     @State private var entryMode: EntryMode = .manual
     @State private var aiSearchQuery = ""
+    @State private var hasAttemptedSave = false // Track if user has tried to save (for persistent error highlighting)
     @State private var showingIngredients = false
     @State private var isSaving = false
     @State private var showingError = false
@@ -336,8 +337,8 @@ struct ManualFoodDetailEntryView: View {
 
     // Helper to check if a required field is empty and should show error
     private func shouldShowError(for field: String) -> Bool {
-        // Only show error if user has tried to save (isSaving was true at some point)
-        guard showingError || isSaving else { return false }
+        // Only show error if user has tried to save
+        guard hasAttemptedSave else { return false }
 
         switch field {
         case "foodName":
@@ -1477,13 +1478,23 @@ struct ManualFoodDetailEntryView: View {
     }
 
     private func saveFood() {
-        // First check if form is valid
+        // Mark that user has attempted to save (for persistent error highlighting)
+        hasAttemptedSave = true
+
+        // Auto-fill nutrition fields with "0" if empty
+        if calories.isEmpty { calories = "0" }
+        if protein.isEmpty { protein = "0" }
+        if carbs.isEmpty { carbs = "0" }
+        if fat.isEmpty { fat = "0" }
+        if fiber.isEmpty { fiber = "0" }
+        if sugar.isEmpty { sugar = "0" }
+        if sodium.isEmpty { sodium = "0" }
+
+        // First check if form is valid (now only checks food name and brand)
         if !isFormValid {
-            // Show error state for invalid fields
-            isSaving = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                isSaving = false
-            }
+            // Show error state - fields will highlight red due to hasAttemptedSave
+            showingError = true
+            errorMessage = "Please fill in all required fields (marked with *)"
             return
         }
 
@@ -2502,12 +2513,6 @@ struct IngredientOCRCameraView: View {
             .sheet(isPresented: $showingImagePicker) {
                 ImagePickerView(image: $currentCapturedImage, sourceType: .camera)
             }
-            .onAppear {
-                // Automatically show camera on appear
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    showingImagePicker = true
-                }
-            }
         }
     }
 
@@ -2603,74 +2608,154 @@ private struct OCRTipRow: View {
 
 // MARK: - Nutrition OCR Camera View
 
-/// Camera view for scanning nutrition labels with OCR
+/// Camera view for scanning nutrition labels with OCR - supports multiple photos
 struct NutritionOCRCameraView: View {
     let onImageCaptured: (UIImage) -> Void
     let onDismiss: () -> Void
 
     @State private var showingImagePicker = false
-    @State private var capturedImage: UIImage?
+    @State private var capturedImages: [UIImage] = []
+    @State private var currentCapturedImage: UIImage?
+    @State private var isProcessingMultiple = false
 
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
-                if let image = capturedImage {
-                    // Show captured image for confirmation
+                if !capturedImages.isEmpty || currentCapturedImage != nil {
+                    // Show captured images for confirmation
                     ScrollView {
                         VStack(spacing: 16) {
-                            Text("Nutrition Label Captured")
+                            Text(capturedImages.count > 0 ? "Photos Captured (\(capturedImages.count + (currentCapturedImage != nil ? 1 : 0)))" : "Nutrition Label Captured")
                                 .font(.title2.bold())
 
-                            Text("Please verify this is a clear photo of the nutrition information table")
+                            Text(capturedImages.isEmpty
+                                ? "Please verify this is a clear photo of the nutrition table"
+                                : "Add more photos if nutrition info continues on another part of the label")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal)
 
-                            Image(uiImage: image)
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(maxHeight: 300)
-                                .cornerRadius(12)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .stroke(Color.blue, lineWidth: 2)
-                                )
+                            // Show all captured images
+                            if !capturedImages.isEmpty {
+                                VStack(spacing: 12) {
+                                    ForEach(Array(capturedImages.enumerated()), id: \.offset) { index, image in
+                                        HStack(alignment: .top, spacing: 12) {
+                                            Image(uiImage: image)
+                                                .resizable()
+                                                .aspectRatio(contentMode: .fit)
+                                                .frame(maxHeight: 150)
+                                                .cornerRadius(8)
+
+                                            VStack(alignment: .leading, spacing: 8) {
+                                                Text("Photo \(index + 1)")
+                                                    .font(.caption.bold())
+                                                    .foregroundColor(.secondary)
+
+                                                Button(action: {
+                                                    capturedImages.remove(at: index)
+                                                }) {
+                                                    HStack(spacing: 4) {
+                                                        Image(systemName: "trash")
+                                                            .font(.caption)
+                                                        Text("Remove")
+                                                            .font(.caption)
+                                                    }
+                                                    .foregroundColor(.red)
+                                                }
+                                            }
+                                        }
+                                        .padding(12)
+                                        .background(Color(.systemGray6))
+                                        .cornerRadius(12)
+                                    }
+                                }
                                 .padding(.horizontal)
+                            }
+
+                            // Show current image being added
+                            if let currentImage = currentCapturedImage {
+                                VStack(spacing: 12) {
+                                    Text(capturedImages.isEmpty ? "Current Photo" : "New Photo")
+                                        .font(.caption.bold())
+                                        .foregroundColor(.secondary)
+
+                                    Image(uiImage: currentImage)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(maxHeight: 200)
+                                        .cornerRadius(12)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .stroke(Color.green, lineWidth: 2)
+                                        )
+                                }
+                                .padding(.horizontal)
+                            }
 
                             // Action buttons
                             VStack(spacing: 12) {
+                                // Add to collection button (if we have a current image)
+                                if let currentImage = currentCapturedImage {
+                                    Button(action: {
+                                        capturedImages.append(currentImage)
+                                        currentCapturedImage = nil
+                                    }) {
+                                        HStack {
+                                            Image(systemName: "plus.circle.fill")
+                                                .font(.title3)
+                                            Text("Add & Take Another")
+                                                .font(.headline)
+                                        }
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding()
+                                        .background(Color.orange)
+                                        .cornerRadius(12)
+                                    }
+                                }
+
+                                // Extract button
                                 Button(action: {
-                                    onImageCaptured(image)
+                                    extractFromAllImages()
                                 }) {
                                     HStack {
-                                        Image(systemName: "text.viewfinder")
-                                            .font(.title3)
-                                        Text("Extract Nutrition")
+                                        if isProcessingMultiple {
+                                            ProgressView()
+                                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        } else {
+                                            Image(systemName: "tablecells")
+                                                .font(.title3)
+                                        }
+                                        Text(isProcessingMultiple ? "Processing..." : "Extract Nutrition")
                                             .font(.headline)
                                     }
                                     .foregroundColor(.white)
                                     .frame(maxWidth: .infinity)
                                     .padding()
-                                    .background(Color.blue)
+                                    .background(isProcessingMultiple ? Color.gray : Color.green)
                                     .cornerRadius(12)
                                 }
+                                .disabled(isProcessingMultiple)
 
-                                Button(action: {
-                                    capturedImage = nil
-                                    showingImagePicker = true
-                                }) {
-                                    HStack {
-                                        Image(systemName: "camera.fill")
-                                            .font(.title3)
-                                        Text("Retake Photo")
-                                            .font(.headline)
+                                // Retake/Take more button
+                                if !isProcessingMultiple {
+                                    Button(action: {
+                                        currentCapturedImage = nil
+                                        showingImagePicker = true
+                                    }) {
+                                        HStack {
+                                            Image(systemName: "camera.fill")
+                                                .font(.title3)
+                                            Text(capturedImages.isEmpty && currentCapturedImage != nil ? "Retake Photo" : "Take Another Photo")
+                                                .font(.headline)
+                                        }
+                                        .foregroundColor(.green)
+                                        .frame(maxWidth: .infinity)
+                                        .padding()
+                                        .background(Color.green.opacity(0.1))
+                                        .cornerRadius(12)
                                     }
-                                    .foregroundColor(.blue)
-                                    .frame(maxWidth: .infinity)
-                                    .padding()
-                                    .background(Color.blue.opacity(0.1))
-                                    .cornerRadius(12)
                                 }
                             }
                             .padding(.horizontal)
@@ -2679,13 +2764,13 @@ struct NutritionOCRCameraView: View {
                             // Tip about per 100g values
                             HStack(spacing: 8) {
                                 Image(systemName: "info.circle.fill")
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(.green)
                                 Text("For best results, scan the 'per 100g' column of the nutrition table")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
                             .padding(12)
-                            .background(Color.blue.opacity(0.1))
+                            .background(Color.green.opacity(0.1))
                             .cornerRadius(8)
                             .padding(.horizontal)
                         }
@@ -2697,7 +2782,7 @@ struct NutritionOCRCameraView: View {
                         VStack(spacing: 12) {
                             Image(systemName: "tablecells")
                                 .font(.system(size: 60))
-                                .foregroundColor(.blue)
+                                .foregroundColor(.green)
 
                             Text("Scan Nutrition Label")
                                 .font(.title.bold())
@@ -2712,8 +2797,9 @@ struct NutritionOCRCameraView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             OCRTipRow(icon: "lightbulb.fill", color: .yellow, text: "Ensure good lighting")
                             OCRTipRow(icon: "hand.raised.fill", color: .orange, text: "Hold steady to avoid blur")
-                            OCRTipRow(icon: "tablecells", color: .blue, text: "Include the full nutrition table")
-                            OCRTipRow(icon: "textformat.123", color: .green, text: "Focus on the 'per 100g' column")
+                            OCRTipRow(icon: "tablecells", color: .green, text: "Include the full nutrition table")
+                            OCRTipRow(icon: "textformat.123", color: .blue, text: "Focus on the 'per 100g' column")
+                            OCRTipRow(icon: "rectangle.stack.fill", color: .purple, text: "Take multiple photos if needed")
                         }
                         .padding()
                         .background(Color(.systemGray6))
@@ -2732,7 +2818,7 @@ struct NutritionOCRCameraView: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(Color.blue)
+                            .background(Color.green)
                             .cornerRadius(12)
                         }
                         .padding(.horizontal, 40)
@@ -2750,15 +2836,78 @@ struct NutritionOCRCameraView: View {
                 }
             }
             .sheet(isPresented: $showingImagePicker) {
-                ImagePickerView(image: $capturedImage, sourceType: .camera)
+                ImagePickerView(image: $currentCapturedImage, sourceType: .camera)
             }
-            .onAppear {
-                // Automatically show camera on appear
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    showingImagePicker = true
+        }
+    }
+
+    /// Combine all captured images into one for OCR processing
+    private func extractFromAllImages() {
+        // Collect all images
+        var allImages = capturedImages
+        if let current = currentCapturedImage {
+            allImages.append(current)
+        }
+
+        guard !allImages.isEmpty else { return }
+
+        if allImages.count == 1 {
+            // Single image - just pass it through
+            onImageCaptured(allImages[0])
+        } else {
+            // Multiple images - combine them vertically for OCR
+            isProcessingMultiple = true
+
+            DispatchQueue.global(qos: .userInitiated).async {
+                let combinedImage = combineImagesVertically(allImages)
+
+                DispatchQueue.main.async {
+                    isProcessingMultiple = false
+                    onImageCaptured(combinedImage)
                 }
             }
         }
+    }
+
+    /// Combine multiple images into a single vertical strip for OCR
+    private func combineImagesVertically(_ images: [UIImage]) -> UIImage {
+        guard !images.isEmpty else { return UIImage() }
+        if images.count == 1 { return images[0] }
+
+        // Calculate total size
+        let maxWidth = images.map { $0.size.width }.max() ?? 0
+        var totalHeight: CGFloat = 0
+
+        // Scale images to same width and calculate total height
+        var scaledImages: [UIImage] = []
+        for image in images {
+            let scale = maxWidth / image.size.width
+            let scaledHeight = image.size.height * scale
+            totalHeight += scaledHeight
+            scaledImages.append(image)
+        }
+
+        // Add some padding between images
+        let padding: CGFloat = 20
+        totalHeight += padding * CGFloat(images.count - 1)
+
+        // Create combined image
+        let size = CGSize(width: maxWidth, height: totalHeight)
+        UIGraphicsBeginImageContextWithOptions(size, false, 1.0)
+
+        var yOffset: CGFloat = 0
+        for image in scaledImages {
+            let scale = maxWidth / image.size.width
+            let scaledHeight = image.size.height * scale
+            let rect = CGRect(x: 0, y: yOffset, width: maxWidth, height: scaledHeight)
+            image.draw(in: rect)
+            yOffset += scaledHeight + padding
+        }
+
+        let combinedImage = UIGraphicsGetImageFromCurrentImageContext() ?? UIImage()
+        UIGraphicsEndImageContext()
+
+        return combinedImage
     }
 }
 
