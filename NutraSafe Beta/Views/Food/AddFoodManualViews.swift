@@ -331,18 +331,26 @@ struct ManualFoodDetailEntryView: View {
     let mealTimes = ["Breakfast", "Lunch", "Dinner", "Snacks"]
 
     var isFormValid: Bool {
-        // For diary: only need food name and brand (nutrition auto-fills with 0)
-        return !foodName.isEmpty && !brand.isEmpty
+        // For diary: need food name, brand, and main macros (calories, protein, carbs, fat)
+        return !foodName.isEmpty && !brand.isEmpty &&
+               !calories.isEmpty && !protein.isEmpty && !carbs.isEmpty && !fat.isEmpty
     }
 
-    // Get list of missing required fields for error message
+    // Get list of missing required fields for error message (with bullet points)
     private var missingFieldsMessage: String? {
         var missing: [String] = []
         if foodName.isEmpty { missing.append("Food Name") }
         if brand.isEmpty { missing.append("Brand") }
+        if calories.isEmpty { missing.append("Calories") }
+        if protein.isEmpty { missing.append("Protein") }
+        if carbs.isEmpty { missing.append("Carbs") }
+        if fat.isEmpty { missing.append("Fat") }
 
         if missing.isEmpty { return nil }
-        return "Please fill in: \(missing.joined(separator: ", "))"
+
+        // Format with bullet points for clarity
+        let bulletList = missing.map { "• \($0)" }.joined(separator: "\n")
+        return "Please fill in the following required fields:\n\n\(bulletList)"
     }
 
     // Helper to check if a required field is empty and should show error
@@ -355,6 +363,14 @@ struct ManualFoodDetailEntryView: View {
             return foodName.isEmpty
         case "brand":
             return brand.isEmpty
+        case "calories":
+            return calories.isEmpty
+        case "protein":
+            return protein.isEmpty
+        case "carbs":
+            return carbs.isEmpty
+        case "fat":
+            return fat.isEmpty
         default:
             return false
         }
@@ -1483,22 +1499,18 @@ struct ManualFoodDetailEntryView: View {
         // Mark that user has attempted to save (for persistent error highlighting)
         hasAttemptedSave = true
 
-        // Auto-fill nutrition fields with "0" if empty
-        if calories.isEmpty { calories = "0" }
-        if protein.isEmpty { protein = "0" }
-        if carbs.isEmpty { carbs = "0" }
-        if fat.isEmpty { fat = "0" }
-        if fiber.isEmpty { fiber = "0" }
-        if sugar.isEmpty { sugar = "0" }
-        if sodium.isEmpty { sodium = "0" }
-
-        // Check if form is valid (only checks food name and brand)
+        // Check if form is valid (food name, brand, and main macros required)
         if let missingMessage = missingFieldsMessage {
             // Show specific error about which fields are missing
             showingError = true
             errorMessage = missingMessage
             return
         }
+
+        // Auto-fill optional nutrition fields with "0" if empty (main macros already validated)
+        if fiber.isEmpty { fiber = "0" }
+        if sugar.isEmpty { sugar = "0" }
+        if sodium.isEmpty { sodium = "0" }
 
         isSaving = true
 
