@@ -870,7 +870,6 @@ struct AdditiveWatchView: View {
     /// Generates a sensible description based on the additive's group/category
     private func generateGroupDescription(for additive: AdditiveInfo) -> String {
         let group = additive.group.rawValue.lowercased()
-        let name = additive.name
 
         // Color-related groups
         if group.contains("colour") || group.contains("color") {

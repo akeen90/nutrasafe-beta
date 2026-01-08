@@ -22,15 +22,15 @@ final class SubscriptionManager: ObservableObject {
 
     // MARK: - Free Tier Limits
     /// Maximum diary entries free users can add per day
-    static let freeDiaryEntriesPerDay = 5
+    nonisolated static let freeDiaryEntriesPerDay = 5
     /// Maximum reactions visible to free users (older ones blurred)
-    static let freeReactionsLimit = 5
+    nonisolated static let freeReactionsLimit = 5
     /// Maximum Use By items free users can add
-    static let freeUseByItemsLimit = 5
+    nonisolated static let freeUseByItemsLimit = 5
     /// Free users see limited fasting history (days)
-    static let freeFastingHistoryDays = 7
+    nonisolated static let freeFastingHistoryDays = 7
     /// Free users see limited weight history entries
-    static let freeWeightHistoryLimit = 7
+    nonisolated static let freeWeightHistoryLimit = 7
     private var authObserver: NSObjectProtocol?
     private var transactionTask: Task<Void, Never>?
 
