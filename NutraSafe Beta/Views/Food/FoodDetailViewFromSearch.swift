@@ -5284,204 +5284,337 @@ struct SugarScoreInfoView: View {
         }
     }
 
+    /// Check if this food is likely a whole fruit (not juice, dried fruit, or processed)
+    private var isWholeFruit: Bool {
+        let name = food.name.lowercased()
+        let wholeFruits = ["apple", "banana", "orange", "pear", "peach", "plum", "grape", "grapes",
+                          "strawberry", "strawberries", "blueberry", "blueberries", "raspberry", "raspberries",
+                          "mango", "kiwi", "melon", "watermelon", "honeydew", "cantaloupe",
+                          "cherry", "cherries", "apricot", "nectarine", "grapefruit", "tangerine",
+                          "clementine", "satsuma", "papaya", "pineapple", "pomegranate", "passion fruit",
+                          "lychee", "fig", "persimmon", "guava", "dragon fruit"]
+
+        // Check if it's a whole fruit
+        let isFruit = wholeFruits.contains { name.contains($0) }
+
+        // Exclude processed versions
+        let isProcessed = name.contains("juice") || name.contains("dried") || name.contains("jam") ||
+                         name.contains("jelly") || name.contains("syrup") || name.contains("canned") ||
+                         name.contains("yogurt") || name.contains("yoghurt") || name.contains("smoothie") ||
+                         name.contains("ice cream") || name.contains("pie") || name.contains("tart") ||
+                         name.contains("crumble") || name.contains("compote") || name.contains("preserve")
+
+        return isFruit && !isProcessed
+    }
+
     private var tips: [String] {
         var out: [String] = []
-        if food.sugar > 15 { out.append("Choose unsweetened versions or smaller portions.") }
-        if food.sugar > 10 { out.append("Pair with protein or fiber to slow absorption.") }
-        out.append("Watch added sugars like syrups and sweeteners.")
-        out.append("Prefer whole foods: fruit, yoghurt, nuts, seeds.")
+
+        if isWholeFruit {
+            // Tips specific to whole fruits
+            out.append("Whole fruit is a healthy choice - the fibre slows sugar absorption.")
+            out.append("Eating fruit helps you get essential vitamins and antioxidants.")
+            if food.sugar > 15 {
+                out.append("Pair with protein (like nuts or yoghurt) if watching blood sugar.")
+            }
+        } else {
+            // Standard tips for processed foods
+            if food.sugar > 15 { out.append("Choose unsweetened versions or smaller portions.") }
+            if food.sugar > 10 { out.append("Pair with protein or fibre to slow absorption.") }
+            out.append("Watch added sugars like syrups and sweeteners.")
+            out.append("Prefer whole foods: fruit, yoghurt, nuts, seeds.")
+        }
         return out
+    }
+
+    /// Helper to create a section card
+    @ViewBuilder
+    private func sectionCard<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .foregroundColor(.primary)
+            content()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color(.systemGray6))
+        )
     }
 
     var body: some View {
         NavigationView {
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 16) {
-                    HStack(alignment: .center, spacing: 12) {
-                        Text(score.grade.rawValue)
-                            .font(.system(size: 34, weight: .black, design: .rounded))
-                            .foregroundColor(score.color)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(description(for: score.grade))
-                                .font(.headline)
-                            Text("Sugar Score")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
+                VStack(spacing: 16) {
+                    // Header card - centered grade display
+                    VStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(score.color.opacity(0.15))
+                                .frame(width: 80, height: 80)
+                            Text(score.grade.rawValue)
+                                .font(.system(size: 38, weight: .black, design: .rounded))
+                                .foregroundColor(score.color)
                         }
+
+                        Text(description(for: score.grade))
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                            .foregroundColor(.primary)
+
+                        Text("Sugar Score")
+                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                            .foregroundColor(.secondary)
                     }
-                    .padding(16)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
+                    .padding(.horizontal, 16)
                     .background(
-                        RoundedRectangle(cornerRadius: 16)
+                        RoundedRectangle(cornerRadius: 20)
                             .fill(score.color.opacity(0.08))
                             .overlay(
-                                RoundedRectangle(cornerRadius: 16)
+                                RoundedRectangle(cornerRadius: 20)
                                     .stroke(score.color.opacity(0.2), lineWidth: 1)
                             )
                     )
 
-                    Group {
-                        Text("What this means")
-                            .font(.headline)
+                    // Fruit context banner (if applicable)
+                    if isWholeFruit {
+                        HStack(spacing: 12) {
+                            Image(systemName: "leaf.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(.green)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Natural Fruit Sugar")
+                                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                    .foregroundColor(.primary)
+                                Text("Whole fruit contains natural sugars along with fibre, vitamins, and minerals. The fibre helps slow sugar absorption, making it a healthy choice.")
+                                    .font(.system(size: 13, design: .rounded))
+                                    .foregroundColor(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(Color.green.opacity(0.1))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .stroke(Color.green.opacity(0.3), lineWidth: 1)
+                                )
+                        )
+                    }
+
+                    // What this means
+                    sectionCard(title: "What This Means") {
                         Text(score.explanation)
-                            .font(.callout)
-                            .foregroundColor(.primary)
+                            .font(.system(size: 14, design: .rounded))
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
 
-                    Group {
-                        Text("Health Impact")
-                            .font(.headline)
-                        Text(score.healthImpact)
-                            .font(.callout)
-                            .foregroundColor(.primary)
-                    }
+                    // Health impact & recommendation combined
+                    sectionCard(title: "Health Impact") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(score.healthImpact)
+                                .font(.system(size: 14, design: .rounded))
+                                .foregroundColor(.secondary)
 
-                    Group {
-                        Text("Recommendation")
-                            .font(.headline)
-                        Text(score.recommendation)
-                            .font(.callout)
-                            .foregroundColor(.primary)
+                            if !score.recommendation.isEmpty {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "info.circle.fill")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.blue)
+                                    Text(score.recommendation)
+                                        .font(.system(size: 13, design: .rounded))
+                                        .foregroundColor(.primary)
+                                }
+                                .padding(.top, 4)
+                            }
+                        }
                     }
 
                     // Show breakdown if both density and serving grades exist
                     if let servingGrade = score.servingGrade {
-                        Group {
-                            Text("Score Breakdown")
-                                .font(.headline)
-                            VStack(alignment: .leading, spacing: 8) {
+                        sectionCard(title: "Score Breakdown") {
+                            VStack(spacing: 10) {
                                 HStack {
-                                    Text("Density (per 100g):")
-                                        .font(.callout)
+                                    Text("Density (per 100g)")
+                                        .font(.system(size: 14, design: .rounded))
                                         .foregroundColor(.secondary)
                                     Spacer()
                                     Text(score.densityGrade.rawValue)
-                                        .font(.callout.bold())
+                                        .font(.system(size: 16, weight: .bold, design: .rounded))
                                         .foregroundColor(score.densityGrade.color)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 4)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(score.densityGrade.color.opacity(0.15))
+                                        )
                                 }
+
+                                Divider()
+
                                 HStack {
-                                    Text("Per serving:")
-                                        .font(.callout)
+                                    Text("Per serving")
+                                        .font(.system(size: 14, design: .rounded))
                                         .foregroundColor(.secondary)
                                     Spacer()
                                     Text(servingGrade.rawValue)
-                                        .font(.callout.bold())
+                                        .font(.system(size: 16, weight: .bold, design: .rounded))
                                         .foregroundColor(servingGrade.color)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 4)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(servingGrade.color.opacity(0.15))
+                                        )
                                 }
-                                Text("Final grade uses the worse of the two to warn you about large servings.")
-                                    .font(.caption)
+
+                                Text("Final grade uses the worse of the two to account for large servings.")
+                                    .font(.system(size: 12, design: .rounded))
                                     .foregroundColor(.secondary)
                                     .padding(.top, 4)
                             }
                         }
                     }
 
-                    Group {
-                        Text("How we calculate it")
-                            .font(.headline)
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("• Score based on both sugar density (per 100g) and actual serving size")
-                            Text("• Uses the worse of the two scores to warn about large servings")
-                            Text("• Thresholds align with public health guidance")
-                            Text("• Helps you spot foods that pack a lot of sugar per serving")
-                        }
-                        .font(.callout)
-                        .foregroundColor(.secondary)
-                    }
-
-                    Group {
-                        Text("Tips for similar foods")
-                            .font(.headline)
-                        VStack(alignment: .leading, spacing: 8) {
+                    // Tips section
+                    sectionCard(title: isWholeFruit ? "About Fruit & Sugar" : "Tips for Similar Foods") {
+                        VStack(alignment: .leading, spacing: 10) {
                             ForEach(tips, id: \.self) { tip in
-                                Text("• \(tip)")
+                                HStack(alignment: .top, spacing: 10) {
+                                    Image(systemName: isWholeFruit ? "checkmark.circle.fill" : "lightbulb.fill")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(isWholeFruit ? .green : .orange)
+                                        .frame(width: 18)
+                                    Text(tip)
+                                        .font(.system(size: 14, design: .rounded))
+                                        .foregroundColor(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
                             }
                         }
-                        .font(.callout)
-                        .foregroundColor(.secondary)
                     }
 
-                    Group {
-                        Text("Details")
-                            .font(.headline)
-                        Text("Sugar per 100g: \(String(format: "%.1f", food.sugar))g")
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
-                        if let servingSize = score.servingSizeG {
-                            Text("Serving size: \(String(format: "%.0f", servingSize))g")
-                                .font(.footnote)
-                                .foregroundColor(.secondary)
+                    // How we calculate it
+                    sectionCard(title: "How We Calculate It") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            bulletPoint("Score based on both sugar density (per 100g) and actual serving size")
+                            bulletPoint("Uses the worse of the two scores to warn about large servings")
+                            bulletPoint("Thresholds align with NHS and WHO public health guidance")
+                            bulletPoint("Helps you spot foods that pack a lot of sugar per serving")
                         }
-                        Text("Sugar per serving: \(String(format: "%.1f", perServingSugar))g")
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
+                    }
+
+                    // Details card
+                    sectionCard(title: "Nutrition Details") {
+                        VStack(spacing: 8) {
+                            detailRow(label: "Sugar per 100g", value: "\(String(format: "%.1f", food.sugar))g")
+                            if let servingSize = score.servingSizeG {
+                                detailRow(label: "Serving size", value: "\(String(format: "%.0f", servingSize))g")
+                            }
+                            detailRow(label: "Sugar per serving", value: "\(String(format: "%.1f", perServingSugar))g")
+                        }
                     }
 
                     // Citations section
-                    Group {
+                    VStack(alignment: .leading, spacing: 12) {
                         Text("Research Sources")
-                            .font(.headline)
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundColor(.primary)
+                            .padding(.horizontal, 4)
 
-                        VStack(alignment: .leading, spacing: 12) {
-                            ForEach(CitationManager.shared.citations(for: .sugarSalt)) { citation in
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text(citation.organization)
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .foregroundColor(.blue)
+                        ForEach(CitationManager.shared.citations(for: .sugarSalt)) { citation in
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(citation.organization)
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(.blue)
 
-                                    Text(citation.title)
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(.primary)
+                                Text(citation.title)
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.primary)
 
-                                    Text(citation.description)
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.secondary)
-                                        .fixedSize(horizontal: false, vertical: true)
+                                Text(citation.description)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
 
-                                    Button(action: {
-                                        if let url = URL(string: citation.url) {
-                                            UIApplication.shared.open(url)
-                                        }
-                                    }) {
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "link")
-                                                .font(.system(size: 11, weight: .medium))
-                                            Text("View Source")
-                                                .font(.system(size: 12, weight: .medium))
-                                            Spacer()
-                                            Image(systemName: "arrow.up.right")
-                                                .font(.system(size: 10))
-                                        }
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 6)
-                                                .fill(Color.blue)
-                                        )
+                                Button(action: {
+                                    if let url = URL(string: citation.url) {
+                                        UIApplication.shared.open(url)
                                     }
+                                }) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "link")
+                                            .font(.system(size: 11, weight: .medium))
+                                        Text("View Source")
+                                            .font(.system(size: 12, weight: .medium))
+                                        Spacer()
+                                        Image(systemName: "arrow.up.right")
+                                            .font(.system(size: 10))
+                                    }
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .fill(Color.blue)
+                                    )
                                 }
-                                .padding(12)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .fill(Color(.systemGray6))
-                                )
                             }
+                            .padding(12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color(.systemGray6))
+                            )
                         }
 
                         Text("Our sugar scoring is based on WHO and NHS dietary guidelines for sugar intake.")
-                            .font(.caption)
+                            .font(.system(size: 12, design: .rounded))
                             .foregroundColor(.secondary)
                             .padding(.top, 4)
                     }
                 }
                 .padding(20)
             }
+            .background(Color(.systemGroupedBackground))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func bulletPoint(_ text: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text("•")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundColor(.secondary)
+            Text(text)
+                .font(.system(size: 14, design: .rounded))
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    @ViewBuilder
+    private func detailRow(label: String, value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 14, design: .rounded))
+                .foregroundColor(.secondary)
+            Spacer()
+            Text(value)
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .foregroundColor(.primary)
         }
     }
 }

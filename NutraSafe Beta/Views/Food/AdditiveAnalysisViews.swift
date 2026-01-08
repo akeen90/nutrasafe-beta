@@ -381,7 +381,7 @@ struct AdditiveWatchView: View {
             }
             .buttonStyle(PlainButtonStyle())
 
-            // Expandable content
+            // Expandable content - contained within clipped bounds
             if isExpanded {
                 VStack(alignment: .leading, spacing: 16) {
                     // UK-friendly explanation for additives
@@ -393,23 +393,20 @@ struct AdditiveWatchView: View {
                     // Check if ingredients contain meaningful data
                     if !hasMeaningfulIngredients {
                         emptyIngredientsContent
-                            .transition(.opacity)
                     } else if let result = additiveResult {
                         additiveContent(result: result)
-                            .transition(.opacity)
                     } else {
                         loadingContent
                             .frame(minHeight: 100)
-                            .transition(.opacity)
                     }
                 }
                 .padding(.top, 12)
-                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .animation(.easeInOut(duration: 0.3), value: additiveResult != nil)
+        .clipped()
         .animation(.easeInOut(duration: 0.25), value: isExpanded)
+        .animation(.easeInOut(duration: 0.3), value: additiveResult != nil)
         .fullScreenCover(isPresented: $showingSources) {
             SourcesAndCitationsView()
         }
