@@ -529,83 +529,79 @@ struct AddFoundFoodToUseBySheet: View {
 
     private func save() async {
         guard !isSaving else { return }
-        await MainActor.run { self.isSaving = true }
 
         // Generate ID for new item
         let itemId = UUID().uuidString
 
-        // Save image locally first if we have one
-        var firebaseURL: String? = nil
-        if let image = capturedImage {
-            do {
-                try await ImageCacheManager.shared.saveUseByImageAsync(image, for: itemId)
-                #if DEBUG
-                print("✅ Image cached locally for item: \(itemId)")
-                #endif
-            } catch {
-                #if DEBUG
-                print("⚠️ Failed to cache image locally: \(error)")
-                #endif
-            }
+        // Capture data for background task
+        let foodName = food.name
+        let foodBrand = food.brand
+        let expiry = expiryDate
+        let image = capturedImage
 
-            // Upload to Firebase in background for backup/sync
-            do {
-                let url = try await FirebaseManager.shared.uploadUseByItemPhoto(image)
-                #if DEBUG
-                print("☁️ Image uploaded to Firebase: \(url)")
-                #endif
-                firebaseURL = url
-            } catch {
-                #if DEBUG
-                print("⚠️ Firebase upload failed (using local cache): \(error)")
-                #endif
-            }
-        }
+        // Dismiss immediately for instant UX
+        dismiss()
+        onComplete?(.useBy)
 
-        #if DEBUG
-        print("📸 Saving useBy item (ID: \(itemId))")
-
-        #endif
-        let item = UseByInventoryItem(
-            id: itemId,
-            name: food.name,
-            brand: food.brand,
-            quantity: "1",
-            expiryDate: expiryDate,
-            addedDate: Date(),
-            imageURL: firebaseURL
-        )
-        do {
-            try await FirebaseManager.shared.addUseByItem(item)
-            NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
-            await MainActor.run {
-                #if DEBUG
-                print("[UseBy] Save succeeded, dismissing sheet and completing to Use By")
-                #endif
-                dismiss()
-                onComplete?(.useBy)
-            }
-        } catch {
-            let ns = error as NSError
-            #if DEBUG
-            print("Failed to save useBy item: \(ns)")
-            #endif
-            await MainActor.run {
-                isSaving = false
-                // Silently fail for permission errors - just close the sheet
-                if ns.domain == "FIRFirestoreErrorDomain" && ns.code == 7 {
-                    // Missing permissions - post notifications and dismiss without error
-                    NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
-                    NotificationCenter.default.post(name: .navigateToUseBy, object: nil)
+        // Save in background - don't block UI
+        Task.detached(priority: .userInitiated) {
+            // Save image locally first if we have one
+            var firebaseURL: String? = nil
+            if let image = image {
+                do {
+                    try await ImageCacheManager.shared.saveUseByImageAsync(image, for: itemId)
                     #if DEBUG
-                    print("[UseBy] Permission error (code 7), navigating to Use By and dismissing sheet")
+                    print("✅ Image cached locally for item: \(itemId)")
                     #endif
-                    dismiss()
-                    onComplete?(.useBy)
-                } else {
-                    errorMessage = "\(ns.domain) (\(ns.code)): \(ns.localizedDescription)"
-                    showErrorAlert = true
+                } catch {
+                    #if DEBUG
+                    print("⚠️ Failed to cache image locally: \(error)")
+                    #endif
                 }
+
+                // Upload to Firebase in background for backup/sync
+                do {
+                    let url = try await FirebaseManager.shared.uploadUseByItemPhoto(image)
+                    #if DEBUG
+                    print("☁️ Image uploaded to Firebase: \(url)")
+                    #endif
+                    firebaseURL = url
+                } catch {
+                    #if DEBUG
+                    print("⚠️ Firebase upload failed (using local cache): \(error)")
+                    #endif
+                }
+            }
+
+            #if DEBUG
+            print("📸 Saving useBy item in background (ID: \(itemId))")
+            #endif
+
+            let item = UseByInventoryItem(
+                id: itemId,
+                name: foodName,
+                brand: foodBrand,
+                quantity: "1",
+                expiryDate: expiry,
+                addedDate: Date(),
+                imageURL: firebaseURL
+            )
+
+            do {
+                try await FirebaseManager.shared.addUseByItem(item)
+                await MainActor.run {
+                    NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
+                }
+                #if DEBUG
+                print("[UseBy] Background save succeeded for item: \(itemId)")
+                #endif
+            } catch {
+                #if DEBUG
+                let ns = error as NSError
+                print("Failed to save useBy item in background: \(ns)")
+                #endif
+                // Silent failure - item may need to be re-added
+                // Could implement retry logic or local queue here
             }
         }
     }

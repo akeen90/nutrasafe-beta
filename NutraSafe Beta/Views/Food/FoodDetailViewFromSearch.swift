@@ -1525,12 +1525,13 @@ struct FoodDetailViewFromSearch: View {
                     // Ingredients section immediately after nutrition 
                     ingredientsSection
 
-                    // Photo prompts and improvement section right after ingredients (PERFORMANCE: use cached status)
+                    // Show "in review" section if pending, otherwise always show notify button
                     let ingredientsStatus = cachedIngredientsStatus ?? .none
-                    if ingredientsStatus == .unverified || ingredientsStatus == .none {
-                        ingredientVerificationSection
-                    } else if ingredientsStatus == .pending {
+                    if ingredientsStatus == .pending {
                         ingredientInReviewSection
+                    } else {
+                        // Always show notify team option for users to report issues
+                        ingredientVerificationSection
                     }
                     
                     
