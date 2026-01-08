@@ -1962,15 +1962,18 @@ struct WeekDetailView: View {
     @ObservedObject var viewModel: FastingViewModel
     @Environment(\.dismiss) private var dismiss
 
-    // Generate dates for each day of the week (Mon-Sun)
-    private var weekDays: [(date: Date, dayName: String, dayDate: String)] {
+    // Generate dates for each day of the week (most recent first - Sun to Mon)
+    private var weekDays: [(date: Date, dayName: String, dayDate: String, isToday: Bool)] {
         let calendar = Calendar.current
+        let today = Date()
         // PERFORMANCE: Use cached static formatters instead of creating in loop
-        return (0..<7).compactMap { offset in
+        // Reverse order so most recent day is at the top
+        return (0..<7).reversed().compactMap { offset in
             guard let date = calendar.date(byAdding: .day, value: offset, to: week.weekStart) else { return nil }
             return (date: date,
                     dayName: DateHelper.fullDayOfWeekFormatter.string(from: date),
-                    dayDate: DateHelper.monthDayFormatter.string(from: date))
+                    dayDate: DateHelper.monthDayFormatter.string(from: date),
+                    isToday: calendar.isDate(date, inSameDayAs: today))
         }
     }
 
@@ -2077,17 +2080,67 @@ struct WeekDetailView: View {
                 }
 
                 // Daily Breakdown Section - Modern card design showing all fasts
-                Section(header: Text("Daily Breakdown")) {
+                Section {
                     ForEach(weekDays, id: \.date) { day in
                         let allSessions = sessionsForDate(day.date)
+                        let hasActiveFast = allSessions.contains { $0.completionStatus == .active }
 
-                        VStack(alignment: .leading, spacing: 0) {
-                            // Day header
-                            HStack {
+                        VStack(alignment: .leading, spacing: 12) {
+                            // Day header with modern styling
+                            HStack(alignment: .center, spacing: 12) {
+                                // Day indicator circle
+                                ZStack {
+                                    Circle()
+                                        .fill(day.isToday ? Color.purple : (allSessions.isEmpty ? Color.gray.opacity(0.15) : Color.green.opacity(0.15)))
+                                        .frame(width: 44, height: 44)
+
+                                    if hasActiveFast {
+                                        // Pulsing ring for active fast
+                                        Circle()
+                                            .stroke(Color.blue, lineWidth: 2)
+                                            .frame(width: 44, height: 44)
+
+                                        Image(systemName: "flame.fill")
+                                            .font(.system(size: 18))
+                                            .foregroundColor(.blue)
+                                    } else if !allSessions.isEmpty {
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 16, weight: .semibold))
+                                            .foregroundColor(.green)
+                                    } else {
+                                        Text(String(day.dayName.prefix(1)))
+                                            .font(.system(size: 16, weight: .semibold))
+                                            .foregroundColor(day.isToday ? .white : .secondary)
+                                    }
+                                }
+
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(day.dayName)
-                                        .font(.system(size: 16, weight: .semibold))
-                                        .foregroundColor(.primary)
+                                    HStack(spacing: 8) {
+                                        Text(day.dayName)
+                                            .font(.system(size: 17, weight: .semibold))
+                                            .foregroundColor(.primary)
+
+                                        if day.isToday {
+                                            Text("Today")
+                                                .font(.system(size: 11, weight: .bold))
+                                                .foregroundColor(.white)
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 3)
+                                                .background(Color.purple)
+                                                .cornerRadius(6)
+                                        }
+
+                                        if hasActiveFast {
+                                            Text("In Progress")
+                                                .font(.system(size: 11, weight: .bold))
+                                                .foregroundColor(.white)
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 3)
+                                                .background(Color.blue)
+                                                .cornerRadius(6)
+                                        }
+                                    }
+
                                     Text(day.dayDate)
                                         .font(.system(size: 13))
                                         .foregroundColor(.secondary)
@@ -2101,51 +2154,60 @@ struct WeekDetailView: View {
                                         let endTime = session.endTime ?? Date()
                                         return sum + (endTime.timeIntervalSince(session.startTime) / 3600)
                                     }
-                                    Text("\(dayTotal, specifier: "%.1f")h total")
-                                        .font(.system(size: 12, weight: .medium))
-                                        .foregroundColor(.purple)
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 4)
-                                        .background(Color.purple.opacity(0.1))
-                                        .cornerRadius(8)
-                                }
-                            }
-                            .padding(.bottom, allSessions.isEmpty ? 0 : 12)
-
-                            // Show all fasts for this day
-                            if allSessions.isEmpty {
-                                HStack {
-                                    Image(systemName: "moon.stars.fill")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.secondary.opacity(0.5))
-                                    Text("No fasts")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.secondary)
-                                }
-                                .padding(.top, 8)
-                            } else {
-                                ForEach(Array(allSessions.enumerated()), id: \.element.id) { index, session in
-                                    ModernFastCard(
-                                        session: session,
-                                        sessionNumber: allSessions.count > 1 ? index + 1 : nil,
-                                        onClear: {
-                                            Task {
-                                                await viewModel.clearSession(session)
-                                            }
-                                        }
-                                    )
-
-                                    if index < allSessions.count - 1 {
-                                        Divider()
-                                            .padding(.vertical, 8)
+                                    VStack(alignment: .trailing, spacing: 2) {
+                                        Text("\(dayTotal, specifier: "%.1f")h")
+                                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                                            .foregroundColor(hasActiveFast ? .blue : .green)
+                                        Text(allSessions.count == 1 ? "1 fast" : "\(allSessions.count) fasts")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.secondary)
                                     }
                                 }
                             }
+
+                            // Show all fasts for this day
+                            if allSessions.isEmpty {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "moon.stars.fill")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.secondary.opacity(0.4))
+                                    Text("No fasts recorded")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.secondary.opacity(0.7))
+                                }
+                                .padding(.leading, 56)
+                            } else {
+                                VStack(spacing: 0) {
+                                    ForEach(Array(allSessions.enumerated()), id: \.element.id) { index, session in
+                                        ModernFastCard(
+                                            session: session,
+                                            sessionNumber: allSessions.count > 1 ? index + 1 : nil,
+                                            onClear: {
+                                                Task {
+                                                    await viewModel.clearSession(session)
+                                                }
+                                            }
+                                        )
+
+                                        if index < allSessions.count - 1 {
+                                            Divider()
+                                                .padding(.vertical, 10)
+                                        }
+                                    }
+                                }
+                                .padding(12)
+                                .background(Color(.systemGray6).opacity(0.5))
+                                .cornerRadius(10)
+                            }
                         }
-                        .padding()
+                        .padding(16)
                         .background(Color(.systemBackground))
-                        .cornerRadius(12)
-                        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                        .cornerRadius(16)
+                        .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 4)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(day.isToday ? Color.purple.opacity(0.3) : Color.clear, lineWidth: 2)
+                        )
                         .contextMenu {
                             if !allSessions.isEmpty {
                                 Button(role: .destructive) {
@@ -2166,8 +2228,14 @@ struct WeekDetailView: View {
                             }
                         }
                     }
+                } header: {
+                    Text("Daily Breakdown")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .textCase(.uppercase)
+                        .tracking(0.5)
                 }
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                 .listRowBackground(Color.clear)
             }
             .listStyle(.insetGrouped)
@@ -2504,7 +2572,7 @@ struct ModernFastCard: View {
         case .earlyEnd: return "Ended Early"
         case .failed: return "Failed"
         case .skipped: return "Skipped"
-        case .active: return "Active"
+        case .active: return "In Progress"
         }
     }
 
