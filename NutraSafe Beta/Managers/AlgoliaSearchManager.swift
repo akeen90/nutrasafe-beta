@@ -697,15 +697,6 @@ final class AlgoliaSearchManager {
             let verified = (hit["isVerified"] as? Bool) ?? (hit["verified"] as? Bool) ?? false
             let barcode = hit["barcode"] as? String
 
-            #if DEBUG
-            if name.lowercased().contains("olive") {
-                print("🔎 AlgoliaSearchManager parsing '\(name)':")
-                print("   - hit[\"isVerified\"]: \(String(describing: hit["isVerified"]))")
-                print("   - hit[\"verified\"]: \(String(describing: hit["verified"]))")
-                print("   - parsed verified value: \(verified)")
-            }
-            #endif
-
             // Extract ingredients array
             var ingredients: [String]? = nil
             if let ingredientsArray = hit["ingredients"] as? [String] {

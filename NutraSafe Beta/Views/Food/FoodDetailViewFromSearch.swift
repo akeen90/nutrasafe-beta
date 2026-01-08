@@ -713,7 +713,29 @@ struct FoodDetailViewFromSearch: View {
 
             // -or to -our
             "vapor": "vapour",
-            "vapors": "vapours"
+            "vapors": "vapours",
+
+            // Additional food-specific UK spellings
+            "yogurt": "yoghurt",
+            "yogurts": "yoghurts",
+            "donut": "doughnut",
+            "donuts": "doughnuts",
+            "licorice": "liquorice",
+            "gray": "grey",
+            "aging": "ageing",
+            "mold": "mould",
+            "molds": "moulds",
+            "moldy": "mouldy",
+            "analog": "analogue",
+            "catalog": "catalogue",
+            "dialog": "dialogue",
+            "defense": "defence",
+            "offense": "offence",
+            "pretense": "pretence",
+            "license": "licence",
+            "practice": "practise",
+            "savory": "savoury",
+            "savor": "savour"
         ]
 
         // Apply all spelling conversions (case-insensitive word boundary matching)
@@ -819,17 +841,8 @@ struct FoodDetailViewFromSearch: View {
         let userVerifiedFoods = UserDefaults.standard.array(forKey: "userVerifiedFoods") as? [String] ?? []
         let foodKey = "\(food.name)|\(food.brand ?? "")"
 
-        #if DEBUG
-        print("🔍 getIngredientsStatus for '\(food.name)':")
-        print("   - food.isVerified: \(String(describing: food.isVerified))")
-        print("   - displayFood.isVerified: \(String(describing: displayFood.isVerified))")
-        #endif
-
         // PRIORITY 1: Check if food is verified in the database (server-side verification)
         if displayFood.isVerified == true {
-            #if DEBUG
-            print("   ✅ Returning .verified")
-            #endif
             return .verified
         }
 
@@ -1021,56 +1034,88 @@ struct FoodDetailViewFromSearch: View {
 
     // MARK: - Allergen Warning Banner View
     private var allergenWarningBanner: some View {
-        VStack(alignment: .center, spacing: 12) {
-            // Header with warning icons on both sides
-            HStack(spacing: 8) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(.white)
+        VStack(alignment: .leading, spacing: 0) {
+            // Header strip
+            HStack(spacing: 10) {
+                Image(systemName: "shield.exclamationmark.fill")
+                    .font(.system(size: 18, weight: .bold))
 
-                Text("ALLERGEN WARNING")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(.white)
+                Text("ALLERGEN ALERT")
+                    .font(.system(size: 14, weight: .heavy, design: .rounded))
+                    .tracking(1.2)
 
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(.white)
+                Spacer()
+
+                // Count badge
+                Text("\(detectedUserAllergens.count)")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.white.opacity(0.25))
+                    .clipShape(Capsule())
             }
-
-            // Warning message
-            Text("This food contains allergens you've marked:")
-                .font(.system(size: 14))
-                .foregroundColor(.white.opacity(0.9))
-                .multilineTextAlignment(.center)
-
-            // List of detected allergens in a centered wrapping layout
-            HStack(spacing: 8) {
-                Spacer(minLength: 0)
-                ForEach(detectedUserAllergens, id: \.rawValue) { allergen in
-                    Text(allergen.displayName)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.white.opacity(0.2))
-                        .cornerRadius(16)
-                }
-                Spacer(minLength: 0)
-            }
-            .frame(maxWidth: .infinity)
-        }
-        .padding(16)
-        .background(
-            LinearGradient(
-                colors: [Color.red, Color.orange],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+            .foregroundColor(.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(
+                LinearGradient(
+                    colors: [Color(red: 0.75, green: 0.12, blue: 0.12), Color(red: 0.88, green: 0.18, blue: 0.15)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
             )
+
+            // Individual allergen cards
+            VStack(spacing: 10) {
+                ForEach(detectedUserAllergens, id: \.rawValue) { allergen in
+                    HStack(alignment: .center, spacing: 14) {
+                        // Allergen emoji in circle
+                        ZStack {
+                            Circle()
+                                .fill(Color.red.opacity(0.1))
+                                .frame(width: 44, height: 44)
+
+                            Text(allergen.icon)
+                                .font(.system(size: 22))
+                        }
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(allergen.displayName)
+                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                .foregroundColor(.primary)
+
+                            Text("Detected in ingredients")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+
+                        Spacer()
+
+                        // Severity indicator
+                        Image(systemName: allergen.severity == .high ? "exclamationmark.octagon.fill" : "exclamationmark.triangle.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(allergen.severity == .high ? .red : .orange)
+                    }
+                    .padding(14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(colorScheme == .dark ? Color.midnightCardSecondary : Color(.systemGray6))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(Color.red.opacity(0.15), lineWidth: 1)
+                    )
+                }
+            }
+            .padding(14)
+            .background(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.red.opacity(0.25), lineWidth: 2)
         )
-        .cornerRadius(12)
-        .shadow(color: Color.red.opacity(0.3), radius: 8, x: 0, y: 4)
+        .shadow(color: Color.red.opacity(0.15), radius: 12, x: 0, y: 6)
     }
 
 
@@ -2281,67 +2326,195 @@ private var nutritionFactsSection: some View {
         let status: IngredientsStatus?
         let ingredients: [String]?
 
-        var body: some View {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    if status == .pending {
-                        Text("⏳ Awaiting Verification")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.orange)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color.orange.opacity(0.1))
-                            .cornerRadius(6)
-                        Spacer()
-                    }
-                    Text("Ingredients")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(.primary)
-                    if status == .pending {
-                        Spacer()
+        // Common additive/processed ingredient patterns to highlight
+        private let concerningPatterns = [
+            "e1", "e2", "e3", "e4", "e5", "e6", "e9",
+            "modified", "hydrogenated", "maltodextrin", "dextrose",
+            "high fructose", "artificial", "aspartame", "sucralose",
+            "msg", "monosodium glutamate", "sodium nitrite", "sodium nitrate",
+            "bha", "bht", "tbhq", "carrageenan", "polysorbate"
+        ]
+
+        private var processedIngredients: [(ingredient: String, isConcerning: Bool)] {
+            guard let list = ingredients else { return [] }
+
+            // Clean, deduplicate, and format ingredients
+            var seen = Set<String>()
+            return list
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+                .compactMap { ingredient -> (String, Bool)? in
+                    let normalized = ingredient.lowercased()
+                    if seen.contains(normalized) { return nil }
+                    seen.insert(normalized)
+
+                    // Format: capitalize first letter, check if concerning
+                    let formatted = formatIngredient(ingredient)
+                    let isConcerning = concerningPatterns.contains { normalized.contains($0) }
+                    return (formatted, isConcerning)
+                }
+        }
+
+        private func formatIngredient(_ ingredient: String) -> String {
+            var text = ingredient.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { return text }
+
+            // Capitalize first letter, lowercase rest (with exceptions)
+            text = text.prefix(1).uppercased() + text.dropFirst().lowercased()
+
+            // Re-capitalize E-numbers (e.g., e621 -> E621)
+            let eNumberPattern = try? NSRegularExpression(pattern: "\\be(\\d+)", options: [])
+            if let regex = eNumberPattern {
+                let range = NSRange(text.startIndex..., in: text)
+                text = regex.stringByReplacingMatches(in: text, range: range, withTemplate: "E$1")
+            }
+
+            // Re-capitalize vitamin letters (e.g., vitamin b12 -> vitamin B12)
+            let vitaminPattern = try? NSRegularExpression(pattern: "vitamin\\s+([a-z])", options: [])
+            if let regex = vitaminPattern {
+                let range = NSRange(text.startIndex..., in: text)
+                let matches = regex.matches(in: text, range: range)
+                for match in matches.reversed() {
+                    if let letterRange = Range(match.range(at: 1), in: text) {
+                        text.replaceSubrange(letterRange, with: text[letterRange].uppercased())
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
-                .background(colorScheme == .dark ? Color.midnightCard : Color.white)
-                .overlay(
-                    Rectangle().frame(height: 2).foregroundColor(colorScheme == .dark ? Color.gray.opacity(0.3) : .black),
-                    alignment: .bottom
-                )
-                if let ingredientsList = ingredients {
-                    let clean = ingredientsList
-                        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                        .filter { !$0.isEmpty }
-                        .joined(separator: ", ")
-                    Text(clean.isEmpty ? "No ingredients found" : clean)
-                        .font(.system(size: 15))
+            }
+
+            return text
+        }
+
+        private var concerningCount: Int {
+            processedIngredients.filter { $0.isConcerning }.count
+        }
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 0) {
+                // Header
+                HStack(alignment: .center, spacing: 10) {
+                    if status == .pending {
+                        HStack(spacing: 4) {
+                            Image(systemName: "clock.fill")
+                                .font(.system(size: 10))
+                            Text("Pending")
+                        }
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.orange)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.orange.opacity(0.12))
+                        .clipShape(Capsule())
+                    }
+
+                    if status == .verified {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.green)
+                    }
+
+                    Text("Ingredients")
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
                         .foregroundColor(.primary)
-                        .lineLimit(nil)
-                        .multilineTextAlignment(.leading)
-                        .padding(16)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(colorScheme == .dark ? Color.midnightCard : Color.white)
-                } else {
+
+                    Spacer()
+
+                    // Count badge
+                    if !processedIngredients.isEmpty {
+                        Text("\(processedIngredients.count)")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(Color(.systemGray5))
+                            .clipShape(Capsule())
+                    }
+                }
+                .padding(16)
+                .background(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+
+                // Ingredients content
+                if !processedIngredients.isEmpty {
+                    // Use Text concatenation for natural text wrapping
+                    FlowingIngredientsView(ingredients: processedIngredients, colorScheme: colorScheme)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 16)
+                        .background(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+
+                    // Summary footer
+                    if concerningCount > 0 {
+                        HStack(spacing: 16) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.orange)
+                                Text("\(concerningCount) additive\(concerningCount == 1 ? "" : "s") to review")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(colorScheme == .dark ? Color.midnightCardSecondary.opacity(0.5) : Color(.systemGray6))
+                    }
+                } else if ingredients == nil {
                     VStack(alignment: .center, spacing: 8) {
-                        Image(systemName: "exclamationmark.triangle")
-                            .foregroundColor(.orange)
-                            .font(.system(size: 18))
-                        Text("Ingredients information not available")
+                        Image(systemName: "doc.text.magnifyingglass")
+                            .foregroundColor(.secondary)
+                            .font(.system(size: 24))
+                        Text("Ingredients not available")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.secondary)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(20)
-                    .background(colorScheme == .dark ? Color.midnightCard : Color.white)
+                    .padding(24)
+                    .background(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+                } else {
+                    Text("No ingredients found")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                        .padding(16)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
                 }
             }
-            .background(colorScheme == .dark ? Color.midnightCard : Color.white)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(colorScheme == .dark ? Color.gray.opacity(0.3) : Color.black, lineWidth: 2)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(colorScheme == .dark ? Color.gray.opacity(0.2) : Color(.systemGray4), lineWidth: 1.5)
             )
+            .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 2)
             .padding(.horizontal, 16)
+        }
+    }
+
+    // MARK: - Flowing Ingredients View (Text-based for proper wrapping)
+    struct FlowingIngredientsView: View {
+        let ingredients: [(ingredient: String, isConcerning: Bool)]
+        let colorScheme: ColorScheme
+
+        var body: some View {
+            // Build attributed text with proper wrapping
+            let attributedIngredients = ingredients.enumerated().map { index, item -> Text in
+                let suffix = index == ingredients.count - 1 ? "" : ", "
+                if item.isConcerning {
+                    return Text("● ")
+                        .font(.system(size: 8))
+                        .foregroundColor(.orange)
+                    + Text(item.ingredient + suffix)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.orange)
+                } else {
+                    return Text(item.ingredient + suffix)
+                        .font(.system(size: 14))
+                        .foregroundColor(.primary)
+                }
+            }
+
+            return attributedIngredients.reduce(Text(""), +)
+                .lineSpacing(4)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
     
