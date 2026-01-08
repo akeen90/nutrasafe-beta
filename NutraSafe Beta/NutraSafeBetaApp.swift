@@ -77,44 +77,42 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         if let type = userInfo["type"] as? String, type == "fasting" {
             let fastingType = userInfo["fastingType"] as? String ?? ""
 
-            // Handle scheduled fasting notifications (end)
-            if fastingType == "end" {
-                #if DEBUG
-                print("📱 User tapped fasting END notification - navigating to completion screen")
-                #endif
+            // Extract notification context for confirmation flow
+            let planId = userInfo["planId"] as? String ?? ""
+            let planName = userInfo["planName"] as? String ?? ""
+            let durationHours = userInfo["durationHours"] as? Int ?? 16
+            let scheduledStartTime = userInfo["scheduledStartTime"] as? TimeInterval
+            let scheduledEndTime = userInfo["scheduledEndTime"] as? TimeInterval
 
-                // Navigate to Fasting tab to show completion
-                DispatchQueue.main.async {
-                    NotificationCenter.default.post(name: .navigateToFasting, object: nil)
-                }
-            } else {
-                // Legacy notification handling (for existing manual sessions)
-                // Validate session ID before acting on notification
-                let activeFastSessionId = UserDefaults.standard.string(forKey: "activeFastSessionId") ?? ""
-                let notificationSessionId = userInfo["sessionId"] as? String ?? ""
+            #if DEBUG
+            print("📱 Fasting notification tapped:")
+            print("   - Type: \(fastingType)")
+            print("   - Plan: \(planName) (\(durationHours)h)")
+            if let startTime = scheduledStartTime {
+                print("   - Scheduled start: \(Date(timeIntervalSince1970: startTime))")
+            }
+            #endif
 
-                if activeFastSessionId.isEmpty || notificationSessionId != activeFastSessionId {
-                    #if DEBUG
-                    print("🚫 Ignoring tap on stale fasting notification")
-                    #endif
-                    #if DEBUG
-                    print("   - Active session: \(activeFastSessionId)")
-                    #endif
-                    #if DEBUG
-                    print("   - Notification session: \(notificationSessionId)")
-                    #endif
-                    completionHandler()
-                    return
-                }
+            // Navigate to Fasting tab first
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .navigateToFasting, object: nil)
+            }
 
-                #if DEBUG
-                print("📱 User tapped valid fasting notification - navigating to Fasting tab")
-                #endif
-
-                // Post notification to trigger navigation to Fasting
-                DispatchQueue.main.async {
-                    NotificationCenter.default.post(name: .navigateToFasting, object: nil)
-                }
+            // Then trigger confirmation flow with context after navigation completes
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                let confirmationInfo: [String: Any] = [
+                    "fastingType": fastingType,
+                    "planId": planId,
+                    "planName": planName,
+                    "durationHours": durationHours,
+                    "scheduledStartTime": scheduledStartTime ?? Date().timeIntervalSince1970,
+                    "scheduledEndTime": scheduledEndTime ?? Date().timeIntervalSince1970
+                ]
+                NotificationCenter.default.post(
+                    name: .fastingConfirmationRequired,
+                    object: nil,
+                    userInfo: confirmationInfo
+                )
             }
         }
 

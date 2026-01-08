@@ -33,6 +33,8 @@ export { getUserReports, updateUserReport, deleteUserReport } from './user-repor
 export { saveFood, deleteFood, batchSaveFoods } from './save-food';
 export { parseMicronutrientsWithAI, parseMicronutrientsWithAICached } from './parse-micronutrients-ai';
 export { parseAdditivesWithAI, parseAdditivesWithAICached } from './parse-additives-ai';
+export { parseNutritionOCR, parseNutritionOCRCached } from './parse-nutrition-ocr';
+export { parseIngredientsOCR, parseIngredientsOCRCached } from './parse-ingredients-ocr';
 export { findIngredients } from './find-ingredients';
 export { auditMissingIngredients } from './audit-missing-ingredients';
 

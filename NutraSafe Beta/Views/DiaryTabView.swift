@@ -1151,6 +1151,7 @@ struct CategoricalNutrientTrackingView: View {
     @State private var selectedWeekStart: Date = Date()
     @State private var showCalendar: Bool = false
     @State private var hasInitiallyLoaded: Bool = false // Prevent duplicate initial loads
+    @State private var weekNavigationTask: Task<Void, Never>? // Debounce task for rapid navigation
 
     var body: some View {
         VStack(spacing: 20) {
@@ -1308,7 +1309,7 @@ struct CategoricalNutrientTrackingView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(Color(hex: "#5856D6"))
+                    .background(Color(hex: "#5856D6").opacity(vm.isLoading ? 0.6 : 1.0))
                     .cornerRadius(10)
                 }
 
@@ -1318,19 +1319,27 @@ struct CategoricalNutrientTrackingView: View {
                     loadWeekData()
                     selectedDate = Date()  // Set calendar to today AFTER loading week data
                 }) {
-                    Text("This Week")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(
-                            LinearGradient(
-                                colors: [Color(hex: "#3FD17C"), Color(hex: "#57A5FF")],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
+                    HStack(spacing: 6) {
+                        if vm.isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(0.8)
+                        }
+                        Text(vm.isLoading ? "Loading..." : "This Week")
+                            .font(.system(size: 14, weight: .semibold))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(
+                        LinearGradient(
+                            colors: [Color(hex: "#3FD17C"), Color(hex: "#57A5FF")],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
                         )
-                        .cornerRadius(10)
+                        .opacity(vm.isLoading ? 0.6 : 1.0)
+                    )
+                    .cornerRadius(10)
                 }
 
                 // Next week button
@@ -1347,11 +1356,12 @@ struct CategoricalNutrientTrackingView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(Color(hex: "#5856D6"))
+                    .background(Color(hex: "#5856D6").opacity(vm.isLoading ? 0.6 : 1.0))
                     .cornerRadius(10)
                 }
             }
             .padding(.horizontal, 20)
+            .animation(.easeInOut(duration: 0.2), value: vm.isLoading)
         }
         .padding(.top, 8)
         .padding(.bottom, 4)
@@ -1812,8 +1822,18 @@ struct CategoricalNutrientTrackingView: View {
 
     /// Single entry point for all data load requests
     /// Consolidates all triggers to prevent duplicate loads and provide unified logging
+    /// Uses debouncing to handle rapid week navigation without stalling
     private func requestDataLoad(for targetDate: Date? = nil, reason: String) {
-        Task {
+        // Cancel any pending navigation task (debouncing)
+        weekNavigationTask?.cancel()
+
+        weekNavigationTask = Task {
+            // Brief debounce delay for rapid tapping (150ms)
+            try? await Task.sleep(nanoseconds: 150_000_000)
+
+            // Check if cancelled during sleep (user tapped again)
+            if Task.isCancelled { return }
+
             let calendar = Calendar.current
 
             // If no target date provided, use week offset to calculate it
@@ -2054,7 +2074,7 @@ final class CategoricalNutrientViewModel: ObservableObject {
         }
         let mondayStart = calendar.startOfDay(for: monday)
 
-        // Prevent duplicate loads for the same week
+        // Prevent duplicate loads for the same week (only if already loading THIS week)
         if let currentDate = currentLoadingDate, calendar.isDate(currentDate, equalTo: mondayStart, toGranularity: .day) {
             #if DEBUG
             print("⚠️ Already loading data for this week, skipping duplicate request")
@@ -2063,16 +2083,15 @@ final class CategoricalNutrientViewModel: ObservableObject {
         }
 
         // Cancel any existing load task and wait for it to complete
-        loadTask?.cancel()
+        if let existingTask = loadTask {
+            existingTask.cancel()
+            // Wait briefly for the task to acknowledge cancellation
+            try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
+        }
         loadTask = nil
 
-        // Guard against concurrent loads
-        guard !isLoading else {
-            #if DEBUG
-            print("⚠️ Already loading data, skipping duplicate request")
-            #endif
-            return
-        }
+        // Reset loading state if a previous task was cancelled
+        isLoading = false
 
         // Verify manager exists before proceeding
         guard diaryManager != nil else {

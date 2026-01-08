@@ -23,6 +23,11 @@ class FastingViewModel: ObservableObject {
     @Published var error: Error?
     @Published var isLoading = false
 
+    // MARK: - Confirmation Flow State (Clock-in/Clock-out)
+    @Published var showingStartConfirmation = false
+    @Published var showingEndConfirmation = false
+    @Published var confirmationContext: FastingConfirmationContext?
+
     // PERFORMANCE: Memoized week summaries - only recalculated when recentSessions changes
     @Published private(set) var weekSummaries: [WeekSummary] = []
 
@@ -1856,6 +1861,212 @@ class FastingViewModel: ObservableObject {
 
         let minutesSinceEnd = Date().timeIntervalSince(endTime) / 60
         return minutesSinceEnd <= 60 ? lastSession : nil
+    }
+
+    // MARK: - Confirmation Flow (Clock-in/Clock-out)
+
+    /// Handle incoming notification confirmation request
+    func handleConfirmationNotification(userInfo: [AnyHashable: Any]) {
+        let fastingType = userInfo["fastingType"] as? String ?? ""
+        let planId = userInfo["planId"] as? String ?? ""
+        let planName = userInfo["planName"] as? String ?? ""
+        let durationHours = userInfo["durationHours"] as? Int ?? 16
+        let scheduledTime: Date
+
+        if fastingType == "end" {
+            if let scheduledEndTime = userInfo["scheduledEndTime"] as? TimeInterval {
+                scheduledTime = Date(timeIntervalSince1970: scheduledEndTime)
+            } else {
+                scheduledTime = Date()
+            }
+        } else {
+            if let scheduledStartTime = userInfo["scheduledStartTime"] as? TimeInterval {
+                scheduledTime = Date(timeIntervalSince1970: scheduledStartTime)
+            } else {
+                scheduledTime = Date()
+            }
+        }
+
+        let context = FastingConfirmationContext(
+            fastingType: fastingType,
+            planId: planId,
+            planName: planName,
+            durationHours: durationHours,
+            scheduledTime: scheduledTime
+        )
+
+        confirmationContext = context
+
+        #if DEBUG
+        print("📱 Handling fasting confirmation:")
+        print("   - Type: \(fastingType)")
+        print("   - Plan: \(planName)")
+        print("   - Scheduled: \(scheduledTime)")
+        #endif
+
+        // Show appropriate confirmation sheet
+        if fastingType == "start" {
+            showingStartConfirmation = true
+        } else if fastingType == "end" {
+            showingEndConfirmation = true
+        }
+    }
+
+    /// Confirm start at scheduled time (clock-in)
+    func confirmStartAtScheduledTime() async {
+        guard let context = confirmationContext,
+              let plan = activePlan else {
+            #if DEBUG
+            print("❌ Cannot confirm start - missing context or plan")
+            #endif
+            return
+        }
+
+        isLoading = true
+        defer { isLoading = false }
+
+        // Create a new session starting at the scheduled time
+        var session = FastingManager.createSession(
+            userId: userId,
+            plan: plan,
+            targetDurationHours: context.durationHours,
+            startTime: context.scheduledTime
+        )
+
+        do {
+            let savedId = try await firebaseManager.saveFastingSession(session)
+            session.id = savedId
+            self.activeSession = session
+            await loadRecentSessions()
+
+            // Schedule notifications for this immediate fast
+            if let plan = activePlan {
+                try await FastingNotificationManager.shared.scheduleImmediateFastNotifications(
+                    for: plan,
+                    startingAt: context.scheduledTime
+                )
+            }
+
+            #if DEBUG
+            print("✅ Fast started at scheduled time: \(context.scheduledTime)")
+            #endif
+        } catch {
+            self.error = error
+            self.showError = true
+        }
+
+        confirmationContext = nil
+    }
+
+    /// Confirm start at custom time (clock-in with adjustment)
+    func confirmStartAtCustomTime(_ customTime: Date) async {
+        guard let context = confirmationContext,
+              let plan = activePlan else {
+            #if DEBUG
+            print("❌ Cannot confirm start - missing context or plan")
+            #endif
+            return
+        }
+
+        isLoading = true
+        defer { isLoading = false }
+
+        var session = FastingManager.createSession(
+            userId: userId,
+            plan: plan,
+            targetDurationHours: context.durationHours,
+            startTime: customTime
+        )
+        session.manuallyEdited = true
+        session.originalScheduledStart = context.scheduledTime
+
+        do {
+            let savedId = try await firebaseManager.saveFastingSession(session)
+            session.id = savedId
+            self.activeSession = session
+            await loadRecentSessions()
+
+            // Schedule notifications from custom start time
+            if let plan = activePlan {
+                try await FastingNotificationManager.shared.scheduleImmediateFastNotifications(
+                    for: plan,
+                    startingAt: customTime
+                )
+            }
+
+            #if DEBUG
+            print("✅ Fast started at custom time: \(customTime)")
+            #endif
+        } catch {
+            self.error = error
+            self.showError = true
+        }
+
+        confirmationContext = nil
+    }
+
+    /// User indicated they haven't started yet
+    func confirmNotStartedYet() {
+        #if DEBUG
+        print("📝 User hasn't started fasting yet - no session created")
+        #endif
+        // Don't create a session - user will start later
+        confirmationContext = nil
+    }
+
+    /// Confirm end now (clock-out)
+    func confirmEndNow() async {
+        guard activeSession != nil else {
+            #if DEBUG
+            print("❌ Cannot confirm end - no active session")
+            #endif
+            return
+        }
+
+        _ = await endFastingSession()
+        confirmationContext = nil
+    }
+
+    /// Confirm end at custom time (clock-out with adjustment)
+    func confirmEndAtCustomTime(_ customTime: Date) async {
+        guard let session = activeSession else {
+            #if DEBUG
+            print("❌ Cannot confirm end - no active session")
+            #endif
+            return
+        }
+
+        isLoading = true
+        defer { isLoading = false }
+
+        // Use FastingManager.endSession to properly calculate completion status
+        var endedSession = FastingManager.endSession(session, endTime: customTime)
+        endedSession.manuallyEdited = true
+
+        do {
+            try await firebaseManager.updateFastingSession(endedSession)
+            self.activeSession = nil
+            await loadRecentSessions()
+            await loadAnalytics()
+
+            #if DEBUG
+            print("✅ Fast ended at custom time: \(customTime)")
+            #endif
+        } catch {
+            self.error = error
+            self.showError = true
+        }
+
+        confirmationContext = nil
+    }
+
+    /// User wants to continue fasting past target
+    func confirmContinueFasting() {
+        #if DEBUG
+        print("💪 User continuing to fast past target")
+        #endif
+        // Don't end the session - let it continue
+        confirmationContext = nil
     }
 
     // MARK: - Preview

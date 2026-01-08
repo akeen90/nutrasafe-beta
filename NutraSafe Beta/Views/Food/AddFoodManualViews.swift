@@ -10,6 +10,7 @@ import SwiftUI
 import Foundation
 import AVFoundation
 import FirebaseFirestore
+import FirebaseFunctions
 import Vision
 
 // MARK: - Ingredient Finder Models & Service
@@ -321,6 +322,10 @@ struct ManualFoodDetailEntryView: View {
     @State private var showingIngredientCamera = false
     @State private var isProcessingOCR = false
 
+    // Nutrition OCR state
+    @State private var showingNutritionCamera = false
+    @State private var isProcessingNutritionOCR = false
+
     let servingUnits = ["g", "ml", "oz", "cup", "tbsp", "tsp", "piece", "slice", "serving"]
     let mealTimes = ["Breakfast", "Lunch", "Dinner", "Snacks"]
 
@@ -487,7 +492,34 @@ struct ManualFoodDetailEntryView: View {
 
                         // Core Nutrition Section
                         VStack(alignment: .leading, spacing: 16) {
-                            SectionHeader(title: isPerUnit ? "Core Nutrition (per unit)" : "Core Nutrition (per 100g)")
+                            HStack {
+                                SectionHeader(title: isPerUnit ? "Core Nutrition (per unit)" : "Core Nutrition (per 100g)")
+
+                                Spacer()
+
+                                Button(action: {
+                                    showingNutritionCamera = true
+                                }) {
+                                    HStack(spacing: 6) {
+                                        if isProcessingNutritionOCR {
+                                            ProgressView()
+                                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                                .scaleEffect(0.8)
+                                        } else {
+                                            Image(systemName: "camera.fill")
+                                                .font(.system(size: 14))
+                                        }
+                                        Text("Scan")
+                                            .font(.system(size: 14, weight: .medium))
+                                    }
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(Color.blue)
+                                    .cornerRadius(8)
+                                }
+                                .disabled(isProcessingNutritionOCR)
+                            }
 
                             VStack(spacing: 12) {
                                 ManualNutritionInputRow(label: "Energy", value: $calories, unit: "kcal", isRequired: true, showError: shouldShowError(for: "calories"))
@@ -780,6 +812,17 @@ struct ManualFoodDetailEntryView: View {
                     }
                 )
             }
+            .fullScreenCover(isPresented: $showingNutritionCamera) {
+                NutritionOCRCameraView(
+                    onImageCaptured: { image in
+                        showingNutritionCamera = false
+                        processNutritionImage(image)
+                    },
+                    onDismiss: {
+                        showingNutritionCamera = false
+                    }
+                )
+            }
             .onAppear {
                 // Initialize barcode from prefilledBarcode if provided
                 if let prefilledBarcode = prefilledBarcode {
@@ -789,33 +832,135 @@ struct ManualFoodDetailEntryView: View {
         }
     }
 
-    /// Process an image to extract ingredients text using Vision OCR
+    /// Process an image to extract ingredients text using Vision OCR + AI comprehension
     private func processIngredientImage(_ image: UIImage) {
         isProcessingOCR = true
 
         Task {
             do {
+                // Step 1: Extract text using Vision OCR
                 let extractedText = try await extractTextFromImage(image)
 
-                await MainActor.run {
-                    isProcessingOCR = false
-
-                    if !extractedText.isEmpty {
-                        // Clean up and format the extracted text
-                        ingredientsText = cleanIngredientText(extractedText)
-                    } else {
+                guard !extractedText.isEmpty else {
+                    await MainActor.run {
+                        isProcessingOCR = false
                         errorMessage = "Could not read text from the image. Please try again with a clearer photo."
                         showingError = true
                     }
+                    return
                 }
-            } catch {
+
+                #if DEBUG
+                print("📝 Ingredient OCR raw text: \(extractedText.prefix(300))...")
+                #endif
+
+                // Step 2: Send to AI for intelligent parsing
+                let ingredientsData = try await parseIngredientsWithAI(
+                    ocrText: extractedText,
+                    productName: foodName.isEmpty ? nil : foodName,
+                    brand: brand.isEmpty ? nil : brand
+                )
+
                 await MainActor.run {
                     isProcessingOCR = false
-                    errorMessage = "Failed to process image: \(error.localizedDescription)"
-                    showingError = true
+
+                    if !ingredientsData.ingredientsText.isEmpty {
+                        ingredientsText = ingredientsData.ingredientsText
+
+                        #if DEBUG
+                        print("✅ AI Ingredients Extraction Complete:")
+                        print("   Ingredients: \(ingredientsData.ingredients.count) items")
+                        print("   Allergens: \(ingredientsData.allergens)")
+                        print("   Confidence: \(ingredientsData.confidence)")
+                        if let warnings = ingredientsData.warnings {
+                            print("   Warnings: \(warnings)")
+                        }
+                        #endif
+                    } else {
+                        // Fallback to local cleaning if AI returns empty
+                        ingredientsText = cleanIngredientText(extractedText)
+                    }
+                }
+            } catch {
+                // AI failed - fallback to local regex-based cleaning
+                #if DEBUG
+                print("⚠️ AI ingredient parsing failed, using local fallback: \(error.localizedDescription)")
+                #endif
+
+                do {
+                    let extractedText = try await extractTextFromImage(image)
+                    await MainActor.run {
+                        isProcessingOCR = false
+                        if !extractedText.isEmpty {
+                            ingredientsText = cleanIngredientText(extractedText)
+                        } else {
+                            errorMessage = "Could not read text from the image. Please try again with a clearer photo."
+                            showingError = true
+                        }
+                    }
+                } catch {
+                    await MainActor.run {
+                        isProcessingOCR = false
+                        errorMessage = "Failed to process image: \(error.localizedDescription)"
+                        showingError = true
+                    }
                 }
             }
         }
+    }
+
+    /// AI-powered ingredients parsing response model
+    struct AIIngredientsData {
+        var ingredients: [String] = []
+        var ingredientsText: String = ""
+        var allergens: [String] = []
+        var containsStatement: String?
+        var confidence: Double = 0
+        var warnings: [String]?
+    }
+
+    /// Call Firebase Cloud Function for AI-powered ingredients parsing
+    private func parseIngredientsWithAI(ocrText: String, productName: String?, brand: String?) async throws -> AIIngredientsData {
+        let functions = Functions.functions()
+        let callable = functions.httpsCallable("parseIngredientsOCRCached")
+
+        var requestData: [String: Any] = ["ocrText": ocrText]
+        if let name = productName {
+            requestData["productName"] = name
+        }
+        if let brandName = brand {
+            requestData["brand"] = brandName
+        }
+
+        let result = try await callable.call(requestData)
+
+        guard let data = result.data as? [String: Any] else {
+            throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response from AI"])
+        }
+
+        // Parse the response
+        var ingredientsData = AIIngredientsData()
+
+        if let ingredients = data["ingredients"] as? [String] {
+            ingredientsData.ingredients = ingredients
+        }
+        if let ingredientsText = data["ingredientsText"] as? String {
+            ingredientsData.ingredientsText = ingredientsText
+        }
+        if let allergens = data["allergens"] as? [String] {
+            ingredientsData.allergens = allergens
+        }
+        if let containsStatement = data["containsStatement"] as? String {
+            ingredientsData.containsStatement = containsStatement
+        }
+        if let confidence = data["confidence"] as? Double {
+            ingredientsData.confidence = confidence
+        }
+        if let warnings = data["warnings"] as? [String] {
+            ingredientsData.warnings = warnings
+        }
+
+        return ingredientsData
     }
 
     /// Extract text from image using Vision framework
@@ -852,14 +997,83 @@ struct ManualFoodDetailEntryView: View {
         }
     }
 
-    /// Clean up OCR text to format as ingredient list
+    /// Clean up OCR text to format as ingredient list - intelligently extracts ingredients from mixed text
     private func cleanIngredientText(_ text: String) -> String {
-        var cleaned = text
+        // Try to extract just the ingredients section from mixed OCR text
+        let extracted = extractIngredientsSection(from: text)
 
-        // Remove common headers/labels
-        let headersToRemove = ["INGREDIENTS:", "INGREDIENTS", "Ingredients:", "Ingredients"]
+        var cleaned = extracted
+
+        // Remove common headers/labels (case insensitive)
+        let headersToRemove = [
+            "INGREDIENTS:", "INGREDIENTS", "Ingredients:", "Ingredients",
+            "INGREDIENSER:", "INGREDIENSER", "INGRÉDIENTS:", "INGRÉDIENTS",
+            "Zutaten:", "ZUTATEN:", "Ingredienti:", "INGREDIENTI:",
+            "Contains:", "CONTAINS:", "May contain:", "MAY CONTAIN:",
+            "Allergens:", "ALLERGENS:", "For allergens see ingredients in bold",
+            "FOR ALLERGENS SEE INGREDIENTS IN BOLD", "See ingredients in bold",
+            "Made in a facility", "MADE IN A FACILITY", "Produced in"
+        ]
         for header in headersToRemove {
             cleaned = cleaned.replacingOccurrences(of: header, with: "", options: .caseInsensitive)
+        }
+
+        // Remove nutrition-related text that might be captured
+        let nutritionPatterns = [
+            "per 100g", "per 100ml", "per serving", "per portion",
+            "energy", "kj", "kcal", "protein", "carbohydrate", "fat",
+            "saturates", "sugars", "salt", "fibre", "of which",
+            "typical values", "nutrition information", "nutritional information"
+        ]
+        for pattern in nutritionPatterns {
+            if let range = cleaned.range(of: pattern, options: .caseInsensitive) {
+                // Find the start of this nutrition section and truncate
+                let beforeNutrition = String(cleaned[..<range.lowerBound])
+                if beforeNutrition.count > 50 { // Only truncate if we have substantial ingredients before
+                    cleaned = beforeNutrition
+                    break
+                }
+            }
+        }
+
+        // Remove common non-ingredient text patterns
+        let patternsToRemove = [
+            #"best before[:\s].*"#,
+            #"use by[:\s].*"#,
+            #"store in.*"#,
+            #"storage[:\s].*"#,
+            #"keep refrigerated.*"#,
+            #"once opened.*"#,
+            #"net weight[:\s].*"#,
+            #"net wt[:\s].*"#,
+            #"\d+\s*[gG]\s*[eE]?"#, // Weight like "400g" or "400g e"
+            #"www\..*"#, // Website URLs
+            #"http[s]?://.*"#, // Full URLs
+            #"tel[:\s].*"#, // Phone numbers
+            #"phone[:\s].*"#, // Phone numbers
+            #"fax[:\s].*"#, // Fax numbers
+            #"\+\d{2}[\s\-]?\d+"#, // International phone numbers
+            #"[A-Z]{2}\d{3,}"#, // Batch codes
+            // UK postcodes (e.g., SW1A 1AA, M1 1AA, B1 1AA)
+            #"[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2}"#,
+            // Street addresses - common UK patterns
+            #"\d+[\-\s]?\d*\s+(street|road|avenue|lane|drive|way|close|court|place|crescent|grove|park|terrace|gardens)\b"#,
+            // Company/address keywords with following text
+            #"(distributed by|manufactured by|produced by|packed by|imported by|made by)[:\s].*"#,
+            #"(address|registered office|head office)[:\s].*"#,
+            // City/Town names followed by postcodes or country
+            #"(ltd|limited|plc|inc|corp)[,\.\s].*"#,
+            // Remove lines that look like full addresses (multiple commas with location words)
+            #"[A-Z][a-z]+,\s*[A-Z][a-z]+,?\s*[A-Z]{1,2}\d"#,
+            // Country names at end of addresses
+            #",?\s*(united kingdom|uk|england|scotland|wales|ireland)\b"#,
+            // Email addresses
+            #"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"#,
+        ]
+        for pattern in patternsToRemove {
+            if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
+                cleaned = regex.stringByReplacingMatches(in: cleaned, range: NSRange(cleaned.startIndex..., in: cleaned), withTemplate: "")
+            }
         }
 
         // Normalize whitespace
@@ -867,10 +1081,285 @@ struct ManualFoodDetailEntryView: View {
             .filter { !$0.isEmpty }
             .joined(separator: " ")
 
-        // Trim
-        cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Clean up punctuation - fix double commas, spaces before commas
+        cleaned = cleaned.replacingOccurrences(of: " ,", with: ",")
+        cleaned = cleaned.replacingOccurrences(of: ",,", with: ",")
+        cleaned = cleaned.replacingOccurrences(of: ", ,", with: ",")
+
+        // Remove trailing/leading punctuation
+        cleaned = cleaned.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: ",;.")))
 
         return cleaned
+    }
+
+    /// Extract the ingredients section from OCR text that may contain other product information
+    private func extractIngredientsSection(from text: String) -> String {
+        let lowercased = text.lowercased()
+
+        // Look for "ingredients" marker and extract from there
+        let ingredientMarkers = ["ingredients:", "ingredients", "ingredienser:", "ingrédients:", "zutaten:", "ingredienti:"]
+
+        var startIndex: String.Index? = nil
+        var markerLength = 0
+
+        for marker in ingredientMarkers {
+            if let range = lowercased.range(of: marker) {
+                if startIndex == nil || range.lowerBound < startIndex! {
+                    startIndex = range.lowerBound
+                    markerLength = marker.count
+                }
+            }
+        }
+
+        // If we found an ingredients marker, extract from there
+        if let start = startIndex {
+            let afterMarker = text.index(start, offsetBy: markerLength, limitedBy: text.endIndex) ?? start
+            var extracted = String(text[afterMarker...])
+
+            // Look for end markers that indicate ingredients section is over
+            let endMarkers = [
+                "nutrition", "nutritional", "typical values", "energy",
+                "allergens:", "may contain", "storage", "store in",
+                "best before", "use by", "produced by", "manufactured",
+                "for more information", "customer services",
+                // Address-related end markers
+                "distributed by", "packed by", "imported by", "made by",
+                "registered office", "head office", "address:",
+                "ltd,", "limited,", "plc,", "inc,",
+                "united kingdom", "england", "scotland", "wales"
+            ]
+
+            for endMarker in endMarkers {
+                if let endRange = extracted.lowercased().range(of: endMarker) {
+                    // Only truncate if we have substantial content before this marker
+                    let contentBefore = String(extracted[..<endRange.lowerBound])
+                    if contentBefore.count > 30 {
+                        extracted = contentBefore
+                        break
+                    }
+                }
+            }
+
+            return extracted
+        }
+
+        // No marker found - try to detect ingredients by pattern
+        // Ingredients typically: comma-separated, contain parentheses, E-numbers, percentages
+        let lines = text.components(separatedBy: .newlines)
+        var ingredientLines: [String] = []
+        var foundIngredientPattern = false
+
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.isEmpty { continue }
+
+            // Check if line looks like ingredients
+            let hasCommas = trimmed.contains(",")
+            let hasParentheses = trimmed.contains("(") && trimmed.contains(")")
+            let hasENumbers = trimmed.range(of: #"[Ee]\s?\d{3}"#, options: .regularExpression) != nil
+            let hasPercentages = trimmed.contains("%")
+            let looksLikeIngredients = (hasCommas && (hasParentheses || hasENumbers || hasPercentages)) ||
+                                       (hasCommas && trimmed.count > 50)
+
+            if looksLikeIngredients {
+                foundIngredientPattern = true
+                ingredientLines.append(trimmed)
+            } else if foundIngredientPattern && hasCommas {
+                // Continue capturing comma-separated content after we found ingredients
+                ingredientLines.append(trimmed)
+            } else if foundIngredientPattern && !hasCommas {
+                // Stop when we hit non-ingredient content
+                break
+            }
+        }
+
+        if !ingredientLines.isEmpty {
+            return ingredientLines.joined(separator: " ")
+        }
+
+        // Fallback: return original text
+        return text
+    }
+
+    // MARK: - Nutrition OCR Processing (AI-Powered)
+
+    /// Process an image to extract nutrition values using Vision OCR + AI comprehension
+    private func processNutritionImage(_ image: UIImage) {
+        isProcessingNutritionOCR = true
+
+        Task {
+            do {
+                // Step 1: Extract text using Vision OCR
+                let extractedText = try await extractTextFromImage(image)
+
+                guard !extractedText.isEmpty else {
+                    await MainActor.run {
+                        isProcessingNutritionOCR = false
+                        errorMessage = "Could not read text from the image. Please try again with a clearer photo."
+                        showingError = true
+                    }
+                    return
+                }
+
+                #if DEBUG
+                print("📝 OCR extracted text: \(extractedText.prefix(300))...")
+                #endif
+
+                // Step 2: Send to AI for intelligent parsing
+                let nutritionData = try await parseNutritionWithAI(ocrText: extractedText)
+
+                await MainActor.run {
+                    isProcessingNutritionOCR = false
+
+                    // Fill in the form fields with extracted values
+                    if let cal = nutritionData.calories {
+                        calories = String(format: "%.0f", cal)
+                    }
+                    if let carb = nutritionData.carbohydrates {
+                        carbs = String(format: "%.1f", carb)
+                    }
+                    if let prot = nutritionData.protein {
+                        protein = String(format: "%.1f", prot)
+                    }
+                    if let f = nutritionData.fat {
+                        fat = String(format: "%.1f", f)
+                    }
+                    if let fib = nutritionData.fiber {
+                        fiber = String(format: "%.1f", fib)
+                    }
+                    if let sug = nutritionData.sugar {
+                        sugar = String(format: "%.1f", sug)
+                    }
+                    if let salt = nutritionData.salt {
+                        sodium = String(format: "%.2f", salt)
+                    }
+
+                    // Update serving size if extracted
+                    if let size = nutritionData.servingSize {
+                        servingSize = String(format: "%.0f", size)
+                    }
+                    if let unit = nutritionData.servingUnit {
+                        if servingUnits.contains(unit) {
+                            servingUnit = unit
+                        }
+                    }
+
+                    // Show warning if confidence is low or no calories found
+                    if nutritionData.calories == nil {
+                        errorMessage = "Could not extract nutrition values. Please try with a clearer photo of the nutrition label."
+                        showingError = true
+                    } else if nutritionData.confidence < 0.7 {
+                        // Low confidence - show a warning but still use the values
+                        #if DEBUG
+                        print("⚠️ Low confidence nutrition extraction: \(nutritionData.confidence)")
+                        if let warnings = nutritionData.warnings {
+                            print("   Warnings: \(warnings)")
+                        }
+                        #endif
+                    }
+
+                    #if DEBUG
+                    print("✅ AI Nutrition Extraction Complete:")
+                    print("   Calories: \(nutritionData.calories ?? 0)")
+                    print("   Protein: \(nutritionData.protein ?? 0)g")
+                    print("   Carbs: \(nutritionData.carbohydrates ?? 0)g")
+                    print("   Fat: \(nutritionData.fat ?? 0)g")
+                    print("   Confidence: \(nutritionData.confidence)")
+                    #endif
+                }
+            } catch {
+                await MainActor.run {
+                    isProcessingNutritionOCR = false
+                    // Fall back to local parsing if AI fails
+                    #if DEBUG
+                    print("⚠️ AI parsing failed, trying local fallback: \(error.localizedDescription)")
+                    #endif
+                    errorMessage = "Failed to process nutrition label. Please enter values manually or try another photo."
+                    showingError = true
+                }
+            }
+        }
+    }
+
+    /// AI-powered nutrition parsing response model
+    struct AINutritionData {
+        var calories: Double?
+        var protein: Double?
+        var carbohydrates: Double?
+        var fat: Double?
+        var fiber: Double?
+        var sugar: Double?
+        var salt: Double?
+        var saturatedFat: Double?
+        var servingSize: Double?
+        var servingUnit: String?
+        var servingsPerContainer: Double?
+        var isPerServing: Bool = false
+        var confidence: Double = 0
+        var warnings: [String]?
+    }
+
+    /// Call Firebase Cloud Function for AI-powered nutrition parsing
+    private func parseNutritionWithAI(ocrText: String) async throws -> AINutritionData {
+        let functions = Functions.functions()
+        let callable = functions.httpsCallable("parseNutritionOCRCached")
+
+        let result = try await callable.call([
+            "ocrText": ocrText,
+            "preferPer100g": !isPerUnit  // Use per 100g unless user is in per-unit mode
+        ])
+
+        guard let data = result.data as? [String: Any] else {
+            throw NSError(domain: "NutraSafe", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response from AI"])
+        }
+
+        // Parse the response
+        var nutritionData = AINutritionData()
+
+        if let calories = data["calories"] as? Double {
+            nutritionData.calories = calories
+        }
+        if let protein = data["protein"] as? Double {
+            nutritionData.protein = protein
+        }
+        if let carbs = data["carbohydrates"] as? Double {
+            nutritionData.carbohydrates = carbs
+        }
+        if let fat = data["fat"] as? Double {
+            nutritionData.fat = fat
+        }
+        if let fiber = data["fiber"] as? Double {
+            nutritionData.fiber = fiber
+        }
+        if let sugar = data["sugar"] as? Double {
+            nutritionData.sugar = sugar
+        }
+        if let salt = data["salt"] as? Double {
+            nutritionData.salt = salt
+        }
+        if let saturatedFat = data["saturatedFat"] as? Double {
+            nutritionData.saturatedFat = saturatedFat
+        }
+        if let servingSize = data["servingSize"] as? Double {
+            nutritionData.servingSize = servingSize
+        }
+        if let servingUnit = data["servingUnit"] as? String {
+            nutritionData.servingUnit = servingUnit
+        }
+        if let servingsPerContainer = data["servingsPerContainer"] as? Double {
+            nutritionData.servingsPerContainer = servingsPerContainer
+        }
+        if let isPerServing = data["isPerServing"] as? Bool {
+            nutritionData.isPerServing = isPerServing
+        }
+        if let confidence = data["confidence"] as? Double {
+            nutritionData.confidence = confidence
+        }
+        if let warnings = data["warnings"] as? [String] {
+            nutritionData.warnings = warnings
+        }
+
+        return nutritionData
     }
 
     private func searchIngredientsWithAI() {
@@ -1782,58 +2271,176 @@ struct NutritionRow: View {
 
 // MARK: - Ingredient OCR Camera View
 
-/// Camera view for scanning ingredient labels with OCR
+/// Camera view for scanning ingredient labels with OCR - supports multiple photos for long ingredient lists
 struct IngredientOCRCameraView: View {
     let onImageCaptured: (UIImage) -> Void
     let onDismiss: () -> Void
 
     @State private var showingImagePicker = false
-    @State private var capturedImage: UIImage?
+    @State private var capturedImages: [UIImage] = []
+    @State private var currentCapturedImage: UIImage?
+    @State private var isProcessingMultiple = false
 
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
-                if let image = capturedImage {
-                    // Show captured image for confirmation
-                    VStack(spacing: 16) {
-                        Text("Ingredient Photo Captured")
-                            .font(.title2.bold())
+                if !capturedImages.isEmpty || currentCapturedImage != nil {
+                    // Show captured images for confirmation
+                    ScrollView {
+                        VStack(spacing: 16) {
+                            Text(capturedImages.count > 0 ? "Photos Captured (\(capturedImages.count + (currentCapturedImage != nil ? 1 : 0)))" : "Ingredient Photo Captured")
+                                .font(.title2.bold())
 
-                        Text("Please verify this is a clear photo of the ingredients list")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
+                            Text(capturedImages.isEmpty
+                                ? "Please verify this is a clear photo of the ingredients list"
+                                : "Add more photos if ingredients continue on another part of the label")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
 
-                        Image(uiImage: image)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(maxHeight: 300)
-                            .cornerRadius(12)
+                            // Show all captured images
+                            if !capturedImages.isEmpty {
+                                VStack(spacing: 12) {
+                                    ForEach(Array(capturedImages.enumerated()), id: \.offset) { index, image in
+                                        HStack(alignment: .top, spacing: 12) {
+                                            Image(uiImage: image)
+                                                .resizable()
+                                                .aspectRatio(contentMode: .fit)
+                                                .frame(maxHeight: 150)
+                                                .cornerRadius(8)
 
-                        VStack(spacing: 12) {
-                            Button("Extract Ingredients") {
-                                onImageCaptured(image)
+                                            VStack(alignment: .leading, spacing: 8) {
+                                                Text("Photo \(index + 1)")
+                                                    .font(.caption.bold())
+                                                    .foregroundColor(.secondary)
+
+                                                Button(action: {
+                                                    capturedImages.remove(at: index)
+                                                }) {
+                                                    HStack(spacing: 4) {
+                                                        Image(systemName: "trash")
+                                                            .font(.caption)
+                                                        Text("Remove")
+                                                            .font(.caption)
+                                                    }
+                                                    .foregroundColor(.red)
+                                                }
+                                            }
+                                        }
+                                        .padding(12)
+                                        .background(Color(.systemGray6))
+                                        .cornerRadius(12)
+                                    }
+                                }
+                                .padding(.horizontal)
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .font(.headline)
-                            .cornerRadius(12)
 
-                            Button("Retake Photo") {
-                                capturedImage = nil
-                                showingImagePicker = true
+                            // Show current image being added
+                            if let currentImage = currentCapturedImage {
+                                VStack(spacing: 12) {
+                                    Text(capturedImages.isEmpty ? "Current Photo" : "New Photo")
+                                        .font(.caption.bold())
+                                        .foregroundColor(.secondary)
+
+                                    Image(uiImage: currentImage)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(maxHeight: 200)
+                                        .cornerRadius(12)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .stroke(Color.blue, lineWidth: 2)
+                                        )
+                                }
+                                .padding(.horizontal)
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.orange)
-                            .foregroundColor(.white)
-                            .font(.headline)
-                            .cornerRadius(12)
+
+                            // Action buttons
+                            VStack(spacing: 12) {
+                                // Add to collection button (if we have a current image)
+                                if let currentImage = currentCapturedImage {
+                                    Button(action: {
+                                        capturedImages.append(currentImage)
+                                        currentCapturedImage = nil
+                                    }) {
+                                        HStack {
+                                            Image(systemName: "plus.circle.fill")
+                                                .font(.title3)
+                                            Text("Add & Take Another")
+                                                .font(.headline)
+                                        }
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding()
+                                        .background(Color.orange)
+                                        .cornerRadius(12)
+                                    }
+                                }
+
+                                // Extract button
+                                Button(action: {
+                                    extractFromAllImages()
+                                }) {
+                                    HStack {
+                                        if isProcessingMultiple {
+                                            ProgressView()
+                                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        } else {
+                                            Image(systemName: "text.viewfinder")
+                                                .font(.title3)
+                                        }
+                                        Text(isProcessingMultiple ? "Processing..." : "Extract Ingredients")
+                                            .font(.headline)
+                                    }
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(isProcessingMultiple ? Color.gray : Color.blue)
+                                    .cornerRadius(12)
+                                }
+                                .disabled(isProcessingMultiple)
+
+                                // Retake/Take more button
+                                if !isProcessingMultiple {
+                                    Button(action: {
+                                        currentCapturedImage = nil
+                                        showingImagePicker = true
+                                    }) {
+                                        HStack {
+                                            Image(systemName: "camera.fill")
+                                                .font(.title3)
+                                            Text(capturedImages.isEmpty && currentCapturedImage != nil ? "Retake Photo" : "Take Another Photo")
+                                                .font(.headline)
+                                        }
+                                        .foregroundColor(.blue)
+                                        .frame(maxWidth: .infinity)
+                                        .padding()
+                                        .background(Color.blue.opacity(0.1))
+                                        .cornerRadius(12)
+                                    }
+                                }
+                            }
+                            .padding(.horizontal)
+                            .padding(.top, 8)
+
+                            // Tip for wrapped packaging
+                            if capturedImages.count > 0 || currentCapturedImage != nil {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "info.circle.fill")
+                                        .foregroundColor(.blue)
+                                    Text("For tubes or wrapped packaging, take multiple photos to capture all ingredients")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(12)
+                                .background(Color.blue.opacity(0.1))
+                                .cornerRadius(8)
+                                .padding(.horizontal)
+                            }
                         }
+                        .padding(.vertical)
                     }
-                    .padding()
                 } else {
                     // Initial state - show camera instructions
                     VStack(spacing: 20) {
@@ -1856,6 +2463,257 @@ struct IngredientOCRCameraView: View {
                             OCRTipRow(icon: "lightbulb.fill", color: .yellow, text: "Ensure good lighting")
                             OCRTipRow(icon: "hand.raised.fill", color: .orange, text: "Hold steady to avoid blur")
                             OCRTipRow(icon: "text.magnifyingglass", color: .blue, text: "Focus on the ingredients text")
+                            OCRTipRow(icon: "rectangle.stack.fill", color: .purple, text: "Take multiple photos for long lists")
+                        }
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                        .padding(.horizontal)
+
+                        Button(action: {
+                            showingImagePicker = true
+                        }) {
+                            HStack {
+                                Image(systemName: "camera.fill")
+                                    .font(.title2)
+                                Text("Take Photo")
+                                    .font(.headline)
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.blue)
+                            .cornerRadius(12)
+                        }
+                        .padding(.horizontal, 40)
+                    }
+                }
+
+                Spacer()
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        onDismiss()
+                    }
+                }
+            }
+            .sheet(isPresented: $showingImagePicker) {
+                ImagePickerView(image: $currentCapturedImage, sourceType: .camera)
+            }
+            .onAppear {
+                // Automatically show camera on appear
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    showingImagePicker = true
+                }
+            }
+        }
+    }
+
+    /// Combine all captured images into one for OCR processing
+    private func extractFromAllImages() {
+        // Collect all images
+        var allImages = capturedImages
+        if let current = currentCapturedImage {
+            allImages.append(current)
+        }
+
+        guard !allImages.isEmpty else { return }
+
+        if allImages.count == 1 {
+            // Single image - just pass it through
+            onImageCaptured(allImages[0])
+        } else {
+            // Multiple images - combine them vertically for OCR
+            isProcessingMultiple = true
+
+            DispatchQueue.global(qos: .userInitiated).async {
+                let combinedImage = combineImagesVertically(allImages)
+
+                DispatchQueue.main.async {
+                    isProcessingMultiple = false
+                    onImageCaptured(combinedImage)
+                }
+            }
+        }
+    }
+
+    /// Combine multiple images into a single vertical strip for OCR
+    private func combineImagesVertically(_ images: [UIImage]) -> UIImage {
+        guard !images.isEmpty else { return UIImage() }
+        if images.count == 1 { return images[0] }
+
+        // Calculate total size
+        let maxWidth = images.map { $0.size.width }.max() ?? 0
+        var totalHeight: CGFloat = 0
+
+        // Scale images to same width and calculate total height
+        var scaledImages: [UIImage] = []
+        for image in images {
+            let scale = maxWidth / image.size.width
+            let scaledHeight = image.size.height * scale
+            totalHeight += scaledHeight
+            scaledImages.append(image)
+        }
+
+        // Add some padding between images
+        let padding: CGFloat = 20
+        totalHeight += padding * CGFloat(images.count - 1)
+
+        // Create combined image
+        let size = CGSize(width: maxWidth, height: totalHeight)
+        UIGraphicsBeginImageContextWithOptions(size, false, 1.0)
+
+        var yOffset: CGFloat = 0
+        for image in scaledImages {
+            let scale = maxWidth / image.size.width
+            let scaledHeight = image.size.height * scale
+            let rect = CGRect(x: 0, y: yOffset, width: maxWidth, height: scaledHeight)
+            image.draw(in: rect)
+            yOffset += scaledHeight + padding
+        }
+
+        let combinedImage = UIGraphicsGetImageFromCurrentImageContext() ?? UIImage()
+        UIGraphicsEndImageContext()
+
+        return combinedImage
+    }
+}
+
+/// Helper view for OCR tips
+private struct OCRTipRow: View {
+    let icon: String
+    let color: Color
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundColor(color)
+                .frame(width: 24)
+
+            Text(text)
+                .font(.subheadline)
+                .foregroundColor(.primary)
+        }
+    }
+}
+
+// MARK: - Nutrition OCR Camera View
+
+/// Camera view for scanning nutrition labels with OCR
+struct NutritionOCRCameraView: View {
+    let onImageCaptured: (UIImage) -> Void
+    let onDismiss: () -> Void
+
+    @State private var showingImagePicker = false
+    @State private var capturedImage: UIImage?
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                if let image = capturedImage {
+                    // Show captured image for confirmation
+                    ScrollView {
+                        VStack(spacing: 16) {
+                            Text("Nutrition Label Captured")
+                                .font(.title2.bold())
+
+                            Text("Please verify this is a clear photo of the nutrition information table")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+
+                            Image(uiImage: image)
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(maxHeight: 300)
+                                .cornerRadius(12)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(Color.blue, lineWidth: 2)
+                                )
+                                .padding(.horizontal)
+
+                            // Action buttons
+                            VStack(spacing: 12) {
+                                Button(action: {
+                                    onImageCaptured(image)
+                                }) {
+                                    HStack {
+                                        Image(systemName: "text.viewfinder")
+                                            .font(.title3)
+                                        Text("Extract Nutrition")
+                                            .font(.headline)
+                                    }
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color.blue)
+                                    .cornerRadius(12)
+                                }
+
+                                Button(action: {
+                                    capturedImage = nil
+                                    showingImagePicker = true
+                                }) {
+                                    HStack {
+                                        Image(systemName: "camera.fill")
+                                            .font(.title3)
+                                        Text("Retake Photo")
+                                            .font(.headline)
+                                    }
+                                    .foregroundColor(.blue)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color.blue.opacity(0.1))
+                                    .cornerRadius(12)
+                                }
+                            }
+                            .padding(.horizontal)
+                            .padding(.top, 8)
+
+                            // Tip about per 100g values
+                            HStack(spacing: 8) {
+                                Image(systemName: "info.circle.fill")
+                                    .foregroundColor(.blue)
+                                Text("For best results, scan the 'per 100g' column of the nutrition table")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(12)
+                            .background(Color.blue.opacity(0.1))
+                            .cornerRadius(8)
+                            .padding(.horizontal)
+                        }
+                        .padding(.vertical)
+                    }
+                } else {
+                    // Initial state - show camera instructions
+                    VStack(spacing: 20) {
+                        VStack(spacing: 12) {
+                            Image(systemName: "tablecells")
+                                .font(.system(size: 60))
+                                .foregroundColor(.blue)
+
+                            Text("Scan Nutrition Label")
+                                .font(.title.bold())
+
+                            Text("Take a clear photo of the nutrition information table")
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+                        }
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            OCRTipRow(icon: "lightbulb.fill", color: .yellow, text: "Ensure good lighting")
+                            OCRTipRow(icon: "hand.raised.fill", color: .orange, text: "Hold steady to avoid blur")
+                            OCRTipRow(icon: "tablecells", color: .blue, text: "Include the full nutrition table")
+                            OCRTipRow(icon: "textformat.123", color: .green, text: "Focus on the 'per 100g' column")
                         }
                         .padding()
                         .background(Color(.systemGray6))
@@ -1900,26 +2758,6 @@ struct IngredientOCRCameraView: View {
                     showingImagePicker = true
                 }
             }
-        }
-    }
-}
-
-/// Helper view for OCR tips
-private struct OCRTipRow: View {
-    let icon: String
-    let color: Color
-    let text: String
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 16))
-                .foregroundColor(color)
-                .frame(width: 24)
-
-            Text(text)
-                .font(.subheadline)
-                .foregroundColor(.primary)
         }
     }
 }

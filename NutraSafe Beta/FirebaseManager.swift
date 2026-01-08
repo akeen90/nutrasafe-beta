@@ -3193,6 +3193,8 @@ extension Notification.Name {
     static let fastHistoryUpdated = Notification.Name("fastHistoryUpdated")
     static let fastingSettingsUpdated = Notification.Name("fastingSettingsUpdated")
     static let diaryFoodDetailOpened = Notification.Name("diaryFoodDetailOpened")
+    // Fasting confirmation flow - triggered from notification tap with context
+    static let fastingConfirmationRequired = Notification.Name("fastingConfirmationRequired")
 }
 
 // MARK: - Response Models for Food Search

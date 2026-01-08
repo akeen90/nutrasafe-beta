@@ -135,6 +135,68 @@ struct FastingMainView: View {
                 )
             }
         }
+        // MARK: - Clock-in Confirmation Sheet (Start Fast)
+        .sheet(isPresented: $viewModel.showingStartConfirmation) {
+            if let context = viewModel.confirmationContext {
+                FastingStartConfirmationSheet(
+                    context: context,
+                    onConfirmScheduledTime: {
+                        Task {
+                            await viewModel.confirmStartAtScheduledTime()
+                        }
+                    },
+                    onConfirmCustomTime: { customTime in
+                        Task {
+                            await viewModel.confirmStartAtCustomTime(customTime)
+                        }
+                    },
+                    onNotStartedYet: {
+                        viewModel.confirmNotStartedYet()
+                    },
+                    onDismiss: {
+                        viewModel.showingStartConfirmation = false
+                        viewModel.confirmationContext = nil
+                    }
+                )
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+            }
+        }
+        // MARK: - Clock-out Confirmation Sheet (End Fast)
+        .sheet(isPresented: $viewModel.showingEndConfirmation) {
+            if let context = viewModel.confirmationContext,
+               let session = viewModel.activeSession {
+                FastingEndConfirmationSheet(
+                    context: context,
+                    actualStartTime: session.startTime,
+                    onConfirmNow: {
+                        Task {
+                            await viewModel.confirmEndNow()
+                        }
+                    },
+                    onConfirmCustomTime: { customTime in
+                        Task {
+                            await viewModel.confirmEndAtCustomTime(customTime)
+                        }
+                    },
+                    onContinueFasting: {
+                        viewModel.confirmContinueFasting()
+                    },
+                    onDismiss: {
+                        viewModel.showingEndConfirmation = false
+                        viewModel.confirmationContext = nil
+                    }
+                )
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+            }
+        }
+        // MARK: - Listen for Notification Confirmation Requests
+        .onReceive(NotificationCenter.default.publisher(for: .fastingConfirmationRequired)) { notification in
+            if let userInfo = notification.userInfo {
+                viewModel.handleConfirmationNotification(userInfo: userInfo)
+            }
+        }
         .onAppear {
             Task {
                 await viewModel.refreshActivePlan()

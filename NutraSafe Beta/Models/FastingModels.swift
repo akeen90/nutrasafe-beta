@@ -641,12 +641,44 @@ struct FastingWidgetData {
     let nextMilestone: String?
     let motivationalText: String
     let progressPercentage: Double?
-    
+
     enum WidgetStatus {
         case idle
         case active
         case nearEnd
         case overGoal
         case skipped
+    }
+}
+
+// MARK: - Fasting Confirmation Context
+
+/// Context passed from notification to confirmation sheet for clock-in/clock-out flow
+struct FastingConfirmationContext: Equatable {
+    let fastingType: String  // "start", "end", "stage", "reminder"
+    let planId: String
+    let planName: String
+    let durationHours: Int
+    let scheduledTime: Date  // Scheduled start or end time
+
+    var isStartConfirmation: Bool {
+        fastingType == "start"
+    }
+
+    var isEndConfirmation: Bool {
+        fastingType == "end"
+    }
+
+    var formattedScheduledTime: String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter.string(from: scheduledTime)
+    }
+
+    var formattedScheduledDateTime: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: scheduledTime)
     }
 }

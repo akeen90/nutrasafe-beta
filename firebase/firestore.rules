@@ -25,24 +25,33 @@ service cloud.firestore {
     }
 
     // User-added foods collection (manually entered foods)
-    // Public read access, write restricted to authenticated admins only
+    // Public read access, authenticated users can create/update their own, admins can modify all
     match /userAdded/{foodId} {
       allow read: if true;  // Public read for search functionality
-      allow write: if isAdmin();  // Only admins can modify
+      allow create: if request.auth != null;  // Authenticated users can add foods
+      allow update: if request.auth != null &&
+                      (resource.data.userId == request.auth.uid || isAdmin());  // Owner or admin can update
+      allow delete: if isAdmin();  // Only admins can delete
     }
 
     // AI manually added foods collection (foods found via "Find with AI" feature)
-    // Public read access, write restricted to authenticated admins only
+    // Public read access, authenticated users can create/update their own, admins can modify all
     match /aiManuallyAdded/{foodId} {
       allow read: if true;  // Public read for search functionality
-      allow write: if isAdmin();  // Only admins can modify
+      allow create: if request.auth != null;  // Authenticated users can add foods
+      allow update: if request.auth != null &&
+                      (resource.data.userId == request.auth.uid || isAdmin());  // Owner or admin can update
+      allow delete: if isAdmin();  // Only admins can delete
     }
 
     // AI enhanced foods collection (foods enhanced from detail page)
-    // Public read access, write restricted to authenticated admins only
+    // Public read access, authenticated users can create/update their own, admins can modify all
     match /aiEnhanced/{foodId} {
       allow read: if true;  // Public read for search functionality
-      allow write: if isAdmin();  // Only admins can modify
+      allow create: if request.auth != null;  // Authenticated users can add foods
+      allow update: if request.auth != null &&
+                      (resource.data.userId == request.auth.uid || isAdmin());  // Owner or admin can update
+      allow delete: if isAdmin();  // Only admins can delete
     }
 
     // Verified foods collection (admin-managed, high-quality verified foods)
