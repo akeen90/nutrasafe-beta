@@ -384,6 +384,12 @@ struct AdditiveWatchView: View {
             // Expandable content
             if isExpanded {
                 VStack(alignment: .leading, spacing: 16) {
+                    // UK-friendly explanation for additives
+                    Text("Additives are ingredients added to food to preserve it, enhance flavour, or improve texture. We use a traffic light system: green = safe, amber = use in moderation, red = best limited.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 4)
+
                     // Check if ingredients contain meaningful data
                     if !hasMeaningfulIngredients {
                         emptyIngredientsContent

@@ -181,7 +181,7 @@ struct MicronutrientDashboard: View {
                         }
                     }
 
-                    Text("Estimated from food composition")
+                    Text("Based on the foods in your diary")
                         .font(.system(size: 14))
                         .foregroundColor(.secondary)
                 }
@@ -928,41 +928,69 @@ struct MicronutrientDashboard: View {
     // MARK: - Health Disclaimer Banner
 
     private var healthDisclaimerBanner: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "info.circle.fill")
-                .font(.system(size: 16))
-                .foregroundColor(.blue)
+        VStack(spacing: 10) {
+            // What are micronutrients explanation
+            HStack(spacing: 12) {
+                Image(systemName: "leaf.circle.fill")
+                    .font(.system(size: 16))
+                    .foregroundColor(.green)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Informational Only")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.primary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("What are micronutrients?")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.primary)
 
-                Text("This app is not medical advice. Consult healthcare professionals for dietary guidance.")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                    Text("Vitamins and minerals your body needs in small amounts. We estimate these from the foods you log based on standard nutritional data.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
             }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.green.opacity(0.1))
+            )
 
-            Spacer()
-
-            Button(action: {
-                showingSources = true
-            }) {
-                Image(systemName: "doc.text")
-                    .font(.system(size: 14))
+            // Disclaimer
+            HStack(spacing: 12) {
+                Image(systemName: "info.circle.fill")
+                    .font(.system(size: 16))
                     .foregroundColor(.blue)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Estimates Only — Not Medical Advice")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.primary)
+
+                    Text("These figures are approximations. For personalised dietary advice, please consult your GP or a registered dietitian.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+
+                Button(action: {
+                    showingSources = true
+                }) {
+                    Image(systemName: "doc.text")
+                        .font(.system(size: 14))
+                        .foregroundColor(.blue)
+                }
             }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.blue.opacity(0.1))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+            )
         }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color.blue.opacity(0.1))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.blue.opacity(0.3), lineWidth: 1)
-        )
     }
 }
 

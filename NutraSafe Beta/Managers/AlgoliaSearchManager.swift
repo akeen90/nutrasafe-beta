@@ -8,15 +8,13 @@
 
 import Foundation
 
-// MARK: - Brand Synonym Groups & Processed Food Detection
+// MARK: - Brand Synonym Groups & Fast Food Detection
 
 /// Groups of brand synonyms - first item is the canonical name
 /// When searching for any synonym, results for all synonyms in the group are returned
+/// NOTE: This is for SEARCH functionality only - not all brands here hide the NutraSafe grade
 let brandSynonymGroups: [[String]] = [
-    // Coca-Cola variants
-    ["coca-cola", "coca cola", "cocacola", "coke", "diet coke", "coke zero", "cherry coke", "coca-cola zero", "coke classic"],
-    // Pepsi variants
-    ["pepsi", "pepsico", "pepsi-cola", "pepsi cola", "diet pepsi", "pepsi max", "pepsi zero"],
+    // === FAST FOOD RESTAURANTS (grade hidden) ===
     // McDonald's variants
     ["mcdonald's", "mcdonalds", "mcd", "maccies", "mickey d's", "mickey ds", "maccas", "maccy d's", "maccy ds"],
     // Burger King variants
@@ -33,44 +31,6 @@ let brandSynonymGroups: [[String]] = [
     ["dunkin", "dunkin donuts", "dunkin'", "dunkin doughnuts"],
     // Krispy Kreme variants
     ["krispy kreme", "krispykreme", "krispy kream"],
-    // Dr Pepper variants
-    ["dr pepper", "dr. pepper", "drpepper", "doctor pepper"],
-    // Mountain Dew variants
-    ["mountain dew", "mtn dew", "mountaindew"],
-    // Red Bull variants
-    ["red bull", "redbull"],
-    // Monster Energy variants
-    ["monster", "monster energy", "monster drink"],
-    // Sprite variants
-    ["sprite", "sprite zero"],
-    // Fanta variants
-    ["fanta", "fanta orange"],
-    // 7UP variants
-    ["7up", "7-up", "seven up", "sevenup"],
-    // Lucozade variants
-    ["lucozade", "lucozade energy", "lucozade sport"],
-    // Irn-Bru variants
-    ["irn-bru", "irn bru", "irnbru", "iron brew"],
-    // Cadbury variants
-    ["cadbury", "cadbury's", "cadburys"],
-    // Nestle variants
-    ["nestle", "nestlé", "nestle's"],
-    // Mars variants
-    ["mars", "mars bar"],
-    // Kit Kat variants
-    ["kit kat", "kitkat", "kit-kat"],
-    // M&Ms variants
-    ["m&m's", "m&ms", "mms", "m and ms"],
-    // Haribo variants
-    ["haribo", "haribo sweets"],
-    // Walkers variants
-    ["walkers", "walkers crisps", "walker's"],
-    // Lays variants
-    ["lays", "lay's"],
-    // Pringles variants
-    ["pringles", "pringle's"],
-    // Doritos variants
-    ["doritos", "dorito"],
     // Nando's variants
     ["nando's", "nandos", "nando"],
     // Greggs variants
@@ -97,36 +57,85 @@ let brandSynonymGroups: [[String]] = [
     ["wetherspoon", "wetherspoons", "j d wetherspoon", "jd wetherspoon", "spoons"],
     // In-N-Out variants
     ["in-n-out", "in n out", "innout", "in and out"],
-    // Gatorade variants
-    ["gatorade", "gator aid"],
-    // Powerade variants
-    ["powerade", "power ade"],
-    // Prime variants
-    ["prime", "prime hydration", "prime drink"],
-    // Tropicana variants
-    ["tropicana", "tropicana juice"],
-    // Innocent variants
-    ["innocent", "innocent smoothies", "innocent drinks"],
     // Subway
     ["subway"],
     // Chipotle
     ["chipotle"],
+
+    // === PACKAGED FOOD BRANDS (synonyms for search, but grade IS shown) ===
+    // Soft drinks
+    ["coca-cola", "coca cola", "cocacola", "coke", "diet coke", "coke zero", "cherry coke", "coca-cola zero", "coke classic"],
+    ["pepsi", "pepsico", "pepsi-cola", "pepsi cola", "diet pepsi", "pepsi max", "pepsi zero"],
+    ["dr pepper", "dr. pepper", "drpepper", "doctor pepper"],
+    ["mountain dew", "mtn dew", "mountaindew"],
+    ["sprite", "sprite zero"],
+    ["fanta", "fanta orange"],
+    ["7up", "7-up", "seven up", "sevenup"],
+    ["lucozade", "lucozade energy", "lucozade sport"],
+    ["irn-bru", "irn bru", "irnbru", "iron brew"],
+    ["gatorade", "gator aid"],
+    ["powerade", "power ade"],
+    ["prime", "prime hydration", "prime drink"],
+    ["tropicana", "tropicana juice"],
+    ["innocent", "innocent smoothies", "innocent drinks"],
+    // Energy drinks
+    ["red bull", "redbull"],
+    ["monster", "monster energy", "monster drink"],
+    // Confectionery
+    ["cadbury", "cadbury's", "cadburys"],
+    ["nestle", "nestlé", "nestle's"],
+    ["mars", "mars bar"],
+    ["kit kat", "kitkat", "kit-kat"],
+    ["m&m's", "m&ms", "mms", "m and ms"],
+    ["haribo", "haribo sweets"],
+    // Crisps
+    ["walkers", "walkers crisps", "walker's"],
+    ["lays", "lay's"],
+    ["pringles", "pringle's"],
+    ["doritos", "dorito"],
 ]
 
-/// All recognised fast food and processed food brands - NutraSafe grade hidden for these
-let processedFoodBrands: Set<String> = {
+/// Fast food restaurant brands - NutraSafe grade hidden for these
+/// These are restaurants where grading is meaningless (inherently ultra-processed, variable recipes)
+let fastFoodRestaurantBrands: Set<String> = {
     var brands = Set<String>()
 
-    // Add all synonyms from synonym groups
-    for group in brandSynonymGroups {
+    // Add fast food restaurant synonym groups
+    let fastFoodGroups: [[String]] = [
+        ["mcdonald's", "mcdonalds", "mcd", "maccies", "mickey d's", "mickey ds", "maccas", "maccy d's", "maccy ds"],
+        ["burger king", "bk", "burgerking"],
+        ["kfc", "kentucky fried chicken", "kentucky"],
+        ["domino's", "dominos", "domino", "domino's pizza"],
+        ["pizza hut", "pizzahut"],
+        ["starbucks", "starbuck's", "sbux"],
+        ["dunkin", "dunkin donuts", "dunkin'", "dunkin doughnuts"],
+        ["krispy kreme", "krispykreme", "krispy kream"],
+        ["nando's", "nandos", "nando"],
+        ["greggs", "gregg's"],
+        ["costa", "costa coffee"],
+        ["pret", "pret a manger"],
+        ["wendy's", "wendys", "wendy"],
+        ["taco bell", "tacobell"],
+        ["five guys", "fiveguys", "5 guys"],
+        ["shake shack", "shakeshack"],
+        ["chick-fil-a", "chickfila", "chick fil a"],
+        ["popeyes", "popeye's", "popeye"],
+        ["tim hortons", "tim horton's", "timhortons", "tims"],
+        ["wetherspoon", "wetherspoons", "j d wetherspoon", "jd wetherspoon", "spoons"],
+        ["in-n-out", "in n out", "innout", "in and out"],
+        ["subway"],
+        ["chipotle"],
+    ]
+
+    for group in fastFoodGroups {
         for brand in group {
             brands.insert(brand)
         }
     }
 
-    // Add additional brands not in synonym groups
-    let additionalBrands = [
-        // Fast food chains
+    // Additional fast food restaurants not in synonym groups
+    let additionalRestaurants = [
+        // UK chains
         "papa john's", "papa johns", "papa john",
         "little caesars", "little caesar's",
         "harvester", "toby carvery", "beefeater",
@@ -137,6 +146,7 @@ let processedFoodBrands: Set<String> = {
         "itsu", "leon", "tortilla",
         "gourmet burger kitchen", "gbk",
         "byron", "honest burgers",
+        // US chains
         "jack in the box", "sonic",
         "arby's", "arbys", "arby",
         "carl's jr", "carls jr", "carlsjr",
@@ -152,37 +162,17 @@ let processedFoodBrands: Set<String> = {
         "long john silver's", "long john silvers",
         "captain d's", "captain ds",
         "hungry jack's", "hungry jacks", "red rooster",
-        // Energy drinks
-        "rockstar", "rockstar energy",
-        // Confectionery
-        "snickers", "twix", "milky way", "bounty", "maltesers",
-        "galaxy", "dairy milk",
-        "hershey", "hershey's", "hersheys",
-        "reese's", "reeses",
-        "skittles", "starburst", "swizzels",
-        "rowntree's", "rowntrees",
-        "fruit pastilles", "fruit gums", "wine gums", "jelly babies",
-        "smarties", "aero", "crunchie", "flake", "twirl", "wispa",
-        "double decker", "boost", "picnic", "curly wurly", "fudge",
-        "timeout", "yorkie", "lion bar", "toffee crisp", "drifter",
-        // Crisps/snacks
-        "cheetos", "wotsits", "quavers", "monster munch",
-        "hula hoops", "skips", "frazzles", "squares", "nik naks",
-        "kettle chips", "kettle", "tyrells", "tyrrells",
-        "sensations", "mccoys", "mccoy's",
-        // Other drinks
-        "ribena", "vimto", "tango", "oasis", "robinsons",
-        "snapple", "lipton", "lipton ice tea",
-        "arizona", "arizona iced tea", "vita coco",
-        "naked juice", "naked",
     ]
 
-    for brand in additionalBrands {
-        brands.insert(brand)
+    for restaurant in additionalRestaurants {
+        brands.insert(restaurant)
     }
 
     return brands
 }()
+
+/// Legacy alias for backward compatibility - now only contains fast food restaurants
+let processedFoodBrands: Set<String> = fastFoodRestaurantBrands
 
 /// Maps any brand synonym to its canonical (first) name in the group
 private let synonymToCanonical: [String: String] = {
@@ -206,7 +196,8 @@ private let canonicalToSynonyms: [String: [String]] = {
     return mapping
 }()
 
-/// Check if a brand/name is a recognised processed food brand
+/// Check if a brand/name is a fast food restaurant (grade should be hidden)
+/// NOTE: Packaged food brands (confectionery, crisps, drinks) now show grades
 func isProcessedFoodBrand(brand: String?, name: String) -> Bool {
     let brandLower = brand?.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     let nameLower = name.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
@@ -214,11 +205,13 @@ func isProcessedFoodBrand(brand: String?, name: String) -> Bool {
     let textsToCheck = [brandLower, nameLower].filter { !$0.isEmpty }
 
     for text in textsToCheck {
-        if processedFoodBrands.contains(text) {
+        // Check exact match first
+        if fastFoodRestaurantBrands.contains(text) {
             return true
         }
-        for brand in processedFoodBrands {
-            if text.contains(brand) {
+        // Check if text contains any fast food restaurant brand
+        for restaurant in fastFoodRestaurantBrands {
+            if text.contains(restaurant) {
                 return true
             }
         }

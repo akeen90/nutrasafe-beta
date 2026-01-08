@@ -1034,36 +1034,38 @@ struct FoodDetailViewFromSearch: View {
 
     // MARK: - Allergen Warning Banner View
     private var allergenWarningBanner: some View {
-        HStack(spacing: 10) {
-            // Warning icon
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundColor(.white)
+        VStack(alignment: .leading, spacing: 8) {
+            // Header row
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 14, weight: .bold))
 
-            // Alert text
-            Text("Contains:")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(.white.opacity(0.9))
+                Text("ALLERGEN ALERT")
+                    .font(.system(size: 13, weight: .heavy, design: .rounded))
+                    .tracking(0.5)
 
-            // Allergen chips in a horizontal flow
-            ForEach(detectedUserAllergens, id: \.rawValue) { allergen in
-                HStack(spacing: 4) {
-                    Text(allergen.icon)
-                        .font(.system(size: 12))
-                    Text(allergen.displayName)
-                        .font(.system(size: 11, weight: .bold))
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Color.white.opacity(0.2))
-                .clipShape(Capsule())
+                Spacer()
             }
 
-            Spacer()
+            // Allergen chips - wrapping flow
+            FlowLayout(spacing: 6) {
+                ForEach(detectedUserAllergens, id: \.rawValue) { allergen in
+                    HStack(spacing: 5) {
+                        Text(allergen.icon)
+                            .font(.system(size: 13))
+                        Text(allergen.displayName)
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.white.opacity(0.2))
+                    .clipShape(Capsule())
+                }
+            }
         }
         .foregroundColor(.white)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .background(
             LinearGradient(
                 colors: [Color(red: 0.75, green: 0.12, blue: 0.12), Color(red: 0.88, green: 0.18, blue: 0.15)],
@@ -1071,7 +1073,7 @@ struct FoodDetailViewFromSearch: View {
                 endPoint: .trailing
             )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
 
@@ -3571,66 +3573,85 @@ private var nutritionFactsSection: some View {
         }
 
         var body: some View {
-            HStack(spacing: 12) {
-                if let ns = ns {
-                    Button(action: { showingInfo = true }) {
-                        VStack(spacing: 6) {
-                            Text("NUTRASAFE GRADE")
-                                .font(.system(size: 10, weight: .semibold, design: .rounded))
-                                .foregroundColor(.secondary)
-                                .tracking(0.5)
-                            Text(ns.grade)
-                                .font(.system(size: 24, weight: .black, design: .rounded))
-                                .foregroundColor(color(for: ns.grade))
-                            Text(ns.label)
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundColor(.primary)
-                                .multilineTextAlignment(.center)
+            VStack(spacing: 8) {
+                HStack(spacing: 12) {
+                    if let ns = ns {
+                        Button(action: { showingInfo = true }) {
+                            VStack(spacing: 4) {
+                                Text("PROCESSING")
+                                    .font(.system(size: 9, weight: .semibold, design: .rounded))
+                                    .foregroundColor(.secondary)
+                                    .tracking(0.5)
+                                Text(ns.grade)
+                                    .font(.system(size: 26, weight: .black, design: .rounded))
+                                    .foregroundColor(color(for: ns.grade))
+                                Text(ns.label)
+                                    .font(.system(size: 9, weight: .medium))
+                                    .foregroundColor(.primary)
+                                    .multilineTextAlignment(.center)
+                                    .lineLimit(2)
+                                Text("Tap to learn more")
+                                    .font(.system(size: 8, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                    .padding(.top, 2)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 105)
+                            .contentShape(Rectangle())
                         }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 100)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(color(for: ns.grade).opacity(0.08))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .stroke(color(for: ns.grade).opacity(0.2), lineWidth: 1)
-                            )
-                    )
-                }
-
-                if let s = sugarScore, s.grade != .unknown {
-                    Button(action: { showingSugarInfo = true }) {
-                        VStack(spacing: 6) {
-                            Text("SUGAR SCORE")
-                                .font(.system(size: 10, weight: .semibold, design: .rounded))
-                                .foregroundColor(.secondary)
-                                .tracking(0.5)
-                            Text(s.grade.rawValue)
-                                .font(.system(size: 24, weight: .black, design: .rounded))
-                                .foregroundColor(s.color)
-                            Text(sugarDescription(for: s.grade))
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundColor(.primary)
-                                .multilineTextAlignment(.center)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 100)
+                        .buttonStyle(PlainButtonStyle())
                         .background(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(s.color.opacity(0.08))
+                                .fill(color(for: ns.grade).opacity(0.08))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                        .stroke(s.color.opacity(0.2), lineWidth: 1)
+                                        .stroke(color(for: ns.grade).opacity(0.2), lineWidth: 1)
                                 )
                         )
                     }
-                    .buttonStyle(PlainButtonStyle())
-                    .contentShape(Rectangle())
+
+                    if let s = sugarScore, s.grade != .unknown {
+                        Button(action: { showingSugarInfo = true }) {
+                            VStack(spacing: 4) {
+                                Text("SUGAR")
+                                    .font(.system(size: 9, weight: .semibold, design: .rounded))
+                                    .foregroundColor(.secondary)
+                                    .tracking(0.5)
+                                Text(s.grade.rawValue)
+                                    .font(.system(size: 26, weight: .black, design: .rounded))
+                                    .foregroundColor(s.color)
+                                Text(sugarDescription(for: s.grade))
+                                    .font(.system(size: 9, weight: .medium))
+                                    .foregroundColor(.primary)
+                                    .multilineTextAlignment(.center)
+                                    .lineLimit(2)
+                                Text("Tap to learn more")
+                                    .font(.system(size: 8, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                    .padding(.top, 2)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 105)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(s.color.opacity(0.08))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                            .stroke(s.color.opacity(0.2), lineWidth: 1)
+                                    )
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .contentShape(Rectangle())
+                    }
                 }
+
+                // Helpful explanation for UK users unfamiliar with these scores
+                Text("A = closest to natural, F = heavily processed. Based on ingredients, additives, and nutritional balance.")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 8)
             }
         }
     }

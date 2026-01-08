@@ -31,12 +31,12 @@ struct FastingMainView: View {
             icon: "timer",
             iconColor: .green,
             title: "Intermittent Fasting",
-            subtitle: "Give your body regular breaks from eating to support metabolism, energy levels, and overall wellbeing",
+            subtitle: "Take regular breaks from eating to support your metabolism and energy levels. Popular with the NHS and health experts.",
             benefits: [
-                "Proven plans like 16:8 — fast 16 hours, eat within 8",
-                "Live timer shows fat-burning and autophagy stages",
-                "Build streaks to stay motivated and consistent",
-                "See your fasting history and track progress"
+                "Simple plans like 16:8 — fast 16 hours (mostly whilst sleeping), eat within 8",
+                "Live timer tracks your progress through different fasting stages",
+                "Build streaks and stay motivated with your fasting history",
+                "Science-backed approach used by millions worldwide"
             ],
             onUnlockTapped: {
                 showingPaywall = true
@@ -254,20 +254,21 @@ struct NoPlanView: View {
 
     var body: some View {
         VStack(spacing: 24) {
-            // Welcome Card
+            // Welcome Card with UK-friendly explanation
             VStack(spacing: 16) {
                 Image(systemName: "timer")
                     .font(.system(size: 60))
                     .foregroundColor(.blue)
 
-                Text("Create Your First Plan")
+                Text("Get Started with Fasting")
                     .font(.title2)
                     .fontWeight(.semibold)
 
-                Text("Set up a fasting schedule that fits your lifestyle")
+                Text("Intermittent fasting means giving your body regular breaks from eating. Popular plans like 16:8 involve fasting for 16 hours (including sleep) and eating within an 8-hour window.")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding()
             .frame(maxWidth: .infinity)
@@ -280,7 +281,7 @@ struct NoPlanView: View {
             } label: {
                 HStack {
                     Image(systemName: "clock.badge.checkmark")
-                    Text("Create Fasting Plan")
+                    Text("Create My Plan")
                         .fontWeight(.semibold)
                 }
                 .frame(maxWidth: .infinity)
@@ -297,7 +298,7 @@ struct NoPlanView: View {
             } label: {
                 HStack {
                     Image(systemName: "graduationcap.fill")
-                    Text("Learn About Fasting")
+                    Text("What is Fasting? Learn More")
                         .fontWeight(.medium)
                     Spacer()
                     Image(systemName: "chevron.right")
@@ -308,6 +309,29 @@ struct NoPlanView: View {
                 .cornerRadius(12)
             }
             .buttonStyle(.plain)
+
+            // Simple benefit list for new users
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Why people fast:")
+                    .font(.footnote)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.secondary)
+
+                ForEach(["May support weight management", "Gives your digestive system a rest", "Many find it helps energy levels"], id: \.self) { benefit in
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                            .font(.system(size: 12))
+                        Text(benefit)
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.gray.opacity(0.05))
+            .cornerRadius(12)
         }
         .fullScreenCover(isPresented: $showingEducation) {
             FastingEducationView()
