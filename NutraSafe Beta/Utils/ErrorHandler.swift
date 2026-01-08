@@ -81,7 +81,7 @@ enum NutraSafeError: Error {
         case .foodNotFound:
             return "Food not found. Try scanning the barcode or searching manually."
         case .barcodeNotFound:
-            return "Product not found in our database. You can add it manually using AI search."
+            return "Product not found in our database. You can add it manually."
         case .searchFailed:
             return "Search failed. Please check your connection and try again."
 
@@ -120,7 +120,7 @@ enum NutraSafeError: Error {
         case .healthKitNotAuthorized:
             return "Tap Settings to enable HealthKit access for NutraSafe."
         case .barcodeNotFound:
-            return "Use the AI scanner or manual entry to add this product."
+            return "Use the scanner or manual entry to add this product."
         case .searchFailed:
             return "Make sure you're connected to the internet."
         default:

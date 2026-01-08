@@ -212,12 +212,12 @@ struct AddFoodManualView: View {
                 .padding(.bottom, 16)
 
             // Title
-            Text("Add with AI Search")
+            Text("Add Food Manually")
                 .font(.system(size: 28, weight: .bold))
                 .foregroundColor(.primary)
 
             // Description
-            Text("Intelligent search auto-fills nutrition data from UK supermarkets")
+            Text("Enter nutritional information to add a food to your diary")
                 .font(.system(size: 16))
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
@@ -351,104 +351,7 @@ struct ManualFoodDetailEntryView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 24) {
-                    // Mode Selector - Diary-only view
-                    VStack(spacing: 12) {
-                        Picker("Entry Mode", selection: $entryMode) {
-                            Text("Manual Entry").tag(EntryMode.manual)
-                            Text("Search with AI").tag(EntryMode.aiSearch)
-                        }
-                        .pickerStyle(SegmentedPickerStyle())
-
-                        // Mode description
-                        HStack(spacing: 8) {
-                            Image(systemName: entryMode == .aiSearch ? "sparkles" : "pencil")
-                                .font(.system(size: 14))
-                                .foregroundColor(entryMode == .aiSearch ? .purple : .blue)
-
-                            Text(entryMode == .aiSearch
-                                ? "Search UK supermarkets to auto-fill ingredients and nutrition"
-                                : "Enter all details manually for full control")
-                                .font(.system(size: 13))
-                                .foregroundColor(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-
-                            Spacer()
-                        }
-                        .padding(.horizontal, 4)
-                    }
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, 16)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(.systemGray6))
-                    )
-
-                    // AI Search Mode Interface
-                    if entryMode == .aiSearch {
-                        VStack(alignment: .leading, spacing: 20) {
-                            SectionHeader(title: "Search for Product")
-
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Enter the product name and brand")
-                                    .font(.system(size: 14, weight: .medium))
-
-                                TextField("e.g., Cadbury Dairy Milk Chocolate", text: $aiSearchQuery)
-                                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                                    .font(.system(size: 16))
-                                    .padding(.vertical, 4)
-
-                                Button(action: {
-                                    performAISearch()
-                                }) {
-                                    HStack(spacing: 8) {
-                                        if isSearchingIngredients {
-                                            ProgressView()
-                                                .scaleEffect(0.9)
-                                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                        } else {
-                                            Image(systemName: "magnifyingglass")
-                                                .font(.system(size: 16))
-                                        }
-                                        Text(isSearchingIngredients ? "Searching..." : "Search with AI")
-                                            .font(.system(size: 16, weight: .semibold))
-                                    }
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 14)
-                                    .background(
-                                        LinearGradient(
-                                            gradient: Gradient(colors: [Color.blue, Color.purple]),
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                                    .cornerRadius(12)
-                                }
-                                .disabled(isSearchingIngredients || aiSearchQuery.isEmpty)
-                                .opacity(aiSearchQuery.isEmpty ? 0.5 : 1.0)
-
-                                if isSearchingIngredients {
-                                    HStack(spacing: 8) {
-                                        ProgressView()
-                                            .scaleEffect(0.7)
-                                        Text("Searching UK supermarkets...")
-                                            .font(.system(size: 14))
-                                            .foregroundColor(.secondary)
-                                    }
-                                    .padding(.top, 4)
-                                }
-                            }
-                            .padding(16)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color(.systemBackground))
-                                    .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
-                            )
-                        }
-                    }
-
-                    // Manual Entry Mode Interface
-                    if entryMode == .manual {
+                    // Manual Entry Interface
                         // Basic Information Section
                         VStack(alignment: .leading, spacing: 16) {
                             SectionHeader(title: "Basic Information")
@@ -496,7 +399,6 @@ struct ManualFoodDetailEntryView: View {
                                 }
                             }
                         }
-                    }
 
                     // Diary nutrition form
                     Divider()
@@ -1720,7 +1622,7 @@ struct IngredientConfirmationModal: View {
                 .padding(.bottom, 32)
             }
         }
-            .navigationTitle("AI Search Result")
+            .navigationTitle("Search Result")
             .navigationBarTitleDisplayMode(.inline)
         }
     }

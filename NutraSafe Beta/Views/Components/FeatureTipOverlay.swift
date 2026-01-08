@@ -185,7 +185,7 @@ extension View {
             bulletPoints: [
                 "Search our database of thousands of foods",
                 "Scan barcodes for instant lookup",
-                "Use AI to identify food from photos",
+                "Add food manually for custom entries",
                 "See daily calories, macros & nutrients"
             ]
         ) {

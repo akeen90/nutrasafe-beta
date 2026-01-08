@@ -1646,16 +1646,6 @@ struct FoodDetailViewFromSearch: View {
         } message: {
             Text(notificationErrorMessage)
         }
-        .alert("Enhanced with AI", isPresented: $showingEnhancementSuccess) {
-            Button("OK") { }
-        } message: {
-            Text("Successfully found enhanced ingredient information! The ingredients list and nutritional analysis have been updated with more detailed information from UK supermarket databases.")
-        }
-        .alert("Enhancement Failed", isPresented: $showingEnhancementError) {
-            Button("OK") { }
-        } message: {
-            Text(enhancementErrorMessage)
-        }
         .diaryLimitAlert(
             isPresented: $showingDiaryLimitError,
             showingPaywall: $showingPaywall
@@ -1841,10 +1831,10 @@ struct FoodDetailViewFromSearch: View {
 
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Image(systemName: "sparkles")
+                            Image(systemName: "magnifyingglass")
                                 .font(.system(size: 14))
                                 .foregroundColor(.blue)
-                            Text("Enter the food and brand name to search with AI")
+                            Text("Enter the food and brand name to search")
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(.blue)
                         }
@@ -2417,17 +2407,6 @@ private var nutritionFactsSection: some View {
                         .foregroundColor(.primary)
 
                     Spacer()
-
-                    // Count badge
-                    if !processedIngredients.isEmpty {
-                        Text("\(processedIngredients.count)")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(.secondary)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(Color(.systemGray5))
-                            .clipShape(Capsule())
-                    }
                 }
                 .padding(16)
                 .background(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
@@ -2661,33 +2640,13 @@ private var nutritionFactsSection: some View {
                     .foregroundColor(.primary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text("Enhance this product with AI to get more accurate nutritional data, or notify our team to review it.")
+                Text("Notify our team to review this product and add more accurate nutritional data.")
                     .font(.system(size: 14))
                     .foregroundColor(.secondary)
                     .lineLimit(nil)
                     .multilineTextAlignment(.center)
 
                 VStack(spacing: 12) {
-                    // Enhance with AI Button
-                    Button(action: {
-                        showingManualSearchForEnhancement = true
-                    }) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "sparkles")
-                                .font(.system(size: 16))
-                            Text("Enhance with AI")
-                                .font(.system(size: 14, weight: .semibold))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
-                        }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color.purple)
-                        .cornerRadius(10)
-                    }
-                    .disabled(isEnhancing)
-
                     // Notify Team Button
                     Button(action: {
                         notifyTeamAboutIncompleteFood()

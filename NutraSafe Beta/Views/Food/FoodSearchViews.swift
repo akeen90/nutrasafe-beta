@@ -337,12 +337,12 @@ struct AddFoodSearchView: View {
                             }
 
                             HStack(alignment: .top, spacing: 12) {
-                                Image(systemName: "sparkles")
+                                Image(systemName: "square.and.pencil")
                                     .font(.system(size: 14))
-                                    .foregroundColor(.purple)
+                                    .foregroundColor(.blue)
                                     .frame(width: 20)
 
-                                Text("Use our AI Finder for better accuracy")
+                                Text("Use manual entry for better accuracy")
                                     .font(.system(size: 14))
                                     .foregroundColor(.secondary)
                             }
@@ -352,27 +352,21 @@ struct AddFoodSearchView: View {
                         .cornerRadius(12)
                         .padding(.horizontal, 32)
 
-                        // AI Finder CTA
+                        // Manual Entry CTA
                         if onSwitchToManual != nil {
                             Button(action: {
                                 onSwitchToManual?()
                             }) {
                                 HStack(spacing: 8) {
-                                    Image(systemName: "sparkles")
+                                    Image(systemName: "square.and.pencil")
                                         .font(.system(size: 14, weight: .semibold))
-                                    Text("Try AI Finder")
+                                    Text("Add Manually")
                                         .font(.system(size: 16, weight: .semibold))
                                 }
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 24)
                                 .padding(.vertical, 12)
-                                .background(
-                                    LinearGradient(
-                                        colors: [Color.blue, Color.purple],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
+                                .background(Color.blue)
                                 .cornerRadius(12)
                                 .shadow(color: Color.blue.opacity(0.3), radius: 8, x: 0, y: 4)
                             }

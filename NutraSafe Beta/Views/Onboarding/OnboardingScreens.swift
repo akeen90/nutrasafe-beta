@@ -118,7 +118,7 @@ struct DiaryPage: View {
                         icon: "magnifyingglass",
                         color: .blue,
                         title: "Add food easily",
-                        description: "Search, scan barcodes, or use Manual/AI tools"
+                        description: "Search, scan barcodes, or add manually"
                     )
 
                     InfoBullet(

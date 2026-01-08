@@ -64,7 +64,7 @@ struct AddFoodBarcodeView: View {
                     Text("Product Not Found")
                         .font(.system(size: 20, weight: .semibold))
 
-                    Text("Add it manually with AI search")
+                    Text("Add it manually")
                         .font(.system(size: 16))
                         .foregroundColor(.secondary)
 
