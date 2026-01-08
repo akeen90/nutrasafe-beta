@@ -10,6 +10,7 @@ import SwiftUI
 import Foundation
 import AVFoundation
 import FirebaseFirestore
+import Vision
 
 // MARK: - Ingredient Finder Models & Service
 
@@ -316,6 +317,10 @@ struct ManualFoodDetailEntryView: View {
     @State private var errorMessage = ""
     @State private var showingBarcodeScanner = false
 
+    // Ingredients OCR state
+    @State private var showingIngredientCamera = false
+    @State private var isProcessingOCR = false
+
     let servingUnits = ["g", "ml", "oz", "cup", "tbsp", "tsp", "piece", "slice", "serving"]
     let mealTimes = ["Breakfast", "Lunch", "Dinner", "Snacks"]
 
@@ -526,9 +531,30 @@ struct ManualFoodDetailEntryView: View {
                             SectionHeader(title: "Ingredients")
 
                             VStack(alignment: .leading, spacing: 12) {
-                                    Text("Enter ingredients separated by commas")
+                                HStack {
+                                    Text("Enter ingredients or scan from a photo")
                                         .font(.system(size: 14))
                                         .foregroundColor(.secondary)
+
+                                    Spacer()
+
+                                    Button(action: {
+                                        showingIngredientCamera = true
+                                    }) {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: "camera.fill")
+                                                .font(.system(size: 14))
+                                            Text("Scan")
+                                                .font(.system(size: 14, weight: .medium))
+                                        }
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(Color.blue)
+                                        .cornerRadius(8)
+                                    }
+                                    .disabled(isProcessingOCR)
+                                }
 
                                     TextEditor(text: $ingredientsText)
                                         .frame(height: 100)
@@ -540,9 +566,9 @@ struct ManualFoodDetailEntryView: View {
                                                 .stroke(Color(.systemGray4), lineWidth: 1)
                                         )
                                         .overlay(
-                                            // Searching overlay
+                                            // Searching/OCR overlay
                                             Group {
-                                                if isSearchingIngredients {
+                                                if isSearchingIngredients || isProcessingOCR {
                                                     ZStack {
                                                         Color.black.opacity(0.3)
                                                             .cornerRadius(8)
@@ -552,11 +578,11 @@ struct ManualFoodDetailEntryView: View {
                                                                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
                                                                 .scaleEffect(1.2)
 
-                                                            Text("NutraSafe Ingredient Finder™")
+                                                            Text(isProcessingOCR ? "Reading Ingredients..." : "NutraSafe Ingredient Finder™")
                                                                 .font(.system(size: 14, weight: .semibold))
                                                                 .foregroundColor(.white)
 
-                                                            Text("Searching trusted sources...")
+                                                            Text(isProcessingOCR ? "Extracting text from photo" : "Searching trusted sources...")
                                                                 .font(.system(size: 12))
                                                                 .foregroundColor(.white.opacity(0.9))
                                                         }
@@ -743,6 +769,17 @@ struct ManualFoodDetailEntryView: View {
                     }
                 )
             }
+            .fullScreenCover(isPresented: $showingIngredientCamera) {
+                IngredientOCRCameraView(
+                    onImageCaptured: { image in
+                        showingIngredientCamera = false
+                        processIngredientImage(image)
+                    },
+                    onDismiss: {
+                        showingIngredientCamera = false
+                    }
+                )
+            }
             .onAppear {
                 // Initialize barcode from prefilledBarcode if provided
                 if let prefilledBarcode = prefilledBarcode {
@@ -750,6 +787,90 @@ struct ManualFoodDetailEntryView: View {
                 }
             }
         }
+    }
+
+    /// Process an image to extract ingredients text using Vision OCR
+    private func processIngredientImage(_ image: UIImage) {
+        isProcessingOCR = true
+
+        Task {
+            do {
+                let extractedText = try await extractTextFromImage(image)
+
+                await MainActor.run {
+                    isProcessingOCR = false
+
+                    if !extractedText.isEmpty {
+                        // Clean up and format the extracted text
+                        ingredientsText = cleanIngredientText(extractedText)
+                    } else {
+                        errorMessage = "Could not read text from the image. Please try again with a clearer photo."
+                        showingError = true
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    isProcessingOCR = false
+                    errorMessage = "Failed to process image: \(error.localizedDescription)"
+                    showingError = true
+                }
+            }
+        }
+    }
+
+    /// Extract text from image using Vision framework
+    private func extractTextFromImage(_ image: UIImage) async throws -> String {
+        return try await withCheckedThrowingContinuation { continuation in
+            guard let cgImage = image.cgImage else {
+                continuation.resume(returning: "")
+                return
+            }
+
+            let request = VNRecognizeTextRequest { request, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                let observations = request.results as? [VNRecognizedTextObservation] ?? []
+                let recognizedText = observations.compactMap { observation in
+                    observation.topCandidates(1).first?.string
+                }.joined(separator: " ")
+
+                continuation.resume(returning: recognizedText)
+            }
+
+            request.recognitionLevel = .accurate
+            request.usesLanguageCorrection = true
+
+            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+            do {
+                try handler.perform([request])
+            } catch {
+                continuation.resume(throwing: error)
+            }
+        }
+    }
+
+    /// Clean up OCR text to format as ingredient list
+    private func cleanIngredientText(_ text: String) -> String {
+        var cleaned = text
+
+        // Remove common headers/labels
+        let headersToRemove = ["INGREDIENTS:", "INGREDIENTS", "Ingredients:", "Ingredients"]
+        for header in headersToRemove {
+            cleaned = cleaned.replacingOccurrences(of: header, with: "", options: .caseInsensitive)
+        }
+
+        // Normalize whitespace
+        cleaned = cleaned.components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+
+        // Trim
+        cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return cleaned
     }
 
     private func searchIngredientsWithAI() {
@@ -1655,6 +1776,188 @@ struct NutritionRow: View {
             Text(value)
                 .font(.system(size: 13, weight: .medium))
                 .foregroundColor(.primary)
+        }
+    }
+}
+
+// MARK: - Ingredient OCR Camera View
+
+/// Camera view for scanning ingredient labels with OCR
+struct IngredientOCRCameraView: View {
+    let onImageCaptured: (UIImage) -> Void
+    let onDismiss: () -> Void
+
+    @State private var showingImagePicker = false
+    @State private var capturedImage: UIImage?
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                if let image = capturedImage {
+                    // Show captured image for confirmation
+                    VStack(spacing: 16) {
+                        Text("Ingredient Photo Captured")
+                            .font(.title2.bold())
+
+                        Text("Please verify this is a clear photo of the ingredients list")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+
+                        Image(uiImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxHeight: 300)
+                            .cornerRadius(12)
+
+                        VStack(spacing: 12) {
+                            Button("Extract Ingredients") {
+                                onImageCaptured(image)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .font(.headline)
+                            .cornerRadius(12)
+
+                            Button("Retake Photo") {
+                                capturedImage = nil
+                                showingImagePicker = true
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.orange)
+                            .foregroundColor(.white)
+                            .font(.headline)
+                            .cornerRadius(12)
+                        }
+                    }
+                    .padding()
+                } else {
+                    // Initial state - show camera instructions
+                    VStack(spacing: 20) {
+                        VStack(spacing: 12) {
+                            Image(systemName: "text.viewfinder")
+                                .font(.system(size: 60))
+                                .foregroundColor(.blue)
+
+                            Text("Scan Ingredients")
+                                .font(.title.bold())
+
+                            Text("Take a clear photo of the ingredients list on the packaging")
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+                        }
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            OCRTipRow(icon: "lightbulb.fill", color: .yellow, text: "Ensure good lighting")
+                            OCRTipRow(icon: "hand.raised.fill", color: .orange, text: "Hold steady to avoid blur")
+                            OCRTipRow(icon: "text.magnifyingglass", color: .blue, text: "Focus on the ingredients text")
+                        }
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                        .padding(.horizontal)
+
+                        Button(action: {
+                            showingImagePicker = true
+                        }) {
+                            HStack {
+                                Image(systemName: "camera.fill")
+                                    .font(.title2)
+                                Text("Take Photo")
+                                    .font(.headline)
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.blue)
+                            .cornerRadius(12)
+                        }
+                        .padding(.horizontal, 40)
+                    }
+                }
+
+                Spacer()
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        onDismiss()
+                    }
+                }
+            }
+            .sheet(isPresented: $showingImagePicker) {
+                ImagePickerView(image: $capturedImage, sourceType: .camera)
+            }
+            .onAppear {
+                // Automatically show camera on appear
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    showingImagePicker = true
+                }
+            }
+        }
+    }
+}
+
+/// Helper view for OCR tips
+private struct OCRTipRow: View {
+    let icon: String
+    let color: Color
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundColor(color)
+                .frame(width: 24)
+
+            Text(text)
+                .font(.subheadline)
+                .foregroundColor(.primary)
+        }
+    }
+}
+
+/// UIImagePickerController wrapper for camera
+struct ImagePickerView: UIViewControllerRepresentable {
+    @Binding var image: UIImage?
+    let sourceType: UIImagePickerController.SourceType
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = sourceType
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: ImagePickerView
+
+        init(_ parent: ImagePickerView) {
+            self.parent = parent
+        }
+
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            if let uiImage = info[.originalImage] as? UIImage {
+                parent.image = uiImage
+            }
+            picker.dismiss(animated: true)
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            picker.dismiss(animated: true)
         }
     }
 }
