@@ -1237,6 +1237,103 @@ struct WeightTrackingView: View {
                     }
                     .padding(.top, 12)
 
+                    // Progress Graph Section
+                    if weightHistory.count >= 2 {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Text("Your Journey")
+                                    .font(.system(size: 22, weight: .bold))
+                                    .foregroundColor(.primary)
+
+                                Spacer()
+
+                                // Time range label
+                                if let firstEntry = weightHistory.last, let lastEntry = weightHistory.first {
+                                    let daysDiff = Calendar.current.dateComponents([.day], from: firstEntry.date, to: lastEntry.date).day ?? 0
+                                    Text(daysDiff > 0 ? "\(daysDiff) days" : "Today")
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 4)
+                                        .background(Color(.systemGray6))
+                                        .cornerRadius(8)
+                                }
+                            }
+                            .padding(.horizontal, 20)
+
+                            // Weight trend graph
+                            WeightLineChart(
+                                entries: Array(weightHistory.prefix(30).reversed()), // Last 30 entries, oldest first for left-to-right
+                                goalWeight: goalWeight,
+                                startWeight: weightHistory.last?.weight ?? currentWeight
+                            )
+                            .frame(height: 180)
+                            .padding(.horizontal, 16)
+
+                            // Progress summary stats
+                            if let firstEntry = weightHistory.last {
+                                let totalChange = currentWeight - firstEntry.weight
+                                let toGoal = goalWeight > 0 ? currentWeight - goalWeight : 0
+
+                                HStack(spacing: 16) {
+                                    // Change since start
+                                    HStack(spacing: 8) {
+                                        Image(systemName: totalChange <= 0 ? "arrow.down.circle.fill" : "arrow.up.circle.fill")
+                                            .font(.system(size: 20))
+                                            .foregroundColor(totalChange <= 0 ? .green : .red)
+
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(totalChange <= 0 ? "Down" : "Up")
+                                                .font(.system(size: 12, weight: .medium))
+                                                .foregroundColor(.secondary)
+                                            Text("\(formatWeight(abs(totalChange))) \(weightUnit)")
+                                                .font(.system(size: 15, weight: .bold))
+                                                .foregroundColor(totalChange <= 0 ? .green : .red)
+                                        }
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(12)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill((totalChange <= 0 ? Color.green : Color.red).opacity(0.1))
+                                    )
+
+                                    // To goal
+                                    if goalWeight > 0 {
+                                        HStack(spacing: 8) {
+                                            Image(systemName: "target")
+                                                .font(.system(size: 20))
+                                                .foregroundColor(toGoal <= 0 ? .green : .orange)
+
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(toGoal <= 0 ? "Goal reached!" : "To goal")
+                                                    .font(.system(size: 12, weight: .medium))
+                                                    .foregroundColor(.secondary)
+                                                Text(toGoal <= 0 ? "🎉" : "\(formatWeight(toGoal)) \(weightUnit)")
+                                                    .font(.system(size: 15, weight: .bold))
+                                                    .foregroundColor(toGoal <= 0 ? .green : .orange)
+                                            }
+                                        }
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding(12)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .fill((toGoal <= 0 ? Color.green : Color.orange).opacity(0.1))
+                                        )
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+                            }
+                        }
+                        .padding(.vertical, 16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+                                .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 4)
+                        )
+                        .padding(.horizontal, 16)
+                    }
+
                     // Update Weight button - STAYS IN MIDDLE
                     Button(action: { showingAddWeight = true }) {
                         HStack {
@@ -2244,141 +2341,142 @@ struct WeightLineChart: View {
     let goalWeight: Double
     let startWeight: Double
 
-    // PERFORMANCE: Pre-compute weight bounds once
+    // Date formatter for pillar labels
+    private let dateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "d/M"
+        return f
+    }()
+
+    // Weight bounds based on start weight and goal weight for proper scaling
     private var weightBounds: (min: Double, max: Double, range: Double) {
         let weights = entries.map { $0.weight }
-        let maxW = max(weights.max() ?? 0, goalWeight, startWeight) + 1
-        let minW = min(weights.min() ?? 0, goalWeight) - 1
-        return (minW, maxW, maxW - minW)
+        let allWeights = weights + [goalWeight, startWeight].filter { $0 > 0 }
+
+        // Use goal as minimum baseline if losing weight, start weight as max
+        let minW = min(allWeights.min() ?? 0, goalWeight > 0 ? goalWeight : (allWeights.min() ?? 0)) - 2
+        let maxW = max(allWeights.max() ?? 0, startWeight) + 2
+
+        return (minW, maxW, max(maxW - minW, 1))
+    }
+
+    // Color based on whether weight is above or below goal
+    private func barColor(for weight: Double) -> Color {
+        if goalWeight <= 0 {
+            return Color.blue
+        }
+        if weight <= goalWeight {
+            return Color.green
+        } else if weight <= goalWeight + 2 {
+            return Color.orange
+        } else {
+            return Color.blue
+        }
     }
 
     var body: some View {
-        let bounds = weightBounds // Compute once
-        GeometryReader { geometry in
-            // PERFORMANCE: Pre-compute points once for this geometry
-            let points: [CGPoint] = entries.enumerated().map { index, entry in
-                let x = CGFloat(index) / CGFloat(max(entries.count - 1, 1)) * (geometry.size.width - 40) + 20
-                let y = (1 - (entry.weight - bounds.min) / bounds.range) * (geometry.size.height - 40) + 20
-                return CGPoint(x: x, y: y)
-            }
+        let bounds = weightBounds
+        let displayEntries = Array(entries.suffix(14)) // Show last 14 entries max for readability
 
-            ZStack {
-                // Background card
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .bottom, spacing: 6) {
+                    ForEach(Array(displayEntries.enumerated()), id: \.element.id) { index, entry in
+                        let barHeight = max(0.1, (entry.weight - bounds.min) / bounds.range)
+                        let isLatest = index == displayEntries.count - 1
+
+                        VStack(spacing: 4) {
+                            // Weight value at top
+                            Text(String(format: "%.1f", entry.weight))
+                                .font(.system(size: 10, weight: .bold, design: .rounded))
+                                .foregroundColor(isLatest ? .white : barColor(for: entry.weight))
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 2)
+                                .background(
+                                    isLatest ?
+                                    AnyView(Capsule().fill(barColor(for: entry.weight))) :
+                                    AnyView(Color.clear)
+                                )
+
+                            // The pillar/bar
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            barColor(for: entry.weight).opacity(0.7),
+                                            barColor(for: entry.weight)
+                                        ],
+                                        startPoint: .bottom,
+                                        endPoint: .top
+                                    )
+                                )
+                                .frame(width: isLatest ? 36 : 28, height: CGFloat(barHeight) * 100)
+                                .overlay(
+                                    // Highlight for latest entry
+                                    isLatest ?
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(barColor(for: entry.weight), lineWidth: 2)
+                                    : nil
+                                )
+
+                            // Date at bottom
+                            Text(dateFormatter.string(from: entry.date))
+                                .font(.system(size: 9, weight: isLatest ? .bold : .regular))
+                                .foregroundColor(isLatest ? .primary : .secondary)
+                        }
+                        .id(entry.id)
+                    }
+
+                    // Goal marker pillar (if set)
+                    if goalWeight > 0 {
+                        let goalBarHeight = max(0.1, (goalWeight - bounds.min) / bounds.range)
+
+                        VStack(spacing: 4) {
+                            Text(String(format: "%.1f", goalWeight))
+                                .font(.system(size: 10, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(Color.green))
+
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.green.opacity(0.3),
+                                            Color.green.opacity(0.5)
+                                        ],
+                                        startPoint: .bottom,
+                                        endPoint: .top
+                                    )
+                                )
+                                .frame(width: 28, height: CGFloat(goalBarHeight) * 100)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(style: StrokeStyle(lineWidth: 2, dash: [4, 3]))
+                                        .foregroundColor(.green)
+                                )
+
+                            Text("Goal")
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundColor(.green)
+                        }
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+            }
+            .background(
                 RoundedRectangle(cornerRadius: 16)
                     .fill(Color(.systemBackground))
                     .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
-
-                VStack(spacing: 0) {
-                    // Subtle gridlines
-                    ForEach(0..<4) { i in
-                        Rectangle()
-                            .fill(Color(.systemGray6))
-                            .frame(height: 0.5)
-                            .padding(.horizontal, 20)
-
-                        if i < 3 {
-                            Spacer()
-                        }
-                    }
-                }
-                .frame(height: geometry.size.height - 40)
-                .padding(.top, 20)
-
-                // Line and area
-                if entries.count > 1 {
-                    // Gradient area under line
-                    Path { path in
-                        if let first = points.first {
-                            path.move(to: CGPoint(x: first.x, y: geometry.size.height))
-                            path.addLine(to: first)
-
-                            for point in points.dropFirst() {
-                                path.addLine(to: point)
-                            }
-
-                            if let last = points.last {
-                                path.addLine(to: CGPoint(x: last.x, y: geometry.size.height))
-                            }
-                            path.closeSubpath()
-                        }
-                    }
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.3, green: 0.5, blue: 1.0).opacity(0.2),
-                                Color(red: 0.3, green: 0.5, blue: 1.0).opacity(0.0)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-
-                    // Line
-                    Path { path in
-                        if let first = points.first {
-                            path.move(to: first)
-                            for point in points.dropFirst() {
-                                path.addLine(to: point)
-                            }
-                        }
-                    }
-                    .stroke(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.3, green: 0.5, blue: 1.0),
-                                Color(red: 0.5, green: 0.3, blue: 0.9)
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        ),
-                        style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round)
-                    )
-
-                    // Data points - use pre-computed points
-                    ForEach(Array(zip(entries.indices, points)), id: \.0) { index, point in
-                        Circle()
-                            .fill(Color.white)
-                            .frame(width: 10, height: 10)
-                            .overlay(
-                                Circle()
-                                    .stroke(
-                                        LinearGradient(
-                                            colors: [
-                                                Color(red: 0.3, green: 0.5, blue: 1.0),
-                                                Color(red: 0.5, green: 0.3, blue: 0.9)
-                                            ],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        ),
-                                        lineWidth: 3
-                                    )
-                            )
-                            .position(x: point.x, y: point.y)
-                    }
-                }
-
-                // Goal line
-                if goalWeight > 0 && goalWeight >= bounds.min && goalWeight <= bounds.max {
-                    let goalY = (1 - (goalWeight - bounds.min) / bounds.range) * (geometry.size.height - 40) + 20
-
-                    ZStack {
-                        Path { path in
-                            path.move(to: CGPoint(x: 20, y: goalY))
-                            path.addLine(to: CGPoint(x: geometry.size.width - 20, y: goalY))
-                        }
-                        .stroke(Color.green.opacity(0.4), style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
-
-                        HStack {
-                            Spacer()
-                            Text("Goal")
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color.green)
-                                .cornerRadius(6)
-                                .offset(y: goalY - 32)
-                                .padding(.trailing, 24)
+            )
+            .onAppear {
+                // Scroll to the latest entry
+                if let lastEntry = displayEntries.last {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        withAnimation {
+                            proxy.scrollTo(lastEntry.id, anchor: .trailing)
                         }
                     }
                 }

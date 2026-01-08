@@ -44,6 +44,9 @@ class FastingViewModel: ObservableObject {
         }
     }
 
+    // All sessions for timeline view (no limit)
+    @Published var allSessions: [FastingSession] = []
+
     // PERFORMANCE: Calculate week summaries only when data changes, not on every access
     private func updateWeekSummaries() {
         let calendar = Calendar.current
@@ -395,13 +398,14 @@ class FastingViewModel: ObservableObject {
     // PERFORMANCE: Accept optional pre-fetched sessions to avoid redundant network calls
     private func loadRecentSessions(from sessions: [FastingSession]? = nil) async {
         do {
-            let allSessions: [FastingSession]
+            let fetchedSessions: [FastingSession]
             if let providedSessions = sessions {
-                allSessions = providedSessions
+                fetchedSessions = providedSessions
             } else {
-                allSessions = try await firebaseManager.getFastingSessions()
+                fetchedSessions = try await firebaseManager.getFastingSessions()
             }
-            self.recentSessions = Array(allSessions.prefix(10))
+            self.allSessions = fetchedSessions  // Store all sessions for timeline
+            self.recentSessions = Array(fetchedSessions.prefix(10))
         } catch {
             self.error = error
             self.showError = true
@@ -548,13 +552,39 @@ class FastingViewModel: ObservableObject {
 
     /// Record a completed fasting session from regime mode
     private func recordCompletedRegimeFast(windowStart: Date, windowEnd: Date) {
-        // Prevent duplicate recordings for the same window
+        // Prevent duplicate recordings for the same window (in-memory check)
         if let lastRecorded = lastRecordedFastWindowEnd,
            abs(lastRecorded.timeIntervalSince(windowEnd)) < 60 {
+            #if DEBUG
+            print("⏭️ Skipping duplicate regime fast - already recorded (in-memory check)")
+            #endif
             return
         }
 
         guard let plan = activePlan else { return }
+
+        // Check if a session with similar start/end time already exists in allSessions
+        // This prevents duplicates when app restarts or view reloads
+        let hasDuplicate = allSessions.contains { existingSession in
+            // Check if start times are within 5 minutes of each other
+            let startDiff = abs(existingSession.startTime.timeIntervalSince(windowStart))
+            let endDiff: TimeInterval
+            if let existingEnd = existingSession.endTime {
+                endDiff = abs(existingEnd.timeIntervalSince(windowEnd))
+            } else {
+                endDiff = .infinity
+            }
+            // Consider duplicate if both start and end are within 5 minutes
+            return startDiff < 300 && endDiff < 300
+        }
+
+        if hasDuplicate {
+            #if DEBUG
+            print("⏭️ Skipping duplicate regime fast - similar session already exists in database")
+            #endif
+            lastRecordedFastWindowEnd = windowEnd
+            return
+        }
 
         let session = FastingSession(
             userId: userId,

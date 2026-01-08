@@ -1034,88 +1034,44 @@ struct FoodDetailViewFromSearch: View {
 
     // MARK: - Allergen Warning Banner View
     private var allergenWarningBanner: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header strip
-            HStack(spacing: 10) {
-                Image(systemName: "shield.exclamationmark.fill")
-                    .font(.system(size: 18, weight: .bold))
+        HStack(spacing: 10) {
+            // Warning icon
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundColor(.white)
 
-                Text("ALLERGEN ALERT")
-                    .font(.system(size: 14, weight: .heavy, design: .rounded))
-                    .tracking(1.2)
+            // Alert text
+            Text("Contains:")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.white.opacity(0.9))
 
-                Spacer()
-
-                // Count badge
-                Text("\(detectedUserAllergens.count)")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Color.white.opacity(0.25))
-                    .clipShape(Capsule())
-            }
-            .foregroundColor(.white)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background(
-                LinearGradient(
-                    colors: [Color(red: 0.75, green: 0.12, blue: 0.12), Color(red: 0.88, green: 0.18, blue: 0.15)],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
-
-            // Individual allergen cards
-            VStack(spacing: 10) {
-                ForEach(detectedUserAllergens, id: \.rawValue) { allergen in
-                    HStack(alignment: .center, spacing: 14) {
-                        // Allergen emoji in circle
-                        ZStack {
-                            Circle()
-                                .fill(Color.red.opacity(0.1))
-                                .frame(width: 44, height: 44)
-
-                            Text(allergen.icon)
-                                .font(.system(size: 22))
-                        }
-
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(allergen.displayName)
-                                .font(.system(size: 16, weight: .semibold, design: .rounded))
-                                .foregroundColor(.primary)
-
-                            Text("Detected in ingredients")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.secondary)
-                        }
-
-                        Spacer()
-
-                        // Severity indicator
-                        Image(systemName: allergen.severity == .high ? "exclamationmark.octagon.fill" : "exclamationmark.triangle.fill")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(allergen.severity == .high ? .red : .orange)
-                    }
-                    .padding(14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(colorScheme == .dark ? Color.midnightCardSecondary : Color(.systemGray6))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(Color.red.opacity(0.15), lineWidth: 1)
-                    )
+            // Allergen chips in a horizontal flow
+            ForEach(detectedUserAllergens, id: \.rawValue) { allergen in
+                HStack(spacing: 4) {
+                    Text(allergen.icon)
+                        .font(.system(size: 12))
+                    Text(allergen.displayName)
+                        .font(.system(size: 11, weight: .bold))
                 }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.white.opacity(0.2))
+                .clipShape(Capsule())
             }
-            .padding(14)
-            .background(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+
+            Spacer()
         }
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.red.opacity(0.25), lineWidth: 2)
+        .foregroundColor(.white)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            LinearGradient(
+                colors: [Color(red: 0.75, green: 0.12, blue: 0.12), Color(red: 0.88, green: 0.18, blue: 0.15)],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
         )
-        .shadow(color: Color.red.opacity(0.15), radius: 12, x: 0, y: 6)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
 
@@ -2193,7 +2149,7 @@ private var nutritionFactsSection: some View {
     }
 
     private var ingredientsSection: some View {
-        IngredientsSectionView(status: cachedIngredientsStatus, ingredients: cachedIngredients)
+        IngredientsSectionView(status: cachedIngredientsStatus, ingredients: cachedIngredients, userAllergens: userAllergens)
     }
 
     struct NutritionFactsSectionView: View {
@@ -2330,6 +2286,7 @@ private var nutritionFactsSection: some View {
         @Environment(\.colorScheme) var colorScheme
         let status: IngredientsStatus?
         let ingredients: [String]?
+        let userAllergens: [Allergen]
 
         // Common additive/processed ingredient patterns to highlight
         private let concerningPatterns = [
@@ -2340,7 +2297,27 @@ private var nutritionFactsSection: some View {
             "bha", "bht", "tbhq", "carrageenan", "polysorbate"
         ]
 
-        private var processedIngredients: [(ingredient: String, isConcerning: Bool)] {
+        // Check if ingredient matches any user allergen
+        private func isAllergenIngredient(_ ingredient: String) -> Bool {
+            let lowercased = ingredient.lowercased()
+            for allergen in userAllergens {
+                if allergen == .dairy {
+                    // Use centralized dairy detection
+                    if AllergenDetector.shared.containsDairyMilk(in: lowercased) {
+                        return true
+                    }
+                } else {
+                    for keyword in allergen.keywords {
+                        if lowercased.contains(keyword.lowercased()) {
+                            return true
+                        }
+                    }
+                }
+            }
+            return false
+        }
+
+        private var processedIngredients: [(ingredient: String, isConcerning: Bool, isAllergen: Bool)] {
             guard let list = ingredients else { return [] }
 
             // Clean, deduplicate, and format ingredients
@@ -2348,7 +2325,7 @@ private var nutritionFactsSection: some View {
             return list
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }
-                .compactMap { ingredient -> (String, Bool)? in
+                .compactMap { ingredient -> (String, Bool, Bool)? in
                     let normalized = ingredient.lowercased()
                     if seen.contains(normalized) { return nil }
                     seen.insert(normalized)
@@ -2356,7 +2333,8 @@ private var nutritionFactsSection: some View {
                     // Format: capitalize first letter, check if concerning
                     let formatted = formatIngredient(ingredient)
                     let isConcerning = concerningPatterns.contains { normalized.contains($0) }
-                    return (formatted, isConcerning)
+                    let isAllergen = isAllergenIngredient(ingredient)
+                    return (formatted, isConcerning, isAllergen)
                 }
         }
 
@@ -2485,14 +2463,24 @@ private var nutritionFactsSection: some View {
 
     // MARK: - Flowing Ingredients View (Text-based for proper wrapping)
     struct FlowingIngredientsView: View {
-        let ingredients: [(ingredient: String, isConcerning: Bool)]
+        let ingredients: [(ingredient: String, isConcerning: Bool, isAllergen: Bool)]
         let colorScheme: ColorScheme
 
         var body: some View {
             // Build attributed text with proper wrapping
             let attributedIngredients = ingredients.enumerated().map { index, item -> Text in
                 let suffix = index == ingredients.count - 1 ? "" : ", "
-                if item.isConcerning {
+                if item.isAllergen {
+                    // Allergen ingredients: bold red with warning icon
+                    return Text("⚠️ ")
+                        .font(.system(size: 12))
+                    + Text(item.ingredient)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.red)
+                    + Text(suffix)
+                        .font(.system(size: 14))
+                        .foregroundColor(.primary)
+                } else if item.isConcerning {
                     return Text("● ")
                         .font(.system(size: 8))
                         .foregroundColor(.orange)

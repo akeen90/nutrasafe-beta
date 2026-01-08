@@ -315,6 +315,7 @@ struct AdditiveWatchView: View {
     @State private var additiveResult: AdditiveDetectionResult?
     @State private var showingSources = false
     @State private var lastAnalyzedHash: Int = 0
+    @State private var isExpanded: Bool = false
 
     // Check if ingredients contain meaningful data (not just empty strings)
     private var hasMeaningfulIngredients: Bool {
@@ -324,23 +325,85 @@ struct AdditiveWatchView: View {
         return !clean.isEmpty
     }
 
+    // Count of detected issues for the collapsed header
+    private var issueCount: Int {
+        guard let result = additiveResult else { return 0 }
+        return result.detectedAdditives.count + result.ultraProcessedIngredients.count
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Check if ingredients contain meaningful data
-            if !hasMeaningfulIngredients {
-                emptyIngredientsContent
-                    .transition(.opacity)
-            } else if let result = additiveResult {
-                additiveContent(result: result)
-                    .transition(.opacity)
-            } else {
-                loadingContent
-                    .frame(minHeight: 100)
-                    .transition(.opacity)
+        VStack(alignment: .leading, spacing: 0) {
+            // Collapsible header
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    isExpanded.toggle()
+                }
+            }) {
+                HStack(spacing: 12) {
+                    Image(systemName: "flask.fill")
+                        .font(.system(size: 16))
+                        .foregroundColor(.purple)
+
+                    Text("Additives")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+
+                    if let result = additiveResult {
+                        let summary = calculateScoreSummary(result: result)
+                        // Show traffic light indicator
+                        Circle()
+                            .fill(summary.overallRisk.color)
+                            .frame(width: 10, height: 10)
+
+                        if issueCount > 0 {
+                            Text("(\(issueCount) found)")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                        }
+                    } else if hasMeaningfulIngredients {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                    }
+
+                    Spacer()
+
+                    Text(isExpanded ? "Tap to hide" : "Tap to see")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                .padding(14)
+                .background(colorScheme == .dark ? Color.midnightCardSecondary : Color(.systemGray6))
+                .cornerRadius(12)
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            // Expandable content
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 16) {
+                    // Check if ingredients contain meaningful data
+                    if !hasMeaningfulIngredients {
+                        emptyIngredientsContent
+                            .transition(.opacity)
+                    } else if let result = additiveResult {
+                        additiveContent(result: result)
+                            .transition(.opacity)
+                    } else {
+                        loadingContent
+                            .frame(minHeight: 100)
+                            .transition(.opacity)
+                    }
+                }
+                .padding(.top, 12)
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .animation(.easeInOut(duration: 0.3), value: additiveResult != nil)
+        .animation(.easeInOut(duration: 0.25), value: isExpanded)
         .fullScreenCover(isPresented: $showingSources) {
             SourcesAndCitationsView()
         }
