@@ -339,7 +339,7 @@ struct AdditiveWatchView: View {
                     isExpanded.toggle()
                 }
             }) {
-                HStack(spacing: 12) {
+                HStack(spacing: 10) {
                     Image(systemName: "flask.fill")
                         .font(.system(size: 16))
                         .foregroundColor(.purple)
@@ -347,6 +347,7 @@ struct AdditiveWatchView: View {
                     Text("Additives")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.primary)
+                        .lineLimit(1)
 
                     if let result = additiveResult {
                         let summary = calculateScoreSummary(result: result)
@@ -356,9 +357,10 @@ struct AdditiveWatchView: View {
                             .frame(width: 10, height: 10)
 
                         if issueCount > 0 {
-                            Text("(\(issueCount) found)")
+                            Text("(\(issueCount))")
                                 .font(.system(size: 13))
                                 .foregroundColor(.secondary)
+                                .lineLimit(1)
                         }
                     } else if hasMeaningfulIngredients {
                         ProgressView()
@@ -367,12 +369,8 @@ struct AdditiveWatchView: View {
 
                     Spacer()
 
-                    Text(isExpanded ? "Tap to hide" : "Tap to see")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.secondary)
                 }
                 .padding(14)

@@ -145,22 +145,38 @@ struct FoodDetailViewFromSearch: View {
             // Priority 1: Use servingSizeG if available (most reliable)
             if let sizeG = food.servingSizeG, sizeG > 0 {
                 initialServingSize = String(format: "%.0f", sizeG)
-            } else if let servingDesc = food.servingDescription {
+            } else if let servingDesc = food.servingDescription, !servingDesc.isEmpty {
                 // Priority 2: Extract from serving description
+                // More flexible patterns to handle various formats including UK supermarket styles
 
+                // Patterns to match numbers followed by g, ml, or gram/ml
+                // IMPORTANT: Order matters - more specific patterns first (parenthetical grams highest priority)
+                // to correctly handle "1 portion (150g)" -> 150, not 1
                 let patterns = [
-                    #"(\d+(?:\.\d+)?)\s*g\s+serving"#,  // Match "150g serving"
-                    #"\((\d+(?:\.\d+)?)\s*g\)"#,         // Match "(345 g)"
-                    #"^(\d+(?:\.\d+)?)\s*g$"#,           // Match "345g"
-                    #"^(\d+(?:\.\d+)?)\s+g$"#            // Match "345 g"
+                    #"\((\d+(?:\.\d+)?)\s*g\)"#,           // "(150g)", "(30 g)" - parenthetical grams (HIGHEST PRIORITY)
+                    #"(\d+(?:\.\d+)?)\s*g\s*\)"#,          // "150g)" at end of parenthetical
+                    #"(\d+(?:\.\d+)?)\s*g\s+serving"#,     // "150g serving", "30 g serving"
+                    #"serving[:\s]+(\d+(?:\.\d+)?)\s*g\b"#,// "serving: 30g", "serving 30g"
+                    #"=\s*(\d+(?:\.\d+)?)\s*g\b"#,         // "= 225g", "1 pack = 450g"
+                    #"(\d+(?:\.\d+)?)\s*g\s+pack"#,        // "225g pack"
+                    #"pack\s*[=:]\s*(\d+(?:\.\d+)?)\s*g"#, // "pack = 450g", "pack: 450g"
+                    #"(\d+(?:\.\d+)?)\s*grams?\b"#,        // "225 grams", "30gram"
+                    #"(\d+(?:\.\d+)?)\s*ml\b"#,            // "330ml" for drinks
+                    #"^(\d+(?:\.\d+)?)\s*g$"#,             // "30g" exactly
+                    #"(\d+(?:\.\d+)?)\s*g\b"#,             // "30g" with word boundary (avoids "1 portion")
                 ]
 
                 for pattern in patterns {
-                    if let regex = try? NSRegularExpression(pattern: pattern, options: []),
+                    if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
                        let match = regex.firstMatch(in: servingDesc, options: [], range: NSRange(location: 0, length: servingDesc.count)),
-                       let range = Range(match.range(at: 1), in: servingDesc) {
-                        initialServingSize = String(servingDesc[range])
-                        break
+                       let range = Range(match.range(at: 1), in: servingDesc),
+                       let extractedValue = Double(servingDesc[range]) {
+                        // Sanity check: serving size should be reasonable (5-500g)
+                        // Skip values that are exactly 100 as that's likely "per 100g" reference
+                        if extractedValue >= 5 && extractedValue <= 500 && extractedValue != 100 {
+                            initialServingSize = String(format: "%.0f", extractedValue)
+                            break
+                        }
                     }
                 }
                 // Fallback: description like "1 burger" → treat as per-unit
@@ -1034,8 +1050,8 @@ struct FoodDetailViewFromSearch: View {
 
     // MARK: - Allergen Warning Banner View
     private var allergenWarningBanner: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Header row
+        VStack(spacing: 8) {
+            // Header row - centered
             HStack(spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 14, weight: .bold))
@@ -1043,24 +1059,27 @@ struct FoodDetailViewFromSearch: View {
                 Text("ALLERGEN ALERT")
                     .font(.system(size: 13, weight: .heavy, design: .rounded))
                     .tracking(0.5)
-
-                Spacer()
             }
+            .frame(maxWidth: .infinity)
 
-            // Allergen chips - wrapping flow
-            FlowLayout(spacing: 6) {
-                ForEach(detectedUserAllergens, id: \.rawValue) { allergen in
-                    HStack(spacing: 5) {
-                        Text(allergen.icon)
-                            .font(.system(size: 13))
-                        Text(allergen.displayName)
-                            .font(.system(size: 12, weight: .semibold))
+            // Allergen chips - centered wrapping flow
+            HStack {
+                Spacer(minLength: 0)
+                FlowLayout(spacing: 6) {
+                    ForEach(detectedUserAllergens, id: \.rawValue) { allergen in
+                        HStack(spacing: 5) {
+                            Text(allergen.icon)
+                                .font(.system(size: 13))
+                            Text(allergen.displayName)
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color.white.opacity(0.2))
+                        .clipShape(Capsule())
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color.white.opacity(0.2))
-                    .clipShape(Capsule())
                 }
+                Spacer(minLength: 0)
             }
         }
         .foregroundColor(.white)
