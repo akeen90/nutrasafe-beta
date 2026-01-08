@@ -66,9 +66,13 @@ struct AlgoliaSettingsView: View {
                     .buttonStyle(.borderless)
                 }
 
-                Text("Your Algolia Admin API Key is required to modify data. Keep it secure.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("✓ Admin API key configured - full read/write access enabled")
+                        .font(.caption)
+                        .foregroundColor(.green)
+                    Link("Manage API Keys in Algolia Dashboard", destination: URL(string: "https://dashboard.algolia.com/account/api-keys")!)
+                        .font(.caption)
+                }
             } header: {
                 Text("Algolia Credentials")
             }
@@ -127,7 +131,7 @@ struct AlgoliaSettingsView: View {
         .padding()
         .onAppear {
             appID = UserDefaults.standard.string(forKey: "algolia_app_id") ?? "WK0TIF84M2"
-            adminKey = UserDefaults.standard.string(forKey: "algolia_admin_key") ?? ""
+            adminKey = UserDefaults.standard.string(forKey: "algolia_admin_key") ?? "e54f75aae315af794ece385f3dc9c94b"
         }
     }
 

@@ -675,7 +675,8 @@ function prepareForAlgolia(data: any): any {
     per_unit_nutrition: data.per_unit_nutrition || false,
     category: data.category || "",
     source: data.source || "",
-    verified: data.verified || false,
+    verified: data.verified || data.isVerified || false,
+    isVerified: data.isVerified || data.verified || false,
 
     // Allergen info
     allergens: data.allergens || [],

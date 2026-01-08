@@ -44,10 +44,9 @@ class AlgoliaService: ObservableObject {
             appID = savedAppID
             adminKey = savedAdminKey
         } else {
-            // Default NutraSafe credentials
+            // Default NutraSafe credentials - pre-configured with admin access
             appID = "WK0TIF84M2"
-            // Admin key should be set in settings - this is a placeholder
-            adminKey = ""
+            adminKey = "e54f75aae315af794ece385f3dc9c94b"
         }
     }
 
@@ -113,7 +112,8 @@ class AlgoliaService: ObservableObject {
             let body: [String: Any] = [
                 "query": query,
                 "hitsPerPage": hitsPerPage,
-                "page": page
+                "page": page,
+                "attributesToRetrieve": ["*"]
             ]
 
             let data = try await makeRequest(
@@ -152,32 +152,36 @@ class AlgoliaService: ObservableObject {
 
         do {
             var allFoods: [FoodItem] = []
-            var page = 0
-            var hasMore = true
+            var cursor: String? = nil
 
-            while hasMore {
-                let body: [String: Any] = [
-                    "query": "",
-                    "hitsPerPage": 1000,
-                    "page": page
+            // Use Algolia's browse API which supports cursor-based pagination
+            // This allows fetching ALL records without the 1000-page limit
+            repeat {
+                var body: [String: Any] = [
+                    "attributesToRetrieve": ["*"],
+                    "hitsPerPage": 1000
                 ]
+
+                if let cursor = cursor {
+                    body["cursor"] = cursor
+                }
 
                 let data = try await makeRequest(
                     method: "POST",
-                    path: "/1/indexes/\(database.algoliaIndex)/query",
+                    path: "/1/indexes/\(database.algoliaIndex)/browse",
                     body: body
                 )
 
-                let response = try JSONDecoder().decode(AlgoliaSearchResponse.self, from: data)
+                let response = try JSONDecoder().decode(AlgoliaBrowseResponse.self, from: data)
                 allFoods.append(contentsOf: response.hits)
 
                 // Update UI progressively
                 foods = allFoods
 
-                let totalPages = (response.nbHits / 1000) + 1
-                page += 1
-                hasMore = page < totalPages
-            }
+                // Get next cursor for pagination
+                cursor = response.cursor
+
+            } while cursor != nil
 
             totalHits = allFoods.count
             hasMorePages = false
@@ -193,16 +197,87 @@ class AlgoliaService: ObservableObject {
         await searchFoods(query: query, database: database, page: currentPage + 1)
     }
 
+    /// Extended search that can fetch many more results (for Claude assistant)
+    func extendedSearch(query: String, database: DatabaseType, maxResults: Int = 500) async {
+        guard isConfigured else {
+            error = "Algolia not configured."
+            return
+        }
+
+        isLoading = true
+        error = nil
+        foods = []
+
+        do {
+            var allFoods: [FoodItem] = []
+            var page = 0
+            let perPage = min(maxResults, 1000)
+
+            while allFoods.count < maxResults {
+                let body: [String: Any] = [
+                    "query": query,
+                    "hitsPerPage": perPage,
+                    "page": page,
+                    "attributesToRetrieve": ["*"]
+                ]
+
+                let data = try await makeRequest(
+                    method: "POST",
+                    path: "/1/indexes/\(database.algoliaIndex)/query",
+                    body: body
+                )
+
+                let response = try JSONDecoder().decode(AlgoliaSearchResponse.self, from: data)
+                allFoods.append(contentsOf: response.hits)
+
+                // Update UI progressively
+                foods = allFoods
+                totalHits = response.nbHits
+
+                let totalPages = (response.nbHits / perPage) + 1
+                page += 1
+
+                // Stop if no more pages or we've hit our limit
+                if page >= totalPages || allFoods.count >= maxResults {
+                    break
+                }
+            }
+
+            hasMorePages = allFoods.count < totalHits
+            isLoading = false
+        } catch {
+            self.error = "Extended search failed: \(error.localizedDescription)"
+            isLoading = false
+        }
+    }
+
     func refreshCurrentIndex() async {
         foods = []
         totalHits = 0
         currentPage = 0
     }
 
+    func sortFoods(by comparators: [KeyPathComparator<FoodItem>]) {
+        foods.sort { lhs, rhs in
+            for comparator in comparators {
+                let result = comparator.compare(lhs, rhs)
+                if result != .orderedSame {
+                    return result == .orderedAscending
+                }
+            }
+            return false
+        }
+    }
+
     // MARK: - CRUD Operations
 
     func getFood(objectID: String, database: DatabaseType) async -> FoodItem? {
-        guard isConfigured else { return nil }
+        guard isConfigured else {
+            print("❌ AlgoliaService.getFood: Not configured")
+            return nil
+        }
+
+        print("🔍 AlgoliaService.getFood: Fetching objectID='\(objectID)' from index='\(database.algoliaIndex)'")
 
         do {
             let data = try await makeRequest(
@@ -210,41 +285,88 @@ class AlgoliaService: ObservableObject {
                 path: "/1/indexes/\(database.algoliaIndex)/\(objectID)"
             )
 
+            print("📦 AlgoliaService.getFood: Got response, decoding...")
             let food = try JSONDecoder().decode(FoodItem.self, from: data)
+            print("✅ AlgoliaService.getFood: Successfully decoded food: \(food.name)")
             return food
         } catch {
+            print("❌ AlgoliaService.getFood: Error - \(error)")
             self.error = "Failed to get food: \(error.localizedDescription)"
             return nil
         }
     }
 
-    func saveFood(_ food: FoodItem, database: DatabaseType) async -> Bool {
-        guard isConfigured else {
-            error = "Algolia not configured"
-            return false
-        }
+    /// Fetch a food by ID from the default foods database
+    func getFoodById(_ foodId: String) async -> FoodItem? {
+        return await getFood(objectID: foodId, database: .foods)
+    }
 
+    /// Save food to Firestore via Cloud Function (which triggers Algolia sync)
+    /// This ensures the iOS app can find the food via search
+    func saveFood(_ food: FoodItem, database: DatabaseType) async -> Bool {
         isLoading = true
 
         do {
+            // Call the Cloud Function to save to Firestore
+            // The Firestore trigger will automatically sync to Algolia
+            guard let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/saveFood") else {
+                throw AlgoliaError.invalidURL
+            }
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.timeoutInterval = 30
+
+            // Encode the food item
             let encoder = JSONEncoder()
             let foodData = try encoder.encode(food)
             guard var body = try JSONSerialization.jsonObject(with: foodData) as? [String: Any] else {
                 throw AlgoliaError.encodingError
             }
 
-            // Ensure objectID is set
+            // Ensure objectID is set (critical for Firestore document ID)
             body["objectID"] = food.objectID
 
-            let _ = try await makeRequest(
-                method: "PUT",
-                path: "/1/indexes/\(database.algoliaIndex)/\(food.objectID)",
-                body: body
-            )
+            // Map field names to match what Firestore/Algolia expect
+            // Database Manager uses 'brand' but Firestore uses 'brandName'
+            if let brand = body["brand"] as? String {
+                body["brandName"] = brand
+            }
+            // servingDescription maps to servingSize
+            if let servingDesc = body["servingDescription"] as? String {
+                body["servingSize"] = servingDesc
+            }
 
-            isLoading = false
-            return true
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+            print("📤 Saving food '\(food.name)' (ID: \(food.objectID), verified: \(food.isVerified ?? false)) via Cloud Function...")
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw AlgoliaError.invalidResponse
+            }
+
+            if httpResponse.statusCode != 200 {
+                if let errorText = String(data: data, encoding: .utf8) {
+                    print("❌ Cloud Function error: \(errorText)")
+                }
+                throw AlgoliaError.apiError("Server returned \(httpResponse.statusCode)")
+            }
+
+            // Parse response
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let success = json["success"] as? Bool, success {
+                print("✅ Food saved to Firestore successfully (Algolia sync will follow)")
+                isLoading = false
+                return true
+            } else {
+                throw AlgoliaError.apiError("Invalid response from server")
+            }
+
         } catch {
+            print("❌ Failed to save food: \(error)")
             self.error = "Failed to save food: \(error.localizedDescription)"
             isLoading = false
             return false
@@ -587,6 +709,12 @@ struct AlgoliaSearchResponse: Codable {
     let page: Int
     let nbPages: Int
     let hitsPerPage: Int
+}
+
+struct AlgoliaBrowseResponse: Codable {
+    let hits: [FoodItem]
+    let cursor: String?
+    let nbHits: Int?
 }
 
 // MARK: - Algolia Errors

@@ -68,6 +68,45 @@ struct FoodItem: Identifiable, Codable, Hashable {
 
     var id: String { objectID }
 
+    // Map Algolia field names to our property names
+    enum CodingKeys: String, CodingKey {
+        case objectID
+        case name
+        case brand = "brandName"  // Algolia uses "brandName"
+        case barcode
+        case calories
+        case protein
+        case carbs
+        case fat
+        case fiber
+        case sugar
+        case sodium
+        case saturatedFat
+        case transFat
+        case cholesterol
+        case servingDescription = "servingSize"  // Algolia uses "servingSize" for description string
+        case servingSizeG   // Algolia uses "servingSizeG" for numeric gram value
+        case isPerUnit
+        case ingredients
+        case ingredientsText
+        case additives
+        case processingScore
+        case processingGrade
+        case processingLabel
+        case isVerified
+        case verifiedBy
+        case verifiedAt
+        case verificationMethod
+        case source
+        case sourceId
+        case lastUpdated
+        case imageURL
+        case thumbnailURL
+        case micronutrientProfile
+        case categories
+        case tags
+    }
+
     // Computed property for display
     var displayName: String {
         if let brand = brand, !brand.isEmpty {
@@ -75,6 +114,14 @@ struct FoodItem: Identifiable, Codable, Hashable {
         }
         return name
     }
+
+    // Computed properties for table sorting
+    var brandForSort: String { brand ?? "" }
+    var barcodeForSort: String { barcode ?? "" }
+    var ingredientCount: Int { ingredients?.count ?? 0 }
+    var verifiedSort: Int { (isVerified == true) ? 1 : 0 }
+    var gradeForSort: String { processingGrade ?? "" }
+    var sourceForSort: String { source ?? "" }
 
     // Empty initializer for creating new foods
     init() {
@@ -356,5 +403,115 @@ enum ExportFormat: String, CaseIterable {
         case .json: return "json"
         case .csv: return "csv"
         }
+    }
+}
+
+// MARK: - User Report Model
+
+struct UserReport: Identifiable, Codable, Hashable {
+    static func == (lhs: UserReport, rhs: UserReport) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+
+    var id: String // Firestore document ID
+    var reportedAt: Date
+    var reportedBy: ReportedBy
+    var status: ReportStatus
+    var foodId: String?
+    var foodName: String
+    var brandName: String?
+    var barcode: String?
+    var food: ReportedFood?
+    var resolvedAt: Date?
+    var resolvedBy: String?
+    var notes: String?
+
+    struct ReportedBy: Codable {
+        var userId: String
+        var userEmail: String
+    }
+
+    struct ReportedFood: Codable {
+        var id: String
+        var name: String
+        var brand: String?
+        var barcode: String?
+        var calories: Double
+        var protein: Double
+        var carbs: Double
+        var fat: Double
+        var fiber: Double
+        var sugar: Double
+        var sodium: Double
+        var servingDescription: String?
+        var servingSizeG: Double?
+        var ingredients: [String]?
+        var processingScore: Int?
+        var processingGrade: String?
+        var processingLabel: String?
+        var isVerified: Bool
+    }
+
+    enum ReportStatus: String, Codable, CaseIterable {
+        case pending = "pending"
+        case inProgress = "in_progress"
+        case resolved = "resolved"
+        case dismissed = "dismissed"
+
+        var displayName: String {
+            switch self {
+            case .pending: return "Pending"
+            case .inProgress: return "In Progress"
+            case .resolved: return "Resolved"
+            case .dismissed: return "Dismissed"
+            }
+        }
+
+        var icon: String {
+            switch self {
+            case .pending: return "clock"
+            case .inProgress: return "wrench.and.screwdriver"
+            case .resolved: return "checkmark.circle"
+            case .dismissed: return "xmark.circle"
+            }
+        }
+
+        var color: String {
+            switch self {
+            case .pending: return "orange"
+            case .inProgress: return "blue"
+            case .resolved: return "green"
+            case .dismissed: return "gray"
+            }
+        }
+    }
+
+    // Convert to FoodItem for editing
+    func toFoodItem() -> FoodItem? {
+        guard let food = food else { return nil }
+        return FoodItem(
+            objectID: food.id,
+            name: food.name,
+            brand: food.brand,
+            barcode: food.barcode,
+            calories: food.calories,
+            protein: food.protein,
+            carbs: food.carbs,
+            fat: food.fat,
+            fiber: food.fiber,
+            sugar: food.sugar,
+            sodium: food.sodium,
+            servingDescription: food.servingDescription,
+            servingSizeG: food.servingSizeG,
+            ingredients: food.ingredients,
+            processingScore: food.processingScore,
+            processingGrade: food.processingGrade,
+            processingLabel: food.processingLabel,
+            isVerified: food.isVerified
+        )
     }
 }

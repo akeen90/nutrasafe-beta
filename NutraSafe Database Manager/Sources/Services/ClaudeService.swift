@@ -17,6 +17,12 @@ class ClaudeService: ObservableObject {
     @Published var error: String?
     @Published var messages: [ChatMessage] = []
     @Published var currentResponse: String = ""
+    @Published var currentStatus: String = ""
+    @Published var pendingAction: PendingAction?
+    @Published var actionProgress: ActionProgress?
+
+    // Cancellation support
+    private var currentTask: Task<Void, Never>?
 
     // MARK: - Configuration
 
@@ -28,11 +34,27 @@ class ClaudeService: ObservableObject {
         loadAPIKey()
     }
 
+    var isCancelled: Bool {
+        currentTask?.isCancelled ?? false
+    }
+
+    func cancelCurrentOperation() {
+        currentTask?.cancel()
+        currentTask = nil
+        isProcessing = false
+        currentStatus = "Cancelled"
+        pendingAction = nil
+        actionProgress = nil
+    }
+
     // MARK: - API Key Management
 
     func loadAPIKey() {
-        if let savedKey = UserDefaults.standard.string(forKey: "claude_api_key") {
+        if let savedKey = UserDefaults.standard.string(forKey: "claude_api_key"), !savedKey.isEmpty {
             apiKey = savedKey
+        } else {
+            // No pre-configured API key - user must set one in settings
+            apiKey = ""
         }
     }
 
@@ -343,6 +365,7 @@ enum ClaudeError: LocalizedError {
     case apiError(String)
     case httpError(Int)
     case parseError
+    case cancelled
 
     var errorDescription: String? {
         switch self {
@@ -354,6 +377,57 @@ enum ClaudeError: LocalizedError {
             return "HTTP Error: \(code)"
         case .parseError:
             return "Failed to parse response"
+        case .cancelled:
+            return "Operation cancelled"
         }
+    }
+}
+
+// MARK: - Pending Action (awaiting user approval)
+
+struct PendingAction: Identifiable {
+    let id = UUID()
+    let type: ActionType
+    let description: String
+    let details: String
+    let affectedCount: Int
+    let action: ClaudeAction
+
+    enum ActionType: String {
+        case search = "Search"
+        case update = "Update"
+        case bulkUpdate = "Bulk Update"
+        case delete = "Delete"
+
+        var icon: String {
+            switch self {
+            case .search: return "magnifyingglass"
+            case .update: return "pencil"
+            case .bulkUpdate: return "pencil.and.list.clipboard"
+            case .delete: return "trash"
+            }
+        }
+
+        var isDestructive: Bool {
+            switch self {
+            case .delete: return true
+            default: return false
+            }
+        }
+    }
+}
+
+// MARK: - Action Progress
+
+struct ActionProgress: Identifiable {
+    let id = UUID()
+    var currentStep: String
+    var completedItems: Int
+    var totalItems: Int
+    var errors: [String] = []
+
+    var progress: Double {
+        guard totalItems > 0 else { return 0 }
+        return Double(completedItems) / Double(totalItems)
     }
 }

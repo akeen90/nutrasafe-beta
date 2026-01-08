@@ -54,9 +54,32 @@ struct FoodDetailView: View {
                 metadataSection
 
                 // AI Analysis
-                if let analysis = analysis {
+                if showingAnalysis {
                     Divider()
-                    analysisSection(analysis)
+                    if claudeService.isProcessing {
+                        HStack {
+                            ProgressView()
+                            Text("Analyzing food with Claude AI...")
+                                .foregroundColor(.secondary)
+                        }
+                        .padding()
+                    } else if let analysis = analysis {
+                        analysisSection(analysis)
+                    } else if let error = claudeService.error {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Label("Analysis Failed", systemImage: "exclamationmark.triangle.fill")
+                                .foregroundColor(.red)
+                            Text(error)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Button("Try Again") {
+                                Task {
+                                    analysis = await claudeService.analyzeFood(food)
+                                }
+                            }
+                        }
+                        .padding()
+                    }
                 }
             }
             .padding(24)
@@ -67,9 +90,17 @@ struct FoodDetailView: View {
                     Task {
                         showingAnalysis = true
                         analysis = await claudeService.analyzeFood(food)
+                        if analysis == nil && claudeService.error != nil {
+                            // Show error in analysis variable for display
+                        }
                     }
                 } label: {
-                    Label("Analyze", systemImage: "sparkles")
+                    if claudeService.isProcessing {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                    } else {
+                        Label("Analyze", systemImage: "sparkles")
+                    }
                 }
                 .disabled(claudeService.isProcessing)
 
@@ -159,15 +190,23 @@ struct FoodDetailView: View {
                 }
 
                 if isEditing {
-                    TextField("Brand (optional)", text: Binding(
-                        get: { editedFood.brand ?? "" },
-                        set: { editedFood.brand = $0.isEmpty ? nil : $0 }
-                    ))
-                    .textFieldStyle(.roundedBorder)
-                } else if let brand = food.brand {
-                    Text(brand)
-                        .font(.title3)
-                        .foregroundColor(.secondary)
+                    HStack {
+                        Text("Brand:")
+                            .foregroundColor(.secondary)
+                        TextField("Brand (optional)", text: Binding(
+                            get: { editedFood.brand ?? "" },
+                            set: { editedFood.brand = $0.isEmpty ? nil : $0 }
+                        ))
+                        .textFieldStyle(.roundedBorder)
+                    }
+                } else {
+                    HStack {
+                        Text("Brand:")
+                            .foregroundColor(.secondary)
+                        Text(food.brand ?? "—")
+                            .fontWeight(.medium)
+                    }
+                    .font(.title3)
                 }
 
                 HStack(spacing: 12) {

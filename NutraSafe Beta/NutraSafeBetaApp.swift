@@ -207,6 +207,9 @@ struct MainAppView: View {
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                // Clear search cache to ensure fresh data (e.g., verified status changes)
+                AlgoliaSearchManager.shared.clearCache()
+
                 Task {
                     await clearAppBadge()
 
@@ -215,7 +218,7 @@ struct MainAppView: View {
                 }
             }
             .onChange(of: healthKitRingsEnabled) { _, enabled in
-                Task {
+                Task<Void, Never> {
                     if enabled {
                         await healthKitManager.requestAuthorization()
                         await healthKitManager.updateExerciseCalories()

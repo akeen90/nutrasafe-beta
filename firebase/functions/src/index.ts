@@ -29,6 +29,8 @@ export { detectLiveText } from './detect-live-text';
 export { replaceAllFoods } from './replace-foods-database';
 export { standardizeIngredients } from './standardize-ingredients';
 export { notifyIncompleteFood } from './notify-incomplete-food';
+export { getUserReports, updateUserReport, deleteUserReport } from './user-reports';
+export { saveFood, deleteFood, batchSaveFoods } from './save-food';
 export { parseMicronutrientsWithAI, parseMicronutrientsWithAICached } from './parse-micronutrients-ai';
 export { parseAdditivesWithAI, parseAdditivesWithAICached } from './parse-additives-ai';
 export { findIngredients } from './find-ingredients';

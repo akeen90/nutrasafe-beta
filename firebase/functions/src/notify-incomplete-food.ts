@@ -4,7 +4,8 @@ import * as nodemailer from 'nodemailer';
 
 /**
  * Firebase function to notify team about incomplete food information
- * Sends an email to info@nutrasafe.co.uk when a user reports missing data
+ * Stores full food data in Firestore for Database Manager review
+ * Sends an email to contact@nutrasafe.co.uk when a user reports missing data
  */
 export const notifyIncompleteFood = functions.https.onRequest(async (req, res) => {
   // Set CORS headers
@@ -20,7 +21,7 @@ export const notifyIncompleteFood = functions.https.onRequest(async (req, res) =
   try {
     // Extract data from request body (iOS sends nested in "data" field)
     const requestData = req.body.data || req.body;
-    const { foodName, brandName, foodId, barcode, userId, userEmail } = requestData;
+    const { foodName, brandName, foodId, barcode, userId, userEmail, fullFoodData } = requestData;
 
     if (!foodName) {
       res.status(400).json({
@@ -29,27 +30,64 @@ export const notifyIncompleteFood = functions.https.onRequest(async (req, res) =
       return;
     }
 
-    // Log the notification
-    console.log('Incomplete food notification:', {
+    // Log the notification with details
+    console.log('📥 Incomplete food notification received:', {
       foodName,
       brandName,
       userId,
       userEmail,
+      hasFullFoodData: !!fullFoodData,
+      fullFoodDataKeys: fullFoodData ? Object.keys(fullFoodData) : [],
+      calories: fullFoodData?.calories,
+      protein: fullFoodData?.protein,
+      ingredients: fullFoodData?.ingredients?.length || 0,
       timestamp: new Date().toISOString()
     });
 
-    // Store notification in Firestore for tracking
-    const docRef = await admin.firestore().collection('incompleteFood').add({
+    // Build the report document with full food data if available
+    const reportData: Record<string, unknown> = {
+      // Report metadata
+      reportedAt: admin.firestore.FieldValue.serverTimestamp(),
+      reportedBy: {
+        userId: userId || 'anonymous',
+        userEmail: userEmail || 'anonymous'
+      },
+      status: 'pending', // pending, in_progress, resolved, dismissed
+      notificationSent: false,
+
+      // Basic food info (always present)
+      foodId: foodId || null,
       foodName,
       brandName: brandName || null,
-      foodId: foodId || null,
-      barcode: barcode || null,
-      userId: userId || 'anonymous',
-      userEmail: userEmail || 'anonymous',
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      status: 'pending',
-      notificationSent: false
-    });
+      barcode: barcode || null
+    };
+
+    // Add full food data if provided by the iOS app
+    if (fullFoodData) {
+      reportData.food = {
+        id: fullFoodData.id || foodId,
+        name: fullFoodData.name || foodName,
+        brand: fullFoodData.brand || brandName || null,
+        barcode: fullFoodData.barcode || barcode || null,
+        calories: fullFoodData.calories || 0,
+        protein: fullFoodData.protein || 0,
+        carbs: fullFoodData.carbs || 0,
+        fat: fullFoodData.fat || 0,
+        fiber: fullFoodData.fiber || 0,
+        sugar: fullFoodData.sugar || 0,
+        sodium: fullFoodData.sodium || 0,
+        servingDescription: fullFoodData.servingDescription || null,
+        servingSizeG: fullFoodData.servingSizeG || null,
+        ingredients: fullFoodData.ingredients || null,
+        processingScore: fullFoodData.processingScore || null,
+        processingGrade: fullFoodData.processingGrade || null,
+        processingLabel: fullFoodData.processingLabel || null,
+        isVerified: fullFoodData.isVerified || false
+      };
+    }
+
+    // Store in the userReports collection for Database Manager
+    const docRef = await admin.firestore().collection('userReports').add(reportData);
 
     console.log('✅ Notification saved to Firestore:', docRef.id);
 

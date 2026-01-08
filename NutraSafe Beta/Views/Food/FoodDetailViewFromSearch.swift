@@ -819,7 +819,21 @@ struct FoodDetailViewFromSearch: View {
         let userVerifiedFoods = UserDefaults.standard.array(forKey: "userVerifiedFoods") as? [String] ?? []
         let foodKey = "\(food.name)|\(food.brand ?? "")"
 
-        // Check if food is user-verified (photo taken by user)
+        #if DEBUG
+        print("🔍 getIngredientsStatus for '\(food.name)':")
+        print("   - food.isVerified: \(String(describing: food.isVerified))")
+        print("   - displayFood.isVerified: \(String(describing: displayFood.isVerified))")
+        #endif
+
+        // PRIORITY 1: Check if food is verified in the database (server-side verification)
+        if displayFood.isVerified == true {
+            #if DEBUG
+            print("   ✅ Returning .verified")
+            #endif
+            return .verified
+        }
+
+        // Check if food is user-verified (photo taken by user on this device)
         if userVerifiedFoods.contains(foodKey) {
             return .userVerified
         }
@@ -840,7 +854,7 @@ struct FoodDetailViewFromSearch: View {
                 !ingredient.contains("Processing ingredient image...") && !ingredient.isEmpty
             }
             if hasRealIngredients {
-                return .unverified  // Changed from .verified to .unverified
+                return .unverified
             }
         }
 
@@ -1498,6 +1512,7 @@ struct FoodDetailViewFromSearch: View {
             hasInitialized = true
 
             cachedIngredients = food.ingredients
+            cachedIngredientsStatus = getIngredientsStatus()
             recomputeDetectedNutrients()
 
             // Load user allergens from cache (instant) and detect if present in this food
@@ -2062,7 +2077,12 @@ private var nutritionFactsSection: some View {
                         await MainActor.run {
                             // Dismiss keyboard before closing view
                             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                            dismiss()
+                            // Dismiss without animation and immediately trigger parent completion
+                            var transaction = Transaction()
+                            transaction.disablesAnimations = true
+                            withTransaction(transaction) {
+                                dismiss()
+                            }
                             onComplete?(.diary)
                         }
                     } catch is FirebaseManager.DiaryLimitError {
@@ -2093,7 +2113,12 @@ private var nutritionFactsSection: some View {
                         await MainActor.run {
                             // Dismiss keyboard before closing view
                             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                            dismiss()
+                            // Dismiss without animation and immediately trigger parent completion
+                            var transaction = Transaction()
+                            transaction.disablesAnimations = true
+                            withTransaction(transaction) {
+                                dismiss()
+                            }
                             onComplete?(.diary)
                         }
                     } catch is FirebaseManager.DiaryLimitError {

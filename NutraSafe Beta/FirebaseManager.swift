@@ -2678,6 +2678,30 @@ class FirebaseManager: ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
+        // Build full food data for the report
+        var foodData: [String: Any] = [
+            "id": food.id,
+            "name": food.name,
+            "calories": food.calories,
+            "protein": food.protein,
+            "carbs": food.carbs,
+            "fat": food.fat,
+            "fiber": food.fiber,
+            "sugar": food.sugar,
+            "sodium": food.sodium,
+            "isVerified": food.isVerified
+        ]
+
+        // Add optional fields if present
+        if let brand = food.brand { foodData["brand"] = brand }
+        if let barcode = food.barcode { foodData["barcode"] = barcode }
+        if let servingDescription = food.servingDescription { foodData["servingDescription"] = servingDescription }
+        if let servingSizeG = food.servingSizeG { foodData["servingSizeG"] = servingSizeG }
+        if let ingredients = food.ingredients { foodData["ingredients"] = ingredients }
+        if let processingScore = food.processingScore { foodData["processingScore"] = processingScore }
+        if let processingGrade = food.processingGrade { foodData["processingGrade"] = processingGrade }
+        if let processingLabel = food.processingLabel { foodData["processingLabel"] = processingLabel }
+
         let requestBody: [String: Any] = [
             "data": [
                 "foodName": food.name,
@@ -2686,7 +2710,8 @@ class FirebaseManager: ObservableObject {
                 "barcode": food.barcode ?? "",
                 "userId": currentUser?.uid ?? "anonymous",
                 "userEmail": currentUser?.email ?? "anonymous",
-                "recipientEmail": "contact@nutrasafe.co.uk"
+                "recipientEmail": "contact@nutrasafe.co.uk",
+                "fullFoodData": foodData
             ]
         ]
 

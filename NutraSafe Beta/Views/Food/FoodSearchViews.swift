@@ -115,6 +115,10 @@ struct FoodSearchResultRowEnhanced: View {
 
     var body: some View {
         Button(action: {
+            #if DEBUG
+            print("📱 FoodSearchResultRowEnhanced tapped for '\(food.name)':")
+            print("   - food.isVerified: \(food.isVerified)")
+            #endif
             // Dismiss keyboard BEFORE showing sheet to prevent refocus when sheet dismisses
             UIApplication.shared.sendAction(
                 #selector(UIResponder.resignFirstResponder),

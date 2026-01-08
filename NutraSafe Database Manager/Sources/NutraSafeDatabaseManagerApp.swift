@@ -12,6 +12,7 @@ struct NutraSafeDatabaseManagerApp: App {
     @StateObject private var appState = AppState()
     @StateObject private var algoliaService = AlgoliaService.shared
     @StateObject private var claudeService = ClaudeService.shared
+    @StateObject private var reviewManager = ReviewManager.shared
 
     var body: some Scene {
         WindowGroup {
@@ -19,6 +20,7 @@ struct NutraSafeDatabaseManagerApp: App {
                 .environmentObject(appState)
                 .environmentObject(algoliaService)
                 .environmentObject(claudeService)
+                .environmentObject(reviewManager)
                 .frame(minWidth: 1200, minHeight: 800)
         }
         .windowStyle(.hiddenTitleBar)
@@ -100,6 +102,7 @@ struct NutraSafeDatabaseManagerApp: App {
                 .environmentObject(appState)
                 .environmentObject(algoliaService)
                 .environmentObject(claudeService)
+                .environmentObject(reviewManager)
         }
     }
 }
@@ -112,6 +115,11 @@ class AppState: ObservableObject {
     @Published var selectedFoodIDs: Set<String> = []
     @Published var searchQuery: String = ""
     @Published var currentFood: FoodItem?
+    @Published var currentFoodID: String?
+    @Published var reviewFilter: ReviewFilter = .all
+
+    // Navigation state
+    @Published var sidebarSelection: SidebarItem = .foodsDatabase
 
     // Sheet states
     @Published var showingNewFoodSheet = false
@@ -120,6 +128,8 @@ class AppState: ObservableObject {
     @Published var showingBulkEditSheet = false
     @Published var showingDeleteConfirmation = false
     @Published var showingClaudeSheet = false
+    @Published var showingClaudeReviewSheet = false
+    @Published var showingValidationSheet = false
     @Published var showingFoodDetail = false
 
     // All loaded foods for selection
@@ -144,36 +154,47 @@ class AppState: ObservableObject {
 
 enum DatabaseType: String, CaseIterable, Identifiable {
     case foods = "foods"
-    case pendingFoods = "pendingFoods"
-    case additives = "additives"
-    case ultraProcessed = "ultraProcessed"
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
         case .foods: return "Foods Database"
-        case .pendingFoods: return "Pending Foods"
-        case .additives: return "Additives"
-        case .ultraProcessed: return "Ultra-Processed"
         }
     }
 
     var icon: String {
         switch self {
         case .foods: return "fork.knife"
-        case .pendingFoods: return "clock.badge.questionmark"
-        case .additives: return "flask"
-        case .ultraProcessed: return "exclamationmark.triangle"
         }
     }
 
     var algoliaIndex: String {
         switch self {
         case .foods: return "foods"
-        case .pendingFoods: return "pendingFoods"
-        case .additives: return "additives"
-        case .ultraProcessed: return "ultraProcessed"
+        }
+    }
+}
+
+// MARK: - Sidebar Navigation Item
+
+enum SidebarItem: String, Identifiable, Hashable {
+    case foodsDatabase
+    case userReports
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .foodsDatabase: return "Foods Database"
+        case .userReports: return "User Reports"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .foodsDatabase: return "fork.knife"
+        case .userReports: return "exclamationmark.bubble"
         }
     }
 }

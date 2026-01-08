@@ -6,10 +6,11 @@ const admin = require("firebase-admin");
 const nodemailer = require("nodemailer");
 /**
  * Firebase function to notify team about incomplete food information
- * Sends an email to info@nutrasafe.co.uk when a user reports missing data
+ * Stores full food data in Firestore for Database Manager review
+ * Sends an email to contact@nutrasafe.co.uk when a user reports missing data
  */
 exports.notifyIncompleteFood = functions.https.onRequest(async (req, res) => {
-    var _a, _b;
+    var _a, _b, _c;
     // Set CORS headers
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -21,37 +22,71 @@ exports.notifyIncompleteFood = functions.https.onRequest(async (req, res) => {
     try {
         // Extract data from request body (iOS sends nested in "data" field)
         const requestData = req.body.data || req.body;
-        const { foodName, brandName, foodId, barcode, userId, userEmail } = requestData;
+        const { foodName, brandName, foodId, barcode, userId, userEmail, fullFoodData } = requestData;
         if (!foodName) {
             res.status(400).json({
                 result: { success: false, error: 'Food name is required' }
             });
             return;
         }
-        // Log the notification
-        console.log('Incomplete food notification:', {
+        // Log the notification with details
+        console.log('📥 Incomplete food notification received:', {
             foodName,
             brandName,
             userId,
             userEmail,
+            hasFullFoodData: !!fullFoodData,
+            fullFoodDataKeys: fullFoodData ? Object.keys(fullFoodData) : [],
+            calories: fullFoodData === null || fullFoodData === void 0 ? void 0 : fullFoodData.calories,
+            protein: fullFoodData === null || fullFoodData === void 0 ? void 0 : fullFoodData.protein,
+            ingredients: ((_a = fullFoodData === null || fullFoodData === void 0 ? void 0 : fullFoodData.ingredients) === null || _a === void 0 ? void 0 : _a.length) || 0,
             timestamp: new Date().toISOString()
         });
-        // Store notification in Firestore for tracking
-        const docRef = await admin.firestore().collection('incompleteFood').add({
+        // Build the report document with full food data if available
+        const reportData = {
+            // Report metadata
+            reportedAt: admin.firestore.FieldValue.serverTimestamp(),
+            reportedBy: {
+                userId: userId || 'anonymous',
+                userEmail: userEmail || 'anonymous'
+            },
+            status: 'pending', // pending, in_progress, resolved, dismissed
+            notificationSent: false,
+            // Basic food info (always present)
+            foodId: foodId || null,
             foodName,
             brandName: brandName || null,
-            foodId: foodId || null,
-            barcode: barcode || null,
-            userId: userId || 'anonymous',
-            userEmail: userEmail || 'anonymous',
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
-            status: 'pending',
-            notificationSent: false
-        });
+            barcode: barcode || null
+        };
+        // Add full food data if provided by the iOS app
+        if (fullFoodData) {
+            reportData.food = {
+                id: fullFoodData.id || foodId,
+                name: fullFoodData.name || foodName,
+                brand: fullFoodData.brand || brandName || null,
+                barcode: fullFoodData.barcode || barcode || null,
+                calories: fullFoodData.calories || 0,
+                protein: fullFoodData.protein || 0,
+                carbs: fullFoodData.carbs || 0,
+                fat: fullFoodData.fat || 0,
+                fiber: fullFoodData.fiber || 0,
+                sugar: fullFoodData.sugar || 0,
+                sodium: fullFoodData.sodium || 0,
+                servingDescription: fullFoodData.servingDescription || null,
+                servingSizeG: fullFoodData.servingSizeG || null,
+                ingredients: fullFoodData.ingredients || null,
+                processingScore: fullFoodData.processingScore || null,
+                processingGrade: fullFoodData.processingGrade || null,
+                processingLabel: fullFoodData.processingLabel || null,
+                isVerified: fullFoodData.isVerified || false
+            };
+        }
+        // Store in the userReports collection for Database Manager
+        const docRef = await admin.firestore().collection('userReports').add(reportData);
         console.log('✅ Notification saved to Firestore:', docRef.id);
         // Try to send email if credentials are configured
-        const emailUser = ((_a = functions.config().email) === null || _a === void 0 ? void 0 : _a.user) || process.env.EMAIL_USER;
-        const emailPassword = ((_b = functions.config().email) === null || _b === void 0 ? void 0 : _b.password) || process.env.EMAIL_PASSWORD;
+        const emailUser = ((_b = functions.config().email) === null || _b === void 0 ? void 0 : _b.user) || process.env.EMAIL_USER;
+        const emailPassword = ((_c = functions.config().email) === null || _c === void 0 ? void 0 : _c.password) || process.env.EMAIL_PASSWORD;
         if (emailUser && emailPassword) {
             try {
                 // Configure email transport for Gmail

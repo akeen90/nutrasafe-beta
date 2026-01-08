@@ -79,6 +79,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         case servingSizeG
         case ingredients
         case confidence
+        case isVerified
         case verifiedBy
         case verificationMethod
         case verifiedAt
@@ -181,9 +182,14 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
             self.ingredients = nil
         }
         self.confidence = try? c.decode(Double.self, forKey: .confidence)
-        // Consider the result verified if backend included any verification markers
-        let hasVerifier = (try? c.decodeIfPresent(String.self, forKey: .verifiedBy)) != nil || (try? c.decodeIfPresent(String.self, forKey: .verificationMethod)) != nil || (try? c.decodeIfPresent(String.self, forKey: .verifiedAt)) != nil
-        self.isVerified = hasVerifier
+        // Check isVerified field directly first, then fall back to verification markers
+        if let directVerified = try? c.decode(Bool.self, forKey: .isVerified) {
+            self.isVerified = directVerified
+        } else {
+            // Legacy fallback: consider verified if backend included any verification markers
+            let hasVerifier = (try? c.decodeIfPresent(String.self, forKey: .verifiedBy)) != nil || (try? c.decodeIfPresent(String.self, forKey: .verificationMethod)) != nil || (try? c.decodeIfPresent(String.self, forKey: .verifiedAt)) != nil
+            self.isVerified = hasVerifier
+        }
         self.additives = try? c.decode([NutritionAdditiveInfo].self, forKey: .additives)
         self.additivesDatabaseVersion = try? c.decode(String.self, forKey: .additivesDatabaseVersion)
         self.processingScore = try? c.decode(Int.self, forKey: .processingScore)

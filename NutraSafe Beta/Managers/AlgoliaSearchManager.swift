@@ -693,8 +693,18 @@ final class AlgoliaSearchManager {
             let servingDescription = hit["servingSize"] as? String
             let servingSizeG = (hit["servingSizeG"] as? Double) ?? (hit["servingSizeG"] as? Int).map { Double($0) }
             let isPerUnit = hit["per_unit_nutrition"] as? Bool
-            let verified = (hit["verified"] as? Bool) ?? false
+            // Check both isVerified and verified fields for compatibility
+            let verified = (hit["isVerified"] as? Bool) ?? (hit["verified"] as? Bool) ?? false
             let barcode = hit["barcode"] as? String
+
+            #if DEBUG
+            if name.lowercased().contains("olive") {
+                print("🔎 AlgoliaSearchManager parsing '\(name)':")
+                print("   - hit[\"isVerified\"]: \(String(describing: hit["isVerified"]))")
+                print("   - hit[\"verified\"]: \(String(describing: hit["verified"]))")
+                print("   - parsed verified value: \(verified)")
+            }
+            #endif
 
             // Extract ingredients array
             var ingredients: [String]? = nil
