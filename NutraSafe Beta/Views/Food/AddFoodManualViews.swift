@@ -331,8 +331,18 @@ struct ManualFoodDetailEntryView: View {
     let mealTimes = ["Breakfast", "Lunch", "Dinner", "Snacks"]
 
     var isFormValid: Bool {
-        // For diary: need food name, brand, calories, carbs, protein, and fat
-        return !foodName.isEmpty && !brand.isEmpty && !calories.isEmpty && !carbs.isEmpty && !protein.isEmpty && !fat.isEmpty
+        // For diary: only need food name and brand (nutrition auto-fills with 0)
+        return !foodName.isEmpty && !brand.isEmpty
+    }
+
+    // Get list of missing required fields for error message
+    private var missingFieldsMessage: String? {
+        var missing: [String] = []
+        if foodName.isEmpty { missing.append("Food Name") }
+        if brand.isEmpty { missing.append("Brand") }
+
+        if missing.isEmpty { return nil }
+        return "Please fill in: \(missing.joined(separator: ", "))"
     }
 
     // Helper to check if a required field is empty and should show error
@@ -345,14 +355,6 @@ struct ManualFoodDetailEntryView: View {
             return foodName.isEmpty
         case "brand":
             return brand.isEmpty
-        case "calories":
-            return calories.isEmpty
-        case "carbs":
-            return carbs.isEmpty
-        case "protein":
-            return protein.isEmpty
-        case "fat":
-            return fat.isEmpty
         default:
             return false
         }
@@ -646,10 +648,10 @@ struct ManualFoodDetailEntryView: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(isFormValid && !isSaving ? Color.blue : Color.gray)
+                        .background(isSaving ? Color.gray : Color.blue)
                         .cornerRadius(12)
                     }
-                    .disabled(!isFormValid || isSaving)
+                    .disabled(isSaving)
                     .padding(.top, 8)
 
                     // Bottom spacing for keyboard
@@ -1490,11 +1492,11 @@ struct ManualFoodDetailEntryView: View {
         if sugar.isEmpty { sugar = "0" }
         if sodium.isEmpty { sodium = "0" }
 
-        // First check if form is valid (now only checks food name and brand)
-        if !isFormValid {
-            // Show error state - fields will highlight red due to hasAttemptedSave
+        // Check if form is valid (only checks food name and brand)
+        if let missingMessage = missingFieldsMessage {
+            // Show specific error about which fields are missing
             showingError = true
-            errorMessage = "Please fill in all required fields (marked with *)"
+            errorMessage = missingMessage
             return
         }
 
