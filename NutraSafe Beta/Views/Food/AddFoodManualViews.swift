@@ -2282,197 +2282,210 @@ struct NutritionRow: View {
 
 // MARK: - Ingredient OCR Camera View
 
-/// Camera view for scanning ingredient labels with OCR - supports multiple photos in one camera session
+/// Camera view for scanning ingredient labels with OCR - supports multiple photos
 struct IngredientOCRCameraView: View {
     let onImageCaptured: (UIImage) -> Void
     let onDismiss: () -> Void
 
     @State private var showingCamera = false
     @State private var capturedImages: [UIImage] = []
+    @State private var currentImage: UIImage?
     @State private var isProcessing = false
 
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
-                if !capturedImages.isEmpty {
-                    // Show captured images for review before processing
-                    ScrollView {
-                        VStack(spacing: 16) {
-                            Text("\(capturedImages.count) Photo\(capturedImages.count == 1 ? "" : "s") Captured")
-                                .font(.title2.bold())
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Header
+                    VStack(spacing: 12) {
+                        Image(systemName: "text.viewfinder")
+                            .font(.system(size: 50))
+                            .foregroundColor(.blue)
 
-                            Text("Review your photos below, then extract ingredients")
+                        Text("Scan Ingredients")
+                            .font(.title2.bold())
+
+                        if capturedImages.isEmpty && currentImage == nil {
+                            Text("Take a photo of the ingredients list")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal)
-
-                            // Show captured images grid
-                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                                ForEach(Array(capturedImages.enumerated()), id: \.offset) { index, image in
-                                    ZStack(alignment: .topTrailing) {
-                                        Image(uiImage: image)
-                                            .resizable()
-                                            .aspectRatio(contentMode: .fill)
-                                            .frame(height: 120)
-                                            .clipped()
-                                            .cornerRadius(8)
-
-                                        Button(action: {
-                                            capturedImages.remove(at: index)
-                                        }) {
-                                            Image(systemName: "xmark.circle.fill")
-                                                .font(.system(size: 22))
-                                                .foregroundColor(.white)
-                                                .shadow(radius: 2)
-                                        }
-                                        .padding(4)
-                                    }
-                                }
-                            }
-                            .padding(.horizontal)
-
-                            // Action buttons
-                            VStack(spacing: 12) {
-                                // Extract button
-                                Button(action: {
-                                    processAllImages()
-                                }) {
-                                    HStack {
-                                        if isProcessing {
-                                            ProgressView()
-                                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                        } else {
-                                            Image(systemName: "text.viewfinder")
-                                                .font(.title3)
-                                        }
-                                        Text(isProcessing ? "Processing..." : "Extract Ingredients")
-                                            .font(.headline)
-                                    }
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding()
-                                    .background(isProcessing ? Color.gray : Color.blue)
-                                    .cornerRadius(12)
-                                }
-                                .disabled(isProcessing)
-
-                                // Take more photos button
-                                if !isProcessing {
-                                    Button(action: {
-                                        showingCamera = true
-                                    }) {
-                                        HStack {
-                                            Image(systemName: "camera.fill")
-                                                .font(.title3)
-                                            Text("Take More Photos")
-                                                .font(.headline)
-                                        }
-                                        .foregroundColor(.blue)
-                                        .frame(maxWidth: .infinity)
-                                        .padding()
-                                        .background(Color.blue.opacity(0.1))
-                                        .cornerRadius(12)
-                                    }
-                                }
-                            }
-                            .padding(.horizontal)
-                            .padding(.top, 8)
-                        }
-                        .padding(.vertical)
-                    }
-                } else {
-                    // Initial state - show camera instructions
-                    VStack(spacing: 20) {
-                        VStack(spacing: 12) {
-                            Image(systemName: "text.viewfinder")
-                                .font(.system(size: 60))
+                        } else {
+                            Text("\(capturedImages.count + (currentImage != nil ? 1 : 0)) photo\(capturedImages.count + (currentImage != nil ? 1 : 0) == 1 ? "" : "s") ready")
+                                .font(.subheadline)
                                 .foregroundColor(.blue)
-
-                            Text("Scan Ingredients")
-                                .font(.title.bold())
-
-                            Text("Take photos of the ingredients list on the packaging")
-                                .font(.headline)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal)
                         }
+                    }
+                    .padding(.top, 20)
 
-                        VStack(alignment: .leading, spacing: 12) {
+                    // Show captured images
+                    if !capturedImages.isEmpty || currentImage != nil {
+                        VStack(spacing: 12) {
+                            // Previous images
+                            ForEach(Array(capturedImages.enumerated()), id: \.offset) { index, image in
+                                HStack(spacing: 12) {
+                                    Image(uiImage: image)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(height: 100)
+                                        .cornerRadius(8)
+
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Photo \(index + 1)")
+                                            .font(.caption.bold())
+                                        Button(action: { capturedImages.remove(at: index) }) {
+                                            Label("Remove", systemImage: "trash")
+                                                .font(.caption)
+                                                .foregroundColor(.red)
+                                        }
+                                    }
+                                    Spacer()
+                                }
+                                .padding(12)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(10)
+                            }
+
+                            // Current image
+                            if let current = currentImage {
+                                HStack(spacing: 12) {
+                                    Image(uiImage: current)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(height: 100)
+                                        .cornerRadius(8)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(Color.blue, lineWidth: 2)
+                                        )
+
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("New Photo")
+                                            .font(.caption.bold())
+                                            .foregroundColor(.blue)
+                                        Button(action: { currentImage = nil }) {
+                                            Label("Remove", systemImage: "trash")
+                                                .font(.caption)
+                                                .foregroundColor(.red)
+                                        }
+                                    }
+                                    Spacer()
+                                }
+                                .padding(12)
+                                .background(Color.blue.opacity(0.1))
+                                .cornerRadius(10)
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+
+                    // Tips (only show if no photos yet)
+                    if capturedImages.isEmpty && currentImage == nil {
+                        VStack(alignment: .leading, spacing: 10) {
                             OCRTipRow(icon: "lightbulb.fill", color: .yellow, text: "Ensure good lighting")
                             OCRTipRow(icon: "hand.raised.fill", color: .orange, text: "Hold steady to avoid blur")
                             OCRTipRow(icon: "text.magnifyingglass", color: .blue, text: "Focus on the ingredients text")
-                            OCRTipRow(icon: "camera.badge.ellipsis", color: .purple, text: "Take multiple photos, tap Done when finished")
+                            OCRTipRow(icon: "rectangle.stack.fill", color: .purple, text: "Take multiple photos for long lists")
                         }
                         .padding()
                         .background(Color(.systemGray6))
                         .cornerRadius(12)
                         .padding(.horizontal)
-
-                        Button(action: {
-                            showingCamera = true
-                        }) {
-                            HStack {
-                                Image(systemName: "camera.fill")
-                                    .font(.title2)
-                                Text("Open Camera")
-                                    .font(.headline)
-                            }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.blue)
-                            .cornerRadius(12)
-                        }
-                        .padding(.horizontal, 40)
                     }
-                }
 
-                Spacer()
+                    // Action buttons
+                    VStack(spacing: 12) {
+                        // Add & Take Another (if we have a current image)
+                        if currentImage != nil {
+                            Button(action: {
+                                if let img = currentImage {
+                                    capturedImages.append(img)
+                                    currentImage = nil
+                                }
+                                showingCamera = true
+                            }) {
+                                Label("Add & Take Another", systemImage: "plus.circle.fill")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color.orange)
+                                    .cornerRadius(12)
+                            }
+                        }
+
+                        // Extract button (if we have any images)
+                        if !capturedImages.isEmpty || currentImage != nil {
+                            Button(action: { processAllImages() }) {
+                                HStack {
+                                    if isProcessing {
+                                        ProgressView()
+                                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    } else {
+                                        Image(systemName: "text.viewfinder")
+                                    }
+                                    Text(isProcessing ? "Processing..." : "Extract Ingredients")
+                                        .font(.headline)
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(isProcessing ? Color.gray : Color.blue)
+                                .cornerRadius(12)
+                            }
+                            .disabled(isProcessing)
+                        }
+
+                        // Take Photo button
+                        if !isProcessing {
+                            Button(action: { showingCamera = true }) {
+                                Label(
+                                    capturedImages.isEmpty && currentImage == nil ? "Take Photo" : "Take Another Photo",
+                                    systemImage: "camera.fill"
+                                )
+                                .font(.headline)
+                                .foregroundColor(capturedImages.isEmpty && currentImage == nil ? .white : .blue)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(capturedImages.isEmpty && currentImage == nil ? Color.blue : Color.blue.opacity(0.1))
+                                .cornerRadius(12)
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 30)
+                }
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        onDismiss()
-                    }
+                    Button("Cancel") { onDismiss() }
                 }
             }
-            .fullScreenCover(isPresented: $showingCamera) {
-                MultiPhotoCameraView(
-                    capturedImages: $capturedImages,
-                    onDone: {
-                        showingCamera = false
-                    },
-                    onCancel: {
-                        showingCamera = false
-                    }
-                )
-                .ignoresSafeArea()
+            .sheet(isPresented: $showingCamera) {
+                ImagePickerView(image: $currentImage, sourceType: .camera)
             }
         }
     }
 
-    /// Process all captured images
     private func processAllImages() {
-        guard !capturedImages.isEmpty else { return }
+        var allImages = capturedImages
+        if let current = currentImage { allImages.append(current) }
+        guard !allImages.isEmpty else { return }
 
-        if capturedImages.count == 1 {
-            onImageCaptured(capturedImages[0])
+        if allImages.count == 1 {
+            onImageCaptured(allImages[0])
         } else {
             isProcessing = true
             DispatchQueue.global(qos: .userInitiated).async {
-                let combinedImage = combineImagesVertically(capturedImages)
+                let combined = combineImagesVertically(allImages)
                 DispatchQueue.main.async {
                     isProcessing = false
-                    onImageCaptured(combinedImage)
+                    onImageCaptured(combined)
                 }
             }
         }
     }
 
-    /// Combine multiple images into a single vertical strip for OCR
     private func combineImagesVertically(_ images: [UIImage]) -> UIImage {
         guard !images.isEmpty else { return UIImage() }
         if images.count == 1 { return images[0] }
@@ -2482,26 +2495,21 @@ struct IngredientOCRCameraView: View {
         let padding: CGFloat = 20
 
         for image in images {
-            let scale = maxWidth / image.size.width
-            totalHeight += image.size.height * scale
+            totalHeight += image.size.height * (maxWidth / image.size.width)
         }
         totalHeight += padding * CGFloat(images.count - 1)
 
-        let size = CGSize(width: maxWidth, height: totalHeight)
-        UIGraphicsBeginImageContextWithOptions(size, false, 1.0)
-
+        UIGraphicsBeginImageContextWithOptions(CGSize(width: maxWidth, height: totalHeight), false, 1.0)
         var yOffset: CGFloat = 0
         for image in images {
             let scale = maxWidth / image.size.width
             let scaledHeight = image.size.height * scale
-            let rect = CGRect(x: 0, y: yOffset, width: maxWidth, height: scaledHeight)
-            image.draw(in: rect)
+            image.draw(in: CGRect(x: 0, y: yOffset, width: maxWidth, height: scaledHeight))
             yOffset += scaledHeight + padding
         }
-
-        let combinedImage = UIGraphicsGetImageFromCurrentImageContext() ?? UIImage()
+        let combined = UIGraphicsGetImageFromCurrentImageContext() ?? UIImage()
         UIGraphicsEndImageContext()
-        return combinedImage
+        return combined
     }
 }
 
@@ -2527,211 +2535,210 @@ private struct OCRTipRow: View {
 
 // MARK: - Nutrition OCR Camera View
 
-/// Camera view for scanning nutrition labels with OCR - supports multiple photos in one camera session
+/// Camera view for scanning nutrition labels with OCR - supports multiple photos
 struct NutritionOCRCameraView: View {
     let onImageCaptured: (UIImage) -> Void
     let onDismiss: () -> Void
 
     @State private var showingCamera = false
     @State private var capturedImages: [UIImage] = []
+    @State private var currentImage: UIImage?
     @State private var isProcessing = false
 
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
-                if !capturedImages.isEmpty {
-                    // Show captured images for review before processing
-                    ScrollView {
-                        VStack(spacing: 16) {
-                            Text("\(capturedImages.count) Photo\(capturedImages.count == 1 ? "" : "s") Captured")
-                                .font(.title2.bold())
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Header
+                    VStack(spacing: 12) {
+                        Image(systemName: "tablecells")
+                            .font(.system(size: 50))
+                            .foregroundColor(.green)
 
-                            Text("Review your photos below, then extract nutrition data")
+                        Text("Scan Nutrition Label")
+                            .font(.title2.bold())
+
+                        if capturedImages.isEmpty && currentImage == nil {
+                            Text("Take a photo of the nutrition table")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal)
-
-                            // Show captured images grid
-                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                                ForEach(Array(capturedImages.enumerated()), id: \.offset) { index, image in
-                                    ZStack(alignment: .topTrailing) {
-                                        Image(uiImage: image)
-                                            .resizable()
-                                            .aspectRatio(contentMode: .fill)
-                                            .frame(height: 120)
-                                            .clipped()
-                                            .cornerRadius(8)
-
-                                        Button(action: {
-                                            capturedImages.remove(at: index)
-                                        }) {
-                                            Image(systemName: "xmark.circle.fill")
-                                                .font(.system(size: 22))
-                                                .foregroundColor(.white)
-                                                .shadow(radius: 2)
-                                        }
-                                        .padding(4)
-                                    }
-                                }
-                            }
-                            .padding(.horizontal)
-
-                            // Action buttons
-                            VStack(spacing: 12) {
-                                // Extract button
-                                Button(action: {
-                                    processAllImages()
-                                }) {
-                                    HStack {
-                                        if isProcessing {
-                                            ProgressView()
-                                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                        } else {
-                                            Image(systemName: "tablecells")
-                                                .font(.title3)
-                                        }
-                                        Text(isProcessing ? "Processing..." : "Extract Nutrition")
-                                            .font(.headline)
-                                    }
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding()
-                                    .background(isProcessing ? Color.gray : Color.green)
-                                    .cornerRadius(12)
-                                }
-                                .disabled(isProcessing)
-
-                                // Take more photos button
-                                if !isProcessing {
-                                    Button(action: {
-                                        showingCamera = true
-                                    }) {
-                                        HStack {
-                                            Image(systemName: "camera.fill")
-                                                .font(.title3)
-                                            Text("Take More Photos")
-                                                .font(.headline)
-                                        }
-                                        .foregroundColor(.green)
-                                        .frame(maxWidth: .infinity)
-                                        .padding()
-                                        .background(Color.green.opacity(0.1))
-                                        .cornerRadius(12)
-                                    }
-                                }
-                            }
-                            .padding(.horizontal)
-                            .padding(.top, 8)
-
-                            // Tip about per 100g values
-                            HStack(spacing: 8) {
-                                Image(systemName: "info.circle.fill")
-                                    .foregroundColor(.green)
-                                Text("For best results, scan the 'per 100g' column of the nutrition table")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            .padding(12)
-                            .background(Color.green.opacity(0.1))
-                            .cornerRadius(8)
-                            .padding(.horizontal)
-                        }
-                        .padding(.vertical)
-                    }
-                } else {
-                    // Initial state - show camera instructions
-                    VStack(spacing: 20) {
-                        VStack(spacing: 12) {
-                            Image(systemName: "tablecells")
-                                .font(.system(size: 60))
+                        } else {
+                            Text("\(capturedImages.count + (currentImage != nil ? 1 : 0)) photo\(capturedImages.count + (currentImage != nil ? 1 : 0) == 1 ? "" : "s") ready")
+                                .font(.subheadline)
                                 .foregroundColor(.green)
-
-                            Text("Scan Nutrition Label")
-                                .font(.title.bold())
-
-                            Text("Take photos of the nutrition information table")
-                                .font(.headline)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal)
                         }
+                    }
+                    .padding(.top, 20)
 
-                        VStack(alignment: .leading, spacing: 12) {
+                    // Show captured images
+                    if !capturedImages.isEmpty || currentImage != nil {
+                        VStack(spacing: 12) {
+                            // Previous images
+                            ForEach(Array(capturedImages.enumerated()), id: \.offset) { index, image in
+                                HStack(spacing: 12) {
+                                    Image(uiImage: image)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(height: 100)
+                                        .cornerRadius(8)
+
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Photo \(index + 1)")
+                                            .font(.caption.bold())
+                                        Button(action: { capturedImages.remove(at: index) }) {
+                                            Label("Remove", systemImage: "trash")
+                                                .font(.caption)
+                                                .foregroundColor(.red)
+                                        }
+                                    }
+                                    Spacer()
+                                }
+                                .padding(12)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(10)
+                            }
+
+                            // Current image
+                            if let current = currentImage {
+                                HStack(spacing: 12) {
+                                    Image(uiImage: current)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(height: 100)
+                                        .cornerRadius(8)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(Color.green, lineWidth: 2)
+                                        )
+
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("New Photo")
+                                            .font(.caption.bold())
+                                            .foregroundColor(.green)
+                                        Button(action: { currentImage = nil }) {
+                                            Label("Remove", systemImage: "trash")
+                                                .font(.caption)
+                                                .foregroundColor(.red)
+                                        }
+                                    }
+                                    Spacer()
+                                }
+                                .padding(12)
+                                .background(Color.green.opacity(0.1))
+                                .cornerRadius(10)
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+
+                    // Tips (only show if no photos yet)
+                    if capturedImages.isEmpty && currentImage == nil {
+                        VStack(alignment: .leading, spacing: 10) {
                             OCRTipRow(icon: "lightbulb.fill", color: .yellow, text: "Ensure good lighting")
                             OCRTipRow(icon: "hand.raised.fill", color: .orange, text: "Hold steady to avoid blur")
                             OCRTipRow(icon: "tablecells", color: .green, text: "Include the full nutrition table")
                             OCRTipRow(icon: "textformat.123", color: .blue, text: "Focus on the 'per 100g' column")
-                            OCRTipRow(icon: "camera.badge.ellipsis", color: .purple, text: "Take multiple photos, tap Done when finished")
                         }
                         .padding()
                         .background(Color(.systemGray6))
                         .cornerRadius(12)
                         .padding(.horizontal)
-
-                        Button(action: {
-                            showingCamera = true
-                        }) {
-                            HStack {
-                                Image(systemName: "camera.fill")
-                                    .font(.title2)
-                                Text("Open Camera")
-                                    .font(.headline)
-                            }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.green)
-                            .cornerRadius(12)
-                        }
-                        .padding(.horizontal, 40)
                     }
-                }
 
-                Spacer()
+                    // Action buttons
+                    VStack(spacing: 12) {
+                        // Add & Take Another (if we have a current image)
+                        if currentImage != nil {
+                            Button(action: {
+                                if let img = currentImage {
+                                    capturedImages.append(img)
+                                    currentImage = nil
+                                }
+                                showingCamera = true
+                            }) {
+                                Label("Add & Take Another", systemImage: "plus.circle.fill")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color.orange)
+                                    .cornerRadius(12)
+                            }
+                        }
+
+                        // Extract button (if we have any images)
+                        if !capturedImages.isEmpty || currentImage != nil {
+                            Button(action: { processAllImages() }) {
+                                HStack {
+                                    if isProcessing {
+                                        ProgressView()
+                                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    } else {
+                                        Image(systemName: "tablecells")
+                                    }
+                                    Text(isProcessing ? "Processing..." : "Extract Nutrition")
+                                        .font(.headline)
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(isProcessing ? Color.gray : Color.green)
+                                .cornerRadius(12)
+                            }
+                            .disabled(isProcessing)
+                        }
+
+                        // Take Photo button
+                        if !isProcessing {
+                            Button(action: { showingCamera = true }) {
+                                Label(
+                                    capturedImages.isEmpty && currentImage == nil ? "Take Photo" : "Take Another Photo",
+                                    systemImage: "camera.fill"
+                                )
+                                .font(.headline)
+                                .foregroundColor(capturedImages.isEmpty && currentImage == nil ? .white : .green)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(capturedImages.isEmpty && currentImage == nil ? Color.green : Color.green.opacity(0.1))
+                                .cornerRadius(12)
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 30)
+                }
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        onDismiss()
-                    }
+                    Button("Cancel") { onDismiss() }
                 }
             }
-            .fullScreenCover(isPresented: $showingCamera) {
-                MultiPhotoCameraView(
-                    capturedImages: $capturedImages,
-                    onDone: {
-                        showingCamera = false
-                    },
-                    onCancel: {
-                        showingCamera = false
-                    }
-                )
-                .ignoresSafeArea()
+            .sheet(isPresented: $showingCamera) {
+                ImagePickerView(image: $currentImage, sourceType: .camera)
             }
         }
     }
 
-    /// Process all captured images
     private func processAllImages() {
-        guard !capturedImages.isEmpty else { return }
+        var allImages = capturedImages
+        if let current = currentImage { allImages.append(current) }
+        guard !allImages.isEmpty else { return }
 
-        if capturedImages.count == 1 {
-            onImageCaptured(capturedImages[0])
+        if allImages.count == 1 {
+            onImageCaptured(allImages[0])
         } else {
             isProcessing = true
             DispatchQueue.global(qos: .userInitiated).async {
-                let combinedImage = combineImagesVertically(capturedImages)
+                let combined = combineImagesVertically(allImages)
                 DispatchQueue.main.async {
                     isProcessing = false
-                    onImageCaptured(combinedImage)
+                    onImageCaptured(combined)
                 }
             }
         }
     }
 
-    /// Combine multiple images into a single vertical strip for OCR
     private func combineImagesVertically(_ images: [UIImage]) -> UIImage {
         guard !images.isEmpty else { return UIImage() }
         if images.count == 1 { return images[0] }
@@ -2741,26 +2748,21 @@ struct NutritionOCRCameraView: View {
         let padding: CGFloat = 20
 
         for image in images {
-            let scale = maxWidth / image.size.width
-            totalHeight += image.size.height * scale
+            totalHeight += image.size.height * (maxWidth / image.size.width)
         }
         totalHeight += padding * CGFloat(images.count - 1)
 
-        let size = CGSize(width: maxWidth, height: totalHeight)
-        UIGraphicsBeginImageContextWithOptions(size, false, 1.0)
-
+        UIGraphicsBeginImageContextWithOptions(CGSize(width: maxWidth, height: totalHeight), false, 1.0)
         var yOffset: CGFloat = 0
         for image in images {
             let scale = maxWidth / image.size.width
             let scaledHeight = image.size.height * scale
-            let rect = CGRect(x: 0, y: yOffset, width: maxWidth, height: scaledHeight)
-            image.draw(in: rect)
+            image.draw(in: CGRect(x: 0, y: yOffset, width: maxWidth, height: scaledHeight))
             yOffset += scaledHeight + padding
         }
-
-        let combinedImage = UIGraphicsGetImageFromCurrentImageContext() ?? UIImage()
+        let combined = UIGraphicsGetImageFromCurrentImageContext() ?? UIImage()
         UIGraphicsEndImageContext()
-        return combinedImage
+        return combined
     }
 }
 
