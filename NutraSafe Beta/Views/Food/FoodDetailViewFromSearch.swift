@@ -2086,52 +2086,58 @@ private var nutritionFactsSection: some View {
                 print("  - originalMealType: '\(originalMealType)'")
                 print("  - selectedMeal: '\(selectedMeal)'")
                 print("FoodDetailView: DiaryEntry details - Calories: \(diaryEntry.calories), Protein: \(diaryEntry.protein), Serving: \(diaryEntry.servingDescription), Quantity: \(diaryEntry.quantity)")
-
                 #endif
-                Task {
-                    let hasAccess = subscriptionManager.hasAccess
+
+                let hasAccess = subscriptionManager.hasAccess
+                let isMovingMeal = originalMealType.lowercased() != selectedMeal.lowercased()
+
+                // Dismiss immediately for instant UX
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    dismiss()
+                }
+                onComplete?(.diary)
+
+                // Save in background
+                let entry = diaryEntry
+                let meal = selectedMeal
+                let originalMeal = originalMealType
+                let date = targetDate
+                let manager = diaryDataManager
+
+                Task.detached(priority: .userInitiated) {
                     do {
-                        // Decide: move across meals or replace within the same meal
-                        if originalMealType.lowercased() != selectedMeal.lowercased() {
+                        if isMovingMeal {
                             #if DEBUG
-                            print("FoodDetailView: Moving food to new meal: \(selectedMeal)")
+                            print("FoodDetailView: Moving food to new meal: \(meal) (background)")
                             #endif
-                            try await diaryDataManager.moveFoodItem(diaryEntry, from: originalMealType, to: selectedMeal, for: targetDate, hasProAccess: hasAccess)
+                            try await manager.moveFoodItem(entry, from: originalMeal, to: meal, for: date, hasProAccess: hasAccess)
                             #if DEBUG
-                            print("FoodDetailView: Successfully moved \(diaryEntry.name) to \(selectedMeal) on \(targetDate)")
+                            print("FoodDetailView: Successfully moved \(entry.name) to \(meal) on \(date) (background)")
                             #endif
                         } else {
                             #if DEBUG
-                            print("FoodDetailView: Replacing within same meal: \(selectedMeal)")
+                            print("FoodDetailView: Replacing within same meal: \(meal) (background)")
                             #endif
-                            try await diaryDataManager.replaceFoodItem(diaryEntry, to: selectedMeal, for: targetDate, hasProAccess: hasAccess)
+                            try await manager.replaceFoodItem(entry, to: meal, for: date, hasProAccess: hasAccess)
                             #if DEBUG
-                            print("FoodDetailView: Successfully replaced \(diaryEntry.name) in \(selectedMeal) on \(targetDate)")
+                            print("FoodDetailView: Successfully replaced \(entry.name) in \(meal) on \(date) (background)")
                             #endif
-                        }
-
-                        await MainActor.run {
-                            // Dismiss keyboard before closing view
-                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                            // Dismiss without animation and immediately trigger parent completion
-                            var transaction = Transaction()
-                            transaction.disablesAnimations = true
-                            withTransaction(transaction) {
-                                dismiss()
-                            }
-                            onComplete?(.diary)
                         }
                     } catch is FirebaseManager.DiaryLimitError {
-                        await MainActor.run { showingDiaryLimitError = true }
+                        #if DEBUG
+                        print("FoodDetailView: Diary limit reached during edit (background)")
+                        #endif
                     } catch {
                         #if DEBUG
-                        print("FoodDetailView: Error updating food: \(error.localizedDescription)")
+                        print("FoodDetailView: Error updating food (background): \(error.localizedDescription)")
                         #endif
-                        await MainActor.run { dismiss() }
                     }
                 }
             } else {
-                // Adding new food item - await completion before dismissing
+                // Adding new food item
                 #if DEBUG
                 print("  - NO diaryEntryId (adding new)")
                 print("  - selectedMeal: '\(selectedMeal)'")
@@ -2139,29 +2145,37 @@ private var nutritionFactsSection: some View {
                 print("FoodDetailView: DiaryEntry details - Calories: \(diaryEntry.calories), Protein: \(diaryEntry.protein), Serving: \(diaryEntry.servingDescription), Quantity: \(diaryEntry.quantity)")
                 #endif
 
-                Task {
-                    let hasAccess = subscriptionManager.hasAccess
+                let hasAccess = subscriptionManager.hasAccess
+
+                // Dismiss immediately for instant UX
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    dismiss()
+                }
+                onComplete?(.diary)
+
+                // Save in background
+                let entry = diaryEntry
+                let meal = selectedMeal
+                let date = targetDate
+                let manager = diaryDataManager
+
+                Task.detached(priority: .userInitiated) {
                     do {
-                        try await diaryDataManager.addFoodItem(diaryEntry, to: selectedMeal, for: targetDate, hasProAccess: hasAccess)
+                        try await manager.addFoodItem(entry, to: meal, for: date, hasProAccess: hasAccess)
                         #if DEBUG
-                        print("FoodDetailView: Successfully added \(diaryEntry.name) to \(selectedMeal) on \(targetDate)")
+                        print("FoodDetailView: Successfully added \(entry.name) to \(meal) on \(date) (background)")
                         #endif
-                        await MainActor.run {
-                            // Dismiss keyboard before closing view
-                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                            // Dismiss without animation and immediately trigger parent completion
-                            var transaction = Transaction()
-                            transaction.disablesAnimations = true
-                            withTransaction(transaction) {
-                                dismiss()
-                            }
-                            onComplete?(.diary)
-                        }
                     } catch is FirebaseManager.DiaryLimitError {
-                        await MainActor.run { showingDiaryLimitError = true }
+                        // For free users hitting limit - they'll see on diary tab
+                        #if DEBUG
+                        print("FoodDetailView: Diary limit reached (background save)")
+                        #endif
                     } catch {
                         #if DEBUG
-                        print("FoodDetailView: Error adding food: \(error.localizedDescription)")
+                        print("FoodDetailView: Error adding food (background): \(error.localizedDescription)")
                         #endif
                     }
                 }
