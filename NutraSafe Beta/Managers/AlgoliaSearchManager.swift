@@ -431,20 +431,39 @@ final class AlgoliaSearchManager {
             else if nameLower.hasPrefix(queryLower) || brandLower.hasPrefix(queryLower) {
                 score += 5000
             }
+            // PRIORITY: Query word appears as EXACT COMPLETE WORD in name
+            // e.g., "milk" matches "Whole Milk", "Semi-Skimmed Milk" but NOT "Milkybar"
+            else if queryWords.count == 1, nameWords.contains(queryLower) {
+                score += 6000  // Higher than prefix match - exact word is better
+                // Extra bonus if it's a short/generic name like "Whole Milk" (2-3 words)
+                if nameWords.count <= 3 {
+                    score += 1500
+                }
+            }
             // All query words appear in name (e.g., "boiled egg" finds "Egg Boiled")
             else if queryWords.allSatisfy({ queryWord in
                 nameWords.contains { $0.hasPrefix(queryWord) || $0 == queryWord }
             }) {
-                score += 4500
+                // Check if ALL query words are EXACT matches (not just prefixes)
+                let allExactWordMatches = queryWords.allSatisfy({ queryWord in
+                    nameWords.contains(queryWord)
+                })
+
+                if allExactWordMatches {
+                    score += 5500  // Higher for exact word matches
+                } else {
+                    score += 4500  // Prefix matches
+                }
 
                 // BONUS: If name has ONLY the query words (reversed match)
                 if nameWords.count == queryWords.count {
                     score += 2000
                 }
             }
-            // Name/brand contains original query as substring
+            // Name/brand contains original query as substring (but not as complete word)
+            // e.g., "milk" in "Milkybar" - should be LOWER priority
             else if nameLower.contains(queryLower) || brandLower.contains(queryLower) {
-                score += 3000
+                score += 1500  // Reduced from 3000 - substring matches are less relevant
             }
             // Matches via synonym (still good, but lower priority)
             else {
@@ -564,18 +583,41 @@ final class AlgoliaSearchManager {
                     queryLower == String(firstWord) {
                 score += 4000
             }
-            // All query words appear in name
+            // PRIORITY: Query word appears as EXACT COMPLETE WORD in name (not just prefix)
+            // e.g., "milk" matches "Whole Milk", "Semi-Skimmed Milk", "Milk" etc.
+            // This should score HIGHER than prefix matches like "Milkybar"
+            else if queryWords.count == 1, nameWords.contains(queryLower) {
+                score += 6000  // Higher than prefix match (5000) - exact word is better
+                // Extra bonus if it's a short/generic name like "Whole Milk" (2 words)
+                if nameWords.count <= 3 {
+                    score += 1500
+                }
+            }
+            // All query words appear in name as complete words or prefixes
             else if queryWords.allSatisfy({ queryWord in
                 nameWords.contains { $0.hasPrefix(queryWord) || $0 == queryWord }
             }) {
-                // Higher score for all words present
-                score += 4500
+                // Check if ALL query words are EXACT matches (not just prefixes)
+                let allExactWordMatches = queryWords.allSatisfy({ queryWord in
+                    nameWords.contains(queryWord)
+                })
+
+                if allExactWordMatches {
+                    score += 5500  // Higher score for exact word matches
+                } else {
+                    score += 4500  // Prefix matches
+                }
 
                 // BONUS: If name has ONLY the query words (e.g., "Egg Boiled" for "boiled egg")
                 // This catches reversed word order matches
                 if nameWords.count == queryWords.count {
                     score += 2000  // Big bonus for exact word set match
                 }
+            }
+            // Name contains query as substring but not as complete word
+            // e.g., "milk" in "Milkybar" - should be LOWER priority
+            else if nameLower.contains(queryLower) {
+                score += 1500  // Lower than exact word match
             }
             // Any query word matches start of name
             else if queryWords.contains(where: { nameLower.hasPrefix($0) }) {
