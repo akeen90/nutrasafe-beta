@@ -12,12 +12,12 @@ import UIKit
 
 // MARK: - Additive Risk Level (Traffic Light System)
 
-/// Risk levels for additives, inspired by Yuka's traffic light scoring
+/// Risk levels for additives - neutral wording as individual reactions may vary
 enum AdditiveRiskLevel: Int, Comparable, CaseIterable {
-    case noRisk = 0       // Green - vitamins, natural ingredients, completely safe
-    case lowRisk = 1      // Light green - generally safe, minor considerations
-    case moderateRisk = 2 // Yellow/Orange - use in moderation, some concerns
-    case highRisk = 3     // Red - best avoided or limited
+    case noRisk = 0       // Green - vitamins, natural ingredients
+    case lowRisk = 1      // Light green - common additives, few concerns
+    case moderateRisk = 2 // Yellow/Orange - some people may want to limit
+    case highRisk = 3     // Red - often limited or avoided
 
     static func < (lhs: AdditiveRiskLevel, rhs: AdditiveRiskLevel) -> Bool {
         lhs.rawValue < rhs.rawValue
@@ -34,10 +34,10 @@ enum AdditiveRiskLevel: Int, Comparable, CaseIterable {
 
     var label: String {
         switch self {
-        case .noRisk: return "No Risk"
-        case .lowRisk: return "Low Risk"
+        case .noRisk: return "Minimal"
+        case .lowRisk: return "Limited"
         case .moderateRisk: return "Moderate"
-        case .highRisk: return "High Risk"
+        case .highRisk: return "Notable"
         }
     }
 
@@ -52,10 +52,10 @@ enum AdditiveRiskLevel: Int, Comparable, CaseIterable {
 
     var shortDescription: String {
         switch self {
-        case .noRisk: return "Safe to consume"
-        case .lowRisk: return "Generally safe"
-        case .moderateRisk: return "Use in moderation"
-        case .highRisk: return "Best avoided"
+        case .noRisk: return "Commonly accepted"
+        case .lowRisk: return "Few concerns raised"
+        case .moderateRisk: return "Some choose to limit"
+        case .highRisk: return "Often avoided"
         }
     }
 }
@@ -73,11 +73,11 @@ struct AdditiveScoreSummary {
 
     var gradeLabel: String {
         switch score {
-        case 80...100: return "Excellent"
-        case 60..<80: return "Good"
-        case 40..<60: return "Mediocre"
-        case 20..<40: return "Poor"
-        default: return "Bad"
+        case 80...100: return "Few Additives"
+        case 60..<80: return "Some Additives"
+        case 40..<60: return "Several Additives"
+        case 20..<40: return "Many Additives"
+        default: return "High Additive Count"
         }
     }
 

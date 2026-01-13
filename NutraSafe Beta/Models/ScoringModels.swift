@@ -384,15 +384,15 @@ class ProcessingScorer {
         // final_index = (processing_intensity * 0.6) + ((6 - nutrient_integrity) * 0.4)
         let finalIndex = (processingIntensity * 0.6) + ((6.0 - nutrientIntegrity) * 0.4)
 
-        // Grade thresholds
+        // Grade thresholds - neutral descriptive labels
         let (grade, label): (String, String) = {
             switch finalIndex {
-            case 1.0...1.5: return ("A", "Natural & nutrient-dense")
-            case 1.6...2.3: return ("B", "Lightly processed & balanced")
-            case 2.4...3.1: return ("C", "Moderately processed")
-            case 3.2...3.8: return ("D", "Heavily processed but functional")
-            case 3.9...4.5: return ("E", "Ultra-processed, weak nutrition")
-            default:         return ("F", "Highly processed, poor nutrition")
+            case 1.0...1.5: return ("A", "Minimal processing")
+            case 1.6...2.3: return ("B", "Light processing")
+            case 2.4...3.1: return ("C", "Moderate processing")
+            case 3.2...3.8: return ("D", "Notable processing")
+            case 3.9...4.5: return ("E", "High processing")
+            default:         return ("F", "Extensive processing")
             }
         }()
 
@@ -443,89 +443,64 @@ class ProcessingScorer {
 
     /// Detects if a food is a ready meal or prepared dish based on name patterns and ingredient complexity
     private func detectReadyMeal(name: String, ingredientCount: Int) -> Bool {
-        // Ready meal name patterns (brands and dish types)
-        let readyMealPatterns = [
-            // UK Ready Meal Brands
-            "charlie bigham", "cook", "m&s", "marks & spencer", "marks and spencer",
-            "waitrose", "tesco finest", "sainsbury's taste", "aldi specially selected",
-            "lidl deluxe", "asda extra special", "morrisons the best",
-
-            // Dish Types (typically ready meals)
-            "cottage pie", "shepherd's pie", "shepherds pie", "fish pie", "chicken pie",
-            "lasagne", "lasagna", "moussaka", "carbonara", "bolognese", "bolognaise",
-            "tikka masala", "korma", "madras", "vindaloo", "jalfrezi", "biryani",
-            "kung pao", "sweet and sour", "chow mein", "fried rice",
-            "enchilada", "burrito", "fajita",
-            "casserole", "stew", "hotpot", "pot pie",
-            "risotto", "paella", "goulash",
-            "mac and cheese", "macaroni cheese",
-            "roast dinner", "sunday roast",
-
-            // Ready Meal Indicators
-            "ready meal", "microwave meal", "heat and eat", "heat & eat",
-            "meal for one", "meal for two", "family meal", "meal deal",
-            "prepared meal", "pre-made", "pre-cooked"
+        // Only flag LOW-QUALITY ready meals - not premium brands using real ingredients
+        // Premium brands that cook with real ingredients shouldn't be penalized
+        let premiumReadyMealBrands = [
+            "charlie bigham", "cook", "m&s dine in", "waitrose entertaining",
+            "daylesford", "gail's", "ottolenghi"
         ]
 
-        let nameMatches = readyMealPatterns.contains(where: { name.contains($0) })
+        // If it's a premium brand, don't flag as "ready meal" for penalty purposes
+        if premiumReadyMealBrands.contains(where: { name.contains($0) }) {
+            return false
+        }
 
-        // Also consider high ingredient count as ready meal indicator
-        // Real ready meals typically have 10+ ingredients
-        let highIngredientCount = ingredientCount >= 10
+        // Budget/mass-market ready meal indicators (these typically use more additives)
+        let cheapReadyMealPatterns = [
+            "ready meal", "microwave meal", "heat and eat", "heat & eat",
+            "meal deal", "value", "basics", "everyday"
+        ]
 
-        return nameMatches || (highIngredientCount && ingredientCount >= 12)
+        let isCheapReadyMeal = cheapReadyMealPatterns.contains(where: { name.contains($0) })
+
+        // Very high ingredient count (15+) without premium brand = likely industrial
+        let veryHighIngredientCount = ingredientCount >= 15
+
+        return isCheapReadyMeal || veryHighIngredientCount
     }
 
-    /// Detects processed cooking ingredients that indicate a prepared/processed food
+    /// Detects INDUSTRIAL processing indicators - NOT normal cooking ingredients
+    /// Cream, butter, wine, stock are NORMAL cooking ingredients and should NOT be penalized
     private func detectProcessedCookingIngredients(in text: String) -> Double {
         var weight = 0.0
 
-        // Processed cooking ingredients found in ready meals
-        let processedCookingIngredients: [(pattern: String, weight: Double)] = [
-            // Dairy processing
-            ("double cream", 0.15), ("single cream", 0.15), ("cream", 0.1),
-            ("crème fraîche", 0.15), ("creme fraiche", 0.15),
-            ("mascarpone", 0.15), ("cheese sauce", 0.2),
+        // ONLY penalize truly industrial/processed indicators
+        // Normal cooking ingredients (cream, butter, wine, stock, herbs) are NOT penalized
+        let industrialIndicators: [(pattern: String, weight: Double)] = [
+            // Industrial fats
+            ("margarine", 0.3),
+            ("vegetable fat", 0.2),
 
-            // Fats and oils
-            ("butter", 0.1), ("margarine", 0.2),
-            ("vegetable oil", 0.1), ("rapeseed oil", 0.1),
+            // Industrial shortcuts (vs real cooking)
+            ("stock cube", 0.15), ("bouillon cube", 0.15),
+            ("onion powder", 0.1), ("garlic powder", 0.1),
+            ("reconstituted", 0.2),
+            ("from concentrate", 0.1),
 
-            // Stocks and sauces
-            ("beef stock", 0.15), ("chicken stock", 0.15), ("vegetable stock", 0.15),
-            ("stock cube", 0.2), ("bouillon", 0.15),
-            ("worcestershire sauce", 0.1), ("soy sauce", 0.1),
-            ("tomato paste", 0.1), ("tomato puree", 0.1), ("tomato purée", 0.1),
-
-            // Wine and alcohol (cooking)
-            ("white wine", 0.15), ("red wine", 0.15), ("sherry", 0.15),
-            ("brandy", 0.15), ("marsala", 0.15),
-
-            // Thickeners and binders
-            ("cornflour", 0.1), ("corn flour", 0.1), ("cornstarch", 0.1),
-            ("plain flour", 0.05), ("wheat flour", 0.05),
-            ("breadcrumb", 0.1), ("breadcrumbs", 0.1),
-            ("egg wash", 0.1),
-
-            // Seasonings (industrial scale)
-            ("garlic puree", 0.1), ("garlic purée", 0.1),
-            ("onion powder", 0.15), ("garlic powder", 0.15),
-            ("mixed herbs", 0.05), ("dried herbs", 0.05),
-
-            // Other processed indicators
-            ("concentrated", 0.15), ("reconstituted", 0.2),
-            ("from concentrate", 0.15), ("pasteurised", 0.1),
-            ("smoked", 0.1), ("cured", 0.15)
+            // Pre-made sauces (industrial vs homemade)
+            ("cheese sauce", 0.15),
+            ("white sauce", 0.1),
+            ("bechamel", 0.1)
         ]
 
-        for (pattern, patternWeight) in processedCookingIngredients {
+        for (pattern, patternWeight) in industrialIndicators {
             if text.contains(pattern) {
                 weight += patternWeight
             }
         }
 
-        // Cap at 1.0 to prevent over-penalization
-        return min(weight, 1.0)
+        // Cap at 0.5 - this shouldn't dominate the score
+        return min(weight, 0.5)
     }
 
     private func buildNutraSafeExplanation(
