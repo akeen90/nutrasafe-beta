@@ -1617,12 +1617,15 @@ class ProcessingScorer {
     }
 
     private func calculateNaturalScore(_ food: String) -> Int {
-        let naturalBonusTerms = [
+        var bonus = 0
+        let foodLower = food.lowercased()
+
+        // Marketing/label terms
+        let labelBonusTerms = [
             "organic": 10,
-            "fresh": 8,
+            "fresh": 5,
             "raw": 12,
-            "natural": 6,
-            "whole": 8,
+            "whole": 5,
             "unprocessed": 15,
             "homemade": 10,
             "farm fresh": 12,
@@ -1630,15 +1633,65 @@ class ProcessingScorer {
             "grass fed": 8,
             "free range": 6
         ]
-        
-        var bonus = 0
-        for (term, value) in naturalBonusTerms {
-            if food.contains(term) {
+
+        for (term, value) in labelBonusTerms {
+            if foodLower.contains(term) {
                 bonus += value
             }
         }
-        
-        return min(bonus, 25) // Cap natural bonus at 25 points
+
+        // REAL whole food ingredients - give substantial bonuses for these
+        let wholeFoodIngredients: [(term: String, points: Int)] = [
+            // Proteins (high value - these are quality ingredients)
+            ("chicken", 8), ("beef", 8), ("lamb", 8), ("pork", 6), ("turkey", 8),
+            ("salmon", 10), ("cod", 8), ("prawns", 8), ("fish", 6),
+            ("egg", 6), ("eggs", 6),
+
+            // Dairy (real dairy is a quality ingredient)
+            ("cream", 6), ("double cream", 8), ("butter", 6), ("milk", 5),
+            ("cheese", 5), ("parmesan", 6), ("cheddar", 5), ("mascarpone", 6),
+
+            // Vegetables
+            ("onion", 4), ("garlic", 4), ("tomato", 4), ("carrot", 4),
+            ("celery", 4), ("leek", 4), ("mushroom", 4), ("spinach", 5),
+            ("broccoli", 5), ("pepper", 4), ("courgette", 4), ("aubergine", 4),
+            ("potato", 3), ("peas", 4), ("beans", 4), ("lentils", 5),
+
+            // Herbs and aromatics (sign of real cooking)
+            ("basil", 5), ("thyme", 5), ("rosemary", 5), ("parsley", 4),
+            ("oregano", 4), ("sage", 4), ("bay leaf", 4), ("bay leaves", 4),
+            ("coriander", 4), ("chives", 4), ("tarragon", 4), ("dill", 4),
+
+            // Quality cooking ingredients
+            ("olive oil", 6), ("rapeseed oil", 4), ("white wine", 5), ("red wine", 5),
+            ("stock", 4), ("chicken stock", 5), ("beef stock", 5),
+            ("lemon juice", 4), ("lime juice", 4), ("vinegar", 3),
+
+            // Grains and carbs
+            ("pasta", 3), ("rice", 3), ("flour", 2), ("breadcrumbs", 2),
+
+            // Nuts and seeds
+            ("almonds", 5), ("walnuts", 5), ("pine nuts", 5), ("cashews", 5)
+        ]
+
+        var wholeFoodCount = 0
+        for (term, points) in wholeFoodIngredients {
+            if foodLower.contains(term) {
+                bonus += points
+                wholeFoodCount += 1
+            }
+        }
+
+        // Bonus for having many whole food ingredients (sign of real cooking)
+        if wholeFoodCount >= 8 {
+            bonus += 15  // Lots of real ingredients
+        } else if wholeFoodCount >= 5 {
+            bonus += 10  // Good variety of real ingredients
+        } else if wholeFoodCount >= 3 {
+            bonus += 5   // Some real ingredients
+        }
+
+        return min(bonus, 60) // Increased cap to 60 to allow real food to shine
     }
     
     private func scoreToGrade(_ score: Int) -> ProcessingGrade {
@@ -1795,73 +1848,134 @@ class ProcessingScorer {
     
     private func analyzeIngredientsProcessingLevel(_ ingredients: String) -> ProcessingLevel {
         let ingredientList = ingredients.lowercased()
-        
+
         // Count ultra-processed indicators (NOVA Group 4)
+        // Only count genuinely concerning industrial additives
         var ultraProcessedScore = 0
-        
-        // Industrial sweeteners and additives
-        let ultraProcessedIndicators = [
+
+        // HIGH concern - truly industrial additives (worth 2 points each)
+        let highConcernIndicators = [
             "glucose syrup", "high fructose corn syrup", "invert sugar", "maltodextrin",
             "hydrolysed protein", "soy protein isolate", "modified starch",
-            "hydrogenated oil", "palm oil", "palm fat", "trans fat",
-            "emulsifier", "stabiliser", "thickener", "gelling agent",
-            "flavouring", "artificial flavour", "natural flavour", "flavour enhancer",
-            "lecithin", "mono- and diglycerides", "polyglycerol",
-            "sodium benzoate", "potassium sorbate", "calcium propionate",
+            "hydrogenated oil", "trans fat",
+            "mono- and diglycerides", "polyglycerol",
             "bht", "bha", "tbhq", "sodium nitrite", "sodium nitrate",
-            "carrageenan", "xanthan gum", "guar gum", "locust bean gum",
             "aspartame", "sucralose", "acesulfame", "cyclamate"
         ]
-        
+
+        // MEDIUM concern - processed but not terrible (worth 1 point each)
+        let mediumConcernIndicators = [
+            "palm oil", "palm fat",
+            "artificial flavour", "flavour enhancer",
+            "sodium benzoate", "potassium sorbate", "calcium propionate",
+            "carrageenan"
+        ]
+
+        // LOW concern - naturally derived, often fine in quality food (worth 0.5 points)
+        // These shouldn't heavily penalize otherwise good food
+        let lowConcernIndicators = [
+            "xanthan gum", "guar gum", "locust bean gum",  // Plant-derived thickeners
+            "lecithin",  // Often from eggs or soy, natural emulsifier
+            "emulsifier", "stabiliser", "thickener"  // Generic terms - could be natural
+        ]
+
+        // Don't penalize: "natural flavour", "natural flavouring" - these are often just herbs/spices
+
+        // Count high concern (2 points each)
+        for indicator in highConcernIndicators {
+            if ingredientList.contains(indicator) {
+                ultraProcessedScore += 2
+            }
+        }
+
+        // Count medium concern (1 point each)
+        for indicator in mediumConcernIndicators {
+            if ingredientList.contains(indicator) {
+                ultraProcessedScore += 1
+            }
+        }
+
+        // Count low concern (0.5 points each, but only if no "natural" qualifier nearby)
+        for indicator in lowConcernIndicators {
+            if ingredientList.contains(indicator) {
+                // Don't penalize if it says "natural" before it
+                let naturalVersion = "natural " + indicator
+                if !ingredientList.contains(naturalVersion) {
+                    ultraProcessedScore += 1  // Using Int, so round up to 1
+                }
+            }
+        }
+
         // PERFORMANCE: Use precompiled E-number regex pattern
         let eNumberMatches = Self.eNumberPattern.numberOfMatches(
             in: ingredientList,
             range: NSRange(ingredientList.startIndex..., in: ingredientList)
         )
-        
-        // Count ultra-processed indicators
-        for indicator in ultraProcessedIndicators {
+
+        // Add E-number penalties (but cap it - lots of E numbers in one product shouldn't stack infinitely)
+        ultraProcessedScore += min(eNumberMatches, 4)
+
+        // Count whole food ingredients to offset processing score
+        let wholeFoodIndicators = [
+            "chicken", "beef", "lamb", "pork", "salmon", "cod", "prawns",
+            "cream", "butter", "milk", "cheese", "egg",
+            "onion", "garlic", "tomato", "carrot", "celery", "mushroom",
+            "potato", "spinach", "broccoli", "pepper", "leek",
+            "basil", "thyme", "rosemary", "parsley", "oregano", "sage",
+            "olive oil", "white wine", "red wine", "stock"
+        ]
+
+        var wholeFoodCount = 0
+        for indicator in wholeFoodIndicators {
             if ingredientList.contains(indicator) {
-                ultraProcessedScore += 1
+                wholeFoodCount += 1
             }
         }
-        
-        // Add E-number penalties
-        ultraProcessedScore += eNumberMatches
-        
-        // Classify based on NOVA system
-        if ultraProcessedScore >= 3 {
-            return .ultraProcessed  // 3+ ultra-processed indicators = NOVA Group 4
+
+        // Reduce ultra-processed score based on whole food content
+        // Quality ready meals with real ingredients shouldn't be penalized as harshly
+        if wholeFoodCount >= 6 {
+            ultraProcessedScore -= 3  // Lots of real ingredients
+        } else if wholeFoodCount >= 4 {
+            ultraProcessedScore -= 2  // Good amount of real ingredients
+        } else if wholeFoodCount >= 2 {
+            ultraProcessedScore -= 1  // Some real ingredients
         }
-        
+
+        // Classify based on adjusted NOVA system
+        // Threshold raised from 3 to 5 to account for weighted scoring
+        if ultraProcessedScore >= 5 {
+            return .ultraProcessed  // Genuinely ultra-processed
+        }
+
         // Check for processed indicators (NOVA Group 3)
         let processedIndicators = [
             "salt", "sugar", "oil", "vinegar", "citric acid", "ascorbic acid",
             "sodium chloride", "calcium chloride", "lactic acid"
         ]
-        
+
         var processedScore = 0
         for indicator in processedIndicators {
             if ingredientList.contains(indicator) {
                 processedScore += 1
             }
         }
-        
-        if processedScore >= 2 {
+
+        if processedScore >= 2 || ultraProcessedScore >= 2 {
             return .processed  // Some processing with added substances
         }
-        
+
         // Check for minimal processing indicators (NOVA Group 2)
         let minimalIndicators = [
             "pasteurised", "frozen", "dried", "fermented", "pressed", "ground"
         ]
-        
+
         for indicator in minimalIndicators {
             if ingredientList.contains(indicator) {
                 return .minimally  // Physical/chemical processes only
             }
         }
-        
+
         // Default to unprocessed if no processing indicators found (NOVA Group 1)
         return .unprocessed
     }
