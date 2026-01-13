@@ -1286,6 +1286,125 @@ extension MacroGoal {
     ]
 }
 
+// MARK: - Diet Type (Popular Diet Plans)
+
+/// Popular diet plans with preset macro ratios and compliance rules
+enum DietType: String, CaseIterable, Codable {
+    case flexible = "flexible"
+    case keto = "keto"
+    case lowCarb = "lowCarb"
+    case highProtein = "highProtein"
+    case mediterranean = "mediterranean"
+    case paleo = "paleo"
+
+    var displayName: String {
+        switch self {
+        case .flexible: return "Flexible"
+        case .keto: return "Keto"
+        case .lowCarb: return "Low Carb"
+        case .highProtein: return "High Protein"
+        case .mediterranean: return "Mediterranean"
+        case .paleo: return "Paleo"
+        }
+    }
+
+    var shortDescription: String {
+        switch self {
+        case .flexible: return "Balanced approach, no restrictions"
+        case .keto: return "Very low carb, high fat"
+        case .lowCarb: return "Reduced carbs, moderate fat"
+        case .highProtein: return "Muscle building, athletic"
+        case .mediterranean: return "Heart-healthy, whole foods"
+        case .paleo: return "Whole foods, no processed"
+        }
+    }
+
+    var detailedDescription: String {
+        switch self {
+        case .flexible:
+            return "A balanced approach with no food restrictions. Focus on hitting your calorie and protein targets while eating foods you enjoy."
+        case .keto:
+            return "A very low-carb, high-fat diet that puts your body into ketosis. Typically under 50g carbs per day. Avoid grains, sugar, most fruits."
+        case .lowCarb:
+            return "Reduced carbohydrate intake while maintaining moderate protein and fat. Good for blood sugar control and weight management."
+        case .highProtein:
+            return "Higher protein intake to support muscle growth and recovery. Ideal for athletes, strength training, or anyone looking to build lean mass."
+        case .mediterranean:
+            return "Emphasises whole grains, olive oil, fish, vegetables, and moderate wine. Associated with heart health and longevity."
+        case .paleo:
+            return "Based on foods available to our ancestors: meat, fish, vegetables, fruits, nuts. Excludes grains, legumes, dairy, and processed foods."
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .flexible: return "scale.3d"
+        case .keto: return "flame.fill"
+        case .lowCarb: return "leaf.fill"
+        case .highProtein: return "figure.strengthtraining.traditional"
+        case .mediterranean: return "fish.fill"
+        case .paleo: return "hare.fill"
+        }
+    }
+
+    var accentColor: Color {
+        switch self {
+        case .flexible: return .blue
+        case .keto: return .orange
+        case .lowCarb: return .green
+        case .highProtein: return .red
+        case .mediterranean: return .cyan
+        case .paleo: return .brown
+        }
+    }
+
+    // Macro ratios (protein, carbs, fat percentages)
+    var macroRatios: (protein: Int, carbs: Int, fat: Int) {
+        switch self {
+        case .flexible: return (30, 40, 30)
+        case .keto: return (20, 5, 75)
+        case .lowCarb: return (30, 25, 45)
+        case .highProtein: return (40, 35, 25)
+        case .mediterranean: return (20, 45, 35)
+        case .paleo: return (30, 20, 50)
+        }
+    }
+
+    // Daily carb limit in grams (nil = no limit)
+    var dailyCarbLimit: Int? {
+        switch self {
+        case .keto: return 50
+        case .lowCarb: return 100
+        default: return nil
+        }
+    }
+
+    // Foods to avoid (for compliance alerts)
+    var foodsToAvoid: [String] {
+        switch self {
+        case .keto:
+            return ["bread", "pasta", "rice", "potato", "sugar", "fruit juice", "beer", "cake", "biscuit", "cereal"]
+        case .lowCarb:
+            return ["white bread", "sugar", "sugary drinks", "sweets", "pastry"]
+        case .paleo:
+            return ["bread", "pasta", "rice", "legumes", "beans", "dairy", "milk", "cheese", "processed"]
+        default:
+            return []
+        }
+    }
+
+    // Convert to MacroGoals
+    func toMacroGoals(extraMacro: MacroType = .fiber, extraTarget: Double = 30.0) -> [MacroGoal] {
+        let ratios = macroRatios
+        return [
+            MacroGoal(macroType: .protein, percentage: ratios.protein),
+            MacroGoal(macroType: .carbs, percentage: ratios.carbs),
+            MacroGoal(macroType: .fat, percentage: ratios.fat),
+            MacroGoal(macroType: extraMacro, directTarget: extraTarget)
+        ]
+    }
+}
+
 // MARK: - Use By Data Manager
 class UseByDataManager: ObservableObject {
     static let shared = UseByDataManager()
