@@ -1829,7 +1829,7 @@ class FirebaseManager: ObservableObject {
 
     // MARK: - Macro Management (Customizable Macros)
 
-    func saveMacroGoals(_ macroGoals: [MacroGoal]) async throws {
+    func saveMacroGoals(_ macroGoals: [MacroGoal], dietType: DietType?) async throws {
         ensureAuthStateLoaded()
 
         guard let userId = currentUser?.uid else {
@@ -1850,9 +1850,16 @@ class FirebaseManager: ObservableObject {
             return data
         }
 
-        let data: [String: Any] = [
+        var data: [String: Any] = [
             "macroGoals": macroGoalsData
         ]
+
+        // Save diet type (nil = custom)
+        if let diet = dietType {
+            data["dietType"] = diet.rawValue
+        } else {
+            data["dietType"] = "custom"
+        }
 
         try await db.collection("users").document(userId)
             .collection("settings").document("preferences").setData(data, merge: true)
@@ -1867,7 +1874,8 @@ class FirebaseManager: ObservableObject {
             }
         }
         #if DEBUG
-        print("✅ Macro goals saved successfully: \(descriptions)")
+        let dietName = dietType?.displayName ?? "Custom"
+        print("✅ Macro goals saved successfully (\(dietName)): \(descriptions)")
         #endif
     }
 
@@ -1930,7 +1938,7 @@ class FirebaseManager: ObservableObject {
             ]
 
             // Automatically migrate to new structure
-            try? await saveMacroGoals(migratedMacros)
+            try? await saveMacroGoals(migratedMacros, dietType: nil)
 
             return migratedMacros
         }
@@ -1940,6 +1948,29 @@ class FirebaseManager: ObservableObject {
         print("ℹ️ No macro data found, returning defaults (P 30%, C 40%, F 30%, Fibre 30g)")
         #endif
         return MacroGoal.defaultMacros
+    }
+
+    func getDietType() async throws -> DietType? {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            return nil
+        }
+
+        let document = try await db.collection("users").document(userId)
+            .collection("settings").document("preferences").getDocument()
+
+        guard let data = document.data(),
+              let dietTypeString = data["dietType"] as? String else {
+            return nil
+        }
+
+        // "custom" means user chose custom macros
+        if dietTypeString == "custom" {
+            return nil
+        }
+
+        return DietType(rawValue: dietTypeString)
     }
 
     func cacheNutritionGoals(caloric: Int?, exercise: Int?, steps: Int?) {

@@ -423,6 +423,7 @@ struct NutritionGoalsSection: View {
     @State private var exerciseGoal: Int = 600
     @State private var stepGoal: Int = 10000
     @State private var macroGoals: [MacroGoal] = MacroGoal.defaultMacros
+    @State private var selectedDietType: DietType? = .flexible
 
     @State private var isLoading = true
     @State private var showingError = false
@@ -588,6 +589,7 @@ struct NutritionGoalsSection: View {
         .fullScreenCover(isPresented: $showingMacroManagement) {
             MacroManagementView(
                 macroGoals: $macroGoals,
+                dietType: $selectedDietType,
                 onSave: saveMacroGoals
             )
         }
@@ -608,8 +610,10 @@ struct NutritionGoalsSection: View {
         do {
             async let settingsTask = firebaseManager.getUserSettings()
             async let macroTask = firebaseManager.getMacroGoals()
+            async let dietTask = firebaseManager.getDietType()
             let settings = try await settingsTask
             let loadedMacroGoals = try await macroTask
+            let loadedDiet = try await dietTask
 
             await MainActor.run {
                 caloricGoal = settings.caloricGoal ?? cachedCaloricGoal
@@ -619,9 +623,10 @@ struct NutritionGoalsSection: View {
                 cachedExerciseGoal = exerciseGoal
                 cachedStepGoal = stepGoal
                 macroGoals = loadedMacroGoals
+                selectedDietType = loadedDiet
                 isLoading = false
                 #if DEBUG
-                print("✅ Loaded goals: \(caloricGoal) cal, \(exerciseGoal) exercise, \(stepGoal) steps")
+                print("✅ Loaded goals: \(caloricGoal) cal, \(exerciseGoal) exercise, \(stepGoal) steps, diet: \(loadedDiet?.displayName ?? "Custom")")
                 #endif
             }
         } catch {
@@ -709,12 +714,13 @@ struct NutritionGoalsSection: View {
         }
     }
 
-    private func saveMacroGoals() {
+    private func saveMacroGoals(diet: DietType?) {
         Task {
             do {
-                try await firebaseManager.saveMacroGoals(macroGoals)
+                try await firebaseManager.saveMacroGoals(macroGoals, dietType: diet)
                 #if DEBUG
-                print("✅ Macro goals updated: \(macroGoals.map { "\($0.macroType.displayName): \(String(describing: $0.percentage))%" })")
+                let dietName = diet?.displayName ?? "Custom"
+                print("✅ Macro goals updated (\(dietName)): \(macroGoals.map { "\($0.macroType.displayName): \(String(describing: $0.percentage))%" })")
                 #endif
 
                 // Notify diary view to update immediately
@@ -2494,7 +2500,12 @@ struct MacroManagementView: View {
     @Environment(\.dismiss) private var dismiss
 
     @Binding var macroGoals: [MacroGoal]
-    let onSave: () -> Void
+    @Binding var dietType: DietType?
+    let onSave: (DietType?) -> Void
+
+    // Selected diet type
+    @State private var selectedDiet: DietType?
+    @State private var isCustomMode: Bool = false
 
     // Core macro percentages (always present)
     @State private var proteinPercent: Int
@@ -2503,13 +2514,13 @@ struct MacroManagementView: View {
 
     // Extra macro selection and target
     @State private var selectedExtraMacro: MacroType
-    @State private var extraMacroTarget: String // Use string for TextField
+    @State private var extraMacroTarget: String
 
-    init(macroGoals: Binding<[MacroGoal]>, onSave: @escaping () -> Void) {
+    init(macroGoals: Binding<[MacroGoal]>, dietType: Binding<DietType?>, onSave: @escaping (DietType?) -> Void) {
         self._macroGoals = macroGoals
+        self._dietType = dietType
         self.onSave = onSave
 
-        // Initialize core macros from binding
         let goals = macroGoals.wrappedValue
         let proteinGoal = goals.first(where: { $0.macroType == .protein })
         let carbsGoal = goals.first(where: { $0.macroType == .carbs })
@@ -2519,10 +2530,31 @@ struct MacroManagementView: View {
         self._carbsPercent = State(initialValue: carbsGoal?.percentage ?? 40)
         self._fatPercent = State(initialValue: fatGoal?.percentage ?? 30)
 
-        // Initialize extra macro
         let extraGoal = goals.first(where: { !$0.macroType.isCoreMacro })
         self._selectedExtraMacro = State(initialValue: extraGoal?.macroType ?? .fiber)
         self._extraMacroTarget = State(initialValue: String(Int(extraGoal?.directTarget ?? 30)))
+
+        // Use the passed diet type if available, otherwise check macro match
+        if let existingDiet = dietType.wrappedValue {
+            self._selectedDiet = State(initialValue: existingDiet)
+            self._isCustomMode = State(initialValue: false)
+        } else {
+            // Check if current macros match a diet
+            let p = proteinGoal?.percentage ?? 30
+            let c = carbsGoal?.percentage ?? 40
+            let f = fatGoal?.percentage ?? 30
+
+            var matchedDiet: DietType?
+            for diet in DietType.allCases {
+                let ratios = diet.macroRatios
+                if ratios.protein == p && ratios.carbs == c && ratios.fat == f {
+                    matchedDiet = diet
+                    break
+                }
+            }
+            self._selectedDiet = State(initialValue: matchedDiet)
+            self._isCustomMode = State(initialValue: matchedDiet == nil)
+        }
     }
 
     private var totalPercent: Int {
@@ -2537,97 +2569,34 @@ struct MacroManagementView: View {
 
     var body: some View {
         NavigationView {
-            Form {
-                // Status Section
-                Section {
-                    HStack {
-                        Text("Core Macros Total:")
-                            .font(.system(size: 16, weight: .semibold))
-                        Spacer()
-                        Text("\(totalPercent)%")
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(totalPercent == 100 ? .green : .red)
-                    }
-                    .padding(.vertical, 8)
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Diet Selection Grid
+                    dietSelectionSection
 
-                    if totalPercent != 100 {
-                        Text("Percentages must total 100%")
-                            .font(.system(size: 14))
-                            .foregroundColor(.red)
+                    // Selected Diet Info
+                    if let diet = selectedDiet, !isCustomMode {
+                        selectedDietInfoCard(diet: diet)
                     }
+
+                    // Macro Breakdown
+                    macroBreakdownSection
+
+                    // Custom Adjustment (collapsed when diet selected)
+                    if isCustomMode {
+                        customMacroSection
+                    }
+
+                    // Extra Macro Section
+                    extraMacroSection
+
+                    Spacer(minLength: 40)
                 }
-
-                // Core Macros Section (Always visible)
-                Section(header: Text("Core Macros (% of Calories)")) {
-                    MacroPercentageRow(
-                        macroType: .protein,
-                        percentage: $proteinPercent
-                    )
-
-                    MacroPercentageRow(
-                        macroType: .carbs,
-                        percentage: $carbsPercent
-                    )
-
-                    MacroPercentageRow(
-                        macroType: .fat,
-                        percentage: $fatPercent
-                    )
-                }
-
-                // Extra Macro Section
-                Section(header: Text("Extra Macro Tracking")) {
-                    Picker("Track", selection: $selectedExtraMacro) {
-                        ForEach(MacroType.extraMacros, id: \.self) { macro in
-                            Text(macro.displayName)
-                                .tag(macro)
-                        }
-                    }
-                    .pickerStyle(.menu)
-
-                    HStack {
-                        Text("Daily Target")
-                        Spacer()
-                        TextField("grams", text: $extraMacroTarget)
-                            .keyboardType(.numberPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 60)
-                        Text("g")
-                            .foregroundColor(.secondary)
-                    }
-                }
-
-                // Quick Presets
-                Section(header: Text("Quick Presets")) {
-                    Button(action: { applyPreset(protein: 30, carbs: 40, fat: 30) }) {
-                        HStack {
-                            Text("Balanced")
-                            Spacer()
-                            Text("P30 • C40 • F30")
-                                .foregroundColor(.secondary)
-                        }
-                    }
-
-                    Button(action: { applyPreset(protein: 40, carbs: 30, fat: 30) }) {
-                        HStack {
-                            Text("High Protein")
-                            Spacer()
-                            Text("P40 • C30 • F30")
-                                .foregroundColor(.secondary)
-                        }
-                    }
-
-                    Button(action: { applyPreset(protein: 25, carbs: 20, fat: 55) }) {
-                        HStack {
-                            Text("Keto")
-                            Spacer()
-                            Text("P25 • C20 • F55")
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
             }
-            .navigationTitle("Macro Settings")
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("Diet & Macros")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -2639,25 +2608,250 @@ struct MacroManagementView: View {
                     Button("Save") {
                         saveChanges()
                     }
+                    .fontWeight(.semibold)
                     .disabled(!isValid)
                 }
             }
         }
     }
 
-    private func applyPreset(protein: Int, carbs: Int, fat: Int) {
-        proteinPercent = protein
-        carbsPercent = carbs
-        fatPercent = fat
+    // MARK: - Diet Selection Grid
+    private var dietSelectionSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Choose Your Diet")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(.primary)
 
-        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-        impactFeedback.impactOccurred()
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: 12) {
+                ForEach(DietType.allCases, id: \.self) { diet in
+                    DietSelectionCard(
+                        diet: diet,
+                        isSelected: selectedDiet == diet && !isCustomMode,
+                        onTap: {
+                            selectDiet(diet)
+                        }
+                    )
+                }
+            }
+
+            // Custom option
+            Button {
+                withAnimation(.spring(response: 0.3)) {
+                    isCustomMode = true
+                    selectedDiet = nil
+                }
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            } label: {
+                HStack {
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.system(size: 16, weight: .medium))
+                    Text("Custom Macros")
+                        .font(.system(size: 15, weight: .medium))
+                    Spacer()
+                    if isCustomMode {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.blue)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(isCustomMode ? Color.blue.opacity(0.1) : Color(.secondarySystemGroupedBackground))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(isCustomMode ? Color.blue : Color.clear, lineWidth: 2)
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - Selected Diet Info Card
+    private func selectedDietInfoCard(diet: DietType) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: diet.icon)
+                    .font(.system(size: 20))
+                    .foregroundColor(diet.accentColor)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(diet.displayName)
+                        .font(.system(size: 17, weight: .semibold))
+                    Text(diet.shortDescription)
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+            }
+
+            Text(diet.detailedDescription)
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+                .lineSpacing(2)
+
+            if let carbLimit = diet.dailyCarbLimit {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(.orange)
+                    Text("Daily carb limit: \(carbLimit)g")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.orange)
+                }
+                .padding(.top, 4)
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.secondarySystemGroupedBackground))
+        )
+    }
+
+    // MARK: - Macro Breakdown Section
+    private var macroBreakdownSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Macro Split")
+                    .font(.system(size: 18, weight: .semibold))
+
+                Spacer()
+
+                // Total indicator
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(totalPercent == 100 ? Color.green : Color.red)
+                        .frame(width: 8, height: 8)
+                    Text("\(totalPercent)%")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(totalPercent == 100 ? .green : .red)
+                }
+            }
+
+            // Visual bar breakdown
+            GeometryReader { geometry in
+                HStack(spacing: 2) {
+                    Rectangle()
+                        .fill(MacroType.protein.color)
+                        .frame(width: max(0, geometry.size.width * CGFloat(proteinPercent) / 100))
+                    Rectangle()
+                        .fill(MacroType.carbs.color)
+                        .frame(width: max(0, geometry.size.width * CGFloat(carbsPercent) / 100))
+                    Rectangle()
+                        .fill(MacroType.fat.color)
+                        .frame(width: max(0, geometry.size.width * CGFloat(fatPercent) / 100))
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            }
+            .frame(height: 24)
+
+            // Legend
+            HStack(spacing: 16) {
+                MacroLegendItem(color: MacroType.protein.color, label: "Protein", value: "\(proteinPercent)%")
+                MacroLegendItem(color: MacroType.carbs.color, label: "Carbs", value: "\(carbsPercent)%")
+                MacroLegendItem(color: MacroType.fat.color, label: "Fat", value: "\(fatPercent)%")
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.secondarySystemGroupedBackground))
+        )
+    }
+
+    // MARK: - Custom Macro Section
+    private var customMacroSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Adjust Macros")
+                .font(.system(size: 18, weight: .semibold))
+
+            MacroPercentageRow(macroType: .protein, percentage: $proteinPercent)
+            MacroPercentageRow(macroType: .carbs, percentage: $carbsPercent)
+            MacroPercentageRow(macroType: .fat, percentage: $fatPercent)
+
+            if totalPercent != 100 {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.red)
+                    Text("Percentages must total 100%")
+                        .font(.system(size: 14))
+                        .foregroundColor(.red)
+                }
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.secondarySystemGroupedBackground))
+        )
+    }
+
+    // MARK: - Extra Macro Section
+    private var extraMacroSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Extra Tracking")
+                .font(.system(size: 18, weight: .semibold))
+
+            HStack {
+                Text("Track")
+                    .foregroundColor(.secondary)
+
+                Spacer()
+
+                Picker("", selection: $selectedExtraMacro) {
+                    ForEach(MacroType.extraMacros, id: \.self) { macro in
+                        Text(macro.displayName).tag(macro)
+                    }
+                }
+                .pickerStyle(.menu)
+                .tint(.primary)
+            }
+
+            Divider()
+
+            HStack {
+                Text("Daily Target")
+                    .foregroundColor(.secondary)
+                Spacer()
+                TextField("grams", text: $extraMacroTarget)
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 60)
+                Text("g")
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.secondarySystemGroupedBackground))
+        )
+    }
+
+    // MARK: - Actions
+    private func selectDiet(_ diet: DietType) {
+        withAnimation(.spring(response: 0.3)) {
+            selectedDiet = diet
+            isCustomMode = false
+
+            let ratios = diet.macroRatios
+            proteinPercent = ratios.protein
+            carbsPercent = ratios.carbs
+            fatPercent = ratios.fat
+        }
+
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
 
     private func saveChanges() {
         guard let extraTarget = Double(extraMacroTarget) else { return }
 
-        // Create all 4 macro goals
         let newMacroGoals = [
             MacroGoal(macroType: .protein, percentage: proteinPercent),
             MacroGoal(macroType: .carbs, percentage: carbsPercent),
@@ -2666,11 +2860,86 @@ struct MacroManagementView: View {
         ]
 
         macroGoals = newMacroGoals
-        onSave()
+        dietType = isCustomMode ? nil : selectedDiet
+        onSave(isCustomMode ? nil : selectedDiet)
         dismiss()
 
-        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-        impactFeedback.impactOccurred()
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    }
+}
+
+// MARK: - Diet Selection Card
+struct DietSelectionCard: View {
+    let diet: DietType
+    let isSelected: Bool
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(spacing: 8) {
+                ZStack {
+                    Circle()
+                        .fill(diet.accentColor.opacity(0.15))
+                        .frame(width: 44, height: 44)
+
+                    Image(systemName: diet.icon)
+                        .font(.system(size: 20))
+                        .foregroundColor(diet.accentColor)
+                }
+
+                Text(diet.displayName)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.primary)
+
+                // Macro preview
+                Text("P\(diet.macroRatios.protein) C\(diet.macroRatios.carbs) F\(diet.macroRatios.fat)")
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.secondarySystemGroupedBackground))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(isSelected ? diet.accentColor : Color.clear, lineWidth: 2.5)
+            )
+            .overlay(
+                Group {
+                    if isSelected {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(diet.accentColor)
+                            .background(Circle().fill(Color(.systemBackground)).padding(-2))
+                            .offset(x: -8, y: 8)
+                    }
+                },
+                alignment: .topTrailing
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Macro Legend Item
+struct MacroLegendItem: View {
+    let color: Color
+    let label: String
+    let value: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(color)
+                .frame(width: 10, height: 10)
+            Text(label)
+                .font(.system(size: 13))
+                .foregroundColor(.secondary)
+            Text(value)
+                .font(.system(size: 13, weight: .semibold))
+        }
     }
 }
 
