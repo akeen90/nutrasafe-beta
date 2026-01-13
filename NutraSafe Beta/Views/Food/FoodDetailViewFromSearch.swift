@@ -212,6 +212,14 @@ struct FoodDetailViewFromSearch: View {
 
         // Initialize quantity multiplier from diary entry if editing
         self._quantityMultiplier = State(initialValue: diaryQuantity ?? 1.0)
+
+        // Initialize portion picker with first portion if available (for multi-size items like McNuggets)
+        if let portions = food.portions, !portions.isEmpty {
+            self._selectedPortionName = State(initialValue: portions[0].name)
+            // Also update serving amount to match the first portion
+            self._servingAmount = State(initialValue: String(format: "%.0f", portions[0].serving_g))
+            self._gramsAmount = State(initialValue: String(format: "%.0f", portions[0].serving_g))
+        }
     }
 
     // OPTIMIZED: Use food directly - search already returns complete data
@@ -287,6 +295,8 @@ struct FoodDetailViewFromSearch: View {
     @State private var servingSizeText: String = "" // Editable serving size (legacy)
     @State private var servingAmount: String // Split serving size - amount only
     @State private var servingUnit: String // Split serving size - unit only
+    @State private var selectedPortionName: String = "" // For portion picker (e.g., McNuggets 6pc, 9pc, 20pc)
+    @State private var showingMultiplierPicker: Bool = false // Shows grid popup for quantity multiplier
     private var isPerUnit: Bool {
         if let flag = food.isPerUnit { return flag }
         let u = servingUnit.lowercased()
@@ -357,7 +367,15 @@ struct FoodDetailViewFromSearch: View {
     
     private let mealOptions = ["Breakfast", "Lunch", "Dinner", "Snacks"]
     private let quantityOptions: [Double] = [0.5, 1.0, 2.0, 3.0, 4.0, 5.0]
-    private let servingUnitOptions = ["g", "ml", "cup", "tbsp", "tsp", "oz", "serving", "piece", "slice", "burger"]
+    private let servingUnitOptions = ["g", "ml", "oz", "fl oz"]
+    private let quantityMultiplierOptions = ["¼x", "½x", "¾x", "1x", "2x", "3x", "4x", "5x", "6x", "7x", "8x", "9x"]
+
+    // Helper to format multiplier text
+    private func multiplierText(_ mult: Double) -> String {
+        if mult == 1 { return "1x" }
+        if mult < 1 { return String(format: "%.2gx", mult) }
+        return String(format: "%.0fx", mult)
+    }
 
     // Convert between units (all conversions to/from grams)
     private func convertUnit(value: Double, from: String, to: String) -> Double {
@@ -526,6 +544,10 @@ struct FoodDetailViewFromSearch: View {
 
     private var adjustedFat: Double {
         displayFood.fat * perServingMultiplier * quantityMultiplier
+    }
+
+    private var adjustedSatFat: Double {
+        (displayFood.saturatedFat ?? 0) * perServingMultiplier * quantityMultiplier
     }
 
     private var adjustedFiber: Double {
@@ -1048,51 +1070,31 @@ struct FoodDetailViewFromSearch: View {
         return detected
     }
 
-    // MARK: - Allergen Warning Banner View
+    // MARK: - Allergen Warning Banner View (subtle Apple-style)
     private var allergenWarningBanner: some View {
-        VStack(spacing: 8) {
-            // Header row - centered
-            HStack(spacing: 8) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 14, weight: .bold))
-
-                Text("ALLERGEN ALERT")
-                    .font(.system(size: 13, weight: .heavy, design: .rounded))
-                    .tracking(0.5)
-            }
-            .frame(maxWidth: .infinity)
-
-            // Allergen chips - centered wrapping flow
-            HStack {
-                Spacer(minLength: 0)
-                FlowLayout(spacing: 6) {
-                    ForEach(detectedUserAllergens, id: \.rawValue) { allergen in
-                        HStack(spacing: 5) {
-                            Text(allergen.icon)
-                                .font(.system(size: 13))
-                            Text(allergen.displayName)
-                                .font(.system(size: 12, weight: .semibold))
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Color.white.opacity(0.2))
-                        .clipShape(Capsule())
+        VStack(spacing: 6) {
+            // Small red allergen pills
+            HStack(spacing: 6) {
+                ForEach(detectedUserAllergens, id: \.rawValue) { allergen in
+                    HStack(spacing: 4) {
+                        Text(allergen.icon)
+                            .font(.system(size: 12))
+                        Text(allergen.displayName)
+                            .font(.system(size: 12, weight: .medium))
                     }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.red)
+                    .foregroundColor(.white)
+                    .clipShape(Capsule())
                 }
-                Spacer(minLength: 0)
             }
+
+            // Subtle disclaimer
+            Text("Check label for allergens")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
         }
-        .foregroundColor(.white)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(
-            LinearGradient(
-                colors: [Color(red: 0.75, green: 0.12, blue: 0.12), Color(red: 0.88, green: 0.18, blue: 0.15)],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
 
@@ -1323,17 +1325,12 @@ struct FoodDetailViewFromSearch: View {
     }
     
     private var foodHeaderView: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 4) {
             // Small verification status at top
             verificationStatusView
 
-            // Allergen Warning - Show above product name if allergens detected
-            if !detectedUserAllergens.isEmpty {
-                allergenWarningBanner
-            }
-
             Text(displayFood.name)
-                .font(.system(size: 24, weight: .bold))
+                .font(.system(size: 32, weight: .bold))
                 .multilineTextAlignment(.center)
 
             if let brand = displayFood.brand {
@@ -1341,62 +1338,18 @@ struct FoodDetailViewFromSearch: View {
                     .font(.system(size: 16))
                     .foregroundColor(.secondary)
             }
+
+            // Allergen Warning - Show below brand as subtle red pills
+            if !detectedUserAllergens.isEmpty {
+                allergenWarningBanner
+                    .padding(.top, 4)
+            }
         }
     }
 
     private var verificationStatusView: some View {
-        // PERFORMANCE: Use cached ingredients status
-        let ingredientsStatus = cachedIngredientsStatus ?? .none
-
-        // Check if food has been AI enhanced - hide badge if so
-        let hasAIEnhancement = enhancedIngredientsText != nil || enhancedNutrition != nil
-
-        return Group {
-            if hasAIEnhancement {
-                // AI-enhanced foods show no badge at all
-                EmptyView()
-            } else {
-                HStack(spacing: 6) {
-                    switch ingredientsStatus {
-                    case .verified:
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 12))
-                            .foregroundColor(.green)
-                        Text("Verified")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.green)
-
-                    case .userVerified:
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 12))
-                            .foregroundColor(.yellow)
-                        Text("User Verified")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.primary)
-
-                    case .clientVerified:
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 12))
-                            .foregroundColor(.orange)
-                        Text("User Verified")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.primary)
-
-                    case .unverified, .none, .pending:
-                        Image(systemName: "info.circle.fill")
-                            .font(.system(size: 12))
-                            .foregroundColor(.blue)
-                        Text("Unverified")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.blue)
-                    }
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
-            }
-        }
+        // Hidden - no longer showing verified/unverified status
+        EmptyView()
     }
     
     var body: some View {
@@ -1867,12 +1820,14 @@ private var nutritionFactsSection: some View {
         adjustedProtein: adjustedProtein,
         adjustedCarbs: adjustedCarbs,
         adjustedFat: adjustedFat,
+        adjustedSatFat: adjustedSatFat,
         adjustedFiber: adjustedFiber,
         adjustedSugar: adjustedSugar,
         adjustedSalt: adjustedSalt,
         per100Protein: displayFood.protein,
         per100Carbs: displayFood.carbs,
         per100Fat: displayFood.fat,
+        per100SatFat: displayFood.saturatedFat ?? 0,
         per100Fiber: displayFood.fiber,
         per100Sugar: displayFood.sugar,
         per100Salt: saltPer100g,
@@ -2181,12 +2136,14 @@ private var nutritionFactsSection: some View {
         let adjustedProtein: Double
         let adjustedCarbs: Double
         let adjustedFat: Double
+        let adjustedSatFat: Double
         let adjustedFiber: Double
         let adjustedSugar: Double
         let adjustedSalt: Double
         let per100Protein: Double
         let per100Carbs: Double
         let per100Fat: Double
+        let per100SatFat: Double
         let per100Fiber: Double
         let per100Sugar: Double
         let per100Salt: Double
@@ -2258,6 +2215,7 @@ private var nutritionFactsSection: some View {
                         row("Protein", adjustedProtein, per100Protein, "g")
                         row("Carbs", adjustedCarbs, per100Carbs, "g")
                         row("Fat", adjustedFat, per100Fat, "g")
+                        row("Sat Fat", adjustedSatFat, per100SatFat, "g")
                         row("Fibre", adjustedFiber, per100Fiber, "g")
                         row("Sugar", adjustedSugar, per100Sugar, "g")
                         row("Salt", adjustedSalt, per100Salt, "g")
@@ -2428,7 +2386,7 @@ private var nutritionFactsSection: some View {
                 // Ingredients content
                 if !processedIngredients.isEmpty {
                     // Use Text concatenation for natural text wrapping
-                    FlowingIngredientsView(ingredients: processedIngredients, colorScheme: colorScheme)
+                    FlowingIngredientsView(ingredients: processedIngredients, colorScheme: colorScheme, userAllergens: userAllergens)
                         .padding(.horizontal, 16)
                         .padding(.bottom, 16)
                         .background(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
@@ -2486,38 +2444,133 @@ private var nutritionFactsSection: some View {
     struct FlowingIngredientsView: View {
         let ingredients: [(ingredient: String, isConcerning: Bool, isAllergen: Bool)]
         let colorScheme: ColorScheme
+        let userAllergens: [Allergen]
+
+        // Patterns to highlight as additives (orange)
+        private let additivePatterns = [
+            "e1\\d+", "e2\\d+", "e3\\d+", "e4\\d+", "e5\\d+", "e6\\d+", "e9\\d+",  // E-numbers
+            "modified", "hydrogenated", "maltodextrin", "dextrose",
+            "high fructose", "artificial", "aspartame", "sucralose",
+            "msg", "monosodium glutamate", "sodium nitrite", "sodium nitrate",
+            "bha", "bht", "tbhq", "carrageenan", "polysorbate"
+        ]
 
         var body: some View {
             // Build attributed text with proper wrapping
             let attributedIngredients = ingredients.enumerated().map { index, item -> Text in
                 let suffix = index == ingredients.count - 1 ? "" : ", "
-                if item.isAllergen {
-                    // Allergen ingredients: bold red with warning icon
-                    return Text("⚠️ ")
-                        .font(.system(size: 12))
-                    + Text(item.ingredient)
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.red)
-                    + Text(suffix)
-                        .font(.system(size: 14))
-                        .foregroundColor(.primary)
-                } else if item.isConcerning {
-                    return Text("● ")
-                        .font(.system(size: 8))
-                        .foregroundColor(.orange)
-                    + Text(item.ingredient + suffix)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.orange)
-                } else {
-                    return Text(item.ingredient + suffix)
-                        .font(.system(size: 14))
-                        .foregroundColor(.primary)
-                }
+
+                // Build text with inline highlighting for additives/allergens only
+                let highlightedText = buildHighlightedText(
+                    ingredient: item.ingredient,
+                    isConcerning: item.isConcerning,
+                    isAllergen: item.isAllergen
+                )
+
+                return highlightedText + Text(suffix)
+                    .font(.system(size: 14))
+                    .foregroundColor(.primary)
             }
 
             return attributedIngredients.reduce(Text(""), +)
                 .lineSpacing(4)
                 .frame(maxWidth: .infinity, alignment: .leading)
+        }
+
+        /// Build text with only the matching additive/allergen keywords highlighted
+        private func buildHighlightedText(ingredient: String, isConcerning: Bool, isAllergen: Bool) -> Text {
+            // If not concerning or allergen, just return plain text
+            if !isConcerning && !isAllergen {
+                return Text(ingredient)
+                    .font(.system(size: 14))
+                    .foregroundColor(.primary)
+            }
+
+            let lowercased = ingredient.lowercased()
+            var result = Text("")
+            var processedRanges: [(Range<String.Index>, Color, Bool)] = [] // range, color, isBold
+
+            // Find allergen matches first (red, higher priority)
+            if isAllergen {
+                let allergenKeywords = userAllergens.flatMap { $0.keywords }
+                for keyword in allergenKeywords {
+                    let keywordLower = keyword.lowercased()
+                    var searchStart = lowercased.startIndex
+                    while let range = lowercased.range(of: keywordLower, range: searchStart..<lowercased.endIndex) {
+                        // Convert to original string range
+                        let originalRange = ingredient.index(ingredient.startIndex, offsetBy: lowercased.distance(from: lowercased.startIndex, to: range.lowerBound))..<ingredient.index(ingredient.startIndex, offsetBy: lowercased.distance(from: lowercased.startIndex, to: range.upperBound))
+                        processedRanges.append((originalRange, .red, true))
+                        searchStart = range.upperBound
+                    }
+                }
+            }
+
+            // Find additive matches (orange)
+            if isConcerning {
+                for pattern in additivePatterns {
+                    if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
+                        let nsRange = NSRange(lowercased.startIndex..., in: lowercased)
+                        for match in regex.matches(in: lowercased, range: nsRange) {
+                            if let range = Range(match.range, in: ingredient) {
+                                // Don't add if already covered by an allergen match
+                                let alreadyCovered = processedRanges.contains { existing in
+                                    existing.0.overlaps(range)
+                                }
+                                if !alreadyCovered {
+                                    processedRanges.append((range, .orange, false))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Sort ranges by start position
+            processedRanges.sort { $0.0.lowerBound < $1.0.lowerBound }
+
+            // Build the text with highlights
+            var currentIndex = ingredient.startIndex
+            for (range, color, isBold) in processedRanges {
+                // Add unhighlighted text before this range
+                if currentIndex < range.lowerBound {
+                    let prefix = String(ingredient[currentIndex..<range.lowerBound])
+                    result = result + Text(prefix)
+                        .font(.system(size: 14))
+                        .foregroundColor(.primary)
+                }
+
+                // Add highlighted text
+                let highlighted = String(ingredient[range])
+                if isBold {
+                    result = result + Text(highlighted)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(color)
+                } else {
+                    result = result + Text(highlighted)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(color)
+                }
+
+                currentIndex = range.upperBound
+            }
+
+            // Add any remaining text after the last highlight
+            if currentIndex < ingredient.endIndex {
+                let suffix = String(ingredient[currentIndex...])
+                result = result + Text(suffix)
+                    .font(.system(size: 14))
+                    .foregroundColor(.primary)
+            }
+
+            // If no ranges were found but it was marked as concerning/allergen,
+            // just show it normally (the pattern matching above should catch it)
+            if processedRanges.isEmpty {
+                return Text(ingredient)
+                    .font(.system(size: 14))
+                    .foregroundColor(.primary)
+            }
+
+            return result
         }
     }
     
@@ -3315,129 +3368,326 @@ private var nutritionFactsSection: some View {
         }
     }
     
+    // MARK: - Helper Views for Serving Controls
+
+    @ViewBuilder
+    private func multiplierButton(isActive: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(isActive ? multiplierText(quantityMultiplier) : "1x")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(isActive ? .accentColor : .secondary)
+                .frame(width: 36, height: 28)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(isActive ? Color.accentColor.opacity(0.5) : Color.gray.opacity(0.3), lineWidth: 1)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(isActive ? Color.accentColor.opacity(0.08) : Color(.systemGray6)))
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    @ViewBuilder
+    private func selectionIndicator(isSelected: Bool) -> some View {
+        ZStack {
+            Circle()
+                .stroke(isSelected ? Color.accentColor : Color.gray.opacity(0.3), lineWidth: 1.5)
+                .frame(width: 22, height: 22)
+            if isSelected {
+                Circle()
+                    .fill(Color.accentColor)
+                    .frame(width: 22, height: 22)
+                Image(systemName: "checkmark")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.white)
+            }
+        }
+        .frame(width: 22)
+    }
+
+    @ViewBuilder
+    private func nutritionValues(calories: Double, protein: Double, carbs: Double) -> some View {
+        HStack(spacing: 10) {
+            Text("\(Int(calories))")
+                .frame(width: 38, alignment: .trailing)
+            Text(String(format: "%.1f", protein))
+                .frame(width: 34, alignment: .trailing)
+            Text(String(format: "%.1f", carbs))
+                .frame(width: 34, alignment: .trailing)
+        }
+        .font(.system(size: 13))
+        .foregroundColor(.secondary)
+    }
+
+    private var perUnitServingRow: some View {
+        let isSelected = selectedPortionName != "__custom__"
+        let mult = isSelected ? quantityMultiplier : 1.0
+        return Button {
+            selectedPortionName = servingUnit
+        } label: {
+            HStack(spacing: 6) {
+                // 1x button - left edge
+                multiplierButton(isActive: isSelected) {
+                    if isSelected {
+                        showingMultiplierPicker = true
+                    } else {
+                        selectedPortionName = servingUnit
+                    }
+                }
+
+                // Serving name - flexible, single line
+                Text(servingUnit.capitalized)
+                    .font(.system(size: 13, weight: isSelected ? .medium : .regular))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                // Nutrition block - matches header widths exactly
+                HStack(spacing: 0) {
+                    Text("\(Int(food.calories * mult))")
+                        .frame(width: 38, alignment: .trailing)
+                    Text(String(format: "%.0f", food.protein * mult))
+                        .frame(width: 32, alignment: .trailing)
+                    Text(String(format: "%.0f", food.carbs * mult))
+                        .frame(width: 34, alignment: .trailing)
+                    Text(String(format: "%.0f", food.fat * mult))
+                        .frame(width: 28, alignment: .trailing)
+                }
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+
+                // Checkbox - right edge
+                selectionIndicator(isSelected: isSelected)
+            }
+            .padding(.vertical, 10)
+            .padding(.horizontal, 8)
+            .frame(height: 48)
+            .background(isSelected ? Color.accentColor.opacity(0.06) : Color.clear)
+            .cornerRadius(8)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
     // MARK: - Serving Controls Section
     private var servingControlsSection: some View {
         VStack(spacing: 16) {
-            VStack(spacing: 8) {
-                Text("SERVING SIZE")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundColor(.secondary)
-                    .tracking(0.5)
+            // MARK: - Serving Sizes Section (shown for ALL foods)
+            VStack(spacing: 0) {
+                // Header row - aligned with content rows
+                HStack(spacing: 6) {
+                    Text("SERVING SIZES")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundColor(.secondary)
+                        .tracking(0.5)
+                    Spacer()
+                    if !isPerUnit {
+                        // Nutrition headers - exact same structure as content
+                        HStack(spacing: 0) {
+                            Text("KCAL")
+                                .frame(width: 38, alignment: .trailing)
+                            Text("PROT")
+                                .frame(width: 32, alignment: .trailing)
+                            Text("CARB")
+                                .frame(width: 34, alignment: .trailing)
+                            Text("FAT")
+                                .frame(width: 28, alignment: .trailing)
+                        }
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        // Checkbox column space (22 width + 6 spacing from parent HStack accounted for)
+                        Spacer().frame(width: 22)
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.bottom, 6)
 
+                // Per-unit foods: show single row with unit name
                 if isPerUnit {
-                    // Per-unit food: show fixed unit name (no editing)
-                    Text(servingUnit)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.primary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(Color.gray.opacity(0.15))
-                        .cornerRadius(8)
+                    perUnitServingRow
                 } else {
-                    // Per-100g food: show editable amount and unit picker
-                    HStack(spacing: 8) {
-                        TextField("100", text: $servingAmount)
-                            .keyboardType(.decimalPad)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .font(.system(size: 14, weight: .medium))
-                            .frame(maxWidth: 80)
-                        Menu {
-                            ForEach(servingUnitOptions, id: \.self) { unit in
-                                Button(unit) {
-                                    if let currentValue = Double(servingAmount) {
-                                        let convertedValue = convertUnit(value: currentValue, from: servingUnit, to: unit)
-                                        servingAmount = String(format: "%.1f", convertedValue)
+                    // Per-100g foods: show preset portions if available
+                    if food.hasAnyPortionOptions {
+                        let portions = food.availablePortions
+                        ForEach(portions) { portion in
+                            let isSelected = selectedPortionName == portion.name
+                            let multiplier = portion.serving_g / 100.0
+                            let rowMult = isSelected ? quantityMultiplier : 1.0
+                            let portionCalories = food.calories * multiplier * rowMult
+                            let portionProtein = food.protein * multiplier * rowMult
+                            let portionCarbs = food.carbs * multiplier * rowMult
+                            let portionFat = food.fat * multiplier * rowMult
+
+                            Button {
+                                selectedPortionName = portion.name
+                                servingAmount = String(format: "%.0f", portion.serving_g)
+                                servingUnit = food.detectedCategory == .other ? "g" : (food.detectedCategory == .softDrink || food.detectedCategory == .juice || food.detectedCategory == .hotDrink || food.detectedCategory == .water || food.detectedCategory == .alcoholicDrink ? "ml" : "g")
+                            } label: {
+                                HStack(spacing: 6) {
+                                    // 1x button - left edge
+                                    Button {
+                                        if isSelected {
+                                            showingMultiplierPicker = true
+                                        } else {
+                                            selectedPortionName = portion.name
+                                            servingAmount = String(format: "%.0f", portion.serving_g)
+                                        }
+                                    } label: {
+                                        Text(isSelected ? multiplierText(quantityMultiplier) : "1x")
+                                            .font(.system(size: 13, weight: .medium))
+                                            .foregroundColor(isSelected ? .accentColor : .secondary)
+                                            .frame(width: 36, height: 28)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 6)
+                                                    .stroke(isSelected ? Color.accentColor.opacity(0.5) : Color.gray.opacity(0.3), lineWidth: 1)
+                                                    .background(RoundedRectangle(cornerRadius: 6).fill(isSelected ? Color.accentColor.opacity(0.08) : Color(.systemGray6)))
+                                            )
                                     }
-                                    servingUnit = unit
-                                }
-                            }
-                        } label: {
-                            HStack(spacing: 4) {
-                                Text(servingUnit)
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(.primary)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.8)
-                                    .fixedSize(horizontal: true, vertical: false)
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 10))
+                                    .buttonStyle(PlainButtonStyle())
+
+                                    // Serving name - flexible, single line
+                                    Text(portion.name)
+                                        .font(.system(size: 13, weight: isSelected ? .medium : .regular))
+                                        .foregroundColor(.primary)
+                                        .lineLimit(1)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                                    // Nutrition block - matches header widths exactly
+                                    HStack(spacing: 0) {
+                                        Text("\(Int(portionCalories))")
+                                            .frame(width: 38, alignment: .trailing)
+                                        Text(String(format: "%.0f", portionProtein))
+                                            .frame(width: 32, alignment: .trailing)
+                                        Text(String(format: "%.0f", portionCarbs))
+                                            .frame(width: 34, alignment: .trailing)
+                                        Text(String(format: "%.0f", portionFat))
+                                            .frame(width: 28, alignment: .trailing)
+                                    }
+                                    .font(.system(size: 12))
                                     .foregroundColor(.secondary)
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(Color.gray.opacity(0.15))
-                            .cornerRadius(8)
-                        }
-                    }
-                }
-            }
-            VStack(alignment: .leading, spacing: 12) {
-                Text("QUANTITY")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundColor(.secondary)
-                    .tracking(0.5)
 
-                VStack(spacing: 12) {
-                    // Mode picker
-                    Picker("Input Mode", selection: $quantityInputMode) {
-                        ForEach(QuantityInputMode.allCases, id: \.self) { mode in
-                            Text(mode.rawValue).tag(mode)
-                        }
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                    .onChange(of: quantityInputMode) { _, newMode in
-                        // Convert between modes
-                        if newMode == .fraction {
-                            // Converting from decimal to fraction
-                            quantityFraction = Fraction.closestFraction(to: quantityMultiplier)
-                            quantityMultiplier = quantityFraction.decimalValue
-                        } else {
-                            // Converting from fraction to decimal
-                            quantityDecimalText = String(format: "%.2f", quantityMultiplier)
-                        }
-                    }
-
-                    // Input controls based on mode
-                    if quantityInputMode == .decimal {
-                        // Decimal input with keypad
-                        HStack(spacing: 8) {
-                            TextField("1.0", text: $quantityDecimalText)
-                                .keyboardType(.decimalPad)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                                .font(.system(size: 16, weight: .medium))
-                                .frame(maxWidth: 100)
-                                .onChange(of: quantityDecimalText) { _, newValue in
-                                    if let value = Double(newValue), value > 0 {
-                                        quantityMultiplier = value
+                                    // Checkbox - right edge
+                                    ZStack {
+                                        Circle()
+                                            .stroke(isSelected ? Color.accentColor : Color.gray.opacity(0.3), lineWidth: 1.5)
+                                            .frame(width: 22, height: 22)
+                                        if isSelected {
+                                            Circle()
+                                                .fill(Color.accentColor)
+                                                .frame(width: 22, height: 22)
+                                            Image(systemName: "checkmark")
+                                                .font(.system(size: 12, weight: .bold))
+                                                .foregroundColor(.white)
+                                        }
                                     }
                                 }
-                            Text("servings")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
+                                .padding(.vertical, 10)
+                                .padding(.horizontal, 8)
+                                .frame(height: 48)
+                                .background(isSelected ? Color.accentColor.opacity(0.06) : Color.clear)
+                                .cornerRadius(8)
+                            }
+                            .buttonStyle(PlainButtonStyle())
                         }
-                    } else {
-                        // Fraction picker with roller
-                        Picker("Quantity", selection: $quantityFraction) {
-                            ForEach(Fraction.commonFractions) { fraction in
-                                Text(fraction.displayString).tag(fraction)
+                    }
+
+                    // Custom weight row - INDEPENDENT (values based on typed weight only)
+                    let isCustomSelected = selectedPortionName == "__custom__" || !food.hasAnyPortionOptions
+                    let customMultiplier = (Double(servingAmount) ?? 100) / 100.0
+                    HStack(spacing: 6) {
+                        // 1x label - left edge
+                        Text("1x")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .frame(width: 36, height: 28)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                                    .background(RoundedRectangle(cornerRadius: 6).fill(Color(.systemGray6)))
+                            )
+
+                        // Weight input fields - flexible
+                        HStack(spacing: 4) {
+                            TextField("100", text: $servingAmount)
+                                .keyboardType(.decimalPad)
+                                .font(.system(size: 13, weight: .medium))
+                                .frame(width: 44)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 5)
+                                .background(Color.white)
+                                .cornerRadius(6)
+                                .onTapGesture {
+                                    selectedPortionName = "__custom__"
+                                }
+
+                            Menu {
+                                ForEach(servingUnitOptions, id: \.self) { unit in
+                                    Button(unit) {
+                                        servingUnit = unit
+                                        selectedPortionName = "__custom__"
+                                    }
+                                }
+                            } label: {
+                                HStack(spacing: 2) {
+                                    Text(servingUnit)
+                                        .font(.system(size: 12, weight: .medium))
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 7, weight: .semibold))
+                                }
+                                .foregroundColor(.primary)
+                                .frame(width: 40, height: 28)
+                                .background(Color.white)
+                                .cornerRadius(6)
                             }
                         }
-                        .pickerStyle(WheelPickerStyle())
-                        .frame(height: 100)
-                        .clipped()
-                        .onChange(of: quantityFraction) { _, newFraction in
-                            quantityMultiplier = newFraction.decimalValue
-                            quantityDecimalText = String(format: "%.2f", newFraction.decimalValue)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        // Nutrition block - matches header widths exactly
+                        HStack(spacing: 0) {
+                            Text("\(Int(food.calories * customMultiplier))")
+                                .frame(width: 38, alignment: .trailing)
+                            Text(String(format: "%.0f", food.protein * customMultiplier))
+                                .frame(width: 32, alignment: .trailing)
+                            Text(String(format: "%.0f", food.carbs * customMultiplier))
+                                .frame(width: 34, alignment: .trailing)
+                            Text(String(format: "%.0f", food.fat * customMultiplier))
+                                .frame(width: 28, alignment: .trailing)
                         }
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+
+                        // Checkbox - right edge
+                        ZStack {
+                            Circle()
+                                .stroke(isCustomSelected ? Color.accentColor : Color.gray.opacity(0.3), lineWidth: 1.5)
+                                .frame(width: 22, height: 22)
+                            if isCustomSelected {
+                                Circle()
+                                    .fill(Color.accentColor)
+                                    .frame(width: 22, height: 22)
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(.white)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 8)
+                    .frame(height: 48)
+                    .background(isCustomSelected ? Color.accentColor.opacity(0.06) : Color.clear)
+                    .cornerRadius(8)
+                    .onTapGesture {
+                        selectedPortionName = "__custom__"
                     }
                 }
             }
+
             if sourceType != .useBy {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(spacing: 8) {
                     Text("MEAL TIME")
                         .font(.system(size: 11, weight: .bold, design: .rounded))
                         .foregroundColor(.secondary)
                         .tracking(0.5)
+                        .frame(maxWidth: .infinity, alignment: .center)
                     HStack(spacing: 8) {
                         ForEach(mealOptions, id: \.self) { meal in
                             Button(action: {
@@ -3455,9 +3705,9 @@ private var nutritionFactsSection: some View {
                                     )
                             }
                         }
-                        Spacer()
                     }
                 }
+                .frame(maxWidth: .infinity)
             }
             Button(action: { addToFoodLog() }) {
                 HStack {
@@ -3475,8 +3725,59 @@ private var nutritionFactsSection: some View {
         }
         .padding(16)
         .background(RoundedRectangle(cornerRadius: 16).fill(Color(.systemGray6)))
+        .overlay(
+            // Multiplier picker popup overlay
+            Group {
+                if showingMultiplierPicker {
+                    ZStack {
+                        // Dimmed background
+                        Color.black.opacity(0.3)
+                            .ignoresSafeArea()
+                            .onTapGesture {
+                                showingMultiplierPicker = false
+                            }
+
+                        // Popup grid
+                        VStack(spacing: 12) {
+                            // Grid of multiplier buttons (4 columns x 3 rows like screenshot)
+                            let columns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
+                            LazyVGrid(columns: columns, spacing: 10) {
+                                ForEach(quantityMultiplierOptions, id: \.self) { mult in
+                                    let isCurrentValue = {
+                                        let multValue = Double(mult.replacingOccurrences(of: "x", with: "").replacingOccurrences(of: "½", with: "0.5").replacingOccurrences(of: "¼", with: "0.25").replacingOccurrences(of: "¾", with: "0.75")) ?? 1.0
+                                        return abs(quantityMultiplier - multValue) < 0.01
+                                    }()
+                                    Button {
+                                        quantityMultiplier = Double(mult.replacingOccurrences(of: "x", with: "").replacingOccurrences(of: "½", with: "0.5").replacingOccurrences(of: "¼", with: "0.25").replacingOccurrences(of: "¾", with: "0.75")) ?? 1.0
+                                        showingMultiplierPicker = false
+                                    } label: {
+                                        Text(mult)
+                                            .font(.system(size: 17, weight: .medium))
+                                            .foregroundColor(isCurrentValue ? .white : .primary)
+                                            .frame(width: 52, height: 44)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 10)
+                                                    .fill(isCurrentValue ? Color.accentColor : Color(.systemGray5))
+                                            )
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                }
+                            }
+
+                        }
+                        .padding(20)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(Color(.systemBackground))
+                                .shadow(color: .black.opacity(0.2), radius: 16, x: 0, y: 8)
+                        )
+                        .padding(.horizontal, 32)
+                    }
+                }
+            }
+        )
     }
-    
+
     // MARK: - Fast Food Brand Detection
 
     /// Check if the current food is from a recognised fast food/processed food brand
