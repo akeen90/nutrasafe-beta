@@ -156,7 +156,10 @@ For plated/prepared food (isPackaging = false), you MUST list each component SEP
 - "Roast dinner" should be: "roast chicken", "roast potatoes", "carrots", "gravy", etc.
 - DO NOT combine multiple foods into one item - always separate them
 
-PORTION SIZE GUIDELINES (per component):
+PORTION SIZE GUIDELINES (per component) - BE REALISTIC:
+- Single steak (sirloin/ribeye): ~150-200g (NOT 400g+)
+- Large portion chips/fries: ~150-180g (NOT 300g+)
+- Medium portion chips/fries: ~100-130g
 - 2 pork sausages: ~120g
 - Mashed potato serving: ~150-200g
 - Gravy portion: ~50-80g
@@ -169,13 +172,28 @@ PORTION SIZE GUIDELINES (per component):
 - Restaurant portion pasta: ~250g
 - Bacon rasher: ~25g
 - Fried egg: ~50g
+- Burger patty: ~100-150g
+- Side salad: ~100g
 
-NUTRITIONAL ESTIMATES (per 100g UK values):
+NUTRITIONAL ESTIMATES (per 100g UK values) - USE THESE EXACT VALUES:
+- Sirloin/ribeye steak (cooked): ~160 kcal, 25g protein, 0g carbs, 7g fat
+- Fillet steak (cooked): ~180 kcal, 27g protein, 0g carbs, 8g fat
+- Chips/fries (oven baked): ~200 kcal, 3g protein, 30g carbs, 8g fat
+- Chips/fries (deep fried): ~280 kcal, 3g protein, 35g carbs, 14g fat
 - Pork sausages: ~250 kcal, 12g protein, 3g carbs, 20g fat
 - Mashed potato (with butter): ~100 kcal, 2g protein, 15g carbs, 4g fat
 - Gravy: ~35 kcal, 1g protein, 4g carbs, 2g fat
 - Roast chicken: ~190 kcal, 25g protein, 0g carbs, 10g fat
 - Roast potatoes: ~150 kcal, 2g protein, 22g carbs, 6g fat
+- Grilled salmon: ~200 kcal, 22g protein, 0g carbs, 12g fat
+- Burger patty (beef): ~240 kcal, 20g protein, 1g carbs, 18g fat
+- Pizza slice (cheese): ~240 kcal, 10g protein, 28g carbs, 10g fat
+
+REALISTIC CALORIE TOTALS for reference:
+- Steak (180g) + chips (150g): ~290 + ~420 = ~710 kcal total
+- Burger with bun + chips: ~500 + ~350 = ~850 kcal total
+- Chicken breast + rice: ~320 + ~210 = ~530 kcal total
+DO NOT estimate meals over 800-1000 kcal unless they are clearly very large portions
 
 IMPORTANT:
 - Be SPECIFIC with names - we'll search a food database for packaged items

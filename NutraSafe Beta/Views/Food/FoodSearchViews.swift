@@ -681,6 +681,9 @@ struct AddFoodSearchView: View {
         .onDisappear {
             removeKeyboardObservers()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .favoritesDidChange)) { _ in
+            loadFavorites()
+        }
     }
     
     private func checkForEditingMode() {

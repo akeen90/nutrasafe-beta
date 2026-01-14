@@ -16,6 +16,9 @@ import AudioToolbox
 struct AddFoodAIView: View {
     @Binding var selectedTab: TabItem
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
+    @EnvironmentObject var diaryDataManager: DiaryDataManager
+    @EnvironmentObject var firebaseManager: FirebaseManager
     @State private var isScanning = false
     @State private var recognizedFoods: [FoodSearchResult] = []
     @State private var showingImagePicker = false
@@ -28,10 +31,23 @@ struct AddFoodAIView: View {
     @State private var showingGalleryPicker = false  // For photo library selection
     // Local dummy tab binding to prevent Details view from changing main tab while in AI scanner
     @State private var localTabForDetail: TabItem = .diary
+    // Pro feature gate for non-subscribers
+    @State private var showingProFeatureGate = false
+    @State private var capturedImageForGate: UIImage?
+    @State private var showingPaywall = false
     
+    // Check if user has Pro access
+    private var hasProAccess: Bool {
+        subscriptionManager.isSubscribed || subscriptionManager.isInTrial || subscriptionManager.isPremiumOverride
+    }
+
     var body: some View {
         VStack(spacing: 20) {
-            if !isScanning && recognizedFoods.isEmpty {
+            if showingProFeatureGate {
+                // Pro Feature Gate - shown after photo taken for non-subscribers
+                proFeatureGateView
+
+            } else if !isScanning && recognizedFoods.isEmpty {
                 // Initial state - shown when user cancelled or error occurred
                 VStack(spacing: 24) {
                     Image(systemName: "camera.viewfinder")
@@ -95,7 +111,7 @@ struct AddFoodAIView: View {
                     }
                 }
                 .padding(.horizontal, 32)
-                
+
             } else if isScanning {
                 // Scanning state
                 VStack(spacing: 20) {
@@ -142,13 +158,23 @@ struct AddFoodAIView: View {
             ImagePicker(selectedImage: $selectedImage, sourceType: .camera) { image in
                 showingImagePicker = false
                 if let image = image {
-                    // NOW start showing the scanning state (after photo is taken)
-                    isScanning = true
-                    errorMessage = nil
-                    #if DEBUG
-                    print("📸 Image received, starting analysis...")
-                    #endif
-                    analyzeImage(image)
+                    // Check subscription status before analyzing
+                    if hasProAccess {
+                        // Pro user - proceed with analysis
+                        isScanning = true
+                        errorMessage = nil
+                        #if DEBUG
+                        print("📸 Image received, starting analysis...")
+                        #endif
+                        analyzeImage(image)
+                    } else {
+                        // Non-subscriber - show Pro feature gate
+                        capturedImageForGate = image
+                        showingProFeatureGate = true
+                        #if DEBUG
+                        print("📸 Image captured, showing Pro feature gate...")
+                        #endif
+                    }
                 } else {
                     // User cancelled OR image extraction failed
                     hasLaunchedCamera = false
@@ -180,6 +206,9 @@ struct AddFoodAIView: View {
                 // Use localTabForDetail to prevent Details view from changing main tab while in AI scanner
                 FoodDetailViewFromSearch(food: food, selectedTab: $localTabForDetail)
             }
+            .environmentObject(diaryDataManager)
+            .environmentObject(subscriptionManager)
+            .environmentObject(firebaseManager)
         }
         .sheet(isPresented: $showingGalleryPicker) {
             MultiImagePicker(maxSelection: 1) { images in
@@ -189,12 +218,23 @@ struct AddFoodAIView: View {
                 // Then process the result after a brief delay to ensure clean dismissal
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     if let image = images.first {
-                        isScanning = true
-                        errorMessage = nil
-                        #if DEBUG
-                        print("📸 Gallery image received, starting analysis...")
-                        #endif
-                        analyzeImage(image)
+                        // Check subscription status before analyzing
+                        if hasProAccess {
+                            // Pro user - proceed with analysis
+                            isScanning = true
+                            errorMessage = nil
+                            #if DEBUG
+                            print("📸 Gallery image received, starting analysis...")
+                            #endif
+                            analyzeImage(image)
+                        } else {
+                            // Non-subscriber - show Pro feature gate
+                            capturedImageForGate = image
+                            showingProFeatureGate = true
+                            #if DEBUG
+                            print("📸 Gallery image captured, showing Pro feature gate...")
+                            #endif
+                        }
                     } else {
                         // User cancelled or image loading failed
                         hasLaunchedCamera = false
@@ -206,6 +246,108 @@ struct AddFoodAIView: View {
                 }
             }
         }
+        .fullScreenCover(isPresented: $showingPaywall) {
+            PaywallView()
+                .environmentObject(subscriptionManager)
+        }
+        .onChange(of: subscriptionManager.isSubscribed) { _, isSubscribed in
+            // If user subscribed via paywall, dismiss gate and analyze the image
+            if isSubscribed && showingProFeatureGate {
+                showingPaywall = false
+                showingProFeatureGate = false
+                if let image = capturedImageForGate {
+                    isScanning = true
+                    errorMessage = nil
+                    analyzeImage(image)
+                    capturedImageForGate = nil
+                }
+            }
+        }
+    }
+
+    // MARK: - Pro Feature Gate View
+    private var proFeatureGateView: some View {
+        VStack(spacing: 24) {
+            // Image preview (thumbnail of captured photo)
+            if let image = capturedImageForGate {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 200, height: 200)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color(.systemGray4), lineWidth: 1)
+                    )
+                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+            }
+
+            // Pro badge
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.blue, Color.purple],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 60, height: 60)
+
+                Image(systemName: "star.fill")
+                    .font(.system(size: 28))
+                    .foregroundColor(.white)
+            }
+
+            VStack(spacing: 8) {
+                Text("AI Meal Scan is a Pro Feature")
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+                    .multilineTextAlignment(.center)
+
+                Text("Upgrade to unlock AI-powered food recognition and automatic nutrition logging")
+                    .font(.system(size: 16))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+            }
+
+            VStack(spacing: 12) {
+                Button(action: {
+                    showingPaywall = true
+                }) {
+                    HStack {
+                        Image(systemName: "lock.open.fill")
+                        Text("Unlock Pro")
+                    }
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        LinearGradient(
+                            colors: [Color.blue, Color.purple],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(12)
+                }
+
+                Button(action: {
+                    // Reset and go back to initial state
+                    showingProFeatureGate = false
+                    capturedImageForGate = nil
+                    hasLaunchedCamera = false
+                }) {
+                    Text("Maybe Later")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.horizontal, 32)
+        }
+        .padding(.horizontal, 24)
     }
     
     private func startAIScanning() {
@@ -722,6 +864,9 @@ struct AIFoodSelectionView: View {
     let onSelectionComplete: ([FoodSearchResult]) -> Void
     let onScanAnother: () -> Void
     @Binding var selectedTab: TabItem
+    @EnvironmentObject var diaryDataManager: DiaryDataManager
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
+    @EnvironmentObject var firebaseManager: FirebaseManager
 
     @State private var selectedFoods: Set<String> = []
     @State private var selectedFood: FoodSearchResult?
@@ -837,6 +982,9 @@ struct AIFoodSelectionView: View {
                 // Use localTab to prevent Details view from changing main tab while in AI scanner
                 FoodDetailViewFromSearch(food: food, selectedTab: $localTab)
             }
+            .environmentObject(diaryDataManager)
+            .environmentObject(subscriptionManager)
+            .environmentObject(firebaseManager)
         }
         .onAppear {
             // Auto-select all detected foods by default

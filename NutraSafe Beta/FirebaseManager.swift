@@ -1721,6 +1721,7 @@ class FirebaseManager: ObservableObject {
             "sodium": food.sodium,
             "servingDescription": food.servingDescription as Any,
             "barcode": food.barcode as Any,
+            "ingredients": food.ingredients as Any,
             "isVerified": food.isVerified,
             "addedAt": FirebaseFirestore.Timestamp(date: Date())
         ]
@@ -1784,6 +1785,7 @@ class FirebaseManager: ObservableObject {
                 sugar: data["sugar"] as? Double ?? 0,
                 sodium: data["sodium"] as? Double ?? 0,
                 servingDescription: data["servingDescription"] as? String,
+                ingredients: data["ingredients"] as? [String],
                 isVerified: data["isVerified"] as? Bool ?? false,
                 barcode: data["barcode"] as? String
             )

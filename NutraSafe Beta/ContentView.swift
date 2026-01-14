@@ -817,6 +817,8 @@ struct ContentView: View {
                     }
             }
             .environmentObject(diaryDataManager)
+            .environmentObject(subscriptionManager)
+            .environmentObject(firebaseManager)
             .onDisappear {
                 showingMealScan = false
             }

@@ -13,6 +13,7 @@ import UIKit
 extension Notification.Name {
     static let appVersionDidChange = Notification.Name("appVersionDidChange")
     static let waterUpdated = Notification.Name("waterUpdated")
+    static let favoritesDidChange = Notification.Name("favoritesDidChange")
 }
 
 /// Manages cache clearing on app version changes

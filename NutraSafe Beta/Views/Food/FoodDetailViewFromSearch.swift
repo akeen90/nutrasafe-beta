@@ -396,6 +396,8 @@ struct FoodDetailViewFromSearch: View {
                     isTogglingFavorite = false
                     // Haptic feedback
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    // Notify other views that favorites changed
+                    NotificationCenter.default.post(name: .favoritesDidChange, object: nil)
                 }
             } catch {
                 await MainActor.run {

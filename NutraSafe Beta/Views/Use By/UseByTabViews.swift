@@ -2315,93 +2315,267 @@ struct UseByBarcodeScanSheet: View {
     @State private var isSearching = false
     @State private var scannedFood: FoodSearchResult?
     @State private var errorMessage: String?
-    @State private var showAddForm = false
     @State private var pendingContribution: PendingFoodContribution?
+    @State private var scanFailed = false
+    @State private var scannerKey = UUID() // Force scanner reset
+    @State private var showingAddToUseBy = false
 
     var body: some View {
-        NavigationView {
-            ZStack {
-                ModernBarcodeScanner(onBarcodeScanned: { barcode in
-                    Task { await lookup(barcode: barcode) }
-                }, isSearching: $isSearching)
+        VStack(spacing: 0) {
+            if let product = scannedFood {
+                // Product found state - inline display like diary
+                VStack(spacing: 16) {
+                    Text("Product Found!")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(.green)
+                        .padding(.top, 20)
 
-                VStack(spacing: 12) {
-                    if isSearching {
-                        ProgressView().progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        Text("Looking up product...").foregroundColor(.white)
-                    } else {
-                        Text("Position barcode within the frame").foregroundColor(.white)
+                    // Food card preview
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(product.name)
+                            .font(.headline)
+                        if let brand = product.brand {
+                            Text(brand)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        HStack(spacing: 16) {
+                            VStack {
+                                Text("\(Int(product.calories))")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                Text("kcal")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Button("Add to Use By") {
+                                showingAddToUseBy = true
+                            }
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(Color.blue)
+                            .cornerRadius(10)
+                        }
                     }
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+                    .padding(.horizontal, 16)
+
+                    Button("Scan Another") {
+                        resetScanner()
+                    }
+                    .foregroundColor(.blue)
+                    .padding(.bottom, 20)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
+
+            } else if let contribution = pendingContribution {
+                // Product not found - offer manual add
+                VStack(spacing: 20) {
+                    Image(systemName: "square.and.pencil")
+                        .font(.system(size: 50))
+                        .foregroundColor(.blue)
+                        .padding(.top, 20)
+
+                    Text("Product Not Found")
+                        .font(.system(size: 20, weight: .semibold))
+
+                    Text("Add it manually")
+                        .font(.system(size: 16))
+                        .foregroundColor(.secondary)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Barcode: \(contribution.barcode)")
+                            .font(.system(size: 14, design: .monospaced))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding()
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(8)
+                    .padding(.horizontal, 20)
+
+                    Button("Scan Another") {
+                        resetScanner()
+                    }
+                    .foregroundColor(.blue)
+                    .padding(.bottom, 20)
+                }
+                .padding()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
+
+            } else if scanFailed {
+                // Scan failed state - show error and retry
+                VStack(spacing: 20) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 50))
+                        .foregroundColor(.red)
+                        .padding(.top, 40)
+
+                    Text("Product Not Found")
+                        .font(.system(size: 20, weight: .semibold))
+
                     if let errorMessage = errorMessage {
-                        Text(errorMessage).foregroundColor(.red).padding(.horizontal)
+                        Text(errorMessage)
+                            .font(.system(size: 16))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                    }
+
+                    Button(action: { resetScanner() }) {
+                        HStack {
+                            Image(systemName: "arrow.clockwise")
+                            Text("Try Again")
+                        }
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding()
+                        .frame(maxWidth: 200)
+                        .background(Color.blue)
+                        .cornerRadius(10)
+                    }
+                    .padding(.top, 20)
+
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
+
+            } else {
+                // Camera scanning view - matching diary style
+                ZStack {
+                    ModernBarcodeScanner(onBarcodeScanned: { barcode in
+                        handleBarcodeScanned(barcode)
+                    }, isSearching: $isSearching)
+                        .id(scannerKey)
+
+                    // Overlay UI matching diary style
+                    VStack {
+                        HStack { Spacer() }
+                            .frame(height: 100)
+                            .background(Color.black.opacity(0.7))
+
+                        Spacer()
+
+                        // Bottom instruction text
+                        if !isSearching {
+                            VStack(spacing: 16) {
+                                Text("Position barcode within the frame")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.white)
+                            }
+                            .frame(height: 120)
+                            .frame(maxWidth: .infinity)
+                            .background(Color.black.opacity(0.7))
+                        }
+                    }
+
+                    // Center searching indicator
+                    if isSearching {
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .scaleEffect(1.5)
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            Text("Looking up product...")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.white)
+                        }
+                        .padding(32)
+                        .background(Color.black.opacity(0.75))
+                        .cornerRadius(16)
                     }
                 }
-                .frame(maxWidth: .infinity)
-                .frame(height: 120)
-                .background(Color.black.opacity(0.7))
-                .frame(maxHeight: .infinity, alignment: .bottom)
             }
-            .navigationTitle("Scan Barcode")
-            .toolbar { ToolbarItem(placement: .navigationBarLeading) { Button("Close") { dismiss() } } }
         }
-        .navigationViewStyle(StackNavigationViewStyle())
-.fullScreenCover(item: $scannedFood) { food in
-            AddFoundFoodToUseBySheet(food: food)
-        }
-        .fullScreenCover(isPresented: $showAddForm) {
-            VStack(spacing: 16) {
-                Image(systemName: "square.and.pencil").font(.system(size: 50)).foregroundColor(.blue)
-                Text("Product Not Found").font(.system(size: 20, weight: .semibold))
-                if let pending = pendingContribution {
-                    Text("Barcode: \(pending.barcode)").font(.system(size: 14, design: .monospaced)).foregroundColor(.secondary)
-                }
-                Button("Close") { showAddForm = false }
-                    .buttonStyle(.borderedProminent)
+        .fullScreenCover(isPresented: $showingAddToUseBy) {
+            if let food = scannedFood {
+                AddFoundFoodToUseBySheet(food: food)
             }
-            .padding()
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
         }
     }
 
-    private func lookup(barcode: String) async {
-        guard !isSearching else { return }
-        await MainActor.run {
-            self.isSearching = true
-            self.errorMessage = nil
-        }
-        // First: Algolia exact barcode lookup (fast path)
-        do {
-            if let found = try await AlgoliaSearchManager.shared.searchByBarcode(barcode) {
-                await MainActor.run {
-                    self.scannedFood = found
-                    self.isSearching = false
-                }
-                return
-            }
-        } catch {
-            // Ignore and continue to fallback
-        }
+    // MARK: - Scanner Reset
+    private func resetScanner() {
+        scannedFood = nil
+        pendingContribution = nil
+        scanFailed = false
+        errorMessage = nil
+        isSearching = false
+        scannerKey = UUID()
+    }
 
-        // Fallback: Cloud Function that itself falls back to OpenFoodFacts
-        do {
-            if let remote = try await searchProductByBarcodeRemote(barcode) {
-                await MainActor.run {
-                    self.scannedFood = remote
-                    self.isSearching = false
-                }
-            } else {
-                await MainActor.run {
-                    self.isSearching = false
-                    self.errorMessage = "Product not found. Try another scan or add manually."
-                    self.pendingContribution = PendingFoodContribution(placeholderId: "", barcode: barcode)
-                    self.showAddForm = true
+    // MARK: - Barcode Normalization (EAN-13 ↔ UPC-A)
+    private func normalizeBarcode(_ barcode: String) -> [String] {
+        var variations = [barcode]
+        if barcode.count == 13 && barcode.hasPrefix("0") {
+            variations.append(String(barcode.dropFirst()))
+        }
+        if barcode.count == 12 {
+            variations.append("0" + barcode)
+        }
+        return variations
+    }
+
+    // MARK: - Barcode Handling
+    private func handleBarcodeScanned(_ barcode: String) {
+        guard !isSearching else { return }
+        isSearching = true
+        errorMessage = nil
+
+        Task {
+            let barcodeVariations = normalizeBarcode(barcode)
+            #if DEBUG
+            print("🔍 [UseBy] Searching barcode variations: \(barcodeVariations)")
+            #endif
+
+            // Fast path: Algolia lookup
+            for variation in barcodeVariations {
+                do {
+                    if let hit = try await AlgoliaSearchManager.shared.searchByBarcode(variation) {
+                        await MainActor.run {
+                            self.scannedFood = hit
+                            self.isSearching = false
+                        }
+                        #if DEBUG
+                        print("✅ [UseBy] Found in Algolia: \(hit.name)")
+                        #endif
+                        return
+                    }
+                } catch {
+                    // Continue to next variation
                 }
             }
-        } catch {
-            await MainActor.run {
-                self.isSearching = false
-                self.errorMessage = "Lookup failed. Please try again."
+
+            #if DEBUG
+            print("⚠️ [UseBy] Not in Algolia, trying Cloud Function...")
+            #endif
+
+            // Fallback: Cloud Function
+            do {
+                if let remote = try await searchProductByBarcodeRemote(barcode) {
+                    await MainActor.run {
+                        self.scannedFood = remote
+                        self.isSearching = false
+                    }
+                } else {
+                    await MainActor.run {
+                        self.isSearching = false
+                        self.errorMessage = "Product not found in our database."
+                        self.pendingContribution = PendingFoodContribution(placeholderId: "", barcode: barcode)
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self.isSearching = false
+                    self.errorMessage = "Unable to search. Please try again."
+                    self.scanFailed = true
+                }
             }
         }
     }
@@ -2420,7 +2594,9 @@ struct UseByBarcodeScanSheet: View {
         if let resp = try? decoder.decode(BarcodeSearchResponse.self, from: data) {
             if resp.success, let food = resp.toFoodSearchResult() { return food }
             if resp.action == "user_contribution_needed" {
-                self.pendingContribution = PendingFoodContribution(placeholderId: resp.placeholder_id ?? "", barcode: barcode)
+                await MainActor.run {
+                    self.pendingContribution = PendingFoodContribution(placeholderId: resp.placeholder_id ?? "", barcode: barcode)
+                }
             }
             return nil
         }
@@ -2428,7 +2604,6 @@ struct UseByBarcodeScanSheet: View {
         if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             let success = json["success"] as? Bool ?? false
             if success, let foodDict = json["food"] as? [String: Any] {
-                // Minimal mapping to FoodSearchResult
                 let food = try JSONSerialization.data(withJSONObject: foodDict)
                 return try? JSONDecoder().decode(FoodSearchResult.self, from: food)
             }

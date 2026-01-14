@@ -89,6 +89,13 @@ struct PaywallView: View {
                         // Benefits list
                         VStack(spacing: 16) {
                             BenefitRow(
+                                icon: "camera.viewfinder",
+                                iconColor: .teal,
+                                title: "AI Meal Scanner",
+                                description: "Snap a photo and auto-log all food items"
+                            )
+
+                            BenefitRow(
                                 icon: "fork.knife.circle.fill",
                                 iconColor: .blue,
                                 title: "Unlimited Diary Entries",
