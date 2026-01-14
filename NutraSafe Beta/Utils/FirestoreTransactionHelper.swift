@@ -48,66 +48,69 @@ struct FirestoreTransactionHelper {
         db: Firestore,
         maxRetries: Int = 3
     ) async throws {
-        var retryCount = 0
+        // Run on utility QoS to match Firestore's internal thread and avoid priority inversion
+        try await Task.detached(priority: .utility) {
+            var retryCount = 0
 
-        while retryCount < maxRetries {
-            do {
-                _ = try await db.runTransaction { (transaction, errorPointer) -> Any? in
-                    let document: DocumentSnapshot
-                    do {
-                        document = try transaction.getDocument(documentRef)
-                    } catch {
-                        errorPointer?.pointee = error as NSError
-                        return nil
+            while retryCount < maxRetries {
+                do {
+                    _ = try await db.runTransaction { (transaction, errorPointer) -> Any? in
+                        let document: DocumentSnapshot
+                        do {
+                            document = try transaction.getDocument(documentRef)
+                        } catch {
+                            errorPointer?.pointee = error as NSError
+                            return nil
+                        }
+
+                        // Get current version (default to 0 if not exists)
+                        let currentVersion = document.data()?["_version"] as? Int ?? 0
+                        let newVersion = currentVersion + 1
+
+                        // Prepare update with incremented version
+                        var dataWithVersion = updateData
+                        dataWithVersion["_version"] = newVersion
+                        dataWithVersion["_lastModified"] = FieldValue.serverTimestamp()
+
+                        // If document doesn't exist, create it
+                        if !document.exists {
+                            dataWithVersion["_createdAt"] = FieldValue.serverTimestamp()
+                            transaction.setData(dataWithVersion, forDocument: documentRef)
+                        } else {
+                            // Update with version check
+                            transaction.updateData(dataWithVersion, forDocument: documentRef)
+                        }
+
+                        return newVersion
                     }
 
-                    // Get current version (default to 0 if not exists)
-                    let currentVersion = document.data()?["_version"] as? Int ?? 0
-                    let newVersion = currentVersion + 1
+                    // Success - exit retry loop
+                    return
 
-                    // Prepare update with incremented version
-                    var dataWithVersion = updateData
-                    dataWithVersion["_version"] = newVersion
-                    dataWithVersion["_lastModified"] = FieldValue.serverTimestamp()
-
-                    // If document doesn't exist, create it
-                    if !document.exists {
-                        dataWithVersion["_createdAt"] = FieldValue.serverTimestamp()
-                        transaction.setData(dataWithVersion, forDocument: documentRef)
+                } catch {
+                    // Check if it's a version conflict or other error
+                    if let firestoreError = error as NSError?,
+                       firestoreError.domain == "FIRFirestoreErrorDomain",
+                       firestoreError.code == 5 { // FAILED_PRECONDITION
+                        // Version conflict - retry
+                        retryCount += 1
+                        if retryCount < maxRetries {
+                            // Exponential backoff
+                            let delayMs = 100 * (1 << retryCount) // 200ms, 400ms, 800ms
+                            try await Task.sleep(nanoseconds: UInt64(delayMs * 1_000_000))
+                            continue
+                        } else {
+                            throw TransactionError.maxRetriesExceeded
+                        }
                     } else {
-                        // Update with version check
-                        transaction.updateData(dataWithVersion, forDocument: documentRef)
+                        // Other error - rethrow
+                        throw error
                     }
-
-                    return newVersion
-                }
-
-                // Success - exit retry loop
-                return
-
-            } catch {
-                // Check if it's a version conflict or other error
-                if let firestoreError = error as NSError?,
-                   firestoreError.domain == "FIRFirestoreErrorDomain",
-                   firestoreError.code == 5 { // FAILED_PRECONDITION
-                    // Version conflict - retry
-                    retryCount += 1
-                    if retryCount < maxRetries {
-                        // Exponential backoff
-                        let delayMs = 100 * (1 << retryCount) // 200ms, 400ms, 800ms
-                        try await Task.sleep(nanoseconds: UInt64(delayMs * 1_000_000))
-                        continue
-                    } else {
-                        throw TransactionError.maxRetriesExceeded
-                    }
-                } else {
-                    // Other error - rethrow
-                    throw error
                 }
             }
-        }
 
-        throw TransactionError.maxRetriesExceeded
+            throw TransactionError.maxRetriesExceeded
+        }.value
     }
 
     // MARK: - Batch Operations with Atomicity
@@ -121,14 +124,17 @@ struct FirestoreTransactionHelper {
         operations: [(DocumentReference, [String: Any])],
         db: Firestore
     ) async throws {
-        _ = try await db.runTransaction { (transaction, errorPointer) -> Any? in
-            for (docRef, data) in operations {
-                var dataWithMetadata = data
-                dataWithMetadata["_lastModified"] = FieldValue.serverTimestamp()
-                transaction.setData(dataWithMetadata, forDocument: docRef, merge: true)
+        // Run on utility QoS to match Firestore's internal thread and avoid priority inversion
+        try await Task.detached(priority: .utility) {
+            _ = try await db.runTransaction { (transaction, errorPointer) -> Any? in
+                for (docRef, data) in operations {
+                    var dataWithMetadata = data
+                    dataWithMetadata["_lastModified"] = FieldValue.serverTimestamp()
+                    transaction.setData(dataWithMetadata, forDocument: docRef, merge: true)
+                }
+                return nil
             }
-            return nil
-        }
+        }.value
     }
 
     // MARK: - Read-Modify-Write Transactions
@@ -142,37 +148,40 @@ struct FirestoreTransactionHelper {
     /// - Returns: The updated document data
     static func readModifyWrite(
         documentRef: DocumentReference,
-        transform: @escaping ([String: Any]) -> [String: Any],
+        transform: @escaping @Sendable ([String: Any]) -> [String: Any],
         db: Firestore
     ) async throws -> [String: Any] {
-        let result = try await db.runTransaction { (transaction, errorPointer) -> Any? in
-            let document: DocumentSnapshot
-            do {
-                document = try transaction.getDocument(documentRef)
-            } catch {
-                errorPointer?.pointee = error as NSError
-                return nil
+        // Run on utility QoS to match Firestore's internal thread and avoid priority inversion
+        return try await Task.detached(priority: .utility) {
+            let result = try await db.runTransaction { (transaction, errorPointer) -> Any? in
+                let document: DocumentSnapshot
+                do {
+                    document = try transaction.getDocument(documentRef)
+                } catch {
+                    errorPointer?.pointee = error as NSError
+                    return nil
+                }
+
+                // Get current data or start with empty
+                let currentData = document.data() ?? [:]
+
+                // Apply transformation
+                var newData = transform(currentData)
+
+                // Add metadata
+                newData["_lastModified"] = FieldValue.serverTimestamp()
+                if !document.exists {
+                    newData["_createdAt"] = FieldValue.serverTimestamp()
+                }
+
+                // Write back
+                transaction.setData(newData, forDocument: documentRef, merge: true)
+
+                return newData as Any
             }
 
-            // Get current data or start with empty
-            let currentData = document.data() ?? [:]
-
-            // Apply transformation
-            var newData = transform(currentData)
-
-            // Add metadata
-            newData["_lastModified"] = FieldValue.serverTimestamp()
-            if !document.exists {
-                newData["_createdAt"] = FieldValue.serverTimestamp()
-            }
-
-            // Write back
-            transaction.setData(newData, forDocument: documentRef, merge: true)
-
-            return newData as Any
-        }
-
-        return result as? [String: Any] ?? [:]
+            return result as? [String: Any] ?? [:]
+        }.value
     }
 
     // MARK: - Increment/Decrement Operations
@@ -190,25 +199,28 @@ struct FirestoreTransactionHelper {
         by amount: Double,
         db: Firestore
     ) async throws {
-        _ = try await db.runTransaction { (transaction, errorPointer) -> Any? in
-            let document: DocumentSnapshot
-            do {
-                document = try transaction.getDocument(documentRef)
-            } catch {
-                errorPointer?.pointee = error as NSError
-                return nil
+        // Run on utility QoS to match Firestore's internal thread and avoid priority inversion
+        try await Task.detached(priority: .utility) {
+            _ = try await db.runTransaction { (transaction, errorPointer) -> Any? in
+                let document: DocumentSnapshot
+                do {
+                    document = try transaction.getDocument(documentRef)
+                } catch {
+                    errorPointer?.pointee = error as NSError
+                    return nil
+                }
+
+                let currentValue = document.data()?[field] as? Double ?? 0
+                let newValue = currentValue + amount
+
+                transaction.updateData([
+                    field: newValue,
+                    "_lastModified": FieldValue.serverTimestamp()
+                ], forDocument: documentRef)
+
+                return newValue
             }
-
-            let currentValue = document.data()?[field] as? Double ?? 0
-            let newValue = currentValue + amount
-
-            transaction.updateData([
-                field: newValue,
-                "_lastModified": FieldValue.serverTimestamp()
-            ], forDocument: documentRef)
-
-            return newValue
-        }
+        }.value
     }
 
     // MARK: - Conditional Updates
@@ -224,36 +236,39 @@ struct FirestoreTransactionHelper {
     @discardableResult
     static func conditionalUpdate(
         documentRef: DocumentReference,
-        condition: @escaping ([String: Any]) -> Bool,
+        condition: @escaping @Sendable ([String: Any]) -> Bool,
         updateData: [String: Any],
         db: Firestore
     ) async throws -> Bool {
-        let result = try await db.runTransaction { (transaction, errorPointer) -> Any? in
-            let document: DocumentSnapshot
-            do {
-                document = try transaction.getDocument(documentRef)
-            } catch {
-                errorPointer?.pointee = error as NSError
-                return false as Any
+        // Run on utility QoS to match Firestore's internal thread and avoid priority inversion
+        return try await Task.detached(priority: .utility) {
+            let result = try await db.runTransaction { (transaction, errorPointer) -> Any? in
+                let document: DocumentSnapshot
+                do {
+                    document = try transaction.getDocument(documentRef)
+                } catch {
+                    errorPointer?.pointee = error as NSError
+                    return false as Any
+                }
+
+                let currentData = document.data() ?? [:]
+
+                // Check condition
+                guard condition(currentData) else {
+                    return false as Any
+                }
+
+                // Condition met - perform update
+                var dataWithMetadata = updateData
+                dataWithMetadata["_lastModified"] = FieldValue.serverTimestamp()
+
+                transaction.setData(dataWithMetadata, forDocument: documentRef, merge: true)
+
+                return true as Any
             }
 
-            let currentData = document.data() ?? [:]
-
-            // Check condition
-            guard condition(currentData) else {
-                return false as Any
-            }
-
-            // Condition met - perform update
-            var dataWithMetadata = updateData
-            dataWithMetadata["_lastModified"] = FieldValue.serverTimestamp()
-
-            transaction.setData(dataWithMetadata, forDocument: documentRef, merge: true)
-
-            return true as Any
-        }
-
-        return result as? Bool ?? false
+            return result as? Bool ?? false
+        }.value
     }
 }
 
@@ -282,7 +297,7 @@ extension Firestore {
     /// Convenience method for read-modify-write
     func readModifyWrite(
         documentRef: DocumentReference,
-        transform: @escaping ([String: Any]) -> [String: Any]
+        transform: @escaping @Sendable ([String: Any]) -> [String: Any]
     ) async throws -> [String: Any] {
         return try await FirestoreTransactionHelper.readModifyWrite(
             documentRef: documentRef,

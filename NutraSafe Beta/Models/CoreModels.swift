@@ -1228,13 +1228,13 @@ enum MacroType: String, CaseIterable, Codable {
         case .fiber: return item.fiber
         case .sugar: return item.sugar
         case .salt: return item.sodium / 1000.0 // Convert mg to g
-        case .saturatedFat: return 0.0 // Not currently tracked in DiaryFoodItem
+        case .saturatedFat: return item.saturatedFat
         }
     }
 
     // Available extra macros (user picks one of these)
     static var extraMacros: [MacroType] {
-        return [.fiber, .sugar, .salt]
+        return [.fiber, .sugar, .salt, .saturatedFat]
     }
 }
 
@@ -1322,17 +1322,47 @@ enum DietType: String, CaseIterable, Codable {
     var detailedDescription: String {
         switch self {
         case .flexible:
-            return "A balanced approach with no food restrictions. Focus on hitting your calorie and protein targets while eating foods you enjoy."
+            return "A balanced, sustainable approach with no food restrictions. Focus on hitting your calorie and protein targets while enjoying the foods you love. This approach is backed by research showing that dietary adherence matters more than the specific diet chosen."
         case .keto:
-            return "A very low-carb, high-fat diet that puts your body into ketosis. Typically under 50g carbs per day. Avoid grains, sugar, most fruits."
+            return "A very low-carb, high-fat diet (under 50g carbs daily) that shifts your body into ketosis, where it burns fat for fuel instead of glucose. Research shows it can be effective for weight loss and blood sugar control. Avoid grains, sugar, most fruits, and starchy vegetables."
         case .lowCarb:
-            return "Reduced carbohydrate intake while maintaining moderate protein and fat. Good for blood sugar control and weight management."
+            return "Reduced carbohydrate intake (typically 50-100g daily) while maintaining moderate protein and healthy fats. Studies show benefits for weight management, blood sugar control, and reduced triglycerides without the strictness of keto."
         case .highProtein:
-            return "Higher protein intake to support muscle growth and recovery. Ideal for athletes, strength training, or anyone looking to build lean mass."
+            return "Increased protein intake (1.6-2.2g per kg bodyweight) to support muscle growth, recovery, and satiety. Research confirms higher protein diets preserve muscle during weight loss and support athletic performance."
         case .mediterranean:
-            return "Emphasises whole grains, olive oil, fish, vegetables, and moderate wine. Associated with heart health and longevity."
+            return "Emphasises olive oil, fish, whole grains, vegetables, legumes, and moderate red wine. Extensively researched with strong evidence for heart health, longevity, and reduced risk of chronic diseases. Recognised by the WHO as a healthy dietary pattern."
         case .paleo:
-            return "Based on foods available to our ancestors: meat, fish, vegetables, fruits, nuts. Excludes grains, legumes, dairy, and processed foods."
+            return "Based on whole, unprocessed foods our ancestors ate: meat, fish, vegetables, fruits, nuts, and seeds. Excludes grains, legumes, dairy, and processed foods. Some studies show benefits for weight loss and metabolic markers."
+        }
+    }
+
+    /// Source URL for credible scientific information about this diet
+    var sourceURL: URL? {
+        switch self {
+        case .flexible:
+            return URL(string: "https://www.nhs.uk/live-well/eat-well/")
+        case .keto:
+            return URL(string: "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8153354/")
+        case .lowCarb:
+            return URL(string: "https://www.diabetes.org.uk/guide-to-diabetes/enjoy-food/eating-with-diabetes/food-groups/low-carb-diet")
+        case .highProtein:
+            return URL(string: "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5852756/")
+        case .mediterranean:
+            return URL(string: "https://www.bhf.org.uk/informationsupport/heart-matters-magazine/nutrition/mediterranean-diet")
+        case .paleo:
+            return URL(string: "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6647066/")
+        }
+    }
+
+    /// Short source name for display
+    var sourceName: String {
+        switch self {
+        case .flexible: return "NHS"
+        case .keto: return "NIH Research"
+        case .lowCarb: return "Diabetes UK"
+        case .highProtein: return "NIH Research"
+        case .mediterranean: return "British Heart Foundation"
+        case .paleo: return "NIH Research"
         }
     }
 

@@ -422,8 +422,11 @@ struct NutritionGoalsSection: View {
     @State private var caloricGoal: Int = 2000
     @State private var exerciseGoal: Int = 600
     @State private var stepGoal: Int = 10000
+    @State private var waterGoal: Int = 8
     @State private var macroGoals: [MacroGoal] = MacroGoal.defaultMacros
     @State private var selectedDietType: DietType? = .flexible
+
+    @AppStorage("dailyWaterGoal") private var savedWaterGoal: Int = 8
 
     @State private var isLoading = true
     @State private var showingError = false
@@ -440,43 +443,7 @@ struct NutritionGoalsSection: View {
                     Spacer()
                 }
             } else {
-                // Daily Caloric Goal
                 VStack(spacing: 0) {
-                    VStack(spacing: 8) {
-                        HStack {
-                            Image(systemName: "flame.fill")
-                                .font(.system(size: 16))
-                                .foregroundColor(.orange)
-                                .frame(width: 24)
-
-                            Text("Daily Caloric Goal")
-                                .font(.system(size: 16))
-                                .foregroundColor(.primary)
-
-                            Spacer()
-                        }
-
-                        HStack {
-                            Spacer()
-
-                            Stepper(value: $caloricGoal, in: 1000...5000, step: 50) {
-                                Text("\(formatNumber(caloricGoal)) cal")
-                                    .font(.system(size: 20, weight: .semibold))
-                                    .foregroundColor(.orange)
-                            }
-                            .onChange(of: caloricGoal) { _, newValue in
-                                saveCaloricGoal(newValue)
-                            }
-
-                            Spacer()
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-
-                    Divider()
-                        .padding(.leading, 52)
-
                     // Exercise Goal
                     VStack(spacing: 8) {
                         HStack {
@@ -549,15 +516,55 @@ struct NutritionGoalsSection: View {
                     Divider()
                         .padding(.leading, 52)
 
-                    // Macro Management
-                    Button(action: { showingMacroManagement = true }) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "chart.bar.fill")
+                    // Water Goal (NHS recommends 6-8 glasses per day)
+                    VStack(spacing: 8) {
+                        HStack {
+                            Image(systemName: "drop.fill")
                                 .font(.system(size: 16))
-                                .foregroundColor(.blue)
+                                .foregroundColor(.cyan)
                                 .frame(width: 24)
 
-                            Text("Macro Management")
+                            Text("Water Goal")
+                                .font(.system(size: 16))
+                                .foregroundColor(.primary)
+
+                            Spacer()
+
+                            Text("NHS: 6-8 glasses")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+
+                        HStack {
+                            Spacer()
+
+                            Stepper(value: $waterGoal, in: 4...16, step: 1) {
+                                Text("\(waterGoal) glasses")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundColor(.cyan)
+                            }
+                            .onChange(of: waterGoal) { _, newValue in
+                                savedWaterGoal = newValue
+                            }
+
+                            Spacer()
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+
+                    Divider()
+                        .padding(.leading, 52)
+
+                    // Diet Management
+                    Button(action: { showingMacroManagement = true }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "fork.knife")
+                                .font(.system(size: 16))
+                                .foregroundColor(.green)
+                                .frame(width: 24)
+
+                            Text("Diet Management")
                                 .font(.system(size: 16))
                                 .foregroundColor(.primary)
 
@@ -584,6 +591,7 @@ struct NutritionGoalsSection: View {
             caloricGoal = cachedCaloricGoal
             exerciseGoal = cachedExerciseGoal
             stepGoal = cachedStepGoal
+            waterGoal = savedWaterGoal
             Task { await loadNutritionGoals() }
         }
         .fullScreenCover(isPresented: $showingMacroManagement) {
@@ -2498,6 +2506,7 @@ struct DataPrivacyView: View {
 
 struct MacroManagementView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var firebaseManager: FirebaseManager
 
     @Binding var macroGoals: [MacroGoal]
     @Binding var dietType: DietType?
@@ -2515,6 +2524,18 @@ struct MacroManagementView: View {
     // Extra macro selection and target
     @State private var selectedExtraMacro: MacroType
     @State private var extraMacroTarget: String
+
+    // Calorie goal settings
+    @AppStorage("cachedCaloricGoal") private var cachedCaloricGoal: Int = 2000
+    @State private var calorieGoal: Int = 2000
+    @State private var showingBMRCalculator: Bool = false
+
+    // BMR Calculator inputs
+    @AppStorage("userSex") private var userSex: String = "female"
+    @AppStorage("userAge") private var userAge: Int = 30
+    @AppStorage("userHeightCm") private var userHeightCm: Double = 165
+    @AppStorage("userWeightKg") private var userWeightKg: Double = 65
+    @AppStorage("userActivityLevel") private var userActivityLevel: String = "moderate"
 
     init(macroGoals: Binding<[MacroGoal]>, dietType: Binding<DietType?>, onSave: @escaping (DietType?) -> Void) {
         self._macroGoals = macroGoals
@@ -2571,6 +2592,9 @@ struct MacroManagementView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 20) {
+                    // Calorie Goal Section (at the top)
+                    calorieGoalSection
+
                     // Diet Selection Grid
                     dietSelectionSection
 
@@ -2596,7 +2620,7 @@ struct MacroManagementView: View {
                 .padding(.top, 12)
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("Diet & Macros")
+            .navigationTitle("Diet Management")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -2612,7 +2636,146 @@ struct MacroManagementView: View {
                     .disabled(!isValid)
                 }
             }
+            .onAppear {
+                calorieGoal = cachedCaloricGoal
+            }
+            .sheet(isPresented: $showingBMRCalculator) {
+                BMRCalculatorSheet(
+                    userSex: $userSex,
+                    userAge: $userAge,
+                    userHeightCm: $userHeightCm,
+                    userWeightKg: $userWeightKg,
+                    userActivityLevel: $userActivityLevel,
+                    onCalculate: { calculatedGoal in
+                        calorieGoal = calculatedGoal
+                    }
+                )
+                .environmentObject(firebaseManager)
+            }
         }
+    }
+
+    // MARK: - Calorie Goal Section
+    private var calorieGoalSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Daily Calorie Goal")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(.primary)
+
+            // Calorie input with stepper
+            HStack {
+                Text("\(calorieGoal)")
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundColor(.primary)
+
+                Text("kcal")
+                    .font(.system(size: 18))
+                    .foregroundColor(.secondary)
+
+                Spacer()
+
+                HStack(spacing: 12) {
+                    Button {
+                        if calorieGoal > 1000 {
+                            calorieGoal -= 50
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        }
+                    } label: {
+                        Image(systemName: "minus.circle.fill")
+                            .font(.system(size: 32))
+                            .foregroundColor(calorieGoal > 1000 ? .red : Color(.systemGray4))
+                    }
+                    .disabled(calorieGoal <= 1000)
+
+                    Button {
+                        if calorieGoal < 5000 {
+                            calorieGoal += 50
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        }
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 32))
+                            .foregroundColor(calorieGoal < 5000 ? .green : Color(.systemGray4))
+                    }
+                    .disabled(calorieGoal >= 5000)
+                }
+            }
+
+            Divider()
+
+            // UK Recommendations
+            VStack(alignment: .leading, spacing: 8) {
+                Text("UK Recommended Daily Intake")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.secondary)
+
+                HStack(spacing: 16) {
+                    // Women recommendation
+                    Button {
+                        calorieGoal = 2000
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "figure.stand.dress")
+                                .font(.system(size: 14))
+                            Text("Women: 2,000")
+                                .font(.system(size: 13, weight: .medium))
+                        }
+                        .foregroundColor(calorieGoal == 2000 ? .white : .pink)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(calorieGoal == 2000 ? Color.pink : Color.pink.opacity(0.15))
+                        )
+                    }
+
+                    // Men recommendation
+                    Button {
+                        calorieGoal = 2500
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "figure.stand")
+                                .font(.system(size: 14))
+                            Text("Men: 2,500")
+                                .font(.system(size: 13, weight: .medium))
+                        }
+                        .foregroundColor(calorieGoal == 2500 ? .white : .blue)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(calorieGoal == 2500 ? Color.blue : Color.blue.opacity(0.15))
+                        )
+                    }
+                }
+            }
+
+            Divider()
+
+            // BMR Calculator Button
+            Button {
+                showingBMRCalculator = true
+            } label: {
+                HStack {
+                    Image(systemName: "function")
+                        .font(.system(size: 16))
+                    Text("Calculate Based on My BMR")
+                        .font(.system(size: 15, weight: .medium))
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+                .foregroundColor(.green)
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.secondarySystemGroupedBackground))
+        )
     }
 
     // MARK: - Diet Selection Grid
@@ -2703,6 +2866,22 @@ struct MacroManagementView: View {
                     Text("Daily carb limit: \(carbLimit)g")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.orange)
+                }
+                .padding(.top, 4)
+            }
+
+            // Source link
+            if let sourceURL = diet.sourceURL {
+                Link(destination: sourceURL) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "link")
+                            .font(.system(size: 12))
+                        Text("Learn more from \(diet.sourceName)")
+                            .font(.system(size: 13, weight: .medium))
+                        Image(systemName: "arrow.up.right")
+                            .font(.system(size: 10))
+                    }
+                    .foregroundColor(diet.accentColor)
                 }
                 .padding(.top, 4)
             }
@@ -2861,10 +3040,516 @@ struct MacroManagementView: View {
 
         macroGoals = newMacroGoals
         dietType = isCustomMode ? nil : selectedDiet
+
+        // Save calorie goal
+        cachedCaloricGoal = calorieGoal
+        Task {
+            try? await firebaseManager.saveUserSettings(height: nil, goalWeight: nil, caloricGoal: calorieGoal)
+            await MainActor.run {
+                NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
+            }
+        }
+
         onSave(isCustomMode ? nil : selectedDiet)
         dismiss()
 
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    }
+}
+
+// MARK: - BMR Calculator Sheet
+struct BMRCalculatorSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var firebaseManager: FirebaseManager
+
+    @Binding var userSex: String
+    @Binding var userAge: Int
+    @Binding var userHeightCm: Double
+    @Binding var userWeightKg: Double
+    @Binding var userActivityLevel: String
+
+    let onCalculate: (Int) -> Void
+
+    // Text input states for typing values
+    @State private var ageText: String = ""
+    @State private var heightText: String = ""
+    @State private var weightText: String = ""
+    @FocusState private var focusedField: BMRField?
+
+    enum BMRField {
+        case age, height, weight
+    }
+
+    // Activity level multipliers (TDEE = BMR × multiplier)
+    private let activityMultipliers: [(id: String, label: String, description: String, multiplier: Double)] = [
+        ("sedentary", "Sedentary", "Little or no exercise, desk job", 1.2),
+        ("light", "Lightly Active", "Light exercise 1-3 days/week", 1.375),
+        ("moderate", "Moderately Active", "Moderate exercise 3-5 days/week", 1.55),
+        ("active", "Very Active", "Hard exercise 6-7 days/week", 1.725),
+        ("extreme", "Extremely Active", "Physical job + hard exercise", 1.9)
+    ]
+
+    // Calculate BMR using Mifflin-St Jeor equation
+    private var calculatedBMR: Double {
+        if userSex == "male" {
+            // Men: BMR = (10 × weight in kg) + (6.25 × height in cm) - (5 × age) + 5
+            return (10 * userWeightKg) + (6.25 * userHeightCm) - (5 * Double(userAge)) + 5
+        } else {
+            // Women: BMR = (10 × weight in kg) + (6.25 × height in cm) - (5 × age) - 161
+            return (10 * userWeightKg) + (6.25 * userHeightCm) - (5 * Double(userAge)) - 161
+        }
+    }
+
+    private var activityMultiplier: Double {
+        activityMultipliers.first(where: { $0.id == userActivityLevel })?.multiplier ?? 1.55
+    }
+
+    private var calculatedTDEE: Int {
+        Int(calculatedBMR * activityMultiplier)
+    }
+
+    // Weight loss calorie targets
+    private var mildDeficit: Int { calculatedTDEE - 250 }  // ~0.25kg/week
+    private var moderateDeficit: Int { calculatedTDEE - 500 }  // ~0.5kg/week
+    private var aggressiveDeficit: Int { calculatedTDEE - 750 }  // ~0.75kg/week
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Sex Selection
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Biological Sex")
+                            .font(.system(size: 16, weight: .semibold))
+
+                        HStack(spacing: 12) {
+                            SexSelectionButton(
+                                icon: "figure.stand.dress",
+                                label: "Female",
+                                isSelected: userSex == "female",
+                                color: .pink
+                            ) {
+                                userSex = "female"
+                            }
+
+                            SexSelectionButton(
+                                icon: "figure.stand",
+                                label: "Male",
+                                isSelected: userSex == "male",
+                                color: .blue
+                            ) {
+                                userSex = "male"
+                            }
+                        }
+                    }
+                    .padding(16)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemGroupedBackground)))
+
+                    // Age, Height, Weight with editable fields
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Your Details")
+                            .font(.system(size: 16, weight: .semibold))
+
+                        // Age
+                        HStack {
+                            Text("Age")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            HStack(spacing: 8) {
+                                Button {
+                                    if userAge > 15 { userAge -= 1; ageText = "\(userAge)" }
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                } label: {
+                                    Image(systemName: "minus.circle.fill")
+                                        .font(.system(size: 24))
+                                        .foregroundColor(userAge > 15 ? .red : Color(.systemGray4))
+                                }
+                                .disabled(userAge <= 15)
+
+                                TextField("Age", text: $ageText)
+                                    .keyboardType(.numberPad)
+                                    .multilineTextAlignment(.center)
+                                    .frame(width: 50)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 6)
+                                    .background(Color(.systemGray6))
+                                    .cornerRadius(8)
+                                    .focused($focusedField, equals: .age)
+                                    .onChange(of: ageText) { _, newValue in
+                                        if let age = Int(newValue), age >= 15 && age <= 100 {
+                                            userAge = age
+                                        }
+                                    }
+
+                                Text("years")
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 40)
+
+                                Button {
+                                    if userAge < 100 { userAge += 1; ageText = "\(userAge)" }
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                } label: {
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.system(size: 24))
+                                        .foregroundColor(userAge < 100 ? .green : Color(.systemGray4))
+                                }
+                                .disabled(userAge >= 100)
+                            }
+                        }
+
+                        Divider()
+
+                        // Height
+                        HStack {
+                            Text("Height")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            HStack(spacing: 8) {
+                                Button {
+                                    if userHeightCm > 100 { userHeightCm -= 1; heightText = "\(Int(userHeightCm))" }
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                } label: {
+                                    Image(systemName: "minus.circle.fill")
+                                        .font(.system(size: 24))
+                                        .foregroundColor(userHeightCm > 100 ? .red : Color(.systemGray4))
+                                }
+                                .disabled(userHeightCm <= 100)
+
+                                TextField("Height", text: $heightText)
+                                    .keyboardType(.numberPad)
+                                    .multilineTextAlignment(.center)
+                                    .frame(width: 50)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 6)
+                                    .background(Color(.systemGray6))
+                                    .cornerRadius(8)
+                                    .focused($focusedField, equals: .height)
+                                    .onChange(of: heightText) { _, newValue in
+                                        if let height = Double(newValue), height >= 100 && height <= 250 {
+                                            userHeightCm = height
+                                        }
+                                    }
+
+                                Text("cm")
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 40)
+
+                                Button {
+                                    if userHeightCm < 250 { userHeightCm += 1; heightText = "\(Int(userHeightCm))" }
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                } label: {
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.system(size: 24))
+                                        .foregroundColor(userHeightCm < 250 ? .green : Color(.systemGray4))
+                                }
+                                .disabled(userHeightCm >= 250)
+                            }
+                        }
+
+                        Divider()
+
+                        // Weight
+                        HStack {
+                            Text("Weight")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            HStack(spacing: 8) {
+                                Button {
+                                    if userWeightKg > 30 { userWeightKg -= 0.5; weightText = String(format: "%.1f", userWeightKg) }
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                } label: {
+                                    Image(systemName: "minus.circle.fill")
+                                        .font(.system(size: 24))
+                                        .foregroundColor(userWeightKg > 30 ? .red : Color(.systemGray4))
+                                }
+                                .disabled(userWeightKg <= 30)
+
+                                TextField("Weight", text: $weightText)
+                                    .keyboardType(.decimalPad)
+                                    .multilineTextAlignment(.center)
+                                    .frame(width: 60)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 6)
+                                    .background(Color(.systemGray6))
+                                    .cornerRadius(8)
+                                    .focused($focusedField, equals: .weight)
+                                    .onChange(of: weightText) { _, newValue in
+                                        if let weight = Double(newValue), weight >= 30 && weight <= 300 {
+                                            userWeightKg = weight
+                                        }
+                                    }
+
+                                Text("kg")
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 40)
+
+                                Button {
+                                    if userWeightKg < 300 { userWeightKg += 0.5; weightText = String(format: "%.1f", userWeightKg) }
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                } label: {
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.system(size: 24))
+                                        .foregroundColor(userWeightKg < 300 ? .green : Color(.systemGray4))
+                                }
+                                .disabled(userWeightKg >= 300)
+                            }
+                        }
+                    }
+                    .padding(16)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemGroupedBackground)))
+
+                    // Activity Level
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Activity Level")
+                            .font(.system(size: 16, weight: .semibold))
+
+                        ForEach(activityMultipliers, id: \.id) { activity in
+                            Button {
+                                userActivityLevel = activity.id
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            } label: {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(activity.label)
+                                            .font(.system(size: 15, weight: .medium))
+                                            .foregroundColor(.primary)
+                                        Text(activity.description)
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.secondary)
+                                    }
+                                    Spacer()
+                                    if userActivityLevel == activity.id {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.green)
+                                    }
+                                }
+                                .padding(.vertical, 8)
+                            }
+
+                            if activity.id != activityMultipliers.last?.id {
+                                Divider()
+                            }
+                        }
+                    }
+                    .padding(16)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemGroupedBackground)))
+
+                    // Results - Maintenance
+                    VStack(spacing: 12) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Your BMR")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.secondary)
+                                Text("\(Int(calculatedBMR)) kcal")
+                                    .font(.system(size: 20, weight: .semibold))
+                            }
+
+                            Spacer()
+
+                            VStack(alignment: .trailing, spacing: 4) {
+                                Text("Maintenance")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.secondary)
+                                Text("\(calculatedTDEE) kcal")
+                                    .font(.system(size: 24, weight: .bold))
+                                    .foregroundColor(.green)
+                            }
+                        }
+
+                        Text("This is your TDEE (Total Daily Energy Expenditure) - eating this maintains your current weight.")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(16)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Color.green.opacity(0.1)))
+
+                    // Weight Loss Guidance
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Image(systemName: "info.circle.fill")
+                                .foregroundColor(.orange)
+                            Text("Weight Loss Guide")
+                                .font(.system(size: 16, weight: .semibold))
+                        }
+
+                        Text("To lose weight, eat fewer calories than your maintenance level. A deficit of 500 kcal/day = ~0.5kg loss per week.")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+
+                        VStack(spacing: 8) {
+                            WeightLossOptionRow(
+                                label: "Mild deficit (-250)",
+                                calories: mildDeficit,
+                                rate: "~0.25kg/week",
+                                color: .green
+                            ) {
+                                onCalculate(mildDeficit)
+                                dismiss()
+                            }
+
+                            WeightLossOptionRow(
+                                label: "Moderate deficit (-500)",
+                                calories: moderateDeficit,
+                                rate: "~0.5kg/week",
+                                color: .orange
+                            ) {
+                                onCalculate(moderateDeficit)
+                                dismiss()
+                            }
+
+                            WeightLossOptionRow(
+                                label: "Aggressive deficit (-750)",
+                                calories: aggressiveDeficit,
+                                rate: "~0.75kg/week",
+                                color: .red
+                            ) {
+                                onCalculate(aggressiveDeficit)
+                                dismiss()
+                            }
+                        }
+
+                        Text("NHS recommends losing 0.5-1kg per week for sustainable weight loss.")
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(.systemGray2))
+                            .italic()
+                    }
+                    .padding(16)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Color.orange.opacity(0.1)))
+
+                    // Apply Maintenance Button
+                    Button {
+                        onCalculate(calculatedTDEE)
+                        dismiss()
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    } label: {
+                        Text("Use \(calculatedTDEE) kcal (Maintenance)")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color.green)
+                            .cornerRadius(12)
+                    }
+
+                    Spacer(minLength: 20)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("BMR Calculator")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .keyboard) {
+                    Button("Done") { focusedField = nil }
+                }
+            }
+            .onAppear {
+                // Initialize text fields
+                ageText = "\(userAge)"
+                heightText = "\(Int(userHeightCm))"
+                weightText = String(format: "%.1f", userWeightKg)
+
+                // Try to pull latest weight and height from Firebase
+                loadLatestWeight()
+            }
+        }
+    }
+
+    private func loadLatestWeight() {
+        Task {
+            do {
+                // Load weight from weight history
+                let entries = try await firebaseManager.getWeightHistory()
+                if let latest = entries.first {
+                    await MainActor.run {
+                        userWeightKg = latest.weight
+                        weightText = String(format: "%.1f", latest.weight)
+                    }
+                }
+
+                // Load height from user settings
+                let settings = try await firebaseManager.getUserSettings()
+                if let height = settings.height, height > 0 {
+                    await MainActor.run {
+                        userHeightCm = height
+                        heightText = "\(Int(height))"
+                    }
+                }
+            } catch {
+                // Silently fail - user can enter values manually
+            }
+        }
+    }
+}
+
+// MARK: - Weight Loss Option Row
+struct WeightLossOptionRow: View {
+    let label: String
+    let calories: Int
+    let rate: String
+    let color: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(label)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.primary)
+                    Text(rate)
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                Text("\(calories) kcal")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(color)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .background(Color(.secondarySystemGroupedBackground))
+            .cornerRadius(8)
+        }
+    }
+}
+
+// MARK: - Sex Selection Button
+struct SexSelectionButton: View {
+    let icon: String
+    let label: String
+    let isSelected: Bool
+    let color: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 28))
+                Text(label)
+                    .font(.system(size: 14, weight: .medium))
+            }
+            .foregroundColor(isSelected ? .white : color)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(isSelected ? color : color.opacity(0.15))
+            )
+        }
     }
 }
 

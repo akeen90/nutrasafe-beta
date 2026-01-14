@@ -12,6 +12,20 @@ import FirebaseFirestore
 // MARK: - Nutrition Models
 // Uses shared types from CoreModels and FoodSafetyModels where appropriate
 
+/// Represents a portion/serving size option for foods with multiple sizes (e.g., McNuggets 6pc, 9pc, 20pc)
+struct PortionOption: Codable, Equatable, Identifiable {
+    var id: String { name }
+    let name: String
+    let calories: Double
+    let serving_g: Double
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case calories
+        case serving_g
+    }
+}
+
 struct FoodSearchResult: Identifiable, Decodable, Equatable {
     let id: String
     let name: String
@@ -20,6 +34,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     let protein: Double
     let carbs: Double
     let fat: Double
+    let saturatedFat: Double?
     let fiber: Double
     let sugar: Double
     let sodium: Double
@@ -36,8 +51,9 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
     let processingLabel: String?
     let barcode: String?
     let micronutrientProfile: MicronutrientProfile?
+    let portions: [PortionOption]? // Available portion sizes (e.g., McNuggets 6pc, 9pc, 20pc)
 
-    init(id: String, name: String, brand: String? = nil, calories: Double, protein: Double, carbs: Double, fat: Double, fiber: Double, sugar: Double, sodium: Double, servingDescription: String? = nil, servingSizeG: Double? = nil, isPerUnit: Bool? = nil, ingredients: [String]? = nil, confidence: Double? = nil, isVerified: Bool = false, additives: [NutritionAdditiveInfo]? = nil, additivesDatabaseVersion: String? = nil, processingScore: Int? = nil, processingGrade: String? = nil, processingLabel: String? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil) {
+    init(id: String, name: String, brand: String? = nil, calories: Double, protein: Double, carbs: Double, fat: Double, saturatedFat: Double? = nil, fiber: Double, sugar: Double, sodium: Double, servingDescription: String? = nil, servingSizeG: Double? = nil, isPerUnit: Bool? = nil, ingredients: [String]? = nil, confidence: Double? = nil, isVerified: Bool = false, additives: [NutritionAdditiveInfo]? = nil, additivesDatabaseVersion: String? = nil, processingScore: Int? = nil, processingGrade: String? = nil, processingLabel: String? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, portions: [PortionOption]? = nil) {
         self.id = id
         self.name = name
         self.brand = brand
@@ -45,6 +61,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         self.protein = protein
         self.carbs = carbs
         self.fat = fat
+        self.saturatedFat = saturatedFat
         self.fiber = fiber
         self.sugar = sugar
         self.sodium = sodium
@@ -61,8 +78,9 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         self.processingLabel = processingLabel
         self.barcode = barcode
         self.micronutrientProfile = micronutrientProfile
+        self.portions = portions
     }
-    
+
     // Custom decoder to handle flexible payloads from Cloud Functions
     enum CodingKeys: String, CodingKey {
         case id
@@ -72,6 +90,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         case protein
         case carbs
         case fat
+        case saturatedFat
         case fiber
         case sugar
         case sodium
@@ -91,6 +110,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         case barcode
         case micronutrientProfile
         case isPerUnit = "per_unit_nutrition"
+        case portions
     }
     
     // Helper structs for nested nutrition format from Firebase
@@ -142,6 +162,15 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
             self.fat = nested.per100g
         } else {
             self.fat = 0
+        }
+
+        // Handle saturatedFat - try direct Double, then nested {per100g: Double}
+        if let directValue = try? c.decode(Double.self, forKey: .saturatedFat) {
+            self.saturatedFat = directValue
+        } else if let nested = try? c.decode(NutrientInfo.self, forKey: .saturatedFat) {
+            self.saturatedFat = nested.per100g
+        } else {
+            self.saturatedFat = nil
         }
 
         // Handle fiber - try direct Double, then nested {per100g: Double}
@@ -198,8 +227,34 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         self.barcode = try? c.decode(String.self, forKey: .barcode)
         self.micronutrientProfile = try? c.decode(MicronutrientProfile.self, forKey: .micronutrientProfile)
         self.isPerUnit = try? c.decode(Bool.self, forKey: .isPerUnit)
+        self.portions = try? c.decode([PortionOption].self, forKey: .portions)
     }
-    
+
+    /// Returns true if this food has multiple portion options (e.g., McNuggets with 6pc, 9pc, 20pc)
+    var hasPortionOptions: Bool {
+        guard let portions = portions else { return false }
+        return portions.count > 1
+    }
+
+    /// Calculate nutrition values for a specific portion
+    func nutritionForPortion(_ portion: PortionOption) -> (calories: Double, protein: Double, carbs: Double, fat: Double) {
+        // Find the base portion (matching current servingDescription)
+        guard let portions = portions,
+              let basePortion = portions.first(where: { $0.name == servingDescription }) ?? portions.first else {
+            return (calories, protein, carbs, fat)
+        }
+
+        // Calculate multiplier based on serving weight ratio
+        let multiplier = portion.serving_g / basePortion.serving_g
+
+        return (
+            calories: calories * multiplier,
+            protein: protein * multiplier,
+            carbs: carbs * multiplier,
+            fat: fat * multiplier
+        )
+    }
+
     var servingSize: String {
         // If we have a serving description, use it
         if let desc = servingDescription {
@@ -207,6 +262,209 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         }
         // Otherwise, show "per unit" or "per 100g" based on flag
         return (isPerUnit == true) ? "per unit" : "per 100g"
+    }
+
+    // MARK: - Auto-detected Food Category for Smart Portion Presets
+
+    /// Food category for determining preset portion sizes
+    enum FoodCategory {
+        case softDrink      // Carbonated drinks, sodas
+        case juice          // Fruit juices, smoothies
+        case hotDrink       // Coffee, tea
+        case water          // Water, flavoured water
+        case alcoholicDrink // Beer, wine, spirits
+        case chocolateBar   // Chocolate bars (Mars, Snickers, Twix)
+        case chocolateBag   // Bagged/boxed chocolates (Revels, Maltesers, M&Ms)
+        case sweets         // Sweets, gummy candy, hard candy
+        case crisps         // Crisps, chips
+        case iceCream       // Ice cream, frozen desserts
+        case other          // Default - no presets
+    }
+
+    /// Auto-detect food category from name, brand, and serving info
+    var detectedCategory: FoodCategory {
+        let nameLower = name.lowercased()
+        let brandLower = (brand ?? "").lowercased()
+        let servingLower = (servingDescription ?? "").lowercased()
+
+        // Drink brands
+        let softDrinkBrands = ["coca-cola", "coca cola", "pepsi", "fanta", "sprite", "7up", "7-up", "dr pepper", "irn-bru", "irn bru", "lucozade", "red bull", "monster", "relentless", "rockstar", "tango", "oasis", "ribena", "vimto", "schweppes", "san pellegrino", "fever-tree"]
+        let juiceBrands = ["tropicana", "innocent", "naked", "copella", "del monte"]
+        let hotDrinkBrands = ["nescafe", "kenco", "douwe egberts", "twinings", "pg tips", "yorkshire tea", "tetley"]
+        let waterBrands = ["evian", "volvic", "buxton", "highland spring", "perrier", "badoit"]
+
+        // Bagged/boxed chocolate products (check BEFORE generic brand detection)
+        // These come in bags/pouches/boxes, not as bars
+        let baggedChocolateProducts = ["revels", "maltesers", "celebrations", "minstrels", "m&m", "m&ms", "buttons", "giant buttons", "heroes", "roses", "quality street", "after eight", "matchmakers", "galaxy counters", "milkybar buttons", "smarties", "aero bubbles", "bitsa wispa"]
+
+        // Actual chocolate BAR products (single bars, not bags)
+        let chocolateBarProducts = ["mars bar", "snickers", "twix", "bounty", "milky way bar", "kitkat", "kit kat", "aero bar", "yorkie", "wispa bar", "flake", "crunchie", "double decker", "boost", "picnic", "dairy milk bar", "fruit & nut", "whole nut", "caramel", "turkish delight", "fudge", "curly wurly", "chomp", "freddo", "timeout", "toffee crisp", "drifter", "lion bar", "star bar", "topic"]
+
+        // Sweet/candy brands
+        let sweetBrands = ["haribo", "maynards", "rowntrees", "skittles", "starburst", "jelly belly", "swizzels", "chupa chups", "chewits", "refreshers", "drumstick", "love hearts", "parma violets"]
+
+        // Check for specific bagged chocolate products FIRST (most specific)
+        if baggedChocolateProducts.contains(where: { nameLower.contains($0) }) {
+            return .chocolateBag
+        }
+
+        // Check for specific chocolate bar products
+        if chocolateBarProducts.contains(where: { nameLower.contains($0) }) {
+            return .chocolateBar
+        }
+
+        // Check brands (less specific)
+        if softDrinkBrands.contains(where: { brandLower.contains($0) || nameLower.contains($0) }) {
+            return .softDrink
+        }
+        if juiceBrands.contains(where: { brandLower.contains($0) || nameLower.contains($0) }) {
+            return .juice
+        }
+        if hotDrinkBrands.contains(where: { brandLower.contains($0) || nameLower.contains($0) }) {
+            return .hotDrink
+        }
+        if waterBrands.contains(where: { brandLower.contains($0) || nameLower.contains($0) }) {
+            return .water
+        }
+        if sweetBrands.contains(where: { brandLower.contains($0) || nameLower.contains($0) }) {
+            return .sweets
+        }
+
+        // Check name keywords
+        let softDrinkKeywords = ["cola", "lemonade", "soda", "fizzy", "carbonated", "energy drink", "sparkling"]
+        let juiceKeywords = ["juice", "smoothie", "squash", "cordial"]
+        let hotDrinkKeywords = ["coffee", "tea", "latte", "cappuccino", "espresso", "americano", "hot chocolate", "mocha"]
+        let waterKeywords = ["water", "sparkling water", "still water", "mineral water"]
+        let alcoholKeywords = ["beer", "lager", "ale", "wine", "vodka", "gin", "whisky", "whiskey", "rum", "brandy", "cider"]
+        let chocolateKeywords = ["chocolate bar", "chocolate", "truffle"]
+        let sweetKeywords = ["gummy", "jelly", "sweets", "candy", "lollipop", "toffee", "fudge", "mints"]
+        let crispKeywords = ["crisps", "chips", "pretzels", "popcorn", "puffs"]
+
+        if softDrinkKeywords.contains(where: { nameLower.contains($0) }) { return .softDrink }
+        if juiceKeywords.contains(where: { nameLower.contains($0) }) { return .juice }
+        if hotDrinkKeywords.contains(where: { nameLower.contains($0) }) { return .hotDrink }
+        if waterKeywords.contains(where: { nameLower.contains($0) }) { return .water }
+        if alcoholKeywords.contains(where: { nameLower.contains($0) }) { return .alcoholicDrink }
+        if chocolateKeywords.contains(where: { nameLower.contains($0) }) { return .chocolateBar }
+        if sweetKeywords.contains(where: { nameLower.contains($0) }) { return .sweets }
+        if crispKeywords.contains(where: { nameLower.contains($0) }) { return .crisps }
+
+        // Check serving description for ml (likely a drink)
+        if servingLower.contains("ml") {
+            // It's measured in ml - likely a drink
+            if nameLower.contains("juice") || nameLower.contains("smoothie") { return .juice }
+            if nameLower.contains("water") { return .water }
+            return .softDrink // Default ml items to soft drink
+        }
+
+        return .other
+    }
+
+    /// Returns true if this food should show preset portion options
+    var hasPresetPortions: Bool {
+        // If already has database portions, use those instead
+        if hasPortionOptions { return false }
+        // Per-unit items don't need presets
+        if isPerUnit == true { return false }
+        // Only show presets for detectable categories
+        return detectedCategory != .other
+    }
+
+    /// Preset serving size options based on food category
+    /// Each preset includes: name, size in ml or g, calculated calories
+    var presetPortions: [PortionOption] {
+        guard hasPresetPortions else { return [] }
+
+        // Nutrition is per 100g/100ml, calculate for each preset size
+        let caloriesPer100 = calories
+
+        switch detectedCategory {
+        case .softDrink:
+            return [
+                PortionOption(name: "200ml Glass", calories: caloriesPer100 * 2, serving_g: 200),
+                PortionOption(name: "250ml", calories: caloriesPer100 * 2.5, serving_g: 250),
+                PortionOption(name: "330ml Can", calories: caloriesPer100 * 3.3, serving_g: 330),
+                PortionOption(name: "500ml Bottle", calories: caloriesPer100 * 5, serving_g: 500)
+            ]
+        case .juice:
+            return [
+                PortionOption(name: "150ml Glass", calories: caloriesPer100 * 1.5, serving_g: 150),
+                PortionOption(name: "200ml", calories: caloriesPer100 * 2, serving_g: 200),
+                PortionOption(name: "250ml Carton", calories: caloriesPer100 * 2.5, serving_g: 250),
+                PortionOption(name: "330ml", calories: caloriesPer100 * 3.3, serving_g: 330)
+            ]
+        case .hotDrink:
+            return [
+                PortionOption(name: "Small (250ml)", calories: caloriesPer100 * 2.5, serving_g: 250),
+                PortionOption(name: "Regular (350ml)", calories: caloriesPer100 * 3.5, serving_g: 350),
+                PortionOption(name: "Large (450ml)", calories: caloriesPer100 * 4.5, serving_g: 450)
+            ]
+        case .water:
+            return [
+                PortionOption(name: "250ml Glass", calories: caloriesPer100 * 2.5, serving_g: 250),
+                PortionOption(name: "500ml Bottle", calories: caloriesPer100 * 5, serving_g: 500),
+                PortionOption(name: "750ml", calories: caloriesPer100 * 7.5, serving_g: 750),
+                PortionOption(name: "1L Bottle", calories: caloriesPer100 * 10, serving_g: 1000)
+            ]
+        case .alcoholicDrink:
+            return [
+                PortionOption(name: "125ml Glass", calories: caloriesPer100 * 1.25, serving_g: 125),
+                PortionOption(name: "175ml Glass", calories: caloriesPer100 * 1.75, serving_g: 175),
+                PortionOption(name: "250ml Glass", calories: caloriesPer100 * 2.5, serving_g: 250),
+                PortionOption(name: "330ml Bottle", calories: caloriesPer100 * 3.3, serving_g: 330)
+            ]
+        case .chocolateBar:
+            return [
+                PortionOption(name: "Fun Size (20g)", calories: caloriesPer100 * 0.2, serving_g: 20),
+                PortionOption(name: "Standard Bar (45g)", calories: caloriesPer100 * 0.45, serving_g: 45),
+                PortionOption(name: "Duo/King Size (75g)", calories: caloriesPer100 * 0.75, serving_g: 75),
+                PortionOption(name: "Sharing (100g)", calories: caloriesPer100 * 1, serving_g: 100)
+            ]
+        case .chocolateBag:
+            return [
+                PortionOption(name: "Treat Bag (36g)", calories: caloriesPer100 * 0.36, serving_g: 36),
+                PortionOption(name: "Standard Bag (85g)", calories: caloriesPer100 * 0.85, serving_g: 85),
+                PortionOption(name: "Pouch (112g)", calories: caloriesPer100 * 1.12, serving_g: 112),
+                PortionOption(name: "Share Bag (175g)", calories: caloriesPer100 * 1.75, serving_g: 175)
+            ]
+        case .sweets:
+            return [
+                PortionOption(name: "Small Bag (30g)", calories: caloriesPer100 * 0.3, serving_g: 30),
+                PortionOption(name: "Regular Bag (50g)", calories: caloriesPer100 * 0.5, serving_g: 50),
+                PortionOption(name: "Share Bag (100g)", calories: caloriesPer100 * 1, serving_g: 100),
+                PortionOption(name: "Large Bag (175g)", calories: caloriesPer100 * 1.75, serving_g: 175)
+            ]
+        case .crisps:
+            return [
+                PortionOption(name: "Snack Bag (25g)", calories: caloriesPer100 * 0.25, serving_g: 25),
+                PortionOption(name: "Standard Bag (32.5g)", calories: caloriesPer100 * 0.325, serving_g: 32),
+                PortionOption(name: "Grab Bag (50g)", calories: caloriesPer100 * 0.5, serving_g: 50),
+                PortionOption(name: "Share Bag (150g)", calories: caloriesPer100 * 1.5, serving_g: 150)
+            ]
+        case .iceCream:
+            return [
+                PortionOption(name: "1 Scoop (60g)", calories: caloriesPer100 * 0.6, serving_g: 60),
+                PortionOption(name: "2 Scoops (120g)", calories: caloriesPer100 * 1.2, serving_g: 120),
+                PortionOption(name: "Small Tub (100g)", calories: caloriesPer100 * 1, serving_g: 100)
+            ]
+        case .other:
+            return []
+        }
+    }
+
+    /// Combined portions: database portions OR calculated presets
+    var availablePortions: [PortionOption] {
+        // Prefer database portions if available
+        if let dbPortions = portions, !dbPortions.isEmpty {
+            return dbPortions
+        }
+        // Otherwise return calculated presets
+        return presetPortions
+    }
+
+    /// Returns true if either database portions or presets are available
+    var hasAnyPortionOptions: Bool {
+        return hasPortionOptions || hasPresetPortions
     }
 }
 
@@ -1091,6 +1349,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
     let sugar: Double
     let sodium: Double
     let calcium: Double
+    let saturatedFat: Double
     let servingDescription: String
     let quantity: Double
     let time: String?
@@ -1102,7 +1361,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
     let micronutrientProfile: MicronutrientProfile?
     let isPerUnit: Bool?  // true = per unit (e.g., "1 burger"), false/nil = per 100g
 
-    init(id: UUID = UUID(), name: String, brand: String? = nil, calories: Int, protein: Double, carbs: Double, fat: Double, fiber: Double = 0, sugar: Double = 0, sodium: Double = 0, calcium: Double = 0, servingDescription: String = "100g serving", quantity: Double = 1.0, time: String? = nil, processedScore: String? = nil, sugarLevel: String? = nil, ingredients: [String]? = nil, additives: [NutritionAdditiveInfo]? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, isPerUnit: Bool? = nil) {
+    init(id: UUID = UUID(), name: String, brand: String? = nil, calories: Int, protein: Double, carbs: Double, fat: Double, fiber: Double = 0, sugar: Double = 0, sodium: Double = 0, calcium: Double = 0, saturatedFat: Double = 0, servingDescription: String = "100g serving", quantity: Double = 1.0, time: String? = nil, processedScore: String? = nil, sugarLevel: String? = nil, ingredients: [String]? = nil, additives: [NutritionAdditiveInfo]? = nil, barcode: String? = nil, micronutrientProfile: MicronutrientProfile? = nil, isPerUnit: Bool? = nil) {
         self.id = id
         self.name = name
         self.brand = brand
@@ -1114,6 +1373,7 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
         self.sugar = sugar
         self.sodium = sodium
         self.calcium = calcium
+        self.saturatedFat = saturatedFat
         self.servingDescription = servingDescription
         self.quantity = quantity
         self.time = time
