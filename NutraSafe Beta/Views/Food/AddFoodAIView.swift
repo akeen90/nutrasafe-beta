@@ -23,29 +23,43 @@ struct AddFoodAIView: View {
     @State private var combinedMealFoods: [FoodSearchResult] = []
     @State private var showingFoodDetail = false
     @State private var selectedFoodForDetail: FoodSearchResult?
+    @State private var hasLaunchedCamera = false  // Prevents re-launching camera on state changes
+    @State private var errorMessage: String?  // Shows errors to user
+    @State private var showingGalleryPicker = false  // For photo library selection
     
     var body: some View {
         VStack(spacing: 20) {
             if !isScanning && recognizedFoods.isEmpty {
-                // Initial state
+                // Initial state - shown when user cancelled or error occurred
                 VStack(spacing: 24) {
                     Image(systemName: "camera.viewfinder")
                         .font(.system(size: 60))
                         .foregroundColor(Color.blue)
-                    
+
                     VStack(spacing: 8) {
                         Text("AI Food Scanner")
                             .font(.system(size: 24, weight: .bold))
                             .foregroundColor(.primary)
-                        
+
                         Text("Take a photo of your food and we'll identify items")
                             .font(.system(size: 16))
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
                     }
-                    
+
+                    // Show error message if there was a problem
+                    if let error = errorMessage {
+                        Text(error)
+                            .font(.system(size: 14))
+                            .foregroundColor(.red)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
+
                     VStack(spacing: 12) {
                         Button(action: {
+                            hasLaunchedCamera = true
+                            errorMessage = nil
                             startAIScanning()
                         }) {
                             HStack {
@@ -59,8 +73,10 @@ struct AddFoodAIView: View {
                             .background(Color.blue)
                             .cornerRadius(12)
                         }
-                        
+
                         Button(action: {
+                            hasLaunchedCamera = true
+                            errorMessage = nil
                             selectFromGallery()
                         }) {
                             HStack {
@@ -81,15 +97,15 @@ struct AddFoodAIView: View {
             } else if isScanning {
                 // Scanning state
                 VStack(spacing: 20) {
-                    Text("Analyzing Image")
+                    Text("Analysing Image")
                         .font(.system(size: 24, weight: .semibold))
                         .foregroundColor(.primary)
-                    
+
                     ProgressView()
                         .scaleEffect(1.5)
                         .padding()
-                    
-                    Text("AI is analyzing your food...")
+
+                    Text("AI is analysing your food...")
                         .font(.system(size: 16))
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -119,11 +135,18 @@ struct AddFoodAIView: View {
             Spacer()
         }
         .padding(.top, 20)
+        // Removed auto-launch - user chooses camera or gallery from the initial screen
         .fullScreenCover(isPresented: $showingImagePicker) {
             ImagePicker(selectedImage: $selectedImage, sourceType: .camera) { image in
                 showingImagePicker = false
                 if let image = image {
+                    // NOW start showing the scanning state (after photo is taken)
+                    isScanning = true
+                    errorMessage = nil
                     analyzeImage(image)
+                } else {
+                    // User cancelled - allow them to try again
+                    hasLaunchedCamera = false
                 }
             }
         }
@@ -137,6 +160,19 @@ struct AddFoodAIView: View {
             if let food = selectedFoodForDetail {
                 NavigationView {
                     FoodDetailViewFromSearch(food: food, selectedTab: $selectedTab)
+                }
+            }
+        }
+        .sheet(isPresented: $showingGalleryPicker) {
+            MultiImagePicker(maxSelection: 1) { images in
+                showingGalleryPicker = false
+                if let image = images.first {
+                    isScanning = true
+                    errorMessage = nil
+                    analyzeImage(image)
+                } else {
+                    // User cancelled
+                    hasLaunchedCamera = false
                 }
             }
         }
@@ -171,7 +207,8 @@ struct AddFoodAIView: View {
     }
     
     private func presentImagePicker() {
-        isScanning = true
+        // Only show the camera - don't set isScanning yet
+        // isScanning will be set AFTER user takes a photo
         showingImagePicker = true
     }
     
@@ -198,104 +235,220 @@ struct AddFoodAIView: View {
     }
     
     private func analyzeImage(_ image: UIImage) {
-        isScanning = true
+        // isScanning should already be true (set before this is called)
         recognizedFoods = []
-        
-        // Use Vision framework for initial food detection
-        guard let cgImage = image.cgImage else {
-            isScanning = false
-            return
-        }
-        
-        let request = VNRecognizeTextRequest { request, error in
-            // Process with food recognition API
-            self.processVisionResults(request.results, originalImage: image)
-        }
-        
-        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-        do {
-            try handler.perform([request])
-        } catch {
-            DispatchQueue.main.async {
-                self.isScanning = false
-                #if DEBUG
-                print("Vision analysis failed: \(error)")
-                #endif
+        errorMessage = nil
+
+        #if DEBUG
+        print("📸 Starting food recognition...")
+        print("   Image size: \(Int(image.size.width))x\(Int(image.size.height))")
+        #endif
+
+        Task {
+            do {
+                let recognizedItems = try await recognizeFoodWithRetry(from: image, maxRetries: 2)
+                await MainActor.run {
+                    self.isScanning = false
+                    if recognizedItems.isEmpty {
+                        self.errorMessage = "No food items detected. Try taking another photo with better lighting."
+                        self.hasLaunchedCamera = false
+                        #if DEBUG
+                        print("⚠️ No foods detected in image")
+                        #endif
+                    } else {
+                        self.recognizedFoods = recognizedItems
+                        #if DEBUG
+                        print("✅ Detected \(recognizedItems.count) food items")
+                        #endif
+                    }
+                }
+            } catch let error as NSError {
+                await MainActor.run {
+                    self.isScanning = false
+                    self.hasLaunchedCamera = false
+
+                    // Provide user-friendly error messages
+                    if error.domain == NSURLErrorDomain {
+                        switch error.code {
+                        case NSURLErrorTimedOut:
+                            self.errorMessage = "Request timed out. Please check your connection and try again."
+                        case NSURLErrorNotConnectedToInternet:
+                            self.errorMessage = "No internet connection. Please connect and try again."
+                        case NSURLErrorCannotConnectToHost:
+                            self.errorMessage = "Cannot reach server. Please try again later."
+                        default:
+                            self.errorMessage = "Network error. Please check your connection."
+                        }
+                    } else if error.code >= 500 {
+                        self.errorMessage = "Server error. Please try again in a moment."
+                    } else if error.code >= 400 {
+                        self.errorMessage = "Invalid request. Please try a different photo."
+                    } else {
+                        self.errorMessage = "Failed to analyse image. Please try again."
+                    }
+
+                    #if DEBUG
+                    print("❌ Food recognition failed: \(error.localizedDescription)")
+                    print("   Domain: \(error.domain), Code: \(error.code)")
+                    #endif
+                }
             }
         }
     }
-    
-    private func processVisionResults(_ results: [VNObservation]?, originalImage: UIImage) {
-        // For now, use Clarifai Food Model or similar API
-        // This is a placeholder for real AI food recognition
-        Task {
+
+    private func recognizeFoodWithRetry(from image: UIImage, maxRetries: Int) async throws -> [FoodSearchResult] {
+        var lastError: Error?
+
+        for attempt in 0...maxRetries {
             do {
-                let recognizedItems = try await recognizeFood(from: originalImage)
-                DispatchQueue.main.async {
-                    self.isScanning = false
-                    self.recognizedFoods = recognizedItems
+                #if DEBUG
+                if attempt > 0 {
+                    print("🔄 Retry attempt \(attempt) of \(maxRetries)")
                 }
+                #endif
+                return try await recognizeFood(from: image)
             } catch {
-                DispatchQueue.main.async {
-                    self.isScanning = false
-                    #if DEBUG
-                    print("Food recognition failed: \(error)")
-                    #endif
-                    // Fallback to manual entry or basic text recognition
-                    self.recognizedFoods = []
+                lastError = error
+                #if DEBUG
+                print("⚠️ Attempt \(attempt + 1) failed: \(error.localizedDescription)")
+                #endif
+
+                // Only retry on network errors, not server errors
+                if let nsError = error as NSError?,
+                   nsError.domain == NSURLErrorDomain,
+                   attempt < maxRetries {
+                    // Wait before retry (exponential backoff)
+                    try await Task.sleep(nanoseconds: UInt64(500_000_000 * (attempt + 1)))
+                    continue
                 }
+                throw error
             }
         }
+
+        throw lastError ?? NSError(domain: "AddFoodAIView", code: -1, userInfo: [NSLocalizedDescriptionKey: "Unknown error"])
     }
     
     private func recognizeFood(from image: UIImage) async throws -> [FoodSearchResult] {
-        // Real food recognition API integration
-        // Using Firebase Functions to call food recognition service
-        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+        // Resize image if too large (max 1920px on longest side for faster upload)
+        let maxDimension: CGFloat = 1920
+        var processedImage = image
+        if max(image.size.width, image.size.height) > maxDimension {
+            let scale = maxDimension / max(image.size.width, image.size.height)
+            let newSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+            UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
+            image.draw(in: CGRect(origin: .zero, size: newSize))
+            processedImage = UIGraphicsGetImageFromCurrentImageContext() ?? image
+            UIGraphicsEndImageContext()
+            #if DEBUG
+            print("   Resized image to \(Int(newSize.width))x\(Int(newSize.height))")
+            #endif
+        }
+
+        // Compress image for upload (0.8 for better quality)
+        guard let imageData = processedImage.jpegData(compressionQuality: 0.8) else {
             throw NSError(domain: "ImageError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to process image"])
         }
-        
+
         let base64Image = imageData.base64EncodedString()
+        let imageSizeKB = imageData.count / 1024
+
+        #if DEBUG
+        print("   Compressed image size: \(imageSizeKB) KB")
+        print("   Calling Firebase recognizeFood function...")
+        #endif
 
         // Call Firebase function for AI food recognition
         let urlString = "https://us-central1-nutrasafe-705c7.cloudfunctions.net/recognizeFood"
         guard let url = URL(string: urlString) else {
-            #if DEBUG
-            print("❌ Invalid URL for food recognition: \(urlString)")
-            #endif
             throw NSError(domain: "AddFoodAIView", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid recognition URL"])
         }
+
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
+        request.timeoutInterval = 90  // 90 second timeout (match Firebase function)
+
         let body = ["image": base64Image]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        
-        let (data, _) = try await URLSession.shared.data(for: request)
-        let response = try JSONDecoder().decode(FoodRecognitionResponse.self, from: data)
-        
-        return response.foods.map { foodItem in
-            FoodSearchResult(
-                id: UUID().uuidString,
-                name: foodItem.name,
-                brand: foodItem.brand,
-                calories: foodItem.calories,
-                protein: foodItem.protein,
-                carbs: foodItem.carbs,
-                fat: foodItem.fat,
-                fiber: 0, // Not provided by AI recognition
-                sugar: 0, // Not provided by AI recognition  
-                sodium: 0, // Not provided by AI recognition
-                servingDescription: "AI recognised portion",
-                ingredients: nil, // Not provided by AI recognition
-                confidence: foodItem.confidence
-            )
+
+        #if DEBUG
+        let startTime = Date()
+        #endif
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        #if DEBUG
+        let elapsed = Date().timeIntervalSince(startTime)
+        print("   Response received in \(String(format: "%.1f", elapsed))s")
+        #endif
+
+        // Check HTTP status code
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NSError(domain: "AddFoodAIView", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid server response"])
+        }
+
+        #if DEBUG
+        print("   HTTP status: \(httpResponse.statusCode)")
+        #endif
+
+        if httpResponse.statusCode != 200 {
+            #if DEBUG
+            if let errorText = String(data: data, encoding: .utf8) {
+                print("   Error response: \(errorText.prefix(500))")
+            }
+            #endif
+            throw NSError(domain: "AddFoodAIView", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "Server error: \(httpResponse.statusCode)"])
+        }
+
+        // Decode response
+        do {
+            let decodedResponse = try JSONDecoder().decode(FoodRecognitionResponse.self, from: data)
+
+            #if DEBUG
+            print("   Decoded \(decodedResponse.foods.count) food items")
+            for food in decodedResponse.foods {
+                let source = (food.isFromDatabase ?? false) ? "DB" : "AI"
+                print("   - \(food.name) [\(source)] \(Int(food.calories)) kcal")
+            }
+            #endif
+
+            return decodedResponse.foods.map { foodItem in
+                let portionGrams = foodItem.portionGrams ?? 100
+                let isVerified = foodItem.isFromDatabase ?? false
+                let servingDesc = isVerified
+                    ? "\(Int(portionGrams))g (verified)"
+                    : "\(Int(portionGrams))g (AI estimate)"
+
+                return FoodSearchResult(
+                    id: foodItem.databaseId ?? UUID().uuidString,
+                    name: foodItem.name,
+                    brand: foodItem.brand,
+                    calories: foodItem.calories,
+                    protein: foodItem.protein,
+                    carbs: foodItem.carbs,
+                    fat: foodItem.fat,
+                    fiber: foodItem.fiber ?? 0,
+                    sugar: foodItem.sugar ?? 0,
+                    sodium: foodItem.sodium ?? 0,
+                    servingDescription: servingDesc,
+                    ingredients: foodItem.ingredients.map { [$0] },
+                    confidence: foodItem.confidence,
+                    isVerified: isVerified
+                )
+            }
+        } catch {
+            #if DEBUG
+            print("   JSON decode error: \(error)")
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("   Raw response: \(jsonString.prefix(500))")
+            }
+            #endif
+            throw NSError(domain: "AddFoodAIView", code: -2, userInfo: [NSLocalizedDescriptionKey: "Failed to parse server response"])
         }
     }
     
     private func selectFromGallery() {
-        startAIScanning()
+        showingGalleryPicker = true
     }
 }
 
@@ -1058,8 +1211,8 @@ private struct LocalStringConstants {
     static let aiDescription = "Take a photo of your meal and our AI will identify the foods and estimate portions"
     static let takePhoto = "Take Photo"
     static let chooseFromGallery = "Choose from Gallery"
-    static let analyzingImage = "Analyzing Image..."
-    static let aiAnalyzing = "AI is identifying foods in your image"
+    static let analysingImage = "Analysing Image..."
+    static let aiAnalysing = "AI is identifying foods in your image"
     static let foodsDetected = "Foods Detected"
     static let scanAnother = "Scan Another"
     static let details = "Details"
