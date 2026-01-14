@@ -500,6 +500,7 @@ struct ContentView: View {
     @State private var showingPaywall = false
     @State private var showingAddMenu = false
     @State private var showingDiaryAdd = false
+    @State private var diaryAddInitialOption: AddFoodMainView.AddOption? = nil
     @State private var showingUseByAdd = false
     @State private var showingReactionLog = false
     @State private var showingWeightAdd = false
@@ -653,6 +654,7 @@ struct ContentView: View {
                 isPresented: $showingAddMenu,
                 onSelectDiary: {
                     previousTabBeforeAdd = selectedTab
+                    diaryAddInitialOption = .search
                     showingDiaryAdd = true
                 },
                 onSelectUseBy: {
@@ -666,6 +668,11 @@ struct ContentView: View {
                 onSelectWeighIn: {
                     previousTabBeforeAdd = selectedTab
                     showingWeightAdd = true
+                },
+                onSelectBarcodeScan: {
+                    previousTabBeforeAdd = selectedTab
+                    diaryAddInitialOption = .barcode
+                    showingDiaryAdd = true
                 },
                 onSelectMealScan: {
                     previousTabBeforeAdd = selectedTab
@@ -743,13 +750,16 @@ struct ContentView: View {
             AddFoodMainView(
                 selectedTab: $selectedTab,
                 isPresented: $showingDiaryAdd,
+                initialOption: diaryAddInitialOption,
                 onDismiss: {
                     showingDiaryAdd = false
+                    diaryAddInitialOption = nil
                 },
                 onComplete: { tab in
                     // Dismiss keyboard before closing fullscreen and switching tabs
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     showingDiaryAdd = false
+                    diaryAddInitialOption = nil
                     selectedTab = tab
                 }
             )
@@ -1012,7 +1022,7 @@ struct WeightTrackingView: View {
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var firebaseManager: FirebaseManager
     @EnvironmentObject var subscriptionManager: SubscriptionManager
-    @AppStorage("unitSystem") private var unitSystem: UnitSystem = .metric
+    @AppStorage("weightUnit") private var selectedWeightUnit: WeightUnit = .kg
 
     @State private var currentWeight: Double = 0
     @State private var goalWeight: Double = 0
@@ -1081,21 +1091,24 @@ struct WeightTrackingView: View {
 
     // Helper methods for unit conversion
     private func formatWeight(_ kg: Double) -> String {
-        switch unitSystem {
-        case .metric:
-            return String(format: "%.1f", kg)
-        case .imperial:
-            let lbs = kg * 2.20462
-            return String(format: "%.1f", lbs)
+        let converted = selectedWeightUnit.fromKg(kg)
+        switch selectedWeightUnit {
+        case .kg:
+            return String(format: "%.1f", converted.primary)
+        case .lbs:
+            return String(format: "%.1f", converted.primary)
+        case .stones:
+            let st = Int(converted.primary)
+            let lbs = converted.secondary ?? 0
+            return "\(st)st \(String(format: "%.0f", lbs))lb"
         }
     }
 
     private var weightUnit: String {
-        switch unitSystem {
-        case .metric:
-            return "kg"
-        case .imperial:
-            return "lbs"
+        switch selectedWeightUnit {
+        case .kg: return "kg"
+        case .lbs: return "lbs"
+        case .stones: return ""  // Already included in formatted string
         }
     }
 
@@ -1320,7 +1333,8 @@ struct WeightTrackingView: View {
                             WeightLineChart(
                                 entries: Array(weightHistory.prefix(30).reversed()), // Last 30 entries, oldest first for left-to-right
                                 goalWeight: goalWeight,
-                                startWeight: weightHistory.last?.weight ?? currentWeight
+                                startWeight: weightHistory.last?.weight ?? currentWeight,
+                                weightUnit: selectedWeightUnit
                             )
                             .frame(height: 130)
                             .padding(.horizontal, 12)
@@ -2778,6 +2792,7 @@ struct WeightLineChart: View {
     let entries: [WeightEntry]
     let goalWeight: Double
     let startWeight: Double
+    var weightUnit: WeightUnit = .kg
 
     // Date formatter for pillar labels
     private let dateFormatter: DateFormatter = {
@@ -2785,6 +2800,21 @@ struct WeightLineChart: View {
         f.dateFormat = "d/M"
         return f
     }()
+
+    // Format weight value according to selected unit
+    private func formatWeight(_ kg: Double) -> String {
+        let converted = weightUnit.fromKg(kg)
+        switch weightUnit {
+        case .kg:
+            return String(format: "%.1f", converted.primary)
+        case .lbs:
+            return String(format: "%.0f", converted.primary)
+        case .stones:
+            let st = Int(converted.primary)
+            let lbs = converted.secondary ?? 0
+            return "\(st).\(Int(lbs))"
+        }
+    }
 
     // Weight bounds based on start weight and goal weight for proper scaling
     private var weightBounds: (min: Double, max: Double, range: Double) {
@@ -2831,7 +2861,7 @@ struct WeightLineChart: View {
 
                             VStack(spacing: 3) {
                                 // Weight value at top
-                                Text(String(format: "%.1f", entry.weight))
+                                Text(formatWeight(entry.weight))
                                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                                     .foregroundColor(isLatest ? .white : barColor(for: entry.weight))
                                     .padding(.horizontal, 6)
@@ -2859,7 +2889,7 @@ struct WeightLineChart: View {
                             let goalBarHeight = max(0.15, (goalWeight - bounds.min) / bounds.range)
 
                             VStack(spacing: 3) {
-                                Text(String(format: "%.1f", goalWeight))
+                                Text(formatWeight(goalWeight))
                                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                                     .foregroundColor(.white)
                                     .padding(.horizontal, 6)
@@ -4730,6 +4760,7 @@ struct AddFoodMainView: View {
     var onDismiss: (() -> Void)?
     var onComplete: ((TabItem) -> Void)?
     @State private var keyboardVisible = false
+    private let initialOption: AddOption?
 
     // Free tier limit checking
     @EnvironmentObject var subscriptionManager: SubscriptionManager
@@ -4738,9 +4769,10 @@ struct AddFoodMainView: View {
     @State private var currentDayEntryCount = 0
     @State private var showingPaywall = false
 
-    init(selectedTab: Binding<TabItem>, isPresented: Binding<Bool>, onDismiss: (() -> Void)? = nil, onComplete: ((TabItem) -> Void)? = nil) {
+    init(selectedTab: Binding<TabItem>, isPresented: Binding<Bool>, initialOption: AddOption? = nil, onDismiss: (() -> Void)? = nil, onComplete: ((TabItem) -> Void)? = nil) {
         self._selectedTab = selectedTab
         self._isPresented = isPresented
+        self.initialOption = initialOption
         self.onDismiss = onDismiss
         self.onComplete = onComplete
     }
@@ -4830,9 +4862,6 @@ struct AddFoodMainView: View {
                             OptionSelectorButton(title: "Manual", icon: "square.and.pencil", isSelected: selectedAddOption == .manual) {
                                 selectedAddOption = .manual
                             }
-                            OptionSelectorButton(title: "Barcode", icon: "barcode.viewfinder", isSelected: selectedAddOption == .barcode) {
-                                selectedAddOption = .barcode
-                            }
                         }
                         .padding(.horizontal, 16)
                         .padding(.top, 8)
@@ -4852,6 +4881,9 @@ struct AddFoodMainView: View {
                                     onComplete: onComplete,
                                     onSwitchToManual: {
                                         selectedAddOption = .manual
+                                    },
+                                    onSwitchToBarcode: {
+                                        selectedAddOption = .barcode
                                     }
                                 )
                             )
@@ -4892,6 +4924,11 @@ struct AddFoodMainView: View {
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .onAppear {
+            // Set initial option if specified (e.g., from barcode scan menu action)
+            if let initial = initialOption {
+                selectedAddOption = initial
+            }
+
             // Check diary entry limit for free users
             checkDiaryLimit()
 

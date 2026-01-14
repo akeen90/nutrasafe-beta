@@ -132,6 +132,11 @@ class AppState: ObservableObject {
     @Published var showingValidationSheet = false
     @Published var showingFoodDetail = false
 
+    // Database Tools sheets
+    @Published var showingDatabaseScannerSheet = false
+    @Published var showingProductImportSheet = false
+    @Published var showingStockImageSheet = false
+
     // All loaded foods for selection
     @Published var loadedFoods: [FoodItem] = []
 
@@ -181,6 +186,8 @@ enum DatabaseType: String, CaseIterable, Identifiable {
 enum SidebarItem: String, Identifiable, Hashable {
     case foodsDatabase
     case userReports
+    case databaseCompleteness
+    case importCleanCenter
 
     var id: String { rawValue }
 
@@ -188,6 +195,8 @@ enum SidebarItem: String, Identifiable, Hashable {
         switch self {
         case .foodsDatabase: return "Foods Database"
         case .userReports: return "User Reports"
+        case .databaseCompleteness: return "Completeness Check"
+        case .importCleanCenter: return "Import & Clean"
         }
     }
 
@@ -195,6 +204,8 @@ enum SidebarItem: String, Identifiable, Hashable {
         switch self {
         case .foodsDatabase: return "fork.knife"
         case .userReports: return "exclamationmark.bubble"
+        case .databaseCompleteness: return "checklist.checked"
+        case .importCleanCenter: return "square.and.arrow.down.on.square"
         }
     }
 }

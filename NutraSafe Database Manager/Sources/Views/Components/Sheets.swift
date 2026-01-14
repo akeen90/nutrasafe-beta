@@ -14,10 +14,20 @@ struct NewFoodSheet: View {
     @EnvironmentObject var algoliaService: AlgoliaService
     @EnvironmentObject var appState: AppState
     @Environment(\.dismiss) var dismiss
+    @StateObject private var offService = OpenFoodFactsService.shared
 
     @State private var food = FoodItem()
     @State private var ingredientsText = ""
     @State private var isSaving = false
+    @State private var isLookingUpBarcode = false
+    @State private var barcodeInput = ""
+    @State private var lookupMessage: String?
+
+    // Check if barcode input looks like a valid barcode
+    private var barcodeInputIsValid: Bool {
+        let trimmed = barcodeInput.trimmingCharacters(in: .whitespaces)
+        return trimmed.count >= 8 && trimmed.count <= 14 && trimmed.allSatisfy { $0.isNumber }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -50,6 +60,59 @@ struct NewFoodSheet: View {
             // Form
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
+                    // Barcode Lookup Section
+                    GroupBox {
+                        VStack(spacing: 12) {
+                            HStack {
+                                Image(systemName: "barcode.viewfinder")
+                                    .foregroundColor(.orange)
+                                Text("Quick Add by Barcode")
+                                    .font(.headline)
+                                Spacer()
+                            }
+
+                            HStack {
+                                TextField("Enter barcode number...", text: $barcodeInput)
+                                    .textFieldStyle(.roundedBorder)
+                                    .onSubmit {
+                                        if barcodeInputIsValid {
+                                            Task { await lookupBarcode() }
+                                        }
+                                    }
+
+                                Button {
+                                    Task { await lookupBarcode() }
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        if isLookingUpBarcode {
+                                            ProgressView()
+                                                .scaleEffect(0.7)
+                                        } else {
+                                            Image(systemName: "magnifyingglass")
+                                        }
+                                        Text("Lookup")
+                                    }
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(.orange)
+                                .disabled(!barcodeInputIsValid || isLookingUpBarcode)
+                            }
+
+                            if let message = lookupMessage {
+                                HStack {
+                                    Image(systemName: message.contains("Found") ? "checkmark.circle.fill" : "info.circle")
+                                        .foregroundColor(message.contains("Found") ? .green : .secondary)
+                                    Text(message)
+                                        .font(.caption)
+                                        .foregroundColor(message.contains("Found") ? .green : .secondary)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 8)
+                    } label: {
+                        EmptyView()
+                    }
+
                     // Basic Info
                     GroupBox("Basic Information") {
                         VStack(spacing: 12) {
@@ -63,11 +126,18 @@ struct NewFoodSheet: View {
                                 ))
                                 .textFieldStyle(.roundedBorder)
 
-                                TextField("Barcode (optional)", text: Binding(
-                                    get: { food.barcode ?? "" },
-                                    set: { food.barcode = $0.isEmpty ? nil : $0 }
-                                ))
-                                .textFieldStyle(.roundedBorder)
+                                HStack {
+                                    TextField("Barcode", text: Binding(
+                                        get: { food.barcode ?? "" },
+                                        set: { food.barcode = $0.isEmpty ? nil : $0 }
+                                    ))
+                                    .textFieldStyle(.roundedBorder)
+
+                                    if food.barcode != nil && !food.barcode!.isEmpty {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.green)
+                                    }
+                                }
                             }
                         }
                         .padding(.vertical, 8)
@@ -82,7 +152,10 @@ struct NewFoodSheet: View {
                             NutritionInput(label: "Fat (g)", value: $food.fat)
                             NutritionInput(label: "Fiber (g)", value: $food.fiber)
                             NutritionInput(label: "Sugar (g)", value: $food.sugar)
-                            NutritionInput(label: "Sodium (mg)", value: $food.sodium)
+                            NutritionInput(label: "Salt (g)", value: Binding(
+                                get: { food.sodium / 400 }, // Convert sodium mg to salt g
+                                set: { food.sodium = $0 * 400 } // Convert salt g back to sodium mg
+                            ))
                         }
                         .padding(.vertical, 8)
                     }
@@ -170,6 +243,58 @@ struct NewFoodSheet: View {
         }
 
         isSaving = false
+    }
+
+    /// Look up barcode in Open Food Facts and populate the form
+    private func lookupBarcode() async {
+        let barcode = barcodeInput.trimmingCharacters(in: .whitespaces)
+        isLookingUpBarcode = true
+        lookupMessage = nil
+
+        // Look up in Open Food Facts
+        if let offProduct = await offService.lookupProduct(barcode: barcode) {
+            // Populate the food item from OFF data
+            food.barcode = barcode
+            food.name = offProduct.product_name_en ?? offProduct.product_name ?? ""
+            food.brand = offProduct.brands
+            food.source = "Open Food Facts"
+
+            // Nutrition
+            if let nutriments = offProduct.nutriments {
+                food.calories = nutriments.energy_kcal_100g ?? nutriments.energy_kcal ?? 0
+                food.protein = nutriments.proteins_100g ?? nutriments.proteins ?? 0
+                food.carbs = nutriments.carbohydrates_100g ?? nutriments.carbohydrates ?? 0
+                food.fat = nutriments.fat_100g ?? nutriments.fat ?? 0
+                food.fiber = nutriments.fiber_100g ?? nutriments.fiber ?? 0
+                food.sugar = nutriments.sugars_100g ?? nutriments.sugars ?? 0
+                food.sodium = (nutriments.sodium_100g ?? nutriments.sodium ?? 0) * 1000 // Convert to mg
+                food.saturatedFat = nutriments.saturated_fat_100g ?? nutriments.saturated_fat
+            }
+
+            // Ingredients
+            if let offIngredientsText = offProduct.ingredients_text_en ?? offProduct.ingredients_text {
+                ingredientsText = offIngredientsText
+                food.ingredientsText = offIngredientsText
+            }
+
+            // Serving size
+            if let servingSize = offProduct.serving_size {
+                food.servingDescription = servingSize
+            }
+
+            // Images
+            if let imageURL = offProduct.image_front_url ?? offProduct.image_url {
+                food.imageURL = imageURL
+            }
+
+            lookupMessage = "Found: \(food.name)"
+        } else {
+            lookupMessage = "No product found for barcode \(barcode)"
+            // Still set the barcode so user can enter details manually
+            food.barcode = barcode
+        }
+
+        isLookingUpBarcode = false
     }
 }
 
@@ -1153,7 +1278,7 @@ struct ClaudeBatchReviewSheet: View {
             Barcode: \(food.barcode ?? "None")
             Nutrition Format: \(servingInfo)
             Calories: \(food.calories) kcal | Protein: \(food.protein)g | Carbs: \(food.carbs)g | Fat: \(food.fat)g
-            Fibre: \(food.fiber)g | Sugar: \(food.sugar)g | Sodium: \(food.sodium)mg
+            Fibre: \(food.fiber)g | Sugar: \(food.sugar)g | Salt: \(String(format: "%.2f", food.sodium / 400))g
             Ingredients: \(food.ingredients?.joined(separator: ", ") ?? "None")
             Source: \(food.source ?? "Unknown")
             Verified: \(food.isVerified ?? false)\(verificationInfo)
@@ -2730,11 +2855,11 @@ func calculateChanges(current: FoodItem, uk: UKProductData) -> [FieldChange] {
         changes.append(FieldChange(field: "Sugar", oldValue: String(format: "%.1fg", current.sugar), newValue: String(format: "%.1fg", ukSugar)))
     }
 
-    // Salt to sodium conversion
+    // Salt comparison
     if let ukSalt = uk.saltPer100g {
-        let ukSodium = ukSalt / 2.5 * 1000
-        if abs(ukSodium - current.sodium) > 1 {
-            changes.append(FieldChange(field: "Sodium", oldValue: String(format: "%.0fmg", current.sodium), newValue: String(format: "%.0fmg", ukSodium)))
+        let currentSalt = current.sodium / 400
+        if abs(ukSalt - currentSalt) > 0.01 {
+            changes.append(FieldChange(field: "Salt", oldValue: String(format: "%.2fg", currentSalt), newValue: String(format: "%.2fg", ukSalt)))
         }
     }
 
@@ -4192,7 +4317,7 @@ struct DataValidationSheet: View {
         - Fat: \(food.fat)g
         - Fiber: \(food.fiber)g
         - Sugar: \(food.sugar)g
-        - Sodium: \(food.sodium)mg
+        - Salt: \(String(format: "%.2f", food.sodium / 400))g
         """
 
         switch category {
@@ -5224,7 +5349,7 @@ struct DataValidationSheet: View {
     }
 
     private func callClaudeAPI(prompt: String) async throws -> String {
-        // Get API key - try UserDefaults first, then fall back to pre-configured key
+        // Get API key from UserDefaults - must be configured via Settings
         let apiKey = UserDefaults.standard.string(forKey: "claude_api_key") ?? ""
         guard !apiKey.isEmpty else {
             throw NSError(domain: "ClaudeService", code: 401, userInfo: [NSLocalizedDescriptionKey: "Claude API key not configured. Please set it in Settings."])
@@ -5625,6 +5750,8 @@ struct UserReportsSheet: View {
     @State private var showingFoodEditor = false
     @State private var editingFoodId: String?
     @State private var isProcessingAction = false
+    @State private var detailRefreshTrigger = UUID()  // Trigger to force detail view refresh
+    @State private var savedFoodId: String? = nil  // Stores the actual food ID after save (may differ from report's food ID)
 
     var filteredReports: [UserReport] {
         guard let filter = selectedFilter else { return reportsService.reports }
@@ -5743,7 +5870,13 @@ struct UserReportsSheet: View {
                                         ReportTableRow(
                                             report: report,
                                             isSelected: selectedReport?.id == report.id,
-                                            onSelect: { selectedReport = report }
+                                            onSelect: {
+                                                // Clear saved food ID override when selecting a different report
+                                                if selectedReport?.id != report.id {
+                                                    savedFoodId = nil
+                                                }
+                                                selectedReport = report
+                                            }
                                         )
                                         Divider()
                                     }
@@ -5778,8 +5911,11 @@ struct UserReportsSheet: View {
                                         isProcessingAction = false
                                     }
                                 },
-                                isProcessing: isProcessingAction
+                                isProcessing: isProcessingAction,
+                                refreshTrigger: detailRefreshTrigger,
+                                overrideFoodId: savedFoodId
                             )
+                            .environmentObject(algoliaService)
                         }
                         .frame(minWidth: 400)
                     } else {
@@ -5807,6 +5943,10 @@ struct UserReportsSheet: View {
                     foodId: foodId,
                     reportId: selectedReport?.id ?? "",
                     onSave: { updatedFood in
+                        // Store the saved food ID for the detail view to use
+                        savedFoodId = updatedFood.objectID
+                        print("📝 Saved food ID: \(updatedFood.objectID)")
+
                         Task {
                             // Save the updated food to Algolia
                             let success = await algoliaService.saveFood(updatedFood, database: .foods)
@@ -5815,6 +5955,8 @@ struct UserReportsSheet: View {
                                 if let reportId = selectedReport?.id {
                                     _ = await reportsService.updateReportStatus(reportId: reportId, status: .resolved, notes: "Food updated via Database Manager")
                                 }
+                                // Trigger detail view refresh
+                                detailRefreshTrigger = UUID()
                             }
                         }
                     }
@@ -5841,6 +5983,8 @@ struct UserReportsContentView: View {
     @State private var selectedReport: UserReport?
     @State private var editingReport: EditingReportItem?  // Using item-based sheet with full report
     @State private var isProcessingAction = false
+    @State private var detailRefreshTrigger = UUID()  // Trigger to force detail view refresh
+    @State private var savedFoodId: String? = nil  // Stores the actual food ID after save (may differ from report's food ID)
 
     var filteredReports: [UserReport] {
         guard let filter = selectedFilter else { return reportsService.reports }
@@ -5961,7 +6105,13 @@ struct UserReportsContentView: View {
                                     ReportTableRow(
                                         report: report,
                                         isSelected: selectedReport?.id == report.id,
-                                        onSelect: { selectedReport = report }
+                                        onSelect: {
+                                            // Clear saved food ID override when selecting a different report
+                                            if selectedReport?.id != report.id {
+                                                savedFoodId = nil
+                                            }
+                                            selectedReport = report
+                                        }
                                     )
                                     Divider()
                                 }
@@ -5994,8 +6144,11 @@ struct UserReportsContentView: View {
                                     isProcessingAction = false
                                 }
                             },
-                            isProcessing: isProcessingAction
+                            isProcessing: isProcessingAction,
+                            refreshTrigger: detailRefreshTrigger,
+                            overrideFoodId: savedFoodId
                         )
+                        .environmentObject(algoliaService)
                         .frame(minWidth: 350, idealWidth: 450, maxHeight: .infinity, alignment: .top)
                     } else {
                         VStack {
@@ -6050,18 +6203,19 @@ struct UserReportsContentView: View {
         .sheet(item: $editingReport) { editItem in
             ReportFoodEditorSheet(
                 report: editItem.report,
-                onSave: { updatedFood in
+                onSave: { savedFood in
+                    // Food was already saved by ReportFoodEditorSheet
+                    // Store the actual saved food ID (may differ from report's food ID if it matched an existing food)
+                    savedFoodId = savedFood.objectID
+                    print("📝 Saved food ID: \(savedFood.objectID) (report's food ID was: \(editItem.report.food?.id ?? editItem.report.foodId ?? "unknown"))")
+
+                    // Refresh the reports list and force the detail view to reload from database
                     Task {
-                        print("📤 Saving food from report:")
-                        print("   - objectID: \(updatedFood.objectID)")
-                        print("   - name: \(updatedFood.name)")
-                        print("   - isVerified: \(updatedFood.isVerified ?? false)")
-                        // Save to Firestore (will sync to Algolia via trigger)
-                        let success = await algoliaService.saveFood(updatedFood, database: .foods)
-                        print("   - save result: \(success)")
-                        if success {
-                            _ = await reportsService.updateReportStatus(reportId: editItem.id, status: .resolved, notes: "Food updated via Database Manager")
-                        }
+                        await reportsService.fetchReports(status: selectedFilter)
+                        // Trigger refresh of detail view by changing the UUID
+                        // This causes onChange(of: refreshTrigger) to fire and reload from database
+                        detailRefreshTrigger = UUID()
+                        print("✅ Triggered detail refresh with new UUID: \(detailRefreshTrigger)")
                     }
                 }
             )
@@ -6265,11 +6419,45 @@ struct ReportDetailView: View {
     let onUpdateStatus: (UserReport.ReportStatus) -> Void
     let onDelete: () -> Void
     let isProcessing: Bool
+    let refreshTrigger: UUID  // Changes when we need to reload from database
+    var overrideFoodId: String? = nil  // If set, load this food ID instead of report's food ID
+
+    @EnvironmentObject var algoliaService: AlgoliaService
+    @State private var databaseFood: FoodItem?
+    @State private var isLoadingFood = false
+
+    // Use database version if available, otherwise fall back to report's embedded food
+    private var displayFood: UserReport.ReportedFood? {
+        if let dbFood = databaseFood {
+            // Convert FoodItem to ReportedFood for display
+            return UserReport.ReportedFood(
+                id: dbFood.objectID,
+                name: dbFood.name,
+                brand: dbFood.brand,
+                barcode: dbFood.barcode,
+                calories: dbFood.calories,
+                protein: dbFood.protein,
+                carbs: dbFood.carbs,
+                fat: dbFood.fat,
+                fiber: dbFood.fiber,
+                sugar: dbFood.sugar,
+                sodium: dbFood.sodium,
+                saturatedFat: dbFood.saturatedFat,
+                servingDescription: dbFood.servingDescription,
+                servingSizeG: dbFood.servingSizeG,
+                ingredients: dbFood.ingredients,
+                processingScore: dbFood.processingScore,
+                processingGrade: dbFood.processingGrade,
+                processingLabel: dbFood.processingLabel,
+                isVerified: dbFood.isVerified ?? false
+            )
+        }
+        return report.food
+    }
 
     var body: some View {
-        VStack(spacing: 0) {
-            ScrollView(.vertical, showsIndicators: true) {
-                VStack(alignment: .leading, spacing: 16) {
+        ScrollView(.vertical, showsIndicators: true) {
+            VStack(alignment: .leading, spacing: 16) {
                     // Header
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(alignment: .top) {
@@ -6310,19 +6498,65 @@ struct ReportDetailView: View {
                         .fontWeight(.semibold)
                 }
 
-                // Food Data (if available)
-                if let food = report.food {
+                // Food Data (if available) - shows database version if loaded
+                if isLoadingFood {
+                    GroupBox {
+                        HStack {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                            Text("Loading current food data...")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 4)
+                    } label: {
+                        Text("Food Data")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                    }
+                } else if let food = displayFood {
                     GroupBox {
                         VStack(alignment: .leading, spacing: 10) {
                             // Nutrition - 2x4 grid
+                            // Serving Size
+                            if let servingDesc = food.servingDescription, !servingDesc.isEmpty {
+                                HStack {
+                                    Text("Serving:")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Text(servingDesc)
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                    if let servingG = food.servingSizeG, servingG > 0 {
+                                        Text("(\(Int(servingG))g)")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    Spacer()
+                                }
+                                .padding(.bottom, 4)
+                            } else if let servingG = food.servingSizeG, servingG > 0, servingG != 100 {
+                                HStack {
+                                    Text("Serving:")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Text("\(Int(servingG))g")
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                    Spacer()
+                                }
+                                .padding(.bottom, 4)
+                            }
+
                             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
                                 CompactNutritionCell(label: "Calories", value: "\(Int(food.calories))", unit: "kcal")
                                 CompactNutritionCell(label: "Protein", value: String(format: "%.1f", food.protein), unit: "g")
                                 CompactNutritionCell(label: "Carbs", value: String(format: "%.1f", food.carbs), unit: "g")
                                 CompactNutritionCell(label: "Fat", value: String(format: "%.1f", food.fat), unit: "g")
+                                CompactNutritionCell(label: "Sat Fat", value: food.saturatedFat != nil ? String(format: "%.1f", food.saturatedFat!) : "-", unit: "g")
                                 CompactNutritionCell(label: "Fiber", value: String(format: "%.1f", food.fiber), unit: "g")
                                 CompactNutritionCell(label: "Sugar", value: String(format: "%.1f", food.sugar), unit: "g")
-                                CompactNutritionCell(label: "Sodium", value: String(format: "%.0f", food.sodium), unit: "mg")
+                                CompactNutritionCell(label: "Salt", value: String(format: "%.2f", food.sodium / 400), unit: "g")
                             }
 
                             Divider()
@@ -6357,11 +6591,43 @@ struct ReportDetailView: View {
                                     .font(.caption)
                                     .foregroundColor(food.isVerified ? .green : .red)
                             }
+
+                            // Show source indicator
+                            if databaseFood != nil {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "checkmark.icloud.fill")
+                                        .foregroundColor(.blue)
+                                        .font(.caption)
+                                    Text("Showing current database data")
+                                        .font(.caption2)
+                                        .foregroundColor(.blue)
+                                }
+                            } else {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "doc.text")
+                                        .foregroundColor(.orange)
+                                        .font(.caption)
+                                    Text("Showing data from report (not yet synced)")
+                                        .font(.caption2)
+                                        .foregroundColor(.orange)
+                                }
+                            }
                         }
                     } label: {
-                        Text("Food Data")
-                            .font(.caption)
-                            .fontWeight(.semibold)
+                        HStack {
+                            Text("Food Data")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                            Spacer()
+                            Button {
+                                Task { await loadFoodFromDatabase() }
+                            } label: {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.caption)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Refresh from database")
+                        }
                     }
                 } else {
                     GroupBox {
@@ -6523,11 +6789,52 @@ struct ReportDetailView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .center)
                 }
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .topLeading)
             }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
+        .task {
+            await loadFoodFromDatabase()
+        }
+        .onChange(of: report.id) { _, _ in
+            // When a different report is selected, reload from database
+            databaseFood = nil
+            Task { await loadFoodFromDatabase() }
+        }
+        .onChange(of: refreshTrigger) { _, _ in
+            // When refresh is triggered (e.g., after saving), reload from database
+            print("🔄 Refresh trigger changed - reloading food from database")
+            databaseFood = nil
+            Task { await loadFoodFromDatabase() }
+        }
+    }
+
+    private func loadFoodFromDatabase() async {
+        // Use override ID if set (e.g., after saving to a different food), otherwise use report's food ID
+        guard let foodId = overrideFoodId ?? report.food?.id ?? report.foodId else {
+            print("⚠️ No food ID available for report")
+            return
+        }
+
+        print("📡 Loading food '\(foodId)' from database... (override: \(overrideFoodId ?? "none"))")
+        isLoadingFood = true
+
+        // Use Firestore directly to get the latest data immediately
+        // (Algolia may have stale data due to sync delay)
+        databaseFood = await algoliaService.getFoodFromFirestore(foodId)
+
+        if let food = databaseFood {
+            print("✅ Loaded food from Firestore: \(food.name)")
+            print("   - servingDescription: '\(food.servingDescription ?? "nil")'")
+            print("   - servingSizeG: \(food.servingSizeG ?? 0)")
+            print("   - calories: \(food.calories)")
+        } else {
+            print("⚠️ Food not found in Firestore, trying Algolia...")
+            // Fall back to Algolia if Firestore fails
+            databaseFood = await algoliaService.getFoodById(foodId)
+        }
+
+        isLoadingFood = false
     }
 }
 
@@ -6648,6 +6955,7 @@ struct NutritionCell: View {
 struct ReportFoodEditorSheet: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var algoliaService: AlgoliaService
+    @StateObject private var reportsService = UserReportsService()
 
     let report: UserReport
     let onSave: (FoodItem) -> Void
@@ -6660,6 +6968,7 @@ struct ReportFoodEditorSheet: View {
     @State private var protein: Double = 0
     @State private var carbs: Double = 0
     @State private var fat: Double = 0
+    @State private var saturatedFat: Double = 0
     @State private var fiber: Double = 0
     @State private var sugar: Double = 0
     @State private var sodium: Double = 0
@@ -6669,6 +6978,16 @@ struct ReportFoodEditorSheet: View {
     @State private var isVerified = false
     @State private var isSaving = false
     @State private var foundObjectID: String?  // ID found from Algolia search
+    @State private var isLookingUpOFF = false
+    @State private var offLookupMessage: String?
+    @State private var saveError: String?
+    @State private var showSaveSuccess = false
+    @StateObject private var offService = OpenFoodFactsService.shared
+
+    // Check if nutrition is zero/missing
+    private var hasZeroNutrition: Bool {
+        calories == 0 && protein == 0 && carbs == 0 && fat == 0
+    }
 
     // The objectID to use - prefer found ID from Algolia, then report's ID, then generate new
     private var objectID: String {
@@ -6696,11 +7015,32 @@ struct ReportFoodEditorSheet: View {
                 .keyboardShortcut(.cancelAction)
 
                 Button {
-                    saveFood()
+                    print("🟢 Save button tapped!")
+                    print("   - isSaving: \(isSaving)")
+                    print("   - name.isEmpty: \(name.isEmpty)")
+                    print("   - isLoadingFood: \(isLoadingFood)")
+                    Task {
+                        await saveFood()
+                    }
                 } label: {
                     if isSaving {
-                        ProgressView()
-                            .scaleEffect(0.7)
+                        HStack(spacing: 6) {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                            Text("Saving...")
+                        }
+                    } else if showSaveSuccess {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill")
+                            Text("Saved!")
+                        }
+                        .foregroundColor(.green)
+                    } else if isLoadingFood {
+                        HStack(spacing: 6) {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                            Text("Loading...")
+                        }
                     } else {
                         Text("Save to Database")
                     }
@@ -6710,6 +7050,25 @@ struct ReportFoodEditorSheet: View {
                 .disabled(isSaving || name.isEmpty || isLoadingFood)
             }
             .padding()
+
+            // Error message
+            if let error = saveError {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.red)
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                    Spacer()
+                    Button("Dismiss") {
+                        saveError = nil
+                    }
+                    .font(.caption)
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .background(Color.red.opacity(0.1))
+            }
 
             Divider()
 
@@ -6727,6 +7086,75 @@ struct ReportFoodEditorSheet: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
+                    }
+
+                    // Zero nutrition warning with auto-lookup
+                    if hasZeroNutrition && !isLoadingFood {
+                        GroupBox {
+                            VStack(spacing: 12) {
+                                HStack {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundColor(.orange)
+                                    Text("This food has zero nutrition data")
+                                        .font(.callout)
+                                        .fontWeight(.medium)
+                                    Spacer()
+                                }
+
+                                HStack(spacing: 12) {
+                                    // Lookup by barcode
+                                    if !barcode.isEmpty {
+                                        Button {
+                                            Task { await lookupFromOFFByBarcode() }
+                                        } label: {
+                                            HStack(spacing: 4) {
+                                                if isLookingUpOFF {
+                                                    ProgressView()
+                                                        .scaleEffect(0.6)
+                                                } else {
+                                                    Image(systemName: "barcode.viewfinder")
+                                                }
+                                                Text("Lookup by Barcode")
+                                            }
+                                        }
+                                        .buttonStyle(.borderedProminent)
+                                        .tint(.orange)
+                                        .disabled(isLookingUpOFF)
+                                    }
+
+                                    // Lookup by name
+                                    Button {
+                                        Task { await lookupFromOFFByName() }
+                                    } label: {
+                                        HStack(spacing: 4) {
+                                            if isLookingUpOFF {
+                                                ProgressView()
+                                                    .scaleEffect(0.6)
+                                            } else {
+                                                Image(systemName: "magnifyingglass")
+                                            }
+                                            Text("Search by Name")
+                                        }
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .disabled(isLookingUpOFF || name.isEmpty)
+
+                                    Spacer()
+                                }
+
+                                if let message = offLookupMessage {
+                                    HStack {
+                                        Image(systemName: message.contains("Found") ? "checkmark.circle.fill" : "info.circle")
+                                            .foregroundColor(message.contains("Found") ? .green : .secondary)
+                                        Text(message)
+                                            .font(.caption)
+                                            .foregroundColor(message.contains("Found") ? .green : .secondary)
+                                    }
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .backgroundStyle(Color.orange.opacity(0.1))
                     }
 
                     // Basic Info
@@ -6801,9 +7229,13 @@ struct ReportFoodEditorSheet: View {
                             EditorNutritionField(label: "Protein", value: $protein, unit: "g")
                             EditorNutritionField(label: "Carbs", value: $carbs, unit: "g")
                             EditorNutritionField(label: "Fat", value: $fat, unit: "g")
+                            EditorNutritionField(label: "Sat Fat", value: $saturatedFat, unit: "g")
                             EditorNutritionField(label: "Fiber", value: $fiber, unit: "g")
                             EditorNutritionField(label: "Sugar", value: $sugar, unit: "g")
-                            EditorNutritionField(label: "Sodium", value: $sodium, unit: "mg")
+                            EditorNutritionField(label: "Salt", value: Binding(
+                                get: { sodium / 400 }, // Convert sodium mg to salt g
+                                set: { sodium = $0 * 400 } // Convert salt g back to sodium mg
+                            ), unit: "g")
                         }
                     } label: {
                         Text("Nutrition (per 100g)")
@@ -6893,6 +7325,7 @@ struct ReportFoodEditorSheet: View {
             protein = food.protein
             carbs = food.carbs
             fat = food.fat
+            saturatedFat = food.saturatedFat ?? 0
             fiber = food.fiber
             sugar = food.sugar
             sodium = food.sodium
@@ -6905,19 +7338,41 @@ struct ReportFoodEditorSheet: View {
             // The embedded food ID is often a temporary UUID from iOS, not the database ID
             isLoadingFood = true
             Task {
+                defer {
+                    // ALWAYS ensure isLoadingFood is set to false when done
+                    Task { @MainActor in
+                        isLoadingFood = false
+                    }
+                }
+
                 print("🔍 Searching Algolia for real objectID of: \(food.name)")
                 await algoliaService.searchFoods(query: food.name, database: .foods)
                 if let firstMatch = algoliaService.foods.first {
                     await MainActor.run {
                         print("✅ Found real objectID: \(firstMatch.objectID) for '\(firstMatch.name)'")
                         foundObjectID = firstMatch.objectID
-                        isLoadingFood = false
+
+                        // Fill in any missing data from the database version
+                        // The report's embedded food may be missing fields that exist in the database
+                        if barcode.isEmpty, let dbBarcode = firstMatch.barcode, !dbBarcode.isEmpty {
+                            print("📦 Filling in barcode from database: \(dbBarcode)")
+                            barcode = dbBarcode
+                        }
+                        if brand.isEmpty, let dbBrand = firstMatch.brand, !dbBrand.isEmpty {
+                            brand = dbBrand
+                        }
+                        if servingDescription.isEmpty, let dbServing = firstMatch.servingDescription, !dbServing.isEmpty {
+                            servingDescription = dbServing
+                        }
+                        if let dbServingG = firstMatch.servingSizeG, dbServingG > 0 {
+                            servingSizeG = dbServingG
+                        }
+                        if ingredientsText.isEmpty, let dbIngredients = firstMatch.ingredients, !dbIngredients.isEmpty {
+                            ingredientsText = dbIngredients.joined(separator: ", ")
+                        }
                     }
                 } else {
-                    await MainActor.run {
-                        print("⚠️ Could not find food in Algolia - will create new entry")
-                        isLoadingFood = false
-                    }
+                    print("⚠️ Could not find food in Algolia - will create new entry")
                 }
             }
         } else if let foodId = report.foodId, !foodId.isEmpty {
@@ -6930,6 +7385,13 @@ struct ReportFoodEditorSheet: View {
             // Fetch from Algolia in background
             isLoadingFood = true
             Task {
+                defer {
+                    // ALWAYS ensure isLoadingFood is set to false when done
+                    Task { @MainActor in
+                        isLoadingFood = false
+                    }
+                }
+
                 if let fetchedFood = await algoliaService.getFoodById(foodId) {
                     await MainActor.run {
                         print("✅ Fetched food from Algolia: \(fetchedFood.name) (objectID: \(fetchedFood.objectID))")
@@ -6942,6 +7404,7 @@ struct ReportFoodEditorSheet: View {
                         protein = fetchedFood.protein
                         carbs = fetchedFood.carbs
                         fat = fetchedFood.fat
+                        saturatedFat = fetchedFood.saturatedFat ?? 0
                         fiber = fetchedFood.fiber
                         sugar = fetchedFood.sugar
                         sodium = fetchedFood.sodium
@@ -6949,7 +7412,6 @@ struct ReportFoodEditorSheet: View {
                         servingSizeG = fetchedFood.servingSizeG ?? 100
                         ingredientsText = fetchedFood.ingredients?.joined(separator: ", ") ?? ""
                         isVerified = fetchedFood.isVerified ?? false
-                        isLoadingFood = false
                     }
                 } else {
                     // Food ID doesn't exist in Algolia - try searching by name as fallback
@@ -6967,6 +7429,7 @@ struct ReportFoodEditorSheet: View {
                             protein = firstMatch.protein
                             carbs = firstMatch.carbs
                             fat = firstMatch.fat
+                            saturatedFat = firstMatch.saturatedFat ?? 0
                             fiber = firstMatch.fiber
                             sugar = firstMatch.sugar
                             sodium = firstMatch.sodium
@@ -6974,13 +7437,9 @@ struct ReportFoodEditorSheet: View {
                             servingSizeG = firstMatch.servingSizeG ?? 100
                             ingredientsText = firstMatch.ingredients?.joined(separator: ", ") ?? ""
                             isVerified = firstMatch.isVerified ?? false
-                            isLoadingFood = false
                         }
                     } else {
-                        await MainActor.run {
-                            print("❌ Could not find food by ID or name search - will create new food")
-                            isLoadingFood = false
-                        }
+                        print("❌ Could not find food by ID or name search - will create new food")
                     }
                 }
             }
@@ -6993,14 +7452,98 @@ struct ReportFoodEditorSheet: View {
         }
     }
 
-    private func saveFood() {
+    private func lookupFromOFFByBarcode() async {
+        guard !barcode.isEmpty else { return }
+        isLookingUpOFF = true
+        offLookupMessage = nil
+
+        if let product = await offService.lookupProduct(barcode: barcode) {
+            await MainActor.run {
+                applyOFFProduct(product)
+                offLookupMessage = "Found: \(product.displayName)"
+            }
+        } else {
+            await MainActor.run {
+                offLookupMessage = "No product found for barcode \(barcode)"
+            }
+        }
+
+        isLookingUpOFF = false
+    }
+
+    private func lookupFromOFFByName() async {
+        guard !name.isEmpty else { return }
+        isLookingUpOFF = true
+        offLookupMessage = nil
+
+        let products = await offService.searchProducts(query: name, pageSize: 5)
+        if let firstProduct = products.first {
+            await MainActor.run {
+                applyOFFProduct(firstProduct)
+                offLookupMessage = "Found: \(firstProduct.displayName)"
+            }
+        } else {
+            await MainActor.run {
+                offLookupMessage = "No products found for '\(name)'"
+            }
+        }
+
+        isLookingUpOFF = false
+    }
+
+    private func applyOFFProduct(_ product: OFFProduct) {
+        // Apply nutrition values if we have them
+        if let nutriments = product.nutriments {
+            if let kcal = nutriments.energy_kcal_100g ?? nutriments.energy_kcal {
+                calories = kcal
+            }
+            if let prot = nutriments.proteins_100g ?? nutriments.proteins {
+                protein = prot
+            }
+            if let carb = nutriments.carbohydrates_100g ?? nutriments.carbohydrates {
+                carbs = carb
+            }
+            if let fatVal = nutriments.fat_100g ?? nutriments.fat {
+                fat = fatVal
+            }
+            if let fib = nutriments.fiber_100g ?? nutriments.fiber {
+                fiber = fib
+            }
+            if let sug = nutriments.sugars_100g ?? nutriments.sugars {
+                sugar = sug
+            }
+            if let sod = nutriments.sodium_100g ?? nutriments.sodium {
+                sodium = sod * 1000 // convert g to mg
+            }
+        }
+
+        // Apply brand if we don't have one
+        if brand.isEmpty, let offBrand = product.brands {
+            brand = offBrand
+        }
+
+        // Apply barcode if we don't have one
+        if barcode.isEmpty, let code = product.code {
+            barcode = code
+        }
+    }
+
+    private func saveFood() async {
+        print("🔘 SAVE BUTTON CLICKED - saveFood() called")
         isSaving = true
+        saveError = nil
+        showSaveSuccess = false
 
         print("💾 Saving food with objectID: \(objectID)")
         print("   - foundObjectID: \(foundObjectID ?? "nil")")
         print("   - report.food?.id: \(report.food?.id ?? "nil")")
         print("   - report.foodId: \(report.foodId ?? "nil")")
         print("   - isVerified: \(isVerified)")
+        print("   - name: \(name)")
+        print("   - calories: \(calories)")
+        print("   - protein: \(protein)")
+        print("   - servingDescription: '\(servingDescription)'")
+        print("   - servingSizeG: \(servingSizeG)")
 
         // Build the FoodItem
         let ingredients: [String]? = ingredientsText.isEmpty ? nil : ingredientsText
@@ -7020,6 +7563,7 @@ struct ReportFoodEditorSheet: View {
             fiber: fiber,
             sugar: sugar,
             sodium: sodium,
+            saturatedFat: saturatedFat > 0 ? saturatedFat : nil,
             servingDescription: servingDescription.isEmpty ? nil : servingDescription,
             servingSizeG: servingSizeG,
             ingredients: ingredients,
@@ -7027,8 +7571,38 @@ struct ReportFoodEditorSheet: View {
             source: "user_report"
         )
 
-        onSave(food)
-        dismiss()
+        // Save to database
+        print("📤 Calling algoliaService.saveFood...")
+        print("   - Food to save: \(food.objectID), name=\(food.name), calories=\(food.calories)")
+        let success = await algoliaService.saveFood(food, database: .foods)
+        print("   - Save result: \(success)")
+        print("   - AlgoliaService error: \(algoliaService.error ?? "none")")
+
+        if success {
+            print("✅ Save succeeded! Marking report as resolved...")
+            // Mark report as resolved
+            let statusResult = await reportsService.updateReportStatus(reportId: report.id, status: .resolved, notes: "Food updated via Database Manager")
+            print("   - Report status update result: \(statusResult)")
+
+            // Call the callback
+            print("   - Calling onSave callback...")
+            onSave(food)
+
+            // Show success feedback
+            showSaveSuccess = true
+            isSaving = false
+
+            // Dismiss after a brief delay to show success
+            print("   - Waiting 0.8s before dismiss...")
+            try? await Task.sleep(nanoseconds: 800_000_000) // 0.8 seconds
+            print("   - Dismissing sheet...")
+            dismiss()
+        } else {
+            print("❌ Save FAILED!")
+            saveError = algoliaService.error ?? "Failed to save food to database"
+            print("   - Error shown to user: \(saveError ?? "none")")
+            isSaving = false
+        }
     }
 }
 
@@ -7241,7 +7815,10 @@ struct FullFoodEditorSheet: View {
                                 EditorNutritionField(label: "Fat", value: $fat, unit: "g")
                                 EditorNutritionField(label: "Fiber", value: $fiber, unit: "g")
                                 EditorNutritionField(label: "Sugar", value: $sugar, unit: "g")
-                                EditorNutritionField(label: "Sodium", value: $sodium, unit: "mg")
+                                EditorNutritionField(label: "Salt", value: Binding(
+                                    get: { sodium / 400 }, // Convert sodium mg to salt g
+                                    set: { sodium = $0 * 400 } // Convert salt g back to sodium mg
+                                ), unit: "g")
                                 EditorNutritionField(label: "Sat. Fat", value: $saturatedFat, unit: "g")
                             }
                         } label: {

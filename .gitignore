@@ -40,3 +40,4 @@ AppStoreKeys/
 # Backup files
 *.backup
 *_BACKUP.swift
+firebase/service-account-key.json

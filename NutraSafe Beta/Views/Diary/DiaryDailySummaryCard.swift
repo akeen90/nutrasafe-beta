@@ -30,11 +30,18 @@ struct DiaryDailySummaryCard: View {
     @AppStorage("cachedCaloricGoal") private var cachedCaloricGoal: Int = 1800
     @AppStorage("cachedStepGoal") private var cachedStepGoal: Int = 10000
     @AppStorage("cachedExerciseGoal") private var cachedExerciseGoal: Int = 400
+    @AppStorage("dailyWaterGoal") private var dailyWaterGoal: Int = 8
 
     private var calorieGoal: Double { Double(cachedCaloricGoal) }
     private var stepGoal: Double { Double(cachedStepGoal) }
     private var exerciseGoal: Double { Double(cachedExerciseGoal) }
     @State private var macroGoals: [MacroGoal] = MacroGoal.defaultMacros
+
+    // MARK: - Water Tracking
+    @State private var waterCount: Int = 0
+    @State private var waterStreak: Int = 0
+    @State private var showingWaterCelebration: Bool = false
+    @State private var hasShownCelebrationToday: Bool = false
 
     // MARK: - Weekly Summary Sheet
     @State private var showWeeklySummary = false
@@ -63,15 +70,26 @@ struct DiaryDailySummaryCard: View {
             // Calories burned section
             caloriesBurnedProgressView
 
+            // Water tracking section
+            waterProgressView
+
+            // Smart nutrition insights
+            if let insight = generateNutritionInsight() {
+                nutritionInsightView(insight)
+            }
+
         }
         .padding(AppSpacing.medium)
         .background(cardBackground)
         .cardShadow()
-        .onAppear { handleOnAppear() }
+        .onAppear { handleOnAppear(); loadWaterData() }
         .onChange(of: currentDate) { handleDateChange() }
         .onChange(of: healthKitRingsEnabled) { _, enabled in handleHealthKitToggle(enabled) }
         .onReceive(NotificationCenter.default.publisher(for: .nutritionGoalsUpdated)) { _ in
             Task { await loadNutritionGoals() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .waterUpdated)) { _ in
+            loadWaterData()
         }
         .fullScreenCover(isPresented: $showWeeklySummary) {
             WeeklySummarySheet(
@@ -248,6 +266,295 @@ struct DiaryDailySummaryCard: View {
         .frame(height: 24)
     }
 
+    // MARK: - Nutrition Insights
+    private struct NutritionInsight {
+        let icon: String
+        let message: String
+        let color: Color
+        let isPositive: Bool
+    }
+
+    private func generateNutritionInsight() -> NutritionInsight? {
+        let allFoods = breakfastFoods + lunchFoods + dinnerFoods + snackFoods
+        guard !allFoods.isEmpty else { return nil }
+
+        // Calculate goals
+        let proteinGoal = macroGoals.first { $0.macroType == .protein }?.calculateGramGoal(from: calorieGoal) ?? 50
+        let carbsGoal = macroGoals.first { $0.macroType == .carbs }?.calculateGramGoal(from: calorieGoal) ?? 250
+        let fatGoal = macroGoals.first { $0.macroType == .fat }?.calculateGramGoal(from: calorieGoal) ?? 65
+        let totalSugar = allFoods.reduce(0.0) { $0 + $1.sugar }
+
+        // Check for significant deviations (prioritize warnings over positive)
+        let carbsOverage = totalCarbs / carbsGoal
+        let calorieOverage = Double(totalCalories) / calorieGoal
+        let proteinProgress = totalProtein / proteinGoal
+        let fatOverage = totalFat / fatGoal
+
+        // Massively over carbs (>150%)
+        if carbsOverage > 1.5 {
+            return NutritionInsight(
+                icon: "exclamationmark.triangle.fill",
+                message: "Carb heavy day – \(Int((carbsOverage - 1) * 100))% over your goal",
+                color: .orange,
+                isPositive: false
+            )
+        }
+
+        // High sugar warning (>50g)
+        if totalSugar > 50 {
+            return NutritionInsight(
+                icon: "cube.fill",
+                message: "High sugar intake today – \(Int(totalSugar))g consumed",
+                color: .pink,
+                isPositive: false
+            )
+        }
+
+        // Way over calories (>120%)
+        if calorieOverage > 1.2 {
+            return NutritionInsight(
+                icon: "flame.fill",
+                message: "Over calorie goal by \(Int((calorieOverage - 1) * 100))%",
+                color: .red,
+                isPositive: false
+            )
+        }
+
+        // Over fat (>130%)
+        if fatOverage > 1.3 {
+            return NutritionInsight(
+                icon: "drop.fill",
+                message: "Fat intake \(Int((fatOverage - 1) * 100))% above target",
+                color: .yellow,
+                isPositive: false
+            )
+        }
+
+        // Positive insights (only if no warnings)
+        // Great protein day (>90%)
+        if proteinProgress > 0.9 && proteinProgress <= 1.2 {
+            return NutritionInsight(
+                icon: "bolt.fill",
+                message: "Great protein day! \(Int(proteinProgress * 100))% of goal",
+                color: .green,
+                isPositive: true
+            )
+        }
+
+        // Balanced day (all macros within range)
+        if carbsOverage < 1.1 && fatOverage < 1.1 && calorieOverage < 1.05 && calorieOverage > 0.8 {
+            return NutritionInsight(
+                icon: "checkmark.seal.fill",
+                message: "Well balanced day – on track!",
+                color: .green,
+                isPositive: true
+            )
+        }
+
+        return nil
+    }
+
+    @ViewBuilder
+    private func nutritionInsightView(_ insight: NutritionInsight) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: insight.icon)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(insight.color)
+
+            Text(insight.message)
+                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .foregroundColor(insight.isPositive ? .primary : insight.color)
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(insight.color.opacity(0.12))
+        )
+        .transition(.opacity.combined(with: .scale(scale: 0.95)))
+        .animation(.easeInOut(duration: 0.3), value: insight.message)
+    }
+
+    // MARK: - Water Tracking
+    private var waterProgressView: some View {
+        VStack(spacing: 6) {
+            Button(action: addWater) {
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        // Background bar (fully rounded)
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(.systemGray5))
+                            .frame(height: 24)
+
+                        // Progress bar (fully rounded) - show cyan, green when complete
+                        if waterCount > 0 {
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(waterCount >= dailyWaterGoal ? Color.green : Color.cyan)
+                                .frame(
+                                    width: max(24, geometry.size.width * min(1.0, Double(waterCount) / Double(dailyWaterGoal))),
+                                    height: 24
+                                )
+                                .animation(.spring(response: 0.5, dampingFraction: 0.7), value: waterCount)
+                        }
+
+                        // Text overlay on top of bar
+                        HStack {
+                            HStack(spacing: 4) {
+                                Image(systemName: waterCount >= dailyWaterGoal ? "checkmark.circle.fill" : "drop.fill")
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundColor(waterCount >= dailyWaterGoal ? .green : .cyan)
+                                Text("Water")
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Spacer()
+
+                            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                                Text("\(waterCount)")
+                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                                    .foregroundColor(.primary)
+
+                                Text("/\(dailyWaterGoal) glasses")
+                                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                                    .foregroundColor(.secondary)
+
+                                // Streak badge
+                                if waterStreak > 1 {
+                                    HStack(spacing: 2) {
+                                        Image(systemName: "flame.fill")
+                                            .font(.system(size: 9))
+                                        Text("\(waterStreak)")
+                                            .font(.system(size: 10, weight: .semibold))
+                                    }
+                                    .foregroundColor(.orange)
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 2)
+                                    .background(Color.orange.opacity(0.15))
+                                    .clipShape(Capsule())
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 12)
+                    }
+                }
+                .frame(height: 24)
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            // Celebration message when goal hit
+            if showingWaterCelebration {
+                HStack(spacing: 6) {
+                    Image(systemName: "hands.clap.fill")
+                        .font(.system(size: 12))
+                    Text("Well done! You've hit your water goal!")
+                        .font(.system(size: 12, weight: .medium))
+                }
+                .foregroundColor(.green)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 12)
+                .background(Color.green.opacity(0.15))
+                .clipShape(Capsule())
+                .transition(.scale.combined(with: .opacity))
+            }
+        }
+    }
+
+    private func addWater() {
+        let previousCount = waterCount
+
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            waterCount += 1
+        }
+        saveWaterData()
+
+        // Check if goal was just hit
+        if previousCount < dailyWaterGoal && waterCount >= dailyWaterGoal && !hasShownCelebrationToday {
+            hasShownCelebrationToday = true
+            // Show celebration
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                showingWaterCelebration = true
+            }
+            // Success haptic
+            let notificationFeedback = UINotificationFeedbackGenerator()
+            notificationFeedback.notificationOccurred(.success)
+
+            // Update streak
+            updateWaterStreak()
+
+            // Hide celebration after 4 seconds
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+                withAnimation(.easeOut(duration: 0.3)) {
+                    showingWaterCelebration = false
+                }
+            }
+        } else {
+            // Normal haptic feedback
+            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+            impactFeedback.impactOccurred()
+        }
+    }
+
+    private func loadWaterData() {
+        let dateKey = formatDateKey(currentDate)
+        let saved = UserDefaults.standard.dictionary(forKey: "hydrationData") as? [String: Int] ?? [:]
+        waterCount = saved[dateKey] ?? 0
+
+        // Check if we've already shown celebration today
+        let celebrationKey = "waterCelebration_\(dateKey)"
+        hasShownCelebrationToday = UserDefaults.standard.bool(forKey: celebrationKey)
+
+        // Calculate streak
+        calculateWaterStreak()
+    }
+
+    private func calculateWaterStreak() {
+        let saved = UserDefaults.standard.dictionary(forKey: "hydrationData") as? [String: Int] ?? [:]
+        var streak = 0
+        var checkDate = Calendar.current.date(byAdding: .day, value: -1, to: currentDate) ?? currentDate
+
+        // Count backwards from yesterday to find streak
+        while true {
+            let dateKey = formatDateKey(checkDate)
+            let count = saved[dateKey] ?? 0
+            if count >= dailyWaterGoal {
+                streak += 1
+                checkDate = Calendar.current.date(byAdding: .day, value: -1, to: checkDate) ?? checkDate
+            } else {
+                break
+            }
+        }
+
+        // Add today if goal met
+        let todayKey = formatDateKey(currentDate)
+        if (saved[todayKey] ?? 0) >= dailyWaterGoal {
+            streak += 1
+        }
+
+        waterStreak = streak
+    }
+
+    private func updateWaterStreak() {
+        let dateKey = formatDateKey(currentDate)
+        UserDefaults.standard.set(true, forKey: "waterCelebration_\(dateKey)")
+        calculateWaterStreak()
+    }
+
+    private func saveWaterData() {
+        let dateKey = formatDateKey(currentDate)
+        var hydrationData = UserDefaults.standard.dictionary(forKey: "hydrationData") as? [String: Int] ?? [:]
+        hydrationData[dateKey] = waterCount
+        UserDefaults.standard.set(hydrationData, forKey: "hydrationData")
+
+        // Post notification so other views can update
+        NotificationCenter.default.post(name: .waterUpdated, object: nil)
+    }
+
+    private func formatDateKey(_ date: Date) -> String {
+        DateHelper.isoDateFormatter.string(from: date)
+    }
+
     private var stepsTextView: some View {
         VStack(spacing: 2) {
             HStack(alignment: .firstTextBaseline, spacing: 1) {
@@ -354,6 +661,7 @@ struct DiaryDailySummaryCard: View {
     }
 
     private func handleDateChange() {
+        loadWaterData()
         Task {
             await loadNutritionGoals()
         }

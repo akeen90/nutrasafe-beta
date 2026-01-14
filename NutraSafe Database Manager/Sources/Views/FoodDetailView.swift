@@ -261,7 +261,10 @@ struct FoodDetailView: View {
                 NutrientField(label: "Fat", value: isEditing ? $editedFood.fat : .constant(food.fat), unit: "g", isEditing: isEditing)
                 NutrientField(label: "Fiber", value: isEditing ? $editedFood.fiber : .constant(food.fiber), unit: "g", isEditing: isEditing)
                 NutrientField(label: "Sugar", value: isEditing ? $editedFood.sugar : .constant(food.sugar), unit: "g", isEditing: isEditing)
-                NutrientField(label: "Sodium", value: isEditing ? $editedFood.sodium : .constant(food.sodium), unit: "mg", isEditing: isEditing)
+                NutrientField(label: "Salt", value: isEditing ? Binding(
+                    get: { editedFood.sodium / 400 },
+                    set: { editedFood.sodium = $0 * 400 }
+                ) : .constant(food.sodium / 400), unit: "g", isEditing: isEditing)
                 NutrientField(label: "Sat. Fat", value: isEditing ? $editedFood.saturatedFat : .constant(food.saturatedFat), unit: "g", isEditing: isEditing)
             }
 

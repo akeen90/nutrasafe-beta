@@ -117,6 +117,57 @@ export const deleteFood = functions.https.onRequest(async (req, res) => {
 });
 
 /**
+ * Cloud Function to get a food item directly from Firestore
+ * Returns the latest data without waiting for Algolia sync
+ */
+export const getFood = functions.https.onRequest(async (req, res) => {
+  // Set CORS headers
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).send();
+    return;
+  }
+
+  try {
+    const foodId = req.query.foodId as string || req.body?.foodId;
+
+    if (!foodId) {
+      res.status(400).json({ success: false, error: 'Food ID is required' });
+      return;
+    }
+
+    const db = admin.firestore();
+    const foodDoc = await db.collection('foods').doc(foodId).get();
+
+    if (!foodDoc.exists) {
+      res.status(404).json({ success: false, error: 'Food not found' });
+      return;
+    }
+
+    const data = foodDoc.data();
+
+    // Return food with objectID included
+    res.status(200).json({
+      success: true,
+      food: {
+        objectID: foodDoc.id,
+        ...data
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error getting food:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get food'
+    });
+  }
+});
+
+/**
  * Cloud Function to batch save multiple foods to Firestore
  * Used by Database Manager for bulk operations
  */

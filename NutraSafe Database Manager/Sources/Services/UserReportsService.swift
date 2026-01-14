@@ -209,6 +209,7 @@ class UserReportsService: ObservableObject {
                 fiber: (foodDict["fiber"] as? NSNumber)?.doubleValue ?? 0,
                 sugar: (foodDict["sugar"] as? NSNumber)?.doubleValue ?? 0,
                 sodium: (foodDict["sodium"] as? NSNumber)?.doubleValue ?? 0,
+                saturatedFat: (foodDict["saturatedFat"] as? NSNumber)?.doubleValue,
                 servingDescription: foodDict["servingDescription"] as? String,
                 servingSizeG: (foodDict["servingSizeG"] as? NSNumber)?.doubleValue,
                 ingredients: foodDict["ingredients"] as? [String],

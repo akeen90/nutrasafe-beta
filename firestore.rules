@@ -53,6 +53,13 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Cookie consent logging - allow public writes for GDPR compliance
+    match /cookie_consents/{consentId} {
+      allow create: if true;
+      allow read: if false;
+      allow update, delete: if false;
+    }
+
     // Fasting plans - users can only access their own plans
     match /fasting_plans/{planId} {
       allow read, write: if request.auth != null &&

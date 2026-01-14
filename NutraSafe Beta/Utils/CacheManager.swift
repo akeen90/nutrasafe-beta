@@ -12,6 +12,7 @@ import UIKit
 /// Notification posted when caches should be cleared due to app update
 extension Notification.Name {
     static let appVersionDidChange = Notification.Name("appVersionDidChange")
+    static let waterUpdated = Notification.Name("waterUpdated")
 }
 
 /// Manages cache clearing on app version changes

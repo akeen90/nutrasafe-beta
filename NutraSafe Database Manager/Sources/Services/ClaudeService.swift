@@ -53,7 +53,7 @@ class ClaudeService: ObservableObject {
         if let savedKey = UserDefaults.standard.string(forKey: "claude_api_key"), !savedKey.isEmpty {
             apiKey = savedKey
         } else {
-            // No pre-configured API key - user must set one in settings
+            // API key must be configured via Settings - not hardcoded for security
             apiKey = ""
         }
     }
@@ -63,8 +63,21 @@ class ClaudeService: ObservableObject {
         UserDefaults.standard.set(key, forKey: "claude_api_key")
     }
 
+    /// Check if configured - always check UserDefaults in case key was set elsewhere
     var isConfigured: Bool {
-        !apiKey.isEmpty
+        // Reload from UserDefaults in case it was set by another part of the app
+        if apiKey.isEmpty {
+            loadAPIKey()
+        }
+        return !apiKey.isEmpty
+    }
+
+    /// Get the current API key, reloading from UserDefaults if needed
+    private var currentAPIKey: String {
+        if apiKey.isEmpty {
+            loadAPIKey()
+        }
+        return apiKey
     }
 
     // MARK: - Chat Interface
@@ -129,7 +142,7 @@ class ClaudeService: ObservableObject {
         Fat: \(food.fat)g
         Fiber: \(food.fiber)g
         Sugar: \(food.sugar)g
-        Sodium: \(food.sodium)mg
+        Salt: \(String(format: "%.2f", food.sodium / 400))g
         Ingredients: \(food.ingredients?.joined(separator: ", ") ?? "N/A")
         Processing Grade: \(food.processingGrade ?? "N/A")
         Verified: \(food.isVerified ?? false)
@@ -251,13 +264,39 @@ class ClaudeService: ObservableObject {
         }
     }
 
+    // MARK: - Simple Query (single call, no history)
+
+    func askClaude(_ prompt: String) async throws -> String {
+        guard isConfigured else {
+            throw ClaudeError.apiError("Claude API key not configured")
+        }
+
+        let systemPrompt = """
+        You are an AI assistant helping clean and format food data for a UK food database.
+        Follow instructions precisely and return structured data as requested.
+        Use UK English spelling (fibre, colour, flavour).
+        """
+
+        let messages: [[String: Any]] = [
+            ["role": "user", "content": prompt]
+        ]
+
+        return try await callClaudeAPI(systemPrompt: systemPrompt, messages: messages)
+    }
+
     // MARK: - API Call
 
     private func callClaudeAPI(systemPrompt: String, messages: [[String: Any]]) async throws -> String {
+        // Ensure we have the latest API key
+        let key = currentAPIKey
+        guard !key.isEmpty else {
+            throw ClaudeError.apiError("Claude API key not configured")
+        }
+
         var request = URLRequest(url: URL(string: baseURL)!)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+        request.setValue(key, forHTTPHeaderField: "x-api-key")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
 
         let body: [String: Any] = [

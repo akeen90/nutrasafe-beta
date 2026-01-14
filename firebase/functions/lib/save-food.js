@@ -11,7 +11,7 @@ var __rest = (this && this.__rest) || function (s, e) {
     return t;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.batchSaveFoods = exports.deleteFood = exports.saveFood = void 0;
+exports.batchSaveFoods = exports.getFood = exports.deleteFood = exports.saveFood = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 /**
@@ -103,6 +103,47 @@ exports.deleteFood = functions.https.onRequest(async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Failed to delete food'
+        });
+    }
+});
+/**
+ * Cloud Function to get a food item directly from Firestore
+ * Returns the latest data without waiting for Algolia sync
+ */
+exports.getFood = functions.https.onRequest(async (req, res) => {
+    var _a;
+    // Set CORS headers
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (req.method === 'OPTIONS') {
+        res.status(200).send();
+        return;
+    }
+    try {
+        const foodId = req.query.foodId || ((_a = req.body) === null || _a === void 0 ? void 0 : _a.foodId);
+        if (!foodId) {
+            res.status(400).json({ success: false, error: 'Food ID is required' });
+            return;
+        }
+        const db = admin.firestore();
+        const foodDoc = await db.collection('foods').doc(foodId).get();
+        if (!foodDoc.exists) {
+            res.status(404).json({ success: false, error: 'Food not found' });
+            return;
+        }
+        const data = foodDoc.data();
+        // Return food with objectID included
+        res.status(200).json({
+            success: true,
+            food: Object.assign({ objectID: foodDoc.id }, data)
+        });
+    }
+    catch (error) {
+        console.error('❌ Error getting food:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to get food'
         });
     }
 });

@@ -30,16 +30,17 @@ export { replaceAllFoods } from './replace-foods-database';
 export { standardizeIngredients } from './standardize-ingredients';
 export { notifyIncompleteFood } from './notify-incomplete-food';
 export { getUserReports, updateUserReport, deleteUserReport } from './user-reports';
-export { saveFood, deleteFood, batchSaveFoods } from './save-food';
+export { saveFood, deleteFood, batchSaveFoods, getFood } from './save-food';
 export { parseMicronutrientsWithAI, parseMicronutrientsWithAICached } from './parse-micronutrients-ai';
 export { parseAdditivesWithAI, parseAdditivesWithAICached } from './parse-additives-ai';
 export { parseNutritionOCR, parseNutritionOCRCached } from './parse-nutrition-ocr';
 export { parseIngredientsOCR, parseIngredientsOCRCached } from './parse-ingredients-ocr';
 export { findIngredients } from './find-ingredients';
 export { auditMissingIngredients } from './audit-missing-ingredients';
+export { recognizeFood } from './recognize-food';
 
 // Algolia integration
-export { syncVerifiedFoodToAlgolia, syncFoodToAlgolia, syncManualFoodToAlgolia, syncUserAddedFoodToAlgolia, syncAIEnhancedFoodToAlgolia, syncAIManuallyAddedFoodToAlgolia, bulkImportFoodsToAlgolia, searchFoodsAlgolia, configureAlgoliaIndices } from './algolia-sync';
+export { syncVerifiedFoodToAlgolia, syncFoodToAlgolia, syncManualFoodToAlgolia, syncUserAddedFoodToAlgolia, syncAIEnhancedFoodToAlgolia, syncAIManuallyAddedFoodToAlgolia, bulkImportFoodsToAlgolia, searchFoodsAlgolia, configureAlgoliaIndices, syncNewDatabasesToAlgolia } from './algolia-sync';
 
 // Algolia synonyms and query rules
 export { syncSynonymsToAlgolia, getSynonymStats, clearSynonymsFromAlgolia } from './food-synonyms';

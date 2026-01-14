@@ -1,0 +1,860 @@
+name,brand,barcode,category,subcategory,calories,protein,carbs,fat,saturated_fat,fiber,sugar,sodium,serving_size_g,serving_description,ingredients,allergens,is_per_unit,is_verified,portions
+Big Mac,McDonald's,,Fast Food,Burgers,508,26,43,25,10,3,9,950,215,1 burger,"Big Mac Bun: WHEAT Flour (contains Calcium Carbonate, Niacin, Iron, Folic Acid, Thiamin), Water, Sugar, Rapeseed Oil, SESAME Seeds, Potato Starch, Salt, Emulsifier (Mono- and Diacetyl Tartaric Acid Esters of Mono- and Diglycerides of Fatty Acids), Pea Protein, Antioxidant (Ascorbic Acid), Maize Maltodextrin, Dextrose, Maize Starch, WHEAT Starch, Natural Flavouring.
+
+Beef Patty: 100% Pure Beef. No additives, fillers, binders, preservatives or flavour enhancers. Just pure forequarter and flank. A little salt and pepper is added to season after cooking.
+
+Lettuce: 100% Iceberg Lettuce.
+
+Big Mac Sauce: Water, Rapeseed Oil, Gherkin, Spirit Vinegar, Sugar, Modified Maize Starch, Free Range EGG Yolk, Spices (contain MUSTARD), Salt, Glucose-Fructose Syrup, Thickener (Xanthan Gum), Natural Flavourings, Firming Agent (Calcium Chloride).
+
+Cheddar Cheese Slices: Vegetarian Cheddar (51%) (MILK), Water, Vegetarian Cheese (9%) (MILK), Whey Powder (MILK), Butter (MILK), Emulsifying Salts (Trisodium Citrate, Tripotassium Citrate, Citric Acid), Milk Protein (MILK), Natural Cheese Flavouring (MILK), Salt, Colours (Carotene, Paprika Extract), Anti-Caking Agent (Lecithins).
+
+Pickle Slices: Gherkins, Water, Spirit Vinegar, Salt, Firming Agent (Calcium Chloride), Natural Flavouring, Preservative (Potassium Sorbate).
+
+Onions: 100% Onion.","Wheat, Milk, Sesame, Eggs, Mustard",true,true,
+Quarter Pounder with Cheese,McDonald's,,Fast Food,Burgers,518,31,38,27,13,2,9,1100,202,1 burger,"Quarter Pounder Bun: WHEAT Flour (contains Calcium Carbonate, Iron, Niacin, Thiamin), Water, Sugar, Cream Yeast, SESAME Seeds, Vegetable Oil (Rapeseed, Coconut), Salt, Emulsifier (Mono- and Diacetyl Tartaric Acid Esters of Mono- and Diglycerides of Fatty Acids), Pea Protein, Antioxidant (Ascorbic Acid), Natural Flavouring.
+
+Beef Patty: 100% Pure Beef. A little salt and pepper is added to season after cooking.
+
+Cheddar Cheese Slices: Vegetarian Cheddar (51%) (MILK), Water, Vegetarian Cheese (9%) (MILK), Whey Powder (MILK), Butter (MILK), Emulsifying Salts (Trisodium Citrate, Tripotassium Citrate, Citric Acid), MILK Protein, Natural Cheese Flavouring (MILK), Salt, Colours (Carotene, Paprika Extract), Anti-Caking Agent (Lecithins).
+
+Ketchup: Tomatoes, Spirit Vinegar, Sugar, Salt, Spice & Herb Extracts, Spice.
+
+Mustard: Water, Spirit Vinegar, MUSTARD Seed, Salt, Sugar, Natural Flavouring.
+
+Onions: 100% Onion.
+
+Pickle Slices: Gherkins, Water, Spirit Vinegar, Salt, Firming Agent (Calcium Chloride), Natural Flavouring, Preservative (Potassium Sorbate).","Wheat, Milk, Sesame, Mustard",true,true,
+Double Quarter Pounder with Cheese,McDonald's,,Fast Food,Burgers,740,48,38,43,21,2,9,1300,283,1 burger,"Quarter Pounder Bun: WHEAT Flour (contains Calcium Carbonate, Iron, Niacin, Thiamin), Water, Sugar, Cream Yeast, SESAME Seeds, Vegetable Oil (Rapeseed, Coconut), Salt, Emulsifier (Mono- and Diacetyl Tartaric Acid Esters), Pea Protein, Antioxidant (Ascorbic Acid), Natural Flavouring.
+
+Beef Patties: Two 100% Pure Beef quarter-pound patties. A little salt and pepper is added to season after cooking.
+
+Cheddar Cheese Slices: Vegetarian Cheddar (51%) (MILK), Water, Vegetarian Cheese (9%) (MILK), Whey Powder (MILK), Butter (MILK), Emulsifying Salts, MILK Protein, Salt, Colours (Carotene, Paprika Extract).
+
+Ketchup: Tomatoes, Spirit Vinegar, Sugar, Salt, Spice & Herb Extracts.
+
+Mustard: Water, Spirit Vinegar, MUSTARD Seed, Salt, Sugar, Natural Flavouring.
+
+Onions: 100% Onion.
+
+Pickle Slices: Gherkins, Water, Spirit Vinegar, Salt, Firming Agent (Calcium Chloride), Natural Flavouring, Preservative (Potassium Sorbate).","Wheat, Milk, Sesame, Mustard",true,true,
+McChicken Sandwich,McDonald's,,Fast Food,Chicken,388,15,40,18,2,2,5,780,152,1 sandwich,"McChicken Bun: WHEAT Flour (contains Calcium Carbonate, Iron, Niacin, Thiamin), Water, Sugar, Cream Yeast, SESAME Seeds, Vegetable Oil (Rapeseed, Coconut), Salt, Emulsifier (Mono- and Diacetyl Tartaric Acid Esters of Mono- and Diglycerides of Fatty Acids), Pea Protein, Antioxidant (Ascorbic Acid), Maize Maltodextrin, Natural Flavouring.
+
+Chicken Patty: Chicken Breast Meat (52%), Water, WHEAT Flour, Vegetable Oils (Sunflower, Rapeseed), Modified Starch (Maize), Salt, Flavourings (contain CELERY), WHEAT Starch, WHEAT Gluten, Dextrose, Spices, Raising Agents (Diphosphates, Sodium Bicarbonate), Stabiliser (Sodium Tripolyphosphate), Pepper, Maltodextrin.
+
+Lettuce: 100% Iceberg Lettuce.
+
+Sandwich Sauce: Water, Rapeseed Oil, Spirit Vinegar, Modified Maize Starch, Sugar, Free Range EGG Yolk, Salt, MUSTARD Flour, Concentrated Lemon Juice, Onion Powder, Thickener (Xanthan Gum), Natural Flavourings, Antioxidant (Calcium Disodium EDTA).","Wheat, Sesame, Eggs, Mustard, Celery",true,true,
+Filet-O-Fish,McDonald's,,Fast Food,Fish,329,14,34,15,3,1,5,580,136,1 sandwich,"Filet-O-Fish Bun: WHEAT Flour (contains Calcium Carbonate, Iron, Niacin, Thiamin), Water, Sugar, Cream Yeast, Vegetable Oil (Rapeseed, Coconut), Salt, Emulsifier (Mono- and Diacetyl Tartaric Acid Esters of Mono- and Diglycerides of Fatty Acids), Pea Protein, Antioxidant (Ascorbic Acid), Natural Flavouring.
+
+Fish Fillet: FISH (Alaska Pollock) (52%), Breadcrumb Coating (WHEAT Flour, Water, Potato Starch, Salt, WHEAT Starch, Colours (Paprika Extract, Turmeric Extract), Yeast, Dextrose, WHEAT Gluten, Raising Agent (Ammonium Bicarbonate), Spices (contains CELERY), Spice Extracts).
+
+Cheddar Cheese Slice: Vegetarian Cheddar (51%) (MILK), Water, Vegetarian Cheese (9%) (MILK), Whey Powder (MILK), Butter (MILK), Emulsifying Salts, MILK Protein, Salt, Colours (Carotene, Paprika Extract).
+
+Tartar Sauce: Water, Rapeseed Oil, Gherkin, Spirit Vinegar, Modified Maize Starch, Free Range EGG Yolk, Sugar, Salt, Capers, Thickener (Xanthan Gum), Natural Flavourings, Preservative (Potassium Sorbate), Onion Powder, Spice Extract, Antioxidant (Calcium Disodium EDTA).","Wheat, Fish, Milk, Eggs, Celery",true,true,
+Cheeseburger,McDonald's,,Fast Food,Burgers,301,16,31,12,6,1,7,720,118,1 burger,"Fresh Ground Beef: 100% British Beef, hand-formed into patties. Cooked to order.
+
+American Cheese: Cows' MILK, Milk Fat, Salt, Emulsifiers, Colours (Annatto).
+
+Sesame Seed Bun: WHEAT Flour, Water, Sugar, SESAME Seeds, Yeast, Vegetable Oil, Salt.
+
+Toppings (customisable): Lettuce, Pickles, Tomatoes, Grilled Onions, Grilled Mushrooms, Raw Onions, Jalapeño Peppers, Green Peppers, Ketchup, Mustard, Mayonnaise, Relish, A.1. Steak Sauce, BBQ Sauce, Hot Sauce.","Wheat, Milk, Sesame, Eggs (mayo), Mustard",true,true,
+Double Cheeseburger,McDonald's,,Fast Food,Burgers,445,26,32,23,11,1,7,1050,168,1 burger,"Regular Bun: WHEAT Flour (contains Calcium Carbonate, Iron, Niacin, Thiamin), Water, Sugar, Vegetable Oil (Rapeseed), Yeast, Salt, Emulsifier (E481), WHEAT Gluten, Preservative (Calcium Propionate).
+
+Beef Patties: Two 100% Pure Beef patties. A little salt and pepper is added to season after cooking.
+
+Cheddar Cheese Slices: Vegetarian Cheddar (51%) (MILK), Water, Vegetarian Cheese (9%) (MILK), Whey Powder (MILK), Butter (MILK), Emulsifying Salts, MILK Protein, Salt, Colours.
+
+Ketchup: Tomatoes, Spirit Vinegar, Sugar, Salt, Spice Extracts.
+
+Mustard: Water, Spirit Vinegar, MUSTARD Seed, Salt, Sugar.
+
+Onions: 100% Dehydrated Onion, rehydrated.
+
+Pickle Slices: Gherkins, Water, Spirit Vinegar, Salt, Firming Agent, Natural Flavouring, Preservative.","Wheat, Milk, Mustard",true,true,
+Hamburger,McDonald's,,Fast Food,Burgers,250,13,30,8,3,1,6,510,104,1 burger,"Regular Bun: WHEAT Flour (contains Calcium Carbonate, Iron, Niacin, Thiamin), Water, Sugar, Vegetable Oil (Rapeseed), Yeast, Salt, Emulsifier (E481), WHEAT Gluten, Preservative (Calcium Propionate).
+
+Beef Patty: 100% Pure Beef. A little salt and pepper is added to season after cooking.
+
+Ketchup: Tomatoes, Spirit Vinegar, Sugar, Salt, Spice Extracts.
+
+Mustard: Water, Spirit Vinegar, MUSTARD Seed, Salt, Sugar.
+
+Onions: 100% Dehydrated Onion, rehydrated.
+
+Pickle Slices: Gherkins, Water, Spirit Vinegar, Salt, Firming Agent (Calcium Chloride), Natural Flavouring, Preservative (Potassium Sorbate).","Wheat, Mustard",true,true,
+McDouble,McDonald's,,Fast Food,Burgers,395,23,31,19,9,1,7,920,155,1 burger,"Two beef patties, bun, cheese slice, onions, pickles, ketchup, mustard","Wheat, Milk, Sesame",true,true,
+Big Tasty,McDonald's,,Fast Food,Burgers,812,44,52,48,20,3,11,1200,290,1 burger,"Big Tasty Bun: WHEAT Flour, Water, Sugar, SESAME Seeds, Vegetable Oil, Yeast, Salt, Emulsifiers, WHEAT Gluten, Pea Protein.
+
+Large Beef Patty: 100% Pure Beef (larger patty). A little salt and pepper is added to season after cooking.
+
+Big Tasty Sauce: Rapeseed Oil, Water, Tomato Purée, Spirit Vinegar, Sugar, Free Range EGG Yolk, MUSTARD (Water, Spirit Vinegar, MUSTARD Seed, Salt), Onion, Salt, Modified Maize Starch, Smoke Flavouring, Garlic, Spices, Thickener (Xanthan Gum), Paprika Extract, Caramelised Sugar.
+
+Cheddar Cheese: Vegetarian Cheddar (MILK), Emulsifying Salts, Salt, Colours.
+
+Lettuce: 100% Iceberg Lettuce.
+
+Tomato: Fresh Sliced Tomato.
+
+Onion: Fresh Sliced Onion.","Wheat, Milk, Sesame, Eggs, Mustard",true,true,
+Big Tasty with Bacon,McDonald's,,Fast Food,Burgers,876,49,52,53,22,3,11,1450,315,1 burger,"Large beef patty, sesame bun, bacon, Big Tasty sauce, lettuce, tomato, onions, cheese","Wheat, Milk, Sesame, Eggs",true,true,
+Mayo Chicken,McDonald's,,Fast Food,Chicken,288,11,32,12,1.5,2,4,520,114,1 sandwich,"Mayo Chicken Bun: WHEAT Flour (contains Calcium Carbonate, Iron, Niacin, Thiamin), Water, Sugar, Vegetable Oil (Rapeseed), Yeast, Salt, Emulsifier (E481), WHEAT Gluten, Preservative (Calcium Propionate).
+
+Chicken Patty: Chicken Breast Meat (45%), Water, WHEAT Flour, Vegetable Oil (Rapeseed, Sunflower), Modified Maize Starch, Salt, WHEAT Starch, Dextrose, Spices, Flavour Enhancers (Sodium Phosphates), Raising Agents (Diphosphates, Sodium Bicarbonate), WHEAT Gluten.
+
+Lettuce: 100% Iceberg Lettuce.
+
+Mayonnaise: Rapeseed Oil, Water, Spirit Vinegar, Sugar, Free Range EGG Yolk, Modified Maize Starch, Salt, MUSTARD Flour, Thickener (Xanthan Gum), Antioxidant (Calcium Disodium EDTA).","Wheat, Eggs, Mustard",true,true,
+Crispy Chicken Sandwich,McDonald's,,Fast Food,Chicken,470,26,45,20,3.5,2,7,1100,190,1 sandwich,"Crispy chicken fillet, potato bun, pickles, butter","Wheat, Milk",true,true,
+Spicy Crispy Chicken Sandwich,McDonald's,,Fast Food,Chicken,530,27,46,26,4,2,7,1250,200,1 sandwich,"Spicy crispy chicken fillet, potato bun, pickles, spicy pepper sauce","Wheat, Milk",true,true,
+Chicken McNuggets,McDonald's,,Fast Food,Chicken,259,13,15,16,2.5,1,0,500,96,6 pieces,"Chicken Breast Meat (57%), Water, Vegetable Oils (Sunflower, Rapeseed), WHEAT Flour, Coating (WHEAT Flour, Maize Flour, WHEAT Starch, Salt, Spices, Leavening Agents (Sodium Acid Pyrophosphate, Sodium Bicarbonate), Paprika, Sunflower Oil), Modified Starch (Maize), Salt, Spices, Dextrose, Flavour Enhancers (Sodium Phosphates), Yeast Extract, Stabiliser (Sodium Tripolyphosphate).",Wheat,true,true,"[{""name"": ""1 piece"", ""calories"": 43, ""serving_g"": 16}, {""name"": ""3 pieces"", ""calories"": 130, ""serving_g"": 48}, {""name"": ""4 pieces"", ""calories"": 173, ""serving_g"": 64}, {""name"": ""6 pieces"", ""calories"": 259, ""serving_g"": 96}, {""name"": ""9 pieces"", ""calories"": 389, ""serving_g"": 144}, {""name"": ""20 pieces"", ""calories"": 864, ""serving_g"": 320}]"
+Chicken Selects,McDonald's,,Fast Food,Chicken,345,24,18,20,2.5,1,0,720,117,3 pieces,"Chicken Breast Strips: Chicken Breast Meat (65%), Water, WHEAT Flour, Vegetable Oil (Sunflower, Rapeseed), Modified Maize Starch, Salt, Coating (WHEAT Flour, Maize Flour, WHEAT Starch, Salt, Spices, Paprika, Leavening Agents), Flavourings (contain CELERY), Dextrose, Spices, Stabiliser (Sodium Tripolyphosphate), WHEAT Gluten.
+
+Fried in Vegetable Oil (Rapeseed, Sunflower).","Wheat, Celery",true,true,"[{""name"": ""1 piece"", ""calories"": 115, ""serving_g"": 39}, {""name"": ""3 pieces"", ""calories"": 345, ""serving_g"": 117}, {""name"": ""5 pieces"", ""calories"": 575, ""serving_g"": 195}]"
+Chicken Legend,McDonald's,,Fast Food,Chicken,536,27,48,25,3.5,3,5,1050,210,1 sandwich,"Sourdough-Style Bun: WHEAT Flour (contains Calcium Carbonate, Iron, Niacin, Thiamin), Water, WHEAT Sourdough (WHEAT Flour, Water), Vegetable Oil, Sugar, Yeast, Salt, Emulsifiers.
+
+Chicken Breast Fillet: Chicken Breast Meat (64%), Water, WHEAT Flour, Modified Maize Starch, Salt, Vegetable Oil, Spices, Yeast Extract, Natural Flavouring.
+
+Cool Mayo: Rapeseed Oil, Water, Spirit Vinegar, Free Range EGG Yolk, Sugar, Modified Maize Starch, Salt, Herbs, Natural Flavouring.
+
+Lettuce: 100% Batavia Lettuce.","Wheat, Eggs",true,true,
+French Fries,McDonald's,,Fast Food,Sides,337,4,42,16,2.2,4,0,280,114,Medium,"Potatoes, Vegetable Oil (Sunflower, Rapeseed, in varying proportions), Dextrose (added at the beginning of the potato season). Prepared in the restaurants using a non-hydrogenated vegetable oil. Salt is added after cooking.",,true,true,"[{""name"": ""Small"", ""calories"": 228, ""serving_g"": 80}, {""name"": ""Medium"", ""calories"": 337, ""serving_g"": 114}, {""name"": ""Large"", ""calories"": 444, ""serving_g"": 150}]"
+Mozzarella Dippers (3 pieces),McDonald's,,Fast Food,Sides,186,8,16,10,5,1,1,380,60,3 pieces,"Mozzarella cheese, breadcrumb coating","Wheat, Milk",true,true,
+Hash Brown,McDonald's,,Fast Food,Breakfast,138,1,14,9,1,1,0,310,56,1 hash brown,"Potatoes (85%), Vegetable Oil (Sunflower, Rapeseed), Dehydrated Potato, Salt, Dextrose, Stabilisers (Diphosphates, Sodium Tripolyphosphate), Pepper Extract.",,true,true,
+Side Salad,McDonald's,,Fast Food,Sides,15,1,2,0,0,1,2,10,80,1 salad,"Mixed leaves, cherry tomatoes",,true,true,
+Carrot Bag,McDonald's,,Fast Food,Sides,16,0.3,3,0.1,0,1,2,25,40,1 bag,Carrot sticks,,true,true,
+Fruit Bag,McDonald's,,Fast Food,Sides,34,0.4,8,0.1,0,1.2,7,2,80,1 bag,"Apple slices, grapes",,true,true,
+Sausage & Egg McMuffin,McDonald's,,Fast Food,Breakfast,430,20,28,26,9,2,2,890,163,1 muffin,"English muffin, sausage patty, egg, cheese","Wheat, Milk, Eggs",true,true,
+Bacon & Egg McMuffin,McDonald's,,Fast Food,Breakfast,295,17,27,12,4.5,2,2,750,137,1 muffin,"English muffin, bacon, egg, cheese","Wheat, Milk, Eggs",true,true,
+Egg McMuffin,McDonald's,,Fast Food,Breakfast,286,17,28,11,5,2,2,730,137,1 muffin,"English muffin, egg, ham, cheese","Wheat, Milk, Eggs",true,true,
+Double Sausage & Egg McMuffin,McDonald's,,Fast Food,Breakfast,565,28,29,38,14,2,2,1200,210,1 muffin,"English muffin, two sausage patties, egg, cheese","Wheat, Milk, Eggs",true,true,
+Bacon Roll,McDonald's,,Fast Food,Breakfast,295,14,37,10,3.5,2,4,850,110,1 roll,"Soft White Roll: WHEAT Flour (Calcium, Iron, Niacin, Thiamin), Water, Yeast, Sugar, Rapeseed Oil, Salt, WHEAT Gluten.
+
+Smoked Bacon: Pork Belly, Water, Salt, Dextrose, Smoke Flavouring, Antioxidant (Sodium Ascorbate), Preservative (Sodium Nitrite).
+
+Ketchup/Brown Sauce: Available upon request.",Wheat,true,true,
+Pancakes & Syrup (3),McDonald's,,Fast Food,Breakfast,491,9,84,13,3,2,36,620,178,3 pancakes with syrup,"Pancakes (wheat flour, egg, milk), maple syrup","Wheat, Milk, Eggs",true,true,
+Pancakes & Sausage,McDonald's,,Fast Food,Breakfast,578,16,84,20,6,2,36,870,220,3 pancakes with sausage,"Pancakes, maple syrup, sausage patty","Wheat, Milk, Eggs",true,true,
+Breakfast Wrap,McDonald's,,Fast Food,Breakfast,465,20,33,28,10,2,2,1050,175,1 wrap,"Tortilla, sausage, egg, bacon, cheese, potato rosti","Wheat, Milk, Eggs",true,true,
+Cheesy Bacon Flatbread,McDonald's,,Fast Food,Breakfast,355,17,28,19,8,1,3,890,120,1 flatbread,"Flatbread, bacon, cheese, egg","Wheat, Milk, Eggs",true,true,
+Crispy Chicken & Bacon Salad,McDonald's,,Fast Food,Salads,298,27,8,17,4,2,4,890,260,1 salad,"Mixed leaves, crispy chicken, bacon, tomatoes, cheese","Wheat, Milk",true,true,
+Grilled Chicken Salad,McDonald's,,Fast Food,Salads,133,22,4,3,1,2,3,480,205,1 salad,"Mixed leaves, grilled chicken, tomatoes, cucumber",,true,true,
+The Chicken BBQ One (Wrap),McDonald's,,Fast Food,Wraps,500,25,48,23,6,3,8,1100,225,1 wrap,"Tortilla wrap, chicken, BBQ sauce, bacon, cheese, lettuce","Wheat, Milk",true,true,
+The Spicy Veggie One (Wrap),McDonald's,,Fast Food,Wraps,420,12,52,18,5,5,6,950,200,1 wrap,"Tortilla, veggie dippers, spicy relish, lettuce, cheese","Wheat, Milk, Eggs",true,true,
+McFlurry (Oreo),McDonald's,,Fast Food,Desserts,339,8,51,11,7,1,42,200,180,Regular McFlurry,"Soft Serve Ice Cream: MILK, Sugar, Cream (MILK), Glucose Syrup, Whey Powder (MILK), Emulsifier (E471), Stabilisers (E410, E412, E407), Natural Vanilla Flavouring.
+
+Oreo Cookie Pieces: WHEAT Flour, Sugar, Vegetable Fats (Palm, Palm Kernel), Fat-Reduced Cocoa Powder, WHEAT Starch, Glucose-Fructose Syrup, Raising Agents (Sodium Bicarbonate, Ammonium Bicarbonate), Salt, Emulsifiers (SOYA Lecithin), Flavouring.","Milk, Wheat, Soya",true,true,
+McFlurry (Maltesers),McDonald's,,Fast Food,Desserts,361,8,54,12,8,0.5,46,180,180,Regular McFlurry,"Soft serve ice cream, Maltesers pieces, Malteser sauce","Milk, Wheat, Barley",true,true,
+McFlurry (Crunchie),McDonald's,,Fast Food,Desserts,368,7,56,12,8,0,48,170,180,Regular McFlurry,"Soft serve ice cream, Crunchie pieces, caramel sauce","Milk, Wheat, Barley",true,true,
+Apple Pie,McDonald's,,Fast Food,Desserts,237,2,31,12,5,1,13,170,80,1 pie,"Apple filling, pastry crust (wheat flour, butter)","Wheat, Milk",true,true,
+Chocolate Donut,McDonald's,,Fast Food,Desserts,256,4,32,12,5,1,14,220,74,1 donut,"Donut dough, chocolate icing","Wheat, Milk, Eggs, Soya",true,true,
+Millionaire's Donut,McDonald's,,Fast Food,Desserts,325,4,40,16,8,1,22,210,86,1 donut,"Donut, caramel filling, chocolate topping, shortbread pieces","Wheat, Milk, Eggs, Soya",true,true,
+Vanilla Milkshake (Medium),McDonald's,,Fast Food,Drinks,389,10,62,10,7,0,55,200,400,Medium shake,"Milk, vanilla syrup, whipped cream",Milk,true,true,
+Chocolate Milkshake (Medium),McDonald's,,Fast Food,Drinks,403,10,66,10,7,1,57,210,400,Medium shake,"Milk, chocolate syrup, whipped cream",Milk,true,true,
+Strawberry Milkshake (Medium),McDonald's,,Fast Food,Drinks,395,10,64,10,7,0,56,195,400,Medium shake,"Milk, strawberry syrup, whipped cream",Milk,true,true,
+Soft Serve Cone,McDonald's,,Fast Food,Desserts,150,4,24,4,3,0,18,80,90,1 cone,"Soft serve ice cream, wafer cone","Milk, Wheat",true,true,
+Sundae (Chocolate),McDonald's,,Fast Food,Desserts,290,6,47,8,5,1,40,130,175,1 sundae,"Soft serve ice cream, chocolate sauce",Milk,true,true,
+Sundae (Toffee),McDonald's,,Fast Food,Desserts,298,6,49,8,5,0,42,150,175,1 sundae,"Soft serve ice cream, toffee sauce",Milk,true,true,
+Original Recipe Chicken,KFC,,Fast Food,Chicken,150,11,7,9,2,0,0,420,57,1 piece,"Chicken (various cuts including thigh, drumstick, wing, breast). 
+
+Original Recipe Coating: WHEAT Flour, Salt, Monosodium Glutamate, Spices (contains the secret blend of 11 herbs and spices), Dehydrated Garlic, Modified MILK Ingredients, Dried EGG White (EGG White, Baker's Yeast, Citric Acid).
+
+Cooked in Canola Oil (with Dimethylpolysiloxane as an antifoaming agent).","Wheat, Milk, Eggs",true,true,"[{""name"": ""1 piece"", ""calories"": 150, ""serving_g"": 57}, {""name"": ""2 pieces"", ""calories"": 300, ""serving_g"": 114}, {""name"": ""3 pieces"", ""calories"": 450, ""serving_g"": 171}]"
+Hot Wings,KFC,,Fast Food,Chicken,390,24,21,24,5,1,0,1140,136,6 pieces,"Chicken Wings.
+
+Spicy Coating: WHEAT Flour, Salt, Spices (including Cayenne Pepper), Monosodium Glutamate, Garlic Powder, Modified Starch, Dextrose, Raising Agents, MILK Solids.
+
+Cooked in Canola Oil.","Wheat, Milk",true,true,"[{""name"": ""3 pieces"", ""calories"": 195, ""serving_g"": 68}, {""name"": ""6 pieces"", ""calories"": 390, ""serving_g"": 136}, {""name"": ""10 pieces"", ""calories"": 650, ""serving_g"": 227}, {""name"": ""20 pieces"", ""calories"": 1300, ""serving_g"": 454}]"
+Popcorn Chicken,KFC,,Fast Food,Chicken,285,17,18,16,3,1,0,750,90,Regular,"Chicken Breast Pieces, WHEAT Flour, Water, Salt, Spices, Modified Starch, Dextrose, Raising Agents (Sodium Bicarbonate, Sodium Acid Pyrophosphate), Garlic Powder, Flavour Enhancer (Monosodium Glutamate), MILK Solids, EGG.
+
+Cooked in Canola Oil.","Wheat, Milk, Eggs",true,true,"[{""name"": ""Regular"", ""calories"": 285, ""serving_g"": 90}, {""name"": ""Large"", ""calories"": 475, ""serving_g"": 150}]"
+Boneless Banquet,KFC,,Fast Food,Chicken,675,37,58,32,6,4,2,1650,280,1 meal,"2 fillets, regular popcorn chicken, regular fries, drink",Wheat,true,true,
+Zinger Burger,KFC,,Fast Food,Burgers,450,22,40,22,3.5,2,5,1150,182,1 burger,"Zinger Fillet: Chicken Breast Fillet, WHEAT Flour, Water, Salt, Spices (including cayenne pepper), Modified Starch, Dextrose, Raising Agents, Garlic Powder, Flavour Enhancer (E621), MILK Solids.
+
+Sesame Seed Bun: WHEAT Flour, Water, Sugar, Vegetable Oil, SESAME Seeds, Yeast, Salt, Emulsifiers.
+
+Lettuce: Fresh Iceberg Lettuce.
+
+Mayonnaise: Rapeseed Oil, Water, Spirit Vinegar, EGG Yolk, Sugar, Salt, MUSTARD Flour, Stabiliser.","Wheat, Milk, Sesame, Eggs, Mustard",true,true,
+Zinger Stacker,KFC,,Fast Food,Burgers,720,40,46,41,10,2,6,2100,290,1 burger,"Two spicy chicken fillets, burger bun, cheese, hash brown, supercharger sauce","Wheat, Milk, Eggs",true,true,
+Tower Burger,KFC,,Fast Food,Burgers,620,28,52,32,5,3,6,1400,248,1 burger,"Original Recipe fillet, burger bun, hash brown, cheese, lettuce, mayo","Wheat, Milk, Eggs",true,true,
+Fillet Burger,KFC,,Fast Food,Burgers,440,20,40,21,3,2,5,980,175,1 burger,"Original Recipe Fillet: Chicken Breast Fillet, WHEAT Flour, Salt, Spices (11 herbs and spices), Monosodium Glutamate, Dehydrated Garlic, Modified MILK Ingredients, Dried EGG White.
+
+Sesame Seed Bun: WHEAT Flour, Water, Sugar, SESAME Seeds, Vegetable Oil, Yeast, Salt, Emulsifiers.
+
+Lettuce: Fresh Iceberg Lettuce.
+
+Mayonnaise: Rapeseed Oil, Water, Spirit Vinegar, EGG Yolk, Sugar, Salt, MUSTARD Flour.","Wheat, Milk, Eggs, Sesame, Mustard",true,true,
+Original Recipe Fillet,KFC,,Fast Food,Chicken,260,16,16,15,2.5,1,0,690,100,1 fillet,"Chicken breast fillet, Original Recipe coating",Wheat,true,true,
+Zinger Fillet,KFC,,Fast Food,Chicken,275,17,17,16,2.5,1,0,850,100,1 fillet,"Chicken breast fillet, spicy Zinger coating",Wheat,true,true,
+Mini Fillet Burger,KFC,,Fast Food,Burgers,280,14,28,12,2,1,4,580,110,1 burger,"Mini chicken fillet, bun, lettuce, mayo","Wheat, Eggs",true,true,
+Mighty Bucket for One,KFC,,Fast Food,Chicken,1220,56,95,66,13,6,5,2800,450,1 bucket,"2 pieces chicken, fillet burger, regular popcorn chicken, regular fries, regular drink","Wheat, Eggs",true,true,
+Chicken Fries,KFC,,Fast Food,Chicken,260,15,18,14,2,1,0,580,80,6 pieces,"Chicken breast strips, seasoned coating",Wheat,true,true,
+Fries,KFC,,Fast Food,Sides,225,3,30,10,1.5,3,0,520,85,Regular,"Potatoes, Vegetable Oil, Seasoning (Salt, Paprika, Garlic Powder, Onion Powder, Spices). May contain: MILK, SOY.",,true,true,"[{""name"": ""Regular"", ""calories"": 225, ""serving_g"": 85}, {""name"": ""Large"", ""calories"": 340, ""serving_g"": 128}]"
+Gravy (Regular),KFC,,Fast Food,Sides,72,2,9,3,0.8,0,1,420,100,Regular pot,"Chicken Stock, WHEAT Flour, Vegetable Oil, Salt, Chicken Fat, Sugar, Flavour Enhancers (E621, E635), Yeast Extract, Onion Powder, Spices, Caramelised Sugar, CELERY Extract, Colours (E150c, E150d).","Wheat, Celery",true,true,
+Coleslaw (Regular),KFC,,Fast Food,Sides,138,1,11,10,1,2,9,180,100,Regular pot,"White Cabbage, Carrot, Onion, Mayonnaise Dressing (Rapeseed Oil, Water, Spirit Vinegar, Sugar, EGG Yolk, Modified Maize Starch, Salt, MUSTARD Flour, Stabilisers, Preservative).","Eggs, Mustard",true,true,
+Corn on the Cob (Regular),KFC,,Fast Food,Sides,150,4,24,5,1.5,2,6,10,130,1 cob,"Sweetcorn, butter",Milk,true,true,
+Beans (Regular),KFC,,Fast Food,Sides,115,6,18,1,0.2,5,7,600,130,Regular pot,Baked beans in tomato sauce,,true,true,
+Mashed Potato with Gravy,KFC,,Fast Food,Sides,130,3,18,5,1.5,2,1,580,120,Regular pot,"Mashed potato, chicken gravy","Milk, Wheat",true,true,
+Krushems Oreo,KFC,,Fast Food,Desserts,295,6,44,10,6,1,37,180,250,1 Krushem,"Vanilla ice cream, milk, Oreo pieces","Milk, Wheat, Soya",true,true,
+Krushems Maltesers,KFC,,Fast Food,Desserts,310,6,47,11,7,0.5,40,160,250,1 Krushem,"Vanilla ice cream, milk, Maltesers pieces","Milk, Wheat, Barley",true,true,
+Rice Box Zinger,KFC,,Fast Food,Rice,510,22,62,19,3,3,5,1350,300,1 box,"Rice, Zinger fillet pieces, salsa, sour cream","Wheat, Milk",true,true,
+Rice Box Original,KFC,,Fast Food,Rice,495,21,60,18,3,3,4,1200,295,1 box,"Rice, Original Recipe fillet pieces, salsa, sour cream","Wheat, Milk",true,true,
+Twister Wrap,KFC,,Fast Food,Wraps,520,23,47,26,5,3,6,1380,230,1 wrap,"Tortilla, chicken fillet, lettuce, tomato, cheese, pepper mayo","Wheat, Milk, Eggs",true,true,
+Zinger Twister Wrap,KFC,,Fast Food,Wraps,535,24,48,27,5,3,6,1520,230,1 wrap,"Tortilla, Zinger fillet, lettuce, tomato, cheese, pepper mayo","Wheat, Milk, Eggs",true,true,
+Whopper,Burger King,,Fast Food,Burgers,657,28,49,40,12,2,11,980,270,1 burger,"Sesame Seed Bun: WHEAT Flour, Water, Sugar, Vegetable Oil, SESAME Seeds, Yeast, Salt, Dough Conditioners (including Calcium Peroxide, Potassium Iodate), DATEM, Mono and Diglycerides of Fatty Acids.
+
+Beef Patty: 100% British & Irish Beef, flame-grilled. Seasoned with Salt and Black Pepper Blend (Salt, Black Pepper, Canola Oil, Silicon Dioxide).
+
+Mayonnaise: Rapeseed Oil, Water, Spirit Vinegar, Sugar, EGG Yolk, Modified Starch, Salt, MUSTARD Flour, Stabilisers.
+
+Ketchup: Tomatoes, Spirit Vinegar, Sugar, Salt, Onion Powder, Spice Extract.
+
+Lettuce: Fresh Iceberg Lettuce.
+
+Tomatoes: Fresh Sliced Tomatoes.
+
+Pickles: Cucumbers, Water, Distilled Vinegar, Salt, Natural Flavours, Calcium Chloride, Potassium Sorbate.
+
+Onions: Fresh Sliced White Onions.","Wheat, Sesame, Eggs, Mustard",true,true,
+Whopper with Cheese,Burger King,,Fast Food,Burgers,740,33,50,46,17,2,11,1270,303,1 burger,"Sesame Seed Bun: WHEAT Flour, Water, Sugar, Vegetable Oil, SESAME Seeds, Yeast, Salt, Dough Conditioners.
+
+Beef Patty: 100% British & Irish Beef, flame-grilled. Seasoned with Salt and Black Pepper.
+
+American Cheese: MILK, Water, Milk Fat, Milk Protein, Salt, Emulsifying Salts, Colours.
+
+Mayonnaise: Rapeseed Oil, Water, Spirit Vinegar, Sugar, EGG Yolk, Modified Starch, Salt, MUSTARD Flour.
+
+Ketchup: Tomatoes, Spirit Vinegar, Sugar, Salt, Spice Extract.
+
+Lettuce, Tomatoes, Pickles, Onions: Fresh vegetables.","Wheat, Milk, Sesame, Eggs, Mustard",true,true,
+Double Whopper,Burger King,,Fast Food,Burgers,853,46,49,54,19,2,11,1050,351,1 burger,"Sesame Seed Bun: WHEAT Flour, Water, Sugar, Vegetable Oil, SESAME Seeds, Yeast, Salt, Dough Conditioners.
+
+Beef Patties: Two 100% British & Irish Beef patties, flame-grilled. Seasoned with Salt and Pepper.
+
+Mayonnaise: Rapeseed Oil, Water, Spirit Vinegar, Sugar, EGG Yolk, Modified Starch, Salt, MUSTARD Flour.
+
+Ketchup: Tomatoes, Spirit Vinegar, Sugar, Salt.
+
+Lettuce, Tomatoes, Pickles, Onions: Fresh vegetables.","Wheat, Sesame, Eggs, Mustard",true,true,
+Double Whopper with Cheese,Burger King,,Fast Food,Burgers,1012,55,51,65,27,2,12,1630,417,1 burger,"Two flame-grilled beef patties, sesame seed bun, two cheese slices, tomatoes, lettuce, mayo","Wheat, Milk, Sesame, Eggs",true,true,
+Bacon Double Cheeseburger,Burger King,,Fast Food,Burgers,392,24,25,22,10,1,5,860,155,1 burger,"Two beef patties, bacon, cheese, bun, ketchup, mustard, pickles","Wheat, Milk, Sesame",true,true,
+Cheeseburger,Burger King,,Fast Food,Burgers,280,13,27,13,6,1,6,560,113,1 burger,"Fresh Ground Beef: 100% British Beef, hand-formed into patties. Cooked to order.
+
+American Cheese: Cows' MILK, Milk Fat, Salt, Emulsifiers, Colours (Annatto).
+
+Sesame Seed Bun: WHEAT Flour, Water, Sugar, SESAME Seeds, Yeast, Vegetable Oil, Salt.
+
+Toppings (customisable): Lettuce, Pickles, Tomatoes, Grilled Onions, Grilled Mushrooms, Raw Onions, Jalapeño Peppers, Green Peppers, Ketchup, Mustard, Mayonnaise, Relish, A.1. Steak Sauce, BBQ Sauce, Hot Sauce.","Wheat, Milk, Sesame, Eggs (mayo), Mustard",true,true,
+Double Cheeseburger,Burger King,,Fast Food,Burgers,362,21,27,19,9,1,6,700,147,1 burger,"Regular Bun: WHEAT Flour (contains Calcium Carbonate, Iron, Niacin, Thiamin), Water, Sugar, Vegetable Oil (Rapeseed), Yeast, Salt, Emulsifier (E481), WHEAT Gluten, Preservative (Calcium Propionate).
+
+Beef Patties: Two 100% Pure Beef patties. A little salt and pepper is added to season after cooking.
+
+Cheddar Cheese Slices: Vegetarian Cheddar (51%) (MILK), Water, Vegetarian Cheese (9%) (MILK), Whey Powder (MILK), Butter (MILK), Emulsifying Salts, MILK Protein, Salt, Colours.
+
+Ketchup: Tomatoes, Spirit Vinegar, Sugar, Salt, Spice Extracts.
+
+Mustard: Water, Spirit Vinegar, MUSTARD Seed, Salt, Sugar.
+
+Onions: 100% Dehydrated Onion, rehydrated.
+
+Pickle Slices: Gherkins, Water, Spirit Vinegar, Salt, Firming Agent, Natural Flavouring, Preservative.","Wheat, Milk, Mustard",true,true,
+Hamburger,Burger King,,Fast Food,Burgers,239,11,26,10,4,1,6,380,99,1 burger,"Regular Bun: WHEAT Flour (contains Calcium Carbonate, Iron, Niacin, Thiamin), Water, Sugar, Vegetable Oil (Rapeseed), Yeast, Salt, Emulsifier (E481), WHEAT Gluten, Preservative (Calcium Propionate).
+
+Beef Patty: 100% Pure Beef. A little salt and pepper is added to season after cooking.
+
+Ketchup: Tomatoes, Spirit Vinegar, Sugar, Salt, Spice Extracts.
+
+Mustard: Water, Spirit Vinegar, MUSTARD Seed, Salt, Sugar.
+
+Onions: 100% Dehydrated Onion, rehydrated.
+
+Pickle Slices: Gherkins, Water, Spirit Vinegar, Salt, Firming Agent (Calcium Chloride), Natural Flavouring, Preservative (Potassium Sorbate).","Wheat, Mustard",true,true,
+Big King,Burger King,,Fast Food,Burgers,503,28,30,30,12,1,7,870,192,1 burger,"Two beef patties, three-piece bun, lettuce, onions, pickles, cheese, Stacker sauce","Wheat, Milk, Sesame, Eggs",true,true,
+Chicken Royale,Burger King,,Fast Food,Chicken,570,22,48,32,5,2,7,1040,195,1 sandwich,"Sesame Seed Bun: WHEAT Flour, Water, Sugar, Vegetable Oil, SESAME Seeds, Yeast, Salt, Emulsifiers.
+
+Chicken Fillet: Chicken Breast Meat, Water, WHEAT Flour, Vegetable Oil, Modified Starch, Salt, Spices, Dextrose, Leavening Agents.
+
+Mayonnaise: Rapeseed Oil, Water, Spirit Vinegar, Sugar, EGG Yolk, Modified Starch, Salt, MUSTARD Flour, Stabilisers.
+
+Lettuce: Fresh Iceberg Lettuce.","Wheat, Sesame, Eggs, Mustard",true,true,
+Crispy Chicken Sandwich,Burger King,,Fast Food,Chicken,490,20,44,26,4,2,6,920,175,1 sandwich,"Crispy chicken fillet, bun, lettuce, mayo","Wheat, Eggs",true,true,
+Chicken Nuggets,Burger King,,Fast Food,Chicken,260,12,17,16,3,1,0,480,90,6 pieces,"Chicken Breast Meat (54%), Water, WHEAT Flour, Vegetable Oil, Modified Starch, Salt, Dextrose, Spices, Raising Agents, Yeast Extract, Natural Flavouring.
+
+May contain: EGG, MILK, SOY.",Wheat,true,true,"[{""name"": ""4 pieces"", ""calories"": 173, ""serving_g"": 60}, {""name"": ""6 pieces"", ""calories"": 260, ""serving_g"": 90}, {""name"": ""9 pieces"", ""calories"": 390, ""serving_g"": 135}]"
+Veggie Bean Burger,Burger King,,Fast Food,Vegetarian,454,13,53,21,5,6,8,920,195,1 burger,"Bean patty, sesame seed bun, lettuce, mayo, tomato, onion","Wheat, Milk, Sesame, Eggs",true,true,
+Plant-Based Whopper,Burger King,,Fast Food,Vegetarian,630,23,53,36,9,4,11,1080,265,1 burger,"Plant-based patty, sesame seed bun, tomatoes, lettuce, mayo, ketchup, pickles, onions","Wheat, Soya, Sesame, Eggs",true,true,
+Fries,Burger King,,Fast Food,Sides,340,4,43,17,3,4,0,470,127,Medium,"Potatoes, vegetable oil, salt",,true,true,"[{""name"": ""Small"", ""calories"": 240, ""serving_g"": 89}, {""name"": ""Medium"", ""calories"": 340, ""serving_g"": 127}, {""name"": ""Large"", ""calories"": 430, ""serving_g"": 160}]"
+Onion Rings (Regular),Burger King,,Fast Food,Sides,310,4,37,16,3,2,5,540,91,Regular onion rings,"Onion rings, batter coating","Wheat, Milk",true,true,
+Mozzarella Sticks (6 pieces),Burger King,,Fast Food,Sides,330,14,29,18,7,1,2,760,105,6 pieces,"Mozzarella cheese, breaded coating","Wheat, Milk",true,true,
+Bacon King,Burger King,,Fast Food,Burgers,1150,61,49,79,32,2,10,2150,354,1 burger,"Sesame Seed Bun: WHEAT Flour, Water, Sugar, Vegetable Oil, SESAME Seeds, Yeast, Salt, Emulsifiers.
+
+Beef Patties: 100% British & Irish Beef, flame-grilled. Seasoned with Salt and Pepper.
+
+Thick-Cut Bacon: Pork Belly, Water, Salt, Sugar, Smoke Flavouring, Sodium Nitrite.
+
+American Cheese: MILK, Whey Protein, Milk Fat, Milk Protein, Salt, Emulsifying Salts, Colours.
+
+Mayonnaise: Rapeseed Oil, Water, Spirit Vinegar, Sugar, EGG Yolk, Modified Starch, Salt, MUSTARD Flour.
+
+Ketchup: Tomatoes, Spirit Vinegar, Sugar, Salt, Spices.","Wheat, Milk, Sesame, Eggs, Mustard",true,true,
+Steakhouse Angus,Burger King,,Fast Food,Burgers,740,38,52,42,17,2,10,1180,275,1 burger,"Angus beef patty, crispy onions, bacon, A1 sauce, American cheese, brioche bun","Wheat, Milk, Sesame, Eggs",true,true,
+Hash Browns (6 pieces),Burger King,,Fast Food,Breakfast,240,2,23,15,2,2,0,580,75,6 pieces,"Shredded potato, coating",,true,true,
+King Fusion Oreo,Burger King,,Fast Food,Desserts,295,6,45,10,6,1,35,170,180,1 King Fusion,"Soft serve ice cream, Oreo cookie pieces","Milk, Wheat, Soya",true,true,
+Sundae Chocolate,Burger King,,Fast Food,Desserts,280,5,42,10,7,1,35,120,160,1 sundae,"Soft serve ice cream, chocolate sauce",Milk,true,true,
+Italian BMT (6 inch),Subway,,Fast Food,Sandwiches,410,20,44,17,6,4,7,1280,225,6 inch sub,"Italian White Bread: WHEAT Flour, Water, Yeast, Sugar, Vegetable Oil, Salt, WHEAT Gluten, Dough Conditioners.
+
+Genoa Salami: Pork, Beef, Salt, Dextrose, Spices, Wine, Sodium Erythorbate, Garlic, Lactic Acid Starter Culture, Sodium Nitrite.
+
+Pepperoni: Pork, Beef, Salt, Spices, Dextrose, Lactic Acid Starter Culture, Oleoresin of Paprika, Sodium Nitrite, Natural Flavourings.
+
+Black Forest Ham: Pork, Water, Salt, Sugar, Sodium Phosphates, Sodium Erythorbate, Sodium Nitrite.
+
+Cheese: MILK, Salt, Microbial Enzymes, Annatto.
+
+Fresh Vegetables: Lettuce, Tomatoes, Onions, Green Peppers, Cucumbers.","Wheat, Milk",true,true,
+Italian BMT (Footlong),Subway,,Fast Food,Sandwiches,820,40,88,34,12,8,14,2560,450,Footlong sub,"Italian White Bread: WHEAT Flour, Water, Yeast, Sugar, Vegetable Oil, Salt, WHEAT Gluten, Dough Conditioners.
+
+Genoa Salami: Pork, Beef, Salt, Dextrose, Spices, Wine, Sodium Erythorbate, Garlic, Lactic Acid Starter Culture, Sodium Nitrite.
+
+Pepperoni: Pork, Beef, Salt, Spices, Dextrose, Lactic Acid Starter Culture, Oleoresin of Paprika, Sodium Nitrite.
+
+Black Forest Ham: Pork, Water, Salt, Sugar, Sodium Phosphates, Sodium Erythorbate, Sodium Nitrite.
+
+Cheese: MILK, Salt, Microbial Enzymes.
+
+Fresh Vegetables: Lettuce, Tomatoes, Onions, Green Peppers, Cucumbers.","Wheat, Milk",true,true,
+Chicken Teriyaki (6 inch),Subway,,Fast Food,Sandwiches,370,28,50,6,1.5,4,15,950,270,6 inch sub,"Italian White Bread: WHEAT Flour, Water, Yeast, Sugar, Vegetable Oil, Salt, WHEAT Gluten, Dough Conditioners.
+
+Chicken Strips: Chicken Breast, Water, Isolated SOY Protein, Modified Food Starch, Salt, Sodium Phosphates.
+
+Teriyaki Glaze: Water, Brown Sugar, SOY Sauce (Water, WHEAT, SOYBEANS, Salt), Corn Starch, Rice Wine Vinegar, Ginger, Garlic.
+
+Fresh Vegetables: Lettuce, Tomatoes, Onions, Green Peppers.","Wheat, Soya",true,true,
+Chicken Teriyaki (Footlong),Subway,,Fast Food,Sandwiches,740,56,100,12,3,8,30,1900,540,Footlong sub,"Italian bread, teriyaki glazed chicken strips, lettuce, tomato, onion, green pepper","Wheat, Soya",true,true,
+Meatball Marinara (6 inch),Subway,,Fast Food,Sandwiches,480,22,53,20,8,5,13,1100,290,6 inch sub,"Italian White Bread: WHEAT Flour, Water, Yeast, Sugar, Vegetable Oil, Salt, WHEAT Gluten, Dough Conditioners.
+
+Meatballs: Beef, Pork, Water, Breadcrumbs (WHEAT Flour, Sugar, Yeast, Salt), Soy Protein Concentrate, Parmesan Cheese (MILK), Salt, Spices, Garlic Powder, Onion Powder.
+
+Marinara Sauce: Tomatoes, Tomato Paste, Water, Sugar, Spices, Garlic, Onion, Salt, Olive Oil, Natural Flavourings.
+
+Cheese: MILK, Salt, Microbial Enzymes, Annatto.","Wheat, Milk, Eggs, Soya",true,true,
+Meatball Marinara (Footlong),Subway,,Fast Food,Sandwiches,960,44,106,40,16,10,26,2200,580,Footlong sub,"Italian bread, meatballs, marinara sauce, cheese","Wheat, Milk, Eggs, Soya",true,true,
+Tuna (6 inch),Subway,,Fast Food,Sandwiches,480,20,44,25,4,4,6,640,250,6 inch sub,"Italian White Bread: WHEAT Flour, Water, Yeast, Sugar, Vegetable Oil, Salt, WHEAT Gluten, Dough Conditioners.
+
+Tuna Salad: Skipjack Tuna (FISH), Mayonnaise (Rapeseed Oil, Water, Spirit Vinegar, EGG Yolk, Sugar, Salt, MUSTARD Flour), Salt.
+
+Fresh Vegetables: Lettuce, Tomatoes, Onions, Cucumbers.","Wheat, Fish, Eggs, Mustard",true,true,
+Steak & Cheese (6 inch),Subway,,Fast Food,Sandwiches,380,26,45,11,5,4,8,1030,260,6 inch sub,"Italian White Bread: WHEAT Flour, Water, Yeast, Sugar, Vegetable Oil, Salt, WHEAT Gluten, Dough Conditioners.
+
+Shaved Steak: Beef, Water, Salt, Sodium Phosphates, Modified Food Starch.
+
+Cheese: MILK, Salt, Microbial Enzymes.
+
+Peppers, Onions: Fresh vegetables.","Wheat, Milk",true,true,
+Steak & Cheese (Footlong),Subway,,Fast Food,Sandwiches,760,52,90,22,10,8,16,2060,520,Footlong sub,"Italian bread, shaved steak, cheese, peppers, onions","Wheat, Milk",true,true,
+Turkey Breast (6 inch),Subway,,Fast Food,Sandwiches,280,20,43,4,1,4,6,820,225,6 inch sub,"Italian bread, turkey breast, lettuce, tomato, onion",Wheat,true,true,
+Ham (6 inch),Subway,,Fast Food,Sandwiches,290,18,44,5,1.5,4,7,1010,220,6 inch sub,"Italian bread, ham, lettuce, tomato, onion",Wheat,true,true,
+Veggie Delite (6 inch),Subway,,Fast Food,Sandwiches,230,8,44,3,0.5,5,6,310,170,6 inch sub,"Italian bread, lettuce, tomato, cucumber, green pepper, onion",Wheat,true,true,
+Veggie Patty (6 inch),Subway,,Fast Food,Sandwiches,390,16,54,13,5,6,8,810,255,6 inch sub,"Italian bread, veggie patty, cheese, lettuce, tomato","Wheat, Milk, Soya",true,true,
+Chicken & Bacon Ranch Melt (6 inch),Subway,,Fast Food,Sandwiches,570,36,47,27,9,4,8,1430,300,6 inch sub,"Italian bread, chicken strips, bacon, cheese, ranch dressing","Wheat, Milk, Eggs",true,true,
+Roast Beef (6 inch),Subway,,Fast Food,Sandwiches,320,25,43,6,2,4,7,700,230,6 inch sub,"Italian bread, roast beef, lettuce, tomato, onion",Wheat,true,true,
+Spicy Italian (6 inch),Subway,,Fast Food,Sandwiches,500,21,44,27,10,4,6,1590,225,6 inch sub,"Italian bread, pepperoni, salami, cheese, jalapeños, lettuce","Wheat, Milk",true,true,
+Subway Club (6 inch),Subway,,Fast Food,Sandwiches,310,24,44,5,1.5,4,7,1020,240,6 inch sub,"Italian bread, turkey, ham, roast beef, lettuce, tomato",Wheat,true,true,
+Cookie (Chocolate Chip),Subway,,Fast Food,Desserts,220,2,30,10,5,1,18,160,45,1 cookie,"Wheat flour, chocolate chips, butter, sugar, eggs","Wheat, Milk, Eggs, Soya",true,true,
+Cookie (Double Chocolate),Subway,,Fast Food,Desserts,210,3,30,10,5,1,17,170,45,1 cookie,"Wheat flour, cocoa, chocolate chips, butter, sugar, eggs","Wheat, Milk, Eggs, Soya",true,true,
+Cookie (White Chip Macadamia),Subway,,Fast Food,Desserts,220,2,29,11,5,0,17,160,45,1 cookie,"Wheat flour, white chocolate chips, macadamia nuts, butter, sugar","Wheat, Milk, Eggs, Tree Nuts",true,true,
+Hash Browns,Subway,,Fast Food,Breakfast,140,1,16,8,1,1,0,390,57,2 hash browns,"Potatoes, vegetable oil, salt",,true,true,
+"Bacon, Egg & Cheese (6 inch)",Subway,,Fast Food,Breakfast,450,24,44,20,7,4,6,1140,200,6 inch sub,"Italian bread, bacon, egg, cheese","Wheat, Milk, Eggs",true,true,
+"Sausage, Egg & Cheese (6 inch)",Subway,,Fast Food,Breakfast,510,22,45,27,9,4,6,1090,210,6 inch sub,"Italian bread, sausage patty, egg, cheese","Wheat, Milk, Eggs",true,true,
+Sausage Roll,Greggs,,Fast Food,Pastries,327,8,24,22,10,1,2,610,101,1 sausage roll,"Filling (47%): Water, Pork Mince (36%), Rusk (contains WHEAT Flour, Salt), Seasoning (Salt, Citrus Fibre, Inactivated Yeast, Sugar, Stabiliser: Sodium Diphosphate; Pepper, BARLEY Malt Extract, Preservative: Sodium METABISULPHITE; Acidity Regulator: Tartaric Acid; Spice Extracts), Antioxidants: Ascorbyl Palmitate, Alpha Tocopherol; Herb Extracts (Sage, Marjoram), Pork Fat, Isolated SOYA Protein, WHEAT Protein.
+
+Pastry: WHEAT Flour (Calcium Carbonate, Iron, Niacin, Thiamin), Vegetable Margarine (Palm Oil, Rapeseed Oil, Water, Salt), Water, Salt.
+
+Glaze: Water, Rapeseed Oil, Sunflower Oil, Modified Maize Starch, Potato Starch, Tapioca Starch, MILK Proteins, MILK Powder, Emulsifiers (E471, E472e), Stabilisers, Colours (Carotenoids).","Wheat, Milk, Barley, Soya, Sulphites",true,true,
+Vegan Sausage Roll,Greggs,,Fast Food,Pastries,312,12,24,19,8,3,1,520,101,1 sausage roll,"Filling: Water, Mycoprotein (21%), Vegetable Oils (Palm, Rapeseed), WHEAT Flour, Onion, Rehydrated Textured WHEAT Protein, Natural Flavourings, Pea Fibre, Stabiliser: Methyl Cellulose, Salt, Pea Protein, Yeast Extract, Iron, Vitamin B12.
+
+Pastry: WHEAT Flour (Calcium Carbonate, Iron, Niacin, Thiamin), Vegetable Margarine (Palm Oil, Rapeseed Oil, Water, Salt), Water, Salt.
+
+Glaze: Water, Modified Maize Starch, Stabilisers.",Wheat,true,true,
+Steak Bake,Greggs,,Fast Food,Pastries,408,14,33,25,12,2,2,780,134,1 bake,"Filling: Beef (25%), Water, Onion, WHEAT Flour, Gravy (WHEAT Flour, Salt, Yeast Extract, Onion Powder, Colour: Caramel), Modified Maize Starch, Salt, Sugar, Beef Fat, Yeast Extract, Caramelised Sugar, Black Pepper.
+
+Pastry: WHEAT Flour (Calcium Carbonate, Iron, Niacin, Thiamin), Vegetable Margarine (Palm Oil, Rapeseed Oil, Water, Salt), Water, Salt.
+
+Glaze: Water, Rapeseed Oil, Sunflower Oil, Modified Starch, MILK Proteins, Emulsifiers.","Wheat, Milk",true,true,
+Vegan Steak Bake,Greggs,,Fast Food,Pastries,380,13,34,21,10,3,2,680,134,1 bake,"Puff pastry, Quorn pieces, onion, vegan gravy",Wheat,true,true,
+Chicken Bake,Greggs,,Fast Food,Pastries,454,16,34,28,13,2,3,720,138,1 bake,"Filling: Cooked Chicken Breast (30%), Bechamel Sauce (Water, WHEAT Flour, MILK, Butter (MILK), Salt, White Pepper), Onion, Bacon (Pork Belly, Salt, Preservatives), WHEAT Flour, Modified Maize Starch, Salt, Sugar.
+
+Pastry: WHEAT Flour, Vegetable Margarine, Water, Salt.
+
+Glaze: Water, Rapeseed Oil, MILK Proteins.","Wheat, Milk",true,true,
+"Sausage, Bean & Cheese Melt",Greggs,,Fast Food,Pastries,424,15,33,26,12,3,5,890,142,1 melt,"Filling: Baked Beans (Haricot Beans, Water, Tomato Puree, Sugar, Salt, Modified Cornflour, Paprika, Spice Extract), Pork Sausage Meat, Cheddar Cheese (MILK).
+
+Pastry: WHEAT Flour (Calcium Carbonate, Iron, Niacin, Thiamin), Vegetable Margarine (Palm Oil, Rapeseed Oil, Water, Salt), Water, Salt.
+
+Glaze: Water, Rapeseed Oil, MILK Proteins.","Wheat, Milk",true,true,
+Cheese & Onion Bake,Greggs,,Fast Food,Pastries,320,9,28,19,10,2,3,620,103,1 bake,"Filling: Potato, Cheddar Cheese (MILK), Onion, Water, Modified Maize Starch, Salt, White Pepper.
+
+Pastry: WHEAT Flour, Vegetable Margarine (Palm Oil, Rapeseed Oil, Water), Water, Salt.
+
+Glaze: Water, Rapeseed Oil, MILK Proteins.","Wheat, Milk",true,true,
+Corned Beef Bake,Greggs,,Fast Food,Pastries,395,13,32,24,11,2,2,820,128,1 bake,"Puff pastry, corned beef, potato, onion","Wheat, Milk",true,true,
+Mexican Chicken Baguette,Greggs,,Fast Food,Sandwiches,470,26,52,17,4,3,6,1180,230,1 baguette,"Baguette, chicken, Mexican-style sauce, peppers, cheese","Wheat, Milk",true,true,
+Ham & Cheese Baguette,Greggs,,Fast Food,Sandwiches,415,22,45,16,6,2,4,1350,195,1 baguette,"Baguette, ham, cheese, mayonnaise","Wheat, Milk, Eggs",true,true,
+Tuna Crunch Baguette,Greggs,,Fast Food,Sandwiches,480,20,46,23,4,3,4,920,210,1 baguette,"Baguette, tuna mayonnaise, cucumber, sweetcorn","Wheat, Fish, Eggs",true,true,
+Breakfast Roll (Bacon),Greggs,,Fast Food,Breakfast,290,14,32,12,4,2,3,920,115,1 roll,"Soft roll, bacon rashers",Wheat,true,true,
+Breakfast Roll (Sausage),Greggs,,Fast Food,Breakfast,350,13,33,18,6,2,3,780,125,1 roll,"Soft roll, pork sausage",Wheat,true,true,
+Breakfast Roll (Bacon & Sausage),Greggs,,Fast Food,Breakfast,450,19,35,26,9,2,3,1150,165,1 roll,"Soft roll, bacon, pork sausage",Wheat,true,true,
+Bacon & Cheese Wrap,Greggs,,Fast Food,Wraps,395,18,30,22,9,2,2,1180,160,1 wrap,"Tortilla wrap, bacon, cheese, brown sauce","Wheat, Milk",true,true,
+Sausage Breakfast Wrap,Greggs,,Fast Food,Wraps,430,16,32,27,10,2,2,1050,175,1 wrap,"Tortilla wrap, sausage, hash brown, cheese, brown sauce","Wheat, Milk",true,true,
+Yum Yum,Greggs,,Fast Food,Sweet,225,2,26,13,6,0,11,100,51,1 yum yum,"Dough: WHEAT Flour (Calcium Carbonate, Iron, Niacin, Thiamin), Water, Vegetable Margarine (Palm Oil, Rapeseed Oil), Yeast, Sugar, Salt, Emulsifiers.
+
+Fondant Icing: Sugar, Glucose Syrup, Water.
+
+Cooked in Vegetable Oil.",Wheat,true,true,
+Belgian Bun,Greggs,,Fast Food,Sweet,328,5,51,12,3,1,26,240,103,1 bun,"Sweet dough, lemon curd, fondant icing, cherry","Wheat, Milk, Eggs",true,true,
+Doughnut (Ring),Greggs,,Fast Food,Sweet,251,3,30,13,6,1,12,150,63,1 doughnut,"Dough, sugar glaze","Wheat, Milk, Eggs",true,true,
+Jam Doughnut,Greggs,,Fast Food,Sweet,260,4,38,10,4,1,16,170,78,1 doughnut,"Dough: WHEAT Flour (Calcium Carbonate, Iron, Niacin, Thiamin), Water, Vegetable Oil (Palm), Yeast, Sugar, Salt, Emulsifiers, Dried EGG.
+
+Raspberry Jam: Glucose-Fructose Syrup, Raspberries, Sugar, Gelling Agent (Pectin), Acidity Regulator (Citric Acid), Colours (Anthocyanins).
+
+Coating: Caster Sugar.
+
+Cooked in Vegetable Oil (Palm).","Wheat, Eggs",true,true,
+Pink Jammie,Greggs,,Fast Food,Sweet,180,2,25,8,4,0,12,95,47,1 biscuit,"Biscuit, jam, pink fondant icing","Wheat, Milk",true,true,
+Caramel Latte (Regular),Greggs,,Fast Food,Drinks,188,6,27,6,4,0,24,95,340,Regular cup,"Espresso: 100% Arabica Coffee Beans (Mocha Italia blend).
+
+Semi-Skimmed MILK: Pasteurised Cows' MILK.
+
+Caramel Syrup: Sugar, Water, Natural Flavouring, Citric Acid, Preservative (Potassium Sorbate).",Milk,true,true,
+Festive Bake,Greggs,,Fast Food,Pastries,453,14,34,29,13,2,4,720,138,1 bake,"Puff pastry, chicken breast, sage & onion stuffing, bacon, cranberry sauce","Wheat, Milk",true,true,
+Pizza Slice (Pepperoni),Greggs,,Fast Food,Pizza,275,11,28,13,6,2,3,680,110,1 slice,"Pizza base, tomato sauce, cheese, pepperoni","Wheat, Milk",true,true,
+Southern Fried Chicken Bites,Greggs,,Fast Food,Chicken,280,18,18,15,2,1,1,620,90,Hot box,"Chicken breast pieces, southern fried coating",Wheat,true,true,
+1/4 Chicken,Nando's,,Fast Food,Chicken,295,36,0,17,5,0,0,630,170,1/4 chicken (leg or breast),"Chicken (Quarter portion - leg or breast on the bone).
+
+PERi-PERi Marinade: African Bird's Eye Chillies, Water, Garlic, Salt, Paprika, Onion, Citric Acid, Sunflower Oil, Lemon Juice, Oregano, Bay Leaves, Basil, Stabiliser (Xanthan Gum).
+
+Contains SULPHITES (less than 10ppm from PERi-PERi sauce).
+
+May Contain: SOY, WHEAT, MUSTARD, EGG.",Sulphites,true,true,
+1/2 Chicken,Nando's,,Fast Food,Chicken,590,72,0,34,10,0,0,1260,340,1/2 chicken,"Chicken (Half portion including leg and breast on the bone).
+
+PERi-PERi Marinade: African Bird's Eye Chillies, Water, Garlic, Salt, Paprika, Onion, Citric Acid, Sunflower Oil, Lemon Juice, Oregano, Bay Leaves, Basil, Stabiliser (Xanthan Gum).
+
+Contains SULPHITES (less than 10ppm from PERi-PERi sauce).
+
+May Contain: SOY, WHEAT, MUSTARD, EGG.",Sulphites,true,true,
+Whole Chicken,Nando's,,Fast Food,Chicken,1180,144,0,68,20,0,0,2520,680,Whole chicken,"Whole Chicken.
+
+PERi-PERi Marinade: African Bird's Eye Chillies, Water, Garlic, Salt, Paprika, Onion, Citric Acid, Sunflower Oil, Lemon Juice, Oregano, Bay Leaves, Basil, Stabiliser (Xanthan Gum).
+
+Contains SULPHITES (less than 10ppm from PERi-PERi sauce).
+
+May Contain: SOY, WHEAT, MUSTARD, EGG.",Sulphites,true,true,
+Chicken Butterfly,Nando's,,Fast Food,Chicken,363,52,0,17,5,0,0,680,210,2 chicken breast fillets,"Chicken Breast Fillets (2 boneless breast fillets, butterflied).
+
+PERi-PERi Marinade: African Bird's Eye Chillies, Water, Garlic, Salt, Paprika, Onion, Citric Acid, Sunflower Oil, Lemon Juice, Oregano, Bay Leaves, Basil, Stabiliser (Xanthan Gum).
+
+Contains SULPHITES (less than 10ppm from PERi-PERi sauce).
+
+May Contain: SOY, WHEAT, MUSTARD, EGG.",Sulphites,true,true,
+Chicken Thighs (3),Nando's,,Fast Food,Chicken,440,42,0,30,9,0,0,750,200,3 boneless thighs,"Boneless Chicken Thighs.
+
+PERi-PERi Marinade: African Bird's Eye Chillies, Water, Garlic, Salt, Paprika, Onion, Citric Acid, Sunflower Oil, Lemon Juice, Oregano, Bay Leaves, Basil, Stabiliser (Xanthan Gum).
+
+Contains SULPHITES (less than 10ppm from PERi-PERi sauce).
+
+May Contain: SOY, WHEAT, MUSTARD, EGG.",Sulphites,true,true,
+Chicken Wings (5),Nando's,,Fast Food,Chicken,282,25,1,20,6,0,0,610,130,5 wings,"Chicken Wings.
+
+PERi-PERi Marinade: African Bird's Eye Chillies, Water, Garlic, Salt, Paprika, Onion, Citric Acid, Sunflower Oil, Lemon Juice, Oregano, Bay Leaves, Basil, Stabiliser (Xanthan Gum).
+
+Contains SULPHITES (less than 10ppm from PERi-PERi sauce).
+
+May Contain: SOY, WHEAT, MUSTARD, EGG.",Sulphites,true,true,
+Chicken Wings (10),Nando's,,Fast Food,Chicken,564,50,2,40,12,0,0,1220,260,10 wings,"Chicken Wings.
+
+PERi-PERi Marinade: African Bird's Eye Chillies, Water, Garlic, Salt, Paprika, Onion, Citric Acid, Sunflower Oil, Lemon Juice, Oregano, Bay Leaves, Basil, Stabiliser (Xanthan Gum).
+
+Contains SULPHITES (less than 10ppm from PERi-PERi sauce).
+
+May Contain: SOY, WHEAT, MUSTARD, EGG.",Sulphites,true,true,
+Chicken Breast Pitta,Nando's,,Fast Food,Sandwiches,446,43,42,12,3,3,4,920,265,1 pitta,"Pitta bread, chicken breast, lettuce, tomato, PERinaise","Wheat, Eggs",true,true,
+Chicken Thigh Burger,Nando's,,Fast Food,Burgers,570,35,46,28,6,3,6,1050,260,1 burger,"Burger bun, chicken thigh, lettuce, tomato, PERinaise","Wheat, Eggs",true,true,
+Chicken Breast Burger,Nando's,,Fast Food,Burgers,480,43,45,15,3,3,6,980,250,1 burger,"Portuguese Roll: WHEAT Flour, Water, Vegetable Oil, Sugar, Yeast, Salt, Emulsifiers.
+
+Chicken Breast Fillet (marinated with PERi-PERi): African Bird's Eye Chillies, Garlic, Salt, Paprika, Lemon Juice, Herbs.
+
+PERinaise: Rapeseed Oil, Water, Spirit Vinegar, EGG Yolk, Sugar, MUSTARD, Salt.
+
+Lettuce, Tomato: Fresh vegetables.
+
+Contains SULPHITES (less than 10ppm).","Wheat, Eggs, Mustard, Sulphites",true,true,
+Sunset Burger,Nando's,,Fast Food,Burgers,675,46,51,32,10,4,8,1380,320,1 burger,"Burger bun, chicken breast, cheese, bacon, caramelised onion, PERinaise","Wheat, Milk, Eggs",true,true,
+PERi-PERi Chicken Wrap,Nando's,,Fast Food,Wraps,520,38,48,20,5,4,5,1150,280,1 wrap,"Tortilla wrap, chicken breast strips, lettuce, peppers, PERinaise","Wheat, Eggs",true,true,
+Halloumi Sticks & Dip (5),Nando's,,Fast Food,Sides,405,20,24,26,14,1,3,1050,150,5 sticks with chilli jam,"Halloumi Cheese: MILK, Salt, Rennet.
+
+Coating: WHEAT Flour, Water, Modified Starch, Salt, Raising Agents, Spices.
+
+Chilli Jam: Sugar, Red Peppers, Chillies, Spirit Vinegar, Pectin, Salt.
+
+Contains: MILK, WHEAT.","Milk, Wheat",true,true,
+PERi-PERi Chips (Regular),Nando's,,Fast Food,Sides,380,5,52,17,2,5,0,480,180,Regular portion,"Potatoes, Vegetable Oil (Sunflower, Rapeseed).
+
+PERi-PERi Salt: Salt, Paprika, Garlic, Onion, Cayenne Pepper, African Bird's Eye Chilli, Herbs.",,true,true,
+PERi-PERi Chips (Large),Nando's,,Fast Food,Sides,570,8,78,26,3,8,0,720,270,Large portion,"Potatoes, vegetable oil, PERi-PERi salt",,true,true,
+Spicy Rice,Nando's,,Fast Food,Sides,310,6,55,7,1,2,3,680,185,1 portion,"Long Grain Rice, Water, Peppers (Red, Green, Yellow), Sweetcorn, Parsley, Spices (Paprika, Turmeric, Cumin), Vegetable Oil, Salt.",,true,true,
+Coleslaw,Nando's,,Fast Food,Sides,170,1,7,15,1.5,2,5,190,100,1 portion,"White Cabbage, Carrot, Onion.
+
+Mayonnaise Dressing: Rapeseed Oil, Water, Spirit Vinegar, Sugar, EGG Yolk, Modified Maize Starch, Salt, MUSTARD Flour, Stabilisers, Preservative (Potassium Sorbate).","Eggs, Mustard",true,true,
+Corn on the Cob,Nando's,,Fast Food,Sides,160,4,26,5,2,3,5,25,140,1 cob,"Sweetcorn, PERi-PERi butter",Milk,true,true,
+Macho Peas,Nando's,,Fast Food,Sides,180,10,18,7,2,8,4,350,140,1 portion,"Garden peas, parsley, mint, lemon, PERi-PERi drizzle",,true,true,
+PERi-Salted Chips,Nando's,,Fast Food,Sides,370,5,50,17,2,5,0,520,175,Regular portion,"Potatoes, vegetable oil, PERi-PERi salt",,true,true,
+PERinaise (Pot),Nando's,,Fast Food,Sauces,180,0,2,19,2,0,1,280,40,1 pot,"Mayonnaise, PERi-PERi",Eggs,true,true,
+Bottomless Frozen Yogurt,Nando's,,Fast Food,Desserts,170,5,30,4,2.5,0,24,80,150,1 serving (approx),"Frozen yogurt, toppings",Milk,true,true,
+Natas,Nando's,,Fast Food,Desserts,240,3,28,13,6,0,14,90,70,1 tart,"Pastry, egg custard","Wheat, Milk, Eggs",true,true,
+Chocolate Brownie,Nando's,,Fast Food,Desserts,350,4,42,18,8,2,32,120,90,1 brownie,"Chocolate, butter, sugar, eggs, flour","Wheat, Milk, Eggs, Soya",true,true,
+The Great Imitator (Plant-Based),Nando's,,Fast Food,Vegetarian,320,25,8,22,3,4,2,780,180,2 pieces,"Plant-based protein, PERi-PERi marinade",Soya,true,true,
+Pepperoni Passion (Medium),Domino's,,Fast Food,Pizza,1160,52,120,52,24,6,10,2800,450,Medium pizza (8 slices),"Pizza Dough: WHEAT Flour, Water, Vegetable Oil (Rapeseed), Sugar, Salt, Yeast, Improvers.
+
+Tomato Sauce: Tomatoes, Water, Sugar, Salt, Garlic, Herbs (Oregano, Basil), Black Pepper.
+
+Mozzarella Cheese: Cows' MILK, Salt, Starter Culture, Rennet.
+
+Pepperoni: Pork, Beef, Salt, Spices (including Paprika), Dextrose, Garlic Powder, Sodium Nitrite, Ascorbic Acid.","Wheat, Milk",true,true,
+Pepperoni Passion (Large),Domino's,,Fast Food,Pizza,1740,78,180,78,36,9,15,4200,675,Large pizza (10 slices),"Pizza dough, tomato sauce, mozzarella cheese, pepperoni","Wheat, Milk",true,true,
+Mighty Meaty (Medium),Domino's,,Fast Food,Pizza,1280,60,124,60,28,6,12,3200,500,Medium pizza,"Pizza Dough: WHEAT Flour, Water, Vegetable Oil, Sugar, Salt, Yeast.
+
+Tomato Sauce: Tomatoes, Water, Sugar, Salt, Garlic, Herbs.
+
+Mozzarella Cheese: Cows' MILK, Salt, Starter Culture.
+
+Pepperoni: Pork, Beef, Salt, Spices.
+
+Sausage: Pork, Water, Salt, Spices, Preservatives.
+
+Ham: Pork, Water, Salt, Preservatives.
+
+Ground Beef: British Beef.
+
+Bacon: Pork Belly, Salt, Sugar, Preservatives.","Wheat, Milk",true,true,
+Mighty Meaty (Large),Domino's,,Fast Food,Pizza,1920,90,186,90,42,9,18,4800,750,Large pizza,"Pizza dough, tomato sauce, mozzarella, pepperoni, sausage, ham, beef, bacon","Wheat, Milk",true,true,
+Vegi Supreme (Medium),Domino's,,Fast Food,Pizza,960,40,120,36,16,8,14,2200,420,Medium pizza,"Pizza dough, tomato sauce, mozzarella, mushrooms, peppers, onions, sweetcorn, tomatoes","Wheat, Milk",true,true,
+Margherita (Medium),Domino's,,Fast Food,Pizza,880,36,112,32,16,5,8,1900,380,Medium pizza,"Pizza dough, tomato sauce, mozzarella cheese","Wheat, Milk",true,true,
+Hawaiian (Medium),Domino's,,Fast Food,Pizza,1040,48,128,36,18,6,20,2600,440,Medium pizza,"Pizza dough, tomato sauce, mozzarella, ham, pineapple","Wheat, Milk",true,true,
+Texas BBQ (Medium),Domino's,,Fast Food,Pizza,1200,56,136,48,22,6,28,2900,480,Medium pizza,"Pizza dough, BBQ sauce, mozzarella, bacon, chicken, red onion","Wheat, Milk",true,true,
+New Yorker (Medium),Domino's,,Fast Food,Pizza,1280,64,128,56,26,6,12,3100,500,Medium pizza,"Pizza dough, tomato sauce, mozzarella, pepperoni, sausage, meatballs","Wheat, Milk",true,true,
+Pizza Slice (per slice avg),Domino's,,Fast Food,Pizza,145,6,15,6.5,3,0.8,1.3,350,56,1 slice (medium pizza),"Pizza dough, tomato sauce, mozzarella, toppings","Wheat, Milk",true,true,
+Garlic Bread,Domino's,,Fast Food,Sides,420,10,52,18,6,2,2,680,130,4 pieces,"Pizza dough, garlic butter, herbs","Wheat, Milk",true,true,
+Cheesy Garlic Bread,Domino's,,Fast Food,Sides,560,18,54,28,14,2,2,1050,170,4 pieces,"Pizza dough, garlic butter, mozzarella cheese","Wheat, Milk",true,true,
+Chicken Kickers (8 pieces),Domino's,,Fast Food,Chicken,420,28,32,20,4,2,4,1200,160,8 pieces,"Chicken breast, spicy coating, Frank's hot sauce",Wheat,true,true,
+Chicken Strippers (4 pieces),Domino's,,Fast Food,Chicken,280,24,20,12,2,1,1,720,120,4 pieces,"Chicken breast strips, crispy coating",Wheat,true,true,
+Potato Wedges,Domino's,,Fast Food,Sides,340,4,44,16,2,4,1,520,150,1 portion,"Potato wedges, seasoning",,true,true,
+Twisted Dough Balls (8),Domino's,,Fast Food,Sides,260,6,40,8,3,2,2,420,100,8 balls,"Pizza dough, garlic butter","Wheat, Milk",true,true,
+Coleslaw,Domino's,,Fast Food,Sides,190,1,6,18,2,1,4,250,100,1 pot,"White Cabbage, Carrot, Onion.
+
+Mayonnaise Dressing: Rapeseed Oil, Water, Spirit Vinegar, Sugar, EGG Yolk, Modified Maize Starch, Salt, MUSTARD Flour, Stabilisers, Preservative (Potassium Sorbate).","Eggs, Mustard",true,true,
+Cookies (5),Domino's,,Fast Food,Desserts,750,8,96,36,18,2,54,450,175,5 cookies,"Flour, chocolate chips, butter, sugar, eggs","Wheat, Milk, Eggs",true,true,
+Chocolate Lava Cake,Domino's,,Fast Food,Desserts,340,4,40,18,8,2,28,180,95,1 cake,"Chocolate cake, molten chocolate centre","Wheat, Milk, Eggs, Soya",true,true,
+Ben & Jerrys (100ml),Domino's,,Fast Food,Desserts,260,4,28,14,9,0,24,55,100,100ml tub,"Ice cream, mix-ins (varies)","Milk, Eggs",true,true,
+Pepperoni Feast (Medium),Pizza Hut,,Fast Food,Pizza,1520,68,144,72,32,8,16,3600,560,Medium pan pizza,"Pizza Dough: WHEAT Flour, Water, Vegetable Oil, Yeast, Sugar, Salt.
+
+Tomato Sauce: Tomatoes, Tomato Paste, Sugar, Salt, Garlic, Oregano.
+
+Mozzarella Cheese: Cows' MILK, Salt, Cultures, Enzymes.
+
+Pepperoni: Pork, Beef, Salt, Spices, Paprika, Dextrose, Garlic, Sodium Nitrite.","Wheat, Milk",true,true,
+Margherita (Medium),Pizza Hut,,Fast Food,Pizza,1120,48,136,44,20,6,12,2400,480,Medium pan pizza,"Pan base, tomato sauce, mozzarella","Wheat, Milk",true,true,
+Meat Feast (Medium),Pizza Hut,,Fast Food,Pizza,1680,80,144,84,40,8,16,4000,600,Medium pan pizza,"Pan base, tomato sauce, mozzarella, pepperoni, ham, beef, pork","Wheat, Milk",true,true,
+BBQ Americano (Medium),Pizza Hut,,Fast Food,Pizza,1480,72,152,64,28,8,32,3400,560,Medium pan pizza,"Pan base, BBQ sauce, mozzarella, chicken, bacon, onion","Wheat, Milk",true,true,
+Veggie Supreme (Medium),Pizza Hut,,Fast Food,Pizza,1200,48,144,48,22,10,18,2800,520,Medium pan pizza,"Pan base, tomato sauce, mozzarella, mushrooms, peppers, onions, sweetcorn","Wheat, Milk",true,true,
+Hawaiian (Medium),Pizza Hut,,Fast Food,Pizza,1280,56,152,48,24,8,28,3000,540,Medium pan pizza,"Pan base, tomato sauce, mozzarella, ham, pineapple","Wheat, Milk",true,true,
+Stuffed Crust Pepperoni (Medium),Pizza Hut,,Fast Food,Pizza,1920,88,168,96,48,8,18,4400,680,Medium stuffed crust,"Stuffed crust base, tomato sauce, mozzarella, pepperoni","Wheat, Milk",true,true,
+Garlic Bread,Pizza Hut,,Fast Food,Sides,380,8,48,16,6,2,2,560,120,4 pieces,"Bread, garlic butter, herbs","Wheat, Milk",true,true,
+Cheesy Garlic Bread,Pizza Hut,,Fast Food,Sides,520,16,50,28,14,2,2,920,160,4 pieces,"Bread, garlic butter, mozzarella","Wheat, Milk",true,true,
+Chicken Wings (8),Pizza Hut,,Fast Food,Chicken,440,32,16,28,8,0,2,1200,200,8 wings,"Chicken wings, spice coating",,true,true,
+Wedges,Pizza Hut,,Fast Food,Sides,320,4,40,16,2,4,1,480,140,1 portion,"Potato wedges, seasoning",,true,true,
+Coleslaw,Pizza Hut,,Fast Food,Sides,180,1,5,17,2,1,4,230,100,1 pot,"White Cabbage, Carrot, Onion.
+
+Mayonnaise Dressing: Rapeseed Oil, Water, Spirit Vinegar, Sugar, EGG Yolk, Modified Maize Starch, Salt, MUSTARD Flour, Stabilisers, Preservative (Potassium Sorbate).","Eggs, Mustard",true,true,
+Cookie Dough,Pizza Hut,,Fast Food,Desserts,1180,12,144,60,32,4,84,680,280,1 cookie dough,"Cookie dough, chocolate chips, chocolate sauce, ice cream","Wheat, Milk, Eggs, Soya",true,true,
+Ice Cream Factory,Pizza Hut,,Fast Food,Desserts,340,6,44,14,9,0,36,90,150,1 serving,"Soft serve ice cream, various toppings",Milk,true,true,
+Latte (Medium),Costa Coffee,,Fast Food,Coffee,141,7,11,7,4.5,0,10,95,340,Medium latte,"Espresso, steamed milk",Milk,true,true,
+Latte (Large),Costa Coffee,,Fast Food,Coffee,189,9,15,10,6,0,13,127,454,Large latte,"Espresso, steamed milk",Milk,true,true,
+Cappuccino (Medium),Costa Coffee,,Fast Food,Coffee,115,6,9,6,4,0,8,77,340,Medium cappuccino,"Espresso, steamed milk, milk foam",Milk,true,true,
+Flat White,Costa Coffee,,Fast Food,Coffee,120,6,9,7,4.5,0,9,80,227,1 flat white,"Double Espresso: 100% Arabica Coffee Beans (Mocha Italia blend).
+
+Whole MILK: Pasteurised Cows' MILK, steamed with microfoam.
+
+Made with whole milk by default. Plant-based milk alternatives available.",Milk,true,true,
+Americano (Medium),Costa Coffee,,Fast Food,Coffee,6,0.5,1,0,0,0,0,5,340,Medium Americano,"Espresso, hot water",,true,true,
+Mocha (Medium),Costa Coffee,,Fast Food,Coffee,291,8,38,12,7,1,33,130,340,Medium mocha,"Espresso, steamed milk, chocolate syrup, whipped cream",Milk,true,true,
+Hot Chocolate (Medium),Costa Coffee,,Fast Food,Hot Drinks,315,10,40,13,8,1,36,170,340,Medium hot chocolate,"Milk, chocolate powder, whipped cream",Milk,true,true,
+Chai Latte (Medium),Costa Coffee,,Fast Food,Hot Drinks,215,6,35,6,3.5,0,31,115,340,Medium chai latte,"Steamed milk, chai concentrate",Milk,true,true,
+Iced Latte (Medium),Costa Coffee,,Fast Food,Cold Drinks,120,6,10,6,4,0,9,85,400,Medium iced latte,"Espresso, cold milk, ice",Milk,true,true,
+Caramel Latte (Medium),Costa Coffee,,Fast Food,Coffee,241,7,36,8,5,0,33,130,340,Medium caramel latte,"Espresso, steamed milk, caramel syrup",Milk,true,true,
+Vanilla Latte (Medium),Costa Coffee,,Fast Food,Coffee,221,7,32,7,4.5,0,29,120,340,Medium vanilla latte,"Espresso, steamed milk, vanilla syrup",Milk,true,true,
+Oat Milk Latte (Medium),Costa Coffee,,Fast Food,Coffee,135,3,19,5,0.5,1.5,8,110,340,Medium oat latte,"Espresso, oat milk",Oats,true,true,
+Croissant,Costa Coffee,,Fast Food,Pastries,290,6,28,17,10,1,5,320,70,1 croissant,"Wheat flour, butter, yeast, milk, eggs","Wheat, Milk, Eggs",true,true,
+Pain au Chocolat,Costa Coffee,,Fast Food,Pastries,340,6,34,20,12,2,12,290,85,1 pastry,"Pastry, chocolate","Wheat, Milk, Eggs",true,true,
+Bacon Roll,Costa Coffee,,Fast Food,Breakfast,310,15,35,12,4,2,3,980,120,1 roll,"Soft White Roll: WHEAT Flour (Calcium, Iron, Niacin, Thiamin), Water, Yeast, Sugar, Rapeseed Oil, Salt, WHEAT Gluten.
+
+Smoked Bacon: Pork Belly, Water, Salt, Dextrose, Smoke Flavouring, Antioxidant (Sodium Ascorbate), Preservative (Sodium Nitrite).
+
+Ketchup/Brown Sauce: Available upon request.",Wheat,true,true,
+Sausage Bap,Costa Coffee,,Fast Food,Breakfast,440,17,36,25,9,2,4,1050,150,1 bap,"Soft bap, pork sausages, brown sauce",Wheat,true,true,
+Ham & Cheese Toastie,Costa Coffee,,Fast Food,Sandwiches,385,20,32,19,10,2,3,1180,155,1 toastie,"Bread, ham, cheese","Wheat, Milk",true,true,
+Tuna Melt Panini,Costa Coffee,,Fast Food,Sandwiches,450,24,42,21,7,3,4,980,200,1 panini,"Panini bread, tuna mayo, cheese, sweetcorn","Wheat, Fish, Milk, Eggs",true,true,
+Chicken & Bacon Panini,Costa Coffee,,Fast Food,Sandwiches,520,32,45,23,8,3,5,1350,220,1 panini,"Panini bread, chicken, bacon, cheese, mayo","Wheat, Milk, Eggs",true,true,
+Chocolate Muffin,Costa Coffee,,Fast Food,Sweet,420,6,52,21,6,2,32,380,120,1 muffin,"Flour, chocolate chips, butter, sugar, eggs","Wheat, Milk, Eggs",true,true,
+Blueberry Muffin,Costa Coffee,,Fast Food,Sweet,380,5,50,17,4,2,28,350,115,1 muffin,"Flour, blueberries, butter, sugar, eggs","Wheat, Milk, Eggs",true,true,
+Carrot Cake,Costa Coffee,,Fast Food,Sweet,450,4,48,26,8,2,36,280,120,1 slice,"Carrot cake, cream cheese frosting","Wheat, Milk, Eggs, Tree Nuts",true,true,
+Millionaire Shortbread,Costa Coffee,,Fast Food,Sweet,395,3,42,24,14,1,28,180,85,1 piece,"Shortbread, caramel, chocolate","Wheat, Milk",true,true,
+Caffè Latte (Grande),Starbucks,,Fast Food,Coffee,190,13,19,7,4.5,0,17,170,473,Grande (16oz),"Espresso, steamed milk",Milk,true,true,
+Caffè Latte (Tall),Starbucks,,Fast Food,Coffee,150,10,15,6,3.5,0,14,135,354,Tall (12oz),"Espresso, steamed milk",Milk,true,true,
+Cappuccino (Grande),Starbucks,,Fast Food,Coffee,140,10,14,5,3,0,12,115,473,Grande (16oz),"Espresso: Starbucks Espresso Roast (100% Arabica Coffee Beans).
+
+Semi-Skimmed MILK: Pasteurised Cows' MILK, steamed and frothed.
+
+Made with 2% milk by default. Plant-based alternatives available.",Milk,true,true,
+Flat White,Starbucks,,Fast Food,Coffee,170,11,13,9,5,0,12,130,354,Tall (12oz),"Double Espresso: 100% Arabica Coffee Beans (Mocha Italia blend).
+
+Whole MILK: Pasteurised Cows' MILK, steamed with microfoam.
+
+Made with whole milk by default. Plant-based milk alternatives available.",Milk,true,true,
+Americano (Grande),Starbucks,,Fast Food,Coffee,15,1,2,0,0,0,0,10,473,Grande (16oz),"Espresso, hot water",,true,true,
+Caramel Macchiato (Grande),Starbucks,,Fast Food,Coffee,250,10,35,7,4,0,33,150,473,Grande (16oz),"Espresso: Starbucks Espresso Roast (100% Arabica Coffee Beans).
+
+Semi-Skimmed MILK: Pasteurised Cows' MILK, steamed.
+
+Vanilla Syrup: Sugar, Water, Natural Flavourings, Citric Acid, Potassium Sorbate.
+
+Caramel Drizzle: Sugar, Dextrose, Glucose Syrup, Butter (MILK), Fructose, Double Cream (MILK), Water, Skimmed MILK Powder, Natural Flavouring, Emulsifiers (SOYA Lecithins, Mono and Diglycerides of Fatty Acids), Acidity Regulator (Sodium Citrates), Salt, Stabiliser (Triphosphates).","Milk, Soya",true,true,
+Mocha (Grande),Starbucks,,Fast Food,Coffee,360,13,44,15,9,2,35,150,473,Grande (16oz),"Espresso, mocha sauce, steamed milk, whipped cream",Milk,true,true,
+White Chocolate Mocha (Grande),Starbucks,,Fast Food,Coffee,430,15,55,18,12,0,53,280,473,Grande (16oz),"Espresso, white chocolate sauce, steamed milk, whipped cream",Milk,true,true,
+Vanilla Latte (Grande),Starbucks,,Fast Food,Coffee,250,12,37,6,3.5,0,35,170,473,Grande (16oz),"Espresso, vanilla syrup, steamed milk",Milk,true,true,
+Iced Caramel Macchiato (Grande),Starbucks,,Fast Food,Cold Drinks,250,10,34,7,4.5,0,33,140,473,Grande (16oz),"Milk, vanilla syrup, espresso, caramel drizzle, ice",Milk,true,true,
+"Frappuccino (Caramel, Grande)",Starbucks,,Fast Food,Cold Drinks,380,5,57,15,9,0,54,230,473,Grande (16oz),"Frappuccino Base: Ice, MILK, Coffee Frappuccino Syrup (Sugar, Water, Natural Flavourings, Salt, Xanthan Gum, Potassium Sorbate, Citric Acid).
+
+Espresso: Starbucks Espresso Roast.
+
+Caramel Syrup: Sugar, Water, Natural Flavourings.
+
+Whipped Cream: Cream (MILK), Sugar.
+
+Caramel Drizzle: Sugar, Butter (MILK), Double Cream (MILK), SOYA Lecithins.","Milk, Soya",true,true,
+"Frappuccino (Mocha, Grande)",Starbucks,,Fast Food,Cold Drinks,370,6,55,15,9,2,51,200,473,Grande (16oz),"Ice, milk, coffee, mocha sauce, whipped cream",Milk,true,true,
+Hot Chocolate (Grande),Starbucks,,Fast Food,Hot Drinks,370,14,47,14,9,2,43,240,473,Grande (16oz),"Steamed milk, mocha sauce, whipped cream",Milk,true,true,
+Chai Tea Latte (Grande),Starbucks,,Fast Food,Hot Drinks,240,8,42,4.5,2,0,42,115,473,Grande (16oz),"Chai concentrate, steamed milk",Milk,true,true,
+Oat Milk Latte (Grande),Starbucks,,Fast Food,Coffee,170,4,23,7,0.5,2,10,190,473,Grande (16oz),"Espresso, oat milk",Oats,true,true,
+Bacon & Gouda Sandwich,Starbucks,,Fast Food,Sandwiches,360,18,29,19,8,1,2,800,130,1 sandwich,"Ciabatta roll, bacon, gouda cheese, egg","Wheat, Milk, Eggs",true,true,
+Ham & Cheese Toastie,Starbucks,,Fast Food,Sandwiches,390,21,33,19,9,2,4,1150,155,1 toastie,"Bread, ham, cheese","Wheat, Milk",true,true,
+All Day Breakfast Wrap,Starbucks,,Fast Food,Wraps,420,19,35,23,8,2,3,980,175,1 wrap,"Tortilla, egg, bacon, sausage, cheese, hash brown","Wheat, Milk, Eggs",true,true,
+Croissant,Starbucks,,Fast Food,Pastries,260,5,26,15,9,1,4,280,65,1 croissant,"Wheat flour, butter, milk, eggs, yeast","Wheat, Milk, Eggs",true,true,
+Chocolate Croissant,Starbucks,,Fast Food,Pastries,310,5,34,17,10,2,12,260,75,1 pastry,"Pastry, chocolate batons","Wheat, Milk, Eggs, Soya",true,true,
+Blueberry Muffin,Starbucks,,Fast Food,Sweet,350,5,53,13,2,1,29,390,115,1 muffin,"Flour, blueberries, sugar, vegetable oil, eggs","Wheat, Eggs",true,true,
+Double Chocolate Muffin,Starbucks,,Fast Food,Sweet,410,7,55,19,5,3,34,410,125,1 muffin,"Flour, cocoa, chocolate chips, sugar, eggs","Wheat, Milk, Eggs, Soya",true,true,
+Cookie (Chocolate Chunk),Starbucks,,Fast Food,Sweet,310,4,42,14,8,2,26,220,70,1 cookie,"Flour, butter, chocolate chunks, sugar, eggs","Wheat, Milk, Eggs, Soya",true,true,
+Cake Pop,Starbucks,,Fast Food,Sweet,140,1,19,6,4,0,15,75,35,1 cake pop,"Cake crumbs, frosting, chocolate coating","Wheat, Milk, Eggs, Soya",true,true,
+Chicken & Avocado Sandwich,Pret A Manger,,Fast Food,Sandwiches,476,26,38,24,4,5,4,680,245,1 sandwich,"Artisan Bread: WHEAT Flour (Calcium, Iron, Niacin, Thiamin), Water, WHEAT Sourdough, Salt, Yeast.
+
+Chicken Breast: Free-Range British Chicken, Water, Salt.
+
+Avocado: Hass Avocado, Lime Juice, Salt.
+
+Basil Pesto Mayonnaise: Rapeseed Oil, Free Range EGG Yolk, Basil, Parmesan Cheese (MILK), Pine NUTS, Garlic, Lemon Juice, Salt.
+
+Salad Leaves: Spinach, Rocket.","Wheat, Eggs, Milk, Nuts",true,true,
+Tuna & Cucumber Baguette,Pret A Manger,,Fast Food,Sandwiches,445,24,52,16,3,3,5,720,260,1 baguette,"White baguette, skipjack tuna, cucumber, red onion, Pret mayo, lemon juice","Wheat, Fish, Egg",true,true,
+Classic Super Club,Pret A Manger,,Fast Food,Sandwiches,567,32,44,28,6,4,5,890,285,1 sandwich,"Malted bread, free-range chicken, smoked bacon, tomato, lettuce, mayo","Wheat, Egg",true,true,
+Egg Mayo & Cress Sandwich,Pret A Manger,,Fast Food,Sandwiches,378,14,34,20,4,3,3,520,180,1 sandwich,"Brown bread, free-range eggs, mayo, cress, black pepper","Wheat, Egg",true,true,
+Brie & Tomato Baguette,Pret A Manger,,Fast Food,Sandwiches,512,18,54,24,12,3,6,680,240,1 baguette,"White baguette, brie cheese, sun-dried tomatoes, basil pesto, rocket","Wheat, Milk",true,true,
+Coronation Chicken Sandwich,Pret A Manger,,Fast Food,Sandwiches,498,25,42,25,4,4,8,640,255,1 sandwich,"Malted bread, free-range chicken, coronation sauce with mango, raisins, mixed leaves","Wheat, Egg, Sulphites",true,true,
+Chef Italian Chicken Salad,Pret A Manger,,Fast Food,Salads,356,28,18,19,5,4,6,580,320,1 salad,"Mixed leaves, grilled chicken, parmesan, cherry tomatoes, olives, Italian dressing","Milk, Sulphites",true,true,
+Falafel & Halloumi Mezze Salad,Pret A Manger,,Fast Food,Salads,445,18,32,26,9,8,8,720,340,1 salad,"Mixed leaves, falafel, halloumi, hummus, pickled red cabbage, pomegranate, tahini dressing","Milk, Sesame, Wheat",true,true,
+Chicken & Mushroom Soup,Pret A Manger,,Fast Food,Soups,245,16,18,12,6,2,4,680,350,1 regular,"Chicken stock, free-range chicken, mushrooms, cream, onion, thyme",Milk,true,true,
+Tomato Soup,Pret A Manger,,Fast Food,Soups,178,4,22,8,4,3,14,580,350,1 regular,"Tomatoes, cream, onion, garlic, basil, olive oil",Milk,true,true,
+Almond Croissant,Pret A Manger,,Fast Food,Bakery,456,10,42,28,14,3,18,280,110,1 croissant,"Wheat flour, butter, almonds, sugar, eggs, almond paste","Wheat, Milk, Egg, Tree Nuts",true,true,
+Pain au Chocolat,Pret A Manger,,Fast Food,Bakery,312,6,32,18,10,2,12,220,80,1 pastry,"Wheat flour, butter, dark chocolate, sugar, eggs, yeast","Wheat, Milk, Egg, Soya",true,true,
+Chocolate Chunk Cookie,Pret A Manger,,Fast Food,Bakery,365,4,42,20,12,2,28,180,80,1 cookie,"Wheat flour, butter, dark chocolate chunks, brown sugar, eggs, vanilla","Wheat, Milk, Egg, Soya",true,true,
+Chicken Caesar Wrap,Pret A Manger,,Fast Food,Wraps,478,28,38,22,6,3,4,820,250,1 wrap,"Tortilla wrap, free-range chicken, romaine lettuce, parmesan, Caesar dressing","Wheat, Milk, Egg, Fish",true,true,
+Falafel & Hummus Wrap,Pret A Manger,,Fast Food,Wraps,445,14,52,20,3,8,6,680,270,1 wrap,"Tortilla wrap, falafel, hummus, mixed leaves, pickled red cabbage, tahini","Wheat, Sesame",true,true,
+Hamburger,Five Guys,,Fast Food,Burgers,700,39,39,43,19,2,8,430,243,1 burger,"Regular Bun: WHEAT Flour (contains Calcium Carbonate, Iron, Niacin, Thiamin), Water, Sugar, Vegetable Oil (Rapeseed), Yeast, Salt, Emulsifier (E481), WHEAT Gluten, Preservative (Calcium Propionate).
+
+Beef Patty: 100% Pure Beef. A little salt and pepper is added to season after cooking.
+
+Ketchup: Tomatoes, Spirit Vinegar, Sugar, Salt, Spice Extracts.
+
+Mustard: Water, Spirit Vinegar, MUSTARD Seed, Salt, Sugar.
+
+Onions: 100% Dehydrated Onion, rehydrated.
+
+Pickle Slices: Gherkins, Water, Spirit Vinegar, Salt, Firming Agent (Calcium Chloride), Natural Flavouring, Preservative (Potassium Sorbate).","Wheat, Mustard",true,true,
+Cheeseburger,Five Guys,,Fast Food,Burgers,840,47,40,55,26,2,9,1050,303,1 burger,"Fresh Ground Beef: 100% British Beef, hand-formed into patties. Cooked to order.
+
+American Cheese: Cows' MILK, Milk Fat, Salt, Emulsifiers, Colours (Annatto).
+
+Sesame Seed Bun: WHEAT Flour, Water, Sugar, SESAME Seeds, Yeast, Vegetable Oil, Salt.
+
+Toppings (customisable): Lettuce, Pickles, Tomatoes, Grilled Onions, Grilled Mushrooms, Raw Onions, Jalapeño Peppers, Green Peppers, Ketchup, Mustard, Mayonnaise, Relish, A.1. Steak Sauce, BBQ Sauce, Hot Sauce.","Wheat, Milk, Sesame, Eggs (mayo), Mustard",true,true,
+Bacon Cheeseburger,Five Guys,,Fast Food,Burgers,920,51,40,62,29,2,9,1310,337,1 burger,"Beef patties (2), smoked bacon, American cheese (2), sesame seed bun, lettuce, tomato","Wheat, Milk, Sesame, Egg",true,true,
+Little Hamburger,Five Guys,,Fast Food,Burgers,480,23,39,26,11,2,8,380,167,1 burger,"Beef patty, sesame seed bun, lettuce, tomato, onion, pickles","Wheat, Sesame",true,true,
+Little Cheeseburger,Five Guys,,Fast Food,Burgers,550,27,40,32,15,2,9,690,197,1 burger,"Beef patty, American cheese, sesame seed bun, lettuce, tomato, onion","Wheat, Milk, Sesame",true,true,
+Little Bacon Burger,Five Guys,,Fast Food,Burgers,560,27,39,33,14,2,8,640,201,1 burger,"Beef patty, smoked bacon strips, sesame seed bun, lettuce, tomato","Wheat, Sesame",true,true,
+Hot Dog,Five Guys,,Fast Food,Hot Dogs,545,18,41,35,15,2,8,1130,167,1 hot dog,"Beef hot dog, split-top bun, ketchup, mustard",Wheat,true,true,
+Bacon Dog,Five Guys,,Fast Food,Hot Dogs,625,22,41,42,18,2,8,1390,201,1 hot dog,"Beef hot dog, smoked bacon strips, split-top bun, ketchup, mustard",Wheat,true,true,
+Cheese Dog,Five Guys,,Fast Food,Hot Dogs,615,22,42,41,19,2,9,1440,197,1 hot dog,"Beef hot dog, American cheese, split-top bun","Wheat, Milk",true,true,
+Regular Fries,Five Guys,,Fast Food,Sides,526,7,72,23,4,7,2,531,227,1 regular portion,"Potatoes, peanut oil, salt",Peanuts,true,true,
+Large Fries,Five Guys,,Fast Food,Sides,953,13,131,41,7,12,4,962,411,1 large portion,"Potatoes, peanut oil, salt",Peanuts,true,true,
+Cajun Fries Regular,Five Guys,,Fast Food,Sides,526,7,72,23,4,7,2,748,227,1 regular portion,"Potatoes, peanut oil, Cajun seasoning (paprika, garlic, onion, cayenne)",Peanuts,true,true,
+Chicken Katsu Curry,Wagamama,,Fast Food,Asian,1078,46,124,42,8,6,18,1420,650,1 portion,"Panko-breaded chicken breast, Japanese curry sauce, sticky rice, pickled ginger, salad","Wheat, Milk, Egg, Soya",true,true,
+Chicken Ramen,Wagamama,,Fast Food,Asian,562,35,62,18,3,5,8,2180,580,1 bowl,"Ramen noodles, chicken gyoza, grilled chicken, pak choi, spring onions, chicken broth, menma","Wheat, Egg, Soya",true,true,
+Firecracker Chicken,Wagamama,,Fast Food,Asian,876,42,98,32,5,6,24,1680,480,1 portion,"Grilled chicken, rice noodles, mangetout, red peppers, spicy firecracker sauce, chillies","Wheat, Soya, Fish",true,true,
+Pad Thai,Wagamama,,Fast Food,Asian,748,28,86,32,6,5,22,1520,520,1 portion,"Rice noodles, prawns, chicken, beansprouts, egg, peanuts, tamarind sauce, lime","Peanuts, Shellfish, Egg, Fish, Soya",true,true,
+Yasai Gyoza,Wagamama,,Fast Food,Asian,289,8,38,12,2,3,6,680,180,6 pieces,"Wheat dumpling wrappers, cabbage, carrots, spring onions, ginger, gyoza sauce","Wheat, Soya, Sesame",true,true,
+Chicken Gyoza,Wagamama,,Fast Food,Asian,318,14,36,13,3,2,5,720,190,6 pieces,"Wheat dumpling wrappers, minced chicken, cabbage, ginger, garlic, gyoza sauce","Wheat, Soya, Sesame",true,true,
+Teriyaki Chicken Donburi,Wagamama,,Fast Food,Asian,724,38,94,18,3,4,28,1340,480,1 bowl,"Grilled chicken thigh, sticky rice, teriyaki sauce, spring onions, pickled ginger, sesame seeds","Wheat, Soya, Sesame",true,true,
+Yaki Udon,Wagamama,,Fast Food,Asian,648,22,88,22,4,5,14,1580,450,1 portion,"Thick udon noodles, prawns, chicken, egg, beansprouts, cabbage, yaki soba sauce","Wheat, Shellfish, Egg, Soya",true,true,
+Chilli Squid,Wagamama,,Fast Food,Asian,312,16,28,14,2,2,6,780,165,1 portion,"Fried squid, shichimi chilli flakes, coriander, spring onions, chilli mayo","Molluscs, Wheat, Egg",true,true,
+Edamame,Wagamama,,Fast Food,Asian,142,12,8,6,1,5,2,420,120,1 portion,"Steamed edamame beans, sea salt",Soya,true,true,
+Chicken Aioli Box,Leon,,Fast Food,Healthy,486,32,42,20,3,6,8,680,350,1 box,"Grilled chicken thigh, brown rice, aioli, red cabbage slaw, heritage tomatoes, parsley",Egg,true,true,
+Meatballs Box,Leon,,Fast Food,Healthy,534,28,48,24,6,5,10,780,380,1 box,"Beef meatballs, brown rice, rich tomato sauce, parmesan, parsley","Wheat, Milk, Egg",true,true,
+Falafel Box,Leon,,Fast Food,Healthy,412,14,52,16,2,10,8,620,340,1 box,"Baked falafel, brown rice, hummus, heritage tomatoes, red cabbage slaw",Sesame,true,true,
+Moroccan Meatballs,Leon,,Fast Food,Healthy,498,26,46,22,7,6,12,720,370,1 box,"Lamb meatballs, giant couscous, apricots, almonds, Moroccan spiced tomato sauce, yoghurt","Wheat, Milk, Tree Nuts",true,true,
+Chicken Satay Box,Leon,,Fast Food,Healthy,524,34,44,22,4,5,10,740,360,1 box,"Grilled chicken, brown rice, satay peanut sauce, cucumber, red onion, coriander",Peanuts,true,true,
+Supergreen Salad,Leon,,Fast Food,Salads,312,8,28,18,3,8,6,480,280,1 salad,"Kale, spinach, broccoli, edamame, avocado, seeds, lemon tahini dressing","Soya, Sesame",true,true,
+Love Burger,Leon,,Fast Food,Burgers,478,12,52,24,4,6,8,680,260,1 burger,"Plant-based patty (mushroom, beetroot), brioche bun, aioli, lettuce, tomato","Wheat, Egg",true,true,
+Waffle Fries,Leon,,Fast Food,Sides,286,4,38,14,1,4,1,320,150,1 portion,"Potatoes, sunflower oil, sea salt",,true,true,
+Chicken Katsu Rice Bowl,Itsu,,Fast Food,Asian,578,32,72,18,3,4,12,980,420,1 bowl,"Panko chicken, white rice, katsu curry sauce, pickled vegetables, sesame seeds","Wheat, Soya, Sesame",true,true,
+Teriyaki Salmon Rice Bowl,Itsu,,Fast Food,Asian,486,28,58,14,2,3,14,1120,380,1 bowl,"Grilled salmon, white rice, teriyaki glaze, edamame, pickled ginger","Fish, Soya, Sesame",true,true,
+Veggie Dragon Roll,Itsu,,Fast Food,Sushi,312,8,58,6,1,4,8,680,220,8 pieces,"Sushi rice, nori, avocado, cucumber, carrot, teriyaki sauce, sesame seeds","Soya, Sesame",true,true,
+Salmon & Avocado Sushi,Itsu,,Fast Food,Sushi,378,18,52,10,2,3,6,720,235,8 pieces,"Sushi rice, Scottish salmon, avocado, nori, wasabi, pickled ginger, soy sauce","Fish, Soya, Sesame",true,true,
+Chicken Gyoza,Itsu,,Fast Food,Asian,245,12,28,10,2,2,4,580,140,5 pieces,"Wheat wrappers, minced chicken, cabbage, ginger, garlic, dipping sauce","Wheat, Soya",true,true,
+Miso Soup,Itsu,,Fast Food,Soups,48,4,4,2,0,1,2,720,250,1 bowl,"Dashi stock, white miso paste, tofu, wakame seaweed, spring onions","Soya, Fish",true,true,
+Edamame & Greens,Itsu,,Fast Food,Sides,186,14,12,8,1,6,3,380,160,1 portion,"Edamame beans, tenderstem broccoli, sesame oil, sea salt","Soya, Sesame",true,true,
+Prawn Gyoza,Itsu,,Fast Food,Asian,232,10,28,9,2,2,4,620,140,5 pieces,"Wheat wrappers, prawns, cabbage, water chestnuts, ginger, dipping sauce","Wheat, Shellfish, Soya",true,true,
+Classic Beef Burger,Wetherspoons,,Fast Food,Pub Food,762,38,52,44,18,4,8,1180,380,1 meal,"6oz beef burger, brioche bun, lettuce, tomato, red onion, gherkin, burger sauce, chips","Wheat, Milk, Egg",true,true,
+Mixed Grill,Wetherspoons,,Fast Food,Pub Food,1124,72,48,68,24,6,6,1850,580,1 meal,"Gammon steak, rump steak, pork sausages, fried egg, grilled tomato, mushrooms, chips, peas","Wheat, Egg, Milk",true,true,
+Fish and Chips,Wetherspoons,,Fast Food,Pub Food,892,42,86,42,6,6,4,1240,520,1 meal,"Beer-battered cod, chips, mushy peas, tartare sauce, lemon wedge","Wheat, Fish, Egg, Milk",true,true,
+Scampi and Chips,Wetherspoons,,Fast Food,Pub Food,724,26,72,36,4,5,3,980,420,1 meal,"Breaded wholetail scampi, chips, mushy peas, tartare sauce, lemon","Wheat, Shellfish, Egg, Milk",true,true,
+Chicken Tikka Masala,Wetherspoons,,Fast Food,Pub Food,678,38,72,24,8,4,12,1120,480,1 meal,"Chicken breast pieces, tikka masala sauce, basmati rice, naan bread","Milk, Wheat",true,true,
+Steak & Ale Pie,Wetherspoons,,Fast Food,Pub Food,786,32,64,44,18,5,6,1340,460,1 meal,"Beef steak, ale gravy, puff pastry, mashed potato, peas, gravy","Wheat, Milk, Egg",true,true,
+All-Day Breakfast,Wetherspoons,,Fast Food,Pub Food,986,48,62,58,18,8,8,2120,540,1 meal,"Bacon, sausages, fried eggs, hash browns, baked beans, mushrooms, tomato, toast","Wheat, Egg, Milk",true,true,
+Chicken Club Sandwich,Wetherspoons,,Fast Food,Pub Food,712,42,54,36,10,4,6,1280,420,1 meal,"Grilled chicken breast, smoked bacon, lettuce, tomato, mayo, toasted bread, chips","Wheat, Egg",true,true,
+Lasagne,Wetherspoons,,Fast Food,Pub Food,824,38,68,42,18,5,12,1420,480,1 meal,"Beef mince, pasta sheets, bechamel sauce, cheddar, garlic bread, salad","Wheat, Milk, Egg",true,true,
+Gammon Steak & Eggs,Wetherspoons,,Fast Food,Pub Food,742,52,48,38,12,4,4,1680,440,1 meal,"Gammon steak, fried eggs (2), chips, peas, pineapple ring",Egg,true,true,
+Chicken Burrito,Chipotle,,Fast Food,Mexican,1065,58,102,40,14,12,8,2120,520,1 burrito,"Flour tortilla, cilantro-lime rice, black beans, chicken, salsa, cheese, sour cream, lettuce","Wheat, Milk",true,true,
+Steak Burrito,Chipotle,,Fast Food,Mexican,1150,62,100,48,18,12,8,2240,540,1 burrito,"Flour tortilla, cilantro-lime rice, black beans, steak, salsa, cheese, sour cream, guacamole","Wheat, Milk",true,true,
+Barbacoa Bowl,Chipotle,,Fast Food,Mexican,665,42,58,28,10,10,6,1480,420,1 bowl,"Cilantro-lime rice, pinto beans, shredded barbacoa beef, salsa, cheese, sour cream, lettuce",Milk,true,true,
+Chicken Bowl,Chipotle,,Fast Food,Mexican,625,48,52,22,8,8,5,1320,400,1 bowl,"Cilantro-lime rice, black beans, grilled chicken, pico de gallo, cheese, lettuce",Milk,true,true,
+Veggie Burrito,Chipotle,,Fast Food,Mexican,845,28,98,36,12,14,8,1640,480,1 burrito,"Flour tortilla, cilantro-lime rice, black beans, fajita veg, guacamole, salsa, cheese, sour cream","Wheat, Milk",true,true,
+Chicken Tacos (3),Chipotle,,Fast Food,Mexican,525,38,42,22,8,6,4,980,280,3 tacos,"Soft corn tortillas, grilled chicken, salsa, cheese, lettuce",Milk,true,true,
+Chips & Guacamole,Chipotle,,Fast Food,Mexican,770,8,64,54,8,12,2,660,200,1 portion,"Corn tortilla chips, guacamole (avocado, lime, cilantro, red onion, jalapeno)",,true,true,
+Chicken Burrito,Tortilla,,Fast Food,Mexican,785,42,78,32,12,8,6,1420,450,1 burrito,"Flour tortilla, Mexican rice, black beans, grilled chicken, salsa, cheese, sour cream, lettuce","Wheat, Milk",true,true,
+Beef Burrito,Tortilla,,Fast Food,Mexican,865,46,76,40,16,8,6,1580,480,1 burrito,"Flour tortilla, Mexican rice, pinto beans, seasoned beef, salsa, cheese, guacamole","Wheat, Milk",true,true,
+Naked Burrito Bowl,Tortilla,,Fast Food,Mexican,545,36,48,22,8,10,5,1120,380,1 bowl,"Mexican rice, black beans, grilled chicken, pico de gallo, cheese, lettuce, jalapenos",Milk,true,true,
+Quesadilla,Tortilla,,Fast Food,Mexican,624,32,48,34,16,4,4,1240,300,1 quesadilla,"Flour tortilla, grilled chicken, melted cheese, peppers, onions, salsa","Wheat, Milk",true,true,
+Nachos,Tortilla,,Fast Food,Mexican,742,28,62,42,16,8,6,1380,400,1 portion,"Tortilla chips, seasoned beef, black beans, cheese sauce, salsa, guacamole, sour cream, jalapenos","Wheat, Milk",true,true,
+Honest Burger,Honest Burgers,,Fast Food,Burgers,624,34,42,36,14,3,8,920,280,1 burger,"British beef patty, brioche bun, smoked bacon, cheddar, pickles, honest sauce, red onion relish","Wheat, Milk, Egg",true,true,
+Tribute Burger,Honest Burgers,,Fast Food,Burgers,712,38,44,42,18,3,9,1080,320,1 burger,"British beef patty, brioche bun, American cheese, smoked streaky bacon, burger sauce, pickles, onions","Wheat, Milk, Egg",true,true,
+Chicken Burger,Honest Burgers,,Fast Food,Burgers,586,36,48,28,8,4,8,840,290,1 burger,"Free-range chicken thigh, brioche bun, bacon, aioli, lettuce, tomato","Wheat, Milk, Egg",true,true,
+Plant Burger,Honest Burgers,,Fast Food,Burgers,548,22,52,28,6,6,10,780,280,1 burger,"Plant-based patty, vegan brioche bun, vegan smoked gouda, pickles, red onion relish, vegan sauce","Wheat, Soya",true,true,
+Rosemary Salted Chips,Honest Burgers,,Fast Food,Sides,386,5,48,20,2,5,1,420,200,1 portion,"Potatoes, sunflower oil, fresh rosemary, sea salt",,true,true,
+Fritter Burger,Honest Burgers,,Fast Food,Burgers,678,18,68,38,8,6,12,920,310,1 burger,"Halloumi fritter, brioche bun, aubergine, red pepper relish, tahini, rocket","Wheat, Milk, Sesame",true,true,
+Classic Burger,GBK,,Fast Food,Burgers,612,32,44,34,14,3,8,880,285,1 burger,"Beef patty, toasted bun, relish, lettuce, tomato, red onion, mayo, mustard","Wheat, Egg, Milk",true,true,
+Blue Cheese Burger,GBK,,Fast Food,Burgers,724,38,44,44,20,3,9,1120,320,1 burger,"Beef patty, toasted bun, Stilton cheese, bacon, red onion marmalade, lettuce","Wheat, Milk, Egg",true,true,
+Habanero Chicken Burger,GBK,,Fast Food,Burgers,596,36,48,28,8,4,10,920,295,1 burger,"Buttermilk chicken, toasted bun, habanero mayo, pickled jalapenos, slaw","Wheat, Milk, Egg",true,true,
+Veggie Burger,GBK,,Fast Food,Burgers,524,18,54,26,6,6,10,780,275,1 burger,"Plant-based patty, toasted bun, vegan cheese, relish, lettuce, tomato, vegan mayo","Wheat, Soya",true,true,
+Skinny Fries,GBK,,Fast Food,Sides,312,4,42,14,1,4,1,280,150,1 portion,"Potatoes, vegetable oil, salt",,true,true,
+Onion Rings,GBK,,Fast Food,Sides,342,5,38,18,2,3,6,420,140,1 portion,"Onion rings, beer batter, vegetable oil",Wheat,true,true,
+Salmon Nigiri (2 pieces),Yo! Sushi,,Fast Food,Sushi,124,8,16,3,1,0,3,280,68,2 pieces,"Sushi rice, Scottish salmon, wasabi",Fish,true,true,
+Tuna Nigiri (2 pieces),Yo! Sushi,,Fast Food,Sushi,108,9,16,1,0,0,3,260,66,2 pieces,"Sushi rice, yellowfin tuna, wasabi",Fish,true,true,
+California Roll,Yo! Sushi,,Fast Food,Sushi,268,8,42,8,1,3,6,520,180,6 pieces,"Sushi rice, nori, crab stick, avocado, cucumber, mayo, sesame seeds","Fish, Shellfish, Egg, Sesame",true,true,
+Chicken Katsu Curry,Yo! Sushi,,Fast Food,Asian,742,32,88,28,6,4,14,1180,480,1 bowl,"Panko-breaded chicken, sticky rice, katsu curry sauce, pickled ginger","Wheat, Milk, Egg, Soya",true,true,
+Yasai Roll,Yo! Sushi,,Fast Food,Sushi,186,4,38,2,0,3,5,380,140,6 pieces,"Sushi rice, nori, avocado, cucumber, carrot, pepper, sesame seeds",Sesame,true,true,
+Salmon Sashimi,Yo! Sushi,,Fast Food,Sushi,148,18,0,8,2,0,0,180,80,5 pieces,Scottish salmon,Fish,true,true,
+Dragon Roll,Yo! Sushi,,Fast Food,Sushi,424,14,54,18,3,4,8,680,240,8 pieces,"Sushi rice, nori, tempura prawn, avocado, eel sauce, sesame seeds","Shellfish, Wheat, Sesame, Soya",true,true,
+Edamame,Yo! Sushi,,Fast Food,Sides,138,11,8,6,1,5,2,380,110,1 portion,"Steamed edamame beans, sea salt",Soya,true,true,
+Roast Beef Carvery,Toby Carvery,,Fast Food,Carvery,686,42,56,32,12,6,8,980,450,1 plate,"Roast beef, roast potatoes, Yorkshire pudding, seasonal vegetables, gravy","Wheat, Milk, Egg",true,true,
+Roast Chicken Carvery,Toby Carvery,,Fast Food,Carvery,624,38,54,28,8,6,8,920,440,1 plate,"Roast chicken, roast potatoes, Yorkshire pudding, stuffing, seasonal vegetables, gravy","Wheat, Milk, Egg",true,true,
+Roast Pork Carvery,Toby Carvery,,Fast Food,Carvery,712,36,54,38,14,6,10,1080,460,1 plate,"Roast pork, crackling, apple sauce, roast potatoes, Yorkshire pudding, vegetables, gravy","Wheat, Milk, Egg",true,true,
+Roast Turkey Carvery,Toby Carvery,,Fast Food,Carvery,598,42,52,24,8,6,8,880,430,1 plate,"Roast turkey, stuffing, cranberry sauce, roast potatoes, Yorkshire pudding, vegetables, gravy","Wheat, Milk, Egg",true,true,
+Gammon Carvery,Toby Carvery,,Fast Food,Carvery,724,44,54,36,12,6,12,1480,470,1 plate,"Gammon, pineapple ring, roast potatoes, Yorkshire pudding, vegetables, gravy","Wheat, Milk, Egg",true,true,
+Kids Carvery,Toby Carvery,,Fast Food,Carvery,386,22,34,18,6,4,5,580,280,1 plate,"Choice of meat, roast potatoes, Yorkshire pudding, vegetables, gravy","Wheat, Milk, Egg",true,true,
+Jack Daniel's Glazed Burger,TGI Fridays,,Fast Food,American,1124,52,68,68,26,4,24,1680,520,1 meal,"Beef burger, Jack Daniel's glaze, bacon, cheddar, onion rings, brioche bun, seasoned fries","Wheat, Milk, Egg",true,true,
+BBQ Baby Back Ribs Full Rack,TGI Fridays,,Fast Food,American,1386,68,72,86,32,4,38,2240,680,1 rack with sides,"Pork ribs, BBQ glaze, coleslaw, seasoned fries, corn on the cob","Wheat, Milk, Egg",true,true,
+Cajun Chicken Pasta,TGI Fridays,,Fast Food,American,1086,48,98,52,24,6,12,1920,520,1 portion,"Penne pasta, Cajun chicken, peppers, onions, creamy Cajun sauce, parmesan","Wheat, Milk, Egg",true,true,
+Loaded Potato Skins,TGI Fridays,,Fast Food,American,624,22,42,42,18,4,4,1280,320,1 portion,"Potato skins, cheddar cheese, bacon bits, sour cream, chives",Milk,true,true,
+Buffalo Wings,TGI Fridays,,Fast Food,American,786,48,24,56,14,2,4,2480,380,10 wings,"Chicken wings, buffalo sauce, celery sticks, blue cheese dip",Milk,true,true,
+Caesar Salad with Chicken,TGI Fridays,,Fast Food,American,542,38,24,34,8,4,4,1180,380,1 salad,"Romaine lettuce, grilled chicken, parmesan, croutons, Caesar dressing","Wheat, Milk, Egg, Fish",true,true,
+Mixed Grill,Harvester,,Fast Food,Pub Food,1186,78,52,72,26,6,8,1980,620,1 meal,"Rump steak, gammon, pork sausage, chicken breast, fried egg, onion rings, chips, peas, grilled tomato","Wheat, Egg, Milk",true,true,
+Grilled Chicken Breast,Harvester,,Fast Food,Pub Food,586,52,42,22,6,5,6,780,420,1 meal,"Grilled chicken breast, chips, peas, salad bar",,true,true,
+BBQ Chicken Stack,Harvester,,Fast Food,Pub Food,824,58,56,42,16,5,18,1420,520,1 meal,"Grilled chicken, BBQ sauce, bacon, cheese, onion rings, chips, coleslaw","Wheat, Milk",true,true,
+Fish and Chips,Harvester,,Fast Food,Pub Food,912,44,88,44,6,6,4,1280,540,1 meal,"Beer-battered cod, chips, mushy peas, tartare sauce","Wheat, Fish, Egg, Milk",true,true,
+Classic Beef Burger,Harvester,,Fast Food,Pub Food,786,42,54,46,18,4,10,1180,420,1 meal,"Beef burger, brioche bun, bacon, cheese, lettuce, tomato, onion, chips","Wheat, Milk, Egg",true,true,
+Meatball Spaghetti,Frankie & Benny's,,Fast Food,Italian,924,38,98,42,16,6,14,1520,520,1 portion,"Spaghetti, beef meatballs, marinara sauce, parmesan, fresh basil","Wheat, Milk, Egg",true,true,
+Pepperoni Pizza,Frankie & Benny's,,Fast Food,Pizza,1086,46,112,48,22,5,10,2180,480,1 pizza,"Pizza dough, tomato sauce, mozzarella, pepperoni","Wheat, Milk",true,true,
+BBQ Chicken Pizza,Frankie & Benny's,,Fast Food,Pizza,1024,52,108,42,18,5,18,1980,490,1 pizza,"Pizza dough, BBQ sauce, mozzarella, grilled chicken, red onion","Wheat, Milk",true,true,
+Chicken Alfredo,Frankie & Benny's,,Fast Food,Italian,1148,52,88,64,32,4,8,1680,480,1 portion,"Penne pasta, grilled chicken, creamy Alfredo sauce, parmesan, parsley","Wheat, Milk, Egg",true,true,
+Classic Burger,Frankie & Benny's,,Fast Food,Burgers,856,46,58,48,20,4,12,1380,450,1 meal,"Beef burger, brioche bun, American cheese, bacon, lettuce, tomato, pickles, fries","Wheat, Milk, Egg",true,true,
+Spaghetti Bolognese,Bella Italia,,Fast Food,Italian,724,32,86,28,10,5,10,980,450,1 portion,"Spaghetti, beef ragu, tomatoes, onion, garlic, Italian herbs, parmesan","Wheat, Milk",true,true,
+Margherita Pizza,Bella Italia,,Fast Food,Pizza,812,32,98,32,14,4,8,1480,420,1 pizza,"Pizza dough, San Marzano tomatoes, fior di latte mozzarella, fresh basil, olive oil","Wheat, Milk",true,true,
+Carbonara,Bella Italia,,Fast Food,Italian,986,38,78,58,26,3,4,1380,420,1 portion,"Spaghetti, pancetta, egg yolks, pecorino, parmesan, black pepper","Wheat, Egg, Milk",true,true,
+Lasagne,Bella Italia,,Fast Food,Italian,842,38,64,48,22,4,10,1420,480,1 portion,"Pasta sheets, beef ragu, bechamel sauce, mozzarella, parmesan","Wheat, Milk, Egg",true,true,
+Diavola Pizza,Bella Italia,,Fast Food,Pizza,924,38,96,42,18,4,9,1820,450,1 pizza,"Pizza dough, tomato sauce, mozzarella, spicy salami, chilli, olives","Wheat, Milk",true,true,
+Rustica Pepperoni,Zizzi,,Fast Food,Pizza,986,42,102,44,20,5,8,2080,460,1 pizza,"Rustica dough, tomato, mozzarella, pepperoni, roasted peppers, oregano","Wheat, Milk",true,true,
+King Prawn Linguine,Zizzi,,Fast Food,Italian,724,32,78,32,8,4,8,1180,420,1 portion,"Linguine, king prawns, garlic, chilli, white wine, cherry tomatoes, rocket","Wheat, Shellfish, Sulphites",true,true,
+Chicken Milanese,Zizzi,,Fast Food,Italian,842,48,68,42,12,5,8,1280,460,1 portion,"Breaded chicken breast, spaghetti, tomato sauce, rocket, parmesan","Wheat, Milk, Egg",true,true,
+Margherita Classica,Zizzi,,Fast Food,Pizza,786,30,96,30,12,4,7,1420,400,1 pizza,"Classic dough, tomato, fior di latte, fresh basil","Wheat, Milk",true,true,
+Dough Balls with Garlic Butter,Zizzi,,Fast Food,Sides,486,12,58,24,14,2,3,680,180,1 portion,"Pizza dough, garlic butter, parsley","Wheat, Milk",true,true,
+Margherita,Pizza Express,,Fast Food,Pizza,724,28,88,28,12,4,6,1280,380,1 pizza,"Classic dough, passata, mozzarella, fresh basil, olive oil","Wheat, Milk",true,true,
+American Hot,Pizza Express,,Fast Food,Pizza,912,42,92,40,18,4,8,1920,440,1 pizza,"Classic dough, passata, mozzarella, pepperoni, jalapenos, green peppers","Wheat, Milk",true,true,
+Sloppy Giuseppe,Pizza Express,,Fast Food,Pizza,886,38,90,38,16,4,10,1780,430,1 pizza,"Classic dough, passata, mozzarella, spicy beef, pepperoni, green peppers, red onion, chilli","Wheat, Milk",true,true,
+Dough Balls with Garlic Butter,Pizza Express,,Fast Food,Sides,396,10,48,18,10,2,2,580,145,8 balls,"Pizza dough, garlic butter","Wheat, Milk",true,true,
+Padana,Pizza Express,,Fast Food,Pizza,798,32,84,36,14,4,7,1480,410,1 pizza,"Classic dough, passata, mozzarella, goat's cheese, spinach, caramelised onion, pine nuts","Wheat, Milk, Tree Nuts",true,true,
+Caesar Salad,Pizza Express,,Fast Food,Salads,424,18,22,30,8,3,4,920,280,1 salad,"Romaine lettuce, parmesan, croutons, anchovies, Caesar dressing","Wheat, Fish, Milk, Egg",true,true,
+McFlurry Oreo,McDonald's,,Fast Food,Desserts,339,8,52,11,7,1,42,180,180,1 regular,"Soft serve ice cream, Oreo cookie pieces","Milk, Wheat, Soya",true,true,
+McFlurry Maltesers,McDonald's,,Fast Food,Desserts,338,8,51,12,8,1,44,170,175,1 regular,"Soft serve ice cream, Maltesers pieces","Milk, Wheat, Barley",true,true,
+Bacon McDouble,McDonald's,,Fast Food,Burgers,458,28,32,24,11,2,7,1040,175,1 burger,"Beef patties (2), bacon, American cheese, onions, pickles, ketchup, mustard, bun","Wheat, Milk",true,true,
+Spicy Veggie Wrap,McDonald's,,Fast Food,Wraps,456,12,52,22,4,5,8,780,230,1 wrap,"Tortilla, veggie dippers, spicy relish, lettuce, red onion, tomato","Wheat, Soya",true,true,
+Chocolate Muffin,McDonald's,,Fast Food,Bakery,478,7,58,24,6,3,32,380,128,1 muffin,"Flour, sugar, eggs, vegetable oil, cocoa, chocolate chips","Wheat, Egg, Milk, Soya",true,true,
+Kentucky Burger,KFC,,Fast Food,Burgers,578,32,46,30,8,3,8,1320,245,1 burger,"Chicken fillet, brioche bun, lettuce, mayo, pickles, Kentucky sauce","Wheat, Egg",true,true,
+Corn on the Cob,KFC,,Fast Food,Sides,150,4,28,4,1,4,6,20,145,1 cob,"Sweetcorn, butter",Milk,true,true,
+BBQ Beans,KFC,,Fast Food,Sides,112,5,18,1,0,5,8,480,145,1 regular,"Baked beans, BBQ sauce, spices",,true,true,
+Bacon Breakfast Roll,Greggs,,Fast Food,Breakfast,312,14,28,16,6,1,2,920,120,1 roll,"Soft white roll, smoked bacon rashers",Wheat,true,true,
+Chicken Katsu Curry,Wasabi,,Fast Food,Asian,624,28,78,22,4,4,14,1080,420,1 bowl,"Panko chicken breast, steamed rice, Japanese curry sauce, pickled ginger","Wheat, Soya",true,true,
+Salmon Teriyaki Don,Wasabi,,Fast Food,Asian,512,26,68,14,2,3,16,1240,380,1 bowl,"Grilled salmon, steamed rice, teriyaki glaze, sesame seeds, spring onion","Fish, Soya, Sesame, Wheat",true,true,
+Bento Box - Chicken,Wasabi,,Fast Food,Asian,586,32,72,18,4,4,12,1180,450,1 box,"Teriyaki chicken, rice, gyoza, edamame, pickles, miso soup","Wheat, Soya, Sesame",true,true,
+Salmon & Avocado Sushi Box,Wasabi,,Fast Food,Sushi,386,18,52,12,2,4,6,780,245,10 pieces,"Sushi rice, Scottish salmon, avocado, nori, wasabi, pickled ginger, soy sauce","Fish, Soya, Sesame",true,true,
+Chicken Gyoza,Wasabi,,Fast Food,Asian,232,12,26,9,2,2,3,540,130,5 pieces,"Wheat wrappers, minced chicken, cabbage, ginger, gyoza sauce","Wheat, Soya",true,true,
+Miso Soup,Wasabi,,Fast Food,Soups,52,4,4,2,0,1,2,680,240,1 bowl,"Dashi stock, miso paste, tofu, wakame, spring onions","Soya, Fish",true,true,
+Chicken Fajitas,Las Iguanas,,Fast Food,Mexican,824,46,68,38,12,8,12,1420,520,1 portion,"Grilled chicken, tortillas, peppers, onions, salsa, guacamole, sour cream, cheese","Wheat, Milk",true,true,
+Beef Burrito,Las Iguanas,,Fast Food,Mexican,912,42,86,42,16,10,8,1680,480,1 burrito,"Flour tortilla, braised beef, rice, black beans, cheese, salsa, sour cream, guacamole","Wheat, Milk",true,true,
+Fish Tacos,Las Iguanas,,Fast Food,Mexican,586,28,52,28,6,6,6,980,340,3 tacos,"Soft corn tortillas, battered fish, chipotle mayo, red cabbage slaw, pico de gallo","Wheat, Fish, Egg",true,true,
+Nachos Grande,Las Iguanas,,Fast Food,Mexican,986,32,78,62,24,10,8,1820,520,1 portion,"Tortilla chips, pulled pork, cheese sauce, jalapenos, guacamole, sour cream, salsa","Wheat, Milk",true,true,
+Caipirinha Chicken,Las Iguanas,,Fast Food,Brazilian,724,42,56,36,10,5,14,1180,440,1 portion,"Grilled chicken, lime & cachaça glaze, rice, black beans, farofa, pico de gallo",Sulphites,true,true,
+ShackBurger,Shake Shack,,Fast Food,Burgers,530,28,36,32,14,2,8,1090,195,1 burger,"Angus beef patty, American cheese, lettuce, tomato, ShackSauce, potato bun","Wheat, Milk, Egg",true,true,
+SmokeShack,Shake Shack,,Fast Food,Burgers,610,32,36,40,17,2,8,1420,220,1 burger,"Angus beef patty, applewood bacon, cherry peppers, ShackSauce, potato bun","Wheat, Milk, Egg",true,true,
+Shack Stack,Shake Shack,,Fast Food,Burgers,840,42,52,52,22,4,10,1580,295,1 burger,"Angus beef patty, fried portobello mushroom, cheese, lettuce, tomato, ShackSauce","Wheat, Milk, Egg",true,true,
+Chicken Shack,Shake Shack,,Fast Food,Chicken,580,32,48,28,6,3,8,1240,225,1 sandwich,"Crispy chicken breast, lettuce, pickles, buttermilk herb mayo, potato bun","Wheat, Milk, Egg",true,true,
+Crinkle Cut Fries,Shake Shack,,Fast Food,Sides,470,6,62,22,4,5,0,740,200,1 regular,"Potatoes, vegetable oil, salt",,true,true,
+Cheese Fries,Shake Shack,,Fast Food,Sides,680,18,66,38,16,5,2,1420,280,1 regular,"Crinkle cut fries, cheese sauce",Milk,true,true,
+Concrete (Vanilla),Shake Shack,,Fast Food,Desserts,620,12,78,28,16,0,62,220,265,1 regular,"Frozen custard, vanilla","Milk, Egg",true,true,
+Cod & Chips,Harry Ramsden's,,Fast Food,Fish & Chips,924,42,86,44,6,6,2,1180,480,1 regular,"Beer-battered Atlantic cod, thick cut chips, lemon wedge","Fish, Wheat",true,true,
+Haddock & Chips,Harry Ramsden's,,Fast Food,Fish & Chips,886,44,82,40,5,6,2,1120,470,1 regular,"Beer-battered North Sea haddock, thick cut chips, lemon wedge","Fish, Wheat",true,true,
+Plaice & Chips,Harry Ramsden's,,Fast Food,Fish & Chips,812,38,80,36,4,6,2,1080,450,1 regular,"Battered plaice, thick cut chips, lemon wedge","Fish, Wheat",true,true,
+Mushy Peas,Harry Ramsden's,,Fast Food,Sides,124,7,18,2,0,6,3,420,145,1 portion,"Marrowfat peas, butter, salt",Milk,true,true,
+Curry Sauce,Harry Ramsden's,,Fast Food,Sides,78,1,12,3,1,1,6,380,90,1 pot,"Curry sauce, onion, spices",Wheat,true,true,
+Chip Shop Fish Cake,Harry Ramsden's,,Fast Food,Fish & Chips,186,8,18,9,2,2,1,420,95,1 cake,"Fish, potato, breadcrumbs, parsley","Fish, Wheat",true,true,
+Peri-Peri Chips,Nando's,,Fast Food,Sides,312,4,42,14,2,4,1,480,180,1 regular,"Potatoes, peri-peri seasoning, vegetable oil",,true,true,
+Rainbow Slaw,Nando's,,Fast Food,Sides,92,2,12,4,1,3,8,180,130,1 regular,"Red cabbage, carrot, beetroot, apple, citrus dressing",,true,true,
+Crispy Chicken Royale,Burger King,,Fast Food,Chicken,586,24,52,30,5,3,8,1180,225,1 sandwich,"Crispy chicken fillet, lettuce, mayo, sesame seed bun","Wheat, Egg, Sesame",true,true,
+Onion Rings,Burger King,,Fast Food,Sides,318,4,36,18,3,2,4,680,113,1 regular,"Onion rings, batter, vegetable oil",Wheat,true,true,
+Chicken Royale Meal,Burger King,,Fast Food,Chicken,1024,34,112,48,8,7,16,1680,480,1 meal,"Crispy Chicken Royale, medium fries, medium drink","Wheat, Egg, Sesame",true,true,
+Veggie Delite 6-inch,Subway,,Fast Food,Sandwiches,230,8,42,3,1,5,6,310,169,6-inch sub,"9-grain wheat bread, lettuce, tomatoes, green peppers, cucumbers, onions, olives",Wheat,true,true,
+Spicy Italian 6-inch,Subway,,Fast Food,Sandwiches,498,22,44,26,10,3,6,1520,228,6-inch sub,"Italian bread, pepperoni, salami, cheese, lettuce, tomato, onion","Wheat, Milk",true,true,
+Chicken Tikka 6-inch,Subway,,Fast Food,Sandwiches,378,28,44,10,3,3,8,820,242,6-inch sub,"Italian bread, tikka chicken strips, lettuce, tomato, cucumber, tikka sauce","Wheat, Milk",true,true,
+Cookies (Chocolate Chip),Subway,,Fast Food,Desserts,220,2,30,10,5,1,18,130,45,1 cookie,"Flour, sugar, butter, chocolate chips, eggs, vanilla","Wheat, Milk, Egg, Soya",true,true,
+Egg Mayo Sandwich,Starbucks,,Fast Food,Sandwiches,356,14,32,18,4,3,4,520,175,1 sandwich,"Malted bread, free-range egg mayo, spinach","Wheat, Egg",true,true,
+Chicken & Bacon Wrap,Starbucks,,Fast Food,Wraps,478,28,42,22,6,3,5,780,245,1 wrap,"Tortilla wrap, chicken breast, bacon, Caesar dressing, lettuce, parmesan","Wheat, Milk, Egg, Fish",true,true,
+Chocolate Brownie,Starbucks,,Fast Food,Bakery,398,5,48,22,8,2,34,180,95,1 brownie,"Dark chocolate, butter, sugar, eggs, flour","Wheat, Milk, Egg, Soya",true,true,

@@ -259,13 +259,29 @@ final class AlgoliaSearchManager {
     // Base URL for Algolia API
     private var baseURL: String { "https://\(appId)-dsn.algolia.net/1/indexes" }
 
+    // FEATURE FLAG: Set to true to use new database indices for testing
+    private let useNewDatabases = false
+
     // Index names - foods is main database, user_added for custom items
-    private let indices = [
-        ("foods", 0),            // Main database - highest priority
-        ("user_added", 1),       // User's custom foods
-        ("ai_enhanced", 2),
-        ("ai_manually_added", 3),
-    ]
+    private var indices: [(String, Int)] {
+        if useNewDatabases {
+            // NEW databases - testing UK complete database
+            return [
+                ("new_main", 0),         // UK Foods Complete (67,558 items)
+                ("new_fast_food", 1),    // Fast Food (440 items)
+                ("new_generic", 2),      // Generic Items (568 items)
+                ("user_added", 3),       // User's custom foods
+            ]
+        } else {
+            // OLD databases
+            return [
+                ("foods", 0),            // Main database - highest priority
+                ("user_added", 1),       // User's custom foods
+                ("ai_enhanced", 2),
+                ("ai_manually_added", 3),
+            ]
+        }
+    }
 
     // Cache for search results
     private let searchCache = NSCache<NSString, SearchCacheEntry>()
@@ -719,6 +735,7 @@ final class AlgoliaSearchManager {
             let protein = (hit["protein"] as? Double) ?? (hit["protein"] as? Int).map { Double($0) } ?? 0
             let carbs = (hit["carbs"] as? Double) ?? (hit["carbs"] as? Int).map { Double($0) } ?? 0
             let fat = (hit["fat"] as? Double) ?? (hit["fat"] as? Int).map { Double($0) } ?? 0
+            let saturatedFat = (hit["saturatedFat"] as? Double) ?? (hit["saturatedFat"] as? Int).map { Double($0) }
             let fiber = (hit["fiber"] as? Double) ?? (hit["fiber"] as? Int).map { Double($0) } ?? 0
             let sugar = (hit["sugar"] as? Double) ?? (hit["sugar"] as? Int).map { Double($0) } ?? 0
             let sodium = (hit["sodium"] as? Double) ?? (hit["sodium"] as? Int).map { Double($0) } ?? 0
@@ -744,6 +761,23 @@ final class AlgoliaSearchManager {
                 micronutrientProfile = parseMicronutrientProfile(profileData)
             }
 
+            // Extract portions array for multi-size items (e.g., McNuggets 6pc, 9pc, 20pc)
+            var portions: [PortionOption]? = nil
+            if let portionsString = hit["portions"] as? String,
+               let portionsData = portionsString.data(using: .utf8) {
+                portions = try? JSONDecoder().decode([PortionOption].self, from: portionsData)
+            } else if let portionsArray = hit["portions"] as? [[String: Any]] {
+                // Handle direct array format from Firestore
+                portions = portionsArray.compactMap { dict -> PortionOption? in
+                    guard let name = dict["name"] as? String,
+                          let calories = (dict["calories"] as? Double) ?? (dict["calories"] as? Int).map({ Double($0) }),
+                          let servingG = (dict["serving_g"] as? Double) ?? (dict["serving_g"] as? Int).map({ Double($0) }) else {
+                        return nil
+                    }
+                    return PortionOption(name: name, calories: calories, serving_g: servingG)
+                }
+            }
+
             return FoodSearchResult(
                 id: objectID,
                 name: name,
@@ -752,6 +786,7 @@ final class AlgoliaSearchManager {
                 protein: protein,
                 carbs: carbs,
                 fat: fat,
+                saturatedFat: saturatedFat,
                 fiber: fiber,
                 sugar: sugar,
                 sodium: sodium,
@@ -761,7 +796,8 @@ final class AlgoliaSearchManager {
                 ingredients: ingredients,
                 isVerified: verified,
                 barcode: barcode,
-                micronutrientProfile: micronutrientProfile
+                micronutrientProfile: micronutrientProfile,
+                portions: portions
             )
         }
     }

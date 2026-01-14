@@ -149,8 +149,27 @@ INSTRUCTIONS:
    - Energy: return kcal (convert from kJ if needed: kJ ÷ 4.184 = kcal)
    - Salt: return grams (convert from sodium mg if needed: sodium mg × 2.5 ÷ 1000 = salt g)
    - All macros: return grams
-5. Extract serving size info if present (e.g., "per 30g serving", "serving size: 250ml")
-6. Set confidence based on OCR quality and how clearly values were found
+5. Set confidence based on OCR quality and how clearly values were found
+
+CRITICAL: SERVING SIZE vs PACK SIZE - DO NOT CONFUSE THESE:
+
+SERVING SIZE (what we want for servingSize field):
+- The RECOMMENDED PORTION someone would eat in one sitting
+- Look for: "per serving", "serving size", "1 portion", "per slice", "per biscuit", "each (Xg)"
+- Typical ranges: 15-100g for snacks/cereals, 100-250g for meals, 150-330ml for drinks
+- Examples: "per 30g serving", "serving size: 40g", "1 portion = 25g", "per biscuit (12.5g)"
+
+PACK SIZE (IGNORE - do NOT use as servingSize):
+- The TOTAL WEIGHT of the entire product/package
+- Look for: "Net weight", "Net contents", "Pack size", "e" symbol (estimated weight)
+- Usually printed on front of pack or near barcode
+- Examples: "Net weight: 500g", "400g e", "Contents: 6x40g bars", "750ml"
+
+SANITY CHECK for servingSize:
+- If servingSize > 200g for a snack/cereal/chocolate, it's probably the PACK size - reject it
+- If servingSize matches "Net weight" or appears on front of pack, it's PACK size - reject it
+- If nutrition table header says "per Xg" where X is large (300+), that's likely pack size
+- When in doubt, look for the SMALLER number that appears in "per serving" context
 
 VALID NUTRIENT KEYS:
 - calories (kcal)
@@ -254,8 +273,16 @@ function parseAIResponse(responseText: string): ParsedNutritionData {
     if (typeof parsed.saturatedFat === 'number' && parsed.saturatedFat >= 0 && parsed.saturatedFat <= 50) {
       result.saturatedFat = parsed.saturatedFat;
     }
+    // Validate serving size - reject values that look like pack sizes
     if (typeof parsed.servingSize === 'number' && parsed.servingSize > 0) {
-      result.servingSize = parsed.servingSize;
+      // Sanity check: typical serving sizes are 15-250g, anything > 300g is likely pack size
+      if (parsed.servingSize <= 300) {
+        result.servingSize = parsed.servingSize;
+      } else {
+        // Add warning that we rejected a suspicious serving size
+        if (!result.warnings) result.warnings = [];
+        result.warnings.push(`Rejected suspicious serving size (${parsed.servingSize}g) - likely pack size`);
+      }
     }
     if (typeof parsed.servingUnit === 'string') {
       result.servingUnit = parsed.servingUnit;

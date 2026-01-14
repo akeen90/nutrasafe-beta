@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.searchFoodsAlgolia = exports.bulkImportFoodsToAlgolia = exports.configureAlgoliaIndices = exports.syncAIManuallyAddedFoodToAlgolia = exports.syncAIEnhancedFoodToAlgolia = exports.syncUserAddedFoodToAlgolia = exports.syncManualFoodToAlgolia = exports.syncFoodToAlgolia = exports.syncVerifiedFoodToAlgolia = void 0;
+exports.searchFoodsAlgolia = exports.deleteNewAlgoliaIndices = exports.syncNewDatabasesToAlgolia = exports.bulkImportFoodsToAlgolia = exports.configureAlgoliaIndices = exports.syncAIManuallyAddedFoodToAlgolia = exports.syncAIEnhancedFoodToAlgolia = exports.syncUserAddedFoodToAlgolia = exports.syncManualFoodToAlgolia = exports.syncFoodToAlgolia = exports.syncVerifiedFoodToAlgolia = void 0;
 const functions = require("firebase-functions/v2");
 const firestore_1 = require("firebase-functions/v2/firestore");
 const params_1 = require("firebase-functions/params");
@@ -17,6 +17,10 @@ const MANUAL_FOODS_INDEX = "manual_foods";
 const USER_ADDED_INDEX = "user_added";
 const AI_ENHANCED_INDEX = "ai_enhanced";
 const AI_MANUALLY_ADDED_INDEX = "ai_manually_added";
+// NEW database indices (for testing)
+const NEW_MAIN_INDEX = "new_main";
+const NEW_FAST_FOOD_INDEX = "new_fast_food";
+const NEW_GENERIC_INDEX = "new_generic";
 /**
  * Configure Algolia index settings with custom ranking rules
  * This ensures exact matches and word-start matches are prioritized
@@ -446,6 +450,78 @@ exports.bulkImportFoodsToAlgolia = functions.https.onCall({
     };
 });
 /**
+ * Sync NEW databases to Algolia
+ * Syncs: newMain -> new_main, newFastFood -> new_fast_food, newGeneric -> new_generic
+ */
+exports.syncNewDatabasesToAlgolia = functions.https.onRequest({
+    secrets: [algoliaAdminKey],
+    memory: "1GiB",
+    timeoutSeconds: 540, // 9 minutes for large datasets
+    cors: true,
+}, async (request, response) => {
+    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
+    const db = admin.firestore();
+    const collections = [
+        { name: "newMain", indexName: NEW_MAIN_INDEX },
+        { name: "newFastFood", indexName: NEW_FAST_FOOD_INDEX },
+        { name: "newGeneric", indexName: NEW_GENERIC_INDEX },
+    ];
+    const results = {};
+    for (const collection of collections) {
+        console.log(`📦 Processing ${collection.name}...`);
+        const snapshot = await db.collection(collection.name).get();
+        const algoliaObjects = snapshot.docs.map((doc) => (Object.assign({ objectID: doc.id }, prepareForAlgolia(doc.data()))));
+        if (algoliaObjects.length > 0) {
+            // Configure index settings first
+            await configureIndexSettings(client, collection.indexName);
+            // Batch save in chunks of 1000 (Algolia limit)
+            const BATCH_SIZE = 1000;
+            for (let i = 0; i < algoliaObjects.length; i += BATCH_SIZE) {
+                const batch = algoliaObjects.slice(i, i + BATCH_SIZE);
+                await client.saveObjects({
+                    indexName: collection.indexName,
+                    objects: batch,
+                });
+                console.log(`  Synced ${Math.min(i + BATCH_SIZE, algoliaObjects.length)}/${algoliaObjects.length}`);
+            }
+            results[collection.name] = algoliaObjects.length;
+            console.log(`✅ Imported ${algoliaObjects.length} items to ${collection.indexName}`);
+        }
+        else {
+            results[collection.name] = 0;
+            console.log(`⚠️ No items found in ${collection.name}`);
+        }
+    }
+    response.json({
+        success: true,
+        message: "New databases synced to Algolia",
+        results,
+    });
+});
+/**
+ * Delete new database indices from Algolia (cleanup function)
+ */
+exports.deleteNewAlgoliaIndices = functions.https.onRequest({
+    secrets: [algoliaAdminKey],
+    cors: true,
+}, async (request, response) => {
+    const client = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
+    const indicesToDelete = ["new_main", "new_fast_food", "new_generic"];
+    const results = {};
+    for (const indexName of indicesToDelete) {
+        try {
+            await client.deleteIndex({ indexName });
+            results[indexName] = "deleted";
+            console.log(`✅ Deleted Algolia index: ${indexName}`);
+        }
+        catch (err) {
+            results[indexName] = `error: ${err.message}`;
+            console.error(`❌ Failed to delete ${indexName}:`, err.message);
+        }
+    }
+    response.json({ success: true, results });
+});
+/**
  * Search foods using Algolia with enhanced ranking
  * This provides a fast search endpoint for the iOS app with improved relevance
  */
@@ -570,13 +646,14 @@ function prepareForAlgolia(data) {
         protein: data.protein || 0,
         carbs: data.carbs || 0,
         fat: data.fat || 0,
+        saturatedFat: data.saturatedFat || data.saturated_fat || 0,
         fiber: data.fiber || 0,
         sugar: data.sugar || 0,
         sodium: data.sodium || 0,
         // Metadata
-        servingSize: data.servingSize || data.serving_size || data.servingDescription || data.serving_description || "",
-        servingSizeG: data.servingSizeG || data.serving_size_g || 0,
-        per_unit_nutrition: data.per_unit_nutrition || false,
+        servingSize: data.servingDescription || data.serving_description || data.servingSize || data.serving_size || "",
+        servingSizeG: data.servingSizeG || data.serving_size_g || (typeof data.servingSize === 'number' ? data.servingSize : 0),
+        per_unit_nutrition: data.per_unit_nutrition || data.isPerUnit || false,
         category: data.category || "",
         source: data.source || "",
         verified: data.verified || data.isVerified || false,

@@ -484,9 +484,11 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
     }
 
     private func configureCamera() {
-        // Use the best rear camera with autofocus capabilities
+        // For barcode scanning, prefer the wide-angle camera which has better close-focus
+        // On newer iPhones, the default camera can struggle with close-up focus
+        // Order preference: wide-angle first (best for barcodes), then others as fallback
         let discoverySession = AVCaptureDevice.DiscoverySession(
-            deviceTypes: [.builtInWideAngleCamera, .builtInDualCamera, .builtInTripleCamera],
+            deviceTypes: [.builtInWideAngleCamera],
             mediaType: .video,
             position: .back
         )
@@ -499,17 +501,43 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
         self.videoCaptureDevice = videoCaptureDevice
 
         let captureSession = AVCaptureSession()
-        captureSession.sessionPreset = .high
+        // Use 1280x720 preset - ideal for barcode scanning (faster processing, good quality)
+        // .high uses 1920x1080 which is overkill and can slow down processing
+        if captureSession.canSetSessionPreset(.hd1280x720) {
+            captureSession.sessionPreset = .hd1280x720
+        } else {
+            captureSession.sessionPreset = .high
+        }
 
         do {
-            // Configure autofocus for optimal barcode scanning
+            // Configure camera for optimal close-up barcode scanning
             try videoCaptureDevice.lockForConfiguration()
+
+            // Enable continuous autofocus
             if videoCaptureDevice.isFocusModeSupported(.continuousAutoFocus) {
                 videoCaptureDevice.focusMode = .continuousAutoFocus
             }
+
+            // Restrict autofocus to near range (closer objects like barcodes)
             if videoCaptureDevice.isAutoFocusRangeRestrictionSupported {
                 videoCaptureDevice.autoFocusRangeRestriction = .near
             }
+
+            // Enable smooth autofocus for better transitions
+            if videoCaptureDevice.isSmoothAutoFocusSupported {
+                videoCaptureDevice.isSmoothAutoFocusEnabled = true
+            }
+
+            // Set focus point to center of screen where barcode typically is
+            if videoCaptureDevice.isFocusPointOfInterestSupported {
+                videoCaptureDevice.focusPointOfInterest = CGPoint(x: 0.5, y: 0.5)
+            }
+
+            // Enable continuous auto-exposure for varying lighting
+            if videoCaptureDevice.isExposureModeSupported(.continuousAutoExposure) {
+                videoCaptureDevice.exposureMode = .continuousAutoExposure
+            }
+
             videoCaptureDevice.unlockForConfiguration()
 
             let videoInput = try AVCaptureDeviceInput(device: videoCaptureDevice)

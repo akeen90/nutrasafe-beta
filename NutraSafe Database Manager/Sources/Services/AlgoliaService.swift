@@ -104,9 +104,17 @@ class AlgoliaService: ObservableObject {
             return
         }
 
+        print("🔍 AlgoliaService.searchFoods: Starting search for '\(query)' in \(database.algoliaIndex), page \(page)")
+
         isLoading = true
         error = nil
         currentPage = page
+
+        // Clear results for new searches to give visual feedback
+        if page == 0 {
+            print("🔍 Clearing existing \(foods.count) results for fresh search")
+            foods = []
+        }
 
         do {
             let body: [String: Any] = [
@@ -116,6 +124,7 @@ class AlgoliaService: ObservableObject {
                 "attributesToRetrieve": ["*"]
             ]
 
+            print("🔍 Making API request to Algolia...")
             let data = try await makeRequest(
                 method: "POST",
                 path: "/1/indexes/\(database.algoliaIndex)/query",
@@ -123,6 +132,7 @@ class AlgoliaService: ObservableObject {
             )
 
             let response = try JSONDecoder().decode(AlgoliaSearchResponse.self, from: data)
+            print("🔍 Got \(response.hits.count) results, total: \(response.nbHits)")
 
             if page == 0 {
                 foods = response.hits
@@ -130,11 +140,19 @@ class AlgoliaService: ObservableObject {
                 foods.append(contentsOf: response.hits)
             }
 
+            // Log first few results
+            if !foods.isEmpty {
+                let preview = foods.prefix(3).map { $0.name }.joined(separator: ", ")
+                print("🔍 First results: \(preview)")
+            }
+
             totalHits = response.nbHits
             hasMorePages = (page + 1) * hitsPerPage < totalHits
 
             isLoading = false
+            print("🔍 Search complete. foods array now has \(foods.count) items")
         } catch {
+            print("❌ Search failed: \(error)")
             self.error = "Search failed: \(error.localizedDescription)"
             isLoading = false
         }
@@ -296,9 +314,78 @@ class AlgoliaService: ObservableObject {
         }
     }
 
-    /// Fetch a food by ID from the default foods database
+    /// Fetch a food by ID from the default foods database (via Algolia)
     func getFoodById(_ foodId: String) async -> FoodItem? {
         return await getFood(objectID: foodId, database: .foods)
+    }
+
+    /// Fetch a food directly from Firestore via Cloud Function
+    /// This gets the latest data immediately without waiting for Algolia sync
+    func getFoodFromFirestore(_ foodId: String) async -> FoodItem? {
+        do {
+            guard let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/getFood?foodId=\(foodId)") else {
+                print("❌ Invalid URL for getFood")
+                return nil
+            }
+
+            print("🔥 Fetching food '\(foodId)' directly from Firestore...")
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "GET"
+            request.timeoutInterval = 15
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+                print("❌ getFood returned non-200 status")
+                return nil
+            }
+
+            // Parse the response
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let success = json["success"] as? Bool, success,
+                  let foodDict = json["food"] as? [String: Any] else {
+                print("❌ Invalid response from getFood")
+                return nil
+            }
+
+            // Convert to FoodItem
+            let food = FoodItem(
+                objectID: foodDict["objectID"] as? String ?? foodId,
+                name: foodDict["name"] as? String ?? "",
+                brand: foodDict["brandName"] as? String ?? foodDict["brand"] as? String,
+                barcode: foodDict["barcode"] as? String,
+                calories: (foodDict["calories"] as? NSNumber)?.doubleValue ?? 0,
+                protein: (foodDict["protein"] as? NSNumber)?.doubleValue ?? 0,
+                carbs: (foodDict["carbs"] as? NSNumber)?.doubleValue ?? 0,
+                fat: (foodDict["fat"] as? NSNumber)?.doubleValue ?? 0,
+                fiber: (foodDict["fiber"] as? NSNumber)?.doubleValue ?? 0,
+                sugar: (foodDict["sugar"] as? NSNumber)?.doubleValue ?? 0,
+                sodium: (foodDict["sodium"] as? NSNumber)?.doubleValue ?? 0,
+                saturatedFat: (foodDict["saturatedFat"] as? NSNumber)?.doubleValue,
+                servingDescription: foodDict["servingSize"] as? String ?? foodDict["servingDescription"] as? String,
+                servingSizeG: (foodDict["servingSizeG"] as? NSNumber)?.doubleValue,
+                isPerUnit: foodDict["isPerUnit"] as? Bool,
+                ingredients: foodDict["ingredients"] as? [String],
+                ingredientsText: foodDict["ingredientsText"] as? String,
+                processingScore: (foodDict["processingScore"] as? NSNumber)?.intValue,
+                processingGrade: foodDict["processingGrade"] as? String,
+                processingLabel: foodDict["processingLabel"] as? String,
+                isVerified: foodDict["isVerified"] as? Bool,
+                verifiedBy: foodDict["verifiedBy"] as? String,
+                verifiedAt: foodDict["verifiedAt"] as? String,
+                source: foodDict["source"] as? String,
+                imageURL: foodDict["imageURL"] as? String,
+                thumbnailURL: foodDict["thumbnailURL"] as? String
+            )
+
+            print("✅ Got food '\(food.name)' from Firestore")
+            return food
+
+        } catch {
+            print("❌ Error fetching food from Firestore: \(error)")
+            return nil
+        }
     }
 
     /// Save food to Firestore via Cloud Function (which triggers Algolia sync)
@@ -338,14 +425,27 @@ class AlgoliaService: ObservableObject {
                 body["servingSize"] = servingDesc
             }
 
-            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+            let jsonData = try JSONSerialization.data(withJSONObject: body)
+            request.httpBody = jsonData
 
             print("📤 Saving food '\(food.name)' (ID: \(food.objectID), verified: \(food.isVerified ?? false)) via Cloud Function...")
+            print("   Request URL: \(url)")
+            print("   Request body size: \(jsonData.count) bytes")
+            if let bodyString = String(data: jsonData, encoding: .utf8) {
+                print("   Request body preview: \(String(bodyString.prefix(500)))")
+            }
 
             let (data, response) = try await URLSession.shared.data(for: request)
 
+            print("   Response received: \(data.count) bytes")
+
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw AlgoliaError.invalidResponse
+            }
+
+            print("   HTTP Status: \(httpResponse.statusCode)")
+            if let responseText = String(data: data, encoding: .utf8) {
+                print("   Response body: \(responseText)")
             }
 
             if httpResponse.statusCode != 200 {
@@ -360,8 +460,11 @@ class AlgoliaService: ObservableObject {
                let success = json["success"] as? Bool, success {
                 print("✅ Food saved to Firestore successfully (Algolia sync will follow)")
                 isLoading = false
+                error = nil
                 return true
             } else {
+                let responseStr = String(data: data, encoding: .utf8) ?? "no response"
+                print("❌ Invalid response from server: \(responseStr)")
                 throw AlgoliaError.apiError("Invalid response from server")
             }
 

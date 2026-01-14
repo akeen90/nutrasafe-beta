@@ -23,6 +23,10 @@ struct ContentView: View {
                 FoodTableView()
             case .userReports:
                 UserReportsContentView()
+            case .databaseCompleteness:
+                DatabaseCompletenessView()
+            case .importCleanCenter:
+                ImportCleanCenterView()
             }
         } detail: {
             switch appState.sidebarSelection {
@@ -36,6 +40,10 @@ struct ContentView: View {
                     EmptyDetailView()
                 }
             case .userReports:
+                EmptyView()
+            case .databaseCompleteness:
+                EmptyView()
+            case .importCleanCenter:
                 EmptyView()
             }
         }
@@ -60,6 +68,15 @@ struct ContentView: View {
         }
         .sheet(isPresented: $appState.showingValidationSheet) {
             DataValidationSheet()
+        }
+        .sheet(isPresented: $appState.showingDatabaseScannerSheet) {
+            DatabaseScannerSheet()
+        }
+        .sheet(isPresented: $appState.showingProductImportSheet) {
+            ProductImportSheet()
+        }
+        .sheet(isPresented: $appState.showingStockImageSheet) {
+            StockImageSheet()
         }
         .alert("Delete Foods", isPresented: $appState.showingDeleteConfirmation) {
             Button("Cancel", role: .cancel) { }
@@ -231,6 +248,53 @@ struct SidebarView: View {
                 .disabled(appState.selectedFoodIDs.isEmpty && algoliaService.foods.isEmpty)
             }
 
+            Section("Database Tools") {
+                Button {
+                    appState.showingDatabaseScannerSheet = true
+                } label: {
+                    Label("Scan & Verify", systemImage: "checkmark.shield")
+                }
+                .help("Scan database and verify nutrition data against online sources")
+
+                Button {
+                    appState.showingProductImportSheet = true
+                } label: {
+                    Label("Import Products", systemImage: "square.and.arrow.down.on.square")
+                }
+                .help("Import new products from Open Food Facts and UK retailers")
+
+                Button {
+                    appState.showingStockImageSheet = true
+                } label: {
+                    Label("Stock Images", systemImage: "photo.on.rectangle")
+                }
+                .help("Find professional product images from Unsplash and Pexels")
+
+                Button {
+                    appState.sidebarSelection = .databaseCompleteness
+                } label: {
+                    Label("Check Completeness", systemImage: "checklist.checked")
+                }
+                .buttonStyle(.plain)
+                .padding(.vertical, 4)
+                .padding(.horizontal, 8)
+                .background(appState.sidebarSelection == .databaseCompleteness ? Color.accentColor.opacity(0.2) : Color.clear)
+                .cornerRadius(6)
+                .help("Check database for missing essential UK foods")
+
+                Button {
+                    appState.sidebarSelection = .importCleanCenter
+                } label: {
+                    Label("Import & Clean", systemImage: "square.and.arrow.down.on.square")
+                }
+                .buttonStyle(.plain)
+                .padding(.vertical, 4)
+                .padding(.horizontal, 8)
+                .background(appState.sidebarSelection == .importCleanCenter ? Color.accentColor.opacity(0.2) : Color.clear)
+                .cornerRadius(6)
+                .help("Import data and clean with AI")
+            }
+
             Section("Settings") {
                 SettingsLink {
                     Label("Settings", systemImage: "gear")
@@ -280,22 +344,96 @@ struct SidebarView: View {
 struct FoodTableView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var algoliaService: AlgoliaService
+    @EnvironmentObject var claudeService: ClaudeService
     @EnvironmentObject var reviewManager: ReviewManager
 
     @State private var searchText = ""
+    @State private var isLookingUpBarcode = false
+    @State private var showZeroNutritionOnly = false
+    @State private var showMissingIngredientsOnly = false
+    @State private var showMissingBarcodeOnly = false
+    @State private var showMissingBrandOnly = false
+    @State private var listScrollPosition: Double = 0
+    @State private var isCleaningSelected = false
+    @State private var cleaningProgress: Double = 0
+    @State private var showToolsPanel = false
+    @State private var searchTask: Task<Void, Never>?
+    @StateObject private var offService = OpenFoodFactsService.shared
 
-    // Filter foods based on review status
+    // Check if search text looks like a barcode (numeric, 8-14 digits)
+    private var searchLooksLikeBarcode: Bool {
+        let trimmed = searchText.trimmingCharacters(in: .whitespaces)
+        return trimmed.count >= 8 && trimmed.count <= 14 && trimmed.allSatisfy { $0.isNumber }
+    }
+
+    // Check if a food has zero or missing nutrition data
+    private func hasZeroNutrition(_ food: FoodItem) -> Bool {
+        return food.calories == 0 && food.protein == 0 && food.carbs == 0 && food.fat == 0
+    }
+
+    // Check for missing data
+    private func hasMissingIngredients(_ food: FoodItem) -> Bool {
+        return food.ingredients == nil || food.ingredients?.isEmpty == true
+    }
+
+    private func hasMissingBarcode(_ food: FoodItem) -> Bool {
+        return food.barcode == nil || food.barcode?.isEmpty == true
+    }
+
+    private func hasMissingBrand(_ food: FoodItem) -> Bool {
+        return food.brand == nil || food.brand?.isEmpty == true
+    }
+
+    // Filter foods based on review status and data quality filters
     var filteredFoods: [FoodItem] {
+        var foods: [FoodItem]
         switch appState.reviewFilter {
         case .all:
-            return algoliaService.foods
+            foods = algoliaService.foods
         case .reviewed:
-            return algoliaService.foods.filter { reviewManager.isReviewed($0.objectID) }
+            foods = algoliaService.foods.filter { reviewManager.isReviewed($0.objectID) }
         case .unreviewed:
-            return algoliaService.foods.filter { !reviewManager.isReviewed($0.objectID) }
+            foods = algoliaService.foods.filter { !reviewManager.isReviewed($0.objectID) }
         case .flagged:
-            return algoliaService.foods.filter { reviewManager.isFlagged($0.objectID) }
+            foods = algoliaService.foods.filter { reviewManager.isFlagged($0.objectID) }
         }
+
+        // Apply data quality filters
+        if showZeroNutritionOnly {
+            foods = foods.filter { hasZeroNutrition($0) }
+        }
+        if showMissingIngredientsOnly {
+            foods = foods.filter { hasMissingIngredients($0) }
+        }
+        if showMissingBarcodeOnly {
+            foods = foods.filter { hasMissingBarcode($0) }
+        }
+        if showMissingBrandOnly {
+            foods = foods.filter { hasMissingBrand($0) }
+        }
+
+        return foods
+    }
+
+    // Counts for filter badges
+    var zeroNutritionCount: Int {
+        algoliaService.foods.filter { hasZeroNutrition($0) }.count
+    }
+
+    var missingIngredientsCount: Int {
+        algoliaService.foods.filter { hasMissingIngredients($0) }.count
+    }
+
+    var missingBarcodeCount: Int {
+        algoliaService.foods.filter { hasMissingBarcode($0) }.count
+    }
+
+    var missingBrandCount: Int {
+        algoliaService.foods.filter { hasMissingBrand($0) }.count
+    }
+
+    var hasAnyFilter: Bool {
+        showZeroNutritionOnly || showMissingIngredientsOnly || showMissingBarcodeOnly || showMissingBrandOnly
     }
 
     var body: some View {
@@ -305,15 +443,63 @@ struct FoodTableView: View {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.secondary)
 
-                TextField("Search foods...", text: $searchText)
+                TextField("Search foods or enter barcode...", text: $searchText)
                     .textFieldStyle(.plain)
                     .onSubmit {
+                        // Cancel any pending debounced search
+                        searchTask?.cancel()
+                        searchTask = nil
+                        print("🔍 TextField onSubmit: Searching for '\(searchText)'")
                         Task {
                             await algoliaService.searchFoods(query: searchText, database: appState.selectedDatabase)
                         }
                     }
 
+                // Search button - explicit search trigger
+                Button {
+                    // Cancel any pending debounced search
+                    searchTask?.cancel()
+                    searchTask = nil
+                    print("🔍 Search button pressed: Searching for '\(searchText)'")
+                    Task {
+                        await algoliaService.searchFoods(query: searchText, database: appState.selectedDatabase)
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        if algoliaService.isLoading {
+                            ProgressView()
+                                .scaleEffect(0.6)
+                        }
+                        Text("Search")
+                            .fontWeight(.medium)
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+
                 if !searchText.isEmpty {
+                    // Show barcode lookup button if search looks like a barcode
+                    if searchLooksLikeBarcode {
+                        Button {
+                            Task {
+                                await lookupBarcode()
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                if isLookingUpBarcode {
+                                    ProgressView()
+                                        .scaleEffect(0.6)
+                                } else {
+                                    Image(systemName: "barcode.viewfinder")
+                                }
+                                Text("Lookup")
+                            }
+                            .foregroundColor(.orange)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Lookup barcode in Open Food Facts")
+                        .disabled(isLookingUpBarcode)
+                    }
+
                     Button {
                         searchText = ""
                         Task {
@@ -402,6 +588,125 @@ struct FoodTableView: View {
                 }
                 .buttonStyle(.plain)
                 .help("Open Data Validation Tool")
+
+                Divider()
+                    .frame(height: 20)
+
+                // Data Quality Filters
+                HStack(spacing: 8) {
+                    // Zero Nutrition Filter
+                    Button {
+                        showZeroNutritionOnly.toggle()
+                    } label: {
+                        HStack(spacing: 2) {
+                            Image(systemName: "0.circle")
+                            if zeroNutritionCount > 0 {
+                                Text("\(zeroNutritionCount)")
+                                    .font(.caption2)
+                            }
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(showZeroNutritionOnly ? Color.red.opacity(0.2) : Color.clear)
+                        .cornerRadius(4)
+                        .foregroundColor(showZeroNutritionOnly ? .red : (zeroNutritionCount > 0 ? .orange : .secondary))
+                    }
+                    .buttonStyle(.plain)
+                    .help("Zero nutrition (\(zeroNutritionCount))")
+
+                    // Missing Ingredients Filter
+                    Button {
+                        showMissingIngredientsOnly.toggle()
+                    } label: {
+                        HStack(spacing: 2) {
+                            Image(systemName: "list.bullet")
+                            if missingIngredientsCount > 0 {
+                                Text("\(missingIngredientsCount)")
+                                    .font(.caption2)
+                            }
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(showMissingIngredientsOnly ? Color.orange.opacity(0.2) : Color.clear)
+                        .cornerRadius(4)
+                        .foregroundColor(showMissingIngredientsOnly ? .orange : (missingIngredientsCount > 0 ? .orange : .secondary))
+                    }
+                    .buttonStyle(.plain)
+                    .help("Missing ingredients (\(missingIngredientsCount))")
+
+                    // Missing Barcode Filter
+                    Button {
+                        showMissingBarcodeOnly.toggle()
+                    } label: {
+                        HStack(spacing: 2) {
+                            Image(systemName: "barcode")
+                            if missingBarcodeCount > 0 {
+                                Text("\(missingBarcodeCount)")
+                                    .font(.caption2)
+                            }
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(showMissingBarcodeOnly ? Color.purple.opacity(0.2) : Color.clear)
+                        .cornerRadius(4)
+                        .foregroundColor(showMissingBarcodeOnly ? .purple : (missingBarcodeCount > 0 ? .purple : .secondary))
+                    }
+                    .buttonStyle(.plain)
+                    .help("Missing barcode (\(missingBarcodeCount))")
+
+                    // Missing Brand Filter
+                    Button {
+                        showMissingBrandOnly.toggle()
+                    } label: {
+                        HStack(spacing: 2) {
+                            Image(systemName: "building.2")
+                            if missingBrandCount > 0 {
+                                Text("\(missingBrandCount)")
+                                    .font(.caption2)
+                            }
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(showMissingBrandOnly ? Color.blue.opacity(0.2) : Color.clear)
+                        .cornerRadius(4)
+                        .foregroundColor(showMissingBrandOnly ? .blue : (missingBrandCount > 0 ? .blue : .secondary))
+                    }
+                    .buttonStyle(.plain)
+                    .help("Missing brand (\(missingBrandCount))")
+
+                    // Clear filters
+                    if hasAnyFilter {
+                        Button {
+                            showZeroNutritionOnly = false
+                            showMissingIngredientsOnly = false
+                            showMissingBarcodeOnly = false
+                            showMissingBrandOnly = false
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.red)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Clear all filters")
+                    }
+                }
+
+                Divider()
+                    .frame(height: 20)
+
+                // Tools Panel Toggle
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        showToolsPanel.toggle()
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "wrench.and.screwdriver")
+                        Text("Tools")
+                    }
+                    .foregroundColor(showToolsPanel ? .accentColor : .secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Toggle tools panel")
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
@@ -414,56 +719,106 @@ struct FoodTableView: View {
                 SelectionToolbar()
             }
 
-            // Table
-            if algoliaService.isLoading && algoliaService.foods.isEmpty {
-                ProgressView("Loading...")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if algoliaService.foods.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "tray")
-                        .font(.system(size: 48))
-                        .foregroundColor(.secondary)
-                    Text("No foods found")
-                        .font(.headline)
-                    Text("Try a different search or browse all foods")
-                        .foregroundColor(.secondary)
-
-                    Button("Browse All") {
-                        Task {
-                            await algoliaService.browseAllFoods(database: appState.selectedDatabase)
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
+            // Main content area with optional tools panel
+            HStack(spacing: 0) {
+                // Tools Panel (collapsible)
+                if showToolsPanel {
+                    toolsPanel
+                        .frame(width: 280)
+                        .transition(.move(edge: .leading))
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if filteredFoods.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: appState.reviewFilter.icon)
-                        .font(.system(size: 48))
-                        .foregroundColor(.secondary)
-                    Text("No \(appState.reviewFilter.rawValue.lowercased()) foods")
-                        .font(.headline)
-                    if appState.reviewFilter != .all {
-                        Button("Show All Foods") {
-                            appState.reviewFilter = .all
+
+                // Table
+                if algoliaService.isLoading && algoliaService.foods.isEmpty {
+                    ProgressView("Loading...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if algoliaService.foods.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "tray")
+                            .font(.system(size: 48))
+                            .foregroundColor(.secondary)
+                        Text("No foods found")
+                            .font(.headline)
+                        Text("Try a different search or browse all foods")
+                            .foregroundColor(.secondary)
+
+                        Button("Browse All") {
+                            Task {
+                                await algoliaService.browseAllFoods(database: appState.selectedDatabase)
+                            }
                         }
                         .buttonStyle(.borderedProminent)
                     }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                FoodTableContent(
-                    foods: filteredFoods,
-                    selectedFoodIDs: $appState.selectedFoodIDs,
-                    currentFoodID: $appState.currentFoodID,
-                    onFoodSelected: { food in
-                        appState.currentFood = food
-                    },
-                    onDelete: { ids in
-                        appState.selectedFoodIDs = ids
-                        appState.showingDeleteConfirmation = true
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if filteredFoods.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: appState.reviewFilter.icon)
+                            .font(.system(size: 48))
+                            .foregroundColor(.secondary)
+                        Text("No \(hasAnyFilter ? "matching" : appState.reviewFilter.rawValue.lowercased()) foods")
+                            .font(.headline)
+                        if appState.reviewFilter != .all || hasAnyFilter {
+                            Button("Clear Filters") {
+                                appState.reviewFilter = .all
+                                showZeroNutritionOnly = false
+                                showMissingIngredientsOnly = false
+                                showMissingBarcodeOnly = false
+                                showMissingBrandOnly = false
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
                     }
-                )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    HStack(spacing: 0) {
+                        FoodTableContentWithScroll(
+                            foods: filteredFoods,
+                            selectedFoodIDs: $appState.selectedFoodIDs,
+                            currentFoodID: $appState.currentFoodID,
+                            scrollPosition: $listScrollPosition,
+                            onFoodSelected: { food in
+                                appState.currentFood = food
+                            },
+                            onDelete: { ids in
+                                appState.selectedFoodIDs = ids
+                                appState.showingDeleteConfirmation = true
+                            }
+                        )
+
+                        // Vertical scroll slider
+                        if filteredFoods.count > 20 {
+                            VStack(spacing: 4) {
+                                Text("▲")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+
+                                Slider(
+                                    value: $listScrollPosition,
+                                    in: 0...1
+                                )
+                                .rotationEffect(.degrees(-90))
+                                .frame(width: 150, height: 20)
+                                .frame(height: 150)
+
+                                Text("▼")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+
+                                Spacer()
+
+                                Text("\(Int(listScrollPosition * Double(filteredFoods.count)))")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                Text("/\(filteredFoods.count)")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                            .frame(width: 28)
+                            .padding(.vertical, 8)
+                            .background(Color(nsColor: .controlBackgroundColor).opacity(0.5))
+                        }
+                    }
+                }
             }
 
             // Status bar
@@ -517,6 +872,403 @@ struct FoodTableView: View {
         .onChange(of: algoliaService.foods) { _, newFoods in
             appState.loadedFoods = newFoods
         }
+        .onChange(of: searchText) { _, newValue in
+            // Cancel previous search task
+            searchTask?.cancel()
+
+            // Debounce search - wait 500ms after typing stops
+            print("🔍 onChange: searchText changed to '\(newValue)', starting debounce timer")
+            searchTask = Task {
+                do {
+                    try await Task.sleep(nanoseconds: 500_000_000) // 500ms
+                    if !Task.isCancelled {
+                        print("🔍 Debounce complete, executing search for '\(newValue)'")
+                        await algoliaService.searchFoods(query: newValue, database: appState.selectedDatabase)
+                    } else {
+                        print("🔍 Debounce cancelled for '\(newValue)'")
+                    }
+                } catch {
+                    // Task was cancelled, ignore
+                    print("🔍 Debounce task cancelled")
+                }
+            }
+        }
+    }
+
+    /// Look up a barcode in Open Food Facts and offer to add it
+    private func lookupBarcode() async {
+        let barcode = searchText.trimmingCharacters(in: .whitespaces)
+        isLookingUpBarcode = true
+
+        // First check if we already have this barcode in our database
+        await algoliaService.searchFoods(query: barcode, database: appState.selectedDatabase)
+
+        // Check if any results match the barcode exactly
+        let existingFood = algoliaService.foods.first { $0.barcode == barcode }
+
+        if let food = existingFood {
+            // Food already exists - select it
+            appState.currentFood = food
+            appState.currentFoodID = food.objectID
+            isLookingUpBarcode = false
+            return
+        }
+
+        // Not found locally - look up in Open Food Facts
+        if let offProduct = await offService.lookupProduct(barcode: barcode) {
+            // Create a new food from the OFF data
+            var newFood = FoodItem()
+            newFood.barcode = barcode
+            newFood.name = offProduct.product_name_en ?? offProduct.product_name ?? "Unknown Product"
+            newFood.brand = offProduct.brands
+            newFood.source = "Open Food Facts"
+
+            // Nutrition
+            if let nutriments = offProduct.nutriments {
+                newFood.calories = nutriments.energy_kcal_100g ?? nutriments.energy_kcal ?? 0
+                newFood.protein = nutriments.proteins_100g ?? nutriments.proteins ?? 0
+                newFood.carbs = nutriments.carbohydrates_100g ?? nutriments.carbohydrates ?? 0
+                newFood.fat = nutriments.fat_100g ?? nutriments.fat ?? 0
+                newFood.fiber = nutriments.fiber_100g ?? nutriments.fiber ?? 0
+                newFood.sugar = nutriments.sugars_100g ?? nutriments.sugars ?? 0
+                newFood.sodium = (nutriments.sodium_100g ?? nutriments.sodium ?? 0) * 1000 // Convert to mg
+                newFood.saturatedFat = nutriments.saturated_fat_100g ?? nutriments.saturated_fat
+            }
+
+            // Ingredients
+            if let ingredientsText = offProduct.ingredients_text_en ?? offProduct.ingredients_text {
+                newFood.ingredientsText = ingredientsText
+                newFood.ingredients = ingredientsText
+                    .components(separatedBy: ",")
+                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                    .filter { !$0.isEmpty }
+            }
+
+            // Images
+            if let imageURL = offProduct.image_front_url ?? offProduct.image_url {
+                newFood.imageURL = imageURL
+            }
+
+            // Set as current food for editing before saving
+            appState.currentFood = newFood
+            appState.currentFoodID = newFood.objectID
+
+            // Add to the list temporarily so the user can see it
+            algoliaService.foods.insert(newFood, at: 0)
+        }
+
+        isLookingUpBarcode = false
+    }
+
+    // MARK: - Tools Panel
+
+    private var toolsPanel: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                // Header
+                HStack {
+                    Image(systemName: "wrench.and.screwdriver")
+                        .foregroundColor(.accentColor)
+                    Text("Tools")
+                        .font(.headline)
+                    Spacer()
+                }
+                .padding(.bottom, 4)
+
+                Divider()
+
+                // Quick Stats
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Data Quality")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+
+                    statRow(icon: "0.circle", label: "Zero Nutrition", count: zeroNutritionCount, color: .red)
+                    statRow(icon: "list.bullet", label: "Missing Ingredients", count: missingIngredientsCount, color: .orange)
+                    statRow(icon: "barcode", label: "Missing Barcode", count: missingBarcodeCount, color: .purple)
+                    statRow(icon: "building.2", label: "Missing Brand", count: missingBrandCount, color: .blue)
+                }
+
+                Divider()
+
+                // AI Cleaning Section
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "sparkles")
+                            .foregroundColor(.purple)
+                        Text("AI Cleaning")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                    }
+
+                    if isCleaningSelected {
+                        VStack(spacing: 8) {
+                            ProgressView(value: cleaningProgress)
+                            Text("Cleaning \(appState.selectedFoodIDs.count) items...")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Button("Cancel") {
+                                isCleaningSelected = false
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                    } else {
+                        Button {
+                            Task { await cleanSelectedWithAI() }
+                        } label: {
+                            Label("Clean Selected (\(appState.selectedFoodIDs.count))", systemImage: "wand.and.stars")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.purple)
+                        .disabled(appState.selectedFoodIDs.isEmpty || !claudeService.isConfigured)
+
+                        Button {
+                            appState.showingClaudeReviewSheet = true
+                        } label: {
+                            Label("Batch Auto-Review", systemImage: "text.badge.checkmark")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+
+                    if !claudeService.isConfigured {
+                        Text("Configure Claude API key in Settings")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                }
+
+                Divider()
+
+                // Bulk Operations
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "square.stack.3d.up")
+                            .foregroundColor(.green)
+                        Text("Bulk Operations")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                    }
+
+                    Button {
+                        appState.showingBulkEditSheet = true
+                    } label: {
+                        Label("Bulk Edit Selected", systemImage: "pencil")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(appState.selectedFoodIDs.isEmpty)
+
+                    Button {
+                        // Select all filtered foods
+                        for food in filteredFoods {
+                            appState.selectedFoodIDs.insert(food.objectID)
+                        }
+                    } label: {
+                        Label("Select All Visible (\(filteredFoods.count))", systemImage: "checkmark.circle")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button {
+                        appState.selectedFoodIDs.removeAll()
+                    } label: {
+                        Label("Deselect All", systemImage: "xmark.circle")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(appState.selectedFoodIDs.isEmpty)
+
+                    Button(role: .destructive) {
+                        appState.showingDeleteConfirmation = true
+                    } label: {
+                        Label("Delete Selected (\(appState.selectedFoodIDs.count))", systemImage: "trash")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(appState.selectedFoodIDs.isEmpty)
+                }
+
+                Divider()
+
+                // Quick Actions
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "bolt")
+                            .foregroundColor(.orange)
+                        Text("Quick Actions")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                    }
+
+                    Button {
+                        Task {
+                            await algoliaService.browseAllFoods(database: appState.selectedDatabase)
+                        }
+                    } label: {
+                        Label("Browse All Foods", systemImage: "list.bullet.rectangle")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button {
+                        appState.showingValidationSheet = true
+                    } label: {
+                        Label("Data Validation", systemImage: "checkmark.shield")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button {
+                        appState.showingExportSheet = true
+                    } label: {
+                        Label("Export Selected", systemImage: "square.and.arrow.up")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(appState.selectedFoodIDs.isEmpty)
+                }
+
+                Spacer()
+            }
+            .padding()
+        }
+        .background(Color(nsColor: .controlBackgroundColor))
+    }
+
+    private func statRow(icon: String, label: String, count: Int, color: Color) -> some View {
+        HStack {
+            Image(systemName: icon)
+                .foregroundColor(color)
+                .frame(width: 20)
+            Text(label)
+                .font(.caption)
+            Spacer()
+            Text("\(count)")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundColor(count > 0 ? color : .secondary)
+        }
+    }
+
+    private func cleanSelectedWithAI() async {
+        guard !appState.selectedFoodIDs.isEmpty else { return }
+
+        isCleaningSelected = true
+        cleaningProgress = 0
+
+        let selectedIDs = Array(appState.selectedFoodIDs)
+        let total = selectedIDs.count
+
+        for (index, id) in selectedIDs.enumerated() {
+            guard isCleaningSelected else { break }
+
+            if let food = algoliaService.foods.first(where: { $0.objectID == id }) {
+                // Use Claude to analyze and suggest fixes
+                let prompt = """
+                Analyze this food item and suggest any fixes needed:
+                Name: \(food.name)
+                Brand: \(food.brand ?? "none")
+                Ingredients: \(food.ingredients?.joined(separator: ", ") ?? "none")
+                Calories: \(food.calories), Protein: \(food.protein)g, Carbs: \(food.carbs)g, Fat: \(food.fat)g
+
+                Respond with JSON only: {"fixedName": "...", "fixedBrand": "...", "issues": ["..."]}
+                """
+
+                await claudeService.sendMessage(prompt)
+            }
+
+            cleaningProgress = Double(index + 1) / Double(total)
+        }
+
+        isCleaningSelected = false
+        claudeService.clearConversation()
+    }
+}
+
+// MARK: - Food Table Content With Scroll
+
+struct FoodTableContentWithScroll: View {
+    let foods: [FoodItem]
+    @Binding var selectedFoodIDs: Set<String>
+    @Binding var currentFoodID: String?
+    @Binding var scrollPosition: Double
+    let onFoodSelected: (FoodItem) -> Void
+    let onDelete: (Set<String>) -> Void
+
+    // Check if all visible foods are selected
+    private var allSelected: Bool {
+        !foods.isEmpty && foods.allSatisfy { selectedFoodIDs.contains($0.objectID) }
+    }
+
+    // Check if some (but not all) foods are selected
+    private var someSelected: Bool {
+        !selectedFoodIDs.isEmpty && !allSelected
+    }
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    // Header row with select all
+                    FoodTableHeader(
+                        allSelected: allSelected,
+                        someSelected: someSelected,
+                        onToggleSelectAll: {
+                            if allSelected {
+                                for food in foods {
+                                    selectedFoodIDs.remove(food.objectID)
+                                }
+                            } else {
+                                for food in foods {
+                                    selectedFoodIDs.insert(food.objectID)
+                                }
+                            }
+                        }
+                    )
+
+                    Divider()
+
+                    // Data rows
+                    ForEach(Array(foods.enumerated()), id: \.element.objectID) { index, food in
+                        FoodTableRow(
+                            food: food,
+                            isSelected: selectedFoodIDs.contains(food.objectID),
+                            isCurrent: currentFoodID == food.objectID,
+                            onToggleSelection: {
+                                if selectedFoodIDs.contains(food.objectID) {
+                                    selectedFoodIDs.remove(food.objectID)
+                                } else {
+                                    selectedFoodIDs.insert(food.objectID)
+                                }
+                            },
+                            onSelect: {
+                                currentFoodID = food.objectID
+                                onFoodSelected(food)
+                            }
+                        )
+                        .id(index)
+                        .contextMenu {
+                            Button("Edit") { onFoodSelected(food) }
+                            Button("Select") { selectedFoodIDs.insert(food.objectID) }
+                            Divider()
+                            Button("Delete", role: .destructive) { onDelete([food.objectID]) }
+                        }
+
+                        Divider()
+                    }
+                }
+            }
+            .onChange(of: scrollPosition) { _, newValue in
+                let targetIndex = Int(Double(foods.count - 1) * newValue)
+                if targetIndex >= 0 && targetIndex < foods.count {
+                    withAnimation(.easeOut(duration: 0.15)) {
+                        proxy.scrollTo(targetIndex, anchor: .top)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -529,11 +1281,37 @@ struct FoodTableContent: View {
     let onFoodSelected: (FoodItem) -> Void
     let onDelete: (Set<String>) -> Void
 
+    // Check if all visible foods are selected
+    private var allSelected: Bool {
+        !foods.isEmpty && foods.allSatisfy { selectedFoodIDs.contains($0.objectID) }
+    }
+
+    // Check if some (but not all) foods are selected
+    private var someSelected: Bool {
+        !selectedFoodIDs.isEmpty && !allSelected
+    }
+
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 0) {
-                // Header row
-                FoodTableHeader()
+                // Header row with select all
+                FoodTableHeader(
+                    allSelected: allSelected,
+                    someSelected: someSelected,
+                    onToggleSelectAll: {
+                        if allSelected {
+                            // Deselect all visible foods
+                            for food in foods {
+                                selectedFoodIDs.remove(food.objectID)
+                            }
+                        } else {
+                            // Select all visible foods
+                            for food in foods {
+                                selectedFoodIDs.insert(food.objectID)
+                            }
+                        }
+                    }
+                )
 
                 Divider()
 
@@ -570,12 +1348,27 @@ struct FoodTableContent: View {
 }
 
 struct FoodTableHeader: View {
+    var allSelected: Bool = false
+    var someSelected: Bool = false
+    var onToggleSelectAll: (() -> Void)? = nil
+
     var body: some View {
         HStack(spacing: 0) {
-            Text("").frame(width: 44) // checkbox column
+            // Select all checkbox
+            Button {
+                onToggleSelectAll?()
+            } label: {
+                Image(systemName: allSelected ? "checkmark.square.fill" : (someSelected ? "minus.square.fill" : "square"))
+                    .foregroundColor(allSelected || someSelected ? .accentColor : .secondary)
+            }
+            .buttonStyle(.plain)
+            .frame(width: 44)
+            .help(allSelected ? "Deselect all" : "Select all")
+
             Text("").frame(width: 36) // image column
             Text("Name").frame(minWidth: 150, alignment: .leading)
             Text("Brand").frame(width: 100, alignment: .leading)
+            Text("Barcode").frame(width: 110, alignment: .leading)
             Text("Serving").frame(width: 70, alignment: .leading)
             Text("Cal").frame(width: 50, alignment: .trailing)
             Text("P").frame(width: 35, alignment: .trailing)
@@ -621,6 +1414,10 @@ struct FoodTableRow: View {
                 .foregroundColor(food.brand == nil ? .secondary : .primary)
                 .lineLimit(1)
                 .frame(width: 100, alignment: .leading)
+
+            // Barcode
+            barcodeView
+                .frame(width: 110, alignment: .leading)
 
             // Serving size
             servingSizeView
@@ -721,6 +1518,24 @@ struct FoodTableRow: View {
         }
     }
 
+    @ViewBuilder
+    private var barcodeView: some View {
+        if let barcode = food.barcode, !barcode.isEmpty {
+            HStack(spacing: 2) {
+                Image(systemName: "barcode")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                Text(barcode)
+                    .font(.system(.caption, design: .monospaced))
+                    .lineLimit(1)
+            }
+        } else {
+            Text("-")
+                .font(.caption)
+                .foregroundColor(.secondary.opacity(0.5))
+        }
+    }
+
     private var ingredientCountView: some View {
         let count = food.ingredients?.count ?? 0
         return Text(count == 0 ? "—" : "\(count)")
@@ -762,6 +1577,9 @@ struct FoodTableRow: View {
 
 struct SelectionToolbar: View {
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var algoliaService: AlgoliaService
+
+    @State private var isBulkUpdating = false
 
     var body: some View {
         HStack {
@@ -770,6 +1588,41 @@ struct SelectionToolbar: View {
                 .fontWeight(.medium)
 
             Spacer()
+
+            if isBulkUpdating {
+                ProgressView()
+                    .scaleEffect(0.7)
+                    .padding(.horizontal, 8)
+            }
+
+            // Bulk Verify button
+            Button {
+                Task {
+                    await bulkSetVerification(verified: true)
+                }
+            } label: {
+                Label("Verify All", systemImage: "checkmark.seal.fill")
+            }
+            .buttonStyle(.borderless)
+            .foregroundColor(.green)
+            .disabled(isBulkUpdating)
+            .help("Mark all selected foods as verified")
+
+            // Bulk Unverify button
+            Button {
+                Task {
+                    await bulkSetVerification(verified: false)
+                }
+            } label: {
+                Label("Unverify All", systemImage: "xmark.seal")
+            }
+            .buttonStyle(.borderless)
+            .foregroundColor(.orange)
+            .disabled(isBulkUpdating)
+            .help("Mark all selected foods as unverified")
+
+            Divider()
+                .frame(height: 16)
 
             Button {
                 appState.showingBulkEditSheet = true
@@ -802,6 +1655,34 @@ struct SelectionToolbar: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .background(Color.accentColor.opacity(0.1))
+    }
+
+    private func bulkSetVerification(verified: Bool) async {
+        isBulkUpdating = true
+
+        // Get the selected foods
+        let selectedFoods = algoliaService.foods.filter { appState.selectedFoodIDs.contains($0.objectID) }
+
+        // Update verification status
+        var updatedFoods: [FoodItem] = []
+        for var food in selectedFoods {
+            food.isVerified = verified
+            updatedFoods.append(food)
+        }
+
+        // Save to database
+        let success = await algoliaService.saveFoods(updatedFoods, database: appState.selectedDatabase)
+
+        if success {
+            // Update local state
+            for updatedFood in updatedFoods {
+                if let index = algoliaService.foods.firstIndex(where: { $0.objectID == updatedFood.objectID }) {
+                    algoliaService.foods[index].isVerified = verified
+                }
+            }
+        }
+
+        isBulkUpdating = false
     }
 }
 

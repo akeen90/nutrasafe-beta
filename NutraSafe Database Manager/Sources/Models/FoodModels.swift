@@ -447,6 +447,7 @@ struct UserReport: Identifiable, Codable, Hashable {
         var fiber: Double
         var sugar: Double
         var sodium: Double
+        var saturatedFat: Double?
         var servingDescription: String?
         var servingSizeG: Double?
         var ingredients: [String]?
@@ -505,6 +506,7 @@ struct UserReport: Identifiable, Codable, Hashable {
             fiber: food.fiber,
             sugar: food.sugar,
             sodium: food.sodium,
+            saturatedFat: food.saturatedFat,
             servingDescription: food.servingDescription,
             servingSizeG: food.servingSizeG,
             ingredients: food.ingredients,

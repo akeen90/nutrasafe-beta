@@ -104,6 +104,8 @@ struct FoodSearchResultRowEnhanced: View {
     var onComplete: ((TabItem) -> Void)?
     @State private var showingFoodDetail = false
     @State private var isPressed = false
+    @State private var showingQuickAddConfirmation = false
+    @State private var quickAddMealType = ""
     @EnvironmentObject var diaryDataManager: DiaryDataManager
 
     init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, onComplete: ((TabItem) -> Void)? = nil) {
@@ -113,47 +115,129 @@ struct FoodSearchResultRowEnhanced: View {
         self.onComplete = onComplete
     }
 
+    // Calculate standard serving calories for display
+    private var standardServingCalories: Int {
+        if food.isPerUnit == true {
+            return Int(food.calories)
+        } else if let servingG = food.servingSizeG, servingG > 0 {
+            return Int(food.calories * servingG / 100.0)
+        } else {
+            // Default to 100g if no serving size
+            return Int(food.calories)
+        }
+    }
+
+    // Get standard serving size description - use first preset portion if available
+    private var standardServingDesc: String {
+        if food.isPerUnit == true {
+            return "1 serving"
+        } else if let servingG = food.servingSizeG, servingG > 0 {
+            return "\(Int(servingG))g"
+        } else if let desc = food.servingDescription, !desc.isEmpty {
+            return desc
+        } else if food.hasAnyPortionOptions, let firstPortion = food.availablePortions.first {
+            // Use first preset portion (e.g., "Standard Bag (85g)" for chocolates)
+            return firstPortion.name
+        } else {
+            return "100g"
+        }
+    }
+
+    // Get the actual serving weight for nutrition calculation
+    private var standardServingWeight: Double {
+        if food.isPerUnit == true {
+            return 100.0 // Per-unit foods use full values
+        } else if let servingG = food.servingSizeG, servingG > 0 {
+            return servingG
+        } else if food.hasAnyPortionOptions, let firstPortion = food.availablePortions.first {
+            return firstPortion.serving_g
+        } else {
+            return 100.0
+        }
+    }
+
     var body: some View {
-        Button(action: {
-            // Dismiss keyboard BEFORE showing sheet to prevent refocus when sheet dismisses
-            UIApplication.shared.sendAction(
-                #selector(UIResponder.resignFirstResponder),
-                to: nil, from: nil, for: nil
-            )
-            showingFoodDetail = true
-        }) {
-            HStack(spacing: 12) {
-                // Product name and brand
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(food.name)
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.leading)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
+        HStack(spacing: 0) {
+            // Main tappable area - opens food detail
+            Button(action: {
+                // Dismiss keyboard BEFORE showing sheet to prevent refocus when sheet dismisses
+                UIApplication.shared.sendAction(
+                    #selector(UIResponder.resignFirstResponder),
+                    to: nil, from: nil, for: nil
+                )
+                showingFoodDetail = true
+            }) {
+                HStack(spacing: 12) {
+                    // Product name and brand
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(food.name)
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .foregroundColor(.primary)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
 
-                    if let brand = food.brand {
-                        Text(brand)
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundColor(.secondary)
+                        if let brand = food.brand {
+                            Text(brand)
+                                .font(.system(size: 13, weight: .medium, design: .rounded))
+                                .foregroundColor(.secondary)
+                        }
+
+                        if let servingDesc = food.servingDescription, !servingDesc.isEmpty {
+                            Text(servingDesc)
+                                .font(.system(size: 12, weight: .regular, design: .rounded))
+                                .foregroundColor(.secondary.opacity(0.8))
+                        }
                     }
 
-                    if let servingDesc = food.servingDescription, !servingDesc.isEmpty {
-                        Text(servingDesc)
-                            .font(.system(size: 12, weight: .regular, design: .rounded))
-                            .foregroundColor(.secondary.opacity(0.8))
-                    }
+                    Spacer()
+                }
+                .padding(.vertical, 14)
+                .padding(.leading, 16)
+                .padding(.trailing, 8)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            // Quick add button with meal menu
+            Menu {
+                Button {
+                    quickAddFood(to: "breakfast")
+                } label: {
+                    Label("Breakfast", systemImage: "sunrise.fill")
                 }
 
-                Spacer()
+                Button {
+                    quickAddFood(to: "lunch")
+                } label: {
+                    Label("Lunch", systemImage: "sun.max.fill")
+                }
 
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(Color(.systemGray3))
+                Button {
+                    quickAddFood(to: "dinner")
+                } label: {
+                    Label("Dinner", systemImage: "moon.fill")
+                }
+
+                Button {
+                    quickAddFood(to: "snacks")
+                } label: {
+                    Label("Snacks", systemImage: "leaf.fill")
+                }
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 24))
+                    .foregroundColor(.green)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
-            .padding(.vertical, 14)
-            .padding(.horizontal, 16)
-            .contentShape(Rectangle())
+            .padding(.trailing, 8)
+
+            // Chevron
+            Image(systemName: "chevron.right")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(Color(.systemGray3))
+                .padding(.trailing, 16)
         }
         .background(
             RoundedRectangle(cornerRadius: 12)
@@ -166,13 +250,115 @@ struct FoodSearchResultRowEnhanced: View {
         .shadow(color: Color.black.opacity(0.04), radius: 2, x: 0, y: 1)
         .scaleEffect(isPressed ? 0.98 : 1.0)
         .animation(.easeInOut(duration: 0.1), value: isPressed)
-        .buttonStyle(PlainButtonStyle())
         .fullScreenCover(isPresented: $showingFoodDetail) {
             FoodDetailViewFromSearch(food: food, sourceType: sourceType, selectedTab: $selectedTab) { tab in
                 onComplete?(tab)
             }
             .environmentObject(diaryDataManager)
             .interactiveDismissDisabled(false) // Enable smooth interactive dismiss
+        }
+        .overlay(
+            Group {
+                if showingQuickAddConfirmation {
+                    quickAddConfirmationToast
+                }
+            }
+        )
+    }
+
+    // Quick add confirmation toast
+    private var quickAddConfirmationToast: some View {
+        VStack {
+            Spacer()
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.white)
+                Text("Added to \(quickAddMealType.capitalized)")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(Color.green)
+            .cornerRadius(20)
+            .shadow(color: Color.black.opacity(0.2), radius: 4, x: 0, y: 2)
+        }
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+        .zIndex(100)
+    }
+
+    // Quick add food to diary at standard serving size
+    private func quickAddFood(to mealType: String) {
+        // Dismiss keyboard
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+
+        // Calculate nutrition at standard serving size using the computed serving weight
+        let servingMultiplier: Double
+        if food.isPerUnit == true {
+            servingMultiplier = 1.0
+        } else {
+            servingMultiplier = standardServingWeight / 100.0
+        }
+
+        // Create diary entry at standard serving
+        let diaryEntry = DiaryFoodItem(
+            id: UUID(),
+            name: food.name,
+            brand: food.brand,
+            calories: Int(food.calories * servingMultiplier),
+            protein: food.protein * servingMultiplier,
+            carbs: food.carbs * servingMultiplier,
+            fat: food.fat * servingMultiplier,
+            fiber: food.fiber * servingMultiplier,
+            sugar: food.sugar * servingMultiplier,
+            sodium: food.sodium * servingMultiplier,
+            servingDescription: standardServingDesc,
+            quantity: 1.0,
+            time: mealType.capitalized,
+            processedScore: food.processingGrade,
+            sugarLevel: nil,
+            ingredients: food.ingredients,
+            additives: food.additives,
+            barcode: food.barcode,
+            micronutrientProfile: food.micronutrientProfile,
+            isPerUnit: food.isPerUnit
+        )
+
+        // Get the date (use preselected date if available, otherwise today)
+        let targetDate: Date
+        if let savedTimestamp = UserDefaults.standard.object(forKey: "preselectedDate") as? TimeInterval {
+            targetDate = Date(timeIntervalSince1970: savedTimestamp)
+        } else {
+            targetDate = Date()
+        }
+
+        // Add to diary
+        Task {
+            do {
+                try await diaryDataManager.addFoodItem(diaryEntry, to: mealType, for: targetDate, hasProAccess: true)
+
+                await MainActor.run {
+                    quickAddMealType = mealType
+                    withAnimation(.spring(response: 0.3)) {
+                        showingQuickAddConfirmation = true
+                    }
+
+                    // Hide confirmation after delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            showingQuickAddConfirmation = false
+                        }
+                    }
+                }
+
+                #if DEBUG
+                print("✅ Quick-added \(food.name) to \(mealType)")
+                #endif
+            } catch {
+                #if DEBUG
+                print("❌ Quick-add failed: \(error)")
+                #endif
+            }
         }
     }
 }
@@ -217,6 +403,7 @@ struct AddFoodSearchView: View {
     @Binding var selectedTab: TabItem
     var onComplete: ((TabItem) -> Void)?
     var onSwitchToManual: (() -> Void)? = nil
+    var onSwitchToBarcode: (() -> Void)? = nil
     @State private var searchText = ""
     @State private var searchResults: [FoodSearchResult] = []
     @State private var isSearching = false
@@ -233,13 +420,27 @@ struct AddFoodSearchView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Search Bar - fixed at top
+            // Search Bar with Barcode Button - fixed at top
             VStack(spacing: 12) {
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.secondary)
+                HStack(spacing: 8) {
+                    // Barcode scan button to LEFT of search bar
+                    if let barcodeAction = onSwitchToBarcode {
+                        Button(action: barcodeAction) {
+                            Image(systemName: "barcode.viewfinder")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(width: 44, height: 44)
+                                .background(Color.blue)
+                                .cornerRadius(10)
+                        }
+                    }
 
-                    TextField("Search foods...", text: $searchText)
+                    // Search field
+                    HStack {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(.secondary)
+
+                        TextField("Search foods...", text: $searchText)
                         .textFieldStyle(PlainTextFieldStyle())
                         .autocorrectionDisabled(true)
                         .textInputAutocapitalization(.never)
@@ -253,29 +454,30 @@ struct AddFoodSearchView: View {
                             performSearch()
                         }
 
-                    if !searchText.isEmpty {
-                        // Clear button with proper tap target
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 18))
-                            .foregroundColor(.secondary)
-                            .frame(width: 44, height: 44) // Minimum tap target size per Apple HIG
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                // Dismiss keyboard first
-                                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                                // Cancel any pending search and reset all state immediately
-                                searchTask?.cancel()
-                                searchTask = nil
-                                searchText = ""
-                                searchResults = []
-                                isSearching = false
-                            }
+                        if !searchText.isEmpty {
+                            // Clear button with proper tap target
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 18))
+                                .foregroundColor(.secondary)
+                                .frame(width: 44, height: 44) // Minimum tap target size per Apple HIG
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    // Dismiss keyboard first
+                                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                                    // Cancel any pending search and reset all state immediately
+                                    searchTask?.cancel()
+                                    searchTask = nil
+                                    searchText = ""
+                                    searchResults = []
+                                    isSearching = false
+                                }
+                        }
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
             }

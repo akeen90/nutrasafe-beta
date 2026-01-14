@@ -24,6 +24,13 @@ struct FoodRecognitionItem: Codable {
     let protein: Double
     let carbs: Double
     let fat: Double
+    let fiber: Double?
+    let sugar: Double?
+    let sodium: Double?
+    let portionGrams: Double?
     let confidence: Double?
+    let isFromDatabase: Bool?  // true = verified data, false = AI estimate
+    let databaseId: String?    // Algolia objectID if from database
+    let ingredients: String?   // Ingredients list if from database
 }
 
