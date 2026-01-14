@@ -595,8 +595,10 @@ struct DiaryTabView: View {
             // Top row: Tab picker + Settings icon on same line
             topNavigationRow
 
-            // Date navigation below
-            dateSectionView
+            // Date navigation - only show on Overview tab (Nutrients has its own)
+            if diarySubTab == .overview {
+                dateSectionView
+            }
 
             // Loading state or content
             ZStack {
