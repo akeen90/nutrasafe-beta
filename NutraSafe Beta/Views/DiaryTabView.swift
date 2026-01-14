@@ -67,6 +67,11 @@ struct DiaryTabView: View {
     // MARK: - Food Lookup Cache (O(1) instead of O(n))
     @State private var foodLookupCache: [String: (food: DiaryFoodItem, meal: String)] = [:]
 
+    // MARK: - Calendar Entry Indicators
+    @State private var datesWithEntries: Set<Date> = []
+    @State private var displayedMonth: Date = Date()
+    @State private var isLoadingCalendarEntries = false
+
     private struct NutritionTotals {
         var totalCalories: Int = 0
         var totalProtein: Double = 0
@@ -272,45 +277,31 @@ struct DiaryTabView: View {
         return formatter.string(from: date)
     }
 
-    // MARK: - Date Picker Section
+    // MARK: - Date Picker Section (Custom Calendar with Entry Indicators)
     @ViewBuilder
     private var datePickerSection: some View {
         if showingDatePicker {
-            ZStack(alignment: .top) {
-                // Native iOS calendar (with its header hidden by overlay)
-                DatePicker(
-                    "Select Date",
-                    selection: $selectedDate,
-                    displayedComponents: .date
-                )
-                .datePickerStyle(GraphicalDatePickerStyle())
+            VStack(spacing: 0) {
+                // Header
+                datePickerHeader
+
+                // Day of week headers
+                HStack(spacing: 0) {
+                    ForEach(["S", "M", "T", "W", "T", "F", "S"], id: \.self) { day in
+                        Text(day)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
-                .padding(.bottom, 8)
+                .padding(.bottom, 4)
 
-                VStack(spacing: 0) {
-                    // Match the diary's background
-                    // Height covers native DatePicker header + navigation arrows
-                    Group {
-                        if colorScheme == .dark {
-                            Color.midnightBackground
-                        } else {
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.92, green: 0.96, blue: 1.0),
-                                    Color(red: 0.93, green: 0.90, blue: 1.0)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        }
-                    }
-                    .frame(height: 58)
-                    Spacer()
-                }
-                .allowsHitTesting(false)
-
-                datePickerHeader
+                // Calendar grid
+                calendarGrid
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 12)
             }
             .background(
                 Group {
@@ -329,17 +320,142 @@ struct DiaryTabView: View {
                 }
             )
             .clipShape(RoundedRectangle(cornerRadius: 12))
+            .onAppear {
+                displayedMonth = selectedDate
+                loadDatesWithEntries()
+            }
+            .onChange(of: displayedMonth) {
+                loadDatesWithEntries()
+            }
+        }
+    }
+
+    // MARK: - Calendar Grid
+    private var calendarGrid: some View {
+        let calendar = Calendar.current
+        let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: displayedMonth))!
+
+        // Get first day of week offset (0 = Sunday)
+        let firstWeekday = calendar.component(.weekday, from: monthStart) - 1
+        let daysInMonth = calendar.range(of: .day, in: .month, for: displayedMonth)!.count
+
+        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7), spacing: 4) {
+            // Empty cells for padding before first day
+            ForEach(0..<firstWeekday, id: \.self) { _ in
+                Color.clear
+                    .frame(height: 44)
+            }
+
+            // Day cells
+            ForEach(1...daysInMonth, id: \.self) { day in
+                let date = calendar.date(byAdding: .day, value: day - 1, to: monthStart)!
+                calendarDayCell(date: date, day: day)
+            }
+        }
+    }
+
+    // MARK: - Calendar Day Cell
+    private func calendarDayCell(date: Date, day: Int) -> some View {
+        let calendar = Calendar.current
+        let isToday = calendar.isDateInToday(date)
+        let isSelected = calendar.isDate(date, inSameDayAs: selectedDate)
+        let hasEntries = datesWithEntries.contains(where: { calendar.isDate($0, inSameDayAs: date) })
+        let isFuture = date > Date()
+
+        return Button(action: {
+            selectedDate = date
+            // Close calendar after selection
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                showingDatePicker = false
+            }
+        }) {
+            VStack(spacing: 2) {
+                // Day number
+                ZStack {
+                    if isSelected {
+                        Circle()
+                            .fill(Color.blue)
+                            .frame(width: 32, height: 32)
+                    } else if isToday {
+                        Circle()
+                            .stroke(Color.blue, lineWidth: 2)
+                            .frame(width: 32, height: 32)
+                    }
+
+                    Text("\(day)")
+                        .font(.system(size: 16, weight: isToday || isSelected ? .bold : .regular))
+                        .foregroundColor(
+                            isSelected ? .white :
+                            isFuture ? .secondary.opacity(0.5) :
+                            .primary
+                        )
+                }
+
+                // Entry indicator dot
+                if hasEntries && !isFuture {
+                    Circle()
+                        .fill(isSelected ? Color.white.opacity(0.8) : Color.green)
+                        .frame(width: 6, height: 6)
+                } else {
+                    Circle()
+                        .fill(Color.clear)
+                        .frame(width: 6, height: 6)
+                }
+            }
+            .frame(height: 44)
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .disabled(isFuture)
+    }
+
+    // MARK: - Load Dates With Entries
+    private func loadDatesWithEntries() {
+        guard !isLoadingCalendarEntries else { return }
+        isLoadingCalendarEntries = true
+
+        Task {
+            let calendar = Calendar.current
+            // Get start of month
+            let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: displayedMonth))!
+            // Get end of month
+            let monthEnd = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: monthStart)!
+            let monthEndWithTime = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: monthEnd)!
+
+            do {
+                let entries = try await FirebaseManager.shared.getFoodEntriesInRange(from: monthStart, to: monthEndWithTime)
+
+                // Extract unique dates
+                var dates = Set<Date>()
+                for entry in entries {
+                    let startOfDay = calendar.startOfDay(for: entry.date)
+                    dates.insert(startOfDay)
+                }
+
+                await MainActor.run {
+                    datesWithEntries = dates
+                    isLoadingCalendarEntries = false
+                }
+            } catch {
+                await MainActor.run {
+                    isLoadingCalendarEntries = false
+                }
+                #if DEBUG
+                print("Error loading dates with entries: \(error)")
+                #endif
+            }
         }
     }
 
     private var datePickerHeader: some View {
         HStack {
-            Text(formatMonthYear(selectedDate))
+            Text(formatMonthYear(displayedMonth))
                 .font(.system(size: 20, weight: .bold))
                 .foregroundColor(.primary)
 
             Button(action: {
                 selectedDate = Date()
+                displayedMonth = Date()
                 showingDatePicker = false
             }) {
                 Text("Today")
@@ -357,7 +473,7 @@ struct DiaryTabView: View {
 
             HStack(spacing: 12) {
                 Button(action: {
-                    selectedDate = Calendar.current.date(byAdding: .month, value: -1, to: selectedDate) ?? selectedDate
+                    displayedMonth = Calendar.current.date(byAdding: .month, value: -1, to: displayedMonth) ?? displayedMonth
                 }) {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 16, weight: .semibold))
@@ -365,7 +481,7 @@ struct DiaryTabView: View {
                 }
 
                 Button(action: {
-                    selectedDate = Calendar.current.date(byAdding: .month, value: 1, to: selectedDate) ?? selectedDate
+                    displayedMonth = Calendar.current.date(byAdding: .month, value: 1, to: displayedMonth) ?? displayedMonth
                 }) {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 16, weight: .semibold))
