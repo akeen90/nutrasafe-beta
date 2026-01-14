@@ -103,6 +103,92 @@ struct UseByTabView: View {
     // Temporary header counter until data is lifted to parent scope
     private var expiringSoonCount: Int { 0 }
 
+    // MARK: - Hero Header
+    private var useByHeroHeader: some View {
+        VStack(spacing: 16) {
+            // Title and subtitle
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Use By Tracker")
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.primary, .primary.opacity(0.8)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+
+                Text("Track opened foods and reduce waste")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            // Quick tip card
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.orange.opacity(0.2), Color.yellow.opacity(0.15)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 44, height: 44)
+
+                    Image(systemName: "lightbulb.fill")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.orange, .yellow],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Did you know?")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.primary)
+
+                    Text("UK households waste £700+ of food yearly. Track use-by dates to save money!")
+                        .font(.system(size: 12, weight: .regular))
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.orange.opacity(0.08),
+                                Color.yellow.opacity(0.05)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [Color.orange.opacity(0.3), Color.yellow.opacity(0.2)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            )
+        }
+    }
+
     var body: some View {
         navigationContainer {
             VStack(spacing: 0) {
@@ -145,7 +231,12 @@ struct UseByTabView: View {
                 if subscriptionManager.hasAccess {
                     // Premium users see full content
                     ScrollView {
-                        LazyVStack(spacing: 0) {
+                        LazyVStack(spacing: 16) {
+                            // Hero header section
+                            useByHeroHeader
+                                .padding(.horizontal, 16)
+                                .padding(.top, 8)
+
                             UseByExpiryView(
                                 showingScanner: $showingScanner,
                                 showingCamera: $showingCamera,
