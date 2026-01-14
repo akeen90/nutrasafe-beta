@@ -103,27 +103,9 @@ struct UseByTabView: View {
     // Temporary header counter until data is lifted to parent scope
     private var expiringSoonCount: Int { 0 }
 
-    // MARK: - Hero Header
+    // MARK: - Hero Header (Tip Card)
     private var useByHeroHeader: some View {
         VStack(spacing: 16) {
-            // Title and subtitle
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Use By Tracker")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [.primary, .primary.opacity(0.8)],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-
-                Text("Track opened foods and reduce waste")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(.secondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
             // Quick tip card
             HStack(spacing: 12) {
                 ZStack {
@@ -192,8 +174,19 @@ struct UseByTabView: View {
     var body: some View {
         navigationContainer {
             VStack(spacing: 0) {
-                // Header - Compact (icons only)
+                // Header - Title with buttons
                 HStack(spacing: 12) {
+                    // Title
+                    Text("Use By Tracker")
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.primary, .primary.opacity(0.8)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+
                     Spacer()
 
                     Button(action: { showingSettings = true }) {
@@ -224,8 +217,8 @@ struct UseByTabView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .padding(.bottom, 4)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
 
                 // Check premium access
                 if subscriptionManager.hasAccess {

@@ -1882,38 +1882,80 @@ struct WeightTrackingView: View {
         }
     }
 
-    // MARK: - Progress Tab Picker
+    // MARK: - Progress Tab Picker (Matching Health Tab Style)
+    @Namespace private var progressTabAnimation
+
     private var progressTabPicker: some View {
         HStack(spacing: 0) {
             ForEach(ProgressSubTab.allCases, id: \.self) { tab in
                 Button(action: {
-                    progressSubTab = tab
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        progressSubTab = tab
+                    }
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 }) {
                     Text(tab.rawValue)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(progressSubTab == tab ? .primary : .secondary)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(
+                            progressSubTab == tab ?
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.3, green: 0.5, blue: 1.0),
+                                    Color(red: 0.5, green: 0.3, blue: 0.9)
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            ) :
+                            LinearGradient(
+                                colors: [Color.secondary, Color.secondary],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
                         .frame(maxWidth: .infinity)
-                        .frame(minHeight: 36)
-                        .contentShape(Rectangle())
+                        .padding(.vertical, 10)
                         .background(
-                            Group {
+                            ZStack {
                                 if progressSubTab == tab {
-                                    RoundedRectangle(cornerRadius: 7)
-                                        .fill(Color(.systemBackground))
-                                        .shadow(color: .black.opacity(0.08), radius: 2, x: 0, y: 1)
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(.ultraThinMaterial)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .stroke(
+                                                    LinearGradient(
+                                                        colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
+                                                        startPoint: .topLeading,
+                                                        endPoint: .bottomTrailing
+                                                    ),
+                                                    lineWidth: 1
+                                                )
+                                        )
+                                        .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
+                                        .matchedGeometryEffect(id: "progressSegmentedControl", in: progressTabAnimation)
                                 }
                             }
                         )
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PlainButtonStyle())
             }
         }
-        .padding(3)
+        .padding(4)
         .background(
-            RoundedRectangle(cornerRadius: 9)
+            RoundedRectangle(cornerRadius: 10)
                 .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                )
         )
+        .frame(height: 40)
     }
 }
 
