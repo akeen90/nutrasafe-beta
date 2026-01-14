@@ -56,58 +56,66 @@ exports.recognizeFood = (0, https_1.onRequest)({
             res.status(200).json({ foods: [] });
             return;
         }
-        // Step 2: Look up each food in Algolia database
-        console.log('📚 Step 2: Searching database for matches...');
+        // Step 2: Look up packaged foods in database, use AI estimates for plated food
+        console.log('📚 Step 2: Processing foods (DB lookup for packaging, AI for plated)...');
         const algoliaClient = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
         const finalFoods = [];
         for (const identified of identifiedFoods) {
-            const dbMatch = await searchDatabaseForFood(algoliaClient, identified);
-            if (dbMatch) {
-                // Database match found - use verified nutrition scaled to portion
-                // Note: Algolia stores per-100g values in fields like 'calories', 'protein', etc.
-                const portionMultiplier = identified.portionGrams / 100;
-                finalFoods.push({
-                    name: dbMatch.name,
-                    brand: dbMatch.brandName || identified.brand,
-                    calories: Math.round((dbMatch.calories || 0) * portionMultiplier),
-                    protein: Math.round((dbMatch.protein || 0) * portionMultiplier * 10) / 10,
-                    carbs: Math.round((dbMatch.carbs || 0) * portionMultiplier * 10) / 10,
-                    fat: Math.round((dbMatch.fat || 0) * portionMultiplier * 10) / 10,
-                    fiber: Math.round((dbMatch.fiber || 0) * portionMultiplier * 10) / 10,
-                    sugar: Math.round((dbMatch.sugar || 0) * portionMultiplier * 10) / 10,
-                    sodium: Math.round((dbMatch.sodium || 0) * portionMultiplier * 10) / 10,
-                    portionGrams: identified.portionGrams,
-                    confidence: identified.confidence,
-                    isFromDatabase: true,
-                    databaseId: dbMatch.objectID,
-                    ingredients: dbMatch.ingredients || null,
-                });
-                console.log(`  ✅ "${identified.name}" → DB match: "${dbMatch.name}" (${dbMatch.calories || 0} kcal/100g)`);
+            const portionMultiplier = identified.portionGrams / 100;
+            // Only search database for packaged products with branding visible
+            // Plated/prepared food uses AI estimates directly (more accurate for generic items)
+            if (identified.isPackaging && identified.brand) {
+                const dbMatch = await searchDatabaseForFood(algoliaClient, identified);
+                if (dbMatch) {
+                    // Database match found - use verified nutrition scaled to portion
+                    finalFoods.push({
+                        name: dbMatch.name,
+                        brand: dbMatch.brandName || identified.brand,
+                        calories: Math.round((dbMatch.calories || 0) * portionMultiplier),
+                        protein: Math.round((dbMatch.protein || 0) * portionMultiplier * 10) / 10,
+                        carbs: Math.round((dbMatch.carbs || 0) * portionMultiplier * 10) / 10,
+                        fat: Math.round((dbMatch.fat || 0) * portionMultiplier * 10) / 10,
+                        fiber: Math.round((dbMatch.fiber || 0) * portionMultiplier * 10) / 10,
+                        sugar: Math.round((dbMatch.sugar || 0) * portionMultiplier * 10) / 10,
+                        sodium: Math.round((dbMatch.sodium || 0) * portionMultiplier * 10) / 10,
+                        portionGrams: identified.portionGrams,
+                        confidence: identified.confidence,
+                        isFromDatabase: true,
+                        databaseId: dbMatch.objectID,
+                        ingredients: Array.isArray(dbMatch.ingredients)
+                            ? dbMatch.ingredients.join(', ')
+                            : (dbMatch.ingredients || null),
+                    });
+                    console.log(`  ✅ [Packaging] "${identified.name}" → DB match: "${dbMatch.name}" (${dbMatch.calories || 0} kcal/100g)`);
+                    continue;
+                }
+                // If no DB match for packaging, fall through to AI estimate
+                console.log(`  ⚠️ [Packaging] "${identified.name}" → No DB match, using AI estimate`);
             }
             else {
-                // No match - use AI estimates
-                const portionMultiplier = identified.portionGrams / 100;
-                finalFoods.push({
-                    name: identified.name,
-                    brand: identified.brand,
-                    calories: Math.round(identified.estimatedCaloriesPer100g * portionMultiplier),
-                    protein: Math.round(identified.estimatedProteinPer100g * portionMultiplier * 10) / 10,
-                    carbs: Math.round(identified.estimatedCarbsPer100g * portionMultiplier * 10) / 10,
-                    fat: Math.round(identified.estimatedFatPer100g * portionMultiplier * 10) / 10,
-                    fiber: 0,
-                    sugar: 0,
-                    sodium: 0,
-                    portionGrams: identified.portionGrams,
-                    confidence: identified.confidence * 0.8, // Lower confidence for AI estimates
-                    isFromDatabase: false,
-                    databaseId: null,
-                    ingredients: null,
-                });
-                console.log(`  ⚠️ "${identified.name}" → No DB match, using AI estimate`);
+                console.log(`  🍽️ [Plated] "${identified.name}" → Using AI estimate (generic food)`);
             }
+            // Use AI estimates for plated food or when no DB match found
+            finalFoods.push({
+                name: identified.name,
+                brand: identified.brand,
+                calories: Math.round(identified.estimatedCaloriesPer100g * portionMultiplier),
+                protein: Math.round(identified.estimatedProteinPer100g * portionMultiplier * 10) / 10,
+                carbs: Math.round(identified.estimatedCarbsPer100g * portionMultiplier * 10) / 10,
+                fat: Math.round(identified.estimatedFatPer100g * portionMultiplier * 10) / 10,
+                fiber: 0,
+                sugar: 0,
+                sodium: 0,
+                portionGrams: identified.portionGrams,
+                confidence: identified.isPackaging ? identified.confidence * 0.8 : identified.confidence, // Lower confidence only for failed DB lookups
+                isFromDatabase: false,
+                databaseId: null,
+                ingredients: null,
+            });
         }
         const dbMatches = finalFoods.filter(f => f.isFromDatabase).length;
-        console.log(`✅ Complete: ${dbMatches}/${finalFoods.length} from database`);
+        const platedCount = identifiedFoods.filter(f => !f.isPackaging).length;
+        console.log(`✅ Complete: ${dbMatches} from database, ${platedCount} plated (AI estimates)`);
         res.set('Access-Control-Allow-Origin', '*');
         res.status(200).json({ foods: finalFoods });
     }
@@ -123,7 +131,7 @@ exports.recognizeFood = (0, https_1.onRequest)({
  * Build the prompt for food identification (not nutrition estimation)
  */
 function buildIdentificationPrompt() {
-    return `You are an expert food identification AI. Analyse this meal photo and identify ALL visible food items.
+    return `You are an expert food identification AI. Analyse this photo and identify ALL visible food items.
 
 For EACH food item you can clearly see, provide:
 1. name: Specific food name (e.g., "grilled chicken breast" not "chicken", "basmati rice" not "rice")
@@ -131,12 +139,27 @@ For EACH food item you can clearly see, provide:
 3. portionGrams: Estimated weight in grams of the visible portion (use plate/utensils for scale)
 4. searchTerms: Array of 2-3 alternative names for database searching (e.g., ["chicken breast", "grilled chicken", "chicken fillet"])
 5. confidence: Your confidence in the identification (0.0-1.0)
-6. estimatedCaloriesPer100g: Estimated calories per 100g (UK values)
-7. estimatedProteinPer100g: Estimated protein per 100g
-8. estimatedCarbsPer100g: Estimated carbs per 100g
-9. estimatedFatPer100g: Estimated fat per 100g
+6. isPackaging: true if this is a photo of PRODUCT PACKAGING (box, wrapper, label visible), false if it's PLATED/PREPARED FOOD on a plate or being eaten
+7. estimatedCaloriesPer100g: Estimated calories per 100g (UK values)
+8. estimatedProteinPer100g: Estimated protein per 100g
+9. estimatedCarbsPer100g: Estimated carbs per 100g
+10. estimatedFatPer100g: Estimated fat per 100g
 
-PORTION SIZE GUIDELINES:
+PACKAGING vs PLATED FOOD:
+- isPackaging = true: Photo shows product in original packaging with labels/branding visible (ready meal box, snack wrapper, etc.)
+- isPackaging = false: Photo shows food on a plate, in a bowl, being prepared, or already cooked/served
+
+CRITICAL - BREAK DOWN PLATED MEALS INTO COMPONENTS:
+For plated/prepared food (isPackaging = false), you MUST list each component SEPARATELY:
+- "Sausage and mash with gravy" should be listed as THREE separate items: "pork sausages", "mashed potato", "gravy"
+- "Full English breakfast" should be listed as separate items: "bacon rashers", "fried eggs", "baked beans", "toast", "mushrooms", etc.
+- "Roast dinner" should be: "roast chicken", "roast potatoes", "carrots", "gravy", etc.
+- DO NOT combine multiple foods into one item - always separate them
+
+PORTION SIZE GUIDELINES (per component):
+- 2 pork sausages: ~120g
+- Mashed potato serving: ~150-200g
+- Gravy portion: ~50-80g
 - Small chicken breast: ~120g
 - Medium chicken breast: ~165g
 - Cup of rice (cooked): ~160g
@@ -144,13 +167,23 @@ PORTION SIZE GUIDELINES:
 - Slice of bread: ~30-40g
 - Handful of vegetables: ~80g
 - Restaurant portion pasta: ~250g
+- Bacon rasher: ~25g
+- Fried egg: ~50g
+
+NUTRITIONAL ESTIMATES (per 100g UK values):
+- Pork sausages: ~250 kcal, 12g protein, 3g carbs, 20g fat
+- Mashed potato (with butter): ~100 kcal, 2g protein, 15g carbs, 4g fat
+- Gravy: ~35 kcal, 1g protein, 4g carbs, 2g fat
+- Roast chicken: ~190 kcal, 25g protein, 0g carbs, 10g fat
+- Roast potatoes: ~150 kcal, 2g protein, 22g carbs, 6g fat
 
 IMPORTANT:
-- Be SPECIFIC with names - we'll search a food database
+- Be SPECIFIC with names - we'll search a food database for packaged items
 - Include searchTerms that might match database entries
 - Estimate portion sizes conservatively
 - Use UK standard nutritional values for estimates
-- List composite items as whole (e.g., "chicken sandwich" not separate ingredients)
+- For packaged items only: list as whole (e.g., "chicken sandwich")
+- For plated food: ALWAYS break down into individual components
 
 Respond with ONLY valid JSON (no markdown):
 {
@@ -161,6 +194,7 @@ Respond with ONLY valid JSON (no markdown):
       "portionGrams": number,
       "searchTerms": ["term1", "term2"],
       "confidence": 0.0-1.0,
+      "isPackaging": true/false,
       "estimatedCaloriesPer100g": number,
       "estimatedProteinPer100g": number,
       "estimatedCarbsPer100g": number,
@@ -227,6 +261,7 @@ function parseGeminiResponse(responseText) {
                         confidence: typeof item.confidence === 'number'
                             ? Math.min(1, Math.max(0, item.confidence))
                             : 0.5,
+                        isPackaging: item.isPackaging === true, // Default to false (plated food) if not specified
                         estimatedCaloriesPer100g: typeof item.estimatedCaloriesPer100g === 'number'
                             ? Math.max(0, item.estimatedCaloriesPer100g)
                             : 100,

@@ -228,9 +228,24 @@ struct DiaryTabView: View {
         .padding(.bottom, 4)
     }
 
-    // MARK: - Date Navigation (centered button only - arrows removed to avoid calendar duplication)
+    // MARK: - Date Navigation (arrows navigate day when closed, month when calendar open)
     private var dateNavigationRow: some View {
         HStack {
+            // Left arrow - previous day/month
+            Button(action: {
+                if showingDatePicker {
+                    displayedMonth = Calendar.current.date(byAdding: .month, value: -1, to: displayedMonth) ?? displayedMonth
+                } else {
+                    selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
+                }
+            }) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.blue)
+                    .frame(width: 44, height: 44)
+                    .background(RoundedRectangle(cornerRadius: 10).fill(AppColors.cardBackgroundInteractive))
+            }
+
             Spacer()
 
             // Center date button - expands calendar
@@ -258,6 +273,21 @@ struct DiaryTabView: View {
             }
 
             Spacer()
+
+            // Right arrow - next day/month
+            Button(action: {
+                if showingDatePicker {
+                    displayedMonth = Calendar.current.date(byAdding: .month, value: 1, to: displayedMonth) ?? displayedMonth
+                } else {
+                    selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
+                }
+            }) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.blue)
+                    .frame(width: 44, height: 44)
+                    .background(RoundedRectangle(cornerRadius: 10).fill(AppColors.cardBackgroundInteractive))
+            }
         }
         .padding(.horizontal, 16)
     }
@@ -335,21 +365,29 @@ struct DiaryTabView: View {
         let calendar = Calendar.current
         let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: displayedMonth))!
 
-        // Get first day of week offset (0 = Sunday)
-        let firstWeekday = calendar.component(.weekday, from: monthStart) - 1
+        // Get first day of week offset
+        // .weekday returns 1 for Sunday, 2 for Monday, etc.
+        // For a Sunday-first calendar (as displayed), we need: offset = weekday - 1
+        // This gives us 0 empty cells if day 1 is Sunday, 6 if day 1 is Saturday
+        let weekdayOfFirst = calendar.component(.weekday, from: monthStart)
+        let firstWeekdayOffset = weekdayOfFirst - 1  // 0-indexed for Sunday-first display
         let daysInMonth = calendar.range(of: .day, in: .month, for: displayedMonth)!.count
 
-        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7), spacing: 4) {
-            // Empty cells for padding before first day
-            ForEach(0..<firstWeekday, id: \.self) { _ in
-                Color.clear
-                    .frame(height: 44)
-            }
+        // Build all items for the grid
+        let totalCells = firstWeekdayOffset + daysInMonth
 
-            // Day cells
-            ForEach(1...daysInMonth, id: \.self) { day in
-                let date = calendar.date(byAdding: .day, value: day - 1, to: monthStart)!
-                calendarDayCell(date: date, day: day)
+        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7), spacing: 8) {
+            ForEach(0..<totalCells, id: \.self) { index in
+                if index < firstWeekdayOffset {
+                    // Empty cell before first day of month
+                    Color.clear
+                        .frame(height: 44)
+                } else {
+                    // Actual day cell
+                    let day = index - firstWeekdayOffset + 1
+                    let date = calendar.date(byAdding: .day, value: day - 1, to: monthStart)!
+                    calendarDayCell(date: date, day: day)
+                }
             }
         }
     }
@@ -453,6 +491,8 @@ struct DiaryTabView: View {
                 .font(.system(size: 20, weight: .bold))
                 .foregroundColor(.primary)
 
+            Spacer()
+
             Button(action: {
                 selectedDate = Date()
                 displayedMonth = Date()
@@ -467,26 +507,6 @@ struct DiaryTabView: View {
                         RoundedRectangle(cornerRadius: 8)
                             .fill(Color.blue.opacity(0.1))
                     )
-            }
-
-            Spacer()
-
-            HStack(spacing: 12) {
-                Button(action: {
-                    displayedMonth = Calendar.current.date(byAdding: .month, value: -1, to: displayedMonth) ?? displayedMonth
-                }) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.blue)
-                }
-
-                Button(action: {
-                    displayedMonth = Calendar.current.date(byAdding: .month, value: 1, to: displayedMonth) ?? displayedMonth
-                }) {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.blue)
-                }
             }
         }
         .padding(.horizontal, 16)
@@ -629,6 +649,10 @@ struct DiaryTabView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .diaryFoodDetailOpened)) { _ in
                 selectedFoodItems.removeAll()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshDiaryData"))) { _ in
+                // Refresh diary when foods are added from AI scanner
+                loadFoodData()
             }
             .onReceive(healthKitRefreshTimer) { _ in
                 // PERFORMANCE: Skip if timer is paused or not viewing today's date

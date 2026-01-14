@@ -2494,7 +2494,7 @@ struct AddUseByItemSheet: View {
                 VStack(spacing: 0) {
                     // Header with tab-style options
                     VStack(spacing: 12) {
-                        // Option selector - tab-style buttons
+                        // Option selector - tab-style buttons (barcode now via button next to search)
                         HStack(spacing: 0) {
                             UseByOptionSelectorButton(
                                 title: "Search",
@@ -2512,14 +2512,6 @@ struct AddUseByItemSheet: View {
                                 print("🔵 [UseBy] Manual option tapped")
                                 selectedOption = .manual
                             }
-                            UseByOptionSelectorButton(
-                                title: "Barcode",
-                                icon: "barcode.viewfinder",
-                                isSelected: selectedOption == .barcode
-                            ) {
-                                print("🔵 [UseBy] Barcode option tapped")
-                                selectedOption = .barcode
-                            }
                         }
                         .padding(.horizontal, 16)
                         .padding(.top, 8)
@@ -2532,7 +2524,9 @@ struct AddUseByItemSheet: View {
                     Group {
                         switch selectedOption {
                         case .search:
-                            UseByInlineSearchView(onComplete: onComplete)
+                            UseByInlineSearchView(onComplete: onComplete, onSwitchToBarcode: {
+                                selectedOption = .barcode
+                            })
                         case .manual:
                             UseByItemDetailView(item: nil, onComplete: {
                                 dismiss()
@@ -2579,6 +2573,7 @@ struct AddUseByItemSheet: View {
 // Inline search content for Add-to-UseBy sheet, without its own navigation bar
 struct UseByInlineSearchView: View {
     var onComplete: (() -> Void)? = nil
+    var onSwitchToBarcode: (() -> Void)? = nil
     @State private var query: String = ""
     @State private var isSearching = false
     @State private var results: [FoodSearchResult] = []
@@ -2588,34 +2583,49 @@ struct UseByInlineSearchView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Search Bar
-            ZStack(alignment: .trailing) {
-                HStack {
-                    Image(systemName: "magnifyingglass").foregroundColor(.secondary)
-                    TextField("Search products", text: $query)
-                        .textInputAutocapitalization(.never)
-                        .disableAutocorrection(true)
-                        .padding(.trailing, 28)
-                        .onChange(of: query) { _, newValue in
-                            searchTask?.cancel()
-                            let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
-                            guard trimmed.count >= 2 else { self.results = []; self.isSearching = false; return }
-                            searchTask = Task {
-                                try? await Task.sleep(nanoseconds: 300_000_000)
-                                await runSearch(trimmed)
-                            }
-                        }
-                }
-                if !query.isEmpty {
-                    Button(action: { query = ""; results = [] }) {
-                        Image(systemName: "xmark.circle.fill").foregroundColor(.secondary)
+            // Search Bar with Barcode Button
+            HStack(spacing: 8) {
+                // Barcode scan button to LEFT of search bar
+                if let barcodeAction = onSwitchToBarcode {
+                    Button(action: barcodeAction) {
+                        Image(systemName: "barcode.viewfinder")
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundColor(.white)
+                            .frame(width: 44, height: 44)
+                            .background(Color.blue)
+                            .cornerRadius(10)
                     }
-                    .padding(.trailing, 4)
                 }
+
+                // Search field
+                ZStack(alignment: .trailing) {
+                    HStack {
+                        Image(systemName: "magnifyingglass").foregroundColor(.secondary)
+                        TextField("Search products", text: $query)
+                            .textInputAutocapitalization(.never)
+                            .disableAutocorrection(true)
+                            .padding(.trailing, 28)
+                            .onChange(of: query) { _, newValue in
+                                searchTask?.cancel()
+                                let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                                guard trimmed.count >= 2 else { self.results = []; self.isSearching = false; return }
+                                searchTask = Task {
+                                    try? await Task.sleep(nanoseconds: 300_000_000)
+                                    await runSearch(trimmed)
+                                }
+                            }
+                    }
+                    if !query.isEmpty {
+                        Button(action: { query = ""; results = [] }) {
+                            Image(systemName: "xmark.circle.fill").foregroundColor(.secondary)
+                        }
+                        .padding(.trailing, 4)
+                    }
+                }
+                .padding(12)
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
             }
-            .padding(12)
-            .background(Color(.systemGray6))
-            .cornerRadius(12)
             .padding(.horizontal, 16)
             .padding(.top, 12)
 

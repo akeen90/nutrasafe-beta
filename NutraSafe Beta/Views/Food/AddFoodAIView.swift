@@ -15,17 +15,19 @@ import AudioToolbox
 
 struct AddFoodAIView: View {
     @Binding var selectedTab: TabItem
+    @Environment(\.dismiss) private var dismiss
     @State private var isScanning = false
     @State private var recognizedFoods: [FoodSearchResult] = []
     @State private var showingImagePicker = false
     @State private var selectedImage: UIImage?
     @State private var showingCombinedMealView = false
     @State private var combinedMealFoods: [FoodSearchResult] = []
-    @State private var showingFoodDetail = false
     @State private var selectedFoodForDetail: FoodSearchResult?
     @State private var hasLaunchedCamera = false  // Prevents re-launching camera on state changes
     @State private var errorMessage: String?  // Shows errors to user
     @State private var showingGalleryPicker = false  // For photo library selection
+    // Local dummy tab binding to prevent Details view from changing main tab while in AI scanner
+    @State private var localTabForDetail: TabItem = .diary
     
     var body: some View {
         VStack(spacing: 20) {
@@ -143,36 +145,64 @@ struct AddFoodAIView: View {
                     // NOW start showing the scanning state (after photo is taken)
                     isScanning = true
                     errorMessage = nil
+                    #if DEBUG
+                    print("📸 Image received, starting analysis...")
+                    #endif
                     analyzeImage(image)
                 } else {
-                    // User cancelled - allow them to try again
+                    // User cancelled OR image extraction failed
                     hasLaunchedCamera = false
+                    // Check if this was a failure vs cancellation
+                    if selectedImage == nil {
+                        errorMessage = "Failed to capture image. Please try again."
+                    }
                 }
             }
         }
         .fullScreenCover(isPresented: $showingCombinedMealView) {
-            CombinedMealView(foods: combinedMealFoods) {
-                showingCombinedMealView = false
-                combinedMealFoods = []
-            }
-        }
-        .fullScreenCover(isPresented: $showingFoodDetail) {
-            if let food = selectedFoodForDetail {
-                NavigationView {
-                    FoodDetailViewFromSearch(food: food, selectedTab: $selectedTab)
+            CombinedMealView(
+                foods: combinedMealFoods,
+                onDismiss: {
+                    showingCombinedMealView = false
+                    combinedMealFoods = []
+                },
+                onSaveComplete: {
+                    // Dismiss CombinedMealView and AddFoodAIView, go back to diary
+                    showingCombinedMealView = false
+                    combinedMealFoods = []
+                    selectedTab = .diary
+                    dismiss()
                 }
+            )
+        }
+        .fullScreenCover(item: $selectedFoodForDetail) { food in
+            NavigationView {
+                // Use localTabForDetail to prevent Details view from changing main tab while in AI scanner
+                FoodDetailViewFromSearch(food: food, selectedTab: $localTabForDetail)
             }
         }
         .sheet(isPresented: $showingGalleryPicker) {
             MultiImagePicker(maxSelection: 1) { images in
+                // First dismiss the picker
                 showingGalleryPicker = false
-                if let image = images.first {
-                    isScanning = true
-                    errorMessage = nil
-                    analyzeImage(image)
-                } else {
-                    // User cancelled
-                    hasLaunchedCamera = false
+
+                // Then process the result after a brief delay to ensure clean dismissal
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    if let image = images.first {
+                        isScanning = true
+                        errorMessage = nil
+                        #if DEBUG
+                        print("📸 Gallery image received, starting analysis...")
+                        #endif
+                        analyzeImage(image)
+                    } else {
+                        // User cancelled or image loading failed
+                        hasLaunchedCamera = false
+                        // Only show error if this wasn't an explicit cancel (images array was expected)
+                        #if DEBUG
+                        print("⚠️ No image from gallery picker")
+                        #endif
+                    }
                 }
             }
         }
@@ -219,7 +249,6 @@ struct AddFoodAIView: View {
             if let confidence = food.confidence, confidence > 0.8 {
                 // High confidence single item - likely branded product, go to detail page
                 selectedFoodForDetail = food
-                showingFoodDetail = true
             } else {
                 // Lower confidence single item - might be generic food, show combined meal view
                 combinedMealFoods = selectedFoods
@@ -267,40 +296,49 @@ struct AddFoodAIView: View {
                     self.isScanning = false
                     self.hasLaunchedCamera = false
 
+                    // Build diagnostic info for error message
+                    let diagInfo = "[\(error.domain):\(error.code)]"
+
                     // Provide user-friendly error messages based on domain and code
                     if error.domain == NSURLErrorDomain {
                         switch error.code {
                         case NSURLErrorTimedOut:
-                            self.errorMessage = "Request timed out. Please check your connection and try again."
+                            self.errorMessage = "Request timed out \(diagInfo). Check connection."
                         case NSURLErrorNotConnectedToInternet:
-                            self.errorMessage = "No internet connection. Please connect and try again."
+                            self.errorMessage = "No internet connection \(diagInfo)."
                         case NSURLErrorCannotConnectToHost:
-                            self.errorMessage = "Cannot reach server. Please try again later."
+                            self.errorMessage = "Cannot reach server \(diagInfo)."
+                        case NSURLErrorNetworkConnectionLost:
+                            self.errorMessage = "Connection lost during upload \(diagInfo)."
+                        case NSURLErrorSecureConnectionFailed:
+                            self.errorMessage = "Secure connection failed \(diagInfo)."
                         default:
-                            self.errorMessage = "Network error (\(error.code)). Please check your connection."
+                            self.errorMessage = "Network error \(diagInfo). Check connection."
                         }
                     } else if error.domain == "AddFoodAIView" {
-                        // Custom errors from our code
+                        // Custom errors from our code - show detailed message
+                        let detail = error.userInfo[NSLocalizedDescriptionKey] as? String ?? ""
                         switch error.code {
                         case -2:
-                            self.errorMessage = "Failed to parse server response. Please try again."
+                            // Show the detailed parse error
+                            self.errorMessage = detail.isEmpty ? "Failed to parse response \(diagInfo)." : detail
                         case -1:
-                            self.errorMessage = "Invalid server response. Please try again."
+                            self.errorMessage = "Invalid response \(diagInfo)."
                         case 400...499:
-                            self.errorMessage = "Request error (\(error.code)). Please try a different photo."
+                            self.errorMessage = "Request error \(diagInfo). Try different photo."
                         case 500...599:
-                            self.errorMessage = "Server error (\(error.code)). Please try again in a moment."
+                            self.errorMessage = "Server error \(diagInfo). Try again."
                         default:
-                            self.errorMessage = "Failed to analyse image (\(error.code)). Please try again."
+                            self.errorMessage = "Analysis failed \(diagInfo)."
                         }
                     } else if error.domain == "ImageError" {
-                        self.errorMessage = "Failed to process image. Please try a different photo."
+                        self.errorMessage = "Image processing failed \(diagInfo)."
                     } else if error.code >= 500 {
-                        self.errorMessage = "Server error (\(error.code)). Please try again in a moment."
+                        self.errorMessage = "Server error \(diagInfo). Try again."
                     } else if error.code >= 400 {
-                        self.errorMessage = "Request error (\(error.code)). Please try a different photo."
+                        self.errorMessage = "Request error \(diagInfo). Try different photo."
                     } else {
-                        self.errorMessage = "Failed to analyse image (\(error.domain):\(error.code)). Please try again."
+                        self.errorMessage = "Analysis failed \(diagInfo)."
                     }
 
                     #if DEBUG
@@ -373,6 +411,7 @@ struct AddFoodAIView: View {
 
         #if DEBUG
         print("   Compressed image size: \(imageSizeKB) KB")
+        print("   Base64 length: \(base64Image.count) chars")
         print("   Calling Firebase recognizeFood function...")
         #endif
 
@@ -388,7 +427,12 @@ struct AddFoodAIView: View {
         request.timeoutInterval = 90  // 90 second timeout (match Firebase function)
 
         let body = ["image": base64Image]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let bodyData = try JSONSerialization.data(withJSONObject: body)
+        request.httpBody = bodyData
+
+        #if DEBUG
+        print("   Request body size: \(bodyData.count / 1024) KB")
+        #endif
 
         #if DEBUG
         let startTime = Date()
@@ -455,14 +499,32 @@ struct AddFoodAIView: View {
                     isVerified: isVerified
                 )
             }
-        } catch {
+        } catch let decodeError {
             #if DEBUG
-            print("   JSON decode error: \(error)")
+            print("   JSON decode error: \(decodeError)")
             if let jsonString = String(data: data, encoding: .utf8) {
                 print("   Raw response: \(jsonString.prefix(500))")
             }
             #endif
-            throw NSError(domain: "AddFoodAIView", code: -2, userInfo: [NSLocalizedDescriptionKey: "Failed to parse server response"])
+
+            // Extract helpful error info for debugging
+            var errorDetail = "parse error"
+            if let decodingError = decodeError as? DecodingError {
+                switch decodingError {
+                case .keyNotFound(let key, _):
+                    errorDetail = "missing '\(key.stringValue)'"
+                case .typeMismatch(let type, let context):
+                    errorDetail = "type mismatch at \(context.codingPath.map { $0.stringValue }.joined(separator: ".")): expected \(type)"
+                case .valueNotFound(let type, let context):
+                    errorDetail = "null value at \(context.codingPath.map { $0.stringValue }.joined(separator: ".")): expected \(type)"
+                case .dataCorrupted(let context):
+                    errorDetail = "corrupted at \(context.codingPath.map { $0.stringValue }.joined(separator: "."))"
+                @unknown default:
+                    errorDetail = "unknown decode error"
+                }
+            }
+
+            throw NSError(domain: "AddFoodAIView", code: -2, userInfo: [NSLocalizedDescriptionKey: "Parse failed: \(errorDetail)"])
         }
     }
     
@@ -541,13 +603,24 @@ struct ImagePicker: UIViewControllerRepresentable {
         }
         
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+            #if DEBUG
+            print("📷 ImagePicker didFinishPicking called")
+            print("   Available keys: \(info.keys.map { $0.rawValue })")
+            #endif
+
             if let image = info[.originalImage] as? UIImage {
+                #if DEBUG
+                print("   ✅ Got image: \(Int(image.size.width))x\(Int(image.size.height))")
+                #endif
                 parent.selectedImage?.wrappedValue = image
                 parent.onImageSelected(image)
+            } else {
+                // Failed to extract image - still call callback with nil to trigger error handling
+                #if DEBUG
+                print("   ❌ Failed to extract image from info dictionary")
+                #endif
+                parent.onImageSelected(nil)
             }
-            // Don't dismiss here - let parent view control dismissal via sheet binding
-            // This allows async operations (like photo upload) to complete before dismissal
-            // picker.dismiss(animated: true)
         }
 
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
@@ -594,16 +667,22 @@ struct MultiImagePicker: UIViewControllerRepresentable {
             #if DEBUG
             print("📸 MultiImagePicker: User finished picking \(results.count) photos")
             #endif
-            picker.dismiss(animated: true)
+
+            // Don't call picker.dismiss() - let SwiftUI handle dismissal via the sheet binding
+            // This prevents race conditions between manual dismiss and binding state
 
             guard !results.isEmpty else {
                 #if DEBUG
                 print("⚠️ MultiImagePicker: User cancelled - no photos selected")
                 #endif
-                parent.onImagesSelected([])
+                DispatchQueue.main.async {
+                    self.parent.onImagesSelected([])
+                }
                 return
             }
 
+            // Thread-safe image collection
+            let imageQueue = DispatchQueue(label: "multiImagePicker.images")
             var images: [UIImage] = []
             let group = DispatchGroup()
 
@@ -612,7 +691,9 @@ struct MultiImagePicker: UIViewControllerRepresentable {
                 result.itemProvider.loadObject(ofClass: UIImage.self) { object, error in
                     defer { group.leave() }
                     if let image = object as? UIImage {
-                        images.append(image)
+                        imageQueue.sync {
+                            images.append(image)
+                        }
                         #if DEBUG
                         print("✅ MultiImagePicker: Successfully loaded image")
                         #endif
@@ -643,16 +724,52 @@ struct AIFoodSelectionView: View {
     @Binding var selectedTab: TabItem
 
     @State private var selectedFoods: Set<String> = []
-    @State private var showingFoodDetail = false
     @State private var selectedFood: FoodSearchResult?
+    // Local dummy tab binding to prevent Details view from changing main tab
+    @State private var localTab: TabItem = .diary
     
     // Sort foods by confidence (highest first)
     private var sortedFoods: [FoodSearchResult] {
         recognizedFoods.sorted { ($0.confidence ?? 0) > ($1.confidence ?? 0) }
     }
-    
+
+    // Calculate total calories for selected foods
+    // Note: calories from AI scanner are already scaled to portion size, no need to re-scale
+    private var totalSelectedCalories: Double {
+        sortedFoods
+            .filter { selectedFoods.contains($0.id) }
+            .reduce(0) { $0 + $1.calories }
+    }
+
     var body: some View {
         VStack(spacing: 16) {
+            // Total calories summary (updates as foods are selected)
+            if !selectedFoods.isEmpty {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Total Estimated")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                        Text("\(Int(totalSelectedCalories)) kcal")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(.primary)
+                    }
+                    Spacer()
+                    Text("\(selectedFoods.count) item\(selectedFoods.count == 1 ? "" : "s")")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.blue.opacity(0.1))
+                        .cornerRadius(8)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color(UIColor.secondarySystemBackground))
+                .cornerRadius(12)
+                .padding(.horizontal, 16)
+            }
+
             ScrollView {
                 VStack(spacing: 12) {
                     ForEach(sortedFoods, id: \.id) { food in
@@ -664,14 +781,13 @@ struct AIFoodSelectionView: View {
                             },
                             onViewDetails: {
                                 selectedFood = food
-                                showingFoodDetail = true
                             }
                         )
                     }
                 }
                 .padding(.horizontal, 16)
             }
-            
+
             // Action buttons
             VStack(spacing: 12) {
                 if selectedFoods.count > 0 {
@@ -692,7 +808,7 @@ struct AIFoodSelectionView: View {
                     }
                     .padding(.horizontal, 16)
                 }
-                
+
                 Button("Scan Another") {
                     onScanAnother()
                 }
@@ -700,11 +816,10 @@ struct AIFoodSelectionView: View {
                 .padding(.bottom, 16)
             }
         }
-        .fullScreenCover(isPresented: $showingFoodDetail) {
-            if let food = selectedFood {
-                NavigationView {
-                    FoodDetailViewFromSearch(food: food, selectedTab: $selectedTab)
-                }
+        .fullScreenCover(item: $selectedFood) { food in
+            NavigationView {
+                // Use localTab to prevent Details view from changing main tab while in AI scanner
+                FoodDetailViewFromSearch(food: food, selectedTab: $localTab)
             }
         }
     }
@@ -739,37 +854,10 @@ struct AIFoodSelectionRow: View {
         }
     }
     
-    // Calculate per-serving calories from per-100g values
+    // Calories are already scaled to portion size from the AI scanner
+    // No need to re-scale - just use the value directly
     private var perServingCalories: Double {
-        let servingSize = extractServingSize(from: food.servingDescription)
-        return food.calories * (servingSize / 100.0)
-    }
-    
-    // Extract serving size in grams from serving description
-    private func extractServingSize(from servingDesc: String?) -> Double {
-        guard let servingDesc = servingDesc else { return 100.0 }
-        
-        // Try to extract numbers from serving description like "39.4g", "1 container (150g)" or "1/2 cup (98g)"
-        let patterns = [
-            #"(\d+(?:\.\d+)?)\s*g"#,  // Match "39.4g" or "39.4 g"
-            #"\((\d+(?:\.\d+)?)\s*g\)"#  // Match "(150g)" in parentheses
-        ]
-        
-        for pattern in patterns {
-            if let regex = try? NSRegularExpression(pattern: pattern, options: []),
-               let match = regex.firstMatch(in: servingDesc, options: [], range: NSRange(location: 0, length: servingDesc.count)),
-               let range = Range(match.range(at: 1), in: servingDesc) {
-                return Double(String(servingDesc[range])) ?? 100.0
-            }
-        }
-        
-        // If just a number is found, assume it's grams
-        if let number = Double(servingDesc.trimmingCharacters(in: .whitespacesAndNewlines)) {
-            return number
-        }
-        
-        // Fallback to 100g if no weight found
-        return 100.0
+        food.calories
     }
     
     var body: some View {
@@ -863,6 +951,7 @@ struct AIFoodSelectionRow: View {
 struct CombinedMealView: View {
     let foods: [FoodSearchResult]
     let onDismiss: () -> Void
+    var onSaveComplete: (() -> Void)? = nil  // Called after successful save to dismiss all the way to diary
 
     @State private var servingSizes: [String: Double] = [:]
     @State private var selectedMealType: MealType = .lunch
@@ -996,7 +1085,14 @@ struct CombinedMealView: View {
         }
         .alert("Success", isPresented: $showingSuccessAlert) {
             Button("OK") {
-                onDismiss()
+                // Post notification to refresh diary data
+                NotificationCenter.default.post(name: NSNotification.Name("RefreshDiaryData"), object: nil)
+                // Dismiss all the way back to diary if callback provided, otherwise just dismiss this view
+                if let onSaveComplete = onSaveComplete {
+                    onSaveComplete()
+                } else {
+                    onDismiss()
+                }
             }
         } message: {
             Text("All \(foods.count) foods have been added to your diary.")
