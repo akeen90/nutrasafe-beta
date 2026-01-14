@@ -180,68 +180,17 @@ struct DiaryTabView: View {
         }
     }
 
-    // Extracted to reduce compiler complexity
-    private var diaryHeaderView: some View {
-        HStack(alignment: .center) {
-            Text("Diary")
-                .font(AppTypography.largeTitle())
-                .frame(height: 44, alignment: .center)
-                .foregroundColor(.primary)
-
+    // MARK: - Compact Header (just settings icon)
+    private var compactHeaderView: some View {
+        HStack {
             Spacer()
-
-            // Date navigation arrows
-            HStack(spacing: 8) {
-                Button(action: {
-                    selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
-                }) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.primary)
-                        .frame(width: 32, height: 32)
-                        .background(Circle().fill(.ultraThinMaterial))
-                }
-
-                // Date Selector
-                Button(action: {
-                    showingDatePicker.toggle()
-                }) {
-                    HStack(spacing: 6) {
-                        Text(showingDatePicker ? "Close" : formatDateShort(selectedDate))
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.primary)
-                            .fixedSize()
-                            .lineLimit(1)
-                            .animation(nil, value: showingDatePicker)
-
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.secondary)
-                            .rotationEffect(.degrees(showingDatePicker ? 180 : 0))
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(RoundedRectangle(cornerRadius: 10).fill(AppColors.cardBackgroundInteractive))
-                }
-
-                Button(action: {
-                    selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
-                }) {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.primary)
-                        .frame(width: 32, height: 32)
-                        .background(Circle().fill(.ultraThinMaterial))
-                }
-            }
-
             Button(action: {
                 showingSettings = true
             }) {
                 ZStack {
                     Circle()
                         .fill(.ultraThinMaterial)
-                        .frame(width: 44, height: 44)
+                        .frame(width: 40, height: 40)
                         .overlay(
                             Circle()
                                 .stroke(
@@ -253,16 +202,85 @@ struct DiaryTabView: View {
                                     lineWidth: 1.5
                                 )
                         )
-                        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+                        .shadow(color: .black.opacity(0.1), radius: 6, x: 0, y: 3)
 
                     Image(systemName: "gearshape.fill")
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.primary)
                         .symbolRenderingMode(.hierarchical)
                 }
             }
             .buttonStyle(SpringyButtonStyle())
         }
+        .padding(.horizontal, 16)
+        .padding(.top, 4)
+    }
+
+    // MARK: - Full-Width Date Navigation (below tabs)
+    private var dateNavigationRow: some View {
+        HStack(spacing: 0) {
+            // Left arrow - larger tap target
+            Button(action: {
+                selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
+            }) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.primary)
+                    .frame(width: 48, height: 44)
+                    .contentShape(Rectangle())
+            }
+
+            Spacer()
+
+            // Center date button
+            Button(action: {
+                showingDatePicker.toggle()
+            }) {
+                HStack(spacing: 6) {
+                    Text(showingDatePicker ? "Close Calendar" : formatDateFull(selectedDate))
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .animation(nil, value: showingDatePicker)
+
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .rotationEffect(.degrees(showingDatePicker ? 180 : 0))
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(RoundedRectangle(cornerRadius: 10).fill(AppColors.cardBackgroundInteractive))
+            }
+
+            Spacer()
+
+            // Right arrow - larger tap target
+            Button(action: {
+                selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
+            }) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.primary)
+                    .frame(width: 48, height: 44)
+                    .contentShape(Rectangle())
+            }
+        }
+        .padding(.horizontal, 16)
+    }
+
+    // Helper to format full date (e.g., "Tuesday, 14 Jan")
+    private func formatDateFull(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE, d MMM"
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) {
+            return "Today"
+        } else if calendar.isDateInYesterday(date) {
+            return "Yesterday"
+        } else if calendar.isDateInTomorrow(date) {
+            return "Tomorrow"
+        }
+        return formatter.string(from: date)
     }
 
     // MARK: - Date Picker Section
@@ -370,18 +388,15 @@ struct DiaryTabView: View {
         .padding(.top, 8)
     }
 
-    // MARK: - Calendar Header Section
+    // MARK: - Date Section (navigation + expanded calendar)
     @ViewBuilder
-    private var calendarHeaderSection: some View {
-        if diarySubTab == .overview {
-            VStack(spacing: 8) {
-                diaryHeaderView
-                datePickerSection
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-            .padding(.bottom, 12)
+    private var dateSectionView: some View {
+        VStack(spacing: 8) {
+            dateNavigationRow
+            datePickerSection
         }
+        .padding(.top, 4)
+        .padding(.bottom, 8)
     }
 
     // MARK: - Tab Picker Section
@@ -582,8 +597,14 @@ struct DiaryTabView: View {
     // MARK: - Main Content
     private var mainContent: some View {
         VStack(spacing: 0) {
-            calendarHeaderSection
+            // Settings icon in top right
+            compactHeaderView
+
+            // Tab picker at top (Overview/Nutrients)
             tabPickerSection
+
+            // Date navigation below tabs
+            dateSectionView
 
             // Loading state or content
             ZStack {
