@@ -1698,6 +1698,117 @@ class FirebaseManager: ObservableObject {
         #endif
     }
 
+    // MARK: - Favorite Foods
+
+    /// Saves a food to user's favorites
+    func saveFavoriteFood(_ food: FoodSearchResult) async throws {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save favorites"])
+        }
+
+        let favoriteData: [String: Any] = [
+            "id": food.id,
+            "name": food.name,
+            "brand": food.brand as Any,
+            "calories": food.calories,
+            "protein": food.protein,
+            "carbs": food.carbs,
+            "fat": food.fat,
+            "fiber": food.fiber,
+            "sugar": food.sugar,
+            "sodium": food.sodium,
+            "servingDescription": food.servingDescription as Any,
+            "barcode": food.barcode as Any,
+            "isVerified": food.isVerified,
+            "addedAt": FirebaseFirestore.Timestamp(date: Date())
+        ]
+
+        try await db.collection("users").document(userId)
+            .collection("favoriteFoods").document(food.id).setData(favoriteData)
+        #if DEBUG
+        print("✅ Food added to favorites: \(food.name)")
+        #endif
+    }
+
+    /// Removes a food from user's favorites
+    func removeFavoriteFood(foodId: String) async throws {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to remove favorites"])
+        }
+
+        try await db.collection("users").document(userId)
+            .collection("favoriteFoods").document(foodId).delete()
+        #if DEBUG
+        print("✅ Food removed from favorites")
+        #endif
+    }
+
+    /// Gets user's favorite foods
+    func getFavoriteFoods() async throws -> [FoodSearchResult] {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view favorites"])
+        }
+
+        let snapshot = try await db.collection("users").document(userId)
+            .collection("favoriteFoods")
+            .order(by: "addedAt", descending: true)
+            .limit(to: 20)  // Limit to recent 20 favorites
+            .getDocuments()
+
+        let favorites = snapshot.documents.compactMap { doc -> FoodSearchResult? in
+            let data = doc.data()
+            guard let id = data["id"] as? String,
+                  let name = data["name"] as? String,
+                  let calories = data["calories"] as? Double,
+                  let protein = data["protein"] as? Double,
+                  let carbs = data["carbs"] as? Double,
+                  let fat = data["fat"] as? Double else {
+                return nil
+            }
+
+            return FoodSearchResult(
+                id: id,
+                name: name,
+                brand: data["brand"] as? String,
+                calories: calories,
+                protein: protein,
+                carbs: carbs,
+                fat: fat,
+                fiber: data["fiber"] as? Double ?? 0,
+                sugar: data["sugar"] as? Double ?? 0,
+                sodium: data["sodium"] as? Double ?? 0,
+                servingDescription: data["servingDescription"] as? String,
+                isVerified: data["isVerified"] as? Bool ?? false,
+                barcode: data["barcode"] as? String
+            )
+        }
+
+        #if DEBUG
+        print("✅ Loaded \(favorites.count) favorite foods")
+        #endif
+        return favorites
+    }
+
+    /// Checks if a food is in user's favorites
+    func isFavoriteFood(foodId: String) async throws -> Bool {
+        ensureAuthStateLoaded()
+
+        guard let userId = currentUser?.uid else {
+            return false
+        }
+
+        let doc = try await db.collection("users").document(userId)
+            .collection("favoriteFoods").document(foodId).getDocument()
+
+        return doc.exists
+    }
+
     // MARK: - User Settings (Height, Goal Weight, Caloric Goal)
 
     func saveUserSettings(height: Double?, goalWeight: Double?, caloricGoal: Int? = nil, exerciseGoal: Int? = nil, stepGoal: Int? = nil) async throws {

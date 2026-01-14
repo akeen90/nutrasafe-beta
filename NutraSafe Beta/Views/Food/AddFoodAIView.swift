@@ -725,9 +725,10 @@ struct AIFoodSelectionView: View {
 
     @State private var selectedFoods: Set<String> = []
     @State private var selectedFood: FoodSearchResult?
+    @State private var hasInitializedSelection = false
     // Local dummy tab binding to prevent Details view from changing main tab
     @State private var localTab: TabItem = .diary
-    
+
     // Sort foods by confidence (highest first)
     private var sortedFoods: [FoodSearchResult] {
         recognizedFoods.sorted { ($0.confidence ?? 0) > ($1.confidence ?? 0) }
@@ -743,6 +744,21 @@ struct AIFoodSelectionView: View {
 
     var body: some View {
         VStack(spacing: 16) {
+            // AI Estimate Disclaimer
+            HStack(spacing: 8) {
+                Image(systemName: "info.circle.fill")
+                    .foregroundColor(.orange)
+                Text("AI estimates may vary. Use as a guide only.")
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity)
+            .background(Color.orange.opacity(0.1))
+            .cornerRadius(10)
+            .padding(.horizontal, 16)
+
             // Total calories summary (updates as foods are selected)
             if !selectedFoods.isEmpty {
                 HStack {
@@ -822,6 +838,13 @@ struct AIFoodSelectionView: View {
                 FoodDetailViewFromSearch(food: food, selectedTab: $localTab)
             }
         }
+        .onAppear {
+            // Auto-select all detected foods by default
+            if !hasInitializedSelection {
+                hasInitializedSelection = true
+                selectedFoods = Set(recognizedFoods.map { $0.id })
+            }
+        }
     }
 
     private func toggleFoodSelection(_ food: FoodSearchResult) {
@@ -875,17 +898,17 @@ struct AIFoodSelectionRow: View {
                     Text(food.name)
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.primary)
-                    
+
                     Spacer()
-                    
-                    // Confidence indicator
-                    if let confidence = food.confidence {
+
+                    // Confidence indicator - only show if 70% or higher
+                    if let confidence = food.confidence, confidence >= 0.7 {
                         Text("\(Int(confidence * 100))%")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(confidence >= 0.85 ? .green : .secondary)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(Color.gray.opacity(0.2))
+                            .background(confidence >= 0.85 ? Color.green.opacity(0.15) : Color.gray.opacity(0.2))
                             .cornerRadius(4)
                     }
                 }
@@ -1176,6 +1199,19 @@ struct CombinedMealFoodRow: View {
     let servingSize: Double
     let onServingSizeChange: (Double) -> Void
     
+    // Extract gram weight from serving description
+    private var gramWeight: Int? {
+        if let desc = food.servingDescription {
+            // Parse "150g (verified)" or "120g (AI estimate)"
+            let pattern = #"(\d+)g"#
+            if let range = desc.range(of: pattern, options: .regularExpression),
+               let grams = Int(desc[range].dropLast()) {
+                return grams
+            }
+        }
+        return nil
+    }
+
     var body: some View {
         VStack(spacing: 8) {
             HStack {
@@ -1184,23 +1220,31 @@ struct CombinedMealFoodRow: View {
                     Text(food.name)
                         .font(.headline)
                         .lineLimit(2)
-                    
+
                     if let brand = food.brand, !brand.isEmpty {
                         Text(brand)
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
-                    
-                    // Confidence if available
-                    if let confidence = food.confidence {
-                        Text("\(Int(confidence * 100))% confidence")
-                            .font(.caption)
-                            .foregroundColor(.blue)
+
+                    // Gram weight and confidence
+                    HStack(spacing: 8) {
+                        if let grams = gramWeight {
+                            Text("\(Int(Double(grams) * servingSize))g")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        // Only show confidence if 70% or higher
+                        if let confidence = food.confidence, confidence >= 0.7 {
+                            Text("\(Int(confidence * 100))% match")
+                                .font(.caption)
+                                .foregroundColor(confidence >= 0.85 ? .green : .blue)
+                        }
                     }
                 }
-                
+
                 Spacer()
-                
+
                 // Calories
                 Text("\(Int(food.calories * servingSize)) cal")
                     .font(.headline)

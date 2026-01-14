@@ -2307,7 +2307,7 @@ struct WeightEntryRow: View {
     let entry: WeightEntry
     let previousEntry: WeightEntry?
     let isLatest: Bool
-    @AppStorage("unitSystem") private var unitSystem: UnitSystem = .metric
+    @AppStorage("weightUnit") private var selectedWeightUnit: WeightUnit = .kg
 
     private var weightChange: Double? {
         guard let previous = previousEntry else { return nil }
@@ -2315,21 +2315,24 @@ struct WeightEntryRow: View {
     }
 
     private func formatWeight(_ kg: Double) -> String {
-        switch unitSystem {
-        case .metric:
-            return String(format: "%.1f", kg)
-        case .imperial:
-            let lbs = kg * 2.20462
-            return String(format: "%.1f", lbs)
+        let converted = selectedWeightUnit.fromKg(kg)
+        switch selectedWeightUnit {
+        case .kg:
+            return String(format: "%.1f", converted.primary)
+        case .lbs:
+            return String(format: "%.1f", converted.primary)
+        case .stones:
+            let st = Int(converted.primary)
+            let lbs = converted.secondary ?? 0
+            return "\(st)st \(String(format: "%.0f", lbs))lb"
         }
     }
 
     private var weightUnit: String {
-        switch unitSystem {
-        case .metric:
-            return "kg"
-        case .imperial:
-            return "lbs"
+        switch selectedWeightUnit {
+        case .kg: return "kg"
+        case .lbs: return "lbs"
+        case .stones: return ""  // Already included in formatted string
         }
     }
 

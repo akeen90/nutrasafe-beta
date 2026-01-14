@@ -2592,6 +2592,20 @@ struct MacroManagementView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 20) {
+                    // Quick Tip for Diet Management
+                    HStack(spacing: 8) {
+                        Image(systemName: "lightbulb.fill")
+                            .foregroundColor(.yellow)
+                        Text("These are starting points. Adjust based on how you feel and your results.")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.yellow.opacity(0.1))
+                    .cornerRadius(10)
+
                     // Calorie Goal Section (at the top)
                     calorieGoalSection
 

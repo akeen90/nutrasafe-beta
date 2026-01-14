@@ -297,6 +297,10 @@ struct FoodDetailViewFromSearch: View {
     @State private var servingUnit: String // Split serving size - unit only
     @State private var selectedPortionName: String = "" // For portion picker (e.g., McNuggets 6pc, 9pc, 20pc)
     @State private var showingMultiplierPicker: Bool = false // Shows grid popup for quantity multiplier
+
+    // Favorites
+    @State private var isFavorite: Bool = false
+    @State private var isTogglingFavorite: Bool = false
     private var isPerUnit: Bool {
         if let flag = food.isPerUnit { return flag }
         let u = servingUnit.lowercased()
@@ -375,6 +379,33 @@ struct FoodDetailViewFromSearch: View {
         if mult == 1 { return "1x" }
         if mult < 1 { return String(format: "%.2gx", mult) }
         return String(format: "%.0fx", mult)
+    }
+
+    // Toggle favorite status
+    private func toggleFavorite() {
+        isTogglingFavorite = true
+        Task {
+            do {
+                if isFavorite {
+                    try await firebaseManager.removeFavoriteFood(foodId: food.id)
+                } else {
+                    try await firebaseManager.saveFavoriteFood(food)
+                }
+                await MainActor.run {
+                    isFavorite.toggle()
+                    isTogglingFavorite = false
+                    // Haptic feedback
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                }
+            } catch {
+                await MainActor.run {
+                    isTogglingFavorite = false
+                    #if DEBUG
+                    print("❌ Failed to toggle favorite: \(error)")
+                    #endif
+                }
+            }
+        }
     }
 
     // Convert between units (all conversions to/from grams)
@@ -1477,6 +1508,18 @@ struct FoodDetailViewFromSearch: View {
                         dismiss()
                     }
                 }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: toggleFavorite) {
+                        if isTogglingFavorite {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        } else {
+                            Image(systemName: isFavorite ? "heart.fill" : "heart")
+                                .foregroundColor(isFavorite ? .red : .gray)
+                        }
+                    }
+                    .disabled(isTogglingFavorite)
+                }
             }
         }
         .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
@@ -1494,6 +1537,15 @@ struct FoodDetailViewFromSearch: View {
             // Load user allergens from cache (instant) and detect if present in this food
             Task {
                 await loadAndDetectUserAllergensOptimized()
+            }
+
+            // Check if food is in favorites
+            Task {
+                if let isFav = try? await firebaseManager.isFavoriteFood(foodId: food.id) {
+                    await MainActor.run {
+                        isFavorite = isFav
+                    }
+                }
             }
 
             // Check for editing mode
