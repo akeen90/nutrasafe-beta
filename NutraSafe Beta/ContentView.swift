@@ -1114,20 +1114,16 @@ struct WeightTrackingView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-                // Fixed Header
-                HStack(spacing: 16) {
-                    Text("Progress")
-                        .font(AppTypography.largeTitle())
-                        .frame(height: 44, alignment: .center)
-                        .foregroundColor(.primary)
-
-                    Spacer()
+                // Compact header: Sub-tab picker + Settings on same row
+                HStack(spacing: 12) {
+                    // Sub-tab picker inline
+                    progressTabPicker
 
                     Button(action: { showingSettings = true }) {
                         ZStack {
                             Circle()
                                 .fill(.ultraThinMaterial)
-                                .frame(width: 44, height: 44)
+                                .frame(width: 40, height: 40)
                                 .overlay(
                                     Circle()
                                         .stroke(
@@ -1139,10 +1135,10 @@ struct WeightTrackingView: View {
                                             lineWidth: 1.5
                                         )
                                 )
-                                .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+                                .shadow(color: .black.opacity(0.1), radius: 6, x: 0, y: 3)
 
                             Image(systemName: "gearshape.fill")
-                                .font(.system(size: 20, weight: .semibold))
+                                .font(.system(size: 18, weight: .semibold))
                                 .foregroundColor(.primary)
                                 .symbolRenderingMode(.hierarchical)
                         }
@@ -1150,10 +1146,7 @@ struct WeightTrackingView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
-                .padding(.bottom, 12)
-
-                // Sub-tab picker
-                progressTabPicker
+                .padding(.bottom, 8)
 
                 // Loading overlay
                 if isLoadingData {
@@ -1921,8 +1914,6 @@ struct WeightTrackingView: View {
             RoundedRectangle(cornerRadius: 9)
                 .fill(.ultraThinMaterial)
         )
-        .padding(.horizontal, 16)
-        .padding(.bottom, 12)
     }
 }
 

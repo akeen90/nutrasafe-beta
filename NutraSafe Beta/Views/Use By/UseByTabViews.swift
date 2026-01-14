@@ -106,23 +106,18 @@ struct UseByTabView: View {
     var body: some View {
         navigationContainer {
             VStack(spacing: 0) {
-                // Header - AAA Modern Design
+                // Header - Compact (icons only)
                 HStack(spacing: 12) {
-                    Text("Use By")
-                        .font(AppTypography.largeTitle())
-                        .frame(height: 44, alignment: .center)
-                        .foregroundColor(.primary)
-
                     Spacer()
 
                     Button(action: { showingSettings = true }) {
                         ZStack {
                             Circle()
-                                .fill(AppColors.cardBackgroundInteractive)
-                                .frame(width: 44, height: 44)
+                                .fill(.ultraThinMaterial)
+                                .frame(width: 40, height: 40)
                                 .overlay(Circle().stroke(AppColors.borderLight, lineWidth: 1))
                             Image(systemName: "gearshape.fill")
-                                .font(.system(size: 20, weight: .semibold))
+                                .font(.system(size: 18, weight: .semibold))
                                 .foregroundColor(.primary)
                         }
                     }
@@ -133,9 +128,9 @@ struct UseByTabView: View {
                             ZStack {
                                 Circle()
                                     .fill(AppColors.primary)
-                                    .frame(width: 44, height: 44)
+                                    .frame(width: 40, height: 40)
                                 Image(systemName: "plus")
-                                    .font(.system(size: 20, weight: .bold))
+                                    .font(.system(size: 18, weight: .bold))
                                     .foregroundColor(.white)
                             }
                         }
@@ -144,7 +139,7 @@ struct UseByTabView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
-                .padding(.bottom, 8)
+                .padding(.bottom, 4)
 
                 // Check premium access
                 if subscriptionManager.hasAccess {

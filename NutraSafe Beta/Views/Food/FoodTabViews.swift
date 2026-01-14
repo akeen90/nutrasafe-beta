@@ -50,36 +50,29 @@ struct FoodTabView: View {
     var body: some View {
         navigationContainer {
             VStack(spacing: 0) {
-                // Header - Simplified Clean Design
-                VStack(spacing: 16) {
-                    HStack(spacing: 16) {
-                        Text("Health")
-                            .font(AppTypography.largeTitle())
-                            .frame(height: 44, alignment: .center)
-                            .foregroundColor(.primary)
-
-                        Spacer()
+                // Header - Compact with sub-tab selector
+                VStack(spacing: 8) {
+                    HStack(spacing: 12) {
+                        // Sub-tab selector
+                        SegmentedControlView(
+                            tabs: FoodSubTab.allCases,
+                            selectedTab: $selectedFoodSubTab
+                        )
 
                         Button(action: { showingSettings = true }) {
                             ZStack {
                                 Circle()
                                     .fill(.ultraThinMaterial)
-                                    .frame(width: 44, height: 44)
+                                    .frame(width: 40, height: 40)
                                 Image(systemName: "gearshape.fill")
-                                    .font(.system(size: 20, weight: .semibold))
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundColor(.primary)
                             }
                         }
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
-
-                    // Sub-tab selector - Native Segmented Control
-                    SegmentedControlView(
-                        tabs: FoodSubTab.allCases,
-                        selectedTab: $selectedFoodSubTab
-                    )
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 8)
+                    .padding(.bottom, 4)
                 }
         Group {
             switch selectedFoodSubTab {

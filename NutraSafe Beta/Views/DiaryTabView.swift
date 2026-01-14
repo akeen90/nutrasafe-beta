@@ -180,10 +180,41 @@ struct DiaryTabView: View {
         }
     }
 
-    // MARK: - Compact Header (just settings icon)
-    private var compactHeaderView: some View {
-        HStack {
-            Spacer()
+    // MARK: - Top Navigation Row (Tab Picker + Settings on same line)
+    private var topNavigationRow: some View {
+        HStack(spacing: 12) {
+            // Tab picker (Overview/Nutrients)
+            HStack(spacing: 0) {
+                ForEach(DiarySubTab.allCases, id: \.self) { tab in
+                    Button(action: {
+                        diarySubTab = tab
+                    }) {
+                        Text(tab.rawValue)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(diarySubTab == tab ? .primary : .secondary)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 36)
+                            .contentShape(Rectangle())
+                            .background(
+                                Group {
+                                    if diarySubTab == tab {
+                                        RoundedRectangle(cornerRadius: 7)
+                                            .fill(Color(.systemBackground))
+                                            .shadow(color: .black.opacity(0.08), radius: 2, x: 0, y: 1)
+                                    }
+                                }
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(3)
+            .background(
+                RoundedRectangle(cornerRadius: 9)
+                    .fill(.ultraThinMaterial)
+            )
+
+            // Settings button
             Button(action: {
                 showingSettings = true
             }) {
@@ -213,7 +244,8 @@ struct DiaryTabView: View {
             .buttonStyle(SpringyButtonStyle())
         }
         .padding(.horizontal, 16)
-        .padding(.top, 4)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
     }
 
     // MARK: - Full-Width Date Navigation (below tabs)
@@ -399,43 +431,6 @@ struct DiaryTabView: View {
         .padding(.bottom, 8)
     }
 
-    // MARK: - Tab Picker Section
-    private var tabPickerSection: some View {
-        // Custom tab picker without iOS bounce animation
-        HStack(spacing: 0) {
-            ForEach(DiarySubTab.allCases, id: \.self) { tab in
-                Button(action: {
-                    diarySubTab = tab
-                }) {
-                    Text(tab.rawValue)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(diarySubTab == tab ? .primary : .secondary)
-                        .frame(maxWidth: .infinity)
-                        .frame(minHeight: 36) // Ensure minimum tap target height
-                        .contentShape(Rectangle()) // Make entire area tappable
-                        .background(
-                            Group {
-                                if diarySubTab == tab {
-                                    RoundedRectangle(cornerRadius: 7)
-                                        .fill(Color(.systemBackground))
-                                        .shadow(color: .black.opacity(0.08), radius: 2, x: 0, y: 1)
-                                }
-                            }
-                        )
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(3)
-        .background(
-            RoundedRectangle(cornerRadius: 9)
-                .fill(.ultraThinMaterial)
-        )
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .padding(.bottom, 12)
-    }
-
     // MARK: - Loading State View
     @ViewBuilder
     private var loadingStateView: some View {
@@ -597,13 +592,10 @@ struct DiaryTabView: View {
     // MARK: - Main Content
     private var mainContent: some View {
         VStack(spacing: 0) {
-            // Settings icon in top right
-            compactHeaderView
+            // Top row: Tab picker + Settings icon on same line
+            topNavigationRow
 
-            // Tab picker at top (Overview/Nutrients)
-            tabPickerSection
-
-            // Date navigation below tabs
+            // Date navigation below
             dateSectionView
 
             // Loading state or content
