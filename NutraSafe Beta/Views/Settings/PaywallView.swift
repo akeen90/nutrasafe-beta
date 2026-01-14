@@ -13,22 +13,11 @@ struct PaywallView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
 
-    private var hasFreeTrial: Bool {
-        guard let offer = subscriptionManager.product?.subscription?.introductoryOffer else {
-            return false
-        }
-        return offer.paymentMode == .freeTrial && subscriptionManager.isEligibleForTrial
-    }
-
     private var priceText: String {
         if let product = subscriptionManager.product {
             return product.displayPrice
         }
         return "£2.99"
-    }
-
-    private var ctaText: String {
-        hasFreeTrial ? "Start Free Trial" : "Continue"
     }
 
     var body: some View {
@@ -144,18 +133,6 @@ struct PaywallView: View {
                                     .font(.system(size: 16, weight: .medium))
                                     .foregroundColor(.secondary)
                             }
-
-                            if hasFreeTrial {
-                                Text("7 days free, then \(priceText)/month")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(.blue)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 8)
-                                    .background(
-                                        Capsule()
-                                            .fill(Color.blue.opacity(0.1))
-                                    )
-                            }
                         }
 
                         // CTA Button
@@ -172,7 +149,7 @@ struct PaywallView: View {
                                     ProgressView()
                                         .tint(.white)
                                 } else {
-                                    Text(ctaText)
+                                    Text("Continue")
                                         .font(.system(size: 18, weight: .semibold))
                                 }
                             }
@@ -236,9 +213,7 @@ struct PaywallView: View {
                         }
 
                         // Fine print
-                        Text(hasFreeTrial
-                            ? "Free trial auto-renews at \(priceText)/month. Cancel anytime."
-                            : "Auto-renews at \(priceText)/month. Cancel anytime in Settings.")
+                        Text("Auto-renews at \(priceText)/month. Cancel anytime in Settings.")
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)

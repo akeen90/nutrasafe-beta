@@ -155,11 +155,20 @@ struct AddFoodAIView: View {
         .padding(.top, 20)
         // Removed auto-launch - user chooses camera or gallery from the initial screen
         .fullScreenCover(isPresented: $showingImagePicker) {
-            ImagePicker(selectedImage: $selectedImage, sourceType: .camera) { image in
+            ImagePicker(selectedImage: $selectedImage, sourceType: .camera) { [self] image in
                 showingImagePicker = false
                 if let image = image {
-                    // Check subscription status before analyzing
-                    if hasProAccess {
+                    // Check subscription status directly from the manager
+                    let isSubscribed = subscriptionManager.isSubscribed
+                    let isInTrial = subscriptionManager.isInTrial
+                    let isPremiumOverride = subscriptionManager.isPremiumOverride
+                    let hasPro = isSubscribed || isInTrial || isPremiumOverride
+
+                    #if DEBUG
+                    print("📸 Subscription check - isSubscribed: \(isSubscribed), isInTrial: \(isInTrial), isPremiumOverride: \(isPremiumOverride), hasPro: \(hasPro)")
+                    #endif
+
+                    if hasPro {
                         // Pro user - proceed with analysis
                         isScanning = true
                         errorMessage = nil
@@ -211,15 +220,24 @@ struct AddFoodAIView: View {
             .environmentObject(firebaseManager)
         }
         .sheet(isPresented: $showingGalleryPicker) {
-            MultiImagePicker(maxSelection: 1) { images in
+            MultiImagePicker(maxSelection: 1) { [self] images in
                 // First dismiss the picker
                 showingGalleryPicker = false
 
                 // Then process the result after a brief delay to ensure clean dismissal
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [self] in
                     if let image = images.first {
-                        // Check subscription status before analyzing
-                        if hasProAccess {
+                        // Check subscription status directly from the manager
+                        let isSubscribed = subscriptionManager.isSubscribed
+                        let isInTrial = subscriptionManager.isInTrial
+                        let isPremiumOverride = subscriptionManager.isPremiumOverride
+                        let hasPro = isSubscribed || isInTrial || isPremiumOverride
+
+                        #if DEBUG
+                        print("📸 Gallery subscription check - isSubscribed: \(isSubscribed), isInTrial: \(isInTrial), isPremiumOverride: \(isPremiumOverride), hasPro: \(hasPro)")
+                        #endif
+
+                        if hasPro {
                             // Pro user - proceed with analysis
                             isScanning = true
                             errorMessage = nil
