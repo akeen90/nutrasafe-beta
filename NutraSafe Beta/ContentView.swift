@@ -503,6 +503,7 @@ struct ContentView: View {
     @State private var showingUseByAdd = false
     @State private var showingReactionLog = false
     @State private var showingWeightAdd = false
+    @State private var showingMealScan = false
     @State private var useBySelectedFood: FoodSearchResult? = nil
     @State private var previousTabBeforeAdd: TabItem = .diary
 
@@ -665,6 +666,13 @@ struct ContentView: View {
                 onSelectWeighIn: {
                     previousTabBeforeAdd = selectedTab
                     showingWeightAdd = true
+                },
+                onSelectMealScan: {
+                    previousTabBeforeAdd = selectedTab
+                    showingMealScan = true
+                },
+                onSelectWater: {
+                    addWaterForToday()
                 }
             )
             .zIndex(1000)
@@ -786,6 +794,23 @@ struct ContentView: View {
                     selectedTab = .weight
                 }
         }
+        .fullScreenCover(isPresented: $showingMealScan) {
+            NavigationView {
+                AddFoodAIView(selectedTab: $selectedTab)
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button("Cancel") {
+                                showingMealScan = false
+                            }
+                        }
+                    }
+            }
+            .environmentObject(diaryDataManager)
+            .onDisappear {
+                showingMealScan = false
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToUseBy)) { _ in
             #if DEBUG
             print("[Nav] Received navigateToUseBy")
@@ -899,6 +924,22 @@ struct ContentView: View {
         guard selectedTab == .diary && !selectedFoodItems.isEmpty else { return }
         deleteTrigger = true
     }
+
+    // MARK: - Water Tracking Quick Add
+    private func addWaterForToday() {
+        let dateKey = DateHelper.isoDateFormatter.string(from: Date())
+        var hydrationData = UserDefaults.standard.dictionary(forKey: "hydrationData") as? [String: Int] ?? [:]
+        let currentCount = hydrationData[dateKey] ?? 0
+        hydrationData[dateKey] = currentCount + 1
+        UserDefaults.standard.set(hydrationData, forKey: "hydrationData")
+
+        // Notify views to update
+        NotificationCenter.default.post(name: .waterUpdated, object: nil)
+
+        // Haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+        impactFeedback.impactOccurred()
+    }
 }
 
 // MARK: - Tab Items
@@ -958,6 +999,12 @@ struct RoundedCorner: Shape {
 // MARK: - Tab Views
 
 
+// MARK: - Progress Sub-Tabs
+enum ProgressSubTab: String, CaseIterable {
+    case weight = "Weight"
+    case diet = "Diet"
+}
+
 // MARK: - Weight Tracking View
 struct WeightTrackingView: View {
     @Environment(\.colorScheme) var colorScheme
@@ -976,6 +1023,9 @@ struct WeightTrackingView: View {
     @State private var isLoadingData = false
     @State private var hasCheckedHeight = false
     @State private var hasLoadedOnce = false // PERFORMANCE: Guard flag to prevent redundant loads
+
+    // Sub-tab selection
+    @State private var progressSubTab: ProgressSubTab = .weight
 
     // Entry management
     @State private var editingEntry: WeightEntry?  // Changed from selectedEntry to editingEntry for clarity
@@ -1089,6 +1139,9 @@ struct WeightTrackingView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 12)
 
+                // Sub-tab picker
+                progressTabPicker
+
                 // Loading overlay
                 if isLoadingData {
                     VStack(spacing: 16) {
@@ -1102,11 +1155,13 @@ struct WeightTrackingView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    ScrollView {
-                        // PERFORMANCE: LazyVStack defers rendering of off-screen content
-                        LazyVStack(spacing: 24) {
+                    ZStack {
+                        // MARK: Weight Tab Content
+                        ScrollView {
+                            // PERFORMANCE: LazyVStack defers rendering of off-screen content
+                            LazyVStack(spacing: 24) {
 
-                        // Stats Grid - NOW AT TOP
+                            // Stats Grid - NOW AT TOP
                         VStack(alignment: .leading, spacing: 16) {
                             Text("Summary")
                             .font(.system(size: 22, weight: .bold))
@@ -1239,10 +1294,10 @@ struct WeightTrackingView: View {
 
                     // Progress Graph Section
                     if weightHistory.count >= 2 {
-                        VStack(alignment: .leading, spacing: 16) {
+                        VStack(alignment: .leading, spacing: 10) {
                             HStack {
                                 Text("Your Journey")
-                                    .font(.system(size: 22, weight: .bold))
+                                    .font(.system(size: 18, weight: .bold))
                                     .foregroundColor(.primary)
 
                                 Spacer()
@@ -1251,15 +1306,15 @@ struct WeightTrackingView: View {
                                 if let firstEntry = weightHistory.last, let lastEntry = weightHistory.first {
                                     let daysDiff = Calendar.current.dateComponents([.day], from: firstEntry.date, to: lastEntry.date).day ?? 0
                                     Text(daysDiff > 0 ? "\(daysDiff) days" : "Today")
-                                        .font(.system(size: 13, weight: .medium))
+                                        .font(.system(size: 12, weight: .medium))
                                         .foregroundColor(.secondary)
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 4)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 3)
                                         .background(Color(.systemGray6))
-                                        .cornerRadius(8)
+                                        .cornerRadius(6)
                                 }
                             }
-                            .padding(.horizontal, 20)
+                            .padding(.horizontal, 16)
 
                             // Weight trend graph
                             WeightLineChart(
@@ -1267,65 +1322,65 @@ struct WeightTrackingView: View {
                                 goalWeight: goalWeight,
                                 startWeight: weightHistory.last?.weight ?? currentWeight
                             )
-                            .frame(height: 180)
-                            .padding(.horizontal, 16)
+                            .frame(height: 130)
+                            .padding(.horizontal, 12)
 
                             // Progress summary stats
                             if let firstEntry = weightHistory.last {
                                 let totalChange = currentWeight - firstEntry.weight
                                 let toGoal = goalWeight > 0 ? currentWeight - goalWeight : 0
 
-                                HStack(spacing: 16) {
+                                HStack(spacing: 12) {
                                     // Change since start
-                                    HStack(spacing: 8) {
+                                    HStack(spacing: 6) {
                                         Image(systemName: totalChange <= 0 ? "arrow.down.circle.fill" : "arrow.up.circle.fill")
-                                            .font(.system(size: 20))
+                                            .font(.system(size: 16))
                                             .foregroundColor(totalChange <= 0 ? .green : .red)
 
-                                        VStack(alignment: .leading, spacing: 2) {
+                                        VStack(alignment: .leading, spacing: 1) {
                                             Text(totalChange <= 0 ? "Down" : "Up")
-                                                .font(.system(size: 12, weight: .medium))
+                                                .font(.system(size: 11, weight: .medium))
                                                 .foregroundColor(.secondary)
                                             Text("\(formatWeight(abs(totalChange))) \(weightUnit)")
-                                                .font(.system(size: 15, weight: .bold))
+                                                .font(.system(size: 14, weight: .bold))
                                                 .foregroundColor(totalChange <= 0 ? .green : .red)
                                         }
                                     }
                                     .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(12)
+                                    .padding(10)
                                     .background(
-                                        RoundedRectangle(cornerRadius: 12)
+                                        RoundedRectangle(cornerRadius: 10)
                                             .fill((totalChange <= 0 ? Color.green : Color.red).opacity(0.1))
                                     )
 
                                     // To goal
                                     if goalWeight > 0 {
-                                        HStack(spacing: 8) {
+                                        HStack(spacing: 6) {
                                             Image(systemName: "target")
-                                                .font(.system(size: 20))
+                                                .font(.system(size: 16))
                                                 .foregroundColor(toGoal <= 0 ? .green : .orange)
 
-                                            VStack(alignment: .leading, spacing: 2) {
+                                            VStack(alignment: .leading, spacing: 1) {
                                                 Text(toGoal <= 0 ? "Goal reached!" : "To goal")
-                                                    .font(.system(size: 12, weight: .medium))
+                                                    .font(.system(size: 11, weight: .medium))
                                                     .foregroundColor(.secondary)
                                                 Text(toGoal <= 0 ? "🎉" : "\(formatWeight(toGoal)) \(weightUnit)")
-                                                    .font(.system(size: 15, weight: .bold))
+                                                    .font(.system(size: 14, weight: .bold))
                                                     .foregroundColor(toGoal <= 0 ? .green : .orange)
                                             }
                                         }
                                         .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(12)
+                                        .padding(10)
                                         .background(
-                                            RoundedRectangle(cornerRadius: 12)
+                                            RoundedRectangle(cornerRadius: 10)
                                                 .fill((toGoal <= 0 ? Color.green : Color.orange).opacity(0.1))
                                         )
                                     }
                                 }
-                                .padding(.horizontal, 16)
+                                .padding(.horizontal, 12)
                             }
                         }
-                        .padding(.vertical, 16)
+                        .padding(.vertical, 12)
                         .background(
                             RoundedRectangle(cornerRadius: 20)
                                 .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
@@ -1589,6 +1644,17 @@ struct WeightTrackingView: View {
                     }
                     .padding(.bottom, 100)
                 }
+                .opacity(progressSubTab == .weight ? 1 : 0)
+                .allowsHitTesting(progressSubTab == .weight)
+
+                        // MARK: Diet Tab Content
+                        ScrollView {
+                            DietManagementTabContent()
+                                .environmentObject(firebaseManager)
+                        }
+                        .opacity(progressSubTab == .diet ? 1 : 0)
+                        .allowsHitTesting(progressSubTab == .diet)
+                    } // End of ZStack
                 } // End of loading else block
             }
             .tabGradientBackground(.progress)
@@ -1806,6 +1872,378 @@ struct WeightTrackingView: View {
                     entryToDelete = nil
                 }
             }
+        }
+    }
+
+    // MARK: - Progress Tab Picker
+    private var progressTabPicker: some View {
+        HStack(spacing: 0) {
+            ForEach(ProgressSubTab.allCases, id: \.self) { tab in
+                Button(action: {
+                    progressSubTab = tab
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                }) {
+                    Text(tab.rawValue)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(progressSubTab == tab ? .primary : .secondary)
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: 36)
+                        .contentShape(Rectangle())
+                        .background(
+                            Group {
+                                if progressSubTab == tab {
+                                    RoundedRectangle(cornerRadius: 7)
+                                        .fill(Color(.systemBackground))
+                                        .shadow(color: .black.opacity(0.08), radius: 2, x: 0, y: 1)
+                                }
+                            }
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(3)
+        .background(
+            RoundedRectangle(cornerRadius: 9)
+                .fill(.ultraThinMaterial)
+        )
+        .padding(.horizontal, 16)
+        .padding(.bottom, 12)
+    }
+}
+
+// MARK: - Diet Management Tab Content
+struct DietManagementTabContent: View {
+    @Environment(\.colorScheme) var colorScheme
+    @EnvironmentObject var firebaseManager: FirebaseManager
+
+    // Calorie goal
+    @AppStorage("cachedCaloricGoal") private var cachedCaloricGoal: Int = 2000
+    @State private var calorieGoal: Int = 2000
+
+    // Macro goals
+    @State private var macroGoals: [MacroGoal] = MacroGoal.defaultMacros
+    @State private var selectedDietType: DietType? = .flexible
+
+    // BMR Calculator
+    @State private var showingBMRCalculator: Bool = false
+    @AppStorage("userSex") private var userSex: String = "female"
+    @AppStorage("userAge") private var userAge: Int = 30
+    @AppStorage("userHeightCm") private var userHeightCm: Double = 165
+    @AppStorage("userWeightKg") private var userWeightKg: Double = 65
+    @AppStorage("userActivityLevel") private var userActivityLevel: String = "moderate"
+
+    // Diet Management sheet
+    @State private var showingDietManagement: Bool = false
+
+    var body: some View {
+        LazyVStack(spacing: 20) {
+            // Calorie Goal Card
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Daily Calorie Goal")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundColor(.primary)
+
+                // Large calorie display with +/- controls
+                HStack {
+                    Text("\(calorieGoal)")
+                        .font(.system(size: 48, weight: .bold))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [Color.orange, Color.red],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+
+                    Text("kcal")
+                        .font(.system(size: 20))
+                        .foregroundColor(.secondary)
+
+                    Spacer()
+
+                    HStack(spacing: 16) {
+                        Button {
+                            if calorieGoal > 1000 {
+                                calorieGoal -= 50
+                                saveCalorieGoal()
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            }
+                        } label: {
+                            Image(systemName: "minus.circle.fill")
+                                .font(.system(size: 36))
+                                .foregroundColor(calorieGoal > 1000 ? .red : Color(.systemGray4))
+                        }
+                        .disabled(calorieGoal <= 1000)
+
+                        Button {
+                            if calorieGoal < 5000 {
+                                calorieGoal += 50
+                                saveCalorieGoal()
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            }
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 36))
+                                .foregroundColor(calorieGoal < 5000 ? .green : Color(.systemGray4))
+                        }
+                        .disabled(calorieGoal >= 5000)
+                    }
+                }
+
+                Divider()
+
+                // UK Recommendations
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("UK Recommended Daily Intake")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.secondary)
+
+                    HStack(spacing: 12) {
+                        Button {
+                            calorieGoal = 2000
+                            saveCalorieGoal()
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "figure.stand.dress")
+                                    .font(.system(size: 14))
+                                Text("Women: 2,000")
+                                    .font(.system(size: 14, weight: .medium))
+                            }
+                            .foregroundColor(calorieGoal == 2000 ? .white : .pink)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(calorieGoal == 2000 ? Color.pink : Color.pink.opacity(0.15))
+                            )
+                        }
+
+                        Button {
+                            calorieGoal = 2500
+                            saveCalorieGoal()
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "figure.stand")
+                                    .font(.system(size: 14))
+                                Text("Men: 2,500")
+                                    .font(.system(size: 14, weight: .medium))
+                            }
+                            .foregroundColor(calorieGoal == 2500 ? .white : .blue)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(calorieGoal == 2500 ? Color.blue : Color.blue.opacity(0.15))
+                            )
+                        }
+                    }
+                }
+
+                // BMR Calculator Button
+                Button {
+                    showingBMRCalculator = true
+                } label: {
+                    HStack {
+                        Image(systemName: "function")
+                            .font(.system(size: 18))
+                        Text("Calculate Based on My BMR")
+                            .font(.system(size: 16, weight: .medium))
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
+                    .foregroundColor(.green)
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.green.opacity(0.1))
+                    )
+                }
+            }
+            .padding(20)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(Color(.systemGray4), lineWidth: 1)
+                    )
+            )
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+
+            // Current Diet Card
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Text("Current Diet")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(.primary)
+
+                    Spacer()
+
+                    Button {
+                        showingDietManagement = true
+                    } label: {
+                        Text("Change")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.blue)
+                    }
+                }
+
+                if let diet = selectedDietType {
+                    HStack(spacing: 12) {
+                        Image(systemName: diet.icon)
+                            .font(.system(size: 28))
+                            .foregroundColor(diet.accentColor)
+                            .frame(width: 50, height: 50)
+                            .background(
+                                Circle()
+                                    .fill(diet.accentColor.opacity(0.15))
+                            )
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(diet.displayName)
+                                .font(.system(size: 18, weight: .semibold))
+                            Text(diet.shortDescription)
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+
+                        Spacer()
+                    }
+
+                    // Macro breakdown bars
+                    VStack(spacing: 8) {
+                        let ratios = diet.macroRatios
+                        MacroBarRow(label: "Protein", percent: ratios.protein, color: .red)
+                        MacroBarRow(label: "Carbs", percent: ratios.carbs, color: .orange)
+                        MacroBarRow(label: "Fat", percent: ratios.fat, color: .yellow)
+                    }
+                    .padding(.top, 8)
+                } else {
+                    Text("Custom macros")
+                        .font(.system(size: 16))
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(20)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(Color(.systemGray4), lineWidth: 1)
+                    )
+            )
+            .padding(.horizontal, 16)
+
+            Spacer(minLength: 100)
+        }
+        .onAppear {
+            calorieGoal = cachedCaloricGoal
+            loadDietSettings()
+        }
+        .sheet(isPresented: $showingBMRCalculator) {
+            BMRCalculatorSheet(
+                userSex: $userSex,
+                userAge: $userAge,
+                userHeightCm: $userHeightCm,
+                userWeightKg: $userWeightKg,
+                userActivityLevel: $userActivityLevel,
+                onCalculate: { calculatedGoal in
+                    calorieGoal = calculatedGoal
+                    saveCalorieGoal()
+                }
+            )
+            .environmentObject(firebaseManager)
+        }
+        .fullScreenCover(isPresented: $showingDietManagement) {
+            MacroManagementView(
+                macroGoals: $macroGoals,
+                dietType: $selectedDietType,
+                onSave: { newDiet in
+                    selectedDietType = newDiet
+                    saveDietSettings()
+                }
+            )
+            .environmentObject(firebaseManager)
+        }
+    }
+
+    private func saveCalorieGoal() {
+        cachedCaloricGoal = calorieGoal
+        Task {
+            try? await firebaseManager.saveUserSettings(height: nil, goalWeight: nil, caloricGoal: calorieGoal)
+        }
+        NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
+    }
+
+    private func loadDietSettings() {
+        Task {
+            do {
+                let settings = try await firebaseManager.getUserSettings()
+                await MainActor.run {
+                    if let cal = settings.caloricGoal {
+                        calorieGoal = cal
+                        cachedCaloricGoal = cal
+                    }
+                }
+
+                // Load diet type from Firebase
+                if let dietData = try? await firebaseManager.getDietType() {
+                    await MainActor.run {
+                        selectedDietType = dietData
+                    }
+                }
+            } catch {
+                // Use cached values
+            }
+        }
+    }
+
+    private func saveDietSettings() {
+        Task {
+            // Save diet type along with macro goals
+            try? await firebaseManager.saveMacroGoals(macroGoals, dietType: selectedDietType)
+        }
+    }
+}
+
+// MARK: - Macro Bar Row
+struct MacroBarRow: View {
+    let label: String
+    let percent: Int
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(label)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(.secondary)
+                .frame(width: 55, alignment: .leading)
+
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color(.systemGray5))
+                        .frame(height: 8)
+
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(color)
+                        .frame(width: geometry.size.width * CGFloat(percent) / 100, height: 8)
+                }
+            }
+            .frame(height: 8)
+
+            Text("\(percent)%")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.primary)
+                .frame(width: 40, alignment: .trailing)
         }
     }
 }
@@ -2376,107 +2814,83 @@ struct WeightLineChart: View {
 
     var body: some View {
         let bounds = weightBounds
-        let displayEntries = Array(entries.suffix(14)) // Show last 14 entries max for readability
+        let displayEntries = Array(entries.suffix(10)) // Show last 10 entries max for cleaner look
 
-        ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(alignment: .bottom, spacing: 6) {
-                    ForEach(Array(displayEntries.enumerated()), id: \.element.id) { index, entry in
-                        let barHeight = max(0.1, (entry.weight - bounds.min) / bounds.range)
-                        let isLatest = index == displayEntries.count - 1
+        GeometryReader { geometry in
+            let availableWidth = geometry.size.width - 32 // Account for padding
+            let barCount = displayEntries.count + (goalWeight > 0 ? 1 : 0)
+            let barWidth: CGFloat = min(40, max(24, (availableWidth - CGFloat(barCount - 1) * 12) / CGFloat(barCount)))
+            let spacing: CGFloat = 12
 
-                        VStack(spacing: 4) {
-                            // Weight value at top
-                            Text(String(format: "%.1f", entry.weight))
-                                .font(.system(size: 10, weight: .bold, design: .rounded))
-                                .foregroundColor(isLatest ? .white : barColor(for: entry.weight))
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 2)
-                                .background(
-                                    isLatest ?
-                                    AnyView(Capsule().fill(barColor(for: entry.weight))) :
-                                    AnyView(Color.clear)
-                                )
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(alignment: .bottom, spacing: spacing) {
+                        ForEach(Array(displayEntries.enumerated()), id: \.element.id) { index, entry in
+                            let barHeight = max(0.15, (entry.weight - bounds.min) / bounds.range)
+                            let isLatest = index == displayEntries.count - 1
 
-                            // The pillar/bar
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            barColor(for: entry.weight).opacity(0.7),
-                                            barColor(for: entry.weight)
-                                        ],
-                                        startPoint: .bottom,
-                                        endPoint: .top
+                            VStack(spacing: 3) {
+                                // Weight value at top
+                                Text(String(format: "%.1f", entry.weight))
+                                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                    .foregroundColor(isLatest ? .white : barColor(for: entry.weight))
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 3)
+                                    .background(
+                                        Capsule()
+                                            .fill(isLatest ? barColor(for: entry.weight) : Color.clear)
                                     )
-                                )
-                                .frame(width: isLatest ? 36 : 28, height: CGFloat(barHeight) * 100)
-                                .overlay(
-                                    // Highlight for latest entry
-                                    isLatest ?
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .stroke(barColor(for: entry.weight), lineWidth: 2)
-                                    : nil
-                                )
 
-                            // Date at bottom
-                            Text(dateFormatter.string(from: entry.date))
-                                .font(.system(size: 9, weight: isLatest ? .bold : .regular))
-                                .foregroundColor(isLatest ? .primary : .secondary)
+                                // The pillar/bar - uniform width
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(barColor(for: entry.weight))
+                                    .frame(width: barWidth, height: CGFloat(barHeight) * 80)
+
+                                // Date at bottom
+                                Text(dateFormatter.string(from: entry.date))
+                                    .font(.system(size: 10, weight: isLatest ? .bold : .medium))
+                                    .foregroundColor(isLatest ? .primary : .secondary)
+                            }
+                            .id(entry.id)
                         }
-                        .id(entry.id)
-                    }
 
-                    // Goal marker pillar (if set)
-                    if goalWeight > 0 {
-                        let goalBarHeight = max(0.1, (goalWeight - bounds.min) / bounds.range)
+                        // Goal marker pillar (if set)
+                        if goalWeight > 0 {
+                            let goalBarHeight = max(0.15, (goalWeight - bounds.min) / bounds.range)
 
-                        VStack(spacing: 4) {
-                            Text(String(format: "%.1f", goalWeight))
-                                .font(.system(size: 10, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 2)
-                                .background(Capsule().fill(Color.green))
+                            VStack(spacing: 3) {
+                                Text(String(format: "%.1f", goalWeight))
+                                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 3)
+                                    .background(Capsule().fill(Color.green))
 
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            Color.green.opacity(0.3),
-                                            Color.green.opacity(0.5)
-                                        ],
-                                        startPoint: .bottom,
-                                        endPoint: .top
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.green.opacity(0.3))
+                                    .frame(width: barWidth, height: CGFloat(goalBarHeight) * 80)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(style: StrokeStyle(lineWidth: 2, dash: [5, 4]))
+                                            .foregroundColor(.green)
                                     )
-                                )
-                                .frame(width: 28, height: CGFloat(goalBarHeight) * 100)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .stroke(style: StrokeStyle(lineWidth: 2, dash: [4, 3]))
-                                        .foregroundColor(.green)
-                                )
 
-                            Text("Goal")
-                                .font(.system(size: 9, weight: .semibold))
-                                .foregroundColor(.green)
+                                Text("Goal")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundColor(.green)
+                            }
                         }
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-            }
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.systemBackground))
-                    .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
-            )
-            .onAppear {
-                // Scroll to the latest entry
-                if let lastEntry = displayEntries.last {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        withAnimation {
-                            proxy.scrollTo(lastEntry.id, anchor: .trailing)
+                .onAppear {
+                    // Scroll to the latest entry
+                    if let lastEntry = displayEntries.last {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            withAnimation {
+                                proxy.scrollTo(lastEntry.id, anchor: .trailing)
+                            }
                         }
                     }
                 }

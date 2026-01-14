@@ -3181,9 +3181,9 @@ struct BMRCalculatorSheet: View {
                                         }
                                     }
 
-                                Text("years")
+                                Text("yrs")
                                     .foregroundColor(.secondary)
-                                    .frame(width: 40)
+                                    .fixedSize()
 
                                 Button {
                                     if userAge < 100 { userAge += 1; ageText = "\(userAge)" }
