@@ -268,16 +268,34 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
 
     /// Food category for determining preset portion sizes
     enum FoodCategory {
+        // Drinks
         case softDrink      // Carbonated drinks, sodas
         case juice          // Fruit juices, smoothies
         case hotDrink       // Coffee, tea
         case water          // Water, flavoured water
         case alcoholicDrink // Beer, wine, spirits
+        // Snacks
         case chocolateBar   // Chocolate bars (Mars, Snickers, Twix)
         case chocolateBag   // Bagged/boxed chocolates (Revels, Maltesers, M&Ms)
         case sweets         // Sweets, gummy candy, hard candy
         case crisps         // Crisps, chips
         case iceCream       // Ice cream, frozen desserts
+        // Generic Foods
+        case oil            // Cooking oils
+        case butter         // Butter, spreads
+        case fruit          // Whole fruits (apple, banana, orange)
+        case egg            // Eggs
+        case rice           // Cooked rice, grains
+        case pasta          // Cooked pasta
+        case bread          // Sliced bread, toast
+        case nuts           // Nuts and seeds
+        case cheese         // Cheese portions
+        case milk           // Milk, plant milk
+        case yogurt         // Yogurt, fromage frais
+        case meat           // Meat portions
+        case fish           // Fish portions
+        case vegetable      // Vegetable portions
+        case legume         // Beans, lentils
         case other          // Default - no presets
     }
 
@@ -330,7 +348,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
             return .sweets
         }
 
-        // Check name keywords
+        // Check name keywords - Drinks & Snacks
         let softDrinkKeywords = ["cola", "lemonade", "soda", "fizzy", "carbonated", "energy drink", "sparkling"]
         let juiceKeywords = ["juice", "smoothie", "squash", "cordial"]
         let hotDrinkKeywords = ["coffee", "tea", "latte", "cappuccino", "espresso", "americano", "hot chocolate", "mocha"]
@@ -348,6 +366,40 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         if chocolateKeywords.contains(where: { nameLower.contains($0) }) { return .chocolateBar }
         if sweetKeywords.contains(where: { nameLower.contains($0) }) { return .sweets }
         if crispKeywords.contains(where: { nameLower.contains($0) }) { return .crisps }
+
+        // Generic food keywords (check AFTER snacks/drinks to avoid false matches)
+        let oilKeywords = ["olive oil", "vegetable oil", "sunflower oil", "coconut oil", "rapeseed oil", "sesame oil", "avocado oil", "cooking oil"]
+        let butterKeywords = ["butter", "margarine", "spread"]
+        let fruitKeywords = ["apple", "banana", "orange", "pear", "peach", "plum", "grape", "strawberr", "blueberr", "raspberr", "blackberr", "cherry", "mango", "pineapple", "kiwi", "melon", "watermelon", "grapefruit", "nectarine", "apricot", "fig", "papaya", "pomegranate", "passion fruit", "lychee", "dragon fruit"]
+        let eggKeywords = ["egg", "eggs", "omelette", "scrambled", "poached egg", "fried egg", "boiled egg"]
+        let riceKeywords = ["rice", "basmati", "jasmine rice", "brown rice", "wild rice", "risotto", "pilau", "pilaf", "fried rice", "quinoa", "couscous", "bulgur"]
+        let pastaKeywords = ["pasta", "spaghetti", "penne", "fusilli", "tagliatelle", "linguine", "macaroni", "lasagne", "ravioli", "tortellini", "gnocchi", "noodles", "ramen", "udon"]
+        let breadKeywords = ["bread", "toast", "bagel", "croissant", "roll", "bun", "pitta", "naan", "chapati", "tortilla", "wrap", "ciabatta", "baguette", "sourdough", "brioche"]
+        let nutKeywords = ["almond", "walnut", "cashew", "pistachio", "hazelnut", "pecan", "macadamia", "brazil nut", "peanut", "mixed nuts", "sunflower seed", "pumpkin seed", "chia seed", "flaxseed", "sesame seed"]
+        let cheeseKeywords = ["cheese", "cheddar", "mozzarella", "parmesan", "brie", "camembert", "stilton", "feta", "gouda", "edam", "gruyere", "emmental", "halloumi", "cottage cheese", "cream cheese", "ricotta", "mascarpone"]
+        let milkKeywords = ["milk", "whole milk", "semi-skimmed", "skimmed milk", "oat milk", "almond milk", "soya milk", "coconut milk"]
+        let yogurtKeywords = ["yogurt", "yoghurt", "greek yogurt", "natural yogurt", "fromage frais", "skyr", "kefir"]
+        let meatKeywords = ["chicken", "beef", "pork", "lamb", "turkey", "duck", "bacon", "ham", "sausage", "mince", "steak", "chop", "roast", "fillet", "breast", "thigh", "drumstick", "wing"]
+        let fishKeywords = ["salmon", "tuna", "cod", "haddock", "mackerel", "sardine", "trout", "sea bass", "bream", "plaice", "sole", "halibut", "prawn", "shrimp", "crab", "lobster", "mussel", "scallop", "squid", "fish finger", "fish cake"]
+        let vegetableKeywords = ["broccoli", "carrot", "potato", "sweet potato", "onion", "garlic", "pepper", "tomato", "cucumber", "lettuce", "spinach", "kale", "cabbage", "cauliflower", "courgette", "aubergine", "mushroom", "asparagus", "green bean", "pea", "sweetcorn", "beetroot", "parsnip", "turnip", "swede", "leek", "celery", "sprout"]
+        let legumeKeywords = ["beans", "lentils", "chickpea", "black bean", "kidney bean", "butter bean", "cannellini", "borlotti", "edamame", "hummus", "baked beans"]
+
+        // Check generic food categories (order matters - more specific first)
+        if oilKeywords.contains(where: { nameLower.contains($0) }) { return .oil }
+        if butterKeywords.contains(where: { nameLower.contains($0) }) && !nameLower.contains("peanut butter") && !nameLower.contains("almond butter") { return .butter }
+        if eggKeywords.contains(where: { nameLower.contains($0) }) && !nameLower.contains("aubergine") { return .egg }
+        if yogurtKeywords.contains(where: { nameLower.contains($0) }) { return .yogurt }
+        if cheeseKeywords.contains(where: { nameLower.contains($0) }) { return .cheese }
+        if milkKeywords.contains(where: { nameLower.contains($0) }) { return .milk }
+        if nutKeywords.contains(where: { nameLower.contains($0) }) { return .nuts }
+        if riceKeywords.contains(where: { nameLower.contains($0) }) { return .rice }
+        if pastaKeywords.contains(where: { nameLower.contains($0) }) { return .pasta }
+        if breadKeywords.contains(where: { nameLower.contains($0) }) { return .bread }
+        if meatKeywords.contains(where: { nameLower.contains($0) }) { return .meat }
+        if fishKeywords.contains(where: { nameLower.contains($0) }) { return .fish }
+        if legumeKeywords.contains(where: { nameLower.contains($0) }) { return .legume }
+        if vegetableKeywords.contains(where: { nameLower.contains($0) }) { return .vegetable }
+        if fruitKeywords.contains(where: { nameLower.contains($0) }) { return .fruit }
 
         // Check serving description for ml (likely a drink)
         if servingLower.contains("ml") {
@@ -446,6 +498,104 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
                 PortionOption(name: "1 Scoop (60g)", calories: caloriesPer100 * 0.6, serving_g: 60),
                 PortionOption(name: "2 Scoops (120g)", calories: caloriesPer100 * 1.2, serving_g: 120),
                 PortionOption(name: "Small Tub (100g)", calories: caloriesPer100 * 1, serving_g: 100)
+            ]
+        // MARK: - Generic Food Presets
+        case .oil:
+            return [
+                PortionOption(name: "1 tsp (5g)", calories: caloriesPer100 * 0.05, serving_g: 5),
+                PortionOption(name: "1 tbsp (14g)", calories: caloriesPer100 * 0.14, serving_g: 14),
+                PortionOption(name: "2 tbsp (28g)", calories: caloriesPer100 * 0.28, serving_g: 28)
+            ]
+        case .butter:
+            return [
+                PortionOption(name: "Pat (5g)", calories: caloriesPer100 * 0.05, serving_g: 5),
+                PortionOption(name: "Spread (10g)", calories: caloriesPer100 * 0.10, serving_g: 10),
+                PortionOption(name: "1 tbsp (14g)", calories: caloriesPer100 * 0.14, serving_g: 14),
+                PortionOption(name: "Generous (20g)", calories: caloriesPer100 * 0.20, serving_g: 20)
+            ]
+        case .fruit:
+            return [
+                PortionOption(name: "Small (80g)", calories: caloriesPer100 * 0.8, serving_g: 80),
+                PortionOption(name: "Medium (120g)", calories: caloriesPer100 * 1.2, serving_g: 120),
+                PortionOption(name: "Large (180g)", calories: caloriesPer100 * 1.8, serving_g: 180)
+            ]
+        case .egg:
+            return [
+                PortionOption(name: "1 egg (50g)", calories: caloriesPer100 * 0.5, serving_g: 50),
+                PortionOption(name: "2 eggs (100g)", calories: caloriesPer100 * 1.0, serving_g: 100),
+                PortionOption(name: "3 eggs (150g)", calories: caloriesPer100 * 1.5, serving_g: 150)
+            ]
+        case .rice:
+            return [
+                PortionOption(name: "Small (100g)", calories: caloriesPer100 * 1.0, serving_g: 100),
+                PortionOption(name: "Medium (150g)", calories: caloriesPer100 * 1.5, serving_g: 150),
+                PortionOption(name: "Large (200g)", calories: caloriesPer100 * 2.0, serving_g: 200),
+                PortionOption(name: "Restaurant (250g)", calories: caloriesPer100 * 2.5, serving_g: 250)
+            ]
+        case .pasta:
+            return [
+                PortionOption(name: "Small (150g)", calories: caloriesPer100 * 1.5, serving_g: 150),
+                PortionOption(name: "Medium (200g)", calories: caloriesPer100 * 2.0, serving_g: 200),
+                PortionOption(name: "Large (250g)", calories: caloriesPer100 * 2.5, serving_g: 250),
+                PortionOption(name: "Restaurant (300g)", calories: caloriesPer100 * 3.0, serving_g: 300)
+            ]
+        case .bread:
+            return [
+                PortionOption(name: "1 slice (36g)", calories: caloriesPer100 * 0.36, serving_g: 36),
+                PortionOption(name: "2 slices (72g)", calories: caloriesPer100 * 0.72, serving_g: 72),
+                PortionOption(name: "Thick slice (50g)", calories: caloriesPer100 * 0.50, serving_g: 50)
+            ]
+        case .nuts:
+            return [
+                PortionOption(name: "Small handful (15g)", calories: caloriesPer100 * 0.15, serving_g: 15),
+                PortionOption(name: "Handful (30g)", calories: caloriesPer100 * 0.30, serving_g: 30),
+                PortionOption(name: "1/4 cup (35g)", calories: caloriesPer100 * 0.35, serving_g: 35),
+                PortionOption(name: "1/2 cup (65g)", calories: caloriesPer100 * 0.65, serving_g: 65)
+            ]
+        case .cheese:
+            return [
+                PortionOption(name: "Slice (20g)", calories: caloriesPer100 * 0.20, serving_g: 20),
+                PortionOption(name: "Portion (30g)", calories: caloriesPer100 * 0.30, serving_g: 30),
+                PortionOption(name: "Generous (50g)", calories: caloriesPer100 * 0.50, serving_g: 50),
+                PortionOption(name: "Grated cup (100g)", calories: caloriesPer100 * 1.0, serving_g: 100)
+            ]
+        case .milk:
+            return [
+                PortionOption(name: "Splash (30ml)", calories: caloriesPer100 * 0.3, serving_g: 30),
+                PortionOption(name: "Small glass (150ml)", calories: caloriesPer100 * 1.5, serving_g: 150),
+                PortionOption(name: "Glass (244ml)", calories: caloriesPer100 * 2.44, serving_g: 244),
+                PortionOption(name: "Half pint (284ml)", calories: caloriesPer100 * 2.84, serving_g: 284)
+            ]
+        case .yogurt:
+            return [
+                PortionOption(name: "Small pot (125g)", calories: caloriesPer100 * 1.25, serving_g: 125),
+                PortionOption(name: "Regular pot (150g)", calories: caloriesPer100 * 1.50, serving_g: 150),
+                PortionOption(name: "Large pot (200g)", calories: caloriesPer100 * 2.0, serving_g: 200)
+            ]
+        case .meat:
+            return [
+                PortionOption(name: "Small (85g)", calories: caloriesPer100 * 0.85, serving_g: 85),
+                PortionOption(name: "Medium (120g)", calories: caloriesPer100 * 1.2, serving_g: 120),
+                PortionOption(name: "Large (170g)", calories: caloriesPer100 * 1.7, serving_g: 170),
+                PortionOption(name: "Restaurant (225g)", calories: caloriesPer100 * 2.25, serving_g: 225)
+            ]
+        case .fish:
+            return [
+                PortionOption(name: "Small fillet (100g)", calories: caloriesPer100 * 1.0, serving_g: 100),
+                PortionOption(name: "Medium fillet (140g)", calories: caloriesPer100 * 1.4, serving_g: 140),
+                PortionOption(name: "Large fillet (180g)", calories: caloriesPer100 * 1.8, serving_g: 180)
+            ]
+        case .vegetable:
+            return [
+                PortionOption(name: "1 portion (80g)", calories: caloriesPer100 * 0.8, serving_g: 80),
+                PortionOption(name: "2 portions (160g)", calories: caloriesPer100 * 1.6, serving_g: 160),
+                PortionOption(name: "Side dish (120g)", calories: caloriesPer100 * 1.2, serving_g: 120)
+            ]
+        case .legume:
+            return [
+                PortionOption(name: "Half cup (80g)", calories: caloriesPer100 * 0.8, serving_g: 80),
+                PortionOption(name: "Cup (160g)", calories: caloriesPer100 * 1.6, serving_g: 160),
+                PortionOption(name: "Half tin (200g)", calories: caloriesPer100 * 2.0, serving_g: 200)
             ]
         case .other:
             return []
