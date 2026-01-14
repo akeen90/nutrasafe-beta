@@ -267,7 +267,7 @@ struct AddFoodAIView: View {
                     self.isScanning = false
                     self.hasLaunchedCamera = false
 
-                    // Provide user-friendly error messages
+                    // Provide user-friendly error messages based on domain and code
                     if error.domain == NSURLErrorDomain {
                         switch error.code {
                         case NSURLErrorTimedOut:
@@ -277,19 +277,38 @@ struct AddFoodAIView: View {
                         case NSURLErrorCannotConnectToHost:
                             self.errorMessage = "Cannot reach server. Please try again later."
                         default:
-                            self.errorMessage = "Network error. Please check your connection."
+                            self.errorMessage = "Network error (\(error.code)). Please check your connection."
                         }
+                    } else if error.domain == "AddFoodAIView" {
+                        // Custom errors from our code
+                        switch error.code {
+                        case -2:
+                            self.errorMessage = "Failed to parse server response. Please try again."
+                        case -1:
+                            self.errorMessage = "Invalid server response. Please try again."
+                        case 400...499:
+                            self.errorMessage = "Request error (\(error.code)). Please try a different photo."
+                        case 500...599:
+                            self.errorMessage = "Server error (\(error.code)). Please try again in a moment."
+                        default:
+                            self.errorMessage = "Failed to analyse image (\(error.code)). Please try again."
+                        }
+                    } else if error.domain == "ImageError" {
+                        self.errorMessage = "Failed to process image. Please try a different photo."
                     } else if error.code >= 500 {
-                        self.errorMessage = "Server error. Please try again in a moment."
+                        self.errorMessage = "Server error (\(error.code)). Please try again in a moment."
                     } else if error.code >= 400 {
-                        self.errorMessage = "Invalid request. Please try a different photo."
+                        self.errorMessage = "Request error (\(error.code)). Please try a different photo."
                     } else {
-                        self.errorMessage = "Failed to analyse image. Please try again."
+                        self.errorMessage = "Failed to analyse image (\(error.domain):\(error.code)). Please try again."
                     }
 
                     #if DEBUG
                     print("❌ Food recognition failed: \(error.localizedDescription)")
                     print("   Domain: \(error.domain), Code: \(error.code)")
+                    if let userInfo = error.userInfo[NSLocalizedDescriptionKey] as? String {
+                        print("   Description: \(userInfo)")
+                    }
                     #endif
                 }
             }
