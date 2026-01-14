@@ -408,7 +408,9 @@ struct AddFoodSearchView: View {
     @State private var searchResults: [FoodSearchResult] = []
     @State private var isSearching = false
     @EnvironmentObject var diaryDataManager: DiaryDataManager
+    @EnvironmentObject var firebaseManager: FirebaseManager
     @State private var recentFoods: [DiaryFoodItem] = []
+    @State private var favoriteFoods: [FoodSearchResult] = []
     @State private var searchTask: Task<Void, Never>?
     @State private var keyboardHeight: CGFloat = 0
     @State private var isEditingMode = false
@@ -582,6 +584,29 @@ struct AddFoodSearchView: View {
                 ScrollViewReader { scrollProxy in
                     ScrollView {
                         LazyVStack(spacing: 8) {
+                            // Show favorites when search is empty
+                            if searchText.isEmpty && !favoriteFoods.isEmpty {
+                                // Favorites Section
+                                VStack(alignment: .leading, spacing: 12) {
+                                    HStack {
+                                        Image(systemName: "heart.fill")
+                                            .foregroundColor(.red)
+                                            .font(.system(size: 16, weight: .medium))
+                                        Text("Favourites")
+                                            .font(.system(size: 18, weight: .semibold))
+                                            .foregroundColor(.primary)
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .padding(.top, 16)
+
+                                    ForEach(favoriteFoods, id: \.id) { food in
+                                        FoodSearchResultRowEnhanced(food: food, selectedTab: $selectedTab, onComplete: onComplete)
+                                            .padding(.horizontal, 16)
+                                    }
+                                }
+                            }
+
                             // Show recent foods when search is empty
                             if searchText.isEmpty && !recentFoods.isEmpty {
                                 // Recent Foods Section
@@ -596,7 +621,7 @@ struct AddFoodSearchView: View {
                                         Spacer()
                                     }
                                     .padding(.horizontal, 16)
-                                    .padding(.top, 16)
+                                    .padding(.top, favoriteFoods.isEmpty ? 16 : 8)
 
                                     ForEach(recentFoods, id: \.id) { recentFood in
                                         let searchResult = convertToSearchResult(recentFood)
@@ -651,6 +676,7 @@ struct AddFoodSearchView: View {
             setupKeyboardObservers()
             checkForEditingMode()
             loadRecentFoods()
+            loadFavorites()
         }
         .onDisappear {
             removeKeyboardObservers()
@@ -815,6 +841,21 @@ struct AddFoodSearchView: View {
     
     private func loadRecentFoods() {
         recentFoods = diaryDataManager.getRecentFoods()
+    }
+
+    private func loadFavorites() {
+        Task {
+            do {
+                let favorites = try await firebaseManager.getFavoriteFoods()
+                await MainActor.run {
+                    favoriteFoods = favorites
+                }
+            } catch {
+                #if DEBUG
+                print("Failed to load favorites: \(error)")
+                #endif
+            }
+        }
     }
     
     private func convertToSearchResult(_ diaryItem: DiaryFoodItem) -> FoodSearchResult {

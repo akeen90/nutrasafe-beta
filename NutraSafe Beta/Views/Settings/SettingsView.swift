@@ -1873,7 +1873,7 @@ enum UnitSystem: String, CaseIterable {
     var description: String {
         switch self {
         case .metric: return "Kilograms, centimetres, litres"
-        case .imperial: return "Pounds, inches, fluid ounces"
+        case .imperial: return "Stones & lbs, feet & inches"
         }
     }
 }
@@ -1953,6 +1953,8 @@ struct ThemeSelectorView: View {
 struct UnitsSelectorView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedUnit: UnitSystem
+    @AppStorage("weightUnit") private var weightUnit: WeightUnit = .kg
+    @AppStorage("heightUnit") private var heightUnit: HeightUnit = .cm
 
     var body: some View {
         NavigationView {
@@ -1967,6 +1969,14 @@ struct UnitsSelectorView: View {
                     ForEach(UnitSystem.allCases, id: \.self) { system in
                         Button(action: {
                             selectedUnit = system
+                            // Synchronize weight and height units with system selection
+                            if system == .metric {
+                                weightUnit = .kg
+                                heightUnit = .cm
+                            } else {
+                                weightUnit = .stones  // UK uses stones and lbs
+                                heightUnit = .ftIn
+                            }
                             let impactFeedback = UIImpactFeedbackGenerator(style: .light)
                             impactFeedback.impactOccurred()
                         }) {
