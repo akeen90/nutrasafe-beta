@@ -1708,7 +1708,7 @@ class FirebaseManager: ObservableObject {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to save favorites"])
         }
 
-        let favoriteData: [String: Any] = [
+        var favoriteData: [String: Any] = [
             "id": food.id,
             "name": food.name,
             "brand": food.brand as Any,
@@ -1716,15 +1716,48 @@ class FirebaseManager: ObservableObject {
             "protein": food.protein,
             "carbs": food.carbs,
             "fat": food.fat,
+            "saturatedFat": food.saturatedFat as Any,
             "fiber": food.fiber,
             "sugar": food.sugar,
             "sodium": food.sodium,
             "servingDescription": food.servingDescription as Any,
+            "servingSizeG": food.servingSizeG as Any,
+            "isPerUnit": food.isPerUnit as Any,
             "barcode": food.barcode as Any,
             "ingredients": food.ingredients as Any,
             "isVerified": food.isVerified,
+            "processingScore": food.processingScore as Any,
+            "processingGrade": food.processingGrade as Any,
+            "processingLabel": food.processingLabel as Any,
             "addedAt": FirebaseFirestore.Timestamp(date: Date())
         ]
+
+        // Encode additives as JSON array
+        if let additives = food.additives {
+            let encoder = JSONEncoder()
+            if let additivesData = try? encoder.encode(additives),
+               let additivesArray = try? JSONSerialization.jsonObject(with: additivesData) as? [[String: Any]] {
+                favoriteData["additives"] = additivesArray
+            }
+        }
+
+        // Encode micronutrientProfile as JSON
+        if let micronutrients = food.micronutrientProfile {
+            let encoder = JSONEncoder()
+            if let microData = try? encoder.encode(micronutrients),
+               let microDict = try? JSONSerialization.jsonObject(with: microData) as? [String: Any] {
+                favoriteData["micronutrientProfile"] = microDict
+            }
+        }
+
+        // Encode portions as JSON array
+        if let portions = food.portions {
+            let encoder = JSONEncoder()
+            if let portionsData = try? encoder.encode(portions),
+               let portionsArray = try? JSONSerialization.jsonObject(with: portionsData) as? [[String: Any]] {
+                favoriteData["portions"] = portionsArray
+            }
+        }
 
         try await db.collection("users").document(userId)
             .collection("favoriteFoods").document(food.id).setData(favoriteData)
@@ -1773,6 +1806,36 @@ class FirebaseManager: ObservableObject {
                 return nil
             }
 
+            // Decode additives from JSON array
+            var additives: [NutritionAdditiveInfo]?
+            if let additivesArray = data["additives"] as? [[String: Any]] {
+                let decoder = JSONDecoder()
+                if let additivesData = try? JSONSerialization.data(withJSONObject: additivesArray),
+                   let decoded = try? decoder.decode([NutritionAdditiveInfo].self, from: additivesData) {
+                    additives = decoded
+                }
+            }
+
+            // Decode micronutrientProfile from JSON
+            var micronutrientProfile: MicronutrientProfile?
+            if let microDict = data["micronutrientProfile"] as? [String: Any] {
+                let decoder = JSONDecoder()
+                if let microData = try? JSONSerialization.data(withJSONObject: microDict),
+                   let decoded = try? decoder.decode(MicronutrientProfile.self, from: microData) {
+                    micronutrientProfile = decoded
+                }
+            }
+
+            // Decode portions from JSON array
+            var portions: [PortionOption]?
+            if let portionsArray = data["portions"] as? [[String: Any]] {
+                let decoder = JSONDecoder()
+                if let portionsData = try? JSONSerialization.data(withJSONObject: portionsArray),
+                   let decoded = try? decoder.decode([PortionOption].self, from: portionsData) {
+                    portions = decoded
+                }
+            }
+
             return FoodSearchResult(
                 id: id,
                 name: name,
@@ -1781,13 +1844,22 @@ class FirebaseManager: ObservableObject {
                 protein: protein,
                 carbs: carbs,
                 fat: fat,
+                saturatedFat: data["saturatedFat"] as? Double,
                 fiber: data["fiber"] as? Double ?? 0,
                 sugar: data["sugar"] as? Double ?? 0,
                 sodium: data["sodium"] as? Double ?? 0,
                 servingDescription: data["servingDescription"] as? String,
+                servingSizeG: data["servingSizeG"] as? Double,
+                isPerUnit: data["isPerUnit"] as? Bool,
                 ingredients: data["ingredients"] as? [String],
                 isVerified: data["isVerified"] as? Bool ?? false,
-                barcode: data["barcode"] as? String
+                additives: additives,
+                processingScore: data["processingScore"] as? Int,
+                processingGrade: data["processingGrade"] as? String,
+                processingLabel: data["processingLabel"] as? String,
+                barcode: data["barcode"] as? String,
+                micronutrientProfile: micronutrientProfile,
+                portions: portions
             )
         }
 

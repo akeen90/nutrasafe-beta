@@ -29,8 +29,6 @@ struct AddFoodAIView: View {
     @State private var hasLaunchedCamera = false  // Prevents re-launching camera on state changes
     @State private var errorMessage: String?  // Shows errors to user
     @State private var showingGalleryPicker = false  // For photo library selection
-    // Local dummy tab binding to prevent Details view from changing main tab while in AI scanner
-    @State private var localTabForDetail: TabItem = .diary
     // Pro feature gate for non-subscribers
     @State private var showingProFeatureGate = false
     @State private var capturedImageForGate: UIImage?
@@ -153,6 +151,8 @@ struct AddFoodAIView: View {
             Spacer()
         }
         .padding(.top, 20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemBackground))
         // Removed auto-launch - user chooses camera or gallery from the initial screen
         .fullScreenCover(isPresented: $showingImagePicker) {
             ImagePicker(selectedImage: $selectedImage, sourceType: .camera) { [self] image in
@@ -210,10 +210,10 @@ struct AddFoodAIView: View {
                 }
             )
         }
-        .fullScreenCover(item: $selectedFoodForDetail) { food in
+        .sheet(item: $selectedFoodForDetail) { food in
             NavigationView {
-                // Use localTabForDetail to prevent Details view from changing main tab while in AI scanner
-                FoodDetailViewFromSearch(food: food, selectedTab: $localTabForDetail)
+                // Use constant binding to prevent Details view from changing main tab while in AI scanner
+                FoodDetailViewFromSearch(food: food, selectedTab: .constant(.diary))
             }
             .environmentObject(diaryDataManager)
             .environmentObject(subscriptionManager)
@@ -889,8 +889,6 @@ struct AIFoodSelectionView: View {
     @State private var selectedFoods: Set<String> = []
     @State private var selectedFood: FoodSearchResult?
     @State private var hasInitializedSelection = false
-    // Local dummy tab binding to prevent Details view from changing main tab
-    @State private var localTab: TabItem = .diary
 
     // Sort foods by confidence (highest first)
     private var sortedFoods: [FoodSearchResult] {
@@ -995,10 +993,12 @@ struct AIFoodSelectionView: View {
                 .padding(.bottom, 16)
             }
         }
-        .fullScreenCover(item: $selectedFood) { food in
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemBackground))
+        .sheet(item: $selectedFood) { food in
             NavigationView {
-                // Use localTab to prevent Details view from changing main tab while in AI scanner
-                FoodDetailViewFromSearch(food: food, selectedTab: $localTab)
+                // Use constant binding to prevent Details view from changing main tab while in AI scanner
+                FoodDetailViewFromSearch(food: food, selectedTab: .constant(.diary))
             }
             .environmentObject(diaryDataManager)
             .environmentObject(subscriptionManager)
