@@ -223,27 +223,20 @@ struct DiaryTabView: View {
         .padding(.bottom, 4)
     }
 
-    // MARK: - Full-Width Date Navigation (below tabs)
+    // MARK: - Date Navigation (centered button only - arrows removed to avoid calendar duplication)
     private var dateNavigationRow: some View {
-        HStack(spacing: 0) {
-            // Left arrow - larger tap target
-            Button(action: {
-                selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
-            }) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.primary)
-                    .frame(width: 48, height: 44)
-                    .contentShape(Rectangle())
-            }
-
+        HStack {
             Spacer()
 
-            // Center date button
+            // Center date button - expands calendar
             Button(action: {
                 showingDatePicker.toggle()
             }) {
                 HStack(spacing: 6) {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.blue)
+
                     Text(showingDatePicker ? "Close Calendar" : formatDateFull(selectedDate))
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.primary)
@@ -260,17 +253,6 @@ struct DiaryTabView: View {
             }
 
             Spacer()
-
-            // Right arrow - larger tap target
-            Button(action: {
-                selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
-            }) {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.primary)
-                    .frame(width: 48, height: 44)
-                    .contentShape(Rectangle())
-            }
         }
         .padding(.horizontal, 16)
     }
@@ -400,10 +382,68 @@ struct DiaryTabView: View {
     private var dateSectionView: some View {
         VStack(spacing: 8) {
             dateNavigationRow
+
+            // Week activity dots (shows logged days)
+            if !showingDatePicker {
+                weekActivityIndicator
+            }
+
             datePickerSection
         }
         .padding(.top, 4)
         .padding(.bottom, 8)
+    }
+
+    // MARK: - Week Activity Indicator
+    private var weekActivityIndicator: some View {
+        let calendar = Calendar.current
+        let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: selectedDate)?.start ?? selectedDate
+        let weekDays = (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: startOfWeek) }
+
+        return HStack(spacing: 8) {
+            ForEach(weekDays, id: \.self) { date in
+                VStack(spacing: 4) {
+                    // Day letter
+                    Text(dayLetter(from: date))
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(calendar.isDate(date, inSameDayAs: selectedDate) ? .blue : .secondary)
+
+                    // Activity dot
+                    Circle()
+                        .fill(getDayActivityColor(for: date))
+                        .frame(width: 8, height: 8)
+                }
+                .onTapGesture {
+                    selectedDate = date
+                }
+            }
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 16)
+    }
+
+    private func dayLetter(from date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEEE" // Single letter day (M, T, W, etc.)
+        return formatter.string(from: date)
+    }
+
+    private func getDayActivityColor(for date: Date) -> Color {
+        // Check if this day has food entries by looking at our loaded data
+        let calendar = Calendar.current
+        if calendar.isDate(date, inSameDayAs: selectedDate) {
+            // Currently selected day - check our loaded foods
+            let hasEntries = !breakfastFoods.isEmpty || !lunchFoods.isEmpty || !dinnerFoods.isEmpty || !snackFoods.isEmpty
+            return hasEntries ? .green : Color(.systemGray4)
+        } else if calendar.isDateInToday(date) {
+            // Today marker
+            return .blue.opacity(0.5)
+        } else {
+            // For other days, check hydration data as a proxy (faster than Firebase query)
+            let dateKey = DateHelper.isoDateFormatter.string(from: date)
+            let hydrationData = UserDefaults.standard.dictionary(forKey: "hydrationData") as? [String: Int] ?? [:]
+            return hydrationData[dateKey] != nil ? .green.opacity(0.6) : Color(.systemGray5)
+        }
     }
 
     // MARK: - Loading State View

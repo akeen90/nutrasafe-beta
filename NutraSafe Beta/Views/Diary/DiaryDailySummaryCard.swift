@@ -64,14 +64,17 @@ struct DiaryDailySummaryCard: View {
             Divider()
                 .padding(.horizontal, -AppSpacing.medium)
 
-            // Steps section with overlay text
-            stepsProgressView
+            // Activity row: Steps + Cals burned on left, Water glass on right
+            HStack(spacing: 12) {
+                // Left side: Steps and Cals burned bars stacked
+                VStack(spacing: 8) {
+                    stepsProgressView
+                    caloriesBurnedProgressView
+                }
 
-            // Calories burned section
-            caloriesBurnedProgressView
-
-            // Water tracking section
-            waterProgressView
+                // Right side: Water glass visualization
+                waterGlassView
+            }
 
             // Smart nutrition insights
             if let insight = generateNutritionInsight() {
@@ -376,7 +379,90 @@ struct DiaryDailySummaryCard: View {
         .animation(.easeInOut(duration: 0.3), value: insight.message)
     }
 
-    // MARK: - Water Tracking
+    // MARK: - Water Glass Visualization
+    private var waterGlassView: some View {
+        Button(action: addWater) {
+            VStack(spacing: 4) {
+                // Glass container
+                ZStack(alignment: .bottom) {
+                    // Glass outline (tapered cup shape)
+                    GlassShape()
+                        .stroke(Color(.systemGray3), lineWidth: 2)
+                        .frame(width: 50, height: 56)
+
+                    // Water fill level
+                    let fillPercent = min(1.0, Double(waterCount) / Double(dailyWaterGoal))
+                    GlassShape()
+                        .fill(
+                            LinearGradient(
+                                colors: waterCount >= dailyWaterGoal
+                                    ? [Color.green.opacity(0.7), Color.green]
+                                    : [Color.cyan.opacity(0.6), Color.cyan],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .frame(width: 50, height: 56)
+                        .mask(
+                            VStack {
+                                Spacer()
+                                Rectangle()
+                                    .frame(height: 56 * fillPercent)
+                            }
+                            .frame(height: 56)
+                        )
+                        .animation(.spring(response: 0.5, dampingFraction: 0.7), value: waterCount)
+
+                    // Checkmark overlay when complete
+                    if waterCount >= dailyWaterGoal {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundColor(.white)
+                            .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
+                            .offset(y: -16)
+                    }
+                }
+
+                // Water count text
+                HStack(spacing: 2) {
+                    Text("\(waterCount)")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(waterCount >= dailyWaterGoal ? .green : .primary)
+                    Text("/\(dailyWaterGoal)")
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
+                }
+
+                // Streak badge (compact)
+                if waterStreak > 1 {
+                    HStack(spacing: 2) {
+                        Image(systemName: "flame.fill")
+                            .font(.system(size: 8))
+                        Text("\(waterStreak)")
+                            .font(.system(size: 9, weight: .semibold))
+                    }
+                    .foregroundColor(.orange)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 2)
+                    .background(Color.orange.opacity(0.15))
+                    .clipShape(Capsule())
+                }
+            }
+        }
+        .buttonStyle(PlainButtonStyle())
+        // Show celebration
+        .overlay(alignment: .top) {
+            if showingWaterCelebration {
+                Image(systemName: "hands.clap.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(.green)
+                    .offset(y: -24)
+                    .transition(.scale.combined(with: .opacity))
+            }
+        }
+    }
+
+    // MARK: - Water Tracking (Legacy bar - kept for reference)
     private var waterProgressView: some View {
         VStack(spacing: 6) {
             Button(action: addWater) {
@@ -856,13 +942,13 @@ struct MetricView: View {
     let value: String
     let label: String
     let color: Color
-    
+
     var body: some View {
         VStack(spacing: 2) {
             Text(value)
                 .font(.system(size: 16, weight: .semibold, design: .rounded))
                 .foregroundColor(color)
-            
+
             Text(label)
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .foregroundColor(.secondary)
@@ -870,3 +956,5 @@ struct MetricView: View {
         }
     }
 }
+
+// Note: GlassShape is defined in ContentView.swift and available project-wide
