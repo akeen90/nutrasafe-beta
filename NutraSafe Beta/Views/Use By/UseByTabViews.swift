@@ -2480,6 +2480,37 @@ struct UseByBarcodeScanSheet: View {
         return variations
     }
 
+    // MARK: - Nutrition Data Validation
+
+    /// Validates that a product has usable nutrition data
+    private func hasValidNutritionData(_ product: FoodSearchResult) -> Bool {
+        let calories = product.calories
+        let protein = product.protein
+        let carbs = product.carbs
+        let fat = product.fat
+        let hasIngredients = (product.ingredients?.count ?? 0) > 0
+
+        // If ALL nutrition is zero AND no ingredients, reject
+        let allZero = calories == 0 && protein == 0 && carbs == 0 && fat == 0
+        if allZero && !hasIngredients { return false }
+
+        // If we have macros but zero calories, suspicious
+        let totalMacros = protein + carbs + fat
+        if totalMacros > 5 && calories == 0 { return false }
+
+        // Calculate expected calories and check if they roughly match
+        let expectedCalories = (protein * 4) + (carbs * 4) + (fat * 9)
+        if expectedCalories > 50 && calories > 0 {
+            let ratio = calories / expectedCalories
+            if ratio < 0.3 || ratio > 2.0 { return false }
+        }
+
+        // If we have calories but zero macros and no ingredients, reject
+        if calories > 10 && totalMacros == 0 && !hasIngredients { return false }
+
+        return true
+    }
+
     // MARK: - Barcode Handling
     private func handleBarcodeScanned(_ barcode: String) {
         guard !isSearching else { return }
@@ -2492,18 +2523,27 @@ struct UseByBarcodeScanSheet: View {
             print("🔍 [UseBy] Searching barcode variations: \(barcodeVariations)")
             #endif
 
-            // Fast path: Algolia lookup
+            // Fast path: Algolia lookup (validate nutrition data)
             for variation in barcodeVariations {
                 do {
                     if let hit = try await AlgoliaSearchManager.shared.searchByBarcode(variation) {
-                        await MainActor.run {
-                            self.scannedFood = hit
-                            self.isSearching = false
+                        // Validate nutrition data even from Algolia
+                        if hasValidNutritionData(hit) {
+                            await MainActor.run {
+                                self.scannedFood = hit
+                                self.isSearching = false
+                            }
+                            #if DEBUG
+                            print("✅ [UseBy] Found in Algolia: \(hit.name)")
+                            #endif
+                            return
+                        } else {
+                            #if DEBUG
+                            print("⚠️ [UseBy] Algolia product has invalid nutrition data, trying Cloud Function...")
+                            #endif
+                            // Continue to Cloud Function fallback
+                            break
                         }
-                        #if DEBUG
-                        print("✅ [UseBy] Found in Algolia: \(hit.name)")
-                        #endif
-                        return
                     }
                 } catch {
                     // Continue to next variation
@@ -2514,12 +2554,24 @@ struct UseByBarcodeScanSheet: View {
             print("⚠️ [UseBy] Not in Algolia, trying Cloud Function...")
             #endif
 
-            // Fallback: Cloud Function
+            // Fallback: Cloud Function (validate external data)
             do {
                 if let remote = try await searchProductByBarcodeRemote(barcode) {
-                    await MainActor.run {
-                        self.scannedFood = remote
-                        self.isSearching = false
+                    // Validate nutrition data from external sources
+                    if hasValidNutritionData(remote) {
+                        await MainActor.run {
+                            self.scannedFood = remote
+                            self.isSearching = false
+                        }
+                    } else {
+                        #if DEBUG
+                        print("⚠️ [UseBy] Rejecting product - invalid nutrition data")
+                        #endif
+                        await MainActor.run {
+                            self.isSearching = false
+                            self.errorMessage = "This product has incomplete nutrition data."
+                            self.pendingContribution = PendingFoodContribution(placeholderId: "", barcode: barcode)
+                        }
                     }
                 } else {
                     await MainActor.run {

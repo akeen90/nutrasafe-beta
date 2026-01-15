@@ -756,23 +756,34 @@ final class AlgoliaSearchManager {
                 return nil
             }
 
-            // Extract nutrition values with defaults
-            let calories = (hit["calories"] as? Double) ?? (hit["calories"] as? Int).map { Double($0) } ?? 0
-            let protein = (hit["protein"] as? Double) ?? (hit["protein"] as? Int).map { Double($0) } ?? 0
-            let carbs = (hit["carbs"] as? Double) ?? (hit["carbs"] as? Int).map { Double($0) } ?? 0
-            let fat = (hit["fat"] as? Double) ?? (hit["fat"] as? Int).map { Double($0) } ?? 0
-            let saturatedFat = (hit["saturatedFat"] as? Double) ?? (hit["saturatedFat"] as? Int).map { Double($0) }
-            let fiber = (hit["fiber"] as? Double) ?? (hit["fiber"] as? Int).map { Double($0) } ?? 0
-            let sugar = (hit["sugar"] as? Double) ?? (hit["sugar"] as? Int).map { Double($0) } ?? 0
-            let sodium = (hit["sodium"] as? Double) ?? (hit["sodium"] as? Int).map { Double($0) } ?? 0
+            // Helper to extract numeric value from multiple possible keys
+            func getNumber(_ hit: [String: Any], _ keys: String...) -> Double? {
+                for key in keys {
+                    if let val = hit[key] as? Double { return val }
+                    if let val = hit[key] as? Int { return Double(val) }
+                    if let val = hit[key] as? String, let num = Double(val) { return num }
+                }
+                return nil
+            }
 
-            // Extract optional fields
-            let brand = hit["brandName"] as? String
-            let servingDescription = hit["servingSize"] as? String
-            let servingSizeG = (hit["servingSizeG"] as? Double) ?? (hit["servingSizeG"] as? Int).map { Double($0) }
-            let isPerUnit = hit["per_unit_nutrition"] as? Bool
-            // Check both isVerified and verified fields for compatibility
-            let verified = (hit["isVerified"] as? Bool) ?? (hit["verified"] as? Bool) ?? false
+            // Extract nutrition values with multiple fallback field names
+            // (handles both camelCase from Firebase sync and snake_case from direct CSV upload)
+            let calories = getNumber(hit, "calories", "energy_kcal", "energy") ?? 0
+            let protein = getNumber(hit, "protein", "proteins") ?? 0
+            let carbs = getNumber(hit, "carbs", "carbohydrates") ?? 0
+            let fat = getNumber(hit, "fat", "fats") ?? 0
+            let saturatedFat = getNumber(hit, "saturatedFat", "saturated_fat")
+            let fiber = getNumber(hit, "fiber", "fibre") ?? 0
+            let sugar = getNumber(hit, "sugar", "sugars") ?? 0
+            let sodium = getNumber(hit, "sodium", "salt").map { $0 > 10 ? $0 : $0 * 1000 } ?? 0 // Convert g to mg if needed
+
+            // Extract optional fields with fallback names
+            let brand = (hit["brandName"] as? String) ?? (hit["brand"] as? String)
+            let servingDescription = (hit["servingSize"] as? String) ?? (hit["serving_description"] as? String)
+            let servingSizeG = getNumber(hit, "servingSizeG", "serving_size_g", "serving_size")
+            let isPerUnit = (hit["per_unit_nutrition"] as? Bool) ?? (hit["isPerUnit"] as? Bool)
+            // Check multiple field name variants for verification status
+            let verified = (hit["isVerified"] as? Bool) ?? (hit["verified"] as? Bool) ?? (hit["is_verified"] as? Bool) ?? false
             let barcode = hit["barcode"] as? String
 
             // Extract ingredients array

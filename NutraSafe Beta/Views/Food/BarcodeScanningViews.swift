@@ -232,6 +232,69 @@ struct AddFoodBarcodeView: View {
         return variations
     }
 
+    // MARK: - Nutrition Data Validation
+
+    /// Validates that a product has usable nutrition data
+    /// Rejects products with all zeros and no ingredients, or where macros don't add up
+    private func hasValidNutritionData(_ product: FoodSearchResult) -> Bool {
+        let calories = product.calories
+        let protein = product.protein
+        let carbs = product.carbs
+        let fat = product.fat
+        let hasIngredients = (product.ingredients?.count ?? 0) > 0
+
+        // Check if ALL main values are zero
+        let allZero = calories == 0 && protein == 0 && carbs == 0 && fat == 0
+
+        // If all nutrition is zero AND no ingredients, reject
+        if allZero && !hasIngredients {
+            #if DEBUG
+            print("❌ Validation failed: All nutrition values zero and no ingredients")
+            #endif
+            return false
+        }
+
+        // If we have macros but zero calories, that's suspicious
+        // (Exception: very small amounts can round to 0)
+        let totalMacros = protein + carbs + fat
+        if totalMacros > 5 && calories == 0 {
+            #if DEBUG
+            print("❌ Validation failed: Has macros (\(totalMacros)g) but 0 calories")
+            #endif
+            return false
+        }
+
+        // Calculate expected calories from macros (protein=4, carbs=4, fat=9 kcal/g)
+        let expectedCalories = (protein * 4) + (carbs * 4) + (fat * 9)
+
+        // If we have significant macros, calories should roughly match
+        // Allow generous tolerance (50%) because fiber, alcohol, rounding etc
+        if expectedCalories > 50 && calories > 0 {
+            let ratio = calories / expectedCalories
+            // Reject if calories are way off (less than 30% or more than 200% of expected)
+            if ratio < 0.3 || ratio > 2.0 {
+                #if DEBUG
+                print("❌ Validation failed: Calories (\(calories)) don't match macros (expected ~\(Int(expectedCalories)))")
+                #endif
+                return false
+            }
+        }
+
+        // If we have calories but zero macros, that's also suspicious
+        // (Exception: diet drinks can have 1-5 kcal with essentially 0 macros)
+        if calories > 10 && totalMacros == 0 && !hasIngredients {
+            #if DEBUG
+            print("❌ Validation failed: Has calories (\(calories)) but no macros and no ingredients")
+            #endif
+            return false
+        }
+
+        #if DEBUG
+        print("✅ Nutrition data validated: \(Int(calories)) kcal, P:\(protein)g C:\(carbs)g F:\(fat)g, ingredients: \(hasIngredients)")
+        #endif
+        return true
+    }
+
     // MARK: - Barcode Handling
     private func handleBarcodeScanned(_ barcode: String) {
         guard !isSearching else { return }
@@ -262,13 +325,21 @@ struct AddFoodBarcodeView: View {
                 }
             }
 
-            // If found in Algolia, show immediately (fast path)
+            // If found in Algolia, validate and show
             if let product = foundInAlgolia {
-                await MainActor.run {
-                    self.scannedProduct = product
-                    self.isSearching = false
+                // Validate nutrition data even from Algolia (some imported data may be incomplete)
+                if self.hasValidNutritionData(product) {
+                    await MainActor.run {
+                        self.scannedProduct = product
+                        self.isSearching = false
+                    }
+                    return
+                } else {
+                    #if DEBUG
+                    print("⚠️ Algolia product has invalid nutrition data, trying Cloud Function...")
+                    #endif
+                    // Continue to Cloud Function fallback
                 }
-                return
             }
 
             #if DEBUG
@@ -287,8 +358,23 @@ struct AddFoodBarcodeView: View {
                             print("✅ Found via Cloud Function: \(product.name)")
                             print("   Nutrition per 100g → kcal: \(product.calories), protein: \(product.protein), carbs: \(product.carbs), fat: \(product.fat), fiber: \(product.fiber), sugar: \(product.sugar), sodium: \(product.sodium)")
                             print("   Serving: \(product.servingDescription ?? "nil") sizeG: \(product.servingSizeG ?? -1)")
+                            print("   Ingredients: \(product.ingredients?.count ?? 0) items")
                             #endif
-                            self.scannedProduct = product
+
+                            // Validate nutrition data from external sources (OpenFoodFacts)
+                            // Reject products with missing/invalid data
+                            if self.hasValidNutritionData(product) {
+                                self.scannedProduct = product
+                            } else {
+                                #if DEBUG
+                                print("⚠️ Rejecting product - invalid/missing nutrition data")
+                                #endif
+                                self.errorMessage = "This product has incomplete nutrition data."
+                                self.pendingContribution = PendingFoodContribution(
+                                    placeholderId: "",
+                                    barcode: barcode
+                                )
+                            }
                         } else if response.action == "user_contribution_needed",
                                   let placeholderId = response.placeholder_id {
                             // Product not found anywhere - show manual add option
