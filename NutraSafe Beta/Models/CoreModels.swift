@@ -646,6 +646,8 @@ class DiaryDataManager: ObservableObject {
             await MainActor.run {
                 self.objectWillChange.send()
                 self.dataReloadTrigger = UUID() // Trigger DiaryTabView to reload from Firebase
+                // Notify additive tracker to refresh its cache
+                NotificationCenter.default.post(name: .foodEntryAdded, object: nil)
             }
 
         } catch let error as FirebaseManager.DiaryLimitError {
@@ -659,6 +661,8 @@ class DiaryDataManager: ObservableObject {
                 addToRecentFoods(item)
                 self.objectWillChange.send()
                 self.dataReloadTrigger = UUID()
+                // Notify additive tracker to refresh its cache
+                NotificationCenter.default.post(name: .foodEntryAdded, object: nil)
             }
         }
     }

@@ -14,6 +14,7 @@ extension Notification.Name {
     static let appVersionDidChange = Notification.Name("appVersionDidChange")
     static let waterUpdated = Notification.Name("waterUpdated")
     static let favoritesDidChange = Notification.Name("favoritesDidChange")
+    static let foodEntryAdded = Notification.Name("foodEntryAdded")
 }
 
 /// Manages cache clearing on app version changes

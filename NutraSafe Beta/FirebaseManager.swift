@@ -805,6 +805,44 @@ class FirebaseManager: ObservableObject {
         return try await fetchTask.value
     }
 
+    // Get food entries for a period using fromDictionary for proper additives decoding
+    func getFoodEntriesWithAdditivesForPeriod(days: Int) async throws -> [FoodEntry] {
+        guard let userId = currentUser?.uid else { return [] }
+
+        let calendar = Calendar.current
+        let today = Date()
+        let startOfToday = calendar.startOfDay(for: today)
+        guard let endOfToday = calendar.date(byAdding: .day, value: 1, to: startOfToday)?.addingTimeInterval(-0.001) else {
+            return []
+        }
+        // For "days" period, we want today + (days-1) previous days
+        // e.g., Week (7 days) = today + 6 previous days
+        guard let startDate = calendar.date(byAdding: .day, value: -(days - 1), to: startOfToday) else {
+            return []
+        }
+        let queryStart = startDate  // Already at start of day
+
+        let snapshot = try await withRetry {
+            try await self.db.collection("users").document(userId)
+                .collection("foodEntries")
+                .whereField("date", isGreaterThanOrEqualTo: FirebaseFirestore.Timestamp(date: queryStart))
+                .whereField("date", isLessThanOrEqualTo: FirebaseFirestore.Timestamp(date: endOfToday))
+                .order(by: "date", descending: true)
+                .limit(to: 1000)
+                .getDocuments()
+        }
+
+        // Use fromDictionary for proper additives decoding
+        return snapshot.documents.compactMap { doc -> FoodEntry? in
+            var data = doc.data()
+            // Ensure id is set from document ID if not present
+            if data["id"] == nil {
+                data["id"] = doc.documentID
+            }
+            return FoodEntry.fromDictionary(data)
+        }
+    }
+
     // Get food entries within a specific date range (used by ReactionLogManager)
     // NOTE: Caller is responsible for passing correct date boundaries
     func getFoodEntriesInRange(from startDate: Date, to endDate: Date) async throws -> [FoodEntry] {

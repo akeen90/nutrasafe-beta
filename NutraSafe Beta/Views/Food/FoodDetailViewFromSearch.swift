@@ -2111,6 +2111,48 @@ private var nutritionFactsSection: some View {
             servingDesc = "\(String(format: "%.0f", servingSize))g serving"
         }
 
+        // CRITICAL FIX: Analyze additives fresh from ingredients and save to diary
+        // displayFood.additives is often nil/empty - fresh detection happens in getDetectedAdditives() for display only
+        // This ensures detected additives are actually saved with the food entry
+        let additivesToSave: [NutritionAdditiveInfo]?
+        if let ingredients = displayFood.ingredients, !ingredients.isEmpty {
+            let ingredientsText = ingredients.joined(separator: ", ")
+            let freshAdditives = ProcessingScorer.shared.analyzeAdditives(in: ingredientsText)
+
+            // Convert AdditiveInfo to NutritionAdditiveInfo for diary storage
+            additivesToSave = freshAdditives.map { additive in
+                // Calculate health score based on verdict and warnings
+                var healthScore = 70 // Base score
+                if additive.hasChildWarning { healthScore -= 20 }
+                if additive.hasPKUWarning { healthScore -= 15 }
+                if additive.hasPolyolsWarning { healthScore -= 10 }
+                if additive.effectsVerdict == .caution { healthScore -= 15 }
+                if additive.effectsVerdict == .avoid { healthScore -= 25 }
+                healthScore = max(0, min(100, healthScore))
+
+                return NutritionAdditiveInfo(
+                    code: additive.eNumber,
+                    name: additive.name,
+                    category: additive.group.displayName,
+                    healthScore: healthScore,
+                    childWarning: additive.hasChildWarning,
+                    effectsVerdict: additive.effectsVerdict.rawValue,
+                    consumerGuide: additive.consumerInfo,
+                    origin: additive.origin.rawValue
+                )
+            }
+
+            #if DEBUG
+            print("🧪 Fresh additive analysis: \(freshAdditives.count) additives detected from ingredients")
+            for additive in freshAdditives.prefix(5) {
+                print("   - \(additive.eNumber): \(additive.name)")
+            }
+            #endif
+        } else {
+            // Fallback to displayFood.additives if no ingredients to analyze
+            additivesToSave = displayFood.additives
+        }
+
         let diaryEntry = DiaryFoodItem(
             id: diaryEntryId ?? UUID(),
             name: displayFood.name,
@@ -2128,7 +2170,7 @@ private var nutritionFactsSection: some View {
             processedScore: nutraSafeGrade.grade,
             sugarLevel: getSugarLevel(),
             ingredients: displayFood.ingredients,
-            additives: displayFood.additives,
+            additives: additivesToSave,  // Use fresh analyzed additives instead of displayFood.additives
             barcode: displayFood.barcode,
             micronutrientProfile: nil,  // FIX: Don't save fake macro-based estimates
             isPerUnit: food.isPerUnit

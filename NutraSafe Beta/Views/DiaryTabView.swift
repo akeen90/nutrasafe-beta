@@ -37,7 +37,7 @@ struct DiaryTabView: View {
 
     enum DiarySubTab: String, CaseIterable {
         case overview = "Overview"
-        case nutrients = "Nutrients"
+        case insights = "Insights"
     }
 
     // MARK: - Unified Reload Trigger (Performance Optimization)
@@ -72,6 +72,9 @@ struct DiaryTabView: View {
     @State private var datesWithEntries: Set<Date> = []
     @State private var displayedMonth: Date = Date()
     @State private var isLoadingCalendarEntries = false
+
+    // MARK: - Additive Tracker
+    @StateObject private var additiveTrackerVM = AdditiveTrackerViewModel()
 
     private struct NutritionTotals {
         var totalCalories: Int = 0
@@ -571,8 +574,8 @@ struct DiaryTabView: View {
                         nutrientsTabContent
                     }
                 }
-                .opacity(diarySubTab == .nutrients ? 1 : 0)
-                .allowsHitTesting(diarySubTab == .nutrients)
+                .opacity(diarySubTab == .insights ? 1 : 0)
+                .allowsHitTesting(diarySubTab == .insights)
             }
             .background(diaryBlueBackground)
             .navigationBarHidden(true)
@@ -662,6 +665,10 @@ struct DiaryTabView: View {
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshDiaryData"))) { _ in
                 // Refresh diary when foods are added from AI scanner
                 loadFoodData()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .foodEntryAdded)) { _ in
+                // Switch to overview tab when food is added (even from Insights tab)
+                diarySubTab = .overview
             }
             .onReceive(healthKitRefreshTimer) { _ in
                 // PERFORMANCE: Skip if timer is paused or not viewing today's date
@@ -769,7 +776,7 @@ struct DiaryTabView: View {
     private func handleDiarySubTabChange(_ newTab: DiarySubTab) {
         // SOFT PAYWALL: Allow navigation to nutrients tab (premium features are blurred within)
         // Show feature tip on first visit to nutrients sub-tab
-        if newTab == .nutrients && !FeatureTipsManager.shared.hasSeenTip(.nutrientsOverview) {
+        if newTab == .insights && !FeatureTipsManager.shared.hasSeenTip(.nutrientsOverview) {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 showingNutrientsTip = true
             }
@@ -932,6 +939,10 @@ struct DiaryTabView: View {
 
     @ViewBuilder
     private var nutrientsTabContent: some View {
+        // Additive Tracker at top
+        AdditiveTrackerSection(viewModel: additiveTrackerVM)
+            .padding(.top, 8)
+
         if #available(iOS 16.0, *) {
             CategoricalNutrientTrackingView(selectedDate: $selectedDate)
         } else {
