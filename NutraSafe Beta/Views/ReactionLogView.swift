@@ -405,7 +405,7 @@ struct CommonIngredientRow: View {
             }
         }
         .padding(12)
-        .background(Color(.systemBackground))
+        .background(Color(.secondarySystemBackground))
         .cornerRadius(10)
         .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 2)
     }
@@ -481,7 +481,7 @@ struct ReactionLogCard: View {
             }
         }
         .padding(12)
-        .background(Color(.systemBackground))
+        .background(Color(.secondarySystemBackground))
         .cornerRadius(10)
         .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 2)
     }
@@ -932,7 +932,7 @@ struct ReactionLogDetailView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.systemBackground))
+        .background(Color(.secondarySystemBackground))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.05), radius: 5)
     }
@@ -958,7 +958,7 @@ struct ReactionLogDetailView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.systemBackground))
+        .background(Color(.secondarySystemBackground))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.05), radius: 5)
     }
@@ -992,7 +992,7 @@ struct ReactionLogDetailView: View {
                     }
                 }
                 .padding()
-                .background(Color(.systemBackground))
+                .background(Color(.secondarySystemBackground))
                 .cornerRadius(12)
                 .shadow(color: .black.opacity(0.05), radius: 5)
             }
@@ -1034,7 +1034,7 @@ struct ReactionLogDetailView: View {
                     }
                 }
                 .padding()
-                .background(Color(.systemBackground))
+                .background(Color(.secondarySystemBackground))
                 .cornerRadius(12)
                 .shadow(color: .black.opacity(0.05), radius: 5)
             }
@@ -1798,7 +1798,7 @@ struct FoodHistoryDetailView: View {
                             ingredientsBreakdownView(ingredients: ingredients)
                         }
                         .padding()
-                        .background(Color(.systemBackground))
+                        .background(Color(.secondarySystemBackground))
                         .cornerRadius(12)
                         .shadow(color: .black.opacity(0.05), radius: 3)
                     } else {
@@ -1852,7 +1852,7 @@ struct FoodHistoryDetailView: View {
             }
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(Color(.secondarySystemBackground))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.05), radius: 3)
     }
