@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Scanner UK — Scan Barcodes for Ingredients, Additives & Nutrition | NutraSafe</title>
+    <meta name="description" content="Free food scanner for UK products. Scan any barcode to check ingredients, additives, E-numbers, allergens and nutrition instantly. Works with all major supermarkets.">
+    <meta name="keywords" content="food scanner, food scanner UK, barcode scanner food, scan food ingredients, food barcode scanner, grocery scanner, supermarket scanner">
+    <link rel="canonical" href="https://www.nutrasafe.co.uk/food-scanner.html">
+    <meta name="robots" content="index, follow">
+
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.nutrasafe.co.uk/food-scanner.html">
+    <meta property="og:title" content="Food Scanner UK — Scan Any Barcode for Ingredients & Nutrition">
+    <meta property="og:description" content="Free food scanner for UK products. Check ingredients, additives, E-numbers and nutrition by scanning any barcode.">
+    <meta property="og:image" content="https://www.nutrasafe.co.uk/app-icon.png">
+    <meta property="og:locale" content="en_GB">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Food Scanner UK — Scan Barcodes for Ingredients & Nutrition">
+    <meta name="twitter:description" content="Free food scanner for UK products. Check ingredients, additives, E-numbers and nutrition by scanning any barcode.">
+    <meta name="twitter:image" content="https://www.nutrasafe.co.uk/app-icon.png">
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "name": "Food Scanner UK",
+        "description": "Free food scanner for UK products. Scan any barcode to check ingredients, additives, E-numbers, allergens and nutrition instantly.",
+        "url": "https://www.nutrasafe.co.uk/food-scanner.html",
+        "mainEntity": {
+            "@type": "SoftwareApplication",
+            "name": "NutraSafe Food Scanner",
+            "operatingSystem": "iOS",
+            "applicationCategory": "HealthApplication",
+            "offers": {
+                "@type": "Offer",
+                "price": "0",
+                "priceCurrency": "GBP"
+            }
+        }
+    }
+    </script>
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": "What is a food scanner?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "A food scanner is a mobile tool that reads barcodes on food packaging to instantly display nutritional information, ingredients, additives, allergens, and health ratings. Simply point your phone camera at any barcode and get detailed information about what's in your food."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "How does a food scanner work?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Food scanners use your phone's camera to read the barcode on food packaging. The barcode number is matched against a database of products to retrieve nutritional data, ingredients, additives (E-numbers), allergen warnings, and health scores. Results appear instantly on your screen."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Which UK supermarket products can I scan?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "NutraSafe's food scanner works with products from all major UK supermarkets including Tesco, Sainsbury's, Asda, Morrisons, Aldi, Lidl, Waitrose, Co-op, M&S, and more. Our database covers hundreds of thousands of UK products."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Is the food scanner free to use?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Yes, NutraSafe's food scanner is free to download and use. You can scan unlimited barcodes and view basic nutritional information at no cost. Premium features like detailed additive analysis and pattern tracking are available through optional subscription."
+                }
+            }
+        ]
+    }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="/app-icon.png">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --primary-dark: #4f46e5;
+            --text-dark: #0f172a;
+            --text-light: #64748b;
+            --bg-dark: #0f172a;
+        }
+        body { font-family: 'Inter', sans-serif; line-height: 1.7; color: var(--text-dark); background: #ffffff; }
+
+        header { background: var(--bg-dark); padding: 1rem 0; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        nav { max-width: 1200px; margin: 0 auto; padding: 0 2rem; display: flex; justify-content: space-between; align-items: center; }
+        .logo { display: flex; align-items: center; gap: 0.75rem; font-size: 1.5rem; font-weight: 700; color: white; text-decoration: none; }
+        .logo-icon { width: 44px; height: 44px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(99,102,241,0.3); }
+        .logo-icon img { width: 100%; height: 100%; object-fit: cover; }
+        .nav-links { display: flex; gap: 2rem; list-style: none; align-items: center; }
+        .nav-links a { color: rgba(255,255,255,0.7); text-decoration: none; font-weight: 500; }
+        .nav-links a:hover { color: white; }
+        .nav-cta { padding: 0.65rem 1.6rem; background: linear-gradient(135deg, var(--primary), #7a6cf8); color: white !important; border-radius: 999px; font-weight: 700; box-shadow: 0 10px 20px rgba(99,102,241,0.25); }
+        @media (max-width: 768px) { .nav-links { display: none; } }
+
+        .hero { background: linear-gradient(135deg, var(--bg-dark) 0%, #1e1b4b 100%); color: white; padding: 100px 2rem 80px; text-align: center; }
+        .hero-content { max-width: 800px; margin: 0 auto; }
+        .hero h1 { font-size: 3rem; margin-bottom: 1.5rem; font-weight: 800; line-height: 1.2; }
+        .hero h1 span { background: linear-gradient(135deg, #818cf8, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .hero p { font-size: 1.25rem; color: rgba(255,255,255,0.8); margin-bottom: 2rem; }
+        .hero-cta { display: inline-flex; align-items: center; gap: 0.75rem; padding: 1rem 2rem; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; text-decoration: none; border-radius: 14px; font-weight: 600; font-size: 1.1rem; box-shadow: 0 10px 40px rgba(99,102,241,0.4); transition: transform 0.3s; }
+        .hero-cta:hover { transform: translateY(-3px); }
+
+        .content { max-width: 900px; margin: 0 auto; padding: 60px 2rem 80px; }
+        h2 { font-size: 2rem; margin: 3rem 0 1.5rem; color: var(--text-dark); font-weight: 700; }
+        h3 { font-size: 1.3rem; margin: 2rem 0 1rem; color: var(--text-dark); font-weight: 600; }
+        p { color: var(--text-light); margin-bottom: 1rem; font-size: 1.05rem; }
+        ul, ol { margin: 1rem 0 1.5rem 1.5rem; color: var(--text-light); }
+        li { margin-bottom: 0.75rem; font-size: 1.05rem; }
+
+        .features-grid { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin: 2rem 0; }
+        .feature-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.5rem; transition: all 0.3s; }
+        .feature-card:hover { border-color: var(--primary-light); transform: translateY(-3px); box-shadow: 0 10px 30px rgba(99,102,241,0.1); }
+        .feature-card h3 { margin: 0 0 0.75rem; font-size: 1.2rem; }
+        .feature-card p { margin: 0; font-size: 1rem; }
+        .feature-icon { font-size: 2rem; margin-bottom: 1rem; }
+
+        .how-it-works { background: #f8fafc; padding: 60px 2rem; margin: 40px 0; }
+        .how-it-works-content { max-width: 900px; margin: 0 auto; }
+        .steps { display: grid; gap: 2rem; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); margin-top: 2rem; }
+        .step { text-align: center; padding: 1.5rem; }
+        .step-number { width: 50px; height: 50px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.25rem; margin: 0 auto 1rem; }
+        .step h3 { margin-bottom: 0.5rem; }
+
+        .faq-section { margin: 3rem 0; }
+        .faq-item { border-bottom: 1px solid #e2e8f0; padding: 1.5rem 0; }
+        .faq-item:last-child { border-bottom: none; }
+        .faq-question { font-weight: 600; font-size: 1.1rem; color: var(--text-dark); margin-bottom: 0.75rem; cursor: pointer; }
+        .faq-answer { color: var(--text-light); }
+
+        .cta-section { background: linear-gradient(135deg, var(--bg-dark), #1e1b4b); color: white; padding: 60px 2rem; text-align: center; margin-top: 40px; }
+        .cta-section h2 { color: white; margin-bottom: 1rem; }
+        .cta-section p { color: rgba(255,255,255,0.8); max-width: 600px; margin: 0 auto 2rem; }
+        .cta-button { display: inline-block; }
+        .cta-button img { height: 55px; }
+
+        footer { background: var(--bg-dark); color: white; padding: 3rem 2rem 2rem; }
+        .footer-content { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 2fr repeat(3,1fr); gap: 2rem; }
+        .footer-section h4 { text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; margin-bottom: 1rem; color: rgba(255,255,255,0.9); }
+        .footer-section ul { list-style: none; margin: 0; padding: 0; }
+        .footer-section a { color: rgba(255,255,255,0.6); text-decoration: none; display: block; padding: 0.35rem 0; }
+        .footer-section a:hover { color: white; }
+        .footer-section p { color: rgba(255,255,255,0.6); }
+        .footer-bottom { text-align: center; color: rgba(255,255,255,0.5); padding-top: 2rem; margin-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); }
+        @media (max-width: 968px) { .footer-content { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 640px) { .footer-content { grid-template-columns: 1fr; text-align: center; } .hero h1 { font-size: 2.25rem; } }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/" class="logo">
+                <div class="logo-icon">
+                    <img src="/app-icon.png" alt="NutraSafe">
+                </div>
+                <span>NutraSafe</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/#features">Features</a></li>
+                <li><a href="/#how-it-works">How It Works</a></li>
+                <li><a href="/resources.html">Resources</a></li>
+                <li><a href="/#faqs">FAQ</a></li>
+                <li><a href="/#download" class="nav-cta">Download</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Food Scanner <span>for UK Products</span></h1>
+            <p>Scan any barcode to instantly check ingredients, additives, E-numbers, allergens and nutrition. Works with all major UK supermarkets.</p>
+            <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="hero-cta">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                Download Free Food Scanner
+            </a>
+        </div>
+    </section>
+
+    <div class="content">
+        <h2>What is a Food Scanner?</h2>
+        <p>A <strong>food scanner</strong> is a mobile tool that reads barcodes on food packaging to instantly display detailed information about what's inside. Instead of squinting at tiny labels or searching online, simply point your phone camera at any barcode and get:</p>
+        <ul>
+            <li><strong>Full ingredient lists</strong> with plain-language explanations</li>
+            <li><strong>Additive and E-number identification</strong> with safety information</li>
+            <li><strong>Allergen warnings</strong> for the 14 major allergens</li>
+            <li><strong>Nutritional breakdown</strong> including calories, protein, carbs, fats</li>
+            <li><strong>Health scores</strong> based on processing level and nutritional quality</li>
+        </ul>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🔍</div>
+                <h3>Instant Barcode Scanning</h3>
+                <p>Point your camera at any food barcode. Results appear in under a second with full ingredient and nutrition data.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🧪</div>
+                <h3>Additive & E-Number Check</h3>
+                <p>Identifies all additives and E-numbers with plain-language safety information and potential concerns.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⚠️</div>
+                <h3>Allergen Alerts</h3>
+                <p>Highlights all 14 UK allergens including gluten, dairy, nuts, soy and more. Set personal allergen profiles.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Nutrition Analysis</h3>
+                <p>Full macro and micronutrient breakdown. See calories, protein, carbs, fats, vitamins and minerals.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🏪</div>
+                <h3>UK Supermarket Coverage</h3>
+                <p>Works with Tesco, Sainsbury's, Asda, Morrisons, Aldi, Lidl, Waitrose, Co-op, M&S and more.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📱</div>
+                <h3>Free to Use</h3>
+                <p>Unlimited barcode scanning at no cost. Premium features available for detailed analysis.</p>
+            </div>
+        </div>
+
+        <h2>Why Use a Food Scanner?</h2>
+        <p>Understanding what's in your food shouldn't require a chemistry degree. A food scanner makes it simple to:</p>
+        <ul>
+            <li><strong>Avoid hidden allergens</strong> — Critical for anyone with food allergies or intolerances</li>
+            <li><strong>Check for harmful additives</strong> — Identify artificial colours, preservatives and sweeteners</li>
+            <li><strong>Make healthier choices</strong> — Compare products instantly while shopping</li>
+            <li><strong>Understand E-numbers</strong> — Know exactly what those codes on labels mean</li>
+            <li><strong>Track your nutrition</strong> — Log what you eat and monitor your intake</li>
+            <li><strong>Spot ultra-processed foods</strong> — Identify heavily processed products</li>
+        </ul>
+    </div>
+
+    <section class="how-it-works">
+        <div class="how-it-works-content">
+            <h2 style="text-align: center; margin-top: 0;">How the Food Scanner Works</h2>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h3>Open the Scanner</h3>
+                    <p>Launch NutraSafe and tap the scan button. Your camera activates automatically.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h3>Scan the Barcode</h3>
+                    <p>Point your phone at any food barcode. The scanner reads it instantly.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h3>View Results</h3>
+                    <p>See ingredients, additives, allergens, nutrition and health scores immediately.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="content">
+        <h2>Which Products Can You Scan?</h2>
+        <p>NutraSafe's food scanner works with products from all major UK retailers:</p>
+        <ul>
+            <li>Tesco, Sainsbury's, Asda, Morrisons</li>
+            <li>Aldi, Lidl, Waitrose, Co-op</li>
+            <li>Marks & Spencer, Ocado, Iceland</li>
+            <li>Holland & Barrett, Whole Foods</li>
+            <li>International brands and imported products</li>
+        </ul>
+        <p>Our database covers hundreds of thousands of products and is updated daily. If a product isn't found, you can request it to be added.</p>
+
+        <h2>Food Scanner vs Reading Labels</h2>
+        <p>While you can read food labels manually, a food scanner offers significant advantages:</p>
+        <ul>
+            <li><strong>Speed</strong> — Get results in under a second vs minutes of label reading</li>
+            <li><strong>Clarity</strong> — Complex ingredients explained in plain language</li>
+            <li><strong>E-number lookup</strong> — Instant identification of what E-numbers mean</li>
+            <li><strong>Allergen highlighting</strong> — Automatic detection of allergens you're avoiding</li>
+            <li><strong>Comparison</strong> — Easily compare products while shopping</li>
+            <li><strong>History</strong> — Track everything you've scanned over time</li>
+        </ul>
+
+        <section class="faq-section">
+            <h2>Food Scanner FAQs</h2>
+
+            <div class="faq-item">
+                <div class="faq-question">What is a food scanner?</div>
+                <div class="faq-answer">A food scanner is a mobile tool that reads barcodes on food packaging to instantly display nutritional information, ingredients, additives, allergens, and health ratings. Simply point your phone camera at any barcode and get detailed information about what's in your food.</div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">How does a food scanner work?</div>
+                <div class="faq-answer">Food scanners use your phone's camera to read the barcode on food packaging. The barcode number is matched against a database of products to retrieve nutritional data, ingredients, additives (E-numbers), allergen warnings, and health scores. Results appear instantly on your screen.</div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">Which UK supermarket products can I scan?</div>
+                <div class="faq-answer">NutraSafe's food scanner works with products from all major UK supermarkets including Tesco, Sainsbury's, Asda, Morrisons, Aldi, Lidl, Waitrose, Co-op, M&S, and more. Our database covers hundreds of thousands of UK products.</div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">Is the food scanner free to use?</div>
+                <div class="faq-answer">Yes, NutraSafe's food scanner is free to download and use. You can scan unlimited barcodes and view basic nutritional information at no cost. Premium features like detailed additive analysis and pattern tracking are available through optional subscription.</div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">Can the food scanner detect allergens?</div>
+                <div class="faq-answer">Yes. The scanner identifies all 14 major UK allergens including gluten, dairy, eggs, nuts, peanuts, soy, fish, shellfish, celery, mustard, sesame, sulphites, lupin, and molluscs. You can set up a personal allergen profile for automatic warnings.</div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">Does it explain E-numbers?</div>
+                <div class="faq-answer">Yes. When you scan a product, NutraSafe identifies all E-numbers and provides plain-language explanations of what they are, their purpose, and any potential health concerns based on scientific research.</div>
+            </div>
+        </section>
+    </div>
+
+    <section class="cta-section">
+        <h2>Download the Free Food Scanner</h2>
+        <p>Start scanning food products today. Check ingredients, additives, allergens and nutrition instantly.</p>
+        <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="cta-button">
+            <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download NutraSafe food scanner on the App Store">
+        </a>
+        <p style="margin-top: 1.5rem; color: rgba(255,255,255,0.6); font-size: 0.95rem;">Free to download. Available on iOS.</p>
+    </section>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>NutraSafe</h4>
+                <p>Your complete food scanner and nutrition companion for healthier living in the UK.</p>
+            </div>
+            <div class="footer-section">
+                <h4>Food Scanner</h4>
+                <ul>
+                    <li><a href="/food-scanner.html">Food Scanner</a></li>
+                    <li><a href="/food-tracker.html">Food Tracker</a></li>
+                    <li><a href="/food-additives.html">Food Additives</a></li>
+                    <li><a href="/e-numbers.html">E-Numbers Database</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Resources</h4>
+                <ul>
+                    <li><a href="/resources.html">All Resources</a></li>
+                    <li><a href="/food-additive-scanner-uk.html">Additive Scanner UK</a></li>
+                    <li><a href="/food-intolerance-tracker-uk.html">Intolerance Tracker</a></li>
+                    <li><a href="/best-food-scanner-app-uk.html">Best Food Scanner</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Legal</h4>
+                <ul>
+                    <li><a href="/privacy-policy.html">Privacy Policy</a></li>
+                    <li><a href="/terms-of-service.html">Terms of Service</a></li>
+                    <li><a href="/support.html">Support</a></li>
+                    <li><a href="/sitemap.html">Sitemap</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 NutraSafe. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>

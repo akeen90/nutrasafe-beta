@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Tracker UK — Track Meals, Calories, Nutrition & Macros | NutraSafe</title>
+    <meta name="description" content="Free food tracker for UK users. Log meals, track calories, protein, carbs and fats. Monitor vitamins, micronutrients and eating patterns. Works with UK foods.">
+    <meta name="keywords" content="food tracker, food diary, meal tracker, calorie tracker, nutrition tracker, food log, diet tracker, macro tracker, food journal">
+    <link rel="canonical" href="https://www.nutrasafe.co.uk/food-tracker.html">
+    <meta name="robots" content="index, follow">
+
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.nutrasafe.co.uk/food-tracker.html">
+    <meta property="og:title" content="Food Tracker UK — Track Meals, Calories & Nutrition">
+    <meta property="og:description" content="Free food tracker for UK users. Log meals, track calories, macros and micronutrients. Monitor your eating patterns.">
+    <meta property="og:image" content="https://www.nutrasafe.co.uk/app-icon.png">
+    <meta property="og:locale" content="en_GB">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Food Tracker UK — Track Meals, Calories & Nutrition">
+    <meta name="twitter:description" content="Free food tracker for UK users. Log meals, track calories, macros and micronutrients.">
+    <meta name="twitter:image" content="https://www.nutrasafe.co.uk/app-icon.png">
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "name": "Food Tracker UK",
+        "description": "Free food tracker for UK users. Log meals, track calories, protein, carbs and fats. Monitor vitamins and micronutrients.",
+        "url": "https://www.nutrasafe.co.uk/food-tracker.html",
+        "mainEntity": {
+            "@type": "SoftwareApplication",
+            "name": "NutraSafe Food Tracker",
+            "operatingSystem": "iOS",
+            "applicationCategory": "HealthApplication",
+            "offers": {
+                "@type": "Offer",
+                "price": "0",
+                "priceCurrency": "GBP"
+            }
+        }
+    }
+    </script>
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": "What is a food tracker?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "A food tracker is a tool for logging everything you eat and drink. It calculates calories, protein, carbohydrates, fats, vitamins and minerals from your meals. Food trackers help you understand your eating patterns, meet nutrition goals, and make healthier choices."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "How do I track my food intake?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "With NutraSafe, you can track food by scanning barcodes, searching our UK food database, or taking photos of meals. The tracker automatically calculates nutritional values and adds them to your daily totals. You can log breakfast, lunch, dinner and snacks throughout the day."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Is food tracking effective for weight management?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Yes, research shows that people who track their food intake are more successful at managing their weight. Food tracking creates awareness of what you're eating, helps identify patterns, and makes it easier to stay within calorie targets or meet specific nutritional goals."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Can I track vitamins and micronutrients?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Yes. NutraSafe tracks all major vitamins (A, B vitamins, C, D, E, K) and micronutrients including iron, calcium, magnesium, zinc, potassium, and more. You can see daily percentages and identify nutrients you may be lacking."
+                }
+            }
+        ]
+    }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="/app-icon.png">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --primary-dark: #4f46e5;
+            --text-dark: #0f172a;
+            --text-light: #64748b;
+            --bg-dark: #0f172a;
+        }
+        body { font-family: 'Inter', sans-serif; line-height: 1.7; color: var(--text-dark); background: #ffffff; }
+
+        header { background: var(--bg-dark); padding: 1rem 0; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        nav { max-width: 1200px; margin: 0 auto; padding: 0 2rem; display: flex; justify-content: space-between; align-items: center; }
+        .logo { display: flex; align-items: center; gap: 0.75rem; font-size: 1.5rem; font-weight: 700; color: white; text-decoration: none; }
+        .logo-icon { width: 44px; height: 44px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(99,102,241,0.3); }
+        .logo-icon img { width: 100%; height: 100%; object-fit: cover; }
+        .nav-links { display: flex; gap: 2rem; list-style: none; align-items: center; }
+        .nav-links a { color: rgba(255,255,255,0.7); text-decoration: none; font-weight: 500; }
+        .nav-links a:hover { color: white; }
+        .nav-cta { padding: 0.65rem 1.6rem; background: linear-gradient(135deg, var(--primary), #7a6cf8); color: white !important; border-radius: 999px; font-weight: 700; box-shadow: 0 10px 20px rgba(99,102,241,0.25); }
+        @media (max-width: 768px) { .nav-links { display: none; } }
+
+        .hero { background: linear-gradient(135deg, var(--bg-dark) 0%, #1e1b4b 100%); color: white; padding: 100px 2rem 80px; text-align: center; }
+        .hero-content { max-width: 800px; margin: 0 auto; }
+        .hero h1 { font-size: 3rem; margin-bottom: 1.5rem; font-weight: 800; line-height: 1.2; }
+        .hero h1 span { background: linear-gradient(135deg, #818cf8, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .hero p { font-size: 1.25rem; color: rgba(255,255,255,0.8); margin-bottom: 2rem; }
+        .hero-cta { display: inline-flex; align-items: center; gap: 0.75rem; padding: 1rem 2rem; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; text-decoration: none; border-radius: 14px; font-weight: 600; font-size: 1.1rem; box-shadow: 0 10px 40px rgba(99,102,241,0.4); transition: transform 0.3s; }
+        .hero-cta:hover { transform: translateY(-3px); }
+
+        .content { max-width: 900px; margin: 0 auto; padding: 60px 2rem 80px; }
+        h2 { font-size: 2rem; margin: 3rem 0 1.5rem; color: var(--text-dark); font-weight: 700; }
+        h3 { font-size: 1.3rem; margin: 2rem 0 1rem; color: var(--text-dark); font-weight: 600; }
+        p { color: var(--text-light); margin-bottom: 1rem; font-size: 1.05rem; }
+        ul, ol { margin: 1rem 0 1.5rem 1.5rem; color: var(--text-light); }
+        li { margin-bottom: 0.75rem; font-size: 1.05rem; }
+
+        .features-grid { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin: 2rem 0; }
+        .feature-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.5rem; transition: all 0.3s; }
+        .feature-card:hover { border-color: var(--primary-light); transform: translateY(-3px); box-shadow: 0 10px 30px rgba(99,102,241,0.1); }
+        .feature-card h3 { margin: 0 0 0.75rem; font-size: 1.2rem; }
+        .feature-card p { margin: 0; font-size: 1rem; }
+        .feature-icon { font-size: 2rem; margin-bottom: 1rem; }
+
+        .tracking-section { background: #f8fafc; padding: 60px 2rem; margin: 40px 0; }
+        .tracking-content { max-width: 900px; margin: 0 auto; }
+        .tracking-grid { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-top: 2rem; }
+        .tracking-item { background: white; padding: 1.5rem; border-radius: 12px; text-align: center; border: 1px solid #e2e8f0; }
+        .tracking-item h4 { color: var(--primary); font-size: 1.1rem; margin-bottom: 0.5rem; }
+
+        .faq-section { margin: 3rem 0; }
+        .faq-item { border-bottom: 1px solid #e2e8f0; padding: 1.5rem 0; }
+        .faq-item:last-child { border-bottom: none; }
+        .faq-question { font-weight: 600; font-size: 1.1rem; color: var(--text-dark); margin-bottom: 0.75rem; }
+        .faq-answer { color: var(--text-light); }
+
+        .cta-section { background: linear-gradient(135deg, var(--bg-dark), #1e1b4b); color: white; padding: 60px 2rem; text-align: center; margin-top: 40px; }
+        .cta-section h2 { color: white; margin-bottom: 1rem; }
+        .cta-section p { color: rgba(255,255,255,0.8); max-width: 600px; margin: 0 auto 2rem; }
+        .cta-button { display: inline-block; }
+        .cta-button img { height: 55px; }
+
+        footer { background: var(--bg-dark); color: white; padding: 3rem 2rem 2rem; }
+        .footer-content { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 2fr repeat(3,1fr); gap: 2rem; }
+        .footer-section h4 { text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; margin-bottom: 1rem; color: rgba(255,255,255,0.9); }
+        .footer-section ul { list-style: none; margin: 0; padding: 0; }
+        .footer-section a { color: rgba(255,255,255,0.6); text-decoration: none; display: block; padding: 0.35rem 0; }
+        .footer-section a:hover { color: white; }
+        .footer-section p { color: rgba(255,255,255,0.6); }
+        .footer-bottom { text-align: center; color: rgba(255,255,255,0.5); padding-top: 2rem; margin-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); }
+        @media (max-width: 968px) { .footer-content { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 640px) { .footer-content { grid-template-columns: 1fr; text-align: center; } .hero h1 { font-size: 2.25rem; } }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/" class="logo">
+                <div class="logo-icon">
+                    <img src="/app-icon.png" alt="NutraSafe">
+                </div>
+                <span>NutraSafe</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/#features">Features</a></li>
+                <li><a href="/#how-it-works">How It Works</a></li>
+                <li><a href="/resources.html">Resources</a></li>
+                <li><a href="/#faqs">FAQ</a></li>
+                <li><a href="/#download" class="nav-cta">Download</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Food Tracker <span>for UK Users</span></h1>
+            <p>Log meals, track calories, protein, carbs and fats. Monitor vitamins, micronutrients and eating patterns with the complete food diary.</p>
+            <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="hero-cta">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                Start Tracking Free
+            </a>
+        </div>
+    </section>
+
+    <div class="content">
+        <h2>What is a Food Tracker?</h2>
+        <p>A <strong>food tracker</strong> is a tool for logging everything you eat and drink throughout the day. It automatically calculates nutritional information from your meals, helping you understand your eating habits and meet your health goals.</p>
+        <p>With a food tracker, you can:</p>
+        <ul>
+            <li><strong>Log meals quickly</strong> — Scan barcodes, search foods, or photograph your plate</li>
+            <li><strong>Track calories</strong> — See your daily calorie intake at a glance</li>
+            <li><strong>Monitor macros</strong> — Track protein, carbohydrates and fats</li>
+            <li><strong>Check micronutrients</strong> — See vitamin and mineral intake</li>
+            <li><strong>Identify patterns</strong> — Understand your eating habits over time</li>
+            <li><strong>Set goals</strong> — Work towards personalised nutrition targets</li>
+        </ul>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">📝</div>
+                <h3>Easy Meal Logging</h3>
+                <p>Log food by scanning barcodes, searching our database, or using AI photo recognition. Quick and accurate.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔥</div>
+                <h3>Calorie Tracking</h3>
+                <p>See your daily calorie intake with real-time updates. Track breakfast, lunch, dinner and snacks.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🥩</div>
+                <h3>Macro Tracking</h3>
+                <p>Monitor protein, carbohydrates and fats. Perfect for keto, low-carb, high-protein and balanced diets.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">💊</div>
+                <h3>Vitamin & Mineral Tracking</h3>
+                <p>Track vitamins A, B, C, D, E, K plus iron, calcium, magnesium, zinc and more. See daily percentages.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Progress Insights</h3>
+                <p>View weekly and monthly trends. Understand your eating patterns and nutritional balance.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🇬🇧</div>
+                <h3>UK Food Database</h3>
+                <p>Extensive database of UK supermarket products, restaurant meals and generic foods.</p>
+            </div>
+        </div>
+
+        <h2>Why Track Your Food?</h2>
+        <p>Food tracking is one of the most effective ways to understand and improve your nutrition. Research consistently shows that people who track their food:</p>
+        <ul>
+            <li><strong>Achieve weight goals more successfully</strong> — Awareness leads to better choices</li>
+            <li><strong>Eat more balanced diets</strong> — Identify nutritional gaps and excesses</li>
+            <li><strong>Build healthier habits</strong> — Understand patterns and triggers</li>
+            <li><strong>Meet specific targets</strong> — Whether it's more protein, fewer carbs, or more vitamins</li>
+            <li><strong>Stay accountable</strong> — A food diary keeps you honest with yourself</li>
+        </ul>
+    </div>
+
+    <section class="tracking-section">
+        <div class="tracking-content">
+            <h2 style="text-align: centre; margin-top: 0;">What Can You Track?</h2>
+            <div class="tracking-grid">
+                <div class="tracking-item">
+                    <h4>Calories</h4>
+                    <p>Daily energy intake</p>
+                </div>
+                <div class="tracking-item">
+                    <h4>Protein</h4>
+                    <p>For muscle and recovery</p>
+                </div>
+                <div class="tracking-item">
+                    <h4>Carbohydrates</h4>
+                    <p>Sugars, fibre, starch</p>
+                </div>
+                <div class="tracking-item">
+                    <h4>Fats</h4>
+                    <p>Saturated and unsaturated</p>
+                </div>
+                <div class="tracking-item">
+                    <h4>Vitamins</h4>
+                    <p>A, B, C, D, E, K</p>
+                </div>
+                <div class="tracking-item">
+                    <h4>Minerals</h4>
+                    <p>Iron, calcium, zinc...</p>
+                </div>
+                <div class="tracking-item">
+                    <h4>Fibre</h4>
+                    <p>Digestive health</p>
+                </div>
+                <div class="tracking-item">
+                    <h4>Sodium</h4>
+                    <p>Salt intake</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="content">
+        <h2>How to Track Food Effectively</h2>
+        <p>Getting the most from food tracking is straightforward with NutraSafe:</p>
+        <ol>
+            <li><strong>Log as you eat</strong> — Track meals in real-time for accuracy. Don't wait until the end of the day.</li>
+            <li><strong>Scan barcodes</strong> — The fastest way to log packaged foods. Point and scan in under a second.</li>
+            <li><strong>Use portion sizes</strong> — Adjust servings to match what you actually ate. Accuracy matters.</li>
+            <li><strong>Include everything</strong> — Snacks, drinks, and cooking oils all count. Small things add up.</li>
+            <li><strong>Review weekly</strong> — Look at trends, not just individual days. One day doesn't define your nutrition.</li>
+        </ol>
+
+        <h2>Food Tracker for Different Goals</h2>
+        <h3>Weight Loss</h3>
+        <p>A food tracker helps you stay in a calorie deficit by showing exactly what you're consuming. See where extra calories are hiding and make informed choices about what to adjust.</p>
+
+        <h3>Muscle Building</h3>
+        <p>Track protein intake to ensure you're getting enough for muscle recovery and growth. Most people underestimate how much protein they need for their goals.</p>
+
+        <h3>General Health</h3>
+        <p>Monitor vitamin and mineral intake to identify nutritional gaps. Many people are deficient in key nutrients without realising it.</p>
+
+        <h3>Managing Conditions</h3>
+        <p>Track specific nutrients relevant to your health needs, whether that's sodium for blood pressure, fibre for digestion, or carbohydrates for blood sugar management.</p>
+
+        <section class="faq-section">
+            <h2>Food Tracker FAQs</h2>
+
+            <div class="faq-item">
+                <div class="faq-question">What is a food tracker?</div>
+                <div class="faq-answer">A food tracker is a tool for logging everything you eat and drink. It calculates calories, protein, carbohydrates, fats, vitamins and minerals from your meals. Food trackers help you understand your eating patterns, meet nutrition goals, and make healthier choices.</div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">How do I track my food intake?</div>
+                <div class="faq-answer">With NutraSafe, you can track food by scanning barcodes, searching our UK food database, or taking photos of meals. The tracker automatically calculates nutritional values and adds them to your daily totals. You can log breakfast, lunch, dinner and snacks throughout the day.</div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">Is food tracking effective for weight management?</div>
+                <div class="faq-answer">Yes, research shows that people who track their food intake are more successful at managing their weight. Food tracking creates awareness of what you're eating, helps identify patterns, and makes it easier to stay within calorie targets or meet specific nutritional goals.</div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">Can I track vitamins and micronutrients?</div>
+                <div class="faq-answer">Yes. NutraSafe tracks all major vitamins (A, B vitamins, C, D, E, K) and micronutrients including iron, calcium, magnesium, zinc, potassium, and more. You can see daily percentages and identify nutrients you may be lacking.</div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">Does the food tracker work with UK foods?</div>
+                <div class="faq-answer">Yes. NutraSafe includes an extensive database of UK supermarket products from Tesco, Sainsbury's, Asda, Morrisons, Aldi, Lidl, Waitrose and more. It also includes generic foods, restaurant meals and international products.</div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">Is the food tracker free?</div>
+                <div class="faq-answer">Yes, basic food tracking is completely free. You can log unlimited meals, scan barcodes, and view your daily nutritional intake at no cost. Premium features offer additional insights and analysis.</div>
+            </div>
+        </section>
+    </div>
+
+    <section class="cta-section">
+        <h2>Start Tracking Your Food Today</h2>
+        <p>Log meals, track calories, monitor macros and vitamins. Understand your nutrition and reach your goals.</p>
+        <a href="https://apps.apple.com/gb/app/nutrasafe/id6751657725" class="cta-button">
+            <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download NutraSafe food tracker on the App Store">
+        </a>
+        <p style="margin-top: 1.5rem; color: rgba(255,255,255,0.6); font-size: 0.95rem;">Free to download. Available on iOS.</p>
+    </section>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>NutraSafe</h4>
+                <p>Your complete food tracker and nutrition companion for healthier living in the UK.</p>
+            </div>
+            <div class="footer-section">
+                <h4>Food Tools</h4>
+                <ul>
+                    <li><a href="/food-scanner.html">Food Scanner</a></li>
+                    <li><a href="/food-tracker.html">Food Tracker</a></li>
+                    <li><a href="/food-additives.html">Food Additives</a></li>
+                    <li><a href="/e-numbers.html">E-Numbers Database</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Resources</h4>
+                <ul>
+                    <li><a href="/resources.html">All Resources</a></li>
+                    <li><a href="/food-intolerance-tracker-uk.html">Intolerance Tracker</a></li>
+                    <li><a href="/intermittent-fasting-app-uk.html">Fasting Timer</a></li>
+                    <li><a href="/food-expiry-tracker-uk.html">Expiry Tracker</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Legal</h4>
+                <ul>
+                    <li><a href="/privacy-policy.html">Privacy Policy</a></li>
+                    <li><a href="/terms-of-service.html">Terms of Service</a></li>
+                    <li><a href="/support.html">Support</a></li>
+                    <li><a href="/sitemap.html">Sitemap</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 NutraSafe. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>
