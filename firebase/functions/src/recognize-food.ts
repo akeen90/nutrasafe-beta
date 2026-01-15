@@ -192,89 +192,177 @@ export const recognizeFood = onRequest(
 );
 
 /**
- * Build the prompt for food identification (not nutrition estimation)
+ * Build the prompt for food identification with enhanced image analysis
  */
 function buildIdentificationPrompt(): string {
-  return `You are an expert food identification AI. Analyse this photo and identify ALL visible food items.
+  return `You are an expert food identification AI with advanced visual analysis. Analyse this photo comprehensively.
 
-For EACH food item you can clearly see, provide:
-1. name: Specific food name (e.g., "grilled chicken breast" not "chicken", "basmati rice" not "rice")
+## STEP 1: IMAGE QUALITY ASSESSMENT
+First, mentally assess the image quality to adjust your confidence:
+- Lighting: Well-lit, dark, overexposed, or colour-cast (warm restaurant lighting, flash)?
+- Focus: Sharp, slightly blurry, or very blurry?
+- Angle: Top-down (best for portions), angled, or side view?
+- Obstructions: Any food partially hidden or cut off?
+Reduce confidence for poor quality images. Account for colour casts when identifying foods.
+
+## STEP 2: REFERENCE OBJECT DETECTION FOR PORTION SIZING
+CRITICAL: Look for reference objects to calibrate portion sizes accurately:
+
+COMMON REFERENCE OBJECTS:
+- Standard dinner plate: 26-28cm diameter → food covering half = ~150-200g meat or ~200g carbs
+- Side plate: 18-20cm diameter
+- Bowl (standard): 15-18cm diameter
+- Adult hand/fingers visible: palm ≈ 100g meat, fist ≈ 150g carbs
+- Fork length: ~19-20cm (use to gauge food size)
+- Knife length: ~22-24cm
+- Standard mug: 250-300ml
+- iPhone/smartphone: ~15cm tall
+- £1/£2 coin: 2.3cm/2.8cm diameter
+- Takeaway container: small ~300ml, medium ~500ml, large ~750ml
+
+PORTION CALIBRATION METHOD:
+1. Identify any reference objects in the image
+2. Estimate plate/container size from reference
+3. Estimate food coverage area on plate (quarter, half, full)
+4. Calculate portion weight from coverage + food density
+
+## STEP 3: FOOD IDENTIFICATION
+For EACH food item, provide:
+1. name: Specific name WITH cooking method (e.g., "pan-fried salmon fillet" not just "fish")
 2. brand: Brand name if visible on packaging, otherwise null
-3. portionGrams: Estimated weight in grams of the visible portion (use plate/utensils for scale)
-4. searchTerms: Array of 2-3 alternative names for database searching (e.g., ["chicken breast", "grilled chicken", "chicken fillet"])
-5. confidence: Your confidence in the identification (0.0-1.0)
-6. isPackaging: true if this is a photo of PRODUCT PACKAGING (box, wrapper, label visible), false if it's PLATED/PREPARED FOOD on a plate or being eaten
-7. estimatedCaloriesPer100g: Estimated calories per 100g (UK values)
-8. estimatedProteinPer100g: Estimated protein per 100g
-9. estimatedCarbsPer100g: Estimated carbs per 100g
-10. estimatedFatPer100g: Estimated fat per 100g
+3. portionGrams: Weight calibrated using detected reference objects
+4. searchTerms: 2-3 alternative database search terms
+5. confidence: 0.0-1.0 (reduce for blurry/obscured/poor lighting)
+6. isPackaging: true if product packaging visible, false if plated food
+7. estimatedCaloriesPer100g, estimatedProteinPer100g, estimatedCarbsPer100g, estimatedFatPer100g
 
-PACKAGING vs PLATED FOOD:
-- isPackaging = true: Photo shows product in original packaging with labels/branding visible (ready meal box, snack wrapper, etc.)
-- isPackaging = false: Photo shows food on a plate, in a bowl, being prepared, or already cooked/served
+## FOOD RECOGNITION - BE SPECIFIC
 
-CRITICAL - BREAK DOWN PLATED MEALS INTO COMPONENTS:
-For plated/prepared food (isPackaging = false), you MUST list each component SEPARATELY:
-- "Sausage and mash with gravy" should be listed as THREE separate items: "pork sausages", "mashed potato", "gravy"
-- "Full English breakfast" should be listed as separate items: "bacon rashers", "fried eggs", "baked beans", "toast", "mushrooms", etc.
-- "Roast dinner" should be: "roast chicken", "roast potatoes", "carrots", "gravy", etc.
-- DO NOT combine multiple foods into one item - always separate them
+IDENTIFY COOKING METHODS (affects calories significantly):
+- "grilled chicken breast" (165 kcal) vs "fried chicken breast" (220 kcal)
+- "steamed vegetables" vs "roasted vegetables with oil"
+- "boiled rice" vs "egg fried rice" vs "pilau rice"
+- "oven chips" (200 kcal) vs "deep-fried chips" (280 kcal)
+- "poached egg" vs "fried egg"
 
-PORTION SIZE GUIDELINES (per component) - BE REALISTIC:
-- Single steak (sirloin/ribeye): ~150-200g (NOT 400g+)
-- Large portion chips/fries: ~150-180g (NOT 300g+)
-- Medium portion chips/fries: ~100-130g
-- 2 pork sausages: ~120g
-- Mashed potato serving: ~150-200g
-- Gravy portion: ~50-80g
-- Small chicken breast: ~120g
-- Medium chicken breast: ~165g
-- Cup of rice (cooked): ~160g
-- Medium potato: ~170g
-- Slice of bread: ~30-40g
-- Handful of vegetables: ~80g
-- Restaurant portion pasta: ~250g
-- Bacon rasher: ~25g
-- Fried egg: ~50g
-- Burger patty: ~100-150g
-- Side salad: ~100g
+IDENTIFY SPECIFIC FOOD TYPES:
+- Proteins: Cut (breast/thigh/fillet), cooking method, skin on/off, breaded/plain
+- Carbs: White/brown rice, regular/sweet potato, bread type, pasta shape
+- Vegetables: Raw/cooked, fresh/frozen, with oil or plain
+- Sauces: Cream-based/tomato-based, amount visible
 
-NUTRITIONAL ESTIMATES (per 100g UK values) - USE THESE EXACT VALUES:
-- Sirloin/ribeye steak (cooked): ~160 kcal, 25g protein, 0g carbs, 7g fat
-- Fillet steak (cooked): ~180 kcal, 27g protein, 0g carbs, 8g fat
-- Chips/fries (oven baked): ~200 kcal, 3g protein, 30g carbs, 8g fat
-- Chips/fries (deep fried): ~280 kcal, 3g protein, 35g carbs, 14g fat
-- Pork sausages: ~250 kcal, 12g protein, 3g carbs, 20g fat
-- Mashed potato (with butter): ~100 kcal, 2g protein, 15g carbs, 4g fat
-- Gravy: ~35 kcal, 1g protein, 4g carbs, 2g fat
-- Roast chicken: ~190 kcal, 25g protein, 0g carbs, 10g fat
-- Roast potatoes: ~150 kcal, 2g protein, 22g carbs, 6g fat
-- Grilled salmon: ~200 kcal, 22g protein, 0g carbs, 12g fat
-- Burger patty (beef): ~240 kcal, 20g protein, 1g carbs, 18g fat
-- Pizza slice (cheese): ~240 kcal, 10g protein, 28g carbs, 10g fat
+RECOGNISE CUISINES:
+- British: Fish and chips, full English, roast dinner, pie and mash, Sunday roast
+- Italian: Pasta (penne/spaghetti/lasagne), risotto, pizza
+- Asian: Stir-fry, curry (Thai/Chinese/Japanese), sushi, noodles (rice/egg)
+- Indian: Curry type (tikka/korma/madras), rice type, naan/chapati/roti
+- Mexican: Tacos, burritos, nachos, fajitas
+- Fast food: Recognise chains (McDonald's, KFC, Nando's, Greggs, etc.)
 
-REALISTIC CALORIE TOTALS for reference:
-- Steak (180g) + chips (150g): ~290 + ~420 = ~710 kcal total
-- Burger with bun + chips: ~500 + ~350 = ~850 kcal total
-- Chicken breast + rice: ~320 + ~210 = ~530 kcal total
-DO NOT estimate meals over 800-1000 kcal unless they are clearly very large portions
+RECOGNISE SNACKS AND DRINKS:
+- Crisps, chocolate bars, biscuits, cakes, pastries
+- Coffee drinks (latte/cappuccino/americano), smoothies, soft drinks
+- Alcoholic drinks: beer, wine, spirits with mixers
 
-IMPORTANT:
-- Be SPECIFIC with names - we'll search a food database for packaged items
-- Include searchTerms that might match database entries
-- Estimate portion sizes conservatively
-- Use UK standard nutritional values for estimates
-- For packaged items only: list as whole (e.g., "chicken sandwich")
-- For plated food: ALWAYS break down into individual components
+## PACKAGING vs PLATED FOOD
+- isPackaging = true: Product in original packaging with labels/branding visible
+- isPackaging = false: Food on plate, in bowl, takeaway container, or being eaten
 
+## CRITICAL - BREAK DOWN MEALS INTO COMPONENTS
+For plated food, list EACH component SEPARATELY:
+- "Sausage and mash" → "pork sausages", "mashed potato", "onion gravy"
+- "Full English" → "bacon rashers", "fried eggs", "pork sausages", "baked beans", "toast", "grilled tomato", "mushrooms"
+- "Roast dinner" → "roast chicken", "roast potatoes", "carrots", "peas", "gravy", "Yorkshire pudding"
+- "Curry and rice" → "chicken tikka masala", "pilau rice", "naan bread"
+- "Fish and chips" → "battered cod", "chips", "mushy peas" (if visible)
+
+## PORTION SIZE GUIDELINES
+
+PROTEINS (calibrated to palm/plate coverage):
+- Chicken breast: small 120g, medium 165g, large 200g
+- Chicken thigh (boneless): 80-100g each
+- Steak: small 150g, medium 200g, large 280g
+- Salmon fillet: 120-150g typical
+- Pork sausage: 50-60g each
+- Bacon rasher: 20-25g each
+- Burger patty: 100g (fast food) to 150g (restaurant)
+- Fried egg: 50g each
+
+CARBOHYDRATES:
+- Rice (cooked): small 120g, medium 180g, large 250g
+- Chips: small 100g, medium 150g, large 200g
+- Mashed potato: 150-200g serving
+- Baked potato: medium 200g, large 300g
+- Pasta (cooked): 180-250g restaurant portion
+- Bread slice: 30-40g, burger bun: 50-60g
+- Naan bread: 150-180g, chapati: 40g
+
+VEGETABLES:
+- Side portion: 80-100g
+- Half plate of veg: 150g
+- Side salad: 80-100g, large salad: 150-200g
+
+SAUCES:
+- Gravy: 50-80ml
+- Curry sauce: 150-200g
+- Pasta sauce: 100-150g
+
+## NUTRITIONAL VALUES (per 100g UK)
+
+PROTEINS:
+- Grilled chicken breast: 165 kcal, 31g protein, 0g carbs, 4g fat
+- Fried chicken breast: 220 kcal, 28g protein, 2g carbs, 11g fat
+- Roast chicken with skin: 190 kcal, 25g protein, 0g carbs, 10g fat
+- Sirloin steak: 160 kcal, 25g protein, 0g carbs, 7g fat
+- Ribeye steak: 200 kcal, 23g protein, 0g carbs, 12g fat
+- Grilled salmon: 200 kcal, 22g protein, 0g carbs, 12g fat
+- Battered fish: 230 kcal, 15g protein, 12g carbs, 13g fat
+- Pork sausage: 250 kcal, 12g protein, 3g carbs, 20g fat
+- Bacon: 270 kcal, 25g protein, 0g carbs, 19g fat
+- Beef mince (cooked): 210 kcal, 21g protein, 0g carbs, 14g fat
+
+CARBOHYDRATES:
+- White rice (boiled): 130 kcal, 3g protein, 28g carbs, 0.5g fat
+- Egg fried rice: 180 kcal, 4g protein, 25g carbs, 7g fat
+- Pilau rice: 145 kcal, 3g protein, 27g carbs, 3g fat
+- Oven chips: 200 kcal, 3g protein, 30g carbs, 8g fat
+- Deep-fried chips: 280 kcal, 3g protein, 35g carbs, 14g fat
+- Mashed potato: 100 kcal, 2g protein, 15g carbs, 4g fat
+- Roast potatoes: 150 kcal, 2g protein, 22g carbs, 6g fat
+- Pasta (cooked): 130 kcal, 5g protein, 25g carbs, 1g fat
+- Naan bread: 290 kcal, 9g protein, 50g carbs, 6g fat
+- White bread: 245 kcal, 9g protein, 47g carbs, 3g fat
+
+SAUCES:
+- Gravy: 35 kcal, 1g protein, 4g carbs, 2g fat
+- Tikka masala sauce: 120 kcal, 3g protein, 6g carbs, 9g fat
+- Korma sauce: 150 kcal, 2g protein, 8g carbs, 12g fat
+- Tomato pasta sauce: 45 kcal, 1g protein, 7g carbs, 1g fat
+- Creamy pasta sauce: 120 kcal, 2g protein, 5g carbs, 10g fat
+
+VEGETABLES:
+- Mixed vegetables: 50 kcal, 2g protein, 8g carbs, 1g fat
+- Roasted vegetables: 80 kcal, 2g protein, 10g carbs, 4g fat
+
+## REALISTIC MEAL TOTALS
+- Steak (200g) + chips (150g): 320 + 420 = 740 kcal
+- Chicken breast + rice + veg: 270 + 260 + 50 = 580 kcal
+- Fish and chips: 350 + 400 = 750 kcal
+- Full English breakfast: 800-1000 kcal
+- Curry + rice + naan: 350 + 320 + 480 = 1150 kcal
+- Burger + bun + chips: 300 + 150 + 350 = 800 kcal
+
+DO NOT estimate over 1000 kcal unless clearly large portions or high-calorie items.
+
+## RESPONSE FORMAT
 Respond with ONLY valid JSON (no markdown):
 {
   "foods": [
     {
-      "name": "specific food name",
+      "name": "specific food name with cooking method",
       "brand": "brand or null",
       "portionGrams": number,
-      "searchTerms": ["term1", "term2"],
+      "searchTerms": ["term1", "term2", "term3"],
       "confidence": 0.0-1.0,
       "isPackaging": true/false,
       "estimatedCaloriesPer100g": number,
