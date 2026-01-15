@@ -529,6 +529,34 @@ final class AlgoliaSearchManager {
                 score += 200
             }
 
+            // RAW/WHOLE FOOD PRIORITY: When searching single words like "apple", "banana",
+            // prioritize raw/whole versions over processed (juice, pie, dried, etc.)
+            if queryWords.count == 1 && queryLower.count >= 3 {
+                let rawFoodIndicators: Set<String> = ["large", "medium", "small", "raw", "fresh", "whole", "ripe"]
+                let processedIndicators: Set<String> = ["juice", "pie", "cake", "bread", "chips", "crisps", "dried",
+                    "smoothie", "jam", "jelly", "sauce", "syrup", "yogurt", "yoghurt", "flavour", "flavor",
+                    "candy", "sweet", "bar", "drink", "cordial", "squash", "concentrate", "puree", "purée",
+                    "crumble", "tart", "turnover", "strudel", "compote", "preserve", "spread", "butter",
+                    "ice", "cream", "sorbet", "frozen", "canned", "tinned", "cocktail", "wine", "cider", "vinegar"]
+
+                let hasRawIndicator = nameWords.contains { rawFoodIndicators.contains($0) }
+                let hasProcessedIndicator = nameWords.contains { processedIndicators.contains($0) }
+                let startsWithQuery = nameLower.hasPrefix(queryLower)
+
+                // Big boost for raw foods that start with the query (e.g., "Apple (Large)" for "apple")
+                if startsWithQuery && hasRawIndicator && !hasProcessedIndicator {
+                    score += 3000
+                }
+                // Boost for simple names starting with query (e.g., "Apple" or "Apple Raw")
+                else if startsWithQuery && nameWords.count <= 3 && !hasProcessedIndicator {
+                    score += 2500
+                }
+                // Penalty for processed foods
+                else if hasProcessedIndicator {
+                    score -= 1000
+                }
+            }
+
             return (result: result, score: score)
         }
 
