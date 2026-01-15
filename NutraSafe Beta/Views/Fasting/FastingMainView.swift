@@ -1069,12 +1069,7 @@ struct RegimeTimerCard: View {
         }
         .padding()
         .frame(maxWidth: .infinity)
-        .background(Color.blue.opacity(0.05))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.blue.opacity(0.2), lineWidth: 1)
-        )
+        .cardBackground(cornerRadius: 16)
     }
 }
 
@@ -1099,12 +1094,7 @@ struct RegimePhaseTimeline: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.purple.opacity(0.05))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.purple.opacity(0.2), lineWidth: 1)
-        )
+        .cardBackground(cornerRadius: 16)
     }
 }
 
@@ -1209,12 +1199,7 @@ struct RegimeStateInfo: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.orange.opacity(0.05))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.orange.opacity(0.2), lineWidth: 1)
-        )
+        .cardBackground(cornerRadius: 16)
     }
 }
 
@@ -1241,8 +1226,7 @@ struct FastingStatCard: View {
         }
         .frame(maxWidth: .infinity)
         .padding()
-        .background(Color.blue.opacity(0.1))
-        .cornerRadius(12)
+        .cardBackground(cornerRadius: 12)
     }
 }
 
@@ -1553,12 +1537,7 @@ struct ProgressRingCard: View {
         }
         .padding()
         .frame(maxWidth: .infinity)
-        .background(Color.blue.opacity(0.05))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.blue.opacity(0.2), lineWidth: 1)
-        )
+        .cardBackground(cornerRadius: 16)
     }
 }
 
@@ -1587,12 +1566,7 @@ struct PhaseTimelineCard: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.purple.opacity(0.05))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.purple.opacity(0.2), lineWidth: 1)
-        )
+        .cardBackground(cornerRadius: 16)
     }
 }
 
@@ -1682,12 +1656,7 @@ struct CurrentPhaseCard: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.orange.opacity(0.05))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.orange.opacity(0.2), lineWidth: 1)
-        )
+        .cardBackground(cornerRadius: 16)
     }
 
     private var headerView: some View {
@@ -1781,12 +1750,7 @@ struct QuickStatsView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.indigo.opacity(0.05))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.indigo.opacity(0.2), lineWidth: 1)
-        )
+        .cardBackground(cornerRadius: 16)
     }
 }
 
@@ -1855,14 +1819,9 @@ struct LastSessionCard: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.teal.opacity(0.05))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.teal.opacity(0.2), lineWidth: 1)
-        )
+        .cardBackground(cornerRadius: 16)
     }
-    
+
     private func statusColor(for status: FastingCompletionStatus) -> Color {
         switch status {
         case .completed, .overGoal:
@@ -1981,12 +1940,7 @@ struct WeekSummaryCard: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.purple.opacity(0.05))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.purple.opacity(0.2), lineWidth: 1)
-        )
+        .cardBackground(cornerRadius: 16)
     }
 }
 

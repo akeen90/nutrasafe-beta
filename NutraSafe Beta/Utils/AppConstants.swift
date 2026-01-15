@@ -80,6 +80,20 @@ extension View {
     }
 }
 
+// MARK: - Consistent Card Background Modifier
+/// Applies the standard white/frosted card background used throughout the app
+/// Matches the diary tab's card styling for visual consistency
+extension View {
+    func cardBackground(cornerRadius: CGFloat = AppRadius.medium) -> some View {
+        self
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .fill(.ultraThinMaterial)
+            )
+            .cardShadow()
+    }
+}
+
 // MARK: - Tab Gradient Backgrounds
 /// Reusable gradient backgrounds for each tab with consistent premium styling
 /// Light mode: Beautiful soft gradients matching Diary's design
