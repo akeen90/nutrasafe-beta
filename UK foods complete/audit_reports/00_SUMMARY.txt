@@ -1,0 +1,65 @@
+======================================================================
+UK FOODS DATABASE - DATA QUALITY AUDIT SUMMARY
+Generated: 2026-01-14 08:44:25
+======================================================================
+
+
+FOREIGN_LANGUAGE
+--------------------------------------------------
+  French: 935
+  German: 127
+  Spanish: 194
+  Other: 31
+  Turkish: 3
+
+MALFORMED_NAMES
+--------------------------------------------------
+  Total: 229
+
+OCR_ERRORS
+--------------------------------------------------
+  Total: 191
+
+MISSING_FIELDS
+--------------------------------------------------
+  missing_brand: 8300
+  missing_category: 13318
+  missing_calories: 0
+  missing_ingredients: 0
+  undefined_category: 392
+
+INVALID_BARCODES
+--------------------------------------------------
+  too_long: 40
+  too_short: 0
+  non_numeric: 0
+  barcode_as_name: 8
+
+DUPLICATES
+--------------------------------------------------
+  Total: 2133
+
+NUTRITIONAL_ISSUES
+--------------------------------------------------
+  high_calories: 0
+  high_sodium: 33
+  high_sugar: 0
+  negative_values: 0
+
+CATEGORY_FORMAT_ISSUES
+--------------------------------------------------
+  with_prefix: 922
+  hyphenated: 696
+  mixed_language: 0
+  lowercase_only: 0
+
+MISMATCHED_DATA
+--------------------------------------------------
+  Total: 25
+
+NON_UK_PRODUCTS
+--------------------------------------------------
+  Total: 2247
+
+======================================================================
+See individual CSV files for detailed row-by-row listings.

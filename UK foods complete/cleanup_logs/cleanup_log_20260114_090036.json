@@ -1,0 +1,4583 @@
+{
+  "timestamp": "20260114_090036",
+  "dry_run": false,
+  "changes_count": 500,
+  "rows_modified": [
+    35700,
+    35712,
+    35716,
+    35720,
+    35730,
+    35738,
+    35751,
+    35760,
+    35768,
+    35771,
+    35795,
+    35798,
+    35805,
+    35807,
+    35823,
+    35830,
+    35836,
+    35848,
+    35855,
+    35866,
+    35868,
+    35901,
+    35917,
+    35922,
+    35925,
+    35941,
+    35949,
+    35957,
+    35966,
+    35975,
+    35979,
+    35983,
+    35985,
+    35992,
+    35998,
+    36001,
+    36005,
+    36008,
+    36011,
+    36012,
+    36027,
+    36039,
+    36050,
+    36051,
+    36062,
+    36069,
+    36070,
+    36072,
+    36073,
+    36088,
+    36091,
+    36101,
+    36114,
+    36123,
+    36156,
+    36158,
+    36162,
+    36167,
+    36196,
+    36198,
+    36202,
+    36211,
+    36212,
+    36229,
+    36234,
+    36247,
+    36252,
+    36253,
+    36255,
+    36267,
+    36268,
+    36269,
+    36270,
+    36273,
+    36275,
+    36276,
+    36277,
+    36280,
+    36283,
+    36284,
+    36285,
+    36286,
+    36287,
+    36288,
+    36289,
+    36291,
+    36293,
+    36294,
+    36296,
+    36297,
+    36298,
+    36302,
+    36303,
+    36309,
+    36312,
+    36313,
+    36316,
+    36318,
+    36319,
+    36320,
+    36321,
+    36322,
+    36323,
+    36324,
+    36331,
+    36333,
+    36336,
+    36337,
+    36344,
+    36345,
+    36346,
+    36347,
+    36348,
+    36350,
+    36351,
+    36352,
+    36358,
+    36362,
+    36363,
+    36365,
+    36366,
+    36367,
+    36369,
+    36370,
+    36372,
+    36377,
+    36378,
+    36379,
+    36381,
+    36383,
+    36389,
+    36393,
+    36394,
+    36400,
+    36401,
+    36402,
+    36403,
+    36404,
+    36405,
+    36406,
+    36407,
+    36409,
+    36410,
+    36411,
+    36412,
+    36415,
+    36418,
+    36419,
+    36421,
+    36422,
+    36423,
+    36424,
+    36425,
+    36439,
+    36471,
+    36472,
+    36474,
+    36475,
+    36478,
+    36479,
+    36480,
+    36484,
+    36486,
+    36487,
+    36489,
+    36491,
+    36492,
+    36493,
+    36494,
+    36495,
+    36497,
+    36498,
+    36499,
+    36504,
+    36505,
+    36506,
+    36508,
+    36509,
+    36510,
+    36512,
+    36513,
+    36514,
+    36516,
+    36517,
+    36518,
+    36519,
+    36520,
+    36521,
+    36522,
+    36523,
+    36524,
+    36525,
+    36527,
+    36528,
+    36529,
+    36533,
+    36536,
+    36539,
+    36544,
+    36548,
+    36549,
+    36550,
+    36551,
+    36554,
+    36555,
+    36558,
+    36559,
+    36560,
+    36562,
+    36563,
+    36564,
+    36565,
+    36568,
+    36569,
+    36570,
+    36571,
+    36573,
+    36574,
+    36577,
+    36580,
+    36581,
+    36582,
+    36583,
+    36584,
+    36585,
+    36586,
+    36587,
+    36588,
+    36589,
+    36590,
+    36591,
+    36592,
+    36593,
+    36594,
+    36595,
+    36596,
+    36597,
+    36601,
+    36602,
+    36603,
+    36604,
+    36605,
+    36606,
+    36607,
+    36608,
+    36610,
+    36611,
+    36612,
+    36613,
+    36615,
+    36618,
+    36619,
+    36621,
+    36622,
+    36623,
+    36624,
+    36625,
+    36626,
+    36627,
+    36633,
+    36635,
+    36651,
+    36652,
+    36653,
+    36657,
+    36658,
+    36659,
+    36660,
+    36661,
+    36662,
+    36663,
+    36664,
+    36665,
+    36667,
+    36668,
+    36674,
+    36675,
+    36691,
+    36696,
+    36697,
+    36698,
+    36699,
+    36703,
+    36712,
+    36713,
+    36714,
+    36716,
+    36730,
+    36735,
+    36738,
+    36742,
+    36745,
+    36776,
+    36788,
+    36797,
+    36799,
+    36801,
+    36802,
+    36829,
+    36831,
+    36833,
+    36834,
+    36835,
+    36838,
+    36839,
+    36841,
+    36845,
+    36849,
+    36853,
+    36854,
+    36856,
+    36857,
+    36861,
+    36862,
+    36863,
+    36864,
+    36867,
+    36868,
+    36869,
+    36872,
+    36873,
+    36874,
+    36875,
+    36878,
+    36880,
+    36882,
+    36883,
+    36893,
+    36895,
+    36896,
+    36899,
+    36902,
+    36903,
+    36906,
+    36907,
+    36913,
+    36919,
+    36923,
+    36925,
+    36931,
+    36935,
+    36936,
+    36941,
+    36942,
+    36943,
+    36944,
+    36945,
+    36946,
+    36947,
+    36948,
+    36949,
+    36950,
+    36951,
+    36952,
+    36954,
+    36955,
+    36956,
+    36960,
+    36966,
+    36969,
+    36971,
+    36972,
+    36973,
+    36979,
+    36982,
+    36983,
+    36994,
+    36995,
+    37002,
+    37003,
+    37004,
+    37013,
+    37020,
+    37021,
+    37024,
+    37026,
+    37027,
+    37028,
+    37030,
+    37031,
+    37036,
+    37037,
+    37038,
+    37044,
+    37045,
+    37046,
+    37050,
+    37055,
+    37056,
+    37059,
+    37065,
+    37069,
+    37094,
+    37099,
+    37100,
+    37101,
+    37108,
+    37111,
+    37113,
+    37114,
+    37118,
+    37122,
+    37127,
+    37131,
+    37132,
+    37133,
+    37145,
+    37148,
+    37151,
+    37163,
+    37164,
+    37165,
+    37167,
+    37170,
+    37172,
+    37173,
+    37174,
+    37177,
+    37179,
+    37180,
+    37182,
+    37183,
+    37184,
+    37185,
+    37187,
+    37189,
+    37191,
+    37193,
+    37199,
+    37200,
+    37203,
+    37204,
+    37209,
+    37210,
+    37213,
+    37217,
+    37219,
+    37222,
+    37223,
+    37251,
+    37252,
+    37256,
+    37257,
+    37258,
+    37261,
+    37263,
+    37268,
+    37270,
+    37271,
+    37273,
+    37274,
+    37275,
+    37276,
+    37282,
+    37287,
+    37291,
+    37293,
+    37294,
+    37296,
+    37299,
+    37300,
+    37305,
+    37307,
+    37308,
+    37310,
+    37316,
+    37318,
+    37319,
+    37320,
+    37324,
+    37325,
+    37328,
+    37331,
+    37334,
+    37338,
+    37341,
+    37342,
+    37347,
+    37348,
+    37349,
+    37351,
+    37352,
+    37353,
+    37354,
+    37356,
+    37357,
+    37361,
+    37368,
+    37370,
+    37374,
+    37376,
+    37380,
+    37383,
+    37384,
+    37392,
+    37393,
+    37395,
+    37396,
+    37400,
+    37401
+  ],
+  "details": [
+    {
+      "row": 35700,
+      "name": "Malloos",
+      "changes": [
+        "[category] Case fix: marshmallows->Marshmallows"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35712,
+      "name": "Mango Loco",
+      "changes": [
+        "[category] Case fix: energy-drinks->Energy-Drinks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35716,
+      "name": "Irresistible Gluten Free Party Mox",
+      "changes": [
+        "[category] Case fix: candies->Candies"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35720,
+      "name": "Yopro Mixed Berries",
+      "changes": [
+        "[ingredients] OCR: .nut->"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35730,
+      "name": "Oreo Cookies And Cream Ice Cream",
+      "changes": [
+        "[category] Case fix: ice-creams->Ice-Creams"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35738,
+      "name": "Cherry & Coconut",
+      "changes": [
+        "[category] Case fix: low carb muesli bars->Low Carb Muesli Bars"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35751,
+      "name": "Meaty Pulled Mushrooms",
+      "changes": [
+        "[category] Case fix: mushroom meat, fake ->Mushroom Meat, Fake "
+      ],
+      "modified": true
+    },
+    {
+      "row": 35760,
+      "name": "Fruit Oddities",
+      "changes": [
+        "[category] Case fix: candies->Candies"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35768,
+      "name": "Toasted Oat Bars",
+      "changes": [
+        "[category] Case fix: cereal-bars->Cereal-Bars"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35771,
+      "name": "Lemon Delight Thins",
+      "changes": [
+        "[category] Translated: Snacks sucr\u00e9s->Sweet snacks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35795,
+      "name": "Nashville Chicken Tenders - Tegal",
+      "changes": [
+        "[category] Case fix: chickens->Chickens"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35798,
+      "name": "Grain Health Foods Toasted Muesli",
+      "changes": [
+        "[category] Case fix: mueslis->Mueslis"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35805,
+      "name": "Cream Cheese",
+      "changes": [
+        "[category] Case fix: cheeses->Cheeses"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35807,
+      "name": "Dark Chocolate Block",
+      "changes": [
+        "[category] Case fix: dark-chocolates->Dark-Chocolates"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35823,
+      "name": "Texas BBQ Style Marinade",
+      "changes": [
+        "[category] Case fix: barbecue-sauces->Barbecue-Sauces"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35830,
+      "name": "Caramel Latte",
+      "changes": [
+        "[ingredients] OCR: Sait->Salt"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35836,
+      "name": "Chai Turmeric Latte",
+      "changes": [
+        "[category] Removed prefix from: Hot drink sachet, en:instant-b"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35848,
+      "name": "Kit Kat Chunky",
+      "changes": [
+        "[category] Translated: Snacks sucr\u00e9s->Sweet snacks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35855,
+      "name": "Pau BBQ Chicken",
+      "changes": [
+        "[non-uk] Indian additive codes (INS) found"
+      ],
+      "modified": false
+    },
+    {
+      "row": 35866,
+      "name": "Bottle Green",
+      "changes": [
+        "[category] Case fix: cordial->Cordial"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35868,
+      "name": "Chargrilled Chilli Garlic And Paprika King Prawns",
+      "changes": [
+        "[category] Case fix: prawns->Prawns"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35901,
+      "name": "Mini Eggs",
+      "changes": [
+        "[category] Translated: Snacks sucr\u00e9s->Sweet snacks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35917,
+      "name": "Vanilla Almond",
+      "changes": [
+        "[non-uk] Non-UK brand: target"
+      ],
+      "modified": false
+    },
+    {
+      "row": 35922,
+      "name": "Seafood Sauce",
+      "changes": [
+        "[category] Case fix: seafood sauce->Seafood Sauce"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35925,
+      "name": "Tender Vegetable Medley",
+      "changes": [
+        "[category] Case fix: frozen-vegetables->Frozen-Vegetables"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35941,
+      "name": "Arctic Vibe Sparkling Frozen Energy",
+      "changes": [
+        "[category] Case fix: energy-drink->Energy-Drink"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35949,
+      "name": "Honey Roasted Peanuts",
+      "changes": [
+        "[category] Case fix: peanuts->Peanuts"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35957,
+      "name": "Heavenly Butter",
+      "changes": [
+        "[category] Translated: Produits laitiers->Dairy products",
+        "[category] Translated: Produits ferment\u00e9s->Fermented products"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35966,
+      "name": "Chocolate Noir",
+      "changes": [
+        "[category] Translated: Snacks sucr\u00e9s->Sweet snacks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35975,
+      "name": "Mild Pepperoni",
+      "changes": [
+        "[category] Case fix: cured-sausages->Cured-Sausages"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35979,
+      "name": "Tartichoc",
+      "changes": [
+        "[category] Translated: Snacks sucr\u00e9s->Sweet snacks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35983,
+      "name": "Chicken And Pork Sausage",
+      "changes": [
+        "[category] Case fix: sausage->Sausage"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35985,
+      "name": "M&S Arrabbiata Sauce",
+      "changes": [
+        "[category] Case fix: sauces->Sauces"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35992,
+      "name": "Nutella",
+      "changes": [
+        "[category] Removed prefix from: Other, en:cocoa-and-hazelnuts-"
+      ],
+      "modified": true
+    },
+    {
+      "row": 35998,
+      "name": "Sweet And Crunchy Peanut Spread",
+      "changes": [
+        "[category] Case fix: nut-butters->Nut-Butters"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36001,
+      "name": "Skittles",
+      "changes": [
+        "[category] Case fix: snacks, sweet-snacks->Snacks, Sweet-Snacks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36005,
+      "name": "Potato Waffles",
+      "changes": [
+        "[category] Case fix: waffles->Waffles"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36008,
+      "name": "Pretzel Sticks With Peanut Filling",
+      "changes": [
+        "[category] Removed prefix from: Snacks, en:appetizers"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36011,
+      "name": "Cooked Chicken Breast Slices",
+      "changes": [
+        "[category] Case fix: chicken-breasts->Chicken-Breasts"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36012,
+      "name": "Blanc Dessert",
+      "changes": [
+        "[category] Translated: Snacks sucr\u00e9s->Sweet snacks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36027,
+      "name": "Cocoa Crownfield 50 Crunch 66 Chocolate Orange CAL",
+      "changes": [
+        "[category] Case fix: bars->Bars"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36039,
+      "name": "Green Pitted Olives",
+      "changes": [
+        "[category] Removed prefix from: Green pitted olives in brine, "
+      ],
+      "modified": true
+    },
+    {
+      "row": 36050,
+      "name": "Mild Pepperoni",
+      "changes": [
+        "[category] Case fix: prepared pork meats->Prepared Pork Meats"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36051,
+      "name": "Smoked Baked Ham",
+      "changes": [
+        "[category] Case fix: white-hams->White-Hams"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36062,
+      "name": "Vanilla Super Premium Ice Cream",
+      "changes": [
+        "[category] Case fix: ice-creams-and-sorbe->Ice-Creams-And-Sorbe"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36069,
+      "name": "Long grain& Wild Rice Mix",
+      "changes": [
+        "[category] Case fix: rice-dishes->Rice-Dishes"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36070,
+      "name": "Cherry Pie Filling",
+      "changes": [
+        "[category] Case fix: pastry-helpers->Pastry-Helpers"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36072,
+      "name": "Roasted Pepitas",
+      "changes": [
+        "[category] Case fix: seeds->Seeds"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36073,
+      "name": "Goat Cheese",
+      "changes": [
+        "[category] Case fix: goat-cheeses->Goat-Cheeses"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36088,
+      "name": "Ultimate Hearty & Rich",
+      "changes": [
+        "[category] Removed prefix from: Porridge Oats, en:breakfast-ce"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36091,
+      "name": "Red Leicester",
+      "changes": [
+        "[category] Translated: Produits laitiers->Dairy products",
+        "[category] Translated: Produits ferment\u00e9s->Fermented products"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36101,
+      "name": "Pom-bear Crispss Original",
+      "changes": [
+        "[category] Case fix: snacks, salty-snacks->Snacks, Salty-Snacks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36114,
+      "name": "Matzos: Flame Baked Crackers",
+      "changes": [
+        "[category] Case fix: snacks, salty-snacks->Snacks, Salty-Snacks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36123,
+      "name": "Haribo Starmix Mini Bag",
+      "changes": [
+        "[category] Case fix: candies->Candies"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36156,
+      "name": "Roasted And Salted Almonds",
+      "changes": [
+        "[category] Case fix: roasted-and-salted-a->Roasted-And-Salted-A"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36158,
+      "name": "Pink Boost",
+      "changes": [
+        "[category] Case fix: drink, isotonic->Drink, Isotonic"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36162,
+      "name": "Tesco Corned Beef",
+      "changes": [
+        "[category] Case fix: corned beef->Corned Beef"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36167,
+      "name": "Green Olives",
+      "changes": [
+        "[category] Case fix: green-olives->Green-Olives"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36196,
+      "name": "Cheese + Apple Melty Sticks",
+      "changes": [
+        "[category] Case fix: kids s->Kids S"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36198,
+      "name": "Multi-seed Sesame Thins",
+      "changes": [
+        "[category] Case fix: pretzel thins->Pretzel Thins"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36202,
+      "name": "Hazleme FINE FOOD Whole DILL GHER INS Sweet & TANG",
+      "changes": [
+        "[category] Case fix: pickles->Pickles"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36211,
+      "name": "Cream Crackers 200G (C)",
+      "changes": [
+        "[category] Case fix: snacks, salty-snacks->Snacks, Salty-Snacks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36212,
+      "name": "Chicken Fillets",
+      "changes": [
+        "[category] Case fix: chicken-breasts->Chicken-Breasts"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36229,
+      "name": "Organic Dark Chocolate Bar",
+      "changes": [
+        "[category] Translated: Snacks sucr\u00e9s->Sweet snacks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36234,
+      "name": "Curvies Original Gluten Free",
+      "changes": [
+        "[category] Case fix: aliments-->Aliments-"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36247,
+      "name": "Moonpig Chocolate Coins",
+      "changes": [
+        "[category] Case fix: chocolates->Chocolates"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36252,
+      "name": "Chicken Tikka Masala Spice Mix",
+      "changes": [
+        "[category] Case fix: spice mix->Spice Mix"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36253,
+      "name": "Oak Smoked Ham",
+      "changes": [
+        "[category] Case fix: hams->Hams"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36255,
+      "name": "Chocolate With Plum Filling",
+      "changes": [
+        "[category] Removed prefix from: Milk Chocolate bar with plum, "
+      ],
+      "modified": true
+    },
+    {
+      "row": 36267,
+      "name": "Tenero Alle Mandorle Limoncello Cookies",
+      "changes": [
+        "[category] Case fix: null->Null"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36268,
+      "name": "Our Famous Brown Bread",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36269,
+      "name": "Turkish Apricots",
+      "changes": [
+        "[category] Case fix: null->Null"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36270,
+      "name": "Pretzel Crispss Milk Chocolate Crunch",
+      "changes": [
+        "[category] Case fix: chocolate covered pr->Chocolate Covered Pr",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36273,
+      "name": "The Original Macaroon",
+      "changes": [
+        "[category] Case fix: null->Null"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36275,
+      "name": "Prebiotic Almond Agave Granola",
+      "changes": [
+        "[category] Case fix: granola->Granola"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36276,
+      "name": "Sunflower Butter Filled Pretzels",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36277,
+      "name": "Flour Tortlas",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36280,
+      "name": "Toasted Sesame Water Crisps Crackers",
+      "changes": [
+        "[category] Removed prefix from: Crackers, en:biscuits",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36283,
+      "name": "Multi Grain",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36284,
+      "name": "Plant Based MAYO Spread",
+      "changes": [
+        "[category] Case fix: mayonnaise->Mayonnaise"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36285,
+      "name": "Brownie",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36286,
+      "name": "Mixed Nuts",
+      "changes": [
+        "[category] Case fix: mixed nuts->Mixed Nuts"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36287,
+      "name": "Chicken Patties",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36288,
+      "name": "Italia Stracciatella",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36289,
+      "name": "Dark Chocolate Covered Almonds",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36291,
+      "name": "Buttermilk Pancakes",
+      "changes": [
+        "[category] Case fix: undefined->Undefined",
+        "[ingredients] OCR: B1)->B1)",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36293,
+      "name": "Shark Bites Shark Shaped Breaded FISH Sticks",
+      "changes": [
+        "[category] Case fix: fish-sticks->Fish-Sticks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36294,
+      "name": "Mandarin Oranges In Light Syrup",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36296,
+      "name": "Crinkle Cut French Fried Potatos",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36297,
+      "name": "Crinkle Cut French Fried Potatos",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36298,
+      "name": "Caramel Shishito Mustard",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36302,
+      "name": "Chutney Mint",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36303,
+      "name": "Coriander Chutney",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36309,
+      "name": "Hot Roll Mix",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36312,
+      "name": "Classic Killer Rolls",
+      "changes": [
+        "[category] Case fix: bread-rolls->Bread-Rolls"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36313,
+      "name": "Organic Sandwich Rolls",
+      "changes": [
+        "[category] Case fix: sandwich-rolls->Sandwich-Rolls"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36316,
+      "name": "Goldfish Baked Snack Crackers, Cheddar",
+      "changes": [
+        "[category] Case fix: snacks, salty-snacks->Snacks, Salty-Snacks",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36318,
+      "name": "Goldfish Colours",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36319,
+      "name": "Farmhouse Thin-sliced Butter Bread",
+      "changes": [
+        "[category] Case fix: bread->Bread",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36320,
+      "name": "Goldfish Baked Snack Crackers Cheddar",
+      "changes": [
+        "[category] Case fix: cracker->Cracker",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36321,
+      "name": "Chessmen Butter Spring Shapes",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36322,
+      "name": "Pepperidge Farm Crackers",
+      "changes": [
+        "[category] Case fix: snacks, salty-snacks->Snacks, Salty-Snacks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36323,
+      "name": "Pepperidge Farm Crackers",
+      "changes": [
+        "[category] Case fix: snacks, salty-snacks->Snacks, Salty-Snacks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36324,
+      "name": "Goldfish Colours",
+      "changes": [
+        "[category] Case fix: snacks, salty-snacks->Snacks, Salty-Snacks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36331,
+      "name": "Lil Crunchies",
+      "changes": [
+        "[category] Case fix: baby snack puffs->Baby Snack Puffs"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36333,
+      "name": "Grain & Grow Morning Bowl Oats, Barley & Quinoa Wi",
+      "changes": [
+        "[category] Case fix: baby-food->Baby-Food"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36336,
+      "name": "Belgian Waffles",
+      "changes": [
+        "[category] Case fix: undefined->Undefined",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36337,
+      "name": "Tortillas Mexico",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36344,
+      "name": "Original And Teryaki Duos",
+      "changes": [
+        "[category] Case fix: beef-jerky->Beef-Jerky"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36345,
+      "name": "Korean Barbecue",
+      "changes": [
+        "[category] Case fix: jerky->Jerky"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36346,
+      "name": "Beef Tender Bites Teriyaki",
+      "changes": [
+        "[category] Case fix: beef-jerky->Beef-Jerky"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36347,
+      "name": "Beef Jerky Teriyaki",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36348,
+      "name": "BEEF Jerky Peppered",
+      "changes": [
+        "[category] Case fix: meat-jerky->Meat-Jerky"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36350,
+      "name": "Our Deli Sandwich",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36351,
+      "name": "Cooked Apples",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36352,
+      "name": "Chocolate Trio Dessert",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36358,
+      "name": "Extra Sharp Yellow Cheddar Pepperoni And Crackers",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36362,
+      "name": "Sesame Hamburger Buns",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36363,
+      "name": "Whole Wheat Bread",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36365,
+      "name": "English Muffins Sourdough",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36366,
+      "name": "Enritched Giant Onion Hamburger Buns",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36367,
+      "name": "Hazelnut Chocolate Spread",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36369,
+      "name": "Slow Simmered Rigatoni Bolognese Bowl",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36370,
+      "name": "Chicken Mac And Cheese Bowl",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36372,
+      "name": "Chicken Pot Pie",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36377,
+      "name": "Belgian Waffles",
+      "changes": [
+        "[category] Case fix: undefined->Undefined",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36378,
+      "name": "Smoked Cheddar Blend",
+      "changes": [
+        "[category] Case fix: cheeses->Cheeses"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36379,
+      "name": "Golden Toasted Crackers",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36381,
+      "name": "Shredded Chihuahua Brand Natural Quesadilla Style ",
+      "changes": [
+        "[category] Case fix: cheese->Cheese"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36383,
+      "name": "Small Batch",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36389,
+      "name": "Mini Smoked Sausages",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36393,
+      "name": "Breakfast Sandwich Chicken & Maple Breakfast Sausa",
+      "changes": [
+        "[category] Case fix: breakfast-sandwich->Breakfast-Sandwich",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36394,
+      "name": "Pancake & Sausage Stick",
+      "changes": [
+        "[category] Case fix: corn-dogs->Corn-Dogs"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36400,
+      "name": "Syrup",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36401,
+      "name": "Homestyle Soft Molasses Cookies",
+      "changes": [
+        "[category] Case fix: undefined->Undefined",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36402,
+      "name": "Sandies",
+      "changes": [
+        "[category] Case fix: biscuits->Biscuits",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36403,
+      "name": "Classic Sandies Shortbread",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36404,
+      "name": "Cerelac Wheat Cereal With Milk",
+      "changes": [
+        "[category] Case fix: baby-food->Baby-Food"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36405,
+      "name": "New York Style Cheeseecake",
+      "changes": [
+        "[category] Case fix: undefined->Undefined",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36406,
+      "name": "Cheeseecake",
+      "changes": [
+        "[category] Case fix: undefined->Undefined",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36407,
+      "name": "Jolly Time Blast O Butter",
+      "changes": [
+        "[category] Case fix: snack->Snack"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36409,
+      "name": "Spicy Sweet Chili Flavoured Meat Stick",
+      "changes": [
+        "[category] Case fix: meat-snack->Meat-Snack"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36410,
+      "name": "Original Tangy Bbq Sauce",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36411,
+      "name": "Brittle Nut Medley, Honey Roasted Peanuts, Yogurt ",
+      "changes": [
+        "[category] Removed prefix from: Snacks, en:nuts",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36412,
+      "name": "Chocolate Coated Wafers",
+      "changes": [
+        "[category] Case fix: biscuits->Biscuits"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36415,
+      "name": "Sundae Ice Cream",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36418,
+      "name": "Streusel Coffee Cake",
+      "changes": [
+        "[category] Case fix: undefined->Undefined",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36419,
+      "name": "Mini Homestyle Waffles",
+      "changes": [
+        "[category] Case fix: undefined->Undefined",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36421,
+      "name": "Herb Roasted Potatos",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36422,
+      "name": "Chicken Parmesan With Whole Wheat Spaghetti",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36423,
+      "name": "Ravioli With Marinara Sauce",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36424,
+      "name": "Puget Sound Style Cocktail Sauce",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36425,
+      "name": "Lemon Snaps",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36439,
+      "name": "Banquet Fish Sticks Meal, 7.3 OZ",
+      "changes": [
+        "[non-uk] US-style fortification labeling",
+        "[mismatch] MISMATCH: Fish name but dessert ingredients"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36471,
+      "name": "Chocolate Chip Muffin",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36472,
+      "name": "Eff Milk Chocolate",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36474,
+      "name": "Peanut Butter Cups",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36475,
+      "name": "Miniatures",
+      "changes": [
+        "[category] Case fix: chocolate-candies->Chocolate-Candies"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36478,
+      "name": "Eggs",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36479,
+      "name": "Milk Chocolate Egg Easter Candy",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36480,
+      "name": "Reese's Big Cup Pieces Candy",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36484,
+      "name": "Liquorice Allsorts",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36486,
+      "name": "Apple Turnover",
+      "changes": [
+        "[category] Case fix: undefined->Undefined",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36487,
+      "name": "Sliced Loaf Cake",
+      "changes": [
+        "[category] Case fix: undefined->Undefined",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36489,
+      "name": "Chewy Protein Bars",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36491,
+      "name": "Dark Chocolate Sea Salt Caramels",
+      "changes": [
+        "[category] Removed prefix from: Undefined, en:chocolate-candie"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36492,
+      "name": "Milk Chocolate",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36493,
+      "name": "Dark Chocolate Sea Salt Caramels",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36494,
+      "name": "Dark Chocolate Sea Salt Caramels",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36495,
+      "name": "Organic Asparagus & Cheese",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36497,
+      "name": "Shoestrings French Fried Potatos",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36498,
+      "name": "Rice Mac And Cheese",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36499,
+      "name": "Organic Less Sodium Soy Sauce",
+      "changes": [
+        "[category] Case fix: soy-sauce->Soy-Sauce"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36504,
+      "name": "Salmon Piccata",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36505,
+      "name": "Shrimp & Kale Piccata",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36506,
+      "name": "Salmon Piccata",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36508,
+      "name": "Pickled Green Tomatos",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36509,
+      "name": "Kosher Dill Pickles",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36510,
+      "name": "Kosher Dill Relish",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36512,
+      "name": "Cajun Gumbo & Rice Entree Mix",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36513,
+      "name": "Greek Style Pita 12 Flat Bread",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36514,
+      "name": "Hamburger Enriched Buns",
+      "changes": [
+        "[category] Case fix: hamburger-bun->Hamburger-Bun",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36516,
+      "name": "Greek Pita",
+      "changes": [
+        "[category] Case fix: pitas->Pitas",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36517,
+      "name": "Baked Beans",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36518,
+      "name": "Maple Style Baked Beans",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36519,
+      "name": "Chili Beans Haricots Au Chili",
+      "changes": [
+        "[category] Case fix: canned-beans->Canned-Beans"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36520,
+      "name": "Steak & Cheese Calzone",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36521,
+      "name": "Flatbread Crust",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36522,
+      "name": "Steak & Cheese Calzones",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36523,
+      "name": "Calzone",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36524,
+      "name": "Chicago Style Deep Dish - Prima Pepperoni",
+      "changes": [
+        "[category] Case fix: pepperoni-pizzas->Pepperoni-Pizzas"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36525,
+      "name": "Wheat Dinnerr Rolls",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36527,
+      "name": "Artisan Bread Flour",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36528,
+      "name": "Fudgy Brownie Baking Mix",
+      "changes": [
+        "[category] Case fix: baking-mix->Baking-Mix"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36529,
+      "name": "M&M's Milk Chocolate Candies S.S",
+      "changes": [
+        "[category] Case fix: chocolate-bar->Chocolate-Bar"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36533,
+      "name": "Italian Dessert Bread",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36536,
+      "name": "Cheese Crackers",
+      "changes": [
+        "[category] Case fix: da:crackers->Da:Crackers",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36539,
+      "name": "Raisin Bran",
+      "changes": [
+        "[category] Removed prefix from: Raisin bran, en:breakfast-cere",
+        "[ingredients] OCR: B1)->B1)"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36544,
+      "name": "Wheat Bite Size Crackers",
+      "changes": [
+        "[category] Case fix: bite-size-crackers, ->Bite-Size-Crackers, ",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36548,
+      "name": "Mootopia Cottage Cheese",
+      "changes": [
+        "[category] Case fix: cottage-cheese->Cottage-Cheese"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36549,
+      "name": "Bacon Bits",
+      "changes": [
+        "[category] Case fix: bacon-bits->Bacon-Bits"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36550,
+      "name": "Coffee Beans Covered In Dark Chocolate",
+      "changes": [
+        "[category] Case fix: chocolate-covered-co->Chocolate-Covered-Co"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36551,
+      "name": "Low-carb Lifestyle Spinach & Bell Pepper 2 Egg Whi",
+      "changes": [
+        "[category] Case fix: egg bites->Egg Bites"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36554,
+      "name": "Norwegian Crispsbread",
+      "changes": [
+        "[category] Case fix: crackers->Crackers"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36555,
+      "name": "Chicken Noodle",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36558,
+      "name": "Natural Cheese Snack Bars Colby & Monterey Jack",
+      "changes": [
+        "[category] Case fix: cheese->Cheese"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36559,
+      "name": "Tuna Cajun Style",
+      "changes": [
+        "[category] Case fix: canned-tuna->Canned-Tuna"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36560,
+      "name": "Flour Tortilla",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36562,
+      "name": "Almond Milk",
+      "changes": [
+        "[category] Case fix: almond-milk->Almond-Milk"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36563,
+      "name": "Pasta & Cheese Sauce Mix",
+      "changes": [
+        "[category] Case fix: undefined->Undefined",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36564,
+      "name": "Ancient Grain Rice Crackers",
+      "changes": [
+        "[category] Case fix: biscuits-and-cracker->Biscuits-And-Cracker"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36565,
+      "name": "Natural Crunchy Peanut Butter Spread",
+      "changes": [
+        "[category] Case fix: peanut-butter->Peanut-Butter"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36568,
+      "name": "Cottage Cheese Small Curd",
+      "changes": [
+        "[category] Case fix: cottage-cheese->Cottage-Cheese"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36569,
+      "name": "Texas Heritage Beef Hot Dogs Cheddar",
+      "changes": [
+        "[category] Case fix: hot-dogs->Hot-Dogs"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36570,
+      "name": "Thin Rounds",
+      "changes": [
+        "[category] Case fix: flatbread->Flatbread"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36571,
+      "name": "Pretzels Honey Wheat",
+      "changes": [
+        "[category] Case fix: pretzels->Pretzels",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36573,
+      "name": "Essential Grains Oat &Nut Bread",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36574,
+      "name": "Organics Mayonnaise",
+      "changes": [
+        "[category] Case fix: mayonnaise->Mayonnaise"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36577,
+      "name": "Cinnamon Crunch Muffins",
+      "changes": [
+        "[category] Case fix: undefined->Undefined",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36580,
+      "name": "Mixed Mushrooms In Sunflower Oil",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36581,
+      "name": "Waffles",
+      "changes": [
+        "[category] Case fix: undefined->Undefined",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36582,
+      "name": "Schnucks Peanut Butter Filled Pretzels",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36583,
+      "name": "Pop Corn Shrimp",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36584,
+      "name": "Loaded Potato Skins Stuffed With Cheddar Cheese & ",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36585,
+      "name": "Loaded Potato Skins",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36586,
+      "name": "Maria Cookies",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36587,
+      "name": "Maria Cookies",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36588,
+      "name": "Maria Cookies",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36589,
+      "name": "Maria Cookies",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36590,
+      "name": "Wafers",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36591,
+      "name": "Homestyle Waffles",
+      "changes": [
+        "[category] Case fix: undefined->Undefined",
+        "[ingredients] OCR: B1)->B1)",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36592,
+      "name": "Bakery Creme Cake",
+      "changes": [
+        "[category] Case fix: undefined->Undefined",
+        "[non-uk] Non-UK brand: publix"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36593,
+      "name": "Wheat Crackers",
+      "changes": [
+        "[category] Case fix: snacks, salty-snacks->Snacks, Salty-Snacks",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36594,
+      "name": "Organic Dark Chocolate Covered Raisins",
+      "changes": [
+        "[category] Case fix: chocolate-covered-fr->Chocolate-Covered-Fr"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36595,
+      "name": "Cookies And Cream Ice Cream",
+      "changes": [
+        "[non-uk] Non-UK brand: publix"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36596,
+      "name": "Milk Chocolate Covered Peanut Butter Pretzels",
+      "changes": [
+        "[category] Case fix: undefined->Undefined",
+        "[non-uk] Non-UK brand: publix"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36597,
+      "name": "Deli Chicken With Rice & Broccoli",
+      "changes": [
+        "[category] Case fix: undefined->Undefined",
+        "[non-uk] Non-UK brand: publix"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36601,
+      "name": "Classic Italian Bread",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36602,
+      "name": "Brick Oven Style Pizza",
+      "changes": [
+        "[category] Case fix: undefined->Undefined",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36603,
+      "name": "Oven Rising Pizza Four Cheese",
+      "changes": [
+        "[category] Case fix: undefined->Undefined",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36604,
+      "name": "Oven Rising Pizza Pepperoni",
+      "changes": [
+        "[category] Case fix: undefined->Undefined",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36605,
+      "name": "Wheat",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36606,
+      "name": "Loaf Cake",
+      "changes": [
+        "[category] Case fix: undefined->Undefined",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36607,
+      "name": "Celentano 4 Cheese Ravioli",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36608,
+      "name": "Chocolate Mint Cookie Bites",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36610,
+      "name": "Seafood Cocktail Sauce",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36611,
+      "name": "Walla Walla Sweet Onion Marinara Sauce",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36612,
+      "name": "Seafood Cocktail Sauce",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36613,
+      "name": "Sea Salt Caramel Gelato",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36615,
+      "name": "Pretzels Twists",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36618,
+      "name": "Raisin Bran",
+      "changes": [
+        "[ingredients] OCR: B1)->B1)"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36619,
+      "name": "Coconut",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36621,
+      "name": "Organic Cultured Plain Soy",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36622,
+      "name": "Crinkle Cut French Fried Potatos",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36623,
+      "name": "Fruit Bars",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36624,
+      "name": "Cheese Nips Crackers 1x11 Oz",
+      "changes": [
+        "[category] Case fix: snacks, salty-snacks->Snacks, Salty-Snacks",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36625,
+      "name": "Cheese Nips Crackers 1x",
+      "changes": [
+        "[category] Case fix: snacks, salty-snacks->Snacks, Salty-Snacks",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36626,
+      "name": "Wraps",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36627,
+      "name": "Chocolate Dunked Cheeseecake",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36633,
+      "name": "Mozzarella & Pepperoni Protein PACK",
+      "changes": [
+        "[category] Case fix: meat-product->Meat-Product",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36635,
+      "name": "P3 Ham Turkey Cheese",
+      "changes": [
+        "[category] Case fix: prepared-meal->Prepared-Meal"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36651,
+      "name": "Party Pizza",
+      "changes": [
+        "[category] Case fix: undefined->Undefined",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36652,
+      "name": "Thin Crust Margherita Pizza",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36653,
+      "name": "Thin Crust Pizza",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36657,
+      "name": "Golden Delight Crackers",
+      "changes": [
+        "[category] Case fix: undefined->Undefined",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36658,
+      "name": "Pink Salmon Kit",
+      "changes": [
+        "[category] Case fix: specific-products, s->Specific-Products, S"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36659,
+      "name": "Potato Gnocchi",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36660,
+      "name": "Potato Gnocchi",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36661,
+      "name": "Soft Croissant With Chocolate Cream Filling",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36662,
+      "name": "Yogurt-covered Pretzels",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36663,
+      "name": "Hikers Trail Mix",
+      "changes": [
+        "[category] Case fix: trail mix->Trail Mix"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36664,
+      "name": "Chocolate Swirl Cheeseecake",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36665,
+      "name": "Cookies & Cream Cheeseecake",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36667,
+      "name": "Pretzel Crispss",
+      "changes": [
+        "[category] Dehyphenated: plant-based-foods-and-beverages",
+        "[category] Dehyphenated: plant-based-foods"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36668,
+      "name": "Pretzel Chips",
+      "changes": [
+        "[category] Case fix: pretzel->Pretzel",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36674,
+      "name": "Whipping Cream",
+      "changes": [
+        "[category] Case fix: whipping-cream->Whipping-Cream"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36675,
+      "name": "Detroit-style Deep Dish Double Pepperoni Pizza",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36691,
+      "name": "X Energizing Juice",
+      "changes": [
+        "[category] Case fix: undefined->Undefined"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36696,
+      "name": "Peanut Butter & Grape Jelly Sandwich",
+      "changes": [
+        "[category] Case fix: breads->Breads",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36697,
+      "name": "Uncrustable Bright-eyed Berry",
+      "changes": [
+        "[category] Case fix: breads->Breads"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36698,
+      "name": "Ice Cream Cups",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36699,
+      "name": "Mexican Style Four Cheese",
+      "changes": [
+        "[category] Case fix: cheese->Cheese"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36703,
+      "name": "Grace Soup Mix",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36712,
+      "name": "Spaghettini",
+      "changes": [
+        "[ingredients] OCR: B1)->B1)"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36713,
+      "name": "Lasagne",
+      "changes": [
+        "[ingredients] OCR: B1)->B1)"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36714,
+      "name": "Spaghetti",
+      "changes": [
+        "[ingredients] OCR: B1)->B1)"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36716,
+      "name": "Milk Chocolate & Peanut Butter Pumpkins",
+      "changes": [
+        "[category] Translated: Snacks sucr\u00e9s->Sweet snacks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36730,
+      "name": "Chocolate Chip Instant Oatmeal",
+      "changes": [
+        "[category] Case fix: breakfast-cereals->Breakfast-Cereals"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36735,
+      "name": "Chapattis Taandori Style",
+      "changes": [
+        "[ingredients] OCR: Cluten->Gluten"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36738,
+      "name": "Guimauves Miniatures",
+      "changes": [
+        "[category] Case fix: marshmallows->Marshmallows"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36742,
+      "name": "Sourdough Pizza Starter Kit",
+      "changes": [
+        "[category] Case fix: pizza-kit->Pizza-Kit",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36745,
+      "name": "Dry Roasted Peanuts",
+      "changes": [
+        "[category] Case fix: roasted-peanuts->Roasted-Peanuts"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36776,
+      "name": "Pasta In Butter Sauce",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36788,
+      "name": "Shefu Tofu Bites BBQ",
+      "changes": [
+        "[category] Removed prefix from: Tofu seasoned, en:tofu"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36797,
+      "name": "Nature Valley Honey Granola",
+      "changes": [
+        "[category] Case fix: granola->Granola"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36799,
+      "name": "Libert\u00e9 Classique Yogourt M\u00fbre Blackberry",
+      "changes": [
+        "[category] Translated: Produits laitiers->Dairy products",
+        "[category] Translated: Produits ferment\u00e9s->Fermented products"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36801,
+      "name": "Biscuits Bleuet Et Cassonade",
+      "changes": [
+        "[category] Case fix: biscuits->Biscuits"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36802,
+      "name": "Triscuit Seasoned With Cracked Pepper And Olive Oi",
+      "changes": [
+        "[category] Case fix: snacks, snacks-sales->Snacks, Snacks-Sales"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36829,
+      "name": "Individual Pizza Crust",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36831,
+      "name": "Pretzels",
+      "changes": [
+        "[category] Case fix: snacks, salty-snacks->Snacks, Salty-Snacks",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36833,
+      "name": "White Bread",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36834,
+      "name": "Honey Oat Premium Bread",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36835,
+      "name": "Winco Multi-seed Bread",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36838,
+      "name": "Pretzel Sticks",
+      "changes": [
+        "[category] Case fix: snacks, salty-snacks->Snacks, Salty-Snacks",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36839,
+      "name": "Chunky Light Tune",
+      "changes": [
+        "[category] Case fix: canned-tuna->Canned-Tuna"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36841,
+      "name": "Coconut Ginger Rice",
+      "changes": [
+        "[category] Case fix: null->Null"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36845,
+      "name": "Pepperoni Rising Crust Pizza",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36849,
+      "name": "Junior Sub Rolls",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36853,
+      "name": "Acai Bowl",
+      "changes": [
+        "[category] Case fix: frozen-dessert->Frozen-Dessert"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36854,
+      "name": "Brown 'N Serve Family Style Dinnerr Rolls",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36856,
+      "name": "Pierre Signatures Angus Cheeseeburger",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36857,
+      "name": "Big AZ Country Fried Chicken",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36861,
+      "name": "Ranch Dip",
+      "changes": [
+        "[category] Case fix: dip->Dip"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36862,
+      "name": "Matcha White Chocolate Macadamias",
+      "changes": [
+        "[category] Case fix: chocolate-covered-nu->Chocolate-Covered-Nu"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36863,
+      "name": "Soy Spread PBJ",
+      "changes": [
+        "[ingredients] OCR: B1)->B1)"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36864,
+      "name": "Rising Crust Original Four Cheese",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36867,
+      "name": "Bread",
+      "changes": [
+        "[category] Case fix: bread->Bread",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36868,
+      "name": "Pork Egg Roll",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36869,
+      "name": "White Bread",
+      "changes": [
+        "[category] Case fix: bread->Bread",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36872,
+      "name": "Brioche Buns",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36873,
+      "name": "Organic Hot Dog Buns",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36874,
+      "name": "Naked Organic Twenty Four Grains And Seeds",
+      "changes": [
+        "[category] Case fix: bread->Bread"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36875,
+      "name": "Franz Nine Grain Bread",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36878,
+      "name": "Seasmr Crostini",
+      "changes": [
+        "[category] Case fix: snacks, salty-snacks->Snacks, Salty-Snacks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36880,
+      "name": "Chicken Margherita With Balsamic",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36882,
+      "name": "Chicken Alfredo",
+      "changes": [
+        "[category] Case fix: frozen-foods, frozen->Frozen-Foods, Frozen",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36883,
+      "name": "Healthy Choice Chicken Margarita Cafe Steamers, 40",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36893,
+      "name": "Charcuterie Snack Tray Genoa Salame",
+      "changes": [
+        "[category] Case fix: meat-and-cheese-tray->Meat-And-Cheese-Tray",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36895,
+      "name": "Mini Croissants",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36896,
+      "name": "Soft Pretzel With Cheddar Cheese Filling And Toppi",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36899,
+      "name": "Original Hawaiian Sweet Rolls",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36902,
+      "name": "Basil & Ricotta Ravioli",
+      "changes": [
+        "[category] Case fix: ravioli->Ravioli"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36903,
+      "name": "All Purpose Baking Mix",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36906,
+      "name": "Whole Wheat Jumbo Bagels",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36907,
+      "name": "Barbican Apple Flavour",
+      "changes": [
+        "[category] Removed prefix from: 105, en:beers"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36913,
+      "name": "Plain Bagels",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36919,
+      "name": "Panzerotti Pizza Bites",
+      "changes": [
+        "[category] Case fix: pizza-bites->Pizza-Bites"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36923,
+      "name": "Lance Whole Grain Sandwich Crackers (peanut Butter",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36925,
+      "name": "Little Bites",
+      "changes": [
+        "[category] Translated: Snacks sucr\u00e9s->Sweet snacks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36931,
+      "name": "Lightly Breaded Chicken Breast Bites",
+      "changes": [
+        "[category] Case fix: breaded-chicken->Breaded-Chicken"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36935,
+      "name": "Its It",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36936,
+      "name": "Petite Quiche Florentine",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36941,
+      "name": "Classic Caesar",
+      "changes": [
+        "[category] Case fix: salad-dressing->Salad-Dressing"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36942,
+      "name": "Hummus",
+      "changes": [
+        "[non-uk] Non-UK brand: wegmans"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36943,
+      "name": "Lemon Dill Hummus",
+      "changes": [
+        "[non-uk] Non-UK brand: wegmans"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36944,
+      "name": "Peanut Butter Filled Pretzel Nuggets",
+      "changes": [
+        "[category] Case fix: snacks, salty-snacks->Snacks, Salty-Snacks",
+        "[non-uk] Non-UK brand: wegmans"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36945,
+      "name": "Roasted Vegetable Ravioli",
+      "changes": [
+        "[non-uk] Non-UK brand: wegmans"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36946,
+      "name": "Maple Almond Butter",
+      "changes": [
+        "[non-uk] Non-UK brand: wegmans"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36947,
+      "name": "Spinach Ravioli With Mushrooms",
+      "changes": [
+        "[non-uk] Non-UK brand: wegmans"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36948,
+      "name": "Simple Scrambles Bacon",
+      "changes": [
+        "[category] Case fix: meals, scrambled-egg->Meals, Scrambled-Egg"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36949,
+      "name": "New England Clam Chowder",
+      "changes": [
+        "[category] Case fix: soup->Soup"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36950,
+      "name": "Mini Pretzels",
+      "changes": [
+        "[category] Case fix: snacks, snacks-sales->Snacks, Snacks-Sales"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36951,
+      "name": "Hot Buffalo Wing Pieces",
+      "changes": [
+        "[category] Case fix: snacks, salty-snacks->Snacks, Salty-Snacks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36952,
+      "name": "Mandarin Orange Chicken",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36954,
+      "name": "Sea Salt Pita Crackers",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36955,
+      "name": "Pita Chips Sea Salt",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36956,
+      "name": "Croutons Garlic & Butter Seasoned",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36960,
+      "name": "Unsalted Saltine Crackers",
+      "changes": [
+        "[category] Case fix: snacks, salty-snacks->Snacks, Salty-Snacks",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36966,
+      "name": "Garlic & Fine Herbs",
+      "changes": [
+        "[category] Case fix: cheese->Cheese"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36969,
+      "name": "Apple, Carrot & Kale With Brown Rice",
+      "changes": [
+        "[category] Case fix: baby-food->Baby-Food"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36971,
+      "name": "Lunch-to-go Seasoned Tuna Kit",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36972,
+      "name": "Cinnamon Raisin Bagels",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36973,
+      "name": "Rice Noodles With Kimchi Flavoured Soup",
+      "changes": [
+        "[category] Translated: Nouilles->Noodles"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36979,
+      "name": "Ramona\u2019s Burritos Potato And Beef",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 36982,
+      "name": "Sea Salt Veggie Straws",
+      "changes": [
+        "[category] Case fix: vegetable-chips->Vegetable-Chips"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36983,
+      "name": "Chorizo",
+      "changes": [
+        "[category] Case fix: chorizo->Chorizo"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36994,
+      "name": "Instant Noodles",
+      "changes": [
+        "[category] Case fix: instant-noodles->Instant-Noodles"
+      ],
+      "modified": true
+    },
+    {
+      "row": 36995,
+      "name": "Mi Goreng Stir Fry Noodles Hot & Spicy Flavour",
+      "changes": [
+        "[category] Case fix: nl:plantaardige-leve->Nl:Plantaardige-Leve"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37002,
+      "name": "Gouda Chicken Sausages",
+      "changes": [
+        "[category] Case fix: sausages->Sausages"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37003,
+      "name": "Chicken Meatballs With Basil & Parmesan",
+      "changes": [
+        "[category] Case fix: chicken meatballs->Chicken Meatballs"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37004,
+      "name": "Italian With Mozzarella & Roasted Red Peppers Chic",
+      "changes": [
+        "[category] Case fix: sausages->Sausages"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37013,
+      "name": "Mini Thin & Crispsy Chocolate Chip Cookies",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37020,
+      "name": "Sharp Cheddar Cheese With Sea-salted Roasted Cashe",
+      "changes": [
+        "[category] Removed prefix from: Snacks, en:cheeses"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37021,
+      "name": "Everything Bagel",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37024,
+      "name": "Chicken Noodle Soup",
+      "changes": [
+        "[category] Case fix: noodle-soup->Noodle-Soup"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37026,
+      "name": "Dark Chocolate Covered Pistachios",
+      "changes": [
+        "[category] Case fix: chocolate-covered-nu->Chocolate-Covered-Nu"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37027,
+      "name": "Olive Tapenade Hummus",
+      "changes": [
+        "[category] Case fix: tapenades->Tapenades"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37028,
+      "name": "Original Pretzel Flats",
+      "changes": [
+        "[category] Case fix: snacks, salty-snacks->Snacks, Salty-Snacks",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37030,
+      "name": "Dark Chocolate Sea Salt Caramels",
+      "changes": [
+        "[category] Case fix: chocolate-candies->Chocolate-Candies"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37031,
+      "name": "Vanilla Bean Ice Cream Bars",
+      "changes": [
+        "[category] Case fix: ice-cream->Ice-Cream"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37036,
+      "name": "Organic Soy Unsweetened Original",
+      "changes": [
+        "[category] Case fix: soy milk->Soy Milk"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37037,
+      "name": "Bread",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37038,
+      "name": "Hamburger Rolls",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37044,
+      "name": "Everything Bagel",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37045,
+      "name": "Sourdough",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37046,
+      "name": "Angus Beef Cheeseeburger",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37050,
+      "name": "Parmesan Rap\u00e9",
+      "changes": [
+        "[category] Translated: Produits laitiers->Dairy products",
+        "[category] Translated: Produits ferment\u00e9s->Fermented products"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37055,
+      "name": "Braum\u2019s Sourdough Bread",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37056,
+      "name": "Hand Formed Artisan Round Bread",
+      "changes": [
+        "[category] Case fix: bread->Bread"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37059,
+      "name": "Black Peppercorn Bolli Italian Crackers",
+      "changes": [
+        "[category] Case fix: snacks, salty-snacks->Snacks, Salty-Snacks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37065,
+      "name": "Milton's Craft Baker",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37069,
+      "name": "Marie Callender's Ready To Bake",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37094,
+      "name": "Cove Kumbucha",
+      "changes": [
+        "[category] Case fix: kombucha->Kombucha"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37099,
+      "name": "Yogourt",
+      "changes": [
+        "[category] Translated: Produits laitiers->Dairy products",
+        "[category] Translated: Produits ferment\u00e9s->Fermented products"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37100,
+      "name": "Souris En Chocolate - Noir \u00c0 De Cacao",
+      "changes": [
+        "[category] Case fix: chocolat->Chocolat"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37101,
+      "name": "Aseel Vegetable Ghee",
+      "changes": [
+        "[category] Case fix: 80% unsalted vegetab->80% Unsalted Vegetab"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37108,
+      "name": "Classic Nuggets Plant-based Nuggets 68415",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37111,
+      "name": "Creamy No Stir Peanut Butter",
+      "changes": [
+        "[category] Case fix: peanut-butter->Peanut-Butter"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37113,
+      "name": "Coated Brown Rice Cakes",
+      "changes": [
+        "[category] Case fix: rice-cakes->Rice-Cakes"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37114,
+      "name": "Wafer Bites",
+      "changes": [
+        "[category] Case fix: wafer-biscuits->Wafer-Biscuits"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37118,
+      "name": "Classic Burger Buns",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37122,
+      "name": "Hamburger Buns",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37127,
+      "name": "Organic Everything Sourdough",
+      "changes": [
+        "[category] Case fix: sourdough bread->Sourdough Bread"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37131,
+      "name": "Pepperoni Mini Pizza Bagels",
+      "changes": [
+        "[ingredients] OCR: B1)->B1)",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37132,
+      "name": "Tzatziki",
+      "changes": [
+        "[category] Case fix: dip->Dip"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37133,
+      "name": "Cheese Rice Crackers",
+      "changes": [
+        "[category] Case fix: snacks, salty-snacks->Snacks, Salty-Snacks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37145,
+      "name": "Cheddar Cheese",
+      "changes": [
+        "[category] Case fix: snacks, salty-snacks->Snacks, Salty-Snacks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37148,
+      "name": "Ciabatta Rolls",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37151,
+      "name": "Vegetable Crackers",
+      "changes": [
+        "[category] Case fix: snacks, salty-snacks->Snacks, Salty-Snacks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37163,
+      "name": "4 Cheese Mexican Style Blend",
+      "changes": [
+        "[category] Case fix: cheeses->Cheeses"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37164,
+      "name": "Enriched Macaroni Product Elbows",
+      "changes": [
+        "[ingredients] OCR: B1)->B1)"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37165,
+      "name": "Roasted Red Pepper Hummus",
+      "changes": [
+        "[category] Case fix: hummus->Hummus"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37167,
+      "name": "Crispsy Honey Chicken",
+      "changes": [
+        "[category] Case fix: chickens->Chickens"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37170,
+      "name": "Queso Quesadilla Cheese",
+      "changes": [
+        "[category] Case fix: cheeses->Cheeses"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37172,
+      "name": "Vainilla Cookies",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37173,
+      "name": "Pierogi Potato & Cheese",
+      "changes": [
+        "[category] Case fix: frozen pierogi->Frozen Pierogi",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37174,
+      "name": "Morning Wrap",
+      "changes": [
+        "[category] Case fix: breakfast-wrap->Breakfast-Wrap",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37177,
+      "name": "French Blue Cheese Salad Kit",
+      "changes": [
+        "[category] Case fix: salad-kit->Salad-Kit",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37179,
+      "name": "Classic Hummus",
+      "changes": [
+        "[category] Case fix: hummus->Hummus"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37180,
+      "name": "Trail Mix Sweet & Salty",
+      "changes": [
+        "[category] Case fix: trail-mix->Trail-Mix"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37182,
+      "name": "Nonni's Almond Dark Chocolate Biscotti",
+      "changes": [
+        "[category] Case fix: biscuits->Biscuits"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37183,
+      "name": "Hash Brown Patties",
+      "changes": [
+        "[category] Case fix: frozen-foods, frozen->Frozen-Foods, Frozen"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37184,
+      "name": "Apple, Pear & Spinach",
+      "changes": [
+        "[category] Case fix: baby-food->Baby-Food"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37185,
+      "name": "Coconut Cashew Crunch Chocolate Drizzle",
+      "changes": [
+        "[category] Case fix: nut-snack->Nut-Snack"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37187,
+      "name": "Sesame Sticks",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37189,
+      "name": "Minecraft Crunch Pak",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37191,
+      "name": "Angel Hair Pasta",
+      "changes": [
+        "[category] Case fix: pasta->Pasta"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37193,
+      "name": "Mission Flour Tortillas",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37199,
+      "name": "Uncured Ham & Gruy\u00e8re Egg Bites",
+      "changes": [
+        "[category] Case fix: egg-dish->Egg-Dish"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37200,
+      "name": "Potato Bakes Uncured Bacon & Cheese",
+      "changes": [
+        "[category] Case fix: prepared-meals->Prepared-Meals"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37203,
+      "name": "Seaweed Salad",
+      "changes": [
+        "[category] Case fix: seaweed-salad->Seaweed-Salad"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37204,
+      "name": "Seaweed Salad",
+      "changes": [
+        "[category] Case fix: seaweed-salad->Seaweed-Salad"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37209,
+      "name": "Dinnerr Yeast Rolls",
+      "changes": [
+        "[category] Case fix: bread-rolls->Bread-Rolls",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37210,
+      "name": "Dinnerr Yeast Rolls",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37213,
+      "name": "Meat Sweats",
+      "changes": [
+        "[category] Case fix: instant-noodles->Instant-Noodles"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37217,
+      "name": "Organic Sourdough Flatbread Bites Parmesan, Garlic",
+      "changes": [
+        "[category] Case fix: sourdough crackers->Sourdough Crackers"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37219,
+      "name": "Apple, Banana & Pear",
+      "changes": [
+        "[category] Case fix: baby-food->Baby-Food"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37222,
+      "name": "Starbucks Chocolatey Cookie Straws",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37223,
+      "name": "Cheese TRIO Protein BOX",
+      "changes": [
+        "[category] Case fix: cheese->Cheese",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37251,
+      "name": "Yogurt Pretzels",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37252,
+      "name": "Chocolate Flavoured Pretzels",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37256,
+      "name": "Kerala Banana Chips",
+      "changes": [
+        "[category] Case fix: nl:banana-chips->Nl:Banana-Chips"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37257,
+      "name": "Soft Sourdough",
+      "changes": [
+        "[category] Case fix: bread->Bread"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37258,
+      "name": "Smokehpuse Turkey & White Cheddar",
+      "changes": [
+        "[category] Case fix: smokehouse turkey an->Smokehouse Turkey An",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37261,
+      "name": "Paneer",
+      "changes": [
+        "[category] Translated: Produits laitiers->Dairy products",
+        "[category] Translated: Produits ferment\u00e9s->Fermented products"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37263,
+      "name": "Pork Cabbage Shrimp Dumplings",
+      "changes": [
+        "[category] Case fix: frozen dumplings->Frozen Dumplings"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37268,
+      "name": "Tuna In Water",
+      "changes": [
+        "[category] Case fix: canned tuna->Canned Tuna"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37270,
+      "name": "Savory Potstickers Chucken And Vegetable",
+      "changes": [
+        "[category] Case fix: potstickers->Potstickers",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37271,
+      "name": "Pizza Dough",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37273,
+      "name": "Peach Sunrise",
+      "changes": [
+        "[category] Case fix: fruit-smoothie->Fruit-Smoothie"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37274,
+      "name": "Mango & Veggie Medley",
+      "changes": [
+        "[category] Case fix: baby-food->Baby-Food"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37275,
+      "name": "Almond Flour Crackers",
+      "changes": [
+        "[category] Case fix: appetizers->Appetizers"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37276,
+      "name": "Wheat Club",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37282,
+      "name": "Whole Grain Elbow Pasta",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37287,
+      "name": "Sweet & Savory Noodles",
+      "changes": [
+        "[category] Case fix: noodles->Noodles"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37291,
+      "name": "Mac And Cheese",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37293,
+      "name": "Thai-style Coconut Chicken",
+      "changes": [
+        "[category] Case fix: meals-with-chicken->Meals-With-Chicken"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37294,
+      "name": "Cinnamon Raisin",
+      "changes": [
+        "[category] Case fix: breakfast-cereals->Breakfast-Cereals"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37296,
+      "name": "Patagonia Sardines In Coconut Curry",
+      "changes": [
+        "[category] Case fix: canned-sardines->Canned-Sardines"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37299,
+      "name": "Cranberry Almond Thin Cookies",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37300,
+      "name": "Rigatonini Artisanal Pasta",
+      "changes": [
+        "[category] Case fix: pasta->Pasta"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37305,
+      "name": "Miso Ramen",
+      "changes": [
+        "[category] Case fix: noodles->Noodles"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37307,
+      "name": "Multi Collagen Protein Chocolate",
+      "changes": [
+        "[category] Case fix: dietary-supplement->Dietary-Supplement"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37308,
+      "name": "Spicy Chicken Nuggets",
+      "changes": [
+        "[category] Case fix: cooked-chicken->Cooked-Chicken",
+        "[ingredients] OCR: B1)->B1)"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37310,
+      "name": "Chicken Biryani",
+      "changes": [
+        "[category] Removed prefix from: Chicken Biryani, en:rice-dishe"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37316,
+      "name": "Sweet Potato & Coconut Curry",
+      "changes": [
+        "[category] Case fix: baby-food->Baby-Food"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37318,
+      "name": "Roasted Garlic & Herb Stone Ground Wheat Crackers",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37319,
+      "name": "Stoneground Wheat Crackers",
+      "changes": [
+        "[category] Case fix: da:crackers->Da:Crackers",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37320,
+      "name": "Prot\u00e9ine Parfaite",
+      "changes": [
+        "[category] Case fix: protein-supplement->Protein-Supplement"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37324,
+      "name": "Sharp Cheddar",
+      "changes": [
+        "[category] Case fix: cheese->Cheese"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37325,
+      "name": "Moo Crispss",
+      "changes": [
+        "[category] Case fix: crisps->Crisps"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37328,
+      "name": "Fig Bar",
+      "changes": [
+        "[category] Case fix: cereal-bar->Cereal-Bar"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37331,
+      "name": "Soft Country White Bakery Buns",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37334,
+      "name": "Vega One All-in-one Nutritional Shake Chocolate Fl",
+      "changes": [
+        "[category] Translated: Compl\u00e9ments alimentaires->Dietary supplements"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37338,
+      "name": "Sport Protein",
+      "changes": [
+        "[category] Case fix: protein-powder->Protein-Powder"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37341,
+      "name": "Yum Yum Sauce",
+      "changes": [
+        "[category] Case fix: dips->Dips"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37342,
+      "name": "Sharp Cheddar Shredded Cheese",
+      "changes": [
+        "[category] Case fix: cheeses->Cheeses"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37347,
+      "name": "Pretzel Crackers Sea Salt",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37348,
+      "name": "Unbleached High Gluten Flour",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37349,
+      "name": "Choc-chip Macaroons",
+      "changes": [
+        "[category] Case fix: cookies->Cookies"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37351,
+      "name": "Peanut Butter CUP",
+      "changes": [
+        "[category] Translated: Compl\u00e9ments alimentaires->Dietary supplements"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37352,
+      "name": "Chocolate Lava Cake",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37353,
+      "name": "Buttermilk Ranch Dressing",
+      "changes": [
+        "[category] Case fix: salad-dressing->Salad-Dressing"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37354,
+      "name": "Shortbread Cookiu",
+      "changes": [
+        "[category] Case fix: snacks, sweet-snacks->Snacks, Sweet-Snacks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37356,
+      "name": "Taglierini Chicken Lemon & Garlic Sauce",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37357,
+      "name": "Taglierini With Bolognese Sauce",
+      "changes": [
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": false
+    },
+    {
+      "row": 37361,
+      "name": "Probiotic Stwarberry Yoggies",
+      "changes": [
+        "[ingredients] OCR: Sait->Salt"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37368,
+      "name": "Collagen Fuel Chocolate Coconut Flavoured",
+      "changes": [
+        "[category] Case fix: protein-supplement->Protein-Supplement"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37370,
+      "name": "Everything Crackers",
+      "changes": [
+        "[category] Case fix: snacks, salty-snacks->Snacks, Salty-Snacks"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37374,
+      "name": "Burmese Samusa Wrap",
+      "changes": [
+        "[category] Case fix: sandwiches->Sandwiches"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37376,
+      "name": "Chicken Snack Sticks",
+      "changes": [
+        "[category] Case fix: meat-snack->Meat-Snack"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37380,
+      "name": "Cheese Enchiladas",
+      "changes": [
+        "[category] Case fix: cheese enchiladas->Cheese Enchiladas"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37383,
+      "name": "Granola Butter",
+      "changes": [
+        "[category] Case fix: nut-butter->Nut-Butter"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37384,
+      "name": "Granola Butter",
+      "changes": [
+        "[category] Case fix: nut-butter->Nut-Butter"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37392,
+      "name": "Tiny Tony's Chocolonely",
+      "changes": [
+        "[category] Case fix: chocolate-bar->Chocolate-Bar"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37393,
+      "name": "Tiny Tonys Chocolonely",
+      "changes": [
+        "[category] Case fix: chocolate-bar->Chocolate-Bar"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37395,
+      "name": "Dark Chocolate-covered Pretzel Pieces",
+      "changes": [
+        "[category] Case fix: chocolate-covered-pr->Chocolate-Covered-Pr",
+        "[non-uk] US-style fortification labeling"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37396,
+      "name": "Almond Butter Chocolate And Blueberry Vanilla",
+      "changes": [
+        "[category] Case fix: energy-bar->Energy-Bar"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37400,
+      "name": "Whole Nutrition Infant Formula",
+      "changes": [
+        "[category] Case fix: baby-formula->Baby-Formula"
+      ],
+      "modified": true
+    },
+    {
+      "row": 37401,
+      "name": "Vita-boost Shake Smooth Strawberry",
+      "changes": [
+        "[category] Case fix: fruit-juice->Fruit-Juice"
+      ],
+      "modified": true
+    }
+  ]
+}

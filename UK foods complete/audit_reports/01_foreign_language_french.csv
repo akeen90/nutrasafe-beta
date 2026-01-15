@@ -1,0 +1,936 @@
+row,name,category,pattern_matched
+6,Extremely Chocolateey Ginger Biscuits,"Snacks, Snacks sucrés",\bsucrés\b
+26,Chocolate Chip Brioche Rolls,"Snacks, Snacks sucrés",\bsucrés\b
+474,Apricot Strawberry Raspberry Fromage Frais,"Dairies, Fermented foods",\bfromage\b
+477,Double Chocolate Mini Muffins,"Snacks, Snacks sucrés",\bsucrés\b
+599,Dairy Milk Freddo,"Snacks, Snacks sucrés",\bsucrés\b
+604,Greek Style Yogurts Unsweetened,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+634,Kentish Bramley Apple Hot Cross Buns,"Snacks, Snacks sucrés",\bsucrés\b
+681,Harissa Chicken Couscous Salad,"Plant-based foods and beverages, Plant-b",\bfromage\b
+692,Loaded Millionaire Shortbread,"Snacks, Snacks sucrés",\bsucrés\b
+881,Fruit Yoghurt Pog,yogurts,\bfromage\b
+948,Fromage Frais,"Dairies, Fermented foods",\bfromage\b
+1055,Digestive Dark Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+1334,Vintage Cheddar And Caramelised Onion Quiche,Quiches with vegetables,\bfromage\b
+1420,Starbar Duo,"Snacks, Snacks sucrés",\bsucrés\b
+1531,Belgian Dark Chocolate Coated Stem Ginger Cookies,"Snacks, Snacks sucrés",\bsucrés\b
+1554,Smooth Milk Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+1561,Extra Creamy Milk Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+1801,Build A Burger,"Snacks, Snacks sucrés",\bsucrés\b
+2503,Heroes,"Snacks, Snacks sucrés",\bsucrés\b
+2539,Honey Smoked Salmon & Lentil Salad,"Smoked salmon lentil salad, Smoked-salmo",\bfromage\b
+2584,"Apple, Celery And Walnut Slaw",nl:Hartige smeerbare producten,\bfromage\b
+3306,Swiss Chocolate Milk Fruits And Nuts,"Snacks, Snacks sucrés",\bsucrés\b
+3994,Fairtrade Cocoa Privat Chocolateiers J. D. Gross Be,"Aliments de Pâques, Bonbons de chocolat",\bchocolat\b
+4048,Jaffa Cakes,"Snacks, Snacks sucrés",\bsucrés\b
+4205,Mcvitie's Cookies White Choc Chip,"Snacks, Snacks sucrés",\bsucrés\b
+4353,Battenberg,"Snacks, Snacks sucrés",\bsucrés\b
+4402,Doritos Dippers Thicker & Crunchier A Hint Or Paprika,"Snacks, Snacks salés",\bsalés\b
+4508,Strawberry Flavour Laces,"Snacks, Snacks sucrés",\bsucrés\b
+4758,Cheese And Tomato Gluten Free Sandwich,Sandwichs au fromage,\bfromage\b
+4933,Egg Custard Tarts,"Snacks, Snacks sucrés",\bsucrés\b
+5152,Fromage Frais Pots,"Dairies, Fermented foods",\bfromage\b
+5153,Fromage Frais Pots,,\bfromage\b
+5171,Organic Fromage Frais,"Baby foods,",\bfromage\b
+5202,Ugandan Dark Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+5208,Chocolate And Orange Cereal Bars,"Snacks, Snacks sucrés",\bsucrés\b
+5796,Protein Raspberry & Strawberry Flavoured Shake,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+5915,Belgian Collection Chocolate Truffles,"Snacks, Snacks sucrés",\bsucrés\b
+5978,Belgian White Chocolate Chunk Cookies,"Snacks, Snacks sucrés",\bsucrés\b
+5993,"Chicken And Bacon Layered Salad With Mayonnaise, Pasta","Meals, Prepared salads",\bfromage\b
+6019,Rich Tea Biscuits,"Snacks, Snacks sucrés",\bsucrés\b
+6022,Mini Oat Biscuits,"Snacks, Snacks sucrés",\bsucrés\b
+6050,Dark Chocolate And Mint Oat Biscuits,"Snacks, Snacks sucrés",\bsucrés\b
+6170,Double Chocolate Cookie,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+6752,Bluey Fromage Frais Strawberry,fromage frais,\bfromage\b
+6905,Hazelnut Elegant Dark Studded With Roasted Heazelnuts,hotel chocolat hazelnut 70% dark chocola,\bchocolat\b
+7057,Activia Yogurt,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+7091,Black Forest Cherry Dark Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+7178,Oxo Maxi,"Snacks, Snacks sucrés",\bsucrés\b
+7364,Peppersmith Fine English Peppermint Chewing Gum Imp Cashier,"Snacks, Snacks sucrés",\bsucrés\b
+7455,Reduced Fat Coleslaw,"Snacks, Snacks salés",\bsalés\b
+7570,White Chocolate With Vanilla,"Snacks, Snacks sucrés",\bsucrés\b
+7590,Raspberry & Vanilla Panna Cotta,"Produits laitiers, Desserts",\bProduits laitiers\b
+7608,22 Caramel Shortcake Bites,"Snacks, Snacks sucrés",\bsucrés\b
+7716,Tuna & Cucumber Sandwich,"Sandwiches, Fish sandwiches",\bfromage\b
+7724,Butternut Squash,"Sandwiches, Wraps",\bfromage\b
+7741,Reduced FAT Soured Cream & Chive,"Condiments, Sauces",\bfromage\b
+7808,Chicken And Brocolli Bake,Ingredients,\bfromage\b
+7814,"Avocado, Kale & Grains","Plant-based foods and beverages, Plant-b",\bfromage\b
+8037,Co-op Quiche Lorraine,"Meals, Pizzas pies and quiches",\bfromage\b
+8169,English Extra Mature Cheddar,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+8509,Dark Choco,"Snacks, Snacks sucrés",\bsucrés\b
+8513,Grated Grana Padano,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+8862,Soft Cheese Garlic And Herb,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+9062,Greek Feta & Spinach Quiche,"Meals, Pizzas pies and quiches",\bfromage\b
+9092,"LESS FAT* SOUR Cream & Chive Cool And Creamy,",,\bfromage\b
+9412,Lemon Cheeseecake,"Snacks, Snacks sucrés",\bsucrés\b
+9495,Protein Balls Lemon Drizzle Cake,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+9570,Rolo Mousse,"Produits laitiers, Desserts",\bProduits laitiers\b
+9577,Choc Chip Pancake,"Pâtisseries, Pâtisserie au chocolat",\bchocolat\b
+9732,Light Greek Style Coconut & Vanilla Yogurt,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+9921,Duo Chocolate Bar 2 X,"Snacks, Snacks sucrés",\bsucrés\b
+9966,Caramel Chocolate Digestives Biscuits,"Snacks, Snacks sucrés",\bsucrés\b
+9979,Mcvitie's Digestives Dark Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+10236,Thorntons Moments,"Snacks, Snacks sucrés",\bsucrés\b
+10238,Continental,"Snacks, Snacks sucrés",\bsucrés\b
+10279,Milk Sea Salt Caramel Truffles,Truffes en chocolat,\bchocolat\b
+10415,Little Yeos Oganic Fromage Frais,"Dairies, Fermented foods",\bfromage\b
+10589,Daim Cheeseecake,"Snacks, Snacks sucrés",\bsucrés\b
+11024,Oreo Sjokoladetrukket 246 G,"Snacks, Snacks sucrés",\bsucrés\b
+11026,Dairy Milk,"snacks, snacks-sucrés",\bsucrés\b
+11030,Fruit Adventure,"Snacks, Snacks sucrés",\bsucrés\b
+11277,All Butter Puff Pastry,"Snacks, Snacks sucrés",\bsucrés\b
+11331,English Bramley Apple Pies,"Snacks, Snacks sucrés",\bsucrés\b
+11424,Oaty Rounds,"Snacks, Snacks sucrés",\bsucrés\b
+11684,Hot Smoked Salmon & New Potato Salad,"Seafood, Fishes and their products",\bfromage\b
+11745,Greek Style Yogurt With Honey,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+11817,Taste The Difference All Butter Highland Shortbread Fingers,"Snacks, Snacks sucrés",\bsucrés\b
+12138,Weiche Torrone,"Snacks, Snacks sucrés",\bsucrés\b
+12198,Chocolate Gâteau,"Dairy chocolate desserts, Cakes",\bgâteau\b
+12344,Raspberry Overnight Wheat Bisks,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+12387,Madeleine,"Snacks, Snacks sucrés",\bsucrés\b
+12389,"Petits Filous Fromage Frais, Strawberry & Apricot","Produits laitiers, Produits fermentés",\bProduits laitiers\b
+12393,Strawberry And Banana Sugar Free Yoghurt,"Dairies, Fermented foods",\bfromage\b
+12443,Chocolate Mousse,"Produits laitiers, Desserts",\bProduits laitiers\b
+12724,Lemon Shortbread Rounds,"Snacks, Snacks sucrés",\bsucrés\b
+12947,Mini Eggs,Oeufs en chocolat,\bchocolat\b
+13110,Sweet And Creamy Strawberry Cheeseecake,,\bfromage\b
+13756,Alpen Delight #15 Imp,"Snacks, Snacks sucrés",\bsucrés\b
+14470,All Butter Croissant,"Snacks, Snacks sucrés",\bsucrés\b
+14807,Tesco Mushroom Risotto,"Meals, Rice dishes",\bfromage\b
+14844,Goats Cheese And Red Pepper Quiche,"Meals, Pizzas pies and quiches",\bfromage\b
+14919,Maple Bacon And Extra Mature Cheddar Quiche,"Meals, Pizzas pies and quiches",\bfromage\b
+14932,Skin On Fries,"Snacks, Snacks salés",\bsalés\b
+14995,"Tomato, Olive & Basil Quiche","Meals, Pizzas pies and quiches",\bfromage\b
+15150,Free Peach Passion Fruit Fat & Added Sugar Yogurt 4 X,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+15216,Smoky Bacon Flavour Chips,"Snacks, Snacks salés",\bsalés\b
+15452,Biskream Raspberry,"Snacks, Snacks sucrés",\bsucrés\b
+15673,Zombie Takis,"Snacks salés, Tortillas",\bsalés\b
+15685,Quality Street,Assortiments de bonbons de chocolat,\bchocolat\b
+15830,Sweet Chilli Rice Crackers,"Snacks, Snacks salés",\bsalés\b
+15866,Milk Chocolate Digestives,"Snacks, Snacks sucrés",\bsucrés\b
+15903,Dark Chocolate - Peru,"Snacks, Snacks sucrés",\bsucrés\b
+15938,V Egetarian M&S -food- Green Goddess Dressing &quot;A L,Salad dressing,\bfromage\b
+15989,Essential Waitrose & Partners Mature MADE TO A UNI,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+16035,Red Leicester,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+16166,Kit Kat Chunky Duo,"Snacks, Snacks sucrés",\bsucrés\b
+16402,Digestive Light,"Snacks, Snacks sucrés",\bsucrés\b
+16591,Gruyère,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+16708,Purition With Vanilla,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+16796,Genova,"Snacks, Snacks sucrés",\bsucrés\b
+16837,Cadbury Crunchy Melts Soft Cookie Centre,"Snacks, Snacks sucrés",\bsucrés\b
+16985,Custard,"Produits laitiers, Condiments",\bProduits laitiers\b
+17103,West Country Luxury Yogurt - Lemon & Lime Curd,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+17204,Vegan Protein Blend,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+17315,Bonbons Tendres Aux Fruits,"Snacks, Snacks sucrés",\bsucrés\b
+17346,Muesli Bars Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+17473,Munch Bunch Organic Pouch Strawberry,"Dairies, Fermented foods",\bfromage\b
+17474,Munch Bunch Organic Fromage Frais,"Dairies, Fermented foods",\bfromage\b
+17475,Lindahls Kvarg Peach & Passion Fruit,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+17490,Milkybar Mousse,"Produits laitiers, Desserts",\bProduits laitiers\b
+17491,Munch Bunch Fromage Frais Original,"Produits laitiers, Desserts",\bProduits laitiers\b
+17492,Munch Bunch Fromage Frais,"Dairies, Fermented foods",\bfromage\b
+17493,Munch Bunch Double Up Strawberry And Banana,"Dairies, Fermented foods",\bfromage\b
+17494,Munch Bunch Fromage Frais Strawberry Vanilla,"Dairies, Fermented foods",\bfromage\b
+17495,Munch Bunch Double Up Raspberry & Strawberry,"Dairies, Fermented foods",\bfromage\b
+17499,Aero Milk Choc Mousse,"Produits laitiers, Desserts",\bProduits laitiers\b
+17500,Munch Bunch Fromage Frais Original,"Dairies, Desserts",\bfromage\b
+17502,Excellence Milk Sea Salt Caramel,"Snacks, Snacks sucrés",\bsucrés\b
+17532,Petits Filous Raspberry & Strawberry Fromage Frais,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+17592,Wild Berry,"snacks, snacks-sucrés",\bsucrés\b
+17696,Fruity Kids Yogurt,"Dairies, Fermented foods",\bfromage\b
+17750,Cocoa Sandwich Biscuits With Vanilla Flavoured Crème Filling,"Snacks, Snacks sucrés",\bsucrés\b
+17973,Little Delights,"Dairies, Fermented foods",\bfromage\b
+18219,Cheese & Broccoli Quiche,quiche,\bfromage\b
+18222,Marshmallow,"Snacks, Snacks sucrés",\bsucrés\b
+18718,Fabulous Chcolatey Salted Caramel Rounds,"Snacks, Snacks sucrés",\bsucrés\b
+18877,Swizzles Loadsa Sweets,"Snacks, Snacks sucrés",\bsucrés\b
+18950,Morrisons Mexican Style Classic Nacho Cheese Toppi,Sauces au fromage,\bfromage\b
+18980,6 Vegan Choc Macaroons,"Snacks, Snacks sucrés",\bsucrés\b
+19357,Squashums Yogurt Strawberry & Peach,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+19401,Hummus Chips Sour Cream & Chives Flavour,"Snacks, Snacks salés",\bsalés\b
+19416,Maple Syrup Fudge,"Snacks, Snacks sucrés",\bsucrés\b
+19692,Macromunch,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+19791,Impact Protein Shake Chocolate Flavour,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+19841,Fromage Frais Strawberry Apricot Raspberry,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+19956,Y Castell Welshcakes,"Snacks, Snacks sucrés",\bsucrés\b
+20177,Jaffa Quake,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+20313,Free Strawberry Skyr Icelandic Style Yogurt,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+20652,Huel Complete Nutrition Bar - Peanut Caramel,"Snacks, Snacks sucrés",\bsucrés\b
+20800,Chocolate And Peanut Butter Flavour Vitamin & Protein Bar,"Snacks, Snacks sucrés",\bsucrés\b
+20906,Lays Papryka,"Snacks, Snacks salés",\bsalés\b
+21023,Kit Kat 2 Finger Milk Chocolate Biscuit Bars,"Snacks, Snacks sucrés",\bsucrés\b
+21047,Escargots Chocolate Noir,"Snacks, Snacks sucrés",\bsucrés\b
+21166,Limited Edition Oreo Peanut Butter Flavour,"Snacks, Snacks sucrés",\bsucrés\b
+21195,Black's Dark Salted Caramel Chocolate Bar,"Snacks, Snacks sucrés",\bsucrés\b
+21210,Dark Cocoa Orange,"Snacks, Snacks sucrés",\bsucrés\b
+21257,Ciocko Sticks Milk Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+21268,Kinder Bueno White,"Snacks, Snacks sucrés",\bsucrés\b
+21371,Cake Break Donut,"Snacks, Snacks sucrés",\bsucrés\b
+21385,Digestive Thins- Milk Chocolate Cappuccino,"Snacks, Snacks sucrés",\bsucrés\b
+21509,Cracker Mix Classic,"snacks, snacks-salés",\bsalés\b
+21765,Fat Greek Style Live Yoghurt With Honey,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+21768,Sweet And Salty Butterfly Popcorn,"Snacks, Snacks salés",\bsalés\b
+21821,Salted Popcorn,"Snacks, Snacks salés",\bsalés\b
+21902,Grated Cheddar,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+22065,Parmigiano Reggiano 30 Months,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+22136,English Extra Mature Grated Cheddar,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+22263,Organic Unsalted Butter,"Produits laitiers, Matières grasses",\bProduits laitiers\b
+22316,Médium Cheddar,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+22367,SOFT Cheese,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+22533,Chocolate Cookies,"Snacks, Snacks sucrés",\bsucrés\b
+22552,Vinaigrette Cesar Au Parmesan,,\bfromage\b
+22616,Yogourt Iogo (4 Variétées),"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+22642,Clif Bar Cool Mint Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+22667,Anzac Biscuits,"Snacks, Snacks sucrés",\bsucrés\b
+22668,Loison Pandoro Classico,"Snacks, Snacks sucrés",\bsucrés\b
+22669,Lucio,"Snacks, Snacks sucrés",\bsucrés\b
+22712,Speculos,"Snacks, Snacks sucrés",\bsucrés\b
+22764,Nouilles Instantanées.,"Plant-based foods and beverages, Plant-b",\bNouilles\b
+22765,Douces Marion,"Snacks, Snacks sucrés",\bsucrés\b
+23156,® Chocolate Treat Bag,"Snacks, Snacks sucrés",\bsucrés\b
+23162,Biscuits Digestive Milk Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+23188,Bird's - Custard,"Produits laitiers, Condiments",\bProduits laitiers\b
+23224,Cottage Cheese With Pineapple,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+23311,Toffees Tirelire,"Snacks, Snacks sucrés",\bsucrés\b
+23343,Oaty Flapjack,"Snacks, Snacks sucrés",\bsucrés\b
+23382,Family Farm Fat Natural,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+23384,Edible Coal,"Snacks, Snacks sucrés",\bsucrés\b
+23427,Impact Whey Isolate Chocolate Caramel,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+23430,Pro Milk,"Produits laitiers, Laits",\bProduits laitiers\b
+23432,Pro. Milk 50 Zero,"Produits laitiers, Laits",\bProduits laitiers\b
+23435,"High Protein Bar, Chocolate Orange,","Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+23437,Vegan Protein Brownie,"Snacks, Snacks sucrés",\bsucrés\b
+23440,Collagen Coffee Honey & Almond,Compléments alimentaires,\bCompléments alimentaires\b
+23446,The Whey,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+23448,"The Whey Chocolate Caramel,","Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+23453,High Protein Milk Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+23454,Carb Crusher,"Snacks, Snacks sucrés",\bsucrés\b
+23456,Layered Treat Without The Cheat,"Snacks, Snacks sucrés",\bsucrés\b
+23476,Mature English Cheddar,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+23583,High Protein Snack Bar,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+23588,L &F Peach Passion Fruit Greek Style Yoghurt,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+23590,Snickers Hi Ptotein,"Snacks, Snacks sucrés",\bsucrés\b
+23599,Gold Standard Whey,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+23750,The Bakehouse Chunky,Cookies au chocolat,\bchocolat\b
+23754,Trefin Seashells,"Snacks, Snacks sucrés",\bsucrés\b
+23758,Tablette Chocolate Blanc Riz Soufflé,"Snacks, Snacks sucrés",\bsucrés\b
+23765,Protéine Whey Fusion Chocolate,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+23770,Vanilla Waffles,"Snacks, Snacks sucrés",\bsucrés\b
+23771,Whey Hydro Isolate,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+23772,Whey Prime,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+23776,Brownie Original,"Snacks, Snacks sucrés",\bsucrés\b
+23781,Chocolate Leite Cereais Crocantes,"Snacks, Snacks sucrés",\bsucrés\b
+23789,Anthon Berg Chocolate Liqueurs 12er,"Snacks, Snacks sucrés",\bsucrés\b
+23817,Oyakata Soy Sauce Noodles,"Plant-based foods and beverages, Plant-b",\bNouilles\b
+23831,Lentil Chips,"Snacks, Snacks salés",\bsalés\b
+23861,Gluten Free Peanut Butter Cookies,"Snacks, Snacks sucrés",\bsucrés\b
+23864,Pasito Cappuccino Cake,"Snacks, Snacks sucrés",\bsucrés\b
+23866,Milk Chocolate Stevia No Sugar Added,"Snacks, Snacks sucrés",\bsucrés\b
+23881,Vanilla Party Cakes,"Snacks, Snacks sucrés",\bsucrés\b
+23887,Pistachio-almond Cookies,"Snacks, Snacks sucrés",\bsucrés\b
+23905,Tutti Frutti Passion,"Snacks, Snacks sucrés",\bsucrés\b
+23916,Protein + BCAA,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+23946,Grand Cru Noir,"Snacks, Snacks sucrés",\bsucrés\b
+23960,Croissant cream&cookies,"Snacks, Snacks sucrés",\bsucrés\b
+24002,Kvikk Lunsj,"Snacks, Snacks sucrés",\bsucrés\b
+24015,Non Stop Original,"Snacks, Snacks sucrés",\bsucrés\b
+24020,Fruit And Nuts,"Snacks, Snacks sucrés",\bsucrés\b
+24021,Nouilles Instantanées En Soupe,Soupes,\bNouilles\b
+24059,Strega Alberti Croccantino Al Cioccolato,"Snacks, Snacks sucrés",\bsucrés\b
+24070,Colombe Pistache,"Snacks, Snacks sucrés",\bsucrés\b
+24082,The Whey Isolat,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+24148,Original Stroopwafels,"Snacks, Snacks sucrés",\bsucrés\b
+24206,Nouilles Sautees Coreenne,,\bNouilles\b
+24286,Dark Fantasy Choco Fills,"Snacks, Snacks sucrés",\bsucrés\b
+24320,Waffy,"Snacks, Snacks sucrés",\bsucrés\b
+24406,Pop Tarts Frosted Chocotastic,"Snacks, Snacks sucrés",\bsucrés\b
+24418,Tim Tam Murray River Salted Caramel,"Snacks, Snacks sucrés",\bsucrés\b
+24489,Vegan Croissants,"Snacks, Snacks sucrés",\bsucrés\b
+24558,Nouilles Instantanées Saveur Canard,"Plant-based foods and beverages, Plant-b",\bNouilles\b
+24908,Belgian Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+24983,Milk Chocolate With Almonds,"Snacks, Snacks sucrés",\bsucrés\b
+25032,Forever Lite Ultra,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+25432,Biscuits Hobnobs Milk Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+25442,Halloumi,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+25454,Menier Swiss Dark Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+25641,Green & Black's Organic Chocolate Bar Dark,"Snacks, Snacks sucrés",\bsucrés\b
+25718,Dark Chocolate - Divine - 100 G,"Snacks, Snacks sucrés",\bsucrés\b
+26240,Peanut Butter Caramel Cups,"Snacks, Snacks sucrés",\bsucrés\b
+26257,Misfits Plant-powered Chocolate Caramel,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+26291,Salted Caramel Choc,"Chocolat blanc en tablette, Chocolat bla",\bchocolat\b
+26321,Milk Creamy,Tablette de chocolat au lait,\bchocolat\b
+26453,Lacto Free Yogurt Vanille,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+26519,Original Oreo,"Snacks, Snacks sucrés",\bsucrés\b
+26529,Kinder Bueno,"Snacks, Snacks sucrés",\bsucrés\b
+26568,"Crunchy Oats And Dark Chocolate, 2 Barres De 21 G","Snacks, Snacks sucrés",\bsucrés\b
+26572,Digestive Classic,"Snacks, Snacks sucrés",\bsucrés\b
+26583,Munchallow,"Snacks, Guimauves enrobées de chocolat",\bchocolat\b
+26610,Nutrini Peptisorb,Compléments alimentaires,\bCompléments alimentaires\b
+26645,Bhujia Sev,"Snacks, Snacks salés",\bsalés\b
+26733,FAT Greek Style Blueberry & Raspberry Yogurt,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+26743,Swiss Chocolate Neapolitans,"Snacks, Snacks sucrés",\bsucrés\b
+26807,Gouda Jeune 48 7 Tranches,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+26835,Yoghurt,,\bfromage\b
+26860,Marsh Mallow,"Snacks, Snacks sucrés",\bsucrés\b
+27064,Smooth Dark With Raspberries Cocoa,"Snacks, Snacks sucrés",\bsucrés\b
+27175,"Konjac Noodles, Spaghetti, Rice And Fettucine",Nouilles,\bNouilles\b
+27226,Epicerie / Boissons Et Vins / Sodas Bio,,\bBoissons\b
+27283,Reese’s Trio,"Snacks, Snacks sucrés",\bsucrés\b
+27342,Yogourt,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+27344,Activia B.L. Regularis,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+27377,Vinaigrette,"Condiments, Matières grasses",\bfromage\b
+27401,Moelleux Pépites De Chocolate Sans Sucres,"Snacks, Snacks sucrés",\bsucrés\b
+27461,Intense Dark Chocolate Cocoa Solids,"Snacks, Snacks sucrés",\bsucrés\b
+27518,High Whey,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+27530,Sauce Tomate,"Condiments, Sauces",\bfromage\b
+27536,Bcaa Amino-hydrate,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+27562,Whey Isolate Chocolate Noisette,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+27633,Lördagsgodis,"Snacks, Snacks sucrés",\bsucrés\b
+27695,Calissons,"Snacks, Snacks sucrés",\bsucrés\b
+27697,Bruges Assortment Biscuits,"snacks, snacks-sucrés",\bsucrés\b
+27699,Lutti Mint Menthe Fraîche Original,"Snacks, Snacks sucrés",\bsucrés\b
+27713,Pure Whey Isolate,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+27750,Pick Up! Milk Chocolate 5 X (140g),"Snacks, Snacks sucrés",\bsucrés\b
+27915,Vdohnovenie Chocolate Noir Aux Amandes Cacao,"Snacks, Snacks sucrés",\bsucrés\b
+27922,Mochi Strawberry Cheeseecake,,\bfromage\b
+28060,Salted Tortilla Chips,"Snacks, Snacks salés",\bsalés\b
+28110,Trident Strawberry,"Snacks, Snacks sucrés",\bsucrés\b
+28160,Mammouth Pop,"Snacks, Snacks sucrés",\bsucrés\b
+28163,Ballymole,"Snacks, Snacks salés",\bsalés\b
+28183,The Collective Raspberry Gourmet Live Yogurt,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+28190,Divine Smooth Dark Gin And Tonic Inspired,"Snacks, Snacks sucrés",\bsucrés\b
+28218,Cherry Bakewell Flapjack,"Snacks, Snacks sucrés",\bsucrés\b
+28242,Reflex Native Whey Choc Perf,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+28275,Original Creamy Soft Cheese,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+28277,Light Original Soft Cheese,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+28321,All In One Perform Bar,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+28338,Thewhey,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+28371,Tesco Soft Cheese Less Fat,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+28390,Salted Caramel Protein Balls,"Protein balls, Compléments alimentaires",\bCompléments alimentaires\b
+28396,"PHD Diet Whey,choc Peanut Butter","Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+28425,Battle Bites,"Snacks, Snacks sucrés",\bsucrés\b
+28437,Cookie Dough Protein Ball,"Snacks, Snacks sucrés",\bsucrés\b
+28446,Berry Crunch Oat Milk White Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+28530,Ciambelle All'albicocca,"Snacks, Snacks sucrés",\bsucrés\b
+28589,Purity-light Digest Whey Protein Banana 500gr,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+28606,Oatmeal Prozis Chocolate Chips,Compléments alimentaires,\bCompléments alimentaires\b
+28608,Whey Prime Vanilla,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+28641,Whey 100,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+28648,After Dinnerr Sweet Marzipan And Roasted Hazelnuts,"Snacks, Snacks sucrés",\bsucrés\b
+28668,Jaffa Cakes Sponge Cakes With Jelly In White Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+28671,Sour Madness Mauro,"Snacks, Snacks sucrés",\bsucrés\b
+28683,Whey Isolate,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+28686,Nitro Pure Whey Coconut-Chocolate,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+28687,Nitro Pure Whey,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+28690,Zero Bar,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+28693,Pure Whey,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+28694,Isolate Whey Protein,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+28735,Nouilles Dan Bol Poulet Apollo,"Plant-based foods and beverages, Plant-b",\bNouilles\b
+28739,Crakes Choc,"Snacks, Snacks sucrés",\bsucrés\b
+28744,Chocolate Lait Est Créme,"Snacks, Snacks sucrés",\bsucrés\b
+28745,Koolbreak,"Snacks, Snacks sucrés",\bsucrés\b
+28902,Palmiers Prussiens,"Snacks, Snacks sucrés",\bsucrés\b
+28907,Popcorn Milk,"Confiseries chocolatées, Popcorn sucré",\bConfiseries\b
+28918,Choco Sensations,"Snacks, Snacks sucrés",\bsucrés\b
+28937,"Tiny Toblerone Milk, White & Dark","Snacks, Snacks sucrés",\bsucrés\b
+28956,Oreo Chocolate Minis Cup,"Snacks, Snacks sucrés",\bsucrés\b
+28957,Milka Lu,"Snacks, Snacks sucrés",\bsucrés\b
+28974,Pandoro,"Snacks, Snacks sucrés",\bsucrés\b
+28977,Limoncino,"Snacks, Snacks sucrés",\bsucrés\b
+29006,Mentos Sugar Free Mint Gum Pocket Bottle,"Snacks, Snacks sucrés",\bsucrés\b
+29009,Mentos Peppermint Gum,"Snacks, Snacks sucrés",\bsucrés\b
+29011,Mentos Chewing Gum Pure Fresh Freshmint,"snacks, snacks-sucrés",\bsucrés\b
+29019,Gullon Maria Integral,"Snacks, Snacks sucrés",\bsucrés\b
+29027,Puleva Omega 3 Almendra,Produits laitiers,\bProduits laitiers\b
+29117,Hot Rice Crackers,"Snacks, Snacks salés",\bsalés\b
+29120,Stroopkoekjes,"Snacks, Snacks sucrés",\bsucrés\b
+29286,Jimjam,"Snacks, Snacks sucrés",\bsucrés\b
+29393,Happy-happy Chico-chips Cookies,"Snacks, Snacks sucrés",\bsucrés\b
+29602,Winter Green Mentos,"Snacks, Snacks sucrés",\bsucrés\b
+29619,Oreo Chocolate Sandwich Biscuits,"Snacks, Snacks sucrés",\bsucrés\b
+29642,Matre Truffout Fein Schmelzende Bitter Schokolade,"Snacks, Snacks sucrés",\bsucrés\b
+29686,Yoplait Vanilla Yoghurt,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+29828,Fruit & Cream Sugar Free Chews,"Snacks, Snacks sucrés",\bsucrés\b
+29829,Chews Sugar Free Strawberries,"Snacks, Snacks sucrés",\bsucrés\b
+29858,Sugar Free Cola Bottles,"Snacks, Snacks sucrés",\bsucrés\b
+29900,Crankt CHOC Protein,"Produits laitiers, Laits",\bProduits laitiers\b
+29995,"Oat 25, Strawberry","Snacks, Snacks sucrés",\bsucrés\b
+30227,Scoops! Multigrain Tortilla Chips,"Snacks, Snacks salés",\bsalés\b
+30598,Hello Panda,"Snacks, Snacks sucrés",\bsucrés\b
+31056,Peanut Butter Cup,"Snacks, Snacks sucrés",\bsucrés\b
+31355,Galettes Bretonnes,"Snacks, Snacks sucrés",\bsucrés\b
+31412,Cherry Yogurt,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+31419,Safari 2 In 1,"Dairies, Fermented foods",\bfromage\b
+31489,Cent Wafers,"Snacks, Snacks sucrés",\bsucrés\b
+31490,Huggy Bear,"Snacks, Snacks sucrés",\bsucrés\b
+31532,Viennois Chocolate,"Produits laitiers, Desserts",\bProduits laitiers\b
+31534,Donut,"Snacks, Snacks sucrés",\bsucrés\b
+31555,Boursin Portions Garlic & Herbs,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+31567,Chocolate Lait Fourré,"Snacks, Snacks sucrés",\bsucrés\b
+31577,Pure Isolate Whey Chocolate 2KG Eric Favre,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+31578,Chocolate Noir Et Pointe De Sel,"Snacks, Snacks sucrés",\bsucrés\b
+31579,Cakes Fourrés Fraise Sans Gluten,"Snacks, Snacks sucrés",\bsucrés\b
+31598,Noir Extra,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+31650,Lindt Dubai Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+32210,Kit Kat Ruby Cocoa Beans,"Snacks, Snacks sucrés",\bsucrés\b
+32218,Protein Bar - Coconut Almond,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+32337,Salted Popcorn,"Snacks, Snacks salés",\bsalés\b
+32341,Cream Crackers,"Snacks, Snacks salés",\bsalés\b
+32357,M&M'S Choco Dose,"Snacks, Snacks sucrés",\bsucrés\b
+32370,Table Water,"Snacks, Snacks salés",\bsalés\b
+32377,Twiglets Original,"Snacks, Snacks salés",\bsalés\b
+32623,Cheddar Scones,"Snacks, Snacks sucrés",\bsucrés\b
+32689,Rainbow Drops,"Snacks, Snacks sucrés",\bsucrés\b
+32798,Sesame Naps,"Snacks, Snacks sucrés",\bsucrés\b
+33383,Lighter Life Shake,"Produits laitiers, Laits",\bProduits laitiers\b
+33585,Cappuccino Nut,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+33878,Tortilla Chips,"Snacks, Snacks salés",\bsalés\b
+33895,Yahourt,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+33910,Vegan Tortilla Chips Kale & Spanish,"Snacks, Snacks salés",\bsalés\b
+33914,Rainbow Roots Veg Crispss,"Snacks, Snacks salés",\bsalés\b
+33929,Dark Chocolate Protein Energy Ball,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+34258,The Premium Collection Chocolatees,"Snacks, Snacks sucrés",\bsucrés\b
+34308,Gâteau Cereal Grec,biscuits,\bgâteau\b
+34350,Tortilla Chips Caramelized Onion,"Snacks, Snacks salés",\bsalés\b
+34380,Cookie Shots - Brownie Biscuits,"Snacks, Snacks sucrés",\bsucrés\b
+34428,Custard Creams,"Snacks, Snacks sucrés",\bsucrés\b
+34440,Choc Orange,"Snacks, Snacks sucrés",\bsucrés\b
+34441,Sport & Energy Cake,"Snacks, Snacks sucrés",\bsucrés\b
+34447,Guylian Chocolate Seashells,"Snacks, Snacks sucrés",\bsucrés\b
+34460,Pure Chocolade,"Snacks, Snacks sucrés",\bsucrés\b
+34464,Rochers Coco Gluten Free,"Snacks, Snacks sucrés",\bsucrés\b
+34481,Aïki Nouilles Chicken,"Plantaardige levensmiddelen en dranken, ",\bNouilles\b
+34527,Spreadable,"Produits laitiers, Matières grasses",\bProduits laitiers\b
+34563,Crunchy Banana - Santé,"snacks, snacks-sucrés",\bsucrés\b
+34618,Happy Wafers Nuts,"Snacks, Snacks sucrés",\bsucrés\b
+34739,Cottage Cheese,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+34777,Noir Pur Fruité,"Snacks, Snacks sucrés",\bsucrés\b
+34778,Les Mini Chocolates Suisses,"Snacks, Snacks sucrés",\bsucrés\b
+34782,Swiss Milk Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+34785,Lindt Excellence Poire Intense,"Snacks, Snacks sucrés",\bsucrés\b
+34794,Melted Cheese,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+34848,Yaourt,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+34850,Chocolate Chew,"Snacks, Snacks sucrés",\bsucrés\b
+34866,Oreo Original,"Snacks, Snacks sucrés",\bsucrés\b
+34908,Marabou Premium 70 % Cocoa,"Snacks, Snacks sucrés",\bsucrés\b
+34930,Loacker Gardena Chocolate Wafers,"Snacks, Snacks sucrés",\bsucrés\b
+34964,Plum Cake,"Snacks, Snacks sucrés",\bsucrés\b
+34969,Panettone Classico,"Snacks, Snacks sucrés",\bsucrés\b
+35026,Original Oreo,"Snacks, Snacks sucrés",\bsucrés\b
+35051,Chocolatees Cacao Dark Chocolate With Caramel And Sea Salt,"Snacks, Snacks sucrés",\bsucrés\b
+35052,Orange Flavoured Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+35053,Yogur Sabor Vainilla,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+35063,Maria,"Snacks, Snacks sucrés",\bsucrés\b
+35073,Lacasitos Bote,"Snacks, Snacks sucrés",\bsucrés\b
+35077,Buscalios,"Snacks, Snacks salés",\bsalés\b
+35083,Coco Wafers,"Snacks, Snacks sucrés",\bsucrés\b
+35122,Choco Bananica,"Snacks, Snacks sucrés",\bsucrés\b
+35132,Stick Crackers,"Snacks, Snacks sucrés",\bsucrés\b
+35153,Pennywafles,"Snacks, Snacks sucrés",\bsucrés\b
+35169,Sauce Fromage,"Condiments, Aides culinaires",\bfromage\b
+35240,"Body &fit Protein Cookie, Almond Flavour","Snacks, Snacks sucrés",\bsucrés\b
+35424,Brownies,"Snacks, Snacks sucrés",\bsucrés\b
+35432,Pop Corn Shed Salted Caramel,"Snacks, Snacks sucrés",\bsucrés\b
+35441,Kit Kat Milk Chocolate Block,"Snacks, Snacks sucrés",\bsucrés\b
+35507,Pods Twix Imp,"Snacks, Snacks sucrés",\bsucrés\b
+35698,Coconut Macadamia Protein Energy Ball,"Snacks, Snacks sucrés",\bsucrés\b
+35771,Lemon Delight Thins,"Snacks, Snacks sucrés",\bsucrés\b
+35848,Kit Kat Chunky,"Snacks, Snacks sucrés",\bsucrés\b
+35901,Mini Eggs,"Snacks, Snacks sucrés",\bsucrés\b
+35957,Heavenly Butter,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+35966,Chocolate Noir,"Snacks, Snacks sucrés",\bsucrés\b
+35979,Tartichoc,"Snacks, Snacks sucrés",\bsucrés\b
+36012,Blanc Dessert,"Snacks, Snacks sucrés",\bsucrés\b
+36091,Red Leicester,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+36229,Organic Dark Chocolate Bar,"Snacks, Snacks sucrés",\bsucrés\b
+36308,Nouilles Larges Aux Oeufs Wingman,Noodles,\bNouilles\b
+36716,Milk Chocolate & Peanut Butter Pumpkins,"Snacks, Snacks sucrés",\bsucrés\b
+36799,Liberté Classique Yogourt Mûre Blackberry,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+36925,Little Bites,"Snacks, Snacks sucrés",\bsucrés\b
+36973,Rice Noodles With Kimchi Flavoured Soup,"Soupes, Nouilles asiatiques aromatis",\bNouilles\b
+37050,Parmesan Rapé,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+37099,Yogourt,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+37100,Souris En Chocolate - Noir À De Cacao,chocolat,\bchocolat\b
+37261,Paneer,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+37325,Moo Crispss,crisps,\bfromage\b
+37334,Vega One All-in-one Nutritional Shake Chocolate Flavour,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+37351,Peanut Butter CUP,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+37409,Gouda,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+37470,Crème Brûlée,"Produits laitiers, Desserts",\bProduits laitiers\b
+37485,Dark Chocolate Peanut Butter Cups,"Snacks, Snacks sucrés",\bsucrés\b
+37507,Reduce Fat Soft Cheese Lighter,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+37518,Chocolate Pur Noir,"Snacks, Snacks sucrés",\bsucrés\b
+37543,Crème Cuisson,"Produits laitiers, Crèmes",\bProduits laitiers\b
+37544,Chocolate Noir De Cacao,"Snacks, Snacks sucrés",\bsucrés\b
+37898,Meiji Macadamia,"Snacks, Snacks sucrés",\bsucrés\b
+37920,Ritz Crackers Original 200 G,"snacks, snacks-salés",\bsalés\b
+37969,Impact Diet Whey - Chocolate Mint,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+38010,Vegan Protein Blend Chocolate Peanut Caramel,Compléments alimentaires,\bCompléments alimentaires\b
+38126,Kraft Light Cheese,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+38140,Proteínas,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+38167,Donut Milky,"Snacks, Snacks sucrés",\bsucrés\b
+38183,Chocolate Brownie Cake,"Snacks, Snacks sucrés",\bsucrés\b
+38228,Creams Strawberry,"Snacks, Snacks sucrés",\bsucrés\b
+38325,Soft Amaretti,"Snacks, Snacks sucrés",\bsucrés\b
+38333,Spongata,"Snacks, Snacks sucrés",\bsucrés\b
+38351,Green Lady,"Snacks, Snacks sucrés",\bsucrés\b
+38388,Bind Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+38399,Turkish Delight,"Snacks, Snacks sucrés",\bsucrés\b
+38453,Fruit Chewy Dragees,"Snacks, Snacks sucrés",\bsucrés\b
+38532,Britannia Toastea Milk Rusk,"Snacks, Snacks sucrés",\bsucrés\b
+38644,Multigain Energy Bar,"Snacks, Snacks sucrés",\bsucrés\b
+38744,ARN Scotch Finger,"Snacks, Snacks sucrés",\bsucrés\b
+38789,Berry Nat Fruit Juice Chews,"Snacks, Snacks sucrés",\bsucrés\b
+38790,Chews Caramel Mix,"Snacks, Snacks sucrés",\bsucrés\b
+38888,Veggie Straws,"Snacks, Snacks salés",\bsalés\b
+38956,"Beigel Beigel, Cracker Crispss, Sour Creme & Onion","Snacks, Snacks sucrés",\bsucrés\b
+39005,Dar-vida Extra Fin Fromage,"Snacks, Snacks salés",\bsalés\b
+39147,"Hellema, Fourre, Vanilla","Snacks, Snacks sucrés",\bsucrés\b
+39437,English-style Gingersnap,"Snacks, Snacks sucrés",\bsucrés\b
+39444,Puffs,puffed-salty-snacks,\bfromage\b
+39528,Junior Caramels,"Snacks, Sweet snacks",\bchocolat\b
+39553,Pattes D'ours,"Snacks, Snacks sucrés",\bsucrés\b
+39556,Patte Dours,"Snacks, Snacks sucrés",\bsucrés\b
+39600,Riviera Yogourt Ferme Citron,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+39664,Fromage Suisse,,\bfromage\b
+39670,Oreo,"Snacks, Snacks sucrés",\bsucrés\b
+39717,Old Fort Cheddar,,\bfromage\b
+39770,Liquorice,"Snacks, Snacks sucrés",\bsucrés\b
+39797,Merci,"Snacks, Snacks sucrés",\bsucrés\b
+39834,Original Danish Butter Cookies,"Snacks, Snacks sucrés",\bsucrés\b
+39924,Wasabi Rice Crackers,"Snacks, Snacks salés",\bsalés\b
+40144,Iögo,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+40149,Indulgence Chocolate Caramel,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+40226,"Organic Dark Chocolate Keto Nuggets Pecans, Almonds & Hemp S","Snacks, Snacks sucrés",\bsucrés\b
+40318,Orgran Quinoa Puffs,"Snacks, Snacks salés",\bsalés\b
+40341,Whey Protein Professional - 2350 G - Cappu?,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+40343,"Whey Protein (2,35kg) Scitec-chocolate Blanc","Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+40347,Vive Amandes Et Noix De Coco Protein Energy Snack,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+40348,Vive Cacao Orange Protein Energy Snack,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+40441,Chocolate Coconut Clean Protein Smoothie,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+40485,Protein Shake Chocolate,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+40566,Chocolate Fudge Lava Cakes,"Snacks, Snacks sucrés",\bsucrés\b
+40604,Pythons,"Snacks, Snacks sucrés",\bsucrés\b
+40618,The Original 7g Bcaas,"Compléments alimentaires, Protéines en p",\bCompléments alimentaires\b
+40850,Mini Butter Waffles,"Snacks, Snacks sucrés",\bsucrés\b
+40854,Belgix Madelaines,"Snacks, Snacks sucrés",\bsucrés\b
+40863,Marzipan,"Snacks, Snacks sucrés",\bsucrés\b
+40864,Napolitanas Cacao,"Snacks, Snacks sucrés",\bsucrés\b
+40885,Fruity Duo Fromate Frais Strawberry & Banana,,\bfromage\b
+40891,Milk Chocolate Biscuits Glutenvrij,"Snacks, Snacks sucrés",\bsucrés\b
+40967,Donuts,"Snacks, Snacks sucrés",\bsucrés\b
+40990,Chewing Gum - Chlorophylle,"Snacks, Snacks sucrés",\bsucrés\b
+40991,Mikado Chocolate Blanc,"Snacks, Snacks sucrés",\bsucrés\b
+40997,200G Carres LT Noiset.c.d'or,"Snacks, Snacks sucrés",\bsucrés\b
+40999,Lindt A Cuisiner Cacao Intense,"Snacks, Snacks sucrés",\bsucrés\b
+41006,Kiri À L'ail Et Au Fines Herbes,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+41015,Zanzigliss,"snacks, snacks-sucrés",\bsucrés\b
+41016,Happy Cherry,"Snacks, Snacks sucrés",\bsucrés\b
+41017,Best Fizz,"Snacks, Snacks sucrés",\bsucrés\b
+41024,Special K Frutti Rossi,"Snacks, Snacks sucrés",\bsucrés\b
+41036,Cake Fourré Saveur Chocolate Noisette,"Snacks, Snacks sucrés",\bsucrés\b
+41050,T. 200 NR Corse Dessert BF,"Snacks, Snacks sucrés",\bsucrés\b
+41055,Meringue Doucinelle Fantaisie,"Snacks, Snacks sucrés",\bsucrés\b
+41059,Yaourt Citron,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+41061,Chocolate Fitness Special K,"Snacks, Snacks sucrés",\bsucrés\b
+41074,Donuts Confettis,"Snacks, Snacks sucrés",\bsucrés\b
+41083,Petits Financiers Aux Amandes,"Snacks, Snacks sucrés",\bsucrés\b
+41090,WHEY Native Chocolate,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+41091,Whey Native,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+41094,Madeleine Coque Chocolate Noir,"Snacks, Snacks sucrés",\bsucrés\b
+41098,Muffins Abricot Bio Viadelice,"Snacks, Snacks sucrés",\bsucrés\b
+41099,Cookies Almond Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+41151,Dorina,"Snacks, Snacks sucrés",\bsucrés\b
+41159,Breakfast Biscuits Choco,"Snacks, Snacks sucrés",\bsucrés\b
+41169,Cheese And Onion Quiche,,\bfromage\b
+41175,Marzipan Minis,"Snacks, Snacks sucrés",\bsucrés\b
+41183,Chocolate Whole Almonds,"Snacks, Snacks sucrés",\bsucrés\b
+41188,Portokali,"Snacks, Snacks sucrés",\bsucrés\b
+41198,Asbach Pralinen,"Snacks, Snacks sucrés",\bsucrés\b
+41204,Haribo Balla-balla,"Snacks, Snacks sucrés",\bsucrés\b
+41214,Deutsche Bonbons Hello Kitty,"Snacks, Snacks sucrés",\bsucrés\b
+41227,Chocolate Muesli,Mueslis au chocolat,\bchocolat\b
+41243,Skittles Chewies,"Snacks, Snacks sucrés",\bsucrés\b
+41266,175G Caramels Werther's,"Snacks, Snacks sucrés",\bsucrés\b
+41267,Peanut Bar,"Snacks, Snacks sucrés",\bsucrés\b
+41270,Bahlsen Zoo Bears & Bees,"Snacks, Snacks sucrés",\bsucrés\b
+41287,Elite Protein Bar Chocolate,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+41299,Banana Bread,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+41308,Grandino Barre Cookie Chocolate Au Lait,"Snacks, Snacks sucrés",\bsucrés\b
+41349,High Protein Mango,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+41606,Fitmart Soja Protein Isolat Raw Series (Chocolate),"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+41616,Fire Killer Candy Spray,"Snacks, Snacks sucrés",\bsucrés\b
+41624,Whey Protein Cocos Crisps,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+41630,Foodspring Protein Bar,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+41643,Truffes Pralines,"Snacks, Snacks sucrés",\bsucrés\b
+41735,YUMM Gummi Rainbow Belts,"Snacks, Snacks sucrés",\bsucrés\b
+41873,Tangy Cheese Tortilla Chips,"Snacks, Snacks salés",\bsalés\b
+41890,Alpen Light Summer Fruits,"Snacks, Snacks sucrés",\bsucrés\b
+41905,Jus-rol Croissants,"Snacks, Snacks sucrés",\bsucrés\b
+41952,Bassetts Nougat STD 35 G (pack Of ),"Snacks, Snacks sucrés",\bsucrés\b
+41953,Football Gums,"Snacks, Snacks sucrés",\bsucrés\b
+42012,Simpkins Mixed Fruit Travel Sweets,"Snacks, Snacks sucrés",\bsucrés\b
+42013,Dark Chocolate Orange Creams 12 X,Confiseries chocolatées,\bConfiseries\b
+42046,Marvelous Milk Choc Chip Cookies,"Snacks, Snacks sucrés",\bsucrés\b
+42175,Happy Birthday Mix Fruit Drops,"Snacks, Snacks sucrés",\bsucrés\b
+42179,Ma Baker Giant Bars - Blueberry,"Snacks, Snacks sucrés",\bsucrés\b
+42224,Toffolossus Biscuit,"Snacks, Snacks sucrés",\bsucrés\b
+42242,Milk Protein Vanilla,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+42243,Low Fat Slow Release Vanilla,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+42250,Creatine Monohydrate,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+42256,Cookie Protéiné,"Snacks, Snacks sucrés",\bsucrés\b
+42257,Myprotein Blueberry Cheeseecake Flavour,"Produits laitiers, Compléments alimentai",\bProduits laitiers\b
+42259,Protein Wafers Peanut Butter,"Snacks, Snacks sucrés",\bsucrés\b
+42267,Protein Oat Boosts,"Snacks, Snacks sucrés",\bsucrés\b
+42285,Carb Crusher Dark Chocolate,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+42287,Impact Whey Protein,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+42298,Proteína Vegana,Compléments alimentaires,\bCompléments alimentaires\b
+42300,Evoclear Hydro,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+42305,Clear Whey Isolate,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+42317,Gouda,"Dairies, Fermented foods",\bfromage\b
+42334,Impact Whey Isolate,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+42339,Chocolate Noir (avec Sel De Mer),chocolat noir,\bchocolat\b
+42402,Jersey Cream Black Butter Fudge,"Snacks, Snacks sucrés",\bsucrés\b
+42406,Flapjack Chocolate,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+42408,Carb Killa Banana Armour,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+42438,Chipotle & Lime,"Snacks, Snacks salés",\bsalés\b
+42449,"Bulk Powders Pure Whey Protein Powder Shake, 1 KG - Raspberr","Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+42464,Sour Watermelon - Gourmet Sweets,"Snacks, Snacks sucrés",\bsucrés\b
+42488,Diet Protein Vegan,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+42491,Dark Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+42515,Better Brownie Choc Orange,"Snacks, Snacks sucrés",\bsucrés\b
+42581,Strawberry Cream Gateaux,Black Forest gâteau,\bgâteau\b
+42655,Caprice Delicious Wafer Rolls With Hazelnut And Cocoa Cream ,"Snacks, Snacks sucrés",\bsucrés\b
+42708,French Cheese Chips,"Snacks, Chips fromage",\bfromage\b
+42830,Muesli Barres,"Snacks, Snacks sucrés",\bsucrés\b
+42831,Nic-nac,"Snacks, Snacks sucrés",\bsucrés\b
+42846,Glutenfree & Lactosefree - Cookies Aux Pépites De Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+42851,Chokotoff,"Snacks, Snacks sucrés",\bsucrés\b
+42853,Mini Suzy,"Snacks, Snacks sucrés",\bsucrés\b
+42857,Danonino Fraise,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+42858,Yoghurt Op Griekse Wijze Aardbei,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+42883,Dark Chocolate Sea Salt Cacao,"Snacks, Snacks sucrés",\bsucrés\b
+42884,Chocolate Orange Amande,"Snacks, Snacks sucrés",\bsucrés\b
+42885,Extra Dark Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+42902,Organic Vanilla Waffle,"Snacks, Snacks sucrés",\bsucrés\b
+43028,Greeting From Denmark,"Snacks sucrés, Biscuits et gâteaux",\bsucrés\b
+43133,Milk Chocolate (hazelnuts),"Snacks, Snacks sucrés",\bsucrés\b
+43144,Tabletă Amăruie,"Snacks, Snacks sucrés",\bsucrés\b
+43146,Dark Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+43166,ISO WHEY ZERO,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+43168,Iso Whey Zero (caffe Latte),"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+43169,BCAA,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+43186,Protein Muffin,"Snacks, Snacks sucrés",\bsucrés\b
+43187,Whey Protein,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+43195,Candy Coated Milk Chocolate Confection,"Snacks, Snacks sucrés",\bsucrés\b
+43219,Cheese Flavoured Maize Snack,Snacks,\bfromage\b
+43238,King Cookies Choco,"Snacks, Snacks sucrés",\bsucrés\b
+43274,Kitkat,"Snacks, Snacks sucrés",\bsucrés\b
+43311,Puls Bite Protein Snack Bar 35G Chocolate,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+43373,Barre Protéinée Fraise Chocolate Blanc,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+43402,Ragusa Blond Caramélisé,"Snacks, Snacks sucrés",\bsucrés\b
+43421,"Farmer Soft, Heidelbeere & Brombeere","Snacks, Snacks sucrés",\bsucrés\b
+43422,Stella Sugarless Schokolade Bitter 100 G,"Snacks, Snacks sucrés",\bsucrés\b
+43456,Chunky Bar,"Snacks, Snacks sucrés",\bsucrés\b
+43487,Joe Noir,"Snacks, Snacks sucrés",\bsucrés\b
+43494,Chocolate Crémant,"Snacks, Snacks sucrés",\bsucrés\b
+43505,Mignonnette Noir Intense,"Snacks, Snacks sucrés",\bsucrés\b
+43545,Petit Beukelaer,"Snacks, Snacks sucrés",\bsucrés\b
+43563,Betterfood,"Snacks, Snacks sucrés",\bsucrés\b
+43568,Noir Truffé,"Snacks, Snacks sucrés",\bsucrés\b
+43572,Oreo Blueberry Ice Cream,"Snacks, Snacks sucrés",\bsucrés\b
+43602,Kinder Pingui Gouter Frais Genoise Avec Chocolate Noir Extra,"Snacks, Snacks sucrés",\bsucrés\b
+43655,Lindor Lait,"Snacks, Snacks sucrés",\bsucrés\b
+43679,Gaufrettes Fourrage Citron,"Snacks, Snacks sucrés",\bsucrés\b
+43685,Fondenti Frutta,"Snacks, Snacks sucrés",\bsucrés\b
+43728,Gran Delizia Classica,"Produits laitiers, Desserts",\bProduits laitiers\b
+43744,Tortina Drkchoc 3s MPAK,"Snacks, Snacks sucrés",\bsucrés\b
+43751,Fruit-tella Sans Sucres Expresso,"Snacks, Snacks sucrés",\bsucrés\b
+43818,Choco Chips Avellanas 125gm,"Snacks, Snacks sucrés",\bsucrés\b
+43821,Diet Chocolate Wafer,"Snacks, Snacks sucrés",\bsucrés\b
+43837,Crema Bombón,"Produits laitiers, Desserts",\bProduits laitiers\b
+43875,Proteina Vegana,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+43980,Eti Hosbes Findik Kremali Gofret / Wafers W / Hazelnut Cream,"Snacks, Snacks sucrés",\bsucrés\b
+43998,Stix,"Snacks, Snacks sucrés",\bsucrés\b
+44011,Oven Baked Barbecue Flavour Chips,"Snacks, Snacks salés",\bsalés\b
+44094,Danerolles,"Snacks, Snacks sucrés",\bsucrés\b
+44134,Chewing-gum,"Snacks, Snacks sucrés",\bsucrés\b
+44142,Smart Protein Chips,"Snacks, Snacks salés",\bsalés\b
+44148,Brownie Real Belgian Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+44209,Ma Pause,"Snacks, Snacks sucrés",\bsucrés\b
+44288,Black Truffle,"Snacks, Snacks salés",\bsalés\b
+44604,Allens Frogs Alive,"Snacks, Snacks sucrés",\bsucrés\b
+44627,Kitkat Cookie Collision,"Snacks, Snacks sucrés",\bsucrés\b
+44646,Extra White Sugar Free Chewing Gum In Bottle,"Snacks, Snacks sucrés",\bsucrés\b
+45112,Milk Chocolate Brownie,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+45114,Instant Natural Protein,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+45202,Cheddar Cheese Rice Snacks,"Snacks, Snacks salés",\bsalés\b
+45330,Choc Coconut Flavoured Protein Powder,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+45615,Dark Ghana Cocoa Special Blend Dark Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+45621,Whittaker&#x27;s Dark Almond Dark Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+45685,Meadow Fresh Yoghurt 1kg Delitful Strawberry,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+45802,Danish Cookies,"Snacks, Snacks sucrés",\bsucrés\b
+46057,"Walkers Crackers, Oat, Three Seed","Snacks, Snacks sucrés",\bsucrés\b
+46073,Sweet Cream Butter (salted),"Produits laitiers, Matières grasses",\bProduits laitiers\b
+46292,Parmesan Cheese,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+46293,Crunchy Ladies Fingers Okra,Snacks salés,\bsalés\b
+46669,Yogourt Caramel,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+46685,Turkkilainen Jogurtti,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+47027,Lighter Mature Grated Cheese,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+47116,Organic Dark Cooking Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+47444,Feta Cheese (p.d.o.),"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+47453,Light Yogurt Peach Fat Free,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+47544,Biscuits With Yogurt,"Snacks, Snacks sucrés",\bsucrés\b
+47551,Garofalo Mozzarella Di Bufala,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+47557,Vanilla Milkshake,"Produits laitiers, Compléments alimentai",\bProduits laitiers\b
+47799,Low Fat Greek Style Yogurt,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+48137,Quatre Fromage,macaroni-and-cheese,\bfromage\b
+48194,Bordeaux Cookies,"Snacks, Snacks sucrés",\bsucrés\b
+48196,Distinctive Golden Butter Crackers Ounce,"Snacks, Snacks salés",\bsalés\b
+48198,Harvest Wheat Crackers,"Snacks, Snacks sucrés",\bsucrés\b
+48217,Glodfish Xtreme Fromage,,\bfromage\b
+49925,Zesty Cheese Crunchers,,\bfromage\b
+50051,Yogurt,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+50113,Mousse Light Instant Dessert Mix Milk Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+50153,Skittles Gummy,"Snacks, Snacks sucrés",\bsucrés\b
+50312,Honey Graham Wafers,"Snacks, Snacks sucrés",\bsucrés\b
+50341,Cheese Smoked Pork Sausages,,\bfromage\b
+50445,Lays Oven Baked,"Snacks, Snacks salés",\bsalés\b
+50448,Garden Crispss,"Snacks, Snacks salés",\bsalés\b
+50474,Roulés Suisses,"Snacks, Snacks sucrés",\bsucrés\b
+50475,Milles Feuilles,"Snacks, Snacks sucrés",\bsucrés\b
+50476,Ah Louis Super Sandwich,"Snacks, Snacks sucrés",\bsucrés\b
+50557,Parmesan Italien Fromage Râpé,,\bfromage\b
+50677,Sour Cream And Onion,"Snacks, Snacks salés",\bsalés\b
+50755,Assortiment Chocolate Chaud,"Snacks, Snacks sucrés",\bsucrés\b
+50811,Lunch Box Granola Bar Double Chocolate,"snacks, snacks-sucrés",\bsucrés\b
+50812,Liberté Grec,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+50886,Dark Chocolate Cocoa Nibs,"Snacks, Snacks sucrés",\bsucrés\b
+51831,"Lemon Bite Size Wafer Cookies, Lemon","Snacks, Snacks sucrés",\bsucrés\b
+51832,Loacker Quadratini Vanilla Wafer Cookie,"Snacks, Snacks sucrés",\bsucrés\b
+51833,"Chocolate Bite Size Wafer Cookies, Chocolate","Snacks, Snacks sucrés",\bsucrés\b
+51837,Loaker Hazelnut,"Snacks, Snacks sucrés",\bsucrés\b
+51843,"Quadratini Dark Chocolate Bite Size Wafer Cookies,","Snacks, Snacks sucrés",\bsucrés\b
+52127,Royal Dansk Butter Cookies,"Snacks, Snacks sucrés",\bsucrés\b
+52515,Orange Noir,"Snacks, Snacks sucrés",\bsucrés\b
+52516,"Schmerling's Of Switzerland, Swiss Milk Chocolate, Rosemarie","Snacks, Snacks sucrés",\bsucrés\b
+52573,Butter Shortbread,"Snacks, Snacks sucrés",\bsucrés\b
+52867,Nairns Dark Chocolate Chip Oat Biscuits,"Snacks, Snacks sucrés",\bsucrés\b
+52992,Biscuit Morceaux De Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+52993,Biscuit Avoine Et Raisins,"Snacks, Snacks sucrés",\bsucrés\b
+52994,Biscuit Double Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+53119,Fruity Bears,"Snacks, Snacks sucrés",\bsucrés\b
+53146,Gummy Bear,"Snacks, Snacks sucrés",\bsucrés\b
+53425,Double Chocolate Granola Bars,"Snacks, Snacks sucrés",\bsucrés\b
+53545,Ah Caramel Super Sandwich,"Snacks, Snacks sucrés",\bsucrés\b
+53546,Passion Flakie,"Snacks, Snacks sucrés",\bsucrés\b
+53647,Soft Baked Mini Cookies Chocolate Chip,"Snacks, Snacks sucrés",\bsucrés\b
+53884,Milk Chocolate Bar,"Snacks, Snacks sucrés",\bsucrés\b
+54358,Healthy Energy Balls Cacao & Nut Butter,"Snacks, Snacks sucrés",\bsucrés\b
+54675,Jelly Beans,"Snacks, Snacks sucrés",\bsucrés\b
+54850,L'ultime Gâteau D'anniversaire,,\bgâteau\b
+54886,Parmesan Cheese Crispss,,\bfromage\b
+56360,Panettone Classico,"Snacks, Snacks sucrés",\bsucrés\b
+56384,Hi-chew,"Snacks, Snacks sucrés",\bsucrés\b
+56737,Organic Pure Dark Chocolate Bar Cocoa,"Snacks, Snacks sucrés",\bsucrés\b
+56805,Casse Croûte Jambon Fromage,"Sandwichs, Fast-food",\bfromage\b
+56824,Flips Goût Fromage,"snacks, salty-snacks",\bfromage\b
+56826,Lait Raisins Secs & Noisettes,"Snacks, Snacks sucrés",\bsucrés\b
+56917,High Protein Bar Vegan,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+56951,Danone Danette Mousse Liégeoise Schokolade 2x(2x80g),"Produits laitiers, Desserts",\bProduits laitiers\b
+56958,Kiri Gouter,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+56971,Zip &zap Boules Coco,"Snacks, Snacks sucrés",\bsucrés\b
+56979,Chocolate Noisettes,"Snacks, Snacks sucrés",\bsucrés\b
+56983,Croissant,"Snacks, Snacks sucrés",\bsucrés\b
+56988,Mini Sandwich Poulet Emmental,"Sandwichs, Sandwichs au fromage",\bfromage\b
+56998,Ail Ail Ail ! Mes Fines Herbes,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+57012,Halva,"Snacks, Snacks sucrés",\bsucrés\b
+57013,Rice Crackers Finement Salé Promotion,"Snacks, Snacks salés",\bsalés\b
+57016,Chocolate Noir Aux Amandes,"Snacks, Snacks sucrés",\bsucrés\b
+57021,Cookie Fin Croust Sarrasin Chocolate Noir,"Snacks, Snacks sucrés",\bsucrés\b
+57024,Croissant,"Snacks, Snacks sucrés",\bsucrés\b
+57027,Tablette Choc'fleurs,"Snacks, Snacks sucrés",\bsucrés\b
+57029,Super Seeds & Spirulina Organic Biscuits | Figs - Hazelnuts,"Snacks, Snacks sucrés",\bsucrés\b
+57117,Haribo Twin Snakes,"Snacks, Snacks sucrés",\bsucrés\b
+57138,Pingui,"Snacks, Snacks sucrés",\bsucrés\b
+57180,Droprolletjes,"Snacks, Snacks sucrés",\bsucrés\b
+57191,Crème Dessert Chocolate,"Produits laitiers, Desserts",\bProduits laitiers\b
+57202,Vegan Oat Cookies,"Snacks, Snacks sucrés",\bsucrés\b
+57313,Wholefood Balls,"protein balls, Snacks sucrés",\bsucrés\b
+57464,Energy Aminos Pomme,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+57675,Biscuits Shortbread,"Snacks, Snacks sucrés",\bsucrés\b
+57767,Ginger Christmas Tree Biscuits,"Snacks, Snacks sucrés",\bsucrés\b
+57784,Hazelnut Waffles,"Snacks, Snacks sucrés",\bsucrés\b
+57897,Mylk + Crispsies,"Snacks, Snacks sucrés",\bsucrés\b
+57934,Halls - Cherry Flavour,"Snacks, Snacks sucrés",\bsucrés\b
+57938,Fisherman's Friend Mint Sugar Free Lozenges -,"Snacks, Snacks sucrés",\bsucrés\b
+58019,Molto Way Me Mbushje Kakao,"Snacks, Snacks sucrés",\bsucrés\b
+58056,Soft Cake Layers,"Snacks, Snacks sucrés",\bsucrés\b
+58128,Tuc Original - Biscuits Salé,"Snacks, Snacks salés",\bsalés\b
+58129,Pim's Sinaasappel,"Snacks, Snacks sucrés",\bsucrés\b
+58131,TUC Original,"Snacks, Snacks salés",\bsalés\b
+58138,Côte D'or Lait Noisettes,"Snacks, Snacks sucrés",\bsucrés\b
+58142,Marshmallow,"Snacks, Snacks sucrés",\bsucrés\b
+58146,Gaufres Mini Suzi,"Snacks, Snacks sucrés",\bsucrés\b
+58160,Studio 100 Plop Biscuits 12x200g 9X2 Pièces,"Snacks, Snacks sucrés",\bsucrés\b
+58175,MAYA Gauffres Molles,"Snacks, Snacks sucrés",\bsucrés\b
+58179,Pur Chocolate Noir,"Snacks, Snacks sucrés",\bsucrés\b
+58185,Schokobons,"Snacks, Snacks sucrés",\bsucrés\b
+58192,Bel &bio Thins Milk Almond - Coconut 6x120g,"Snacks, Snacks sucrés",\bsucrés\b
+58303,Mini Rolada Ustrzycka,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+58382,Iso Whey Zéro Chocolate Blanc,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+58389,Choco Pie,"Snacks, Snacks sucrés",\bsucrés\b
+58411,Chocolion,Chocolat à tartiner,\bchocolat\b
+58413,Nouilles Dan Bol Curry Apollo,"Plant-based foods and beverages, Plant-b",\bNouilles\b
+58415,Chocolate Noir Aux Eclats D'amandes,"Snacks, Snacks sucrés",\bsucrés\b
+58421,Donut,"Snacks, Snacks sucrés",\bsucrés\b
+58426,Raundy,"Snacks, Snacks sucrés",\bsucrés\b
+58428,Tranches Fromages Fondu,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+58436,GO MINT,"Snacks, Snacks sucrés",\bsucrés\b
+58596,"Swiss Milk Chocolate With Raisins, Hazelnuts & Almonds","Snacks, Snacks sucrés",\bsucrés\b
+58598,Yogurt,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+58634,T Ko M Jagoda,"Snacks, Snacks sucrés",\bsucrés\b
+58645,Oreo Goldem,"Snacks, Snacks sucrés",\bsucrés\b
+58652,Black's Dark Chocolate Bar,"Snacks, Snacks sucrés",\bsucrés\b
+58660,Daim 3PK Daim Imp,"Snacks, Snacks sucrés",\bsucrés\b
+58721,Kinder Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+58740,Oat Biscuits,"Snacks, Snacks sucrés",\bsucrés\b
+58741,Petit-déjeuner Biscuits,"Snacks, Snacks sucrés",\bsucrés\b
+58759,"Nocciolata Dark Chocolate With Whole Hazelnuts, Dark","Snacks, Snacks sucrés",\bsucrés\b
+58775,Super Popcorn Salato,"Snacks, Snacks salés",\bsalés\b
+58856,Crunchy Tortilla Chips - Queso,"Snacks, Snacks salés",\bsalés\b
+58865,Nonfat Yogurt With Strawberry Bits,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+58873,Turrón Jijona El Lobo All-natural,"Snacks, Snacks sucrés",\bsucrés\b
+58886,Turron Excellence,"Snacks, Snacks sucrés",\bsucrés\b
+58898,MIOS Cebolla,"Snacks, Snacks salés",\bsalés\b
+58903,"Chocolate Amatller, Dark Chocolate","Snacks, Snacks sucrés",\bsucrés\b
+58953,Plazma Keks Mini,"Snacks, Snacks sucrés",\bsucrés\b
+58994,Haribo Veggy Mix,"Snacks, Snacks sucrés",\bsucrés\b
+59009,Hard Ripened Cheese Wedge,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+59057,Fromage Chevre Fumé (hollande),"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+59097,Tortilla Chips Natural,"Snacks, Snacks salés",\bsalés\b
+59112,Paul's Finest Quinoa,"Snacks, Snacks sucrés",\bsucrés\b
+59249,Fried Cookies,"Snacks, Snacks sucrés",\bsucrés\b
+59387,Butter Cookies,"Snacks, Snacks sucrés",\bsucrés\b
+59503,Protéines Power Cookies Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+59923,Marinated Goat Cheese,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+59946,Sakata Seaweed Rice Crackers,"Snacks, Snacks salés",\bsalés\b
+60497,L'atelier,"Snacks, Snacks sucrés",\bsucrés\b
+60545,The Original Oreo,"Snacks, Snacks sucrés",\bsucrés\b
+60609,Greek Style Live Yogurt,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+60763,Canadian Cheddar Popcorn Seasoning Imported From Canada,Assortiments d'assaisonnements,\bfromage\b
+60769,"Shneider's Chocolateier, Dark Chocolate","Snacks, Snacks sucrés",\bsucrés\b
+60811,Goji Coconut Protein Balls,"Snacks, Snacks sucrés",\bsucrés\b
+60814,Carski Cheese,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+60881,Mao Croqui,"Snacks, Snacks sucrés",\bsucrés\b
+60887,Car En Sac,"snacks, snacks-sucrés",\bsucrés\b
+60890,300G Dragibus SOFT Haribo,"Snacks, Snacks sucrés",\bsucrés\b
+60891,300G Cocobat Haribo,"Snacks, Snacks sucrés",\bsucrés\b
+60903,Yoplait Skyr Fraise,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+60940,Peaches,"Snacks, Snacks sucrés",\bsucrés\b
+60947,FRU FRU,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+60957,Kids Em-eukal,"Snacks, Snacks sucrés",\bsucrés\b
+60986,Fromage Râpé Pour Pizza,"Dairies, Fermented foods",\bfromage\b
+61043,Soft Baked Cookies,"Snacks, Snacks sucrés",\bsucrés\b
+61049,Protein Bar Deluxe,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+61102,Kelgen,"Snacks, Snacks sucrés",\bsucrés\b
+61167,Whole Milk,"Produits laitiers, Laits (fluide et poud",\bProduits laitiers\b
+61281,Fat Greek Yoghurt,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+61298,Whey Protein,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+61353,Coffee Whitener,"Produits laitiers, Laits concentrés",\bProduits laitiers\b
+61418,The Belgian Tablettes Noir 25x100g,"Snacks, Snacks sucrés",\bsucrés\b
+61419,Dark Chocolate With Superfruit,"Snacks, Snacks sucrés",\bsucrés\b
+61423,Milk Chocolate Salted Caramel,"Snacks, Snacks sucrés",\bsucrés\b
+61461,Harva German Capsules Natural Weight Loss Support 400 Ml 30 ,Compléments alimentaires,\bCompléments alimentaires\b
+61466,Granola Bar,"Snacks, Snacks sucrés",\bsucrés\b
+61476,Delightfully Minty Dark Chocolate Thins,"Snacks, Snacks sucrés",\bsucrés\b
+61482,Nero Fondente Extra,"Snacks, Snacks sucrés",\bsucrés\b
+61494,Cremino Pistacchio,"Snacks, Snacks sucrés",\bsucrés\b
+61499,Dark Chocolate Cocoa,"Snacks, Snacks sucrés",\bsucrés\b
+61504,Amarettini,"Snacks, Snacks sucrés",\bsucrés\b
+61521,Haribo Llaminadures Ossets D'or Box,"Snacks, Snacks sucrés",\bsucrés\b
+61546,Tony's Chocolonely Milk Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+61633,Skinny Dipped Almonds,"Snacks, Snacks sucrés",\bsucrés\b
+61828,Iighter Soft Cheese,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+62112,Bird's Custard Power,"Produits laitiers, Condiments",\bProduits laitiers\b
+62166,Organic Greek Style Set Natural Bio-live Yogurt,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+62277,Roasted,"Snacks, Snacks sucrés",\bsucrés\b
+62567,Protein Bar Cookie Dough,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+62569,Protein Bar,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+62618,Mini Sesame Bars With Dark Chocolate Jannis,"Snacks, Snacks sucrés",\bsucrés\b
+62639,BLUE LAB WHEY,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+62657,Nick's Chocolate Noir Aux Amandes Et Sel De Mer,"Snacks, Snacks sucrés",\bsucrés\b
+62774,Keto Protein Cookie,"Snacks, Snacks sucrés",\bsucrés\b
+63045,Yogourt Grec Fraises,Produits laitiers,\bProduits laitiers\b
+63097,Feta,"Dairies, Fermented foods",\bfromage\b
+63128,Biscuits Soda Salés,"snacks, salty-snacks",\bsalés\b
+63261,Fromage Suisse,,\bfromage\b
+63283,Ritz Snackwiches,200,\bfromage\b
+63303,Kraft Parmesan Cheese,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+63310,Creme À L'ancienne,"Produits laitiers, Crèmes",\bProduits laitiers\b
+63428,Werther's Original Caramel Popcorn,"Snacks, Snacks sucrés",\bsucrés\b
+63492,Laffy Taffy Strawberry,"Snacks, Snacks sucrés",\bsucrés\b
+63588,Waffers With Strawberry,"Snacks, Snacks sucrés",\bsucrés\b
+63599,Chip Assaisonnées,"Snacks, Snacks salés",\bsalés\b
+63656,Extra Mature Cheddar,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+63713,Cottage Cheese,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+63812,Diesel Whey Isolate,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+63813,New Zealand Whey Isolate,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+63872,Lindt Cacao Bold Dark Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+63963,Brownies,"Snacks, Snacks sucrés",\bsucrés\b
+64008,Whey Protein,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+64118,Feastables - Milk Crunch,"Snacks, Snacks sucrés",\bsucrés\b
+64293,Edelbitter Cacao,"Snacks, Snacks sucrés",\bsucrés\b
+64317,FUN EGG,"Snacks, Snacks sucrés",\bsucrés\b
+64340,Chocolate Excellence Noir Intense,"Snacks, Snacks sucrés",\bsucrés\b
+64343,Car En Sac,"Snacks, Snacks sucrés",\bsucrés\b
+64347,"Gerble - Gluten And Lactose Free Madeleines, 200g (7.1oz)","Snacks, Snacks sucrés",\bsucrés\b
+64351,Sablés Normands,"Snacks, Snacks sucrés",\bsucrés\b
+64352,Liquid Skimmed Cream,"Produits laitiers, Crèmes",\bProduits laitiers\b
+64356,Roucoulons,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+64362,Bonbon Saveur Violette/violette HARD Candies,"Snacks, Snacks sucrés",\bsucrés\b
+64366,Chocolate Noir Cacao,"Snacks, Snacks sucrés",\bsucrés\b
+64368,Dark Chocolate | Santo Amaro | Vila Gracinda,"Snacks, Snacks sucrés",\bsucrés\b
+64370,Chocolate Negro Limon,"Snacks, Snacks sucrés",\bsucrés\b
+64392,Sour Strawberry Spaghetti Bag,"Snacks, Snacks sucrés",\bsucrés\b
+64407,Cottage Cheese,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+64435,Filled Protein Bar Hazelnut Nougat,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+64441,Popcorn Sucre,"Snacks, Snacks sucrés",\bsucrés\b
+64491,Protein Bar Peanuts,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+64498,Fortified Milk,"Produits laitiers, Laits",\bProduits laitiers\b
+64565,Impact WHEY Isolate Chocolate Peanut Butter,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+64583,Blue Maize,"Snacks, Snacks salés",\bsalés\b
+64636,Yoghurt Pur Natur Bio Framboise,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+64647,Camembert,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+64681,Madeleine,"Snacks, Snacks sucrés",\bsucrés\b
+64733,Chocolate Noir Extra,"Snacks, Snacks sucrés",\bsucrés\b
+64820,Gaufres Hollandaise,"Snacks, Snacks sucrés",\bsucrés\b
+64860,Soft Nougat Cranberries & Erdnuss,"Snacks, Snacks sucrés",\bsucrés\b
+64869,Green & Black Organic Dark Chocolate,"Snacks, Snacks sucrés",\bsucrés\b
+64997,Jogobelka,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+65194,Comté,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+65336,Greek Style Yoghurt Lacto Free,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+65401,Bonbons Rosehen,"Snacks, Snacks sucrés",\bsucrés\b
+65510,Correct Organic Spirulina Powder,"Compléments alimentaires, Spiruline",\bCompléments alimentaires\b
+65522,Amino Energy,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+65680,Dark Chocolate And Almonds Protein Bar,"Snacks, Compléments alimentaires",\bCompléments alimentaires\b
+65842,Chocolate Noir,"Snacks, Snacks sucrés",\bsucrés\b
+65886,Feta,Fromage Feta (Chèvre),\bfromage\b
+65890,Beurre Non Salé,"Produits laitiers, Matières grasses",\bProduits laitiers\b
+65957,Nestle Extra Thick Cream,"Produits laitiers, Crèmes",\bProduits laitiers\b
+65973,"Myprotein Casein, Vanille, Pulver","Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+66018,"Doll Instant Noodle, Sesame Oil Flavour, 3.53 Oz (30 Packs)","Plant-based foods and beverages, Plant-b",\bNouilles\b
+66034,Daily Vitamines,"Compléments alimentaires, Compléments po",\bCompléments alimentaires\b
+66326,British Medium Cheddar,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+66345,Peppermint,"Snacks, Snacks sucrés",\bsucrés\b
+66378,Skyr Nature,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+66380,Beurre Extra-fin,"Produits laitiers, Matières grasses",\bProduits laitiers\b
+66711,Mclellands Seriously Strong Cheddar White,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+66872,SKYR Nature,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+66875,Beure Non Salé Lurpak 200g Pqt,"Produits laitiers, Matières grasses",\bProduits laitiers\b
+66934,Demi Crème,"Produits laitiers, Produits à tartiner",\bProduits laitiers\b
+66945,Bifidus Jogurt Nature,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+66990,Maasdam,"Produits laitiers, Produits fermentés",\bProduits laitiers\b
+67070,Dry Cured Prosciutto With Mozzarella,Prosciutto,\bfromage\b

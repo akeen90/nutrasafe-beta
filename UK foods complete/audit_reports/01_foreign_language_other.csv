@@ -1,0 +1,32 @@
+row,name,category,pattern_matched
+3663,Tomatillo & Jalapeño Pepper Tortilla,"it:tortilla, en:corn-chips",\bit:\w+
+4164,Mango And Apricot Biscotti,it:biscotti,\bit:\w+
+4171,No Added Sugar Beanz In Tomato Sauce 6 X,"de:Bohnen, en:baked-beans-in-tomato-sauc",\bde:\w+
+10585,Chocolate Coated Flapjack,"es:Nutricion-deportiva, en:bars",\bes:\w+
+15654,Tortilla Pockets Imp,"it:tortilla, tortilla",\bit:\w+
+19153,Prawn Cocktail Crispss,"es:Patatas-fritas-en-bastones, en:potato",\bes:\w+
+23439,Pure Whey Protein White Chocolate,de:proteinpulver,\bde:\w+
+24104,Chocolate Brownies Vegan,"de:imbiss, de:kekse-und-kuchen",\bde:\w+
+24439,Biscotti,it:biscotti,\bit:\w+
+25066,Pombears Original,"es:Snack de patata, en:crisps",\bes:\w+
+27894,Mozart Kugeln Dark Chocolate,de:Mozart Kugeln,\bde:\w+
+28351,Tortilla,it:tortilla,\bit:\w+
+32655,Custard Creams,"es:botanas, es:galletas",\bes:\w+
+34966,6 Cornetti Classici,"it:Cornetti, it:Cornetti vuoti",\bit:\w+
+38029,Thin & Crispsy Stonebaked Margherita Pizza,"de:pizza-margherita, en:margherita-pizza",\bde:\w+
+38104,Flours Tortillas,"snacks, it:tortilla",\bit:\w+
+40924,Hummus Chips,es:chips veganos,\bes:\w+
+41263,Merci Petits Crunch Collection,de:Schoko,\bde:\w+
+41311,Antipasti Mix,it:antipasti,\bit:\w+
+41627,Foodspring Whey Protein Schokolade,"it:proteine animali in polvere, en:prote",\bit:\w+
+56838,Scottish Extra Mature,"de:kartoffelsalat, Cheddar cheese",\bde:\w+
+57134,Mozart-kugeln,"de:mozart-kugeln, en:bonbons",\bde:\w+
+57861,Sauce Dessert,de:sauce schokolade,\bde:\w+
+58150,Biscoff With Belgian Chocolate,"es:Galletas-de-canela, en:biscuits",\bes:\w+
+58817,Natur Puglia Taralli Crackers - Classico,"Snacks, it:Taralli",\bit:\w+
+62177,Blue Corn Tortillas,it:tortilla,\bit:\w+
+64336,Doppelkeks Kurpfalzrolle,"de:imbiss, de:kekse",\bde:\w+
+64473,Foodspring Cocowhey Orangen,it:bevanda a base di acqua di cocco,\bit:\w+
+66324,Rellenos Pica,"es:botanas, es:dulces",\bes:\w+
+66460,ALDI GUT BIO Quinoa Pops 200g 2.59€ Packung 1kg 12.95€,de:getreide,\bde:\w+
+66549,Cacahuete / Amendoim En Polvo Desgrasado,"es:Cacahuete en polvo desgrasado, en:pea",\bes:\w+

@@ -1,0 +1,230 @@
+row,name,brand,pattern
+2,Serving Contains: Saturates Sugars Salt 0.6g 0.7g,Heinz,^Serving Contains
+8,"M&S -food- Honso ALPH Refreshing, Mango Smooth, Si",M&S,-food-
+22,Slices By Sainsbury's Y 10 Cheesey Sainsb,Sainsbury's,Sainsb$
+33,0 BO Market Morrisons 5 Street Raspberry Doughnuts,Morrisons,^[0-9]+ [A-Z]{2}
+66,M&S -food- 1.2kg BIG MIX OUR Biggest EVER Selectio,M&S,-food-
+122,SALT AND Vinegar Flavour Puffed RICE AND CORN CAKE,Aldi,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+131,MADE WITH British PORK Hot Honey Pork Sausage,Aldi,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+139,HT YNON Apnym G Mochi ICE Cream PER Chocolate AND,Aldi,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+180,PEEL HERE K Ashfields British Cooked HAM MADE WITH,Aldi,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+311,WE SEE Potential Walke Britat Smokin BBQ,Walkers,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+332,SKIN NS Pickled Silverskin Onions Silverskin Onion,Morrisons,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+374,RN EO Miton Sweetener Morrisons The Best HAND COOK,Co-op,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+382,CITY ON Pard Taste MINI IN SIZE Great Value Quorn,Quorn,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+640,M&S -food- Raspberry Jelly Trifle MADA WITH Britis,M&S,-food-
+736,4 MINI Chocolate LOAF Cakes,M&S,^[0-9]+ [A-Z]{2}
+791,M&S -food- Cinnamon BUN Bites Fudgy Cinnamon Bites,M&S,-food-
+792,M&S -food- WEEN Spooky OKIE Dough Bites Salted Fud,M&S,-food-
+793,M&S -food- DARK Chocolate Cranberry Jaffa Cakes Th,M&S,-food-
+810,M&S -food- MILK Chocolate BIG Bubbly Santa,M&S,-food-
+847,965 927 61E0 62E 6EY 6 Dairyfin,Aldi,^\d+ \d+ \d+
+1126,Serving Contains Walkers Lead THE Original &,Walkers,^Serving Contains
+1193,AIR FRY FROM Frozen Ninja 6-8 Minutes Iceland 12 G,Iceland,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+1303,"PACK MINI Chelse Bakes Baked Not Fried, Fo",Asda,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+1437,MILK ESTD Dairy Cadbury Sairy MILK Buttons Twisted,Dairy Milk,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+1693,SALT AND Vinegar Flavour RICE Crackers Ingredients,Aldi,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+1694,FREE FROM Gluten FREE MILK FREE 5 Angel Slices Swe,Aldi,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+1884,GRAD BAG Great Taste LESS Salt™ Great BRI,Walkers,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+1910,GRAB BAG SOME SEE Potatos Potential WE SEE Potent,Walkers,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+2546,M&S -food- Mini Meal BEEF Hotpot British BEEF MINC,M&S,-food-
+2650,GA ET Cucina MADE IN Italy Restor Sun-dried Tomato,Aldi,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+2714,CH BEEF Cooked WITH Onions Melicious AS A Cottage,Bramwells,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+2926,11 SL 9303 06:40 Morrisons Saves Sweet Smoky Chick,Morrisons,^[0-9]+ [A-Z]{2}
+3003,FIRE PIT Exclusively At Tesco BBQ Chicken Wings 9.,Tesco,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+3596,M&S -food- MADE Without - Wheat- Gluten FREE Icken,M&S,-food-
+3648,M&S -food- Reduced FAT SOUR Cream & Chive Flavoure,M&S,-food-
+3675,NEW M&S -food- MILK Chocolate Peanut Butter MINI C,M&S,-food-
+5722,MINI CORN SOFT Shell Tacos,Tesco,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+6072,NEW YORK Dinnerr Chicken Wings BBQ 850ge,,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+6113,M&S -food- Collection Scottish Tataki Style Seared,M&S,-food-
+6121,NLY MI • BAKE M&S -food- & Create. American Style,M&S,-food-
+6132,MBS CHIC Chorizo 22/08/ M&S -food- Dressed Chickpe,M&S,-food-
+6241,HIGH IN Fibre Crisps Cereal Aspberry & White Chocol,Harvest Morn,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+6249,ONS FOR USE: Cook From Fazen. Remove All Packaging,Ready Set Cook,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+6279,HI BERK G Mochi ICE Cream 6 Pistachio SOFT ICE CRE,Mochi,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+6384,"ORLD WID W Risotto Mushroom AN Italian Speciality,",,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+6597,NEW NAKS Tagy'n CHE 113kc Each 20g Pack Contains S,Nik Naks,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+6606,PRO MLK Strawberry Protein Shake 25. G Protein* 20,Pro Mlk,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+6658,MADE IN Yorkshire Goldenfry Since 1958 Sauce Granu,Goldenfry,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+6689,NEW BBQ Coated Fridays Peanuts FOR Before SEE BA E,Tgi Fridays,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+6716,KE IT Yours AT HOME Flavourl,Mortisons,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+6758,BR BY Seabrooks THE 1945 Bagful Vaffe ED NOT K,Seabrook,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+6765,BAK HE Tagfu WAFF Noter PER BAG Bites Mapl,Seabrook,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+6848,REAL HAND Cooked Roast OX Flavour Potato Crispss (G,,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+6894,299 ROP P Pringles SALT & Vinegar Ri,Pringles,^[0-9]+ [A-Z]{2}
+6985,FIRE PIT Exclusively Tesco 2 SALT & Pepper BEEF ST,Tesco,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+7008,US US Kiddylicious 12+ It's Delicious Months Straw,Kiddylicious,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+7014,WALK AN Gruny DO FOR Goodness Shakes 35 Protein SA,For Goodness Shakes,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+7025,TUNA AND Mayonnaise,,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+7066,FREE FROM Chocolate & Vanilla Cheeseecakes,Gü,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+7334,OLD GOLD Dark Chocolate OLD Jamaica RUM N Raisin,Cadbury,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+7847,M&S -food- MAIN Curated Ingredients Carder 434 Ita,M&S,-food-
+7871,M&S -food- Stuffed Handcrafted VINE Leaves With: R,M&S,-food-
+7874,M&S -food- Topped Ploughman's DIP Gushmans ILM EGG,M&S,-food-
+8877,FREE FROM CHOC Coated Honeycomb,Tesco,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+8958,LEAN HAM ON THE BONE,Tesco,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+8970,HIGH IN Protein Tesco Braised BEEF & MASH MEAL FOR,Tesco,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+9206,GER M&S -food- MADE Without - Wheat- Gluten FREE C,M&S,-food-
+9241,Saiss Swiss SWI DARK Chocolate Marks -food- CHOC P,M&S,-food-
+9391,WIN GUMS By Sainsbury's Saturates Takes CAL Satur,Saintsbury'S,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+9452,M&S -food- MADE Without - Wheat- Gluten FREE 4 MIL,M&S,-food-
+9561,PULL HERE TO Release THE Freshness Serves 1-this P,M&S,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+9641,2 BBQ Sweet Potato Burgers,Veggie Menu,^[0-9]+ [A-Z]{2}
+9664,FREE FROM Gluten FREE MILK FREE Bourbon Creams Cru,Aldi,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+9846,BANG BANG RICE,Worldwide Foods,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+9906,SEC NEW Airfr Birds Eye Crispsy Wedges Huffy & Deli,Birds Eye,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+10027,Serving Contains Saturates Sugars Bigger Salt 10 0,Hula Hoops,^Serving Contains
+10028,NAC NAKS NICE 'N' Spicy Flavour Each 30g Serving C,Nice N Spicy,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+10176,"ONLY YOUR POSH Plates WILL DO, Poppet! Crimble's G",Mrs Crimbles,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+10533,JUST ADD HOT Water Milkyway HOT Chocolate,Milky Way,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+10665,5060220402522,,"^[0-9]{8,}$"
+10829,ZERO SUGA Monste Energ Ultra,Monster,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+10831,ZERO SUGA Monste Energy ZERO Sugar,Monster,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+12045,NIK NAKS RIB 'N' Saucy Flavour,Kp Snacks,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+12221,M&S -food- Recycled Salad POT. Recycle ME AGA,M&S,-food-
+12328,MAIN FROM Select Farms Tee Know & Trust 2 British,M&S,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+12345,"M&S -food- Loaded With Barber's Cheddar Cheese, BU",M&S,-food-
+12374,Crispsy Sides TO GO By M&S -food- HASH Brown Bites,M&S,-food-
+12568,NS YOUR FIVE A Freshona Cauliflower Cheese Freshly,Freshona,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+12654,PEEL HERE Specially Selected British PORK App,Aldi,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+12915,HOT OR COLD Milbona Low Fat strawberry,Milbona,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+12925,OUR LIST Smaktastic Potato Sticks SALT & Vinegar F,Snaktastic,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+13313,WR AB Cheese & Poppy Seed Twists,Waitrose,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+13619,WROT LING Downton Abbey THE Grand Finale ONLY IN C,Tyrell’S,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+13645,FOR THE Dorits Zingy Vinegar Blast Flavour CORN CH,Doritos,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+13776,THE BIG Jim My ICE Coffe Caramel Oogie,Jimmys,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+14120,20 21 13 Teddy Advent Calendar 24 14,,^\d+ \d+ \d+
+15120,WIN BIG With Your MIND Hourly Prizes Honda Vibes P,Proper,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+15469,NEW MINI THE Fish Market Cook In Bag 2 Haddock Fil,The Fish Market,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+15783,CAD CHOC Snack,Cadbury,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+15938,V Egetarian M&S -food- Green Goddess Dressing &quot;A L,M&S,-food-
+15940,M&S -food- Whipped Spicy Nacho Cheddar DIP Reduced,M&S,-food-
+16095,M&S -food- Gluten FREE Scottish Salmon MADE Withou,M&S,-food-
+16162,M&S -food- Summer EDIT Burger Sauce Flavour Sweet,M&S,-food-
+16209,PEEL HER Ashfields Family PACK British Cooked HAM,Aldi,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+16366,WIN EDIN Maltese Fairtrade,Mars,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+16387,EASY TO OPEN Mix & Match NOW RECE 12.3 Cathedral S,Cathedral City,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+16784,MADE IN Reland PER Piece Broderick's Salted,Broderick’S,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+16824,SCAN TO WIN Brunch In Wine Light New York Philadel,Philadelphia,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+17267,EET BABY RANS The Sauce Is The Boss Sweet DAB,Sweet Baby Rays,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+17470,M&S -food- Ralph Bandit 62 Sasha OTTO Christmas PU,M&S,-food-
+17582,ADE WITH REAL AL Cream Serving Pasta's Never Looke,Dolmio,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+17796,BST VDE PAR Ars Candy Cream Candy Crea,Mister Choc,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+18126,MA ARE Starbucks Holiday Edition White Chocolate M,Starbucks,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+18335,OBS MIN Cheddars 6 RED Leicester Flavour Baked WIT,Mini Cheddars,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+18371,JOHN WEST Tuna Light Lunch,John West,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+18488,NEW KP TEAR HERE Signature S 252 Each 30g Serving,Kp,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+18509,CH NEW Alkers Dorites Dinamita Extra Flamin' Hot F,Doritos,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+18832,BLUE DRAG Sweet Teriyaki Vegan -sance 22 Mild,Blue Dragon,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+19363,SIS GO Energy + Electrolyte,Sis,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+19725,SEA SALT AND Pepper Protein NUT Crunch,Graze,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+20670,THE GYM Kitchen FOOD TO FUEL HIGH Protein Chicken,The Gym Kitchen,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+21145,MADE WITH Fruit Juice T32 Maynard's Bassetts,Maynards,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+21148,SOUR THEN Sweet SOUR Patch Kids 20 Mini Bag Strawb,Sour Patch,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+21149,MORE TO HARE We Are Made With Natural Colours SOUR,Sour Patch Kids,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+21292,ICE MEAL Oldelpaso Established 1938 TM NEW Fajita,Old El Paso,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+21591,PICO TIC Apricot-strawbe Enery DRI Dys,Red Bull,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+21796,M&S -food- Gastro Cotta Milk Celery Gastropub INGR,M&S,-food-
+21963,M&S -food- Roasted Garlic Aioli With: Lemon Juice,M&S,-food-
+21965,M&S -food- British BEEF THIN CUT Sirloin WITH PEPP,M&S,-food-
+21967,M&S -food- Microwave LONG Grain RICE Also Great Pa,M&S,-food-
+21981,THAI RED Chicken Curry,M&S,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+22661,CFM WHEY Protein - Dubai Chocolate,Protein&Co,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+22850,FOUR EAS FRE SEAS Waffle Fries 1555 Fantastic 20 M,Four Seasons,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+22954,LESS FAT LESS FAT Ald2201345,Oakhurst,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+23243,WAY TO Cheese & Onion Flour Potato Crispss Briose Ph,Tayto,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+23513,TO USE Straw In A Glass Of Cold Milk Rough The Str,Drink Me Chai,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+23573,MANO MASA FSS Where Source Of BRE A SALT Pepper SE,Manila’S,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+23851,LOW GI Whole Wheat Brown Bread,Albany,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+24137,8690504113249,,"^[0-9]{8,}$"
+24213,KOH KAE Peanuts Chicken,โก๋แก่,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+24220,YAN YAN Chocolate Snack,Meiji,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+24248,8901491002486,Kurkure,"^[0-9]{8,}$"
+24281,8901725015015,Sunfeast,"^[0-9]{8,}$"
+24345,8908010213095,Makino,"^[0-9]{8,}$"
+24404,STR MIN Calippo Rspbry/pne 10S,Calippo,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+24761,LEE KUM KEE - Hoisin Sauce,Lee Kum Kee,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+25618,NOMO NO Missing OUT Cookie Dough Plant-powered,Nomo,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+25858,HAM AND Mustard Flavour HAND Cooked Potato Crispss,Real,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+25931,SS OVE Baked PO G Rankfurter Style Sausage Wrapped,,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+26732,4 HOT Cross BUNS,M&S,^[0-9]+ [A-Z]{2}
+26813,M&S -food- Tikka Paste,M&S,-food-
+26816,Power M&S -food- Plant Kitchen Deliciously Vegan V,Plant Kitchen,-food-
+26823,Blond M&S -food- Chocolate Caramelised Pecans Phot,M&S,-food-
+26827,M&S -food- MILK Chocolate Covered Speculoos Wafer,M&S,-food-
+27047,DIT IGE Family PACK More To Share Haribo Starmix K,Haribo,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+27148,THE REAL Advent Calendar PER MORE About Christmas,Meaningful Chocolate,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+27535,KIVO GOOD TIME Creamer,Good Time,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+27559,JUST THE TIP Waffle Cone Tips,,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+28061,FAT FREE Natural Cottage Cheese,Waitrose,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+28192,THE BA RY Daily 4 Sultana Scones,The Daily Baker,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+28213,OH SO Scrummy Yoghurt Flavoured Flapjack Delicious,Oh So Scrummy,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+28700,ISO WHEY ZERO,Biotechusa,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+29317,CAKE VEG Gobbles Fruity Fun,Britannia,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+29549,PERI PERI Thriller Popcorn,Ultrapop,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+29571,8908002984491,,"^[0-9]{8,}$"
+29605,RO RE Energy Drink,Ro Re,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+29679,OREO CKIE CHOC 128gm,Oreo,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+29728,RR DELI CHIP S/SALT&B/VIN 165gm,Red Rock Deli,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+30271,M&S -food- Meal For One Smoked Haddock Smoked HADD,Cook,-food-
+31619,RYDO WITH Hazelnuts,Sweet +,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+32015,ALS OF Apple Compote Carefully Remove All Of The B,Brooklea,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+32178,20 HASH Brown Patties,Aldi,^[0-9]+ [A-Z]{2}
+32542,UP OU Instant Soup Instant Mushroom Soup With Pea,Fuel,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+32681,SPAR HAND Cooked Crispss SEA Salted Seaso,Spar,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+33690,VAN MA Oats Made Extraordinary MOMA Harvested GROW,Mima,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+34256,HAM WITH Slice Twinpack CK A Touch O By Date 4:18,Carroll'S,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+34289,500 383 38.0 30.1 310.0 Supervalu DARK Chocolate R,Supervalu,^\d+ \d+ \d+
+36085,"71 GB IE Wafer Thin, Dry Cured, Cooked, Smoked Ham",Birchwood,^[0-9]+ [A-Z]{2}
+36257,OLD GOLD DARK Chocolate,Cadbury,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+37211,555 TUNA Afritada,555,^[0-9]+ [A-Z]{2}
+37581,"112 MINI CONE Neutral Sesame 3"" X 1""",,^[0-9]+ [A-Z]{2}
+37650,MADE WITH Irish OATS I'm New Premium Wholegra,Kavanagh’S,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+38158,LOW FAT Smooth Cottage Cheese Plain,Lancewood,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+40861,ESS FAT Snaktastic Reduced FA Cheese Gonion GP,,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+41439,4062139008803,7 Up,"^[0-9]{8,}$"
+41511,SE BA RUG Rocke Racer Pickled ONIO Flavour,Snackrite,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+43014,TRUE ICED Espresso,Bold,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+43166,ISO WHEY ZERO,Biotechusa,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+43180,PURE WHEY Strawberry Flavoured,Biotechusa,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+43517,RES MODE Maynards Bassetts D/ Naturre Colours Wine,Maynards,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+44259,KELL LCM Unicorn 100gm,Lcms,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+44337,ISO GOLD WHEY Protein Isolate,Cien,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+44632,NES KIT KAT BLK MLK CHOC 160gm,Nestlé,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+44696,OREO CKIE PAS M/mallow131gm,Oreo,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+45179,DARK CHOC And Coconut,Carman'S,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+45268,PERI PERI Diced Chicken Breast,Mt Barker Free Range Chicken,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+45592,BLUE RASP Musashi Energy,Musashi,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+46884,SEA SALT CORN Cakes,Savour Bakes,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+47008,PEEL UZVA Birchwood⚫ Corned BEEF 5 Slices NO Added,Birchwood,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+47648,"120 BOAT Neutral 4""x1.5""",,^[0-9]+ [A-Z]{2}
+47755,"56 PUFF Pastry MINI HORN 1"" X 2""",,^[0-9]+ [A-Z]{2}
+56738,PURE DARK Cocoa Uganda Chocolate Melts,Beyond Good,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+57031,ELLY LY Loves Sushi No Colour NO- MSG No GMO MADE,,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+57157,PM ZOTT Burger 12 Slices,Zott,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+57275,LEAN BEEF Burgers,Butchers Selection,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+58267,POPZ WITH Butter,Popz,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+58493,ALOE VERA Premium Drink,Dooz,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+58591,BEAN SALT Snack,Zweifel Vaya,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+59189,EURO CAKE Custard,Euro,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+59567,CAMP REAL Stock BEEF,Campbells,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+60623,PINK LADY Apples,Sainsbury's,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+61208,PACK BIG Value 3 PACK HOME COOK Wonderbar Milk Cho,,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+61540,MEGA BBQ Marshmallow,,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+61616,THE LADY BAR,The Lady Shake,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+62263,BOLD BEAN CO RED Beans,Bold Bean Co,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+62639,BLUE LAB WHEY,Usn,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+62730,LOW CARB Protein BAR Cookies & Cream,Bsc,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+62731,LOW CARB Protein BAR Choc Mint,Bsc,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+62749,LOW CARB Indulgence Choc Mint,Nõshu,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+64017,310 PB Powder,,^[0-9]+ [A-Z]{2}
+64847,AMUL PURE GHEE,Amul,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+64864,TUNA WITH Oven-dried Tomato & Basil,John West,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+64912,BOLD BREW ICED Latte,Rokeby,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+65493,2 SEA BASS Fillets,By Amazon,^[0-9]+ [A-Z]{2}
+65858,LOW CARB HIGH Protein Choc Fudge Brownie BARS,Mayver'S,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+65999,8906002006601,Dr. Oetker,"^[0-9]{8,}$"
+66051,CAD CHOC Eclairs 160gm,,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+66460,ALDI GUT BIO Quinoa Pops 200g 2.59€ Packung 1kg 12.95€,Aldi,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
+66471,"ALDI FAIR Rohrzucker, Fairtrade Fein Dauertiefpreis 1.49€ 500-g-packung 1kg 2.98",Fair,"^[A-Z]{2,4} [A-Z]{2,4} [A-Z]"
