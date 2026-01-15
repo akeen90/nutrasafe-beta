@@ -158,29 +158,41 @@ struct FoodDetailViewFromSearch: View {
                 // Patterns to match numbers followed by g, ml, or gram/ml
                 // IMPORTANT: Order matters - more specific patterns first (parenthetical grams highest priority)
                 // to correctly handle "1 portion (150g)" -> 150, not 1
-                let patterns = [
-                    #"\((\d+(?:\.\d+)?)\s*g\)"#,           // "(150g)", "(30 g)" - parenthetical grams (HIGHEST PRIORITY)
-                    #"(\d+(?:\.\d+)?)\s*g\s*\)"#,          // "150g)" at end of parenthetical
-                    #"(\d+(?:\.\d+)?)\s*g\s+serving"#,     // "150g serving", "30 g serving"
-                    #"serving[:\s]+(\d+(?:\.\d+)?)\s*g\b"#,// "serving: 30g", "serving 30g"
-                    #"=\s*(\d+(?:\.\d+)?)\s*g\b"#,         // "= 225g", "1 pack = 450g"
-                    #"(\d+(?:\.\d+)?)\s*g\s+pack"#,        // "225g pack"
-                    #"pack\s*[=:]\s*(\d+(?:\.\d+)?)\s*g"#, // "pack = 450g", "pack: 450g"
-                    #"(\d+(?:\.\d+)?)\s*grams?\b"#,        // "225 grams", "30gram"
-                    #"(\d+(?:\.\d+)?)\s*ml\b"#,            // "330ml" for drinks
-                    #"^(\d+(?:\.\d+)?)\s*g$"#,             // "30g" exactly
-                    #"(\d+(?:\.\d+)?)\s*g\b"#,             // "30g" with word boundary (avoids "1 portion")
+                // Each tuple is (pattern, unit) so we set the correct unit when matching
+                let patternsWithUnits: [(pattern: String, unit: String)] = [
+                    (#"\((\d+(?:\.\d+)?)\s*g\)"#, "g"),           // "(150g)", "(30 g)" - parenthetical grams (HIGHEST PRIORITY)
+                    (#"(\d+(?:\.\d+)?)\s*g\s*\)"#, "g"),          // "150g)" at end of parenthetical
+                    (#"\((\d+(?:\.\d+)?)\s*ml\)"#, "ml"),         // "(330ml)" - parenthetical ml
+                    (#"(\d+(?:\.\d+)?)\s*ml\s*\)"#, "ml"),        // "330ml)" at end of parenthetical
+                    (#"(\d+(?:\.\d+)?)\s*g\s+serving"#, "g"),     // "150g serving", "30 g serving"
+                    (#"(\d+(?:\.\d+)?)\s*ml\s+serving"#, "ml"),   // "330ml serving"
+                    (#"serving[:\s]+(\d+(?:\.\d+)?)\s*g\b"#, "g"),// "serving: 30g", "serving 30g"
+                    (#"serving[:\s]+(\d+(?:\.\d+)?)\s*ml\b"#, "ml"),// "serving: 330ml"
+                    (#"=\s*(\d+(?:\.\d+)?)\s*g\b"#, "g"),         // "= 225g", "1 pack = 450g"
+                    (#"=\s*(\d+(?:\.\d+)?)\s*ml\b"#, "ml"),       // "= 330ml"
+                    (#"(\d+(?:\.\d+)?)\s*g\s+pack"#, "g"),        // "225g pack"
+                    (#"(\d+(?:\.\d+)?)\s*ml\s+pack"#, "ml"),      // "330ml pack"
+                    (#"pack\s*[=:]\s*(\d+(?:\.\d+)?)\s*g"#, "g"), // "pack = 450g", "pack: 450g"
+                    (#"pack\s*[=:]\s*(\d+(?:\.\d+)?)\s*ml"#, "ml"),// "pack = 330ml"
+                    (#"(\d+(?:\.\d+)?)\s*grams?\b"#, "g"),        // "225 grams", "30gram"
+                    (#"(\d+(?:\.\d+)?)\s*ml\b"#, "ml"),           // "330ml" for drinks
+                    (#"(\d+(?:\.\d+)?)\s*millilitres?\b"#, "ml"), // "330 millilitres"
+                    (#"^(\d+(?:\.\d+)?)\s*g$"#, "g"),             // "30g" exactly
+                    (#"^(\d+(?:\.\d+)?)\s*ml$"#, "ml"),           // "330ml" exactly
+                    (#"(\d+(?:\.\d+)?)\s*g\b"#, "g"),             // "30g" with word boundary (avoids "1 portion")
                 ]
 
-                for pattern in patterns {
+                for (pattern, unit) in patternsWithUnits {
                     if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
                        let match = regex.firstMatch(in: servingDesc, options: [], range: NSRange(location: 0, length: servingDesc.count)),
                        let range = Range(match.range(at: 1), in: servingDesc),
                        let extractedValue = Double(servingDesc[range]) {
-                        // Sanity check: serving size should be reasonable (5-500g)
+                        // Sanity check: serving size should be reasonable (5-2000 for ml, 5-500 for g)
                         // Skip values that are exactly 100 as that's likely "per 100g" reference
-                        if extractedValue >= 5 && extractedValue <= 500 && extractedValue != 100 {
+                        let maxValue = unit == "ml" ? 2000.0 : 500.0
+                        if extractedValue >= 5 && extractedValue <= maxValue && extractedValue != 100 {
                             initialServingSize = String(format: "%.0f", extractedValue)
+                            initialUnit = unit
                             break
                         }
                     }
@@ -2273,7 +2285,9 @@ private var nutritionFactsSection: some View {
                             await fastingVM.startFastingSession()
                             #if DEBUG
                             print("🚀 [LOG&FAST] startFastingSession() completed")
-                            print("🚀 [LOG&FAST] activeSession after start: \(String(describing: fastingVM.activeSession))")
+                            await MainActor.run {
+                                print("🚀 [LOG&FAST] activeSession after start: \(String(describing: fastingVM.activeSession))")
+                            }
                             print("FoodDetailView: Started new fast after food log")
                             #endif
                             // Navigate to fasting tab to show the normal timer view
