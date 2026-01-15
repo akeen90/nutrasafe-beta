@@ -19,6 +19,7 @@ struct AddFoodAIView: View {
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @EnvironmentObject var diaryDataManager: DiaryDataManager
     @EnvironmentObject var firebaseManager: FirebaseManager
+    @EnvironmentObject var fastingViewModelWrapper: FastingViewModelWrapper
     @State private var isScanning = false
     @State private var recognizedFoods: [FoodSearchResult] = []
     @State private var showingImagePicker = false
@@ -213,7 +214,7 @@ struct AddFoodAIView: View {
         .sheet(item: $selectedFoodForDetail) { food in
             NavigationView {
                 // Use constant binding to prevent Details view from changing main tab while in AI scanner
-                FoodDetailViewFromSearch(food: food, selectedTab: .constant(.diary))
+                FoodDetailViewFromSearch(food: food, selectedTab: .constant(.diary), fastingViewModel: fastingViewModelWrapper.viewModel)
             }
             .environmentObject(diaryDataManager)
             .environmentObject(subscriptionManager)
@@ -885,6 +886,7 @@ struct AIFoodSelectionView: View {
     @EnvironmentObject var diaryDataManager: DiaryDataManager
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @EnvironmentObject var firebaseManager: FirebaseManager
+    @EnvironmentObject var fastingViewModelWrapper: FastingViewModelWrapper
 
     @State private var selectedFoods: Set<String> = []
     @State private var selectedFood: FoodSearchResult?
@@ -998,7 +1000,7 @@ struct AIFoodSelectionView: View {
         .sheet(item: $selectedFood) { food in
             NavigationView {
                 // Use constant binding to prevent Details view from changing main tab while in AI scanner
-                FoodDetailViewFromSearch(food: food, selectedTab: .constant(.diary))
+                FoodDetailViewFromSearch(food: food, selectedTab: .constant(.diary), fastingViewModel: fastingViewModelWrapper.viewModel)
             }
             .environmentObject(diaryDataManager)
             .environmentObject(subscriptionManager)

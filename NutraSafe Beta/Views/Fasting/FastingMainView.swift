@@ -51,11 +51,10 @@ struct FastingMainView: View {
     private var fastingContent: some View {
         ScrollView {
             VStack(spacing: 20) {
-                if viewModel.activeSession == nil {
-                    IdleStateView(viewModel: viewModel)
-                } else {
-                    ActiveSessionView(viewModel: viewModel)
-                }
+                // Always show IdleStateView which contains PlanDashboardView
+                // PlanDashboardView handles all fasting states via RegimeTimerCard
+                // (ActiveSessionView was deprecated - it showed the wrong timer UI)
+                IdleStateView(viewModel: viewModel)
 
                 // Last Session card (only show when no active session)
                 if viewModel.activeSession == nil, let lastSession = viewModel.recentSessions.first {
@@ -488,7 +487,7 @@ struct PlanDashboardView: View {
                                 snoozeUntilTime = Date()
                                 showSnoozePicker = true
                             } label: {
-                                Label("Snooze Fast", systemImage: "bell.zzz.fill")
+                                Label("Snooze Fast", systemImage: "moon.zzz.fill")
                             }
                             Button {
                                 showRegimeDetails = true
@@ -525,7 +524,7 @@ struct PlanDashboardView: View {
                             showSnoozePicker = true
                         } label: {
                             HStack {
-                                Image(systemName: "bell.zzz.fill")
+                                Image(systemName: "moon.zzz.fill")
                                 Text("Snooze")
                                     .fontWeight(.semibold)
                             }
@@ -796,7 +795,7 @@ struct PlanDashboardView: View {
             // Snooze indicator (if snoozed)
             if viewModel.isRegimeSnoozed, let snoozeUntil = viewModel.regimeSnoozedUntil {
                 HStack {
-                    Image(systemName: "bell.zzz.fill")
+                    Image(systemName: "moon.zzz.fill")
                         .foregroundColor(.orange)
                     Text("Snoozed until \(snoozeUntil.formatted(date: .omitted, time: .shortened))")
                         .font(.caption)
@@ -834,7 +833,7 @@ struct PlanDashboardView: View {
                     showSnoozePicker = true
                 } label: {
                     HStack {
-                        Image(systemName: "bell.zzz.fill")
+                        Image(systemName: "moon.zzz.fill")
                         Text("Snooze Fast")
                     }
                     .frame(maxWidth: .infinity)
@@ -1633,7 +1632,7 @@ struct ActiveSessionView: View {
                         }
                     } label: {
                         HStack {
-                            Image(systemName: "bell.zzz.fill")
+                            Image(systemName: "moon.zzz.fill")
                             Text("Snooze 30m")
                         }
                         .frame(maxWidth: .infinity)

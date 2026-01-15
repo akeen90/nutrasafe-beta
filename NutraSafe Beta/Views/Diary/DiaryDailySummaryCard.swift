@@ -960,3 +960,115 @@ struct MetricView: View {
 }
 
 // Note: GlassShape is defined in ContentView.swift and available project-wide
+
+// MARK: - Goal Editor Sheet
+struct GoalEditorSheet: View {
+    let title: String
+    let icon: String
+    let iconColor: Color
+    @Binding var value: Int
+    let range: ClosedRange<Int>
+    let step: Int
+    let unit: String
+    let onSave: (Int) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var tempValue: Int = 0
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                // Icon and title
+                VStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(iconColor.opacity(0.15))
+                            .frame(width: 60, height: 60)
+
+                        Image(systemName: icon)
+                            .font(.system(size: 28))
+                            .foregroundColor(iconColor)
+                    }
+
+                    Text(title)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                }
+                .padding(.top, 20)
+
+                // Value display
+                HStack(spacing: 4) {
+                    Text("\(formatNumber(tempValue))")
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .foregroundColor(iconColor)
+
+                    Text(unit)
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .offset(y: 8)
+                }
+
+                // Stepper
+                HStack(spacing: 20) {
+                    Button(action: {
+                        if tempValue - step >= range.lowerBound {
+                            tempValue -= step
+                        }
+                    }) {
+                        Image(systemName: "minus.circle.fill")
+                            .font(.system(size: 44))
+                            .foregroundColor(tempValue <= range.lowerBound ? .gray.opacity(0.3) : iconColor)
+                    }
+                    .disabled(tempValue <= range.lowerBound)
+
+                    Button(action: {
+                        if tempValue + step <= range.upperBound {
+                            tempValue += step
+                        }
+                    }) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 44))
+                            .foregroundColor(tempValue >= range.upperBound ? .gray.opacity(0.3) : iconColor)
+                    }
+                    .disabled(tempValue >= range.upperBound)
+                }
+                .padding(.vertical, 10)
+
+                Spacer()
+
+                // Save button
+                Button(action: {
+                    onSave(tempValue)
+                    dismiss()
+                }) {
+                    Text("Save")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(iconColor)
+                        .cornerRadius(12)
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 20)
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .onAppear {
+            tempValue = value
+        }
+    }
+
+    private func formatNumber(_ number: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        return formatter.string(from: NSNumber(value: number)) ?? "\(number)"
+    }
+}

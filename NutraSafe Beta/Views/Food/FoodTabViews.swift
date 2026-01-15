@@ -24,7 +24,7 @@ struct FoodTabView: View {
     @State private var selectedFoodSubTab: FoodSubTab = .reactions
     @EnvironmentObject var firebaseManager: FirebaseManager
     @EnvironmentObject var subscriptionManager: SubscriptionManager
-    @StateObject private var fastingViewModelWrapper = FastingViewModelWrapper()
+    @EnvironmentObject var fastingViewModelWrapper: FastingViewModelWrapper
 
     // MARK: - Feature Tips
     @State private var showingHealthTip = false
@@ -76,10 +76,6 @@ struct FoodTabView: View {
             .navigationBarHidden(true)
         }
         .onAppear {
-            if fastingViewModelWrapper.viewModel == nil, let userId = firebaseManager.currentUser?.uid {
-                fastingViewModelWrapper.viewModel = FastingViewModel(firebaseManager: firebaseManager, userId: userId)
-            }
-
             // Show feature tip on first visit
             if !FeatureTipsManager.shared.hasSeenTip(.healthOverview) {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -96,6 +92,12 @@ struct FoodTabView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToFasting)) { _ in
+            #if DEBUG
+            print("🚀 [LOG&FAST] FoodTabView received navigateToFasting notification")
+            print("🚀 [LOG&FAST] Current selectedFoodSubTab: \(selectedFoodSubTab)")
+            print("🚀 [LOG&FAST] Switching to .fasting sub-tab")
+            print("🚀 [LOG&FAST] fastingViewModelWrapper.viewModel present: \(fastingViewModelWrapper.viewModel != nil)")
+            #endif
             selectedFoodSubTab = .fasting
         }
         .featureTip(isPresented: $showingHealthTip, tipKey: .healthOverview)
@@ -415,6 +417,7 @@ struct RecipesView: View {
 
 // MARK: - Food Tab Component Cards
 struct FoodReactionSummaryCard: View {
+    @Environment(\.colorScheme) private var colorScheme
     @Binding var selectedTab: TabItem
     @State private var showingLogReaction = false
     @EnvironmentObject var reactionManager: ReactionManager
@@ -470,20 +473,13 @@ struct FoodReactionSummaryCard: View {
         .padding(AppSpacing.large)
         .background(
             RoundedRectangle(cornerRadius: 22)
-                .fill(.ultraThinMaterial)
+                .fill(colorScheme == .dark ? Color.midnightCard : Color.white.opacity(0.75))
                 .overlay(
                     RoundedRectangle(cornerRadius: 22)
-                        .stroke(
-                            LinearGradient(
-                                colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
+                        .stroke(colorScheme == .dark ? Color(.systemGray4) : Color.white.opacity(0.6), lineWidth: 1)
                 )
         )
-        .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 10, x: 0, y: 4)
         .fullScreenCover(isPresented: $showingLogReaction) {
             navigationContainer { LogReactionView(reactionManager: reactionManager, selectedTab: $selectedTab) }
         }
@@ -491,6 +487,7 @@ struct FoodReactionSummaryCard: View {
 }
 
 struct StatMiniCard: View {
+    @Environment(\.colorScheme) private var colorScheme
     let value: String
     let label: String
     let color: Color
@@ -515,24 +512,18 @@ struct StatMiniCard: View {
         .padding(.vertical, 16)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(.ultraThinMaterial)
+                .fill(colorScheme == .dark ? Color.midnightCard : Color.white.opacity(0.7))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
-                        .stroke(
-                            LinearGradient(
-                                colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
+                        .stroke(colorScheme == .dark ? Color(.systemGray4) : Color.white.opacity(0.5), lineWidth: 1)
                 )
         )
-        .shadow(color: color.opacity(0.08), radius: 6, x: 0, y: 3)
+        .shadow(color: color.opacity(colorScheme == .dark ? 0.2 : 0.06), radius: 6, x: 0, y: 3)
     }
 }
 
 struct FoodReactionListCard: View {
+    @Environment(\.colorScheme) private var colorScheme
     let title: String
     let reactions: [FoodReaction]
     @EnvironmentObject var reactionManager: ReactionManager
@@ -612,20 +603,13 @@ struct FoodReactionListCard: View {
         .padding(AppSpacing.large)
         .background(
             RoundedRectangle(cornerRadius: 22)
-                .fill(.ultraThinMaterial)
+                .fill(colorScheme == .dark ? Color.midnightCard : Color.white.opacity(0.75))
                 .overlay(
                     RoundedRectangle(cornerRadius: 22)
-                        .stroke(
-                            LinearGradient(
-                                colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
+                        .stroke(colorScheme == .dark ? Color(.systemGray4) : Color.white.opacity(0.6), lineWidth: 1)
                 )
         )
-        .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 10, x: 0, y: 4)
         .fullScreenCover(isPresented: $showingPDFExportSheet) {
             MultipleFoodReactionsPDFExportSheet(reactions: reactions)
         }
@@ -728,6 +712,7 @@ struct FoodReactionRow: View {
 }
 
 struct FoodPatternAnalysisCard: View {
+    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject var reactionManager: ReactionManager
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @State private var showOtherIngredients = false
@@ -1206,20 +1191,13 @@ struct FoodPatternAnalysisCard: View {
         .padding(AppSpacing.large)
         .background(
             RoundedRectangle(cornerRadius: 22)
-                .fill(.ultraThinMaterial)
+                .fill(colorScheme == .dark ? Color.midnightCard : Color.white.opacity(0.75))
                 .overlay(
                     RoundedRectangle(cornerRadius: 22)
-                        .stroke(
-                            LinearGradient(
-                                colors: [Color.white.opacity(0.35), Color.white.opacity(0.15)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
+                        .stroke(colorScheme == .dark ? Color(.systemGray4) : Color.white.opacity(0.6), lineWidth: 1)
                 )
         )
-        .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 10, x: 0, y: 4)
         .fullScreenCover(isPresented: $showingPDFExportSheet) {
             MultipleFoodReactionsPDFExportSheet(reactions: Array(reactionManager.reactions))
         }

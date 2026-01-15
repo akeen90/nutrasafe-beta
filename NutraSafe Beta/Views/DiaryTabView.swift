@@ -195,68 +195,109 @@ struct DiaryTabView: View {
         )
     }
 
-    // MARK: - Date Navigation (arrows navigate day when closed, month when calendar open)
+    // MARK: - Horizontal Week Picker (centered selection design)
+    // Selected day stays in center, days shift when navigating
     private var dateNavigationRow: some View {
-        HStack {
-            // Left arrow - previous day/month
+        let calendar = Calendar.current
+        // Get 7 days centered around selected date (3 before, selected, 3 after)
+        let surroundingDays = getSurroundingDays(for: selectedDate, count: 7)
+
+        return HStack(spacing: 0) {
+            // Left arrow - navigate day (closed) or month (open)
             Button(action: {
                 if showingDatePicker {
-                    displayedMonth = Calendar.current.date(byAdding: .month, value: -1, to: displayedMonth) ?? displayedMonth
+                    displayedMonth = calendar.date(byAdding: .month, value: -1, to: displayedMonth) ?? displayedMonth
                 } else {
-                    selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
+                    selectedDate = calendar.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
                 }
             }) {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.blue)
-                    .frame(width: 44, height: 44)
-                    .background(RoundedRectangle(cornerRadius: 10).fill(AppColors.cardBackgroundInteractive))
+                    .frame(width: 36, height: 36)
             }
 
-            Spacer()
+            // Days - selected is always in center (index 3)
+            HStack(spacing: 0) {
+                ForEach(Array(surroundingDays.enumerated()), id: \.offset) { index, date in
+                    let isCenter = index == 3 // Center position
+                    let dayName = formatDayName(date)
+                    let dayNumber = calendar.component(.day, from: date)
 
-            // Center date button - expands calendar
-            Button(action: {
-                showingDatePicker.toggle()
-            }) {
-                HStack(spacing: 6) {
-                    Image(systemName: "calendar")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.blue)
-
-                    Text(showingDatePicker ? "Close Calendar" : formatDateFull(selectedDate))
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.primary)
-                        .animation(nil, value: showingDatePicker)
-
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.secondary)
-                        .rotationEffect(.degrees(showingDatePicker ? 180 : 0))
+                    Button(action: {
+                        if isCenter {
+                            // Tap center day to toggle calendar
+                            showingDatePicker.toggle()
+                        } else {
+                            // Tap other day to select it (shifts days)
+                            selectedDate = date
+                        }
+                    }) {
+                        if isCenter {
+                            // Center day - blue pill showing day name + calendar icon
+                            HStack(spacing: 5) {
+                                Text(dayName)
+                                    .font(.system(size: 13, weight: .semibold))
+                                Image(systemName: "calendar")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                Capsule()
+                                    .fill(Color.blue)
+                            )
+                        } else {
+                            // Other days - just text
+                            Text(dayName)
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .frame(height: 36)
+                    .buttonStyle(.plain)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(RoundedRectangle(cornerRadius: 10).fill(AppColors.cardBackgroundInteractive))
             }
 
-            Spacer()
-
-            // Right arrow - next day/month
+            // Right arrow - navigate day (closed) or month (open)
             Button(action: {
                 if showingDatePicker {
-                    displayedMonth = Calendar.current.date(byAdding: .month, value: 1, to: displayedMonth) ?? displayedMonth
+                    displayedMonth = calendar.date(byAdding: .month, value: 1, to: displayedMonth) ?? displayedMonth
                 } else {
-                    selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
+                    selectedDate = calendar.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
                 }
             }) {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.blue)
-                    .frame(width: 44, height: 44)
-                    .background(RoundedRectangle(cornerRadius: 10).fill(AppColors.cardBackgroundInteractive))
+                    .frame(width: 36, height: 36)
             }
         }
+        .frame(height: 44)
+        .padding(.horizontal, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(colorScheme == .dark ? Color(.systemGray6) : Color(.secondarySystemBackground))
+        )
         .padding(.horizontal, 16)
+    }
+
+    // Get days centered around the selected date
+    private func getSurroundingDays(for date: Date, count: Int) -> [Date] {
+        let calendar = Calendar.current
+        let halfCount = count / 2 // 3 days before and after
+        return (-halfCount...halfCount).compactMap { offset in
+            calendar.date(byAdding: .day, value: offset, to: date)
+        }
+    }
+
+    // Format day name (Mon, Tue, etc.)
+    private func formatDayName(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE"
+        return formatter.string(from: date)
     }
 
     // Helper to format full date (e.g., "Tuesday, 14 Jan")

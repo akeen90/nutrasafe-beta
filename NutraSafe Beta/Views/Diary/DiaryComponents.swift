@@ -10,6 +10,7 @@ import SwiftUI
 // MARK: - Diary Meal Card
 struct DiaryMealCard: View {
     @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject var fastingViewModelWrapper: FastingViewModelWrapper
 
     let mealType: String
     let targetCalories: Int
@@ -193,6 +194,7 @@ struct DiaryFoodRow: View {
     let onTap: () -> Void
     let onDelete: () -> Void
     @State private var showingFoodDetail = false
+    @EnvironmentObject var fastingViewModelWrapper: FastingViewModelWrapper
 
     var body: some View {
         Button(action: {
@@ -294,7 +296,8 @@ struct DiaryFoodRow: View {
                 selectedTab: .constant(.diary),
                 diaryEntryId: food.id,
                 diaryMealType: mealType,
-                diaryQuantity: food.quantity
+                diaryQuantity: food.quantity,
+                fastingViewModel: fastingViewModelWrapper.viewModel
             )
         }
     }

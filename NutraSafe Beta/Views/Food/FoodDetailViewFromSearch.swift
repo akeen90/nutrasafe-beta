@@ -2019,6 +2019,10 @@ private var nutritionFactsSection: some View {
 
     /// Log food and optionally start a new fast
     private func addToFoodLogAndStartFast() {
+        #if DEBUG
+        print("🚀 [LOG&FAST] addToFoodLogAndStartFast() called")
+        print("🚀 [LOG&FAST] fastingViewModel present: \(fastingViewModel != nil)")
+        #endif
         isStartingFastAfterLog = true
         performFoodLog(endFast: false, startFast: true)
     }
@@ -2237,17 +2241,51 @@ private var nutritionFactsSection: some View {
 
                         // Handle fasting actions
                         if shouldEndFast, let fastingVM = vm {
-                            _ = await fastingVM.endFastingSession()
-                            #if DEBUG
-                            print("FoodDetailView: Ended current fast after food log")
-                            #endif
+                            // Try ending standalone session first
+                            let endedSession = await fastingVM.endFastingSession()
+                            if endedSession != nil {
+                                #if DEBUG
+                                print("FoodDetailView: Ended standalone fast after food log")
+                                #endif
+                            } else {
+                                // No active session - check if in regime mode fasting window
+                                // Use MainActor.run to access @MainActor-isolated property (Swift 6 fix)
+                                let isInFastingWindow = await MainActor.run {
+                                    if case .fasting = fastingVM.currentRegimeState {
+                                        return true
+                                    }
+                                    return false
+                                }
+                                if isInFastingWindow {
+                                    await fastingVM.skipCurrentRegimeFast()
+                                    #if DEBUG
+                                    print("FoodDetailView: Ended regime fast after food log")
+                                    #endif
+                                }
+                            }
                         }
 
                         if shouldStartFast, let fastingVM = vm {
+                            #if DEBUG
+                            print("🚀 [LOG&FAST] About to call fastingVM.startFastingSession()")
+                            print("🚀 [LOG&FAST] fastingVM type: \(type(of: fastingVM))")
+                            #endif
                             await fastingVM.startFastingSession()
                             #if DEBUG
+                            print("🚀 [LOG&FAST] startFastingSession() completed")
+                            print("🚀 [LOG&FAST] activeSession after start: \(String(describing: fastingVM.activeSession))")
                             print("FoodDetailView: Started new fast after food log")
                             #endif
+                            // Navigate to fasting tab to show the normal timer view
+                            #if DEBUG
+                            print("🚀 [LOG&FAST] About to post navigateToFasting notification")
+                            #endif
+                            await MainActor.run {
+                                NotificationCenter.default.post(name: .navigateToFasting, object: nil)
+                                #if DEBUG
+                                print("🚀 [LOG&FAST] navigateToFasting notification posted")
+                                #endif
+                            }
                         }
                     } catch is FirebaseManager.DiaryLimitError {
                         // For free users hitting limit - they'll see on diary tab

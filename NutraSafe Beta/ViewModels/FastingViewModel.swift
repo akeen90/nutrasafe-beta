@@ -1369,6 +1369,16 @@ class FastingViewModel: ObservableObject {
         // Use FastingManager to automatically determine completion status
         let endedSession = FastingManager.endSession(session)
 
+        // If we're in a regime fasting window, mark it as ended to prevent
+        // duplicate auto-recording when the scheduled window ends naturally
+        if case .fasting(_, let windowEnd) = currentRegimeState {
+            lastEndedWindowEnd = windowEnd
+            lastRecordedFastWindowEnd = windowEnd
+            #if DEBUG
+            print("📌 Marked regime window as ended to prevent duplicate recording")
+            #endif
+        }
+
         do {
             try await firebaseManager.updateFastingSession(endedSession)
             self.activeSession = nil
@@ -1393,6 +1403,16 @@ class FastingViewModel: ObservableObject {
         defer { isLoading = false }
 
         let skippedSession = FastingManager.skipSession(session)
+
+        // If we're in a regime fasting window, mark it as ended to prevent
+        // duplicate auto-recording when the scheduled window ends naturally
+        if case .fasting(_, let windowEnd) = currentRegimeState {
+            lastEndedWindowEnd = windowEnd
+            lastRecordedFastWindowEnd = windowEnd
+            #if DEBUG
+            print("📌 Marked regime window as ended (skip) to prevent duplicate recording")
+            #endif
+        }
 
         do {
             try await firebaseManager.updateFastingSession(skippedSession)
@@ -1904,17 +1924,26 @@ class FastingViewModel: ObservableObject {
         let fastingType = userInfo["fastingType"] as? String ?? ""
         let planId = userInfo["planId"] as? String ?? ""
         let planName = userInfo["planName"] as? String ?? ""
-        let durationHours = userInfo["durationHours"] as? Int ?? 16
+
+        // Helper to extract numeric values (notification userInfo stores as NSNumber)
+        func getNumber(_ key: String) -> Double? {
+            if let val = userInfo[key] as? Double { return val }
+            if let val = userInfo[key] as? Int { return Double(val) }
+            if let nsNum = userInfo[key] as? NSNumber { return nsNum.doubleValue }
+            return nil
+        }
+
+        let durationHours = Int(getNumber("durationHours") ?? 16)
         let scheduledTime: Date
 
         if fastingType == "end" {
-            if let scheduledEndTime = userInfo["scheduledEndTime"] as? TimeInterval {
+            if let scheduledEndTime = getNumber("scheduledEndTime") {
                 scheduledTime = Date(timeIntervalSince1970: scheduledEndTime)
             } else {
                 scheduledTime = Date()
             }
         } else {
-            if let scheduledStartTime = userInfo["scheduledStartTime"] as? TimeInterval {
+            if let scheduledStartTime = getNumber("scheduledStartTime") {
                 scheduledTime = Date(timeIntervalSince1970: scheduledStartTime)
             } else {
                 scheduledTime = Date()

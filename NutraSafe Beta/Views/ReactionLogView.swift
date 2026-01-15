@@ -372,6 +372,7 @@ struct StatCard: View {
 
 // MARK: - Common Ingredient Row
 struct CommonIngredientRow: View {
+    @Environment(\.colorScheme) private var colorScheme
     let name: String
     let frequency: Int
     let percentage: Double
@@ -405,7 +406,7 @@ struct CommonIngredientRow: View {
             }
         }
         .padding(12)
-        .background(Color(.secondarySystemBackground))
+        .background(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
         .cornerRadius(10)
         .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 2)
     }
@@ -424,6 +425,7 @@ struct CommonIngredientRow: View {
 // MARK: - Reaction Log Card
 
 struct ReactionLogCard: View {
+    @Environment(\.colorScheme) private var colorScheme
     let entry: ReactionLogEntry
 
     var body: some View {
@@ -481,7 +483,7 @@ struct ReactionLogCard: View {
             }
         }
         .padding(12)
-        .background(Color(.secondarySystemBackground))
+        .background(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
         .cornerRadius(10)
         .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 2)
     }
@@ -813,6 +815,7 @@ struct ReactionLogDetailView: View {
     let selectedDayRange: ReactionLogView.DayRange
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @State private var showingExportSheet = false
     @State private var showOtherIngredients = false
     @State private var selectedFood: WeightedFoodScore?
@@ -932,7 +935,7 @@ struct ReactionLogDetailView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemBackground))
+        .background(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.05), radius: 5)
     }
@@ -958,7 +961,7 @@ struct ReactionLogDetailView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemBackground))
+        .background(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.05), radius: 5)
     }
@@ -992,7 +995,7 @@ struct ReactionLogDetailView: View {
                     }
                 }
                 .padding()
-                .background(Color(.secondarySystemBackground))
+                .background(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
                 .cornerRadius(12)
                 .shadow(color: .black.opacity(0.05), radius: 5)
             }
@@ -1034,7 +1037,7 @@ struct ReactionLogDetailView: View {
                     }
                 }
                 .padding()
-                .background(Color(.secondarySystemBackground))
+                .background(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
                 .cornerRadius(12)
                 .shadow(color: .black.opacity(0.05), radius: 5)
             }
@@ -1744,6 +1747,7 @@ struct FoodHistoryDetailView: View {
     let food: WeightedFoodScore
     let reactionDate: Date
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @State private var foodEntry: FoodEntry?
     @State private var isLoading = true
 
@@ -1798,7 +1802,7 @@ struct FoodHistoryDetailView: View {
                             ingredientsBreakdownView(ingredients: ingredients)
                         }
                         .padding()
-                        .background(Color(.secondarySystemBackground))
+                        .background(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
                         .cornerRadius(12)
                         .shadow(color: .black.opacity(0.05), radius: 3)
                     } else {
@@ -1852,7 +1856,7 @@ struct FoodHistoryDetailView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.05), radius: 3)
     }

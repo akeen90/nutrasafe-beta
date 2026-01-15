@@ -1563,6 +1563,46 @@ struct DiaryFoodItem: Identifiable, Equatable, Codable {
         return lhs.id == rhs.id
     }
 
+    // MARK: - Custom Codable for backward compatibility
+    // Allows decoding older cached data that may be missing newer fields
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, brand, calories, protein, carbs, fat, fiber, sugar, sodium
+        case calcium, saturatedFat, servingDescription, quantity, time
+        case processedScore, sugarLevel, ingredients, additives, barcode
+        case micronutrientProfile, isPerUnit
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        // Required fields
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        name = try container.decode(String.self, forKey: .name)
+        calories = try container.decode(Int.self, forKey: .calories)
+        protein = try container.decode(Double.self, forKey: .protein)
+        carbs = try container.decode(Double.self, forKey: .carbs)
+        fat = try container.decode(Double.self, forKey: .fat)
+
+        // Optional fields with defaults for backward compatibility
+        brand = try container.decodeIfPresent(String.self, forKey: .brand)
+        fiber = try container.decodeIfPresent(Double.self, forKey: .fiber) ?? 0
+        sugar = try container.decodeIfPresent(Double.self, forKey: .sugar) ?? 0
+        sodium = try container.decodeIfPresent(Double.self, forKey: .sodium) ?? 0
+        calcium = try container.decodeIfPresent(Double.self, forKey: .calcium) ?? 0
+        saturatedFat = try container.decodeIfPresent(Double.self, forKey: .saturatedFat) ?? 0
+        servingDescription = try container.decodeIfPresent(String.self, forKey: .servingDescription) ?? "100g serving"
+        quantity = try container.decodeIfPresent(Double.self, forKey: .quantity) ?? 1.0
+        time = try container.decodeIfPresent(String.self, forKey: .time)
+        processedScore = try container.decodeIfPresent(String.self, forKey: .processedScore)
+        sugarLevel = try container.decodeIfPresent(String.self, forKey: .sugarLevel)
+        ingredients = try container.decodeIfPresent([String].self, forKey: .ingredients)
+        additives = try container.decodeIfPresent([NutritionAdditiveInfo].self, forKey: .additives)
+        barcode = try container.decodeIfPresent(String.self, forKey: .barcode)
+        micronutrientProfile = try container.decodeIfPresent(MicronutrientProfile.self, forKey: .micronutrientProfile)
+        isPerUnit = try container.decodeIfPresent(Bool.self, forKey: .isPerUnit)
+    }
+
     // Convert DiaryFoodItem back to FoodSearchResult for full feature access
     func toFoodSearchResult() -> FoodSearchResult {
         // PERFORMANCE: Set database version to current to prevent re-analysis

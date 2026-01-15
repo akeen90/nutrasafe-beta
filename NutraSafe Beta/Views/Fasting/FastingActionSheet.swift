@@ -72,7 +72,7 @@ struct FastingActionSheet: View {
             actionButton(
                 title: "Snooze",
                 subtitle: "Remind me in 15-60 minutes",
-                icon: "bell.zzz.fill",
+                icon: "moon.zzz.fill",
                 iconColor: .blue
             ) {
                 showingSnoozeOptions = true
@@ -144,7 +144,7 @@ struct FastingActionSheet: View {
             onDismiss()
         }) {
             HStack {
-                Image(systemName: "bell.zzz.fill")
+                Image(systemName: "moon.zzz.fill")
                     .font(.system(size: 20))
                     .foregroundColor(.blue)
                     .frame(width: 40)

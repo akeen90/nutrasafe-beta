@@ -80,9 +80,18 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             // Extract notification context for confirmation flow
             let planId = userInfo["planId"] as? String ?? ""
             let planName = userInfo["planName"] as? String ?? ""
-            let durationHours = userInfo["durationHours"] as? Int ?? 16
-            let scheduledStartTime = userInfo["scheduledStartTime"] as? TimeInterval
-            let scheduledEndTime = userInfo["scheduledEndTime"] as? TimeInterval
+
+            // Helper to extract numeric values (notification userInfo stores as NSNumber)
+            func getNumber(_ key: String) -> Double? {
+                if let val = userInfo[key] as? Double { return val }
+                if let val = userInfo[key] as? Int { return Double(val) }
+                if let nsNum = userInfo[key] as? NSNumber { return nsNum.doubleValue }
+                return nil
+            }
+
+            let durationHours = Int(getNumber("durationHours") ?? 16)
+            let scheduledStartTime = getNumber("scheduledStartTime")
+            let scheduledEndTime = getNumber("scheduledEndTime")
 
             #if DEBUG
             print("📱 Fasting notification tapped:")

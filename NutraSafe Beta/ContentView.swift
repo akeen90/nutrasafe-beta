@@ -595,6 +595,7 @@ struct ContentView: View {
         case .food:
             FoodTabView(showingSettings: $showingSettings, selectedTab: $selectedTab)
                 .environmentObject(subscriptionManager)
+                .environmentObject(sharedFastingViewModelWrapper)
 
         case .useBy:
             UseByTabView(showingSettings: $showingSettings, selectedTab: $selectedTab)
@@ -825,6 +826,7 @@ struct ContentView: View {
             .environmentObject(diaryDataManager)
             .environmentObject(subscriptionManager)
             .environmentObject(firebaseManager)
+            .environmentObject(sharedFastingViewModelWrapper)
             .onDisappear {
                 showingMealScan = false
             }
@@ -1969,6 +1971,12 @@ struct DietManagementTabContent: View {
     // Diet Management sheet
     @State private var showingDietManagement: Bool = false
 
+    // Activity Goals
+    @AppStorage("cachedStepGoal") private var cachedStepGoal: Int = 10000
+    @AppStorage("cachedExerciseGoal") private var cachedExerciseGoal: Int = 400
+    @State private var stepGoal: Int = 10000
+    @State private var exerciseGoal: Int = 400
+
     var body: some View {
         LazyVStack(spacing: 20) {
             // Calorie Goal Card
@@ -2175,10 +2183,125 @@ struct DietManagementTabContent: View {
             )
             .padding(.horizontal, 16)
 
+            // Activity Goals Card
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Activity Goals")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundColor(.primary)
+
+                // Step Goal
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "figure.walk")
+                            .font(.system(size: 20))
+                            .foregroundColor(.green)
+                            .frame(width: 32)
+
+                        Text("Daily Steps")
+                            .font(.system(size: 16, weight: .medium))
+
+                        Spacer()
+
+                        HStack(spacing: 12) {
+                            Button {
+                                if stepGoal > 1000 {
+                                    stepGoal -= 500
+                                    saveStepGoal()
+                                }
+                            } label: {
+                                Image(systemName: "minus.circle.fill")
+                                    .font(.system(size: 28))
+                                    .foregroundColor(stepGoal <= 1000 ? .gray.opacity(0.3) : .green)
+                            }
+                            .disabled(stepGoal <= 1000)
+
+                            Text(formatStepCount(Double(stepGoal)))
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundColor(.green)
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+
+                            Button {
+                                if stepGoal < 30000 {
+                                    stepGoal += 500
+                                    saveStepGoal()
+                                }
+                            } label: {
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.system(size: 28))
+                                    .foregroundColor(stepGoal >= 30000 ? .gray.opacity(0.3) : .green)
+                            }
+                            .disabled(stepGoal >= 30000)
+                        }
+                    }
+                }
+
+                Divider()
+
+                // Exercise Calories Goal
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "figure.run")
+                            .font(.system(size: 20))
+                            .foregroundColor(.orange)
+                            .frame(width: 32)
+
+                        Text("Calories Burned")
+                            .font(.system(size: 16, weight: .medium))
+
+                        Spacer()
+
+                        HStack(spacing: 12) {
+                            Button {
+                                if exerciseGoal > 100 {
+                                    exerciseGoal -= 50
+                                    saveExerciseGoal()
+                                }
+                            } label: {
+                                Image(systemName: "minus.circle.fill")
+                                    .font(.system(size: 28))
+                                    .foregroundColor(exerciseGoal <= 100 ? .gray.opacity(0.3) : .orange)
+                            }
+                            .disabled(exerciseGoal <= 100)
+
+                            Text("\(exerciseGoal)")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundColor(.orange)
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+
+                            Button {
+                                if exerciseGoal < 2000 {
+                                    exerciseGoal += 50
+                                    saveExerciseGoal()
+                                }
+                            } label: {
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.system(size: 28))
+                                    .foregroundColor(exerciseGoal >= 2000 ? .gray.opacity(0.3) : .orange)
+                            }
+                            .disabled(exerciseGoal >= 2000)
+                        }
+                    }
+                }
+            }
+            .padding(20)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(Color(.systemGray4), lineWidth: 1)
+                    )
+            )
+            .padding(.horizontal, 16)
+
             Spacer(minLength: 100)
         }
         .onAppear {
             calorieGoal = cachedCaloricGoal
+            stepGoal = cachedStepGoal
+            exerciseGoal = cachedExerciseGoal
             loadDietSettings()
         }
         .sheet(isPresented: $showingBMRCalculator) {
@@ -2214,6 +2337,29 @@ struct DietManagementTabContent: View {
             try? await firebaseManager.saveUserSettings(height: nil, goalWeight: nil, caloricGoal: calorieGoal)
         }
         NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
+    }
+
+    private func saveStepGoal() {
+        cachedStepGoal = stepGoal
+        Task {
+            try? await firebaseManager.saveUserSettings(height: nil, goalWeight: nil, stepGoal: stepGoal)
+        }
+        NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
+    }
+
+    private func saveExerciseGoal() {
+        cachedExerciseGoal = exerciseGoal
+        Task {
+            try? await firebaseManager.saveUserSettings(height: nil, goalWeight: nil, exerciseGoal: exerciseGoal)
+        }
+        NotificationCenter.default.post(name: .nutritionGoalsUpdated, object: nil)
+    }
+
+    private func formatStepCount(_ count: Double) -> String {
+        if count >= 1000 {
+            return String(format: "%.1fK", count / 1000)
+        }
+        return "\(Int(count))"
     }
 
     private func loadDietSettings() {
