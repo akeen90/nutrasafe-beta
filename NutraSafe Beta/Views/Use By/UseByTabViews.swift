@@ -2322,59 +2322,7 @@ struct UseByBarcodeScanSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if let product = scannedFood {
-                // Product found state - inline display like diary
-                VStack(spacing: 16) {
-                    Text("Product Found!")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(.green)
-                        .padding(.top, 20)
-
-                    // Food card preview
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(product.name)
-                            .font(.headline)
-                        if let brand = product.brand {
-                            Text(brand)
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                        HStack(spacing: 16) {
-                            VStack {
-                                Text("\(Int(product.calories))")
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                                Text("kcal")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            Spacer()
-                            Button("Add to Use By") {
-                                showingAddToUseBy = true
-                            }
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                            .background(Color.blue)
-                            .cornerRadius(10)
-                        }
-                    }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
-                    .padding(.horizontal, 16)
-
-                    Button("Scan Another") {
-                        resetScanner()
-                    }
-                    .foregroundColor(.blue)
-                    .padding(.bottom, 20)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
-
-            } else if let contribution = pendingContribution {
+            if let contribution = pendingContribution {
                 // Product not found - offer manual add
                 VStack(spacing: 20) {
                     Image(systemName: "square.and.pencil")
@@ -2493,9 +2441,19 @@ struct UseByBarcodeScanSheet: View {
                 }
             }
         }
-        .fullScreenCover(isPresented: $showingAddToUseBy) {
+        .fullScreenCover(isPresented: $showingAddToUseBy, onDismiss: {
+            // When UseBy detail is dismissed, reset for another scan
+            scannedFood = nil
+            errorMessage = nil
+        }) {
             if let food = scannedFood {
                 AddFoundFoodToUseBySheet(food: food)
+            }
+        }
+        .onChange(of: scannedFood) { _, newFood in
+            // Automatically show UseBy detail when product is found
+            if newFood != nil {
+                showingAddToUseBy = true
             }
         }
     }

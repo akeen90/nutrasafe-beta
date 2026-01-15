@@ -23,37 +23,12 @@ struct AddFoodBarcodeView: View {
     @State private var showingContributionForm = false
     @State private var scanFailed = false
     @State private var scannerKey = UUID() // Force scanner reset
+    @State private var showingFoodDetail = false
+    @EnvironmentObject var diaryDataManager: DiaryDataManager
 
     var body: some View {
         VStack(spacing: 0) {
-            if let product = scannedProduct {
-                // Result state
-                VStack(spacing: 16) {
-                    Text("Product Found!")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(.green)
-                        .padding(.top, 20)
-
-                    FoodSearchResultRowEnhanced(
-                        food: product,
-                        sourceType: .barcode,
-                        selectedTab: $selectedTab,
-                        onComplete: { tab in
-                            // Switch to the selected tab after adding food
-                            selectedTab = tab
-                        }
-                    )
-                    .padding(.horizontal, 16)
-
-                    Button("Scan Another") {
-                        scannedProduct = nil
-                        errorMessage = nil
-                    }
-                    .foregroundColor(.blue)
-                    .padding(.bottom, 20)
-                }
-
-            } else if let contribution = pendingContribution {
+            if let contribution = pendingContribution {
                 // Product not found - navigate to manual add
                 VStack(spacing: 20) {
                     Image(systemName: "square.and.pencil")
@@ -202,6 +177,25 @@ struct AddFoodBarcodeView: View {
                         pendingContribution = nil
                     })
                 }
+            }
+        }
+        .fullScreenCover(isPresented: $showingFoodDetail, onDismiss: {
+            // When food detail is dismissed, reset for another scan
+            scannedProduct = nil
+            errorMessage = nil
+        }) {
+            if let product = scannedProduct {
+                FoodDetailViewFromSearch(food: product, sourceType: .barcode, selectedTab: $selectedTab) { tab in
+                    selectedTab = tab
+                }
+                .environmentObject(diaryDataManager)
+                .interactiveDismissDisabled(false)
+            }
+        }
+        .onChange(of: scannedProduct) { _, newProduct in
+            // Automatically show food detail when product is found
+            if newProduct != nil {
+                showingFoodDetail = true
             }
         }
     }
@@ -484,35 +478,14 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
     }
 
     private func configureCamera() {
-        // For close-up barcode scanning, prefer the ULTRA-WIDE camera
-        // Ultra-wide can focus as close as 2cm vs wide-angle's 15cm minimum
-        // This allows users to hold phone very close to small barcodes
-        // Fallback to wide-angle if ultra-wide not available (older iPhones)
-        let discoverySession = AVCaptureDevice.DiscoverySession(
-            deviceTypes: [.builtInUltraWideCamera, .builtInWideAngleCamera],
-            mediaType: .video,
-            position: .back
-        )
-
-        // Explicitly select ultra-wide first, then fallback to wide-angle
-        // (discovery session doesn't guarantee order)
-        let videoCaptureDevice: AVCaptureDevice? = {
-            // First try to find ultra-wide
-            if let ultraWide = discoverySession.devices.first(where: { $0.deviceType == .builtInUltraWideCamera }) {
-                return ultraWide
-            }
-            // Fallback to wide-angle
-            return discoverySession.devices.first(where: { $0.deviceType == .builtInWideAngleCamera })
-        }()
-
-        guard let videoCaptureDevice else {
+        // Use the default back camera (standard camera, not ultra-wide)
+        guard let videoCaptureDevice = AVCaptureDevice.default(for: .video) else {
             showCameraError("Camera not available")
             return
         }
 
         #if DEBUG
-        print("📸 Using camera: \(videoCaptureDevice.localizedName) - deviceType: \(videoCaptureDevice.deviceType.rawValue)")
-        print("📸 Available cameras: \(discoverySession.devices.map { "\($0.localizedName) (\($0.deviceType.rawValue))" })")
+        print("📸 Using camera: \(videoCaptureDevice.localizedName)")
         #endif
 
         self.videoCaptureDevice = videoCaptureDevice
@@ -555,17 +528,15 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
                 videoCaptureDevice.exposureMode = .continuousAutoExposure
             }
 
-            // No zoom needed - ultra-wide camera can focus as close as 2cm
-            // If using wide-angle fallback, apply slight zoom for better close focus
-            if videoCaptureDevice.deviceType == .builtInWideAngleCamera {
-                let desiredZoom: CGFloat = 1.5
-                let maxZoom = min(videoCaptureDevice.activeFormat.videoMaxZoomFactor, 4.0)
-                let actualZoom = min(desiredZoom, maxZoom)
-                videoCaptureDevice.videoZoomFactor = actualZoom
-                #if DEBUG
-                print("📸 Wide-angle fallback: zoom set to \(actualZoom)x")
-                #endif
-            }
+            // Apply 2x zoom for better close-up barcode scanning
+            // This helps the standard camera focus on barcodes held close to the phone
+            let desiredZoom: CGFloat = 2.0
+            let maxZoom = min(videoCaptureDevice.activeFormat.videoMaxZoomFactor, 4.0)
+            let actualZoom = min(desiredZoom, maxZoom)
+            videoCaptureDevice.videoZoomFactor = actualZoom
+            #if DEBUG
+            print("📸 Camera zoom set to \(actualZoom)x for close-up scanning")
+            #endif
 
             videoCaptureDevice.unlockForConfiguration()
 
