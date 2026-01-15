@@ -478,21 +478,40 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
     }
 
     private func configureCamera() {
-        // Use the default back camera (standard camera, not ultra-wide)
-        guard let videoCaptureDevice = AVCaptureDevice.default(for: .video) else {
+        // Use a virtual device that supports automatic macro switching
+        // Virtual devices (Triple/Dual camera) automatically switch to ultra-wide
+        // when focusing on close objects, giving us macro capability while normally
+        // using the standard wide-angle camera
+        let discoverySession = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [
+                .builtInTripleCamera,     // iPhone 12 Pro+ (wide, ultra-wide, telephoto)
+                .builtInDualWideCamera,   // iPhone 13+ (wide + ultra-wide with macro)
+                .builtInDualCamera,       // Older Pro models (wide + telephoto)
+                .builtInWideAngleCamera   // Fallback for non-Pro models
+            ],
+            mediaType: .video,
+            position: .back
+        )
+
+        // Use the most capable device available (virtual devices listed first)
+        guard let videoCaptureDevice = discoverySession.devices.first else {
             showCameraError("Camera not available")
             return
         }
 
         #if DEBUG
         print("📸 Using camera: \(videoCaptureDevice.localizedName)")
+        print("📸 Device type: \(videoCaptureDevice.deviceType.rawValue)")
+        print("📸 Is virtual device: \(videoCaptureDevice.isVirtualDevice)")
+        if videoCaptureDevice.isVirtualDevice {
+            print("📸 Constituent devices: \(videoCaptureDevice.constituentDevices.map { $0.localizedName })")
+        }
         #endif
 
         self.videoCaptureDevice = videoCaptureDevice
 
         let captureSession = AVCaptureSession()
         // Use 1280x720 preset - ideal for barcode scanning (faster processing, good quality)
-        // .high uses 1920x1080 which is overkill and can slow down processing
         if captureSession.canSetSessionPreset(.hd1280x720) {
             captureSession.sessionPreset = .hd1280x720
         } else {
@@ -502,6 +521,18 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
         do {
             // Configure camera for optimal close-up barcode scanning
             try videoCaptureDevice.lockForConfiguration()
+
+            // For virtual devices, enable automatic camera switching for macro mode
+            // This allows the system to switch to ultra-wide when focusing close
+            if videoCaptureDevice.isVirtualDevice {
+                videoCaptureDevice.setPrimaryConstituentDeviceSwitchingBehavior(
+                    .auto,
+                    restrictedSwitchingBehaviorConditions: []
+                )
+                #if DEBUG
+                print("📸 Enabled automatic camera switching for macro mode")
+                #endif
+            }
 
             // Enable continuous autofocus
             if videoCaptureDevice.isFocusModeSupported(.continuousAutoFocus) {
@@ -528,15 +559,17 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
                 videoCaptureDevice.exposureMode = .continuousAutoExposure
             }
 
-            // Apply 2x zoom for better close-up barcode scanning
-            // This helps the standard camera focus on barcodes held close to the phone
-            let desiredZoom: CGFloat = 2.0
-            let maxZoom = min(videoCaptureDevice.activeFormat.videoMaxZoomFactor, 4.0)
-            let actualZoom = min(desiredZoom, maxZoom)
-            videoCaptureDevice.videoZoomFactor = actualZoom
-            #if DEBUG
-            print("📸 Camera zoom set to \(actualZoom)x for close-up scanning")
-            #endif
+            // Apply 2x zoom for better close-up scanning on non-virtual devices
+            // Virtual devices handle zoom differently with their constituent cameras
+            if !videoCaptureDevice.isVirtualDevice {
+                let desiredZoom: CGFloat = 2.0
+                let maxZoom = min(videoCaptureDevice.activeFormat.videoMaxZoomFactor, 4.0)
+                let actualZoom = min(desiredZoom, maxZoom)
+                videoCaptureDevice.videoZoomFactor = actualZoom
+                #if DEBUG
+                print("📸 Camera zoom set to \(actualZoom)x for close-up scanning")
+                #endif
+            }
 
             videoCaptureDevice.unlockForConfiguration()
 
