@@ -1569,6 +1569,7 @@ struct CategoricalNutrientTrackingView: View {
     /// Generate intelligent summary text based on nutrient coverage
     /// Only provides actionable feedback based on days with actual logged food
     /// Also checks recency - stale data (>3 days old) gets different messaging
+    /// Now also checks if viewing past week vs current week
     private func generateNutrientSummaryText() -> (text: String, icon: String, color: Color) {
         let loggedDays = vm.rhythmDays.filter { $0.level != .none }
         let daysLogged = loggedDays.count
@@ -1579,6 +1580,9 @@ struct CategoricalNutrientTrackingView: View {
 
         let consistent = vm.nutrientCoverageRows.filter { $0.status == .consistent }
 
+        // Check if viewing a past week (weekOffset < 0 means past, 0 means current week)
+        let isViewingPastWeek = weekOffset < 0
+
         // Check how recent the data is
         let mostRecentLoggedDay = loggedDays.map { $0.date }.max()
         let daysSinceLastLog: Int
@@ -1588,14 +1592,48 @@ struct CategoricalNutrientTrackingView: View {
             daysSinceLastLog = Int.max
         }
 
-        // No data logged yet
+        // No data logged for this week
         if daysLogged == 0 {
+            if isViewingPastWeek {
+                return (
+                    text: "No meals were logged during this week.",
+                    icon: "calendar.badge.exclamationmark",
+                    color: .secondary
+                )
+            }
             return (
                 text: "Log meals to see which vitamins and minerals you're getting.",
                 icon: "plus.circle.fill",
                 color: .blue
             )
         }
+
+        // When viewing past weeks, don't prompt to add meals - just summarise what was logged
+        if isViewingPastWeek {
+            if nutrientsFound > 0 {
+                if daysLogged == 1 {
+                    return (
+                        text: "Found \(nutrientsFound) nutrients from \(daysLogged) day logged this week.",
+                        icon: "leaf.fill",
+                        color: Color(hex: "#3FD17C")
+                    )
+                } else {
+                    return (
+                        text: "Found \(nutrientsFound) nutrients across \(daysLogged) days logged this week.",
+                        icon: "leaf.fill",
+                        color: Color(hex: "#3FD17C")
+                    )
+                }
+            } else {
+                return (
+                    text: "Meals were logged but no nutrient data was captured this week.",
+                    icon: "exclamationmark.triangle",
+                    color: .orange
+                )
+            }
+        }
+
+        // Below: Only for current week (weekOffset == 0)
 
         // Data is stale (nothing logged in 4+ days) - encourage fresh logging
         if daysSinceLastLog >= 4 {
@@ -2386,7 +2424,10 @@ final class CategoricalNutrientViewModel: ObservableObject {
 
     // MARK: - Adaptive Insight Generation
 
-    func generateAdaptiveInsight() -> String? {
+    /// Generate adaptive insight text based on nutrient data
+    /// - Parameter weekOffset: 0 = current week, negative = past weeks
+    /// - Returns: Insight string or nil
+    func generateAdaptiveInsight(weekOffset: Int = 0) -> String? {
         // Calculate data sufficiency metrics
         let totalMeals = calculateTotalMealsLogged()
         let daysWithData = rhythmDays.filter { $0.level != .none }.count
@@ -2399,8 +2440,14 @@ final class CategoricalNutrientViewModel: ObservableObject {
         let occasional = nutrientCoverageRows.filter { $0.status == .occasional }
         let consistent = nutrientCoverageRows.filter { $0.status == .consistent }
 
+        // Check if viewing a past week
+        let isViewingPastWeek = weekOffset < 0
+
         // TIER 1: No data at all
         if totalMeals == 0 {
+            if isViewingPastWeek {
+                return "No meals were logged during this week."
+            }
             return "As you log more meals, your nutrient trends will start to appear here."
         }
 
@@ -2409,12 +2456,21 @@ final class CategoricalNutrientViewModel: ObservableObject {
             // Check if we can detect any weak nutrients even with limited data
             if !missing.isEmpty || !occasional.isEmpty {
                 let weakNutrients = (missing + occasional).prefix(2).map { $0.name }.joined(separator: " and ")
+                if isViewingPastWeek {
+                    return "This week's meals showed lower \(weakNutrients) compared to other nutrients."
+                }
                 return "Based on your recent meals, \(weakNutrients) appear lower than others — keep logging to confirm."
             } else if totalMeals >= 2 {
                 // Has some data but looking good so far
+                if isViewingPastWeek {
+                    return "Limited data logged this week — \(totalMeals) meals tracked."
+                }
                 return "Good start — log \(5 - totalMeals) more meals to reveal your full nutrient rhythm."
             } else {
                 // Very minimal data (1 meal)
+                if isViewingPastWeek {
+                    return "Only 1 meal was logged this week."
+                }
                 return "As you log more meals, your nutrient trends will start to appear here."
             }
         }
@@ -2424,6 +2480,9 @@ final class CategoricalNutrientViewModel: ObservableObject {
         // Priority 1: Multiple missing nutrients (3+)
         if missing.count >= 3 {
             let names = missing.prefix(3).map { $0.name }.joined(separator: ", ")
+            if isViewingPastWeek {
+                return "This week showed consistently low \(names)."
+            }
             return "Your entries show consistently low \(names) — tap to uncover all lows."
         }
 
@@ -2431,8 +2490,14 @@ final class CategoricalNutrientViewModel: ObservableObject {
         if missing.count >= 1 {
             let names = missing.prefix(2).map { $0.name }
             if missing.count == 1 {
+                if isViewingPastWeek {
+                    return "This week was missing \(names[0]) from logged foods."
+                }
                 return "Your entries are missing \(names[0]) this week — see what's causing it."
             } else {
+                if isViewingPastWeek {
+                    return "This week was missing \(names.joined(separator: " and ")) from logged foods."
+                }
                 return "Your entries are missing \(names.joined(separator: " and ")) — tap to see contributing foods."
             }
         }
@@ -2440,6 +2505,9 @@ final class CategoricalNutrientViewModel: ObservableObject {
         // Priority 3: Several occasional nutrients (day-to-day variation)
         if occasional.count >= 3 {
             let names = occasional.prefix(3).map { $0.name }.joined(separator: ", ")
+            if isViewingPastWeek {
+                return "These varied day-to-day: \(names)."
+            }
             return "These vary day-to-day: \(names) — tap for daily breakdown."
         }
 
@@ -2447,21 +2515,36 @@ final class CategoricalNutrientViewModel: ObservableObject {
         if consistent.count >= nutrientCoverageRows.count * 70 / 100 {
             let percentage = (consistent.count * 100) / max(1, nutrientCoverageRows.count)
             if percentage >= 90 {
+                if isViewingPastWeek {
+                    return "Excellent variety that week — \(consistent.count) of \(nutrientCoverageRows.count) nutrients found in your foods."
+                }
                 return "Excellent variety this week — \(consistent.count) of \(nutrientCoverageRows.count) nutrients found in your foods."
             } else {
+                if isViewingPastWeek {
+                    return "Good variety across most nutrients that week."
+                }
                 return "Good variety across most nutrients — great consistency this week."
             }
         }
 
         // Priority 5: Mixed results
         if occasional.count >= 2 {
+            if isViewingPastWeek {
+                return "Some nutrients fluctuated that week."
+            }
             return "Some nutrients fluctuate — tap to see which ones need more consistency."
         }
 
         // Default: Encouraging message
         if daysWithData >= 5 {
+            if isViewingPastWeek {
+                return "Solid nutrient rhythm that week with \(daysWithData) days logged."
+            }
             return "You're building a solid nutrient rhythm — keep it up this week."
         } else {
+            if isViewingPastWeek {
+                return "\(daysWithData) days logged that week."
+            }
             return "Off to a good start — continue logging to strengthen your rhythm."
         }
     }

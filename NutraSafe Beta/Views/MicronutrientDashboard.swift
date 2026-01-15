@@ -890,20 +890,32 @@ struct MicronutrientDashboard: View {
         DateHelper.singleLetterDayFormatter.string(from: date)
     }
 
-    private func generateAdaptiveInsight() -> String? {
+    /// Generate adaptive insight - this dashboard currently shows current week only
+    /// Note: If week navigation is added, pass weekOffset parameter
+    private func generateAdaptiveInsight(weekOffset: Int = 0) -> String? {
         let totalMeals = calculateTotalMealsLogged()
         let daysWithData = rhythmDays.filter { $0.level != .none }.count
+        let isViewingPastWeek = weekOffset < 0
 
         let hasSufficientData = totalMeals >= 5 && daysWithData >= 3
 
         if totalMeals == 0 {
+            if isViewingPastWeek {
+                return "No meals were logged during this week."
+            }
             return "As you log more meals, your nutrient trends will start to appear here."
         }
 
         if !hasSufficientData {
             if totalMeals >= 2 {
+                if isViewingPastWeek {
+                    return "Limited data logged this week — \(totalMeals) meals tracked."
+                }
                 return "Good start — log \(5 - totalMeals) more meals to reveal your full nutrient rhythm."
             } else {
+                if isViewingPastWeek {
+                    return "Only 1 meal was logged this week."
+                }
                 return "As you log more meals, your nutrient trends will start to appear here."
             }
         }
@@ -914,8 +926,14 @@ struct MicronutrientDashboard: View {
         }
 
         if daysWithData >= 5 {
+            if isViewingPastWeek {
+                return "Solid nutrient rhythm that week with \(daysWithData) days logged."
+            }
             return "You're building a solid nutrient rhythm — keep it up this week."
         } else {
+            if isViewingPastWeek {
+                return "\(daysWithData) days logged that week."
+            }
             return "Off to a good start — continue logging to strengthen your rhythm."
         }
     }
