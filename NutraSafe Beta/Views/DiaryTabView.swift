@@ -40,6 +40,11 @@ struct DiaryTabView: View {
         case insights = "Insights"
     }
 
+    enum InsightsSubTab: String, CaseIterable {
+        case additives = "Additives"
+        case nutrients = "Vitamins & Minerals"
+    }
+
     // MARK: - Unified Reload Trigger (Performance Optimization)
     // Consolidates multiple onChange handlers into single coordinated reload
     // Prevents cascading updates when multiple triggers fire simultaneously
@@ -75,6 +80,7 @@ struct DiaryTabView: View {
 
     // MARK: - Additive Tracker
     @StateObject private var additiveTrackerVM = AdditiveTrackerViewModel()
+    @State private var insightsSubTab: InsightsSubTab = .additives
 
     private struct NutritionTotals {
         var totalCalories: Int = 0
@@ -939,20 +945,62 @@ struct DiaryTabView: View {
 
     @ViewBuilder
     private var nutrientsTabContent: some View {
-        // Additive Tracker at top
-        AdditiveTrackerSection(viewModel: additiveTrackerVM)
+        // Insights sub-tab picker
+        insightsSubTabPicker
             .padding(.top, 8)
+            .padding(.horizontal, 16)
 
-        if #available(iOS 16.0, *) {
-            CategoricalNutrientTrackingView(selectedDate: $selectedDate)
-        } else {
-            Text("Nutrient tracking requires iOS 16.0 or later")
-                .foregroundColor(.secondary)
-                .padding()
+        // Content based on selected sub-tab
+        switch insightsSubTab {
+        case .additives:
+            AdditiveTrackerSection(viewModel: additiveTrackerVM)
+
+        case .nutrients:
+            if #available(iOS 16.0, *) {
+                CategoricalNutrientTrackingView(selectedDate: $selectedDate)
+            } else {
+                Text("Nutrient tracking requires iOS 16.0 or later")
+                    .foregroundColor(.secondary)
+                    .padding()
+            }
         }
 
         Spacer()
             .frame(height: 150)
+    }
+
+    private var insightsSubTabPicker: some View {
+        HStack(spacing: 0) {
+            ForEach(InsightsSubTab.allCases, id: \.self) { tab in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        insightsSubTab = tab
+                    }
+                } label: {
+                    Text(tab.rawValue)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(insightsSubTab == tab ? .white : .secondary)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .frame(maxWidth: .infinity)
+                        .background(
+                            insightsSubTab == tab
+                                ? Capsule().fill(Color.orange)
+                                : Capsule().fill(Color(.systemGray6))
+                        )
+                }
+                .buttonStyle(PlainButtonStyle())
+
+                if tab != InsightsSubTab.allCases.last {
+                    Spacer(minLength: 8)
+                }
+            }
+        }
+        .padding(4)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color(.systemGray6).opacity(0.5))
+        )
     }
 
     @ViewBuilder
