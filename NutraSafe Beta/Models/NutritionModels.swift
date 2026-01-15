@@ -553,14 +553,14 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
                 PortionOption(name: "Small (100g)", calories: caloriesPer100 * 1.0, serving_g: 100),
                 PortionOption(name: "Medium (150g)", calories: caloriesPer100 * 1.5, serving_g: 150),
                 PortionOption(name: "Large (200g)", calories: caloriesPer100 * 2.0, serving_g: 200),
-                PortionOption(name: "Restaurant (250g)", calories: caloriesPer100 * 2.5, serving_g: 250)
+                PortionOption(name: "Extra Large (250g)", calories: caloriesPer100 * 2.5, serving_g: 250)
             ]
         case .pasta:
             return [
                 PortionOption(name: "Small (150g)", calories: caloriesPer100 * 1.5, serving_g: 150),
                 PortionOption(name: "Medium (200g)", calories: caloriesPer100 * 2.0, serving_g: 200),
                 PortionOption(name: "Large (250g)", calories: caloriesPer100 * 2.5, serving_g: 250),
-                PortionOption(name: "Restaurant (300g)", calories: caloriesPer100 * 3.0, serving_g: 300)
+                PortionOption(name: "Extra Large (300g)", calories: caloriesPer100 * 3.0, serving_g: 300)
             ]
         case .bread:
             return [
@@ -600,7 +600,7 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
                 PortionOption(name: "Small (85g)", calories: caloriesPer100 * 0.85, serving_g: 85),
                 PortionOption(name: "Medium (120g)", calories: caloriesPer100 * 1.2, serving_g: 120),
                 PortionOption(name: "Large (170g)", calories: caloriesPer100 * 1.7, serving_g: 170),
-                PortionOption(name: "Restaurant (225g)", calories: caloriesPer100 * 2.25, serving_g: 225)
+                PortionOption(name: "Extra Large (225g)", calories: caloriesPer100 * 2.25, serving_g: 225)
             ]
         case .fish:
             return [

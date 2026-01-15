@@ -232,28 +232,29 @@ struct DiaryTabView: View {
                             selectedDate = date
                         }
                     }) {
-                        if isCenter {
-                            // Center day - blue pill showing day name + calendar icon
-                            HStack(alignment: .center, spacing: 4) {
-                                Text(dayName)
-                                    .font(.system(size: 13, weight: .semibold))
-                                Image(systemName: "calendar")
-                                    .font(.system(size: 13, weight: .semibold))
-                            }
-                            .foregroundColor(.white)
-                            .padding(8) // Equal padding on all sides
-                            .background(
+                        ZStack {
+                            if isCenter {
+                                // Blue pill background - centered in frame
                                 Capsule()
                                     .fill(Color.blue)
-                            )
-                            .frame(maxWidth: .infinity) // Center the pill within allocated space
-                        } else {
-                            // Other days - just text
-                            Text(dayName)
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(.secondary)
-                                .frame(maxWidth: .infinity)
+                                    .frame(width: 70, height: 32)
+
+                                // Content centered inside pill
+                                HStack(spacing: 6) {
+                                    Text(dayName)
+                                        .font(.system(size: 13, weight: .semibold))
+                                    Image(systemName: "calendar")
+                                        .font(.system(size: 12, weight: .semibold))
+                                }
+                                .foregroundColor(.white)
+                            } else {
+                                // Other days - just text
+                                Text(dayName)
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(.secondary)
+                            }
                         }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                     .frame(height: 36)
                     .buttonStyle(.plain)
