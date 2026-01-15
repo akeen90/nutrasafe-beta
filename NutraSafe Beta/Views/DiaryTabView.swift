@@ -222,7 +222,6 @@ struct DiaryTabView: View {
                 ForEach(Array(surroundingDays.enumerated()), id: \.offset) { index, date in
                     let isCenter = index == 3 // Center position
                     let dayName = formatDayName(date)
-                    let dayNumber = calendar.component(.day, from: date)
 
                     Button(action: {
                         if isCenter {
@@ -235,11 +234,11 @@ struct DiaryTabView: View {
                     }) {
                         if isCenter {
                             // Center day - blue pill showing day name + calendar icon
-                            HStack(spacing: 5) {
+                            HStack(alignment: .center, spacing: 4) {
                                 Text(dayName)
                                     .font(.system(size: 13, weight: .semibold))
                                 Image(systemName: "calendar")
-                                    .font(.system(size: 12, weight: .semibold))
+                                    .font(.system(size: 13, weight: .semibold))
                             }
                             .foregroundColor(.white)
                             .padding(.horizontal, 12)
@@ -248,6 +247,7 @@ struct DiaryTabView: View {
                                 Capsule()
                                     .fill(Color.blue)
                             )
+                            .frame(maxWidth: .infinity) // Center the pill within allocated space
                         } else {
                             // Other days - just text
                             Text(dayName)

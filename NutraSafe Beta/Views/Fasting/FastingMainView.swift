@@ -1273,6 +1273,23 @@ struct RegimeTimerCard: View {
                         .monospacedDigit()
                         .foregroundColor(.blue)
 
+                    // Current fasting stage indicator
+                    if let phase = viewModel.currentRegimeFastingPhase {
+                        HStack(spacing: 6) {
+                            Image(systemName: phaseIcon(for: phase))
+                                .font(.system(size: 12, weight: .semibold))
+                            Text(phase.displayName)
+                                .font(.system(size: 13, weight: .semibold))
+                        }
+                        .foregroundColor(phaseColor(for: phase))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule()
+                                .fill(phaseColor(for: phase).opacity(0.15))
+                        )
+                    }
+
                     Text("until eating window")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
@@ -1325,6 +1342,30 @@ struct RegimeTimerCard: View {
         .padding()
         .frame(maxWidth: .infinity)
         .cardBackground(cornerRadius: 16)
+    }
+
+    // MARK: - Phase Helpers
+
+    private func phaseIcon(for phase: FastingPhase) -> String {
+        switch phase {
+        case .postMeal: return "fork.knife"
+        case .fuelSwitching: return "arrow.triangle.swap"
+        case .fatMobilization: return "flame.fill"
+        case .mildKetosis: return "bolt.fill"
+        case .autophagyPotential: return "sparkles"
+        case .deepAdaptive: return "star.fill"
+        }
+    }
+
+    private func phaseColor(for phase: FastingPhase) -> Color {
+        switch phase {
+        case .postMeal: return .gray
+        case .fuelSwitching: return .orange
+        case .fatMobilization: return .red
+        case .mildKetosis: return .purple
+        case .autophagyPotential: return .blue
+        case .deepAdaptive: return .green
+        }
     }
 }
 

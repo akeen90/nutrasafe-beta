@@ -1298,6 +1298,20 @@ class FastingViewModel: ObservableObject {
         return Date().timeIntervalSince(started) / 3600
     }
 
+    /// Current fasting phase based on hours into fast (for regime mode)
+    var currentRegimeFastingPhase: FastingPhase? {
+        guard case .fasting = currentRegimeState else { return nil }
+        let hours = hoursIntoCurrentFast
+
+        // Determine phase based on hours fasted
+        if hours >= 20 { return .deepAdaptive }
+        if hours >= 16 { return .autophagyPotential }
+        if hours >= 12 { return .mildKetosis }
+        if hours >= 8 { return .fatMobilization }
+        if hours >= 4 { return .fuelSwitching }
+        return .postMeal
+    }
+
     // MARK: - Session Management
 
     func startFastingSession() async {
