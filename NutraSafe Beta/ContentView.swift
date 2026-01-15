@@ -770,6 +770,7 @@ struct ContentView: View {
             )
             .environmentObject(diaryDataManager)
             .environmentObject(subscriptionManager)
+            .environmentObject(sharedFastingViewModelWrapper)
         }
         .fullScreenCover(isPresented: $showingUseByAdd) {
             AddUseByItemSheet(onComplete: {

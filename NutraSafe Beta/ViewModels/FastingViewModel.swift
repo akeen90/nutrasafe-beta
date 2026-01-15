@@ -1082,9 +1082,7 @@ class FastingViewModel: ObservableObject {
             // If the marker is recent (within last hour), we're definitely in eating window
             if now.timeIntervalSince(endedWindow) < 3600 {
                 if let nextFast = activePlan?.nextScheduledFastingWindow() {
-                    #if DEBUG
-                    print("🍽️ In eating window due to recent manual end at \(endedWindow.formatted(date: .omitted, time: .shortened))")
-                    #endif
+                    // Note: Debug logging removed - this computed property is called frequently
                     return .eating(nextFastStart: nextFast)
                 }
             }
