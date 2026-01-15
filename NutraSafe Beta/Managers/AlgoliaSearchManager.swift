@@ -786,10 +786,17 @@ final class AlgoliaSearchManager {
             let verified = (hit["isVerified"] as? Bool) ?? (hit["verified"] as? Bool) ?? (hit["is_verified"] as? Bool) ?? false
             let barcode = hit["barcode"] as? String
 
-            // Extract ingredients array
+            // Extract ingredients - handle both array and string formats
+            // CSV uploads have ingredients as comma-separated string, Firebase sync uses arrays
             var ingredients: [String]? = nil
             if let ingredientsArray = hit["ingredients"] as? [String] {
                 ingredients = ingredientsArray
+            } else if let ingredientsString = hit["ingredients"] as? String, !ingredientsString.isEmpty {
+                // Parse comma-separated string into array
+                ingredients = ingredientsString
+                    .components(separatedBy: ",")
+                    .map { $0.trimmingCharacters(in: .whitespaces) }
+                    .filter { !$0.isEmpty }
             }
 
             // Extract micronutrient profile if available
