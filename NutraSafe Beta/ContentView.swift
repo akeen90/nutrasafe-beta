@@ -4897,9 +4897,6 @@ struct AddFoodMainView: View {
                             OptionSelectorButton(title: "Search", icon: "magnifyingglass", isSelected: selectedAddOption == .search) {
                                 selectedAddOption = .search
                             }
-                            OptionSelectorButton(title: "Barcode", icon: "barcode.viewfinder", isSelected: selectedAddOption == .barcode) {
-                                selectedAddOption = .barcode
-                            }
                             OptionSelectorButton(title: "Manual", icon: "square.and.pencil", isSelected: selectedAddOption == .manual) {
                                 selectedAddOption = .manual
                             }

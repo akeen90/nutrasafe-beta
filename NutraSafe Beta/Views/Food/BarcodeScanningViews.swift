@@ -494,13 +494,25 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
             position: .back
         )
 
-        guard let videoCaptureDevice = discoverySession.devices.first else {
+        // Explicitly select ultra-wide first, then fallback to wide-angle
+        // (discovery session doesn't guarantee order)
+        let videoCaptureDevice: AVCaptureDevice? = {
+            // First try to find ultra-wide
+            if let ultraWide = discoverySession.devices.first(where: { $0.deviceType == .builtInUltraWideCamera }) {
+                return ultraWide
+            }
+            // Fallback to wide-angle
+            return discoverySession.devices.first(where: { $0.deviceType == .builtInWideAngleCamera })
+        }()
+
+        guard let videoCaptureDevice else {
             showCameraError("Camera not available")
             return
         }
 
         #if DEBUG
-        print("📸 Using camera: \(videoCaptureDevice.localizedName) (ultra-wide preferred for close-up scanning)")
+        print("📸 Using camera: \(videoCaptureDevice.localizedName) - deviceType: \(videoCaptureDevice.deviceType.rawValue)")
+        print("📸 Available cameras: \(discoverySession.devices.map { "\($0.localizedName) (\($0.deviceType.rawValue))" })")
         #endif
 
         self.videoCaptureDevice = videoCaptureDevice
