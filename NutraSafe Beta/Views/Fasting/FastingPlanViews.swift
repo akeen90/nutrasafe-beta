@@ -350,12 +350,7 @@ struct ActivePlanCard: View {
             }
         }
         .padding()
-        .background(Color.green.opacity(0.1))
-        .cornerRadius(12)
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.green.opacity(0.3), lineWidth: 1)
-        )
+        .cardBackground(cornerRadius: 12)
     }
 }
 

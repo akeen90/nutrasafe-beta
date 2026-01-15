@@ -155,12 +155,7 @@ struct KeyMetricsSection: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.blue.opacity(0.05))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.blue.opacity(0.2), lineWidth: 1)
-        )
+        .cardBackground(cornerRadius: 16)
     }
 }
 
@@ -223,12 +218,7 @@ struct ProgressChartSection: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.purple.opacity(0.05))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.purple.opacity(0.2), lineWidth: 1)
-        )
+        .cardBackground(cornerRadius: 16)
     }
 
     private var headerView: some View {
@@ -328,12 +318,7 @@ struct PhaseDistributionSection: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.orange.opacity(0.05))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.orange.opacity(0.2), lineWidth: 1)
-        )
+        .cardBackground(cornerRadius: 16)
     }
 
     private var headerView: some View {
@@ -440,14 +425,9 @@ struct ConsistencySection: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.green.opacity(0.05))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.green.opacity(0.2), lineWidth: 1)
-        )
+        .cardBackground(cornerRadius: 16)
     }
-    
+
     private var weeklyAverage: Double {
         let sessions = analytics.last30DaysSessions
         guard !sessions.isEmpty else { return 0 }
@@ -543,12 +523,7 @@ struct RecentSessionsSection: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.teal.opacity(0.05))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.teal.opacity(0.2), lineWidth: 1)
-        )
+        .cardBackground(cornerRadius: 16)
     }
 }
 
@@ -805,12 +780,7 @@ struct PhaseDetailsCard: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.purple.opacity(0.05))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.purple.opacity(0.2), lineWidth: 1)
-        )
+        .cardBackground(cornerRadius: 16)
     }
 }
 
@@ -861,12 +831,7 @@ struct NotesCard: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.brown.opacity(0.05))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.brown.opacity(0.2), lineWidth: 1)
-        )
+        .cardBackground(cornerRadius: 16)
     }
 }
 

@@ -81,16 +81,28 @@ extension View {
 }
 
 // MARK: - Consistent Card Background Modifier
-/// Applies the standard white/frosted card background used throughout the app
-/// Matches the diary tab's card styling for visual consistency
-extension View {
-    func cardBackground(cornerRadius: CGFloat = AppRadius.medium) -> some View {
-        self
+/// Applies the standard white card background used throughout the app
+/// Matches the Diet page's clean card styling for visual consistency
+struct CardBackgroundModifier: ViewModifier {
+    @Environment(\.colorScheme) var colorScheme
+    let cornerRadius: CGFloat
+
+    func body(content: Content) -> some View {
+        content
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius)
-                    .fill(.ultraThinMaterial)
+                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: cornerRadius)
+                            .stroke(Color(.systemGray4), lineWidth: 1)
+                    )
             )
-            .cardShadow()
+    }
+}
+
+extension View {
+    func cardBackground(cornerRadius: CGFloat = 16) -> some View {
+        self.modifier(CardBackgroundModifier(cornerRadius: cornerRadius))
     }
 }
 

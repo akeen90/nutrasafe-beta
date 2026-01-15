@@ -70,12 +70,7 @@ struct FastingEducationView: View {
                         }
                         .padding()
                         .frame(maxWidth: .infinity)
-                        .background(Color.blue.opacity(0.1))
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.blue.opacity(0.3), lineWidth: 1)
-                        )
+                        .cardBackground(cornerRadius: 12)
                     }
                     .buttonStyle(.plain)
 
@@ -398,12 +393,7 @@ struct PhaseTimelineEducation: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.purple.opacity(0.05))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.purple.opacity(0.2), lineWidth: 1)
-        )
+        .cardBackground(cornerRadius: 16)
     }
 }
 
@@ -462,14 +452,9 @@ struct TipsSection: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.orange.opacity(0.05))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.orange.opacity(0.2), lineWidth: 1)
-        )
+        .cardBackground(cornerRadius: 16)
     }
-    
+
     private var tips: [Tip] {
         [
             Tip(
@@ -568,14 +553,9 @@ struct GettingStartedSection: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.green.opacity(0.05))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.green.opacity(0.2), lineWidth: 1)
-        )
+        .cardBackground(cornerRadius: 16)
     }
-    
+
     private var motivationalMessages: [String] {
         [
             "Every hour counts",

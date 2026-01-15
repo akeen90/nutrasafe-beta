@@ -52,8 +52,7 @@ struct EarlyEndModal: View {
                 }
                 .padding()
                 .frame(maxWidth: .infinity)
-                .background(Color.orange.opacity(0.1))
-                .cornerRadius(12)
+                .cardBackground(cornerRadius: 12)
                 .padding(.horizontal)
 
                 // Optional Reason Dropdown
@@ -205,12 +204,7 @@ struct RestartDecisionModal: View {
                         }
                         .padding()
                         .frame(maxWidth: .infinity)
-                        .background(Color.green.opacity(0.1))
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.green.opacity(0.3), lineWidth: 2)
-                        )
+                        .cardBackground(cornerRadius: 12)
                     }
                     .buttonStyle(.plain)
 
@@ -237,12 +231,7 @@ struct RestartDecisionModal: View {
                         }
                         .padding()
                         .frame(maxWidth: .infinity)
-                        .background(Color.blue.opacity(0.1))
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.blue.opacity(0.3), lineWidth: 2)
-                        )
+                        .cardBackground(cornerRadius: 12)
                     }
                     .buttonStyle(.plain)
                 }
