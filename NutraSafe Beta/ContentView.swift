@@ -517,6 +517,9 @@ struct ContentView: View {
     // Track notification-triggered navigation to bypass subscription gate
     @State private var isNavigatingFromNotification = false
 
+    // Shared FastingViewModel for diary-fasting integration
+    @StateObject private var sharedFastingViewModelWrapper = FastingViewModelWrapper()
+
     // MARK: - Persistent Tab Views (Performance Fix)
     // Keep tabs alive to preserve state and prevent redundant loading
     // Only the selected tab is visible, but all maintain their loaded data
@@ -582,6 +585,7 @@ struct ContentView: View {
             .environmentObject(diaryDataManager)
             .environmentObject(healthKitManager)
             .environmentObject(subscriptionManager)
+            .environmentObject(sharedFastingViewModelWrapper)
 
         case .weight:
             WeightTrackingView(showingSettings: $showingSettings)
@@ -605,6 +609,7 @@ struct ContentView: View {
                 )
             )
             .environmentObject(diaryDataManager)
+            .environmentObject(sharedFastingViewModelWrapper)
             .transition(.opacity)
         }
     }
@@ -922,6 +927,11 @@ struct ContentView: View {
                     #endif
                 }
             }
+
+            // Initialize shared FastingViewModel for diary-fasting integration
+            if sharedFastingViewModelWrapper.viewModel == nil, let userId = firebaseManager.currentUser?.uid {
+                sharedFastingViewModelWrapper.viewModel = FastingViewModel(firebaseManager: firebaseManager, userId: userId)
+            }
         }
 
         }
@@ -1116,39 +1126,12 @@ struct WeightTrackingView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-                // Compact header: Sub-tab picker + Settings on same row
-                HStack(spacing: 12) {
-                    // Sub-tab picker inline
-                    progressTabPicker
-
-                    Button(action: { showingSettings = true }) {
-                        ZStack {
-                            Circle()
-                                .fill(.ultraThinMaterial)
-                                .frame(width: 40, height: 40)
-                                .overlay(
-                                    Circle()
-                                        .stroke(
-                                            LinearGradient(
-                                                colors: [.white.opacity(0.5), .white.opacity(0.1)],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            ),
-                                            lineWidth: 1.5
-                                        )
-                                )
-                                .shadow(color: .black.opacity(0.1), radius: 6, x: 0, y: 3)
-
-                            Image(systemName: "gearshape.fill")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(.primary)
-                                .symbolRenderingMode(.hierarchical)
-                        }
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .padding(.bottom, 8)
+                // Modern tab header with segmented control
+                TabHeaderView(
+                    tabs: ProgressSubTab.allCases,
+                    selectedTab: $progressSubTab,
+                    onSettingsTapped: { showingSettings = true }
+                )
 
                 // Loading overlay
                 if isLoadingData {
@@ -4802,6 +4785,7 @@ struct AddFoodMainView: View {
 
     // Free tier limit checking
     @EnvironmentObject var subscriptionManager: SubscriptionManager
+    @EnvironmentObject var fastingViewModelWrapper: FastingViewModelWrapper
     @State private var isCheckingLimit = true
     @State private var canAddMore = true
     @State private var currentDayEntryCount = 0

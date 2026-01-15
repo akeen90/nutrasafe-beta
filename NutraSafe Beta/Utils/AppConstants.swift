@@ -215,3 +215,71 @@ extension View {
         self.background(TabGradientBackground(theme: theme))
     }
 }
+
+// MARK: - Modern Tab Header View
+/// Redesigned tab header with unified pill containing both tabs and settings cog
+/// Design: Single wide pill with tabs on left and cog integrated on right - creates balanced, centered appearance
+struct TabHeaderView<Tab: Hashable & CaseIterable & RawRepresentable>: View where Tab.RawValue == String {
+    @Environment(\.colorScheme) var colorScheme
+    let tabs: [Tab]
+    @Binding var selectedTab: Tab
+    let onSettingsTapped: () -> Void
+    @Namespace private var animation
+
+    var body: some View {
+        // Single unified pill container spanning full width
+        HStack(spacing: 0) {
+            // Tab buttons section
+            HStack(spacing: 0) {
+                ForEach(tabs, id: \.self) { tab in
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            selectedTab = tab
+                        }
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    }) {
+                        Text(tab.rawValue)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(selectedTab == tab ? .blue : .gray)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(
+                                ZStack {
+                                    if selectedTab == tab {
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .fill(colorScheme == .dark ? Color(.systemGray5) : Color.white)
+                                            .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+                                            .matchedGeometryEffect(id: "tabHeaderSelection", in: animation)
+                                    }
+                                }
+                            )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+
+            // Settings button integrated into the pill
+            Button(action: onSettingsTapped) {
+                ZStack {
+                    Circle()
+                        .fill(colorScheme == .dark ? Color(.systemGray5) : Color.white)
+                        .frame(width: 36, height: 36)
+                        .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.gray)
+                }
+                .padding(.trailing, 4)
+                .padding(.leading, 8)
+            }
+        }
+        .padding(4)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(colorScheme == .dark ? Color(.systemGray6) : Color(.systemGray6))
+        )
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 8)
+    }
+}

@@ -107,6 +107,7 @@ struct FoodSearchResultRowEnhanced: View {
     @State private var showingQuickAddConfirmation = false
     @State private var quickAddMealType = ""
     @EnvironmentObject var diaryDataManager: DiaryDataManager
+    @EnvironmentObject var fastingViewModelWrapper: FastingViewModelWrapper
 
     init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, onComplete: ((TabItem) -> Void)? = nil) {
         self.food = food
@@ -251,7 +252,7 @@ struct FoodSearchResultRowEnhanced: View {
         .scaleEffect(isPressed ? 0.98 : 1.0)
         .animation(.easeInOut(duration: 0.1), value: isPressed)
         .fullScreenCover(isPresented: $showingFoodDetail) {
-            FoodDetailViewFromSearch(food: food, sourceType: sourceType, selectedTab: $selectedTab) { tab in
+            FoodDetailViewFromSearch(food: food, sourceType: sourceType, selectedTab: $selectedTab, fastingViewModel: fastingViewModelWrapper.viewModel) { tab in
                 onComplete?(tab)
             }
             .environmentObject(diaryDataManager)
@@ -409,6 +410,7 @@ struct AddFoodSearchView: View {
     @State private var isSearching = false
     @EnvironmentObject var diaryDataManager: DiaryDataManager
     @EnvironmentObject var firebaseManager: FirebaseManager
+    @EnvironmentObject var fastingViewModelWrapper: FastingViewModelWrapper
     @State private var recentFoods: [DiaryFoodItem] = []
     @State private var favoriteFoods: [FoodSearchResult] = []
     @State private var searchTask: Task<Void, Never>?

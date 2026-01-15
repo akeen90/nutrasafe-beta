@@ -50,30 +50,12 @@ struct FoodTabView: View {
     var body: some View {
         navigationContainer {
             VStack(spacing: 0) {
-                // Header - Compact with sub-tab selector
-                VStack(spacing: 8) {
-                    HStack(spacing: 12) {
-                        // Sub-tab selector
-                        SegmentedControlView(
-                            tabs: FoodSubTab.allCases,
-                            selectedTab: $selectedFoodSubTab
-                        )
-
-                        Button(action: { showingSettings = true }) {
-                            ZStack {
-                                Circle()
-                                    .fill(.ultraThinMaterial)
-                                    .frame(width: 40, height: 40)
-                                Image(systemName: "gearshape.fill")
-                                    .font(.system(size: 18, weight: .semibold))
-                                    .foregroundColor(.primary)
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
-                    .padding(.bottom, 4)
-                }
+                // Header - Modern tab header with segmented control
+                TabHeaderView(
+                    tabs: FoodSubTab.allCases,
+                    selectedTab: $selectedFoodSubTab,
+                    onSettingsTapped: { showingSettings = true }
+                )
         Group {
             switch selectedFoodSubTab {
             case .reactions:

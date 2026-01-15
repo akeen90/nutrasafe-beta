@@ -198,10 +198,16 @@ struct FastingMainView: View {
             }
         }
         .onAppear {
+            // Enable timer updates when view is visible
+            viewModel.timerViewDidAppear()
             Task {
                 await viewModel.refreshActivePlan()
                 checkForMissedScheduledFast()
             }
+        }
+        .onDisappear {
+            // Disable timer updates when view is not visible
+            viewModel.timerViewDidDisappear()
         }
     }
 
@@ -341,6 +347,7 @@ struct NoPlanView: View {
 
 // MARK: - Plan Dashboard View
 struct PlanDashboardView: View {
+    @Environment(\.colorScheme) var colorScheme
     @ObservedObject var viewModel: FastingViewModel
     let plan: FastingPlan
     @State private var showRegimeDetails = false
@@ -354,6 +361,8 @@ struct PlanDashboardView: View {
     @State private var weekToDelete: WeekSummary?
     @State private var showDeleteAlert = false
     @State private var showingCitations = false
+    @State private var showFastingOptions = false
+    @State private var showStopPlanConfirmation = false
 
     // Timeline view state
     @State private var selectedTimelineDate: Date?
@@ -364,11 +373,11 @@ struct PlanDashboardView: View {
     // Pattern from Clay's production app: move expensive operations to cached state
     @State private var cachedAverageDuration: Double = 0
 
-    // Use all recent sessions (since typically only one plan is active at a time)
+    // Use all sessions for accurate totals (not limited recentSessions)
     // Filter out only cleared sessions (actualDurationHours == 0)
     // Skipped sessions SHOULD count their actual hours in totals
     private var planSessions: [FastingSession] {
-        viewModel.recentSessions.filter { $0.actualDurationHours > 0 }
+        viewModel.allSessions.filter { $0.actualDurationHours > 0 }
     }
 
     // Plan statistics
@@ -458,6 +467,249 @@ struct PlanDashboardView: View {
             FastingStatCard(title: "Completed", value: "\(completionRate)%", icon: "checkmark.circle.fill")
             FastingStatCard(title: "Avg Duration", value: String(format: "%.1fh", averageDuration), icon: "clock.fill")
         }
+    }
+
+    // MARK: - New Design Components
+
+    @ViewBuilder
+    private var currentStateCard: some View {
+        VStack(spacing: 16) {
+            switch viewModel.currentRegimeState {
+            case .fasting(_, let ends):
+                // Currently Fasting state
+                VStack(spacing: 12) {
+                    HStack {
+                        Text("Currently Fasting")
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                        Spacer()
+                        Menu {
+                            Button {
+                                snoozeUntilTime = Date()
+                                showSnoozePicker = true
+                            } label: {
+                                Label("Snooze Fast", systemImage: "bell.zzz.fill")
+                            }
+                            Button {
+                                showRegimeDetails = true
+                            } label: {
+                                Label("View Timer & Stages", systemImage: "clock.fill")
+                            }
+                            Divider()
+                            Button(role: .destructive) {
+                                showStopPlanConfirmation = true
+                            } label: {
+                                Label("Stop Plan", systemImage: "stop.circle.fill")
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(.blue)
+                        }
+                    }
+
+                    Text(viewModel.timeUntilFastEnds)
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Text("Fast ends at \(ends.formatted(date: .omitted, time: .shortened))")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    // Two buttons side by side
+                    HStack(spacing: 12) {
+                        Button {
+                            snoozeUntilTime = Date()
+                            showSnoozePicker = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "bell.zzz.fill")
+                                Text("Snooze")
+                                    .fontWeight(.semibold)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Color.blue.opacity(0.15))
+                            .foregroundColor(.blue)
+                            .cornerRadius(12)
+                        }
+                        .buttonStyle(.plain)
+
+                        Button {
+                            Task {
+                                await viewModel.skipCurrentRegimeFast()
+                            }
+                        } label: {
+                            HStack {
+                                Image(systemName: "forward.fill")
+                                Text("End Early")
+                                    .fontWeight(.semibold)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Color.orange)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+            case .eating(let nextFastStart):
+                // Eating Window state
+                VStack(spacing: 12) {
+                    HStack {
+                        Text("Eating Window")
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                        Spacer()
+                        Menu {
+                            Button {
+                                showRegimeDetails = true
+                            } label: {
+                                Label("View Timer & Stages", systemImage: "clock.fill")
+                            }
+                            Divider()
+                            Button(role: .destructive) {
+                                showStopPlanConfirmation = true
+                            } label: {
+                                Label("Stop Plan", systemImage: "stop.circle.fill")
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(.blue)
+                        }
+                    }
+
+                    Text(viewModel.timeUntilNextFast)
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Text("Next fast starts at \(nextFastStart.formatted(date: .omitted, time: .shortened))")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Button {
+                        Task {
+                            await viewModel.stopRegime()
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "stop.fill")
+                            Text("End Eating Window")
+                                .fontWeight(.semibold)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+            case .inactive:
+                // Not active - show start button
+                VStack(spacing: 12) {
+                    HStack {
+                        Text("Ready to Fast")
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                        Spacer()
+                    }
+
+                    Text("Start your fasting plan to begin tracking")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Button {
+                        let (isPast, startTime) = viewModel.checkIfPastTodaysStartTime()
+                        if isPast {
+                            scheduledStartTime = startTime
+                            showStartTimeChoice = true
+                        } else {
+                            Task {
+                                await viewModel.startRegime()
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "bolt.circle.fill")
+                            Text("Start Regime")
+                                .fontWeight(.semibold)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+                .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 2)
+        )
+    }
+
+    @ViewBuilder
+    private var planInfoCard: some View {
+        Button {
+            showFastSettings = true
+        } label: {
+            VStack(spacing: 16) {
+                // Plan header
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.green.opacity(0.15))
+                            .frame(width: 40, height: 40)
+                        Image(systemName: "clock.badge.checkmark")
+                            .font(.system(size: 18))
+                            .foregroundColor(.green)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(effectiveDisplayName)
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        Text("\(effectiveDurationHours)h • \(plan.daysOfWeek.count == 7 ? "Daily" : "\(plan.daysOfWeek.count) days/week")")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+
+                // Stats row
+                HStack(spacing: 8) {
+                    PlanStatBox(value: "\(totalFasts)", label: "Total Fasts", icon: "calendar", color: .blue)
+                    PlanStatBox(value: "\(completionRate)%", label: "Completed", icon: "checkmark.circle.fill", color: .blue)
+                    PlanStatBox(value: String(format: "%.1fh", averageDuration), label: "Avg Duration", icon: "clock.fill", color: .blue)
+                }
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+                    .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 2)
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
@@ -717,6 +969,12 @@ struct PlanDashboardView: View {
                         showDeleteSessionAlert = true
                     }
                 )
+
+                // Hint about deleting
+                Text("Tap a bar to see details • Long press to delete")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity)
             }
         }
         .alert("Delete Fast?", isPresented: $showDeleteSessionAlert) {
@@ -734,16 +992,14 @@ struct PlanDashboardView: View {
     }
 
     var body: some View {
-        VStack(spacing: 20) {
-            planHeaderCard
-            statsGrid
+        VStack(spacing: 16) {
+            // Main state card (Eating Window / Currently Fasting)
+            currentStateCard
 
-            if viewModel.isRegimeActive {
-                regimeActiveControls
-            } else {
-                regimeInactiveControls
-            }
+            // Plan info card with stats
+            planInfoCard
 
+            // Fasting history
             fastingHistorySection
         }
         .fullScreenCover(isPresented: $showRegimeDetails) {
@@ -876,6 +1132,16 @@ struct PlanDashboardView: View {
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("You're starting after your scheduled fast time. Would you like to start from now or from your scheduled time?")
+        }
+        .alert("Stop Fasting Plan?", isPresented: $showStopPlanConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Stop Plan", role: .destructive) {
+                Task {
+                    await viewModel.stopRegime()
+                }
+            }
+        } message: {
+            Text("This will stop your current fasting plan. You can restart it anytime.")
         }
         .onAppear {
             // PERFORMANCE: Initialize cached average duration on first appearance
@@ -1217,6 +1483,36 @@ struct FastingStatCard: View {
         .frame(maxWidth: .infinity)
         .padding()
         .cardBackground(cornerRadius: 12)
+    }
+}
+
+// MARK: - Plan Stat Box Component (New Design)
+struct PlanStatBox: View {
+    @Environment(\.colorScheme) var colorScheme
+    let value: String
+    let label: String
+    let icon: String
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 18))
+                .foregroundColor(color)
+
+            Text(value)
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+
+            Text(label)
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(colorScheme == .dark ? Color(.systemGray6) : Color(.systemGray6))
+        )
     }
 }
 

@@ -1031,6 +1031,12 @@ class FastingViewModel: ObservableObject {
             return .inactive
         }
 
+        // If regime is not active, return inactive immediately
+        // (prevents lastEndedWindowEnd from incorrectly showing .eating state)
+        if case .inactive = planState {
+            return .inactive
+        }
+
         // Check if there's a snooze that just expired - auto-resume the fast
         if let plan = activePlan,
            let snoozeUntil = regimeSnoozedUntil,

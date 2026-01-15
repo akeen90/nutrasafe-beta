@@ -104,13 +104,18 @@ struct FoodDetailViewFromSearch: View {
     @State private var showingManualSearchForEnhancement = false
     @State private var manualSearchText = ""
 
+    // MARK: - Fasting Integration
+    var fastingViewModel: FastingViewModel?
+    @State private var showingFastingPrompt = false
+    @State private var isStartingFastAfterLog = false
+
     // MARK: - Diary replacement support
     let diaryEntryId: UUID?
     let diaryMealType: String?
     let diaryQuantity: Double?
     let diaryDate: Date?
 
-    init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, diaryEntryId: UUID? = nil, diaryMealType: String? = nil, diaryQuantity: Double? = nil, diaryDate: Date? = nil, onComplete: ((TabItem) -> Void)? = nil) {
+    init(food: FoodSearchResult, sourceType: FoodSourceType = .search, selectedTab: Binding<TabItem>, diaryEntryId: UUID? = nil, diaryMealType: String? = nil, diaryQuantity: Double? = nil, diaryDate: Date? = nil, fastingViewModel: FastingViewModel? = nil, onComplete: ((TabItem) -> Void)? = nil) {
         self.food = food
         self.sourceType = sourceType
         self._selectedTab = selectedTab
@@ -118,6 +123,7 @@ struct FoodDetailViewFromSearch: View {
         self.diaryMealType = diaryMealType
         self.diaryQuantity = diaryQuantity
         self.diaryDate = diaryDate
+        self.fastingViewModel = fastingViewModel
         self.onComplete = onComplete
 
         // CRITICAL FIX: Initialize serving size from food data immediately
@@ -346,7 +352,39 @@ struct FoodDetailViewFromSearch: View {
             return "Add to Diary"
         }
     }
-    
+
+    // MARK: - Fasting State Helpers
+    /// Whether user is currently in an active fasting session
+    private var isCurrentlyFasting: Bool {
+        guard let vm = fastingViewModel else { return false }
+        // Check if there's an active session that hasn't ended
+        if let session = vm.activeSession, session.endTime == nil {
+            return true
+        }
+        // Also check if regime state is fasting
+        if case .fasting = vm.currentRegimeState {
+            return true
+        }
+        return false
+    }
+
+    /// Whether user has an active fasting plan
+    private var hasActiveFastingPlan: Bool {
+        guard let vm = fastingViewModel else { return false }
+        return vm.activePlan != nil
+    }
+
+    /// Whether to show the "Log & Start Fast" button
+    /// Show when: user has a fasting plan, is in eating window, and not already fasting
+    private var shouldShowStartFastOption: Bool {
+        guard let vm = fastingViewModel, hasActiveFastingPlan else { return false }
+        // Check if in eating window (not currently fasting)
+        if case .eating = vm.currentRegimeState {
+            return true
+        }
+        return false
+    }
+
     enum WatchTab: String, CaseIterable {
         case additives = "Additive Analysis"
         case allergies = "Allergy Watch"
@@ -1639,6 +1677,17 @@ struct FoodDetailViewFromSearch: View {
         } message: {
             Text(notificationErrorMessage)
         }
+        // MARK: - Fasting Integration Alert
+        .alert("Food Logged During Fast", isPresented: $showingFastingPrompt) {
+            Button("End Fast Now") {
+                performFoodLog(endFast: true)
+            }
+            Button("Just Log Food", role: .cancel) {
+                performFoodLog(endFast: false)
+            }
+        } message: {
+            Text("You're currently fasting. Would you like to end your fast since you've eaten?")
+        }
         .diaryLimitAlert(
             isPresented: $showingDiaryLimitError,
             showingPaywall: $showingPaywall
@@ -1956,8 +2005,26 @@ private var nutritionFactsSection: some View {
     
     // MARK: - Add to Food Log Functionality
     private func addToFoodLog() {
+        // Check if user is currently fasting - if so, prompt to end fast
+        if isCurrentlyFasting {
+            showingFastingPrompt = true
+            return  // Don't log yet - wait for user decision in the alert
+        }
+
+        // Not fasting - proceed with normal logging
+        performFoodLog(endFast: false)
+    }
+
+    /// Log food and optionally start a new fast
+    private func addToFoodLogAndStartFast() {
+        isStartingFastAfterLog = true
+        performFoodLog(endFast: false, startFast: true)
+    }
+
+    /// Core food logging logic - extracted for reuse
+    private func performFoodLog(endFast: Bool, startFast: Bool = false) {
         #if DEBUG
-        print("🍔 Adding \(food.name) to food log")
+        print("🍔 Adding \(food.name) to food log (endFast: \(endFast), startFast: \(startFast))")
 
         // Calculate actual serving calories and macros based on user selections
         #endif
@@ -2155,6 +2222,9 @@ private var nutritionFactsSection: some View {
                 let meal = selectedMeal
                 let date = targetDate
                 let manager = diaryDataManager
+                let vm = fastingViewModel
+                let shouldEndFast = endFast
+                let shouldStartFast = startFast
 
                 Task.detached(priority: .userInitiated) {
                     do {
@@ -2162,6 +2232,21 @@ private var nutritionFactsSection: some View {
                         #if DEBUG
                         print("FoodDetailView: Successfully added \(entry.name) to \(meal) on \(date) (background)")
                         #endif
+
+                        // Handle fasting actions
+                        if shouldEndFast, let fastingVM = vm {
+                            _ = await fastingVM.endFastingSession()
+                            #if DEBUG
+                            print("FoodDetailView: Ended current fast after food log")
+                            #endif
+                        }
+
+                        if shouldStartFast, let fastingVM = vm {
+                            await fastingVM.startFastingSession()
+                            #if DEBUG
+                            print("FoodDetailView: Started new fast after food log")
+                            #endif
+                        }
                     } catch is FirebaseManager.DiaryLimitError {
                         // For free users hitting limit - they'll see on diary tab
                         #if DEBUG
@@ -3771,19 +3856,61 @@ private var nutritionFactsSection: some View {
                 }
                 .frame(maxWidth: .infinity)
             }
-            Button(action: { addToFoodLog() }) {
-                HStack {
-                    Image(systemName: "plus.circle.fill")
-                    Text(buttonText).font(.headline.weight(.semibold))
+            // MARK: - Add to Diary Buttons (with optional fasting integration)
+            if shouldShowStartFastOption {
+                // User has fasting plan and is in eating window - show both options
+                HStack(spacing: 12) {
+                    // Standard add button
+                    Button(action: { addToFoodLog() }) {
+                        HStack {
+                            Image(systemName: "plus.circle.fill")
+                            Text(buttonText)
+                                .font(.headline.weight(.semibold))
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(.green)
+                        .cornerRadius(12)
+                    }
+
+                    // Log & Start Fast button
+                    Button(action: { addToFoodLogAndStartFast() }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "timer")
+                            Text("Log & Fast")
+                                .font(.headline.weight(.semibold))
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            LinearGradient(
+                                colors: [.orange, .red.opacity(0.8)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(12)
+                    }
                 }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 16)
-                .background(.green)
-                .cornerRadius(12)
+                .padding(.top, 8)
+            } else {
+                // Standard single button
+                Button(action: { addToFoodLog() }) {
+                    HStack {
+                        Image(systemName: "plus.circle.fill")
+                        Text(buttonText).font(.headline.weight(.semibold))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 16)
+                    .background(.green)
+                    .cornerRadius(12)
+                }
+                .padding(.top, 8)
             }
-            .padding(.top, 8)
         }
         .padding(16)
         .background(RoundedRectangle(cornerRadius: 16).fill(Color(.systemGray6)))

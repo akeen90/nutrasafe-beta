@@ -25,6 +25,7 @@ struct AddFoodBarcodeView: View {
     @State private var scannerKey = UUID() // Force scanner reset
     @State private var showingFoodDetail = false
     @EnvironmentObject var diaryDataManager: DiaryDataManager
+    @EnvironmentObject var fastingViewModelWrapper: FastingViewModelWrapper
 
     var body: some View {
         VStack(spacing: 0) {
@@ -185,7 +186,7 @@ struct AddFoodBarcodeView: View {
             errorMessage = nil
         }) {
             if let product = scannedProduct {
-                FoodDetailViewFromSearch(food: product, sourceType: .barcode, selectedTab: $selectedTab) { tab in
+                FoodDetailViewFromSearch(food: product, sourceType: .barcode, selectedTab: $selectedTab, fastingViewModel: fastingViewModelWrapper.viewModel) { tab in
                     selectedTab = tab
                 }
                 .environmentObject(diaryDataManager)

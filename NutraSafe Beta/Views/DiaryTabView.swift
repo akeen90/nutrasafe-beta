@@ -7,6 +7,7 @@ struct DiaryTabView: View {
     @EnvironmentObject var diaryDataManager: DiaryDataManager
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var subscriptionManager: SubscriptionManager
+    @EnvironmentObject var fastingViewModelWrapper: FastingViewModelWrapper
     @State private var selectedDate: Date = Date()
     @State private var showingDatePicker: Bool = false
     @State private var refreshTrigger: Bool = false
@@ -187,45 +188,11 @@ struct DiaryTabView: View {
 
     // MARK: - Top Navigation Row (Tab Picker + Settings on same line)
     private var topNavigationRow: some View {
-        HStack(spacing: 12) {
-            // Tab picker (Overview/Nutrients) - matches Health tab style
-            DiarySegmentedControl(
-                tabs: DiarySubTab.allCases,
-                selectedTab: $diarySubTab
-            )
-
-            // Settings button
-            Button(action: {
-                showingSettings = true
-            }) {
-                ZStack {
-                    Circle()
-                        .fill(.ultraThinMaterial)
-                        .frame(width: 40, height: 40)
-                        .overlay(
-                            Circle()
-                                .stroke(
-                                    LinearGradient(
-                                        colors: [.white.opacity(0.5), .white.opacity(0.1)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
-                                    lineWidth: 1.5
-                                )
-                        )
-                        .shadow(color: .black.opacity(0.1), radius: 6, x: 0, y: 3)
-
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.primary)
-                        .symbolRenderingMode(.hierarchical)
-                }
-            }
-            .buttonStyle(SpringyButtonStyle())
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-        .padding(.bottom, 4)
+        TabHeaderView(
+            tabs: DiarySubTab.allCases,
+            selectedTab: $diarySubTab,
+            onSettingsTapped: { showingSettings = true }
+        )
     }
 
     // MARK: - Date Navigation (arrows navigate day when closed, month when calendar open)
@@ -590,7 +557,8 @@ struct DiaryTabView: View {
                     diaryEntryId: food.id,
                     diaryMealType: editingMealType.isEmpty ? food.time : editingMealType,
                     diaryQuantity: food.quantity,
-                    diaryDate: selectedDate
+                    diaryDate: selectedDate,
+                    fastingViewModel: fastingViewModelWrapper.viewModel
                 )
             }
             .diaryLimitAlert(
