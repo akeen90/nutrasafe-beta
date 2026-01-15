@@ -538,6 +538,19 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
                 videoCaptureDevice.exposureMode = .continuousAutoExposure
             }
 
+            // IMPORTANT: Set a 2x zoom factor to improve close-up barcode scanning
+            // On newer iPhones (12+), the wide-angle camera has a minimum focus distance of ~15cm
+            // Without zoom, users hold the phone too close and get blur
+            // 2x zoom forces users to hold phone further away (where camera CAN focus)
+            // while still capturing small barcodes clearly
+            let desiredZoom: CGFloat = 2.0
+            let maxZoom = min(videoCaptureDevice.activeFormat.videoMaxZoomFactor, 4.0)
+            let actualZoom = min(desiredZoom, maxZoom)
+            videoCaptureDevice.videoZoomFactor = actualZoom
+            #if DEBUG
+            print("📸 Barcode scanner zoom set to \(actualZoom)x (max available: \(maxZoom)x)")
+            #endif
+
             videoCaptureDevice.unlockForConfiguration()
 
             let videoInput = try AVCaptureDeviceInput(device: videoCaptureDevice)
