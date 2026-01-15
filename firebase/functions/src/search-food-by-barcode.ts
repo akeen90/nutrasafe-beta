@@ -361,7 +361,8 @@ export const searchFoodByBarcode = functions.https.onRequest(async (req, res) =>
     }
 
     // Transform the food data to match iOS app expectations
-    const nutrition = foundFood.nutritionData || {};
+    // Support both nested nutritionData object AND flat structure (from CSV imports)
+    const nutrition = foundFood.nutritionData || foundFood;
     const foodName = foundFood.foodName || foundFood.name || 'Unknown Product';
     const brandName = foundFood.brandName || foundFood.brand || null;
 

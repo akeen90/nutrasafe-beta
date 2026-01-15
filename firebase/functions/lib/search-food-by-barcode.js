@@ -107,23 +107,55 @@ async function fetchFromOpenFoodFacts(barcode) {
         return null;
     }
 }
+// Helper function to safely get a numeric value from nutriments with multiple fallback keys
+function getNutrientValue(nutriments, ...keys) {
+    for (const key of keys) {
+        const value = nutriments[key];
+        if (value !== undefined && value !== null && value !== '') {
+            const num = typeof value === 'number' ? value : parseFloat(value);
+            if (!isNaN(num))
+                return num;
+        }
+    }
+    return 0;
+}
 // Helper function to transform OpenFoodFacts data to our format
 function transformOpenFoodFactsProduct(offProduct, barcode) {
     const nutriments = offProduct.nutriments || {};
     // Get ingredients text (prefer English version)
     const ingredientsText = offProduct.ingredients_text_en || offProduct.ingredients_text || '';
+    // Extract nutrition with multiple fallback keys (OpenFoodFacts can be inconsistent)
+    const calories = getNutrientValue(nutriments, 'energy-kcal_100g', 'energy-kcal_value', 'energy-kcal') || (getNutrientValue(nutriments, 'energy_100g', 'energy_value', 'energy') / 4.184);
+    const protein = getNutrientValue(nutriments, 'proteins_100g', 'proteins_value', 'proteins', 'protein_100g', 'protein');
+    const carbohydrates = getNutrientValue(nutriments, 'carbohydrates_100g', 'carbohydrates_value', 'carbohydrates');
+    const fat = getNutrientValue(nutriments, 'fat_100g', 'fat_value', 'fat');
+    const fiber = getNutrientValue(nutriments, 'fiber_100g', 'fiber_value', 'fiber', 'fibre_100g', 'fibre');
+    const sugar = getNutrientValue(nutriments, 'sugars_100g', 'sugars_value', 'sugars', 'sugar_100g', 'sugar');
+    // Sodium: prefer sodium_100g, but convert from salt if not available (salt * 400)
+    let sodium = getNutrientValue(nutriments, 'sodium_100g', 'sodium_value', 'sodium');
+    if (sodium === 0) {
+        const salt = getNutrientValue(nutriments, 'salt_100g', 'salt_value', 'salt');
+        sodium = salt * 400; // salt to sodium conversion (mg)
+    }
+    sodium = sodium * 1000; // Convert g to mg
+    // Log what we found for debugging
+    console.log(`📊 OpenFoodFacts nutrition for ${offProduct.product_name}:`);
+    console.log(`   Calories: ${calories} kcal (raw: ${nutriments['energy-kcal_100g']}, ${nutriments['energy_100g']})`);
+    console.log(`   Protein: ${protein}g, Carbs: ${carbohydrates}g, Fat: ${fat}g`);
+    console.log(`   Fiber: ${fiber}g, Sugar: ${sugar}g, Sodium: ${sodium}mg`);
+    console.log(`   Raw nutriments keys: ${Object.keys(nutriments).slice(0, 15).join(', ')}...`);
     return {
         food_id: `off-${barcode}`,
         food_name: offProduct.product_name || offProduct.product_name_en || 'Unknown Product',
         brand_name: offProduct.brands || null,
         barcode: barcode,
-        calories: nutriments['energy-kcal_100g'] || nutriments['energy-kcal'] || 0,
-        protein: nutriments.proteins_100g || nutriments.proteins || 0,
-        carbohydrates: nutriments.carbohydrates_100g || nutriments.carbohydrates || 0,
-        fat: nutriments.fat_100g || nutriments.fat || 0,
-        fiber: nutriments.fiber_100g || nutriments.fiber || 0,
-        sugar: nutriments.sugars_100g || nutriments.sugars || 0,
-        sodium: nutriments.sodium_100g ? nutriments.sodium_100g * 1000 : (nutriments.salt_100g ? nutriments.salt_100g * 1000 : 0),
+        calories: Math.round(calories * 10) / 10,
+        protein: Math.round(protein * 10) / 10,
+        carbohydrates: Math.round(carbohydrates * 10) / 10,
+        fat: Math.round(fat * 10) / 10,
+        fiber: Math.round(fiber * 10) / 10,
+        sugar: Math.round(sugar * 10) / 10,
+        sodium: Math.round(sodium),
         serving_description: 'per 100g',
         ingredients: ingredientsText,
         additives: [],
@@ -263,7 +295,8 @@ exports.searchFoodByBarcode = functions.https.onRequest(async (req, res) => {
             return;
         }
         // Transform the food data to match iOS app expectations
-        const nutrition = foundFood.nutritionData || {};
+        // Support both nested nutritionData object AND flat structure (from CSV imports)
+        const nutrition = foundFood.nutritionData || foundFood;
         const foodName = foundFood.foodName || foundFood.name || 'Unknown Product';
         const brandName = foundFood.brandName || foundFood.brand || null;
         // Analyze ingredients for additives and processing score
