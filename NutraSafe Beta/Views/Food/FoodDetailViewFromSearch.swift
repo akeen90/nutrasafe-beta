@@ -1532,6 +1532,14 @@ struct FoodDetailViewFromSearch: View {
             guard !hasInitialized else { return }
             hasInitialized = true
 
+            #if DEBUG
+            print("📋 FoodDetailView onAppear for '\(food.name)':")
+            print("   food.ingredients: \(food.ingredients?.count ?? -1) items")
+            if let ing = food.ingredients?.prefix(3) {
+                print("   Preview: \(Array(ing))")
+            }
+            #endif
+
             cachedIngredients = food.ingredients
             cachedIngredientsStatus = getIngredientsStatus()
             recomputeDetectedNutrients()

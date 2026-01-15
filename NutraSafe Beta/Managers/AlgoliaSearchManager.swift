@@ -343,10 +343,21 @@ final class AlgoliaSearchManager {
         if let cached = searchCache.object(forKey: cacheKey) {
             let age = Date().timeIntervalSince(cached.timestamp)
             if age < cacheExpirationSeconds {
+                // Check if cached results have ingredients - if not, invalidate cache
+                // (handles migration from old cache entries without ingredients)
+                let hasIngredients = cached.results.first?.ingredients?.isEmpty == false
                 #if DEBUG
-                print("⚡️ Algolia Cache HIT for '\(query)' (\(Int(age))s old)")
+                print("⚡️ Algolia Cache HIT for '\(query)' (\(Int(age))s old) - hasIngredients: \(hasIngredients)")
                 #endif
-                return cached.results
+                if hasIngredients {
+                    return cached.results
+                } else {
+                    // Cache is stale (missing ingredients) - force refresh
+                    #if DEBUG
+                    print("   ⚠️ Cache missing ingredients - fetching fresh data")
+                    #endif
+                    searchCache.removeObject(forKey: cacheKey)
+                }
             } else {
                 searchCache.removeObject(forKey: cacheKey)
             }
@@ -728,7 +739,8 @@ final class AlgoliaSearchManager {
             "typoTolerance": true,
             "getRankingInfo": true,
             "optionalWords": query,  // Makes word order more flexible for 3+ words
-            "removeWordsIfNoResults": "allOptional"  // Try different word combinations if no results
+            "removeWordsIfNoResults": "allOptional",  // Try different word combinations if no results
+            "attributesToRetrieve": ["*"]  // Retrieve ALL fields including ingredients
         ]
 
         request.httpBody = try JSONSerialization.data(withJSONObject: params)
@@ -745,10 +757,30 @@ final class AlgoliaSearchManager {
 
     /// Parse Algolia JSON response into FoodSearchResult objects
     private func parseResponse(_ data: Data, source: String) throws -> [FoodSearchResult] {
+        #if DEBUG
+        // VERY AGGRESSIVE: Print raw JSON string for first few hundred chars
+        let rawJsonPreview = String(data: data, encoding: .utf8)?.prefix(500) ?? "DECODE FAILED"
+        print("📜 RAW JSON from \(source): \(rawJsonPreview)...")
+        #endif
+
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let hits = json["hits"] as? [[String: Any]] else {
             throw AlgoliaError.parseError
         }
+
+        #if DEBUG
+        // AGGRESSIVE DEBUG: Print raw first hit to see what we're working with
+        if let firstHit = hits.first, let firstName = firstHit["name"] as? String {
+            print("🔬 PARSED HIT for '\(firstName)':")
+            print("   Keys: \(firstHit.keys.sorted())")
+            if let ing = firstHit["ingredients"] {
+                print("   ✅ ingredients exists: type=\(type(of: ing))")
+                print("      value preview: \(String(describing: ing).prefix(100))...")
+            } else {
+                print("   ❌ ingredients key NOT FOUND in parsed hit")
+            }
+        }
+        #endif
 
         return hits.compactMap { hit -> FoodSearchResult? in
             guard let objectID = hit["objectID"] as? String,
@@ -757,11 +789,18 @@ final class AlgoliaSearchManager {
             }
 
             // Helper to extract numeric value from multiple possible keys
+            // JSONSerialization returns NSNumber which needs explicit handling
             func getNumber(_ hit: [String: Any], _ keys: String...) -> Double? {
                 for key in keys {
-                    if let val = hit[key] as? Double { return val }
-                    if let val = hit[key] as? Int { return Double(val) }
-                    if let val = hit[key] as? String, let num = Double(val) { return num }
+                    guard let rawVal = hit[key] else { continue }
+                    // NSNumber from JSONSerialization - use doubleValue
+                    if let nsNum = rawVal as? NSNumber {
+                        return nsNum.doubleValue
+                    }
+                    // Direct Swift types (less common from JSON)
+                    if let val = rawVal as? Double { return val }
+                    if let val = rawVal as? Int { return Double(val) }
+                    if let val = rawVal as? String, let num = Double(val) { return num }
                 }
                 return nil
             }
@@ -777,6 +816,16 @@ final class AlgoliaSearchManager {
             let sugar = getNumber(hit, "sugar", "sugars") ?? 0
             let sodium = getNumber(hit, "sodium", "salt").map { $0 > 10 ? $0 : $0 * 1000 } ?? 0 // Convert g to mg if needed
 
+            #if DEBUG
+            print("🍎 NUTRITION for '\(name)': cal=\(calories), prot=\(protein), carb=\(carbs), fat=\(fat)")
+            // Debug: Show raw values from hit
+            if let rawCal = hit["calories"] {
+                print("   Raw calories: \(rawCal) (type: \(type(of: rawCal)))")
+            } else {
+                print("   ⚠️ No 'calories' key in hit")
+            }
+            #endif
+
             // Extract optional fields with fallback names
             let brand = (hit["brandName"] as? String) ?? (hit["brand"] as? String)
             let servingDescription = (hit["servingSize"] as? String) ?? (hit["serving_description"] as? String)
@@ -786,17 +835,55 @@ final class AlgoliaSearchManager {
             let verified = (hit["isVerified"] as? Bool) ?? (hit["verified"] as? Bool) ?? (hit["is_verified"] as? Bool) ?? false
             let barcode = hit["barcode"] as? String
 
-            // Extract ingredients - handle both array and string formats
-            // CSV uploads have ingredients as comma-separated string, Firebase sync uses arrays
+            // Extract ingredients - VERY EXPLICIT type handling
             var ingredients: [String]? = nil
-            if let ingredientsArray = hit["ingredients"] as? [String] {
-                ingredients = ingredientsArray
-            } else if let ingredientsString = hit["ingredients"] as? String, !ingredientsString.isEmpty {
-                // Parse comma-separated string into array
-                ingredients = ingredientsString
-                    .components(separatedBy: ",")
-                    .map { $0.trimmingCharacters(in: .whitespaces) }
-                    .filter { !$0.isEmpty }
+
+            // Get raw value and handle ALL possible types from JSONSerialization
+            if let rawValue = hit["ingredients"] {
+                // Try as Swift String first
+                if let str = rawValue as? String, !str.isEmpty {
+                    ingredients = str.components(separatedBy: ",")
+                        .map { $0.trimmingCharacters(in: .whitespaces) }
+                        .filter { !$0.isEmpty }
+                }
+                // Try as Swift Array of Strings
+                else if let arr = rawValue as? [String], !arr.isEmpty {
+                    ingredients = arr
+                }
+                // Try as NSString (explicit bridging)
+                else if let nsStr = rawValue as? NSString {
+                    let str = nsStr as String
+                    if !str.isEmpty {
+                        ingredients = str.components(separatedBy: ",")
+                            .map { $0.trimmingCharacters(in: .whitespaces) }
+                            .filter { !$0.isEmpty }
+                    }
+                }
+                // Try as NSArray of NSString
+                else if let nsArr = rawValue as? NSArray {
+                    ingredients = nsArr.compactMap { ($0 as? NSString) as String? }
+                        .filter { !$0.isEmpty }
+                }
+                // Last resort - convert ANY to String via description
+                else {
+                    let desc = String(describing: rawValue)
+                    if !desc.isEmpty && desc != "nil" && desc != "<null>" {
+                        #if DEBUG
+                        print("⚠️ ingredients fallback: converting \(type(of: rawValue)) via description")
+                        #endif
+                        ingredients = desc.components(separatedBy: ",")
+                            .map { $0.trimmingCharacters(in: .whitespaces) }
+                            .filter { !$0.isEmpty }
+                    }
+                }
+
+                #if DEBUG
+                print("🔍 ingredients for '\(name)': type=\(type(of: rawValue)), parsed=\(ingredients?.count ?? 0)")
+                #endif
+            } else {
+                #if DEBUG
+                print("⚠️ No 'ingredients' key found for '\(name)'")
+                #endif
             }
 
             // Extract micronutrient profile if available
@@ -949,10 +1036,13 @@ final class AlgoliaSearchManager {
         request.setValue(searchKey, forHTTPHeaderField: "X-Algolia-API-Key")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
+        // Use text query search instead of filters since barcode may not be a filterable attribute
+        // Barcode is numeric so it will match exactly when searched as text
         let params: [String: Any] = [
-            "filters": "barcode:\(barcode)",
-            "hitsPerPage": 1,
-            "getRankingInfo": false
+            "query": barcode,
+            "hitsPerPage": 5,  // Get a few results in case barcode appears in other fields
+            "getRankingInfo": false,
+            "attributesToRetrieve": ["*"]
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: params)
 
@@ -963,7 +1053,19 @@ final class AlgoliaSearchManager {
         }
 
         let results = try parseResponse(data, source: indexName)
-        return results.first
+
+        // Find exact barcode match (text query may return multiple results)
+        let exactMatch = results.first { $0.barcode == barcode }
+
+        #if DEBUG
+        if exactMatch != nil {
+            print("✅ Found exact barcode match in \(indexName)")
+        } else if !results.isEmpty {
+            print("⚠️ Found \(results.count) results but no exact barcode match for \(barcode)")
+        }
+        #endif
+
+        return exactMatch
     }
 
     /// Clear the search cache

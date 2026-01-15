@@ -1225,17 +1225,39 @@ class FirebaseManager: ObservableObject {
         if let cached = searchCache.object(forKey: cacheKey) {
             let age = Date().timeIntervalSince(cached.timestamp)
             if age < cacheExpirationSeconds {
-                return cached.results
+                // Check if cached results have ingredients - if not, invalidate and fetch fresh
+                let hasIngredients = cached.results.first?.ingredients?.isEmpty == false
+                #if DEBUG
+                print("📦 Cache HIT for '\(query)' - hasIngredients: \(hasIngredients)")
+                #endif
+                if hasIngredients {
+                    return cached.results
+                } else {
+                    // Cache is stale (missing ingredients from Algolia) - force refresh
+                    #if DEBUG
+                    print("   ⚠️ Cache missing ingredients - invalidating and fetching fresh")
+                    #endif
+                    searchCache.removeObject(forKey: cacheKey)
+                }
             } else {
                 // Cache expired, remove it
                 searchCache.removeObject(forKey: cacheKey)
             }
         }
 
+        #if DEBUG
+        print("🔍 Cache MISS for '\(query)' - fetching fresh from Algolia")
+        #endif
 
         // Use Algolia for all searches - it already searches all indices (user-added, AI-enhanced, AI-manual, foods)
         // This is MUCH faster than making 4 separate Firestore queries
         let limitedResults = try await searchMainDatabase(query: query)
+
+        #if DEBUG
+        if let first = limitedResults.first {
+            print("📊 Fresh results: '\(first.name)' has \(first.ingredients?.count ?? 0) ingredients")
+        }
+        #endif
 
         // Store in cache for next time (NSCache auto-manages memory)
         searchCache.setObject(

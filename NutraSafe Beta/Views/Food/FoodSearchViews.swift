@@ -746,6 +746,13 @@ struct AddFoodSearchView: View {
 
                 #if DEBUG
                 print("✅ Search complete: Found \(results.count) results")
+                if let first = results.first {
+                    print("   🔍 First result: '\(first.name)'")
+                    print("   🔍 ingredients: \(first.ingredients?.count ?? -1) items")
+                    if let preview = first.ingredients?.prefix(3) {
+                        print("   🔍 Preview: \(Array(preview))")
+                    }
+                }
                 #endif
             } catch {
                 #if DEBUG
