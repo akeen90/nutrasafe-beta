@@ -378,7 +378,9 @@ struct FoodDetailViewFromSearch: View {
     /// Show when: user has a fasting plan, is in eating window, and not already fasting
     private var shouldShowStartFastOption: Bool {
         guard let vm = fastingViewModel, hasActiveFastingPlan else { return false }
-        // Check if in eating window (not currently fasting)
+        // Don't show if user is currently fasting (has active session)
+        if isCurrentlyFasting { return false }
+        // Only show if in eating window
         if case .eating = vm.currentRegimeState {
             return true
         }
