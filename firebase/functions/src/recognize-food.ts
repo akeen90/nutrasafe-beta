@@ -18,8 +18,8 @@ const algoliaAdminKey = defineSecret('ALGOLIA_ADMIN_API_KEY');
 
 // Algolia configuration
 const ALGOLIA_APP_ID = 'WK0TIF84M2';
-// Only include indices that exist - removed new_main/new_generic to avoid 404 errors
-const SEARCH_INDICES = ['verified_foods', 'foods'];
+// Database indices - new cleaned databases
+const SEARCH_INDICES = ['uk_foods_cleaned', 'fast_foods_database', 'generic_database'];
 
 // Interfaces
 interface GeminiIdentifiedFood {

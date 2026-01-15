@@ -412,12 +412,35 @@ struct FoodSearchResult: Identifiable, Decodable, Equatable {
         return .other
     }
 
+    /// Fast food restaurant brands that shouldn't show generic preset portions
+    /// These items are inherently per-unit (burger, meal, etc.) even if not marked as such
+    private static let fastFoodBrandsNoPresets: Set<String> = [
+        "mcdonald's", "mcdonalds", "burger king", "kfc", "domino's", "dominos",
+        "pizza hut", "starbucks", "dunkin", "krispy kreme", "nando's", "nandos",
+        "greggs", "costa", "pret", "pret a manger", "wendy's", "wendys",
+        "taco bell", "five guys", "shake shack", "chick-fil-a", "chickfila",
+        "popeyes", "tim hortons", "wetherspoon", "wetherspoons", "subway",
+        "chipotle", "papa john's", "papa johns", "pizza express", "wagamama",
+        "gourmet burger kitchen", "gbk", "byron", "honest burgers", "leon",
+        "itsu", "tortilla", "yo! sushi", "harvester", "toby carvery", "beefeater",
+        "frankie & benny's", "arby's", "carl's jr", "sonic", "white castle",
+        "whataburger", "del taco", "wingstop", "buffalo wild wings", "zaxby's",
+        "bojangles", "raising cane's", "jack in the box"
+    ]
+
     /// Returns true if this food should show preset portion options
     var hasPresetPortions: Bool {
         // If already has database portions, use those instead
         if hasPortionOptions { return false }
         // Per-unit items don't need presets
         if isPerUnit == true { return false }
+        // Fast food restaurant items are inherently per-unit - don't show generic presets
+        // Normalize apostrophes for matching (curly ' vs straight ')
+        let brandLower = (brand?.lowercased() ?? "").replacingOccurrences(of: "'", with: "'")
+        let nameLower = name.lowercased().replacingOccurrences(of: "'", with: "'")
+        if Self.fastFoodBrandsNoPresets.contains(where: { brandLower.contains($0) || nameLower.contains($0) }) {
+            return false
+        }
         // Only show presets for detectable categories
         return detectedCategory != .other
     }

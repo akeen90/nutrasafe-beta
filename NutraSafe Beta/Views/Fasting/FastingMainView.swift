@@ -700,8 +700,10 @@ struct PlanDashboardView: View {
                 Text("Fasting History")
                     .font(.headline)
                 Spacer()
-                if totalFasts > 0 {
-                    Text("\(totalFasts) total fasts")
+                // Use allSessions count (not recentSessions which is limited to 10)
+                let actualTotalFasts = viewModel.allSessions.filter { $0.actualDurationHours > 0 }.count
+                if actualTotalFasts > 0 {
+                    Text("\(actualTotalFasts) total fasts")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }

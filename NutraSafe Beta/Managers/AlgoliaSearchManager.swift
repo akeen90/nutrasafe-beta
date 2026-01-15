@@ -259,26 +259,25 @@ final class AlgoliaSearchManager {
     // Base URL for Algolia API
     private var baseURL: String { "https://\(appId)-dsn.algolia.net/1/indexes" }
 
-    // FEATURE FLAG: Set to true to use new database indices for testing
-    private let useNewDatabases = false
+    // FEATURE FLAG: Set to true to use new database indices
+    // NEW indices now uploaded: uk_foods_cleaned (58k), fast_foods_database (427), generic_database (568)
+    private let useNewDatabases = true
 
     // Index names - foods is main database, user_added for custom items
     private var indices: [(String, Int)] {
         if useNewDatabases {
-            // NEW databases - testing UK complete database
+            // NEW databases - UK foods cleaned + fast food + generic
             return [
-                ("new_main", 0),         // UK Foods Complete (67,558 items)
-                ("new_fast_food", 1),    // Fast Food (440 items)
-                ("new_generic", 2),      // Generic Items (568 items)
-                ("user_added", 3),       // User's custom foods
+                ("uk_foods_cleaned", 0),     // UK Foods Cleaned (main database)
+                ("fast_foods_database", 1),  // Fast Food restaurants
+                ("generic_database", 2),     // Generic food items
+                ("user_added", 3),           // User's custom foods
             ]
         } else {
-            // OLD databases
+            // Current databases - foods is main, user_added for custom items
             return [
-                ("foods", 0),            // Main database - highest priority
+                ("foods", 0),            // Main database - 25k+ records
                 ("user_added", 1),       // User's custom foods
-                ("ai_enhanced", 2),
-                ("ai_manually_added", 3),
             ]
         }
     }
@@ -486,27 +485,39 @@ final class AlgoliaSearchManager {
                 score += 1000
             }
 
-            // Strong bonus if brand matches original query (for brand searches like "mcdonalds")
+            // Brand bonus - only give high bonus when query is primarily a brand search
+            // Prioritize name matches over brand-only matches
             if let brand = result.brand?.lowercased() {
                 let normalizedBrand = brand.replacingOccurrences(of: "'", with: "").replacingOccurrences(of: "'", with: "")
                 let normalizedQuery = queryLower.replacingOccurrences(of: "'", with: "").replacingOccurrences(of: "'", with: "")
 
-                // Exact brand match
-                if normalizedBrand == normalizedQuery {
+                // Check if query words primarily match the food NAME (not just brand)
+                // e.g., "mars bar" - "mars" and "bar" both in name = name focused search
+                let queryWordsInName = queryWords.filter { queryWord in
+                    nameWords.contains(queryWord) || nameWords.contains(where: { $0.hasPrefix(queryWord) })
+                }.count
+                let queryWordsInBrand = queryWords.filter { normalizedBrand.contains($0) }.count
+                let isNameFocusedSearch = queryWordsInName >= queryWordsInBrand && queryWordsInName > 0
+
+                // Only give high brand bonus when query is a pure brand search
+                if normalizedBrand == normalizedQuery && !isNameFocusedSearch {
+                    // Pure brand search like "mars" when looking at Revels by Mars
                     score += 8000
                 }
-                // Brand starts with query
-                else if normalizedBrand.hasPrefix(normalizedQuery) {
-                    score += 6000
+                else if normalizedBrand == normalizedQuery && isNameFocusedSearch {
+                    // Brand matches but name also matches - reduce brand bonus
+                    score += 2000
                 }
-                // Query is a known brand synonym
+                else if normalizedBrand.hasPrefix(normalizedQuery) && !isNameFocusedSearch {
+                    score += 4000
+                }
                 else if let canonical = synonymToCanonical[normalizedQuery],
-                        normalizedBrand.contains(canonical.replacingOccurrences(of: "'", with: "")) {
-                    score += 5500
+                        normalizedBrand.contains(canonical.replacingOccurrences(of: "'", with: "")),
+                        !isNameFocusedSearch {
+                    score += 3500
                 }
-                // Brand contains query
-                else if normalizedBrand.contains(normalizedQuery) {
-                    score += 3000
+                else if normalizedBrand.contains(normalizedQuery) && !isNameFocusedSearch {
+                    score += 1000
                 }
             }
 
@@ -654,27 +665,42 @@ final class AlgoliaSearchManager {
             // But this is now secondary to relevance
             score += (4 - item.sourcePriority) * 50
 
-            // Strong bonus if brand matches query (e.g., searching "mcdonalds")
+            // Brand bonus logic - only give high bonus when query is primarily a brand search
+            // If query contains food-related words that match the name, prioritize name matches
             if let brand = item.result.brand?.lowercased() {
                 let normalizedBrand = brand.replacingOccurrences(of: "'", with: "").replacingOccurrences(of: "'", with: "")
                 let normalizedQuery = queryLower.replacingOccurrences(of: "'", with: "").replacingOccurrences(of: "'", with: "")
 
-                // Exact brand match (highest brand priority)
-                if normalizedBrand == normalizedQuery {
+                // Check if query words primarily match the food NAME (not just brand)
+                // e.g., "mars bar" - "mars" and "bar" both in name = name focused search
+                let queryWordsInName = queryWords.filter { queryWord in
+                    nameWords.contains(queryWord) || nameWords.contains(where: { $0.hasPrefix(queryWord) })
+                }.count
+                let queryWordsInBrand = queryWords.filter { normalizedBrand.contains($0) }.count
+                let isNameFocusedSearch = queryWordsInName >= queryWordsInBrand && queryWordsInName > 0
+
+                // Only give high brand bonus when query is a pure brand search (like "mcdonalds")
+                if normalizedBrand == normalizedQuery && !isNameFocusedSearch {
+                    // Pure brand search like "mars" when looking at Revels by Mars
                     score += 8000
                 }
-                // Brand starts with query
-                else if normalizedBrand.hasPrefix(normalizedQuery) {
-                    score += 6000
+                else if normalizedBrand == normalizedQuery && isNameFocusedSearch {
+                    // Brand matches but name also matches - reduce brand bonus
+                    score += 2000
                 }
-                // Query is a known brand synonym that matches this brand
+                else if normalizedBrand.hasPrefix(normalizedQuery) && !isNameFocusedSearch {
+                    // Brand starts with query - only if not a food name search
+                    score += 4000
+                }
                 else if let canonical = synonymToCanonical[normalizedQuery],
-                        normalizedBrand.contains(canonical.replacingOccurrences(of: "'", with: "")) {
-                    score += 5500
+                        normalizedBrand.contains(canonical.replacingOccurrences(of: "'", with: "")),
+                        !isNameFocusedSearch {
+                    // Known brand synonym - only if not a food name search
+                    score += 3500
                 }
-                // Brand contains query as substring
-                else if normalizedBrand.contains(normalizedQuery) || normalizedQuery.contains(normalizedBrand) {
-                    score += 3000
+                else if (normalizedBrand.contains(normalizedQuery) || normalizedQuery.contains(normalizedBrand)) && !isNameFocusedSearch {
+                    // Brand contains query - only if not a food name search
+                    score += 1000
                 }
             }
 

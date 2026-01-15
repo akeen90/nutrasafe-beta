@@ -18,8 +18,8 @@ const geminiApiKey = (0, params_1.defineSecret)('GEMINI_API_KEY');
 const algoliaAdminKey = (0, params_1.defineSecret)('ALGOLIA_ADMIN_API_KEY');
 // Algolia configuration
 const ALGOLIA_APP_ID = 'WK0TIF84M2';
-// Only include indices that exist - removed new_main/new_generic to avoid 404 errors
-const SEARCH_INDICES = ['verified_foods', 'foods'];
+// New database indices - uk_foods_cleaned + fast_foods + generic
+const SEARCH_INDICES = ['uk_foods_cleaned', 'fast_foods_database', 'generic_database'];
 /**
  * Cloud Function: Recognize food items using Gemini + Algolia hybrid approach
  */

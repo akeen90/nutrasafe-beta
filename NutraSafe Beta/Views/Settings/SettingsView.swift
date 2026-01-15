@@ -969,6 +969,14 @@ struct ProgressGoalsSection: View {
         .onReceive(NotificationCenter.default.publisher(for: .weightHistoryUpdated)) { _ in
             Task { await loadProgressData() }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .goalWeightUpdated)) { notification in
+            // Sync goal weight from Progress tab updates
+            if let gw = notification.userInfo?["goalWeight"] as? Double {
+                goalWeight = gw
+            } else {
+                Task { await loadProgressData() }
+            }
+        }
         .fullScreenCover(isPresented: $showingWeightHistory) {
             WeightTrackingView(showingSettings: $showingWeightHistory)
                 .environmentObject(firebaseManager)
@@ -1213,52 +1221,60 @@ struct CurrentWeightEditorView: View {
     @EnvironmentObject var firebaseManager: FirebaseManager
     @Binding var currentWeight: Double?
     let onSave: () -> Void
-    @AppStorage("unitSystem") private var unitSystem: UnitSystem = .metric
+    @AppStorage("weightUnit") private var weightUnit: WeightUnit = .kg
 
     @State private var tempWeight: String
+    @State private var tempStonesLbs: (stones: String, lbs: String) = ("", "")
     @State private var isSaving = false
 
     init(currentWeight: Binding<Double?>, onSave: @escaping () -> Void) {
         self._currentWeight = currentWeight
         self.onSave = onSave
-        // Initialize tempWeight with an empty string; we'll set it in onAppear based on unitSystem
+        // Initialize tempWeight with an empty string; we'll set it in onAppear based on weightUnit
         self._tempWeight = State(initialValue: "")
     }
 
     private func formatWeight(_ kg: Double) -> String {
-        switch unitSystem {
-        case .metric:
+        switch weightUnit {
+        case .kg:
             return String(format: "%.1f kg", kg)
-        case .imperial:
+        case .lbs:
             let lbs = kg * 2.20462
             return String(format: "%.1f lbs", lbs)
+        case .stones:
+            let totalLbs = kg * 2.20462
+            let stones = Int(totalLbs / 14)
+            let remainingLbs = totalLbs.truncatingRemainder(dividingBy: 14)
+            return "\(stones) st \(String(format: "%.0f", remainingLbs)) lbs"
         }
     }
 
     private func convertToDisplay(_ kg: Double) -> Double {
-        switch unitSystem {
-        case .metric:
+        switch weightUnit {
+        case .kg:
             return kg
-        case .imperial:
+        case .lbs, .stones:
             return kg * 2.20462
         }
     }
 
     private func convertToKg(_ displayValue: Double) -> Double {
-        switch unitSystem {
-        case .metric:
+        switch weightUnit {
+        case .kg:
             return displayValue
-        case .imperial:
+        case .lbs, .stones:
             return displayValue / 2.20462
         }
     }
 
     private var weightUnitLabel: String {
-        switch unitSystem {
-        case .metric:
+        switch weightUnit {
+        case .kg:
             return "kg"
-        case .imperial:
+        case .lbs:
             return "lbs"
+        case .stones:
+            return "st/lbs"
         }
     }
 
@@ -1336,7 +1352,7 @@ struct GoalWeightEditorView: View {
     let currentWeight: Double?
     @Binding var goalWeight: Double?
     let onSave: () -> Void
-    @AppStorage("unitSystem") private var unitSystem: UnitSystem = .metric
+    @AppStorage("weightUnit") private var weightUnit: WeightUnit = .kg
 
     @State private var tempWeight: String
     @State private var isSaving = false
@@ -1345,63 +1361,70 @@ struct GoalWeightEditorView: View {
         self.currentWeight = currentWeight
         self._goalWeight = goalWeight
         self.onSave = onSave
-        // Initialize with empty string; we'll set it in onAppear based on unitSystem
+        // Initialize with empty string; we'll set it in onAppear based on weightUnit
         self._tempWeight = State(initialValue: "")
     }
 
     private func formatWeight(_ kg: Double) -> String {
-        switch unitSystem {
-        case .metric:
+        switch weightUnit {
+        case .kg:
             return String(format: "%.1f kg", kg)
-        case .imperial:
+        case .lbs:
             let lbs = kg * 2.20462
             return String(format: "%.1f lbs", lbs)
+        case .stones:
+            let totalLbs = kg * 2.20462
+            let stones = Int(totalLbs / 14)
+            let remainingLbs = totalLbs.truncatingRemainder(dividingBy: 14)
+            return "\(stones) st \(String(format: "%.0f", remainingLbs)) lbs"
         }
     }
 
     private func convertToDisplay(_ kg: Double) -> Double {
-        switch unitSystem {
-        case .metric:
+        switch weightUnit {
+        case .kg:
             return kg
-        case .imperial:
+        case .lbs, .stones:
             return kg * 2.20462
         }
     }
 
     private func convertToKg(_ displayValue: Double) -> Double {
-        switch unitSystem {
-        case .metric:
+        switch weightUnit {
+        case .kg:
             return displayValue
-        case .imperial:
+        case .lbs, .stones:
             return displayValue / 2.20462
         }
     }
 
     private var weightUnitLabel: String {
-        switch unitSystem {
-        case .metric:
+        switch weightUnit {
+        case .kg:
             return "kg"
-        case .imperial:
+        case .lbs:
             return "lbs"
+        case .stones:
+            return "st/lbs"
         }
     }
 
     private var quickAdjustment: Double {
         // Use 5 kg or ~10 lbs as the quick adjustment
-        switch unitSystem {
-        case .metric:
+        switch weightUnit {
+        case .kg:
             return 5
-        case .imperial:
+        case .lbs, .stones:
             return 11 // ~5kg in lbs
         }
     }
 
     private var largeAdjustment: Double {
         // Use 10 kg or ~20 lbs as the large adjustment
-        switch unitSystem {
-        case .metric:
+        switch weightUnit {
+        case .kg:
             return 10
-        case .imperial:
+        case .lbs, .stones:
             return 22 // ~10kg in lbs
         }
     }
