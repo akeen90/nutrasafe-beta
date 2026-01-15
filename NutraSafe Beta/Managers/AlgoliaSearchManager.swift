@@ -259,27 +259,16 @@ final class AlgoliaSearchManager {
     // Base URL for Algolia API
     private var baseURL: String { "https://\(appId)-dsn.algolia.net/1/indexes" }
 
-    // FEATURE FLAG: Set to true to use new database indices
-    // NEW indices now uploaded: uk_foods_cleaned (58k), fast_foods_database (427), generic_database (568)
-    private let useNewDatabases = true
-
-    // Index names - foods is main database, user_added for custom items
+    // Index names with priority - lower number = higher priority
+    // Results are deduplicated, so items from lower-priority indices only appear if not in higher-priority ones
     private var indices: [(String, Int)] {
-        if useNewDatabases {
-            // NEW databases - UK foods cleaned + fast food + generic
-            return [
-                ("uk_foods_cleaned", 0),     // UK Foods Cleaned (main database)
-                ("fast_foods_database", 1),  // Fast Food restaurants
-                ("generic_database", 2),     // Generic food items
-                ("user_added", 3),           // User's custom foods
-            ]
-        } else {
-            // Current databases - foods is main, user_added for custom items
-            return [
-                ("foods", 0),            // Main database - 25k+ records
-                ("user_added", 1),       // User's custom foods
-            ]
-        }
+        return [
+            ("uk_foods_cleaned", 0),     // UK Foods Cleaned (primary - 59k records)
+            ("foods", 1),                // Original foods (fallback - fills gaps)
+            ("fast_foods_database", 2),  // Fast Food restaurants
+            ("generic_database", 3),     // Generic food items
+            ("user_added", 4),           // User's custom foods
+        ]
     }
 
     // Cache for search results

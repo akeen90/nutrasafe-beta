@@ -241,8 +241,7 @@ struct DiaryTabView: View {
                                     .font(.system(size: 13, weight: .semibold))
                             }
                             .foregroundColor(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
+                            .padding(8) // Equal padding on all sides
                             .background(
                                 Capsule()
                                     .fill(Color.blue)
