@@ -816,7 +816,11 @@ struct DiaryTabView: View {
         .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: AppRadius.medium)
-                .fill(.ultraThinMaterial)
+                .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppRadius.medium)
+                        .stroke(Color(.systemGray4), lineWidth: 1)
+                )
         )
         .cardShadow()
         .padding(.horizontal, 16)

@@ -733,9 +733,15 @@ struct DiaryDailySummaryCard: View {
         }
     }
 
+    @Environment(\.colorScheme) private var colorScheme
+
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: AppRadius.medium)
-            .fill(.ultraThinMaterial)
+            .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppRadius.medium)
+                    .stroke(Color(.systemGray4), lineWidth: 1)
+            )
     }
 
     // MARK: - Event Handlers

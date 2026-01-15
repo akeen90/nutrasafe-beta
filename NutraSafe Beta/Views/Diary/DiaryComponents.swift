@@ -9,6 +9,8 @@ import SwiftUI
 
 // MARK: - Diary Meal Card
 struct DiaryMealCard: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     let mealType: String
     let targetCalories: Int
     let currentCalories: Int
@@ -94,7 +96,7 @@ struct DiaryMealCard: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
-            .background(.ultraThinMaterial)
+            .background(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
             .cornerRadius(8)
 
             // Food items section - directly under header
@@ -141,7 +143,11 @@ struct DiaryMealCard: View {
         }
         .background(
             RoundedRectangle(cornerRadius: AppRadius.medium)
-                .fill(.ultraThinMaterial)
+                .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppRadius.medium)
+                        .stroke(Color(.systemGray4), lineWidth: 1)
+                )
         )
         .cardShadow()
         .onChange(of: foods) { _, newFoods in
