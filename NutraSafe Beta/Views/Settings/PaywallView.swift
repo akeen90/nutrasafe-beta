@@ -15,7 +15,12 @@ struct PaywallView: View {
 
     private var priceText: String {
         if let product = subscriptionManager.product {
-            return product.displayPrice
+            // Use product price, but ensure we show at least £2.99 / $2.99
+            // (Sandbox can cache stale pricing during price tier changes)
+            let price = product.price as Decimal
+            if price >= 2.99 {
+                return product.displayPrice
+            }
         }
         return "£2.99"
     }
