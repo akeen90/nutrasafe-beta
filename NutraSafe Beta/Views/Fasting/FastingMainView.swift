@@ -272,8 +272,7 @@ struct NoPlanView: View {
             }
             .padding()
             .frame(maxWidth: .infinity)
-            .background(Color.blue.opacity(0.1))
-            .cornerRadius(16)
+            .cardBackground(cornerRadius: 16)
 
             // Create Plan Button
             Button {
@@ -305,8 +304,7 @@ struct NoPlanView: View {
                         .foregroundColor(.secondary)
                 }
                 .padding()
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(12)
+                .cardBackground(cornerRadius: 12)
             }
             .buttonStyle(.plain)
 
@@ -330,8 +328,7 @@ struct NoPlanView: View {
             }
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.gray.opacity(0.05))
-            .cornerRadius(12)
+            .cardBackground(cornerRadius: 12)
         }
         .fullScreenCover(isPresented: $showingEducation) {
             FastingEducationView()
@@ -451,8 +448,7 @@ struct PlanDashboardView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding()
-        .background(Color.green.opacity(0.1))
-        .cornerRadius(12)
+        .cardBackground(cornerRadius: 12)
     }
 
     @ViewBuilder
@@ -487,8 +483,7 @@ struct PlanDashboardView: View {
                         .font(.caption)
                 }
                 .padding()
-                .background(Color.green.opacity(0.1))
-                .cornerRadius(12)
+                .cardBackground(cornerRadius: 12)
             }
             .buttonStyle(.plain)
 
@@ -524,9 +519,8 @@ struct PlanDashboardView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(Color.blue.opacity(0.1))
+                .cardBackground(cornerRadius: 12)
                 .foregroundColor(.blue)
-                .cornerRadius(12)
             }
             .buttonStyle(.plain)
         }
@@ -579,8 +573,7 @@ struct PlanDashboardView: View {
                     .monospacedDigit()
             }
             .padding()
-            .background(Color.blue.opacity(0.1))
-            .cornerRadius(8)
+            .cardBackground(cornerRadius: 8)
 
             // Snooze and Skip buttons
             HStack(spacing: 12) {
@@ -644,8 +637,7 @@ struct PlanDashboardView: View {
                 .monospacedDigit()
         }
         .padding()
-        .background(Color.green.opacity(0.1))
-        .cornerRadius(8)
+        .cardBackground(cornerRadius: 8)
     }
 
     @ViewBuilder
@@ -715,8 +707,7 @@ struct PlanDashboardView: View {
                     .foregroundColor(.secondary)
                     .padding()
                     .frame(maxWidth: .infinity)
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(8)
+                    .cardBackground(cornerRadius: 8)
             } else {
                 FastingTimelineView(
                     sessions: viewModel.allSessions,
@@ -949,9 +940,8 @@ struct RegimeDetailView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.blue.opacity(0.1))
+                        .cardBackground(cornerRadius: 12)
                         .foregroundColor(.blue)
-                        .cornerRadius(12)
                     }
                     .buttonStyle(.plain)
                 }
@@ -1316,9 +1306,8 @@ struct ActiveSessionView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(Color.blue.opacity(0.1))
+                .cardBackground(cornerRadius: 12)
                 .foregroundColor(.blue)
-                .cornerRadius(12)
             }
             .buttonStyle(.plain)
 
