@@ -18,30 +18,102 @@ struct PersistentBottomMenu: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Clean, minimal actions that replace nav area
-            HStack(spacing: 20) {
-                // X button to cancel selection
-                SlimActionButton(icon: "xmark", title: "Cancel", color: .secondary, action: onCancel)
+            // Header showing selected count
+            HStack(spacing: 6) {
+                Image(systemName: "info.circle.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+                Text("Actions for \(selectedCount) item\(selectedCount == 1 ? "" : "s")")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(Color(.systemGray6))
 
+            // Action buttons row
+            HStack(spacing: 0) {
+                // Cancel
+                BottomMenuButton(icon: "xmark", title: "Cancel", color: .primary, action: onCancel)
+
+                Divider()
+                    .frame(height: 50)
+
+                // Move
+                BottomMenuButton(icon: "arrow.up.square", title: "Move", color: .orange, action: onMove)
+
+                Divider()
+                    .frame(height: 50)
+
+                // View/Edit (only when 1 item selected)
                 if selectedCount == 1 {
-                    SlimActionButton(icon: "pencil", title: "Edit", color: .green, action: onEdit)
+                    BottomMenuButton(icon: "pencil", title: "View/Edit", color: .green, action: onEdit)
+
+                    Divider()
+                        .frame(height: 50)
                 }
 
-                SlimActionButton(icon: "arrow.up.arrow.down", title: "Move", color: .orange, action: onMove)
-                SlimActionButton(icon: "doc.on.doc", title: "Copy", color: .blue, action: onCopy)
-                SlimActionButton(icon: "trash", title: "Delete", color: .red, action: onDelete)
+                // Copy
+                BottomMenuButton(icon: "doc.on.doc", title: "Copy", color: .blue, action: onCopy)
+
+                Divider()
+                    .frame(height: 50)
+
+                // Delete
+                BottomMenuButton(icon: "trash", title: "Delete", color: .red, action: onDelete)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 20)
-            .padding(.bottom, 34) // Account for tab bar and safe area
+            .padding(.horizontal, 12)
+            .padding(.top, 12)
+            .padding(.bottom, 34) // Account for safe area
         }
         .background(Color(.systemBackground))
         .overlay(
             Rectangle()
-                .fill(Color(.systemGray5))
-                .frame(height: 1),
+                .fill(Color(.systemGray4))
+                .frame(height: 0.5),
             alignment: .top
         )
+    }
+}
+
+// MARK: - Bottom Menu Button
+struct BottomMenuButton: View {
+    let icon: String
+    let title: String
+    let color: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundColor(color)
+
+                Text(title)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(color == .red ? .red : .primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(BottomMenuButtonStyle())
+    }
+}
+
+// MARK: - Bottom Menu Button Style
+struct BottomMenuButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(configuration.isPressed ? Color(.systemGray5) : Color.clear)
+            )
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
     }
 }
 

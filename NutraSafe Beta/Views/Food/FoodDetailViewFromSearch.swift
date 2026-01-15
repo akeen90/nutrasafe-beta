@@ -1175,10 +1175,12 @@ struct FoodDetailViewFromSearch: View {
                 }
             }
 
-            // Subtle disclaimer
-            Text("Check label for allergens")
-                .font(.system(size: 11))
+            // Allergen disclaimer
+            Text("Allergens may still be present if not shown. Ingredients may be outdated or incomplete. Always check the label.")
+                .font(.system(size: 10))
                 .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 8)
         }
     }
 
@@ -2853,6 +2855,18 @@ private var nutritionFactsSection: some View {
                                 .foregroundColor(.secondary)
                         }
                     }
+
+                    // Allergen disclaimer
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Text("Allergens may still be present if not shown. Ingredients may be outdated or incomplete. Always check the label if you have an allergy or intolerance.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.top, 4)
                 }
                 }
             } else {
@@ -4432,11 +4446,22 @@ private var nutritionFactsSection: some View {
                     .padding(.vertical, 32)
                 }
 
+                // Allergen disclaimer
+                Divider()
+                    .padding(.vertical, 8)
+
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: "exclamationmark.circle")
+                        .font(.system(size: 12))
+                        .foregroundColor(.orange)
+                    Text("Allergens may still be present if not shown. Ingredients may be outdated or incomplete. Always check the label if you have an allergy or intolerance.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
                 // Citations for allergen detection
                 if !potentialAllergens.isEmpty {
-                    Divider()
-                        .padding(.vertical, 8)
-
                     HStack(spacing: 4) {
                         Image(systemName: "info.circle")
                             .font(.system(size: 11))
@@ -4452,6 +4477,7 @@ private var nutritionFactsSection: some View {
                                 .foregroundColor(.blue)
                         }
                     }
+                    .padding(.top, 4)
                 }
                 }
             } else {
