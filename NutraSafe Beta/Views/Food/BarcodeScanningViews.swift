@@ -484,11 +484,12 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
     }
 
     private func configureCamera() {
-        // For barcode scanning, prefer the wide-angle camera which has better close-focus
-        // On newer iPhones, the default camera can struggle with close-up focus
-        // Order preference: wide-angle first (best for barcodes), then others as fallback
+        // For close-up barcode scanning, prefer the ULTRA-WIDE camera
+        // Ultra-wide can focus as close as 2cm vs wide-angle's 15cm minimum
+        // This allows users to hold phone very close to small barcodes
+        // Fallback to wide-angle if ultra-wide not available (older iPhones)
         let discoverySession = AVCaptureDevice.DiscoverySession(
-            deviceTypes: [.builtInWideAngleCamera],
+            deviceTypes: [.builtInUltraWideCamera, .builtInWideAngleCamera],
             mediaType: .video,
             position: .back
         )
@@ -497,6 +498,10 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
             showCameraError("Camera not available")
             return
         }
+
+        #if DEBUG
+        print("📸 Using camera: \(videoCaptureDevice.localizedName) (ultra-wide preferred for close-up scanning)")
+        #endif
 
         self.videoCaptureDevice = videoCaptureDevice
 
@@ -538,18 +543,17 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
                 videoCaptureDevice.exposureMode = .continuousAutoExposure
             }
 
-            // IMPORTANT: Set a 2x zoom factor to improve close-up barcode scanning
-            // On newer iPhones (12+), the wide-angle camera has a minimum focus distance of ~15cm
-            // Without zoom, users hold the phone too close and get blur
-            // 2x zoom forces users to hold phone further away (where camera CAN focus)
-            // while still capturing small barcodes clearly
-            let desiredZoom: CGFloat = 2.0
-            let maxZoom = min(videoCaptureDevice.activeFormat.videoMaxZoomFactor, 4.0)
-            let actualZoom = min(desiredZoom, maxZoom)
-            videoCaptureDevice.videoZoomFactor = actualZoom
-            #if DEBUG
-            print("📸 Barcode scanner zoom set to \(actualZoom)x (max available: \(maxZoom)x)")
-            #endif
+            // No zoom needed - ultra-wide camera can focus as close as 2cm
+            // If using wide-angle fallback, apply slight zoom for better close focus
+            if videoCaptureDevice.deviceType == .builtInWideAngleCamera {
+                let desiredZoom: CGFloat = 1.5
+                let maxZoom = min(videoCaptureDevice.activeFormat.videoMaxZoomFactor, 4.0)
+                let actualZoom = min(desiredZoom, maxZoom)
+                videoCaptureDevice.videoZoomFactor = actualZoom
+                #if DEBUG
+                print("📸 Wide-angle fallback: zoom set to \(actualZoom)x")
+                #endif
+            }
 
             videoCaptureDevice.unlockForConfiguration()
 
