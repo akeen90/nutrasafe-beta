@@ -96,7 +96,7 @@ struct DiaryMealCard: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
-            .background(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
+            .background(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
             .cornerRadius(8)
 
             // Food items section - directly under header
@@ -143,11 +143,7 @@ struct DiaryMealCard: View {
         }
         .background(
             RoundedRectangle(cornerRadius: AppRadius.medium)
-                .fill(colorScheme == .dark ? Color.midnightCard : Color(.systemBackground))
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppRadius.medium)
-                        .stroke(Color(.systemGray4), lineWidth: 1)
-                )
+                .fill(colorScheme == .dark ? Color.midnightCard : Color(.secondarySystemBackground))
         )
         .cardShadow()
         .onChange(of: foods) { _, newFoods in
