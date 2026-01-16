@@ -532,12 +532,13 @@ struct FastingTimerView: View {
 
         Task {
             do {
-                let sessionId = try await firebaseManager.saveFastingSession(newSession)
-                
+                _ = try await firebaseManager.saveFastingSession(newSession)
+
                 // Reload to get the saved session with ID
                 await loadFastingData()
             } catch {
-                            }
+                // Silently handle save errors
+            }
 
             // Start Live Activity for Dynamic Island
             if #available(iOS 16.1, *) {
@@ -665,11 +666,9 @@ struct FastingTimerView: View {
                 pushType: nil
             )
             currentActivity = activity
-                                                
-            // List all active activities to verify
-            let activeActivities = Activity<FastingActivityAttributes>.activities
-                    } catch {
-                                            }
+        } catch {
+            // Silently handle Live Activity errors
+        }
     }
 
     @available(iOS 16.1, *)

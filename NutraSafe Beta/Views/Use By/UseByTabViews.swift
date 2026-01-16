@@ -4063,8 +4063,6 @@ struct UseByItemDetailView: View {
                     dismiss()
                 }
             } catch {
-                                if let nsError = error as NSError? {
-                                    }
                 await MainActor.run {
                     isSaving = false
                 }
@@ -4855,15 +4853,13 @@ struct PhotoLibraryPicker: UIViewControllerRepresentable {
             }
 
             if provider.canLoadObject(ofClass: UIImage.self) {
-                                provider.loadObject(ofClass: UIImage.self) { image, error in
-                    if let error = error {
-                                            }
+                provider.loadObject(ofClass: UIImage.self) { image, _ in
                     DispatchQueue.main.async {
-                                                self.parent.onImageSelected(image as? UIImage)
+                        self.parent.onImageSelected(image as? UIImage)
                     }
                 }
             } else {
-                                parent.onImageSelected(nil)
+                parent.onImageSelected(nil)
             }
         }
     }

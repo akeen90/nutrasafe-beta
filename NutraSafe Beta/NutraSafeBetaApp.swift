@@ -229,9 +229,10 @@ struct MainAppView: View {
         }
 
         do {
-            let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
-                    } catch {
-                    }
+            _ = try await center.requestAuthorization(options: [.alert, .sound, .badge])
+        } catch {
+            // Silently handle authorization errors
+        }
     }
 
     /// Clear app icon badge when app becomes active

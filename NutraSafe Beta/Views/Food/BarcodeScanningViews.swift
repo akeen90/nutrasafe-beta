@@ -117,7 +117,7 @@ struct AddFoodBarcodeView: View {
                 ZStack {
                     ModernBarcodeScanner(onBarcodeScanned: { barcode in
                         handleBarcodeScanned(barcode)
-                    }, isSearching: $isSearching)
+                    }, isSearching: $isSearching, isPaused: showingFoodDetail)
                         .id(scannerKey) // Force recreate scanner when key changes
 
                     // Overlay UI
@@ -440,6 +440,7 @@ struct AddFoodBarcodeView: View {
 struct ModernBarcodeScanner: UIViewControllerRepresentable {
     let onBarcodeScanned: (String) -> Void
     @Binding var isSearching: Bool
+    var isPaused: Bool = false  // Additional pause control (e.g., when food detail is showing)
 
     func makeUIViewController(context: Context) -> BarcodeScannerViewController {
         let scanner = BarcodeScannerViewController()
@@ -448,8 +449,8 @@ struct ModernBarcodeScanner: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: BarcodeScannerViewController, context: Context) {
-        // Stop/start camera based on search state
-        if isSearching {
+        // Stop/start camera based on search state OR external pause (e.g., food detail showing)
+        if isSearching || isPaused {
             uiViewController.pauseScanning()
         } else {
             uiViewController.resumeScanning()

@@ -289,14 +289,6 @@ class MicronutrientTrackingManager: ObservableObject {
         // Get nutrient info
         let info = database.getNutrientInfo(nutrient)
 
-        // DEBUG: Log if info was found
-        if info == nil {
-                    } else {
-                        if let sources = info?.commonSources {
-                            } else {
-                            }
-        }
-
         return MicronutrientSummary(
             id: nutrient,
             nutrient: nutrient,

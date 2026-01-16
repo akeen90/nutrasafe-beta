@@ -271,15 +271,7 @@ actor SQLiteFoodDatabase {
         var statement: OpaquePointer?
 
         if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
-            if sqlite3_step(statement) != SQLITE_DONE {
-                if let errorCString = sqlite3_errmsg(db) {
-                    let errorMessage = String(cString: errorCString)
-                                    }
-            }
-        } else {
-            if let errorCString = sqlite3_errmsg(db) {
-                let errorMessage = String(cString: errorCString)
-                            }
+            _ = sqlite3_step(statement)
         }
 
         sqlite3_finalize(statement)
@@ -321,10 +313,7 @@ actor SQLiteFoodDatabase {
         let query = "SELECT COUNT(*) FROM foods;"
 
         if sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK {
-            if sqlite3_step(statement) == SQLITE_ROW {
-                let count = sqlite3_column_int(statement, 0)
-
-                }
+            _ = sqlite3_step(statement)
         }
         sqlite3_finalize(statement)
     }
@@ -440,12 +429,9 @@ actor SQLiteFoodDatabase {
                 rowCount += 1
                 if let food = parseFoodRow(statement: statement) {
                     results.append(food)
-                } else {
-                                    }
+                }
             }
-                    } else {
-            let errorMessage = String(cString: sqlite3_errmsg(db))
-                    }
+        }
 
         sqlite3_finalize(statement)
 

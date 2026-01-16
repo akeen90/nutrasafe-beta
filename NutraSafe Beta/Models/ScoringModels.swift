@@ -609,12 +609,6 @@ class ProcessingScorer {
 
                 let analysis = analyseAdditives(in: ingredientsText)
 
-                if !analysis.comprehensiveAdditives.isEmpty {
-                        for additive in analysis.comprehensiveAdditives {
-                            }
-        } else {
-                    }
-
         // PERFORMANCE: Cache the result
         cacheLock.lock()
         additivesCache[cacheKey] = analysis.comprehensiveAdditives
@@ -1384,10 +1378,6 @@ class ProcessingScorer {
                 }
             }
 
-            if !ultraProcessedIngredients.isEmpty {
-                                for ing in ultraProcessedIngredients {
-                                    }
-                            }
         }
 
         let result = AdditiveAnalysis(

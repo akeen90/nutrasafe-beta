@@ -1327,41 +1327,12 @@ struct FoodDetailView: View {
     }
     
     private func isAllergenPresent(_ allergen: Allergen, in text: String) -> Bool {
-        let keywords: [String]
-        
-        switch allergen {
-        case .dairy:
-            // Use refined dairy detection to avoid false positives like "coconut milk"
+        // Use centralized detection for dairy (handles plant milks correctly)
+        if allergen == .dairy {
             return AllergenDetector.shared.containsDairyMilk(in: text)
-        case .eggs:
-            keywords = ["egg", "albumin", "mayonnaise"]
-        case .fish:
-            keywords = ["fish", "salmon", "tuna", "cod", "anchovy"]
-        case .shellfish:
-            keywords = ["shrimp", "crab", "lobster", "shellfish", "prawns"]
-        case .treeNuts:
-            keywords = ["almond", "walnut", "pecan", "cashew", "pistachio", "hazelnut", "macadamia"]
-        case .peanuts:
-            keywords = ["peanut", "groundnut"]
-        case .wheat:
-            keywords = ["wheat", "flour", "gluten", "semolina", "durum"]
-        case .soy:
-            keywords = ["soy", "soya", "tofu", "tempeh", "miso", "edamame"]
-        case .sesame:
-            keywords = ["sesame", "tahini"]
-        case .gluten:
-            keywords = ["gluten", "wheat", "barley", "rye", "oats"]
-        case .lactose:
-            keywords = ["lactose", "milk", "dairy"]
-        case .sulfites:
-            keywords = ["sulfite", "sulphite", "preservative"]
-        case .msg:
-            keywords = ["msg", "monosodium glutamate"]
-        case .corn:
-            keywords = ["corn", "maize", "cornstarch"]
         }
-        
-        return keywords.contains { text.contains($0) }
+        // Use the comprehensive keyword lists defined in Allergen.keywords
+        return allergen.keywords.contains { text.contains($0) }
     }
 }
 

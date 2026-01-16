@@ -407,9 +407,8 @@ enum DateHelper {
     /// Print debug info about a date showing both local and UTC representations
     /// - Parameter date: Date to debug
     static func debugDate(_ date: Date, label: String = "Date") {
-        let localFormatter = localDateFormatter(format: "yyyy-MM-dd HH:mm:ss")
-        let utcFormatter = utcDateFormatter(format: "yyyy-MM-dd HH:mm:ss")
-
+        _ = localDateFormatter(format: "yyyy-MM-dd HH:mm:ss")
+        _ = utcDateFormatter(format: "yyyy-MM-dd HH:mm:ss")
     }
     #endif
 }

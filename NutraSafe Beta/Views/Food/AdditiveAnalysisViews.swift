@@ -823,18 +823,6 @@ struct AdditiveWatchView: View {
         
         // Use AdditiveWatchService which now uses local comprehensive database
         AdditiveWatchService.shared.analyzeIngredients(filteredIngredients) { result in
-                                    if !result.detectedAdditives.isEmpty {
-                                for additive in result.detectedAdditives {
-                                    }
-            } else {
-                            }
-
-                        if !result.ultraProcessedIngredients.isEmpty {
-                                for ingredient in result.ultraProcessedIngredients {
-                                    }
-            } else {
-                            }
-
             self.additiveResult = result
         }
     }

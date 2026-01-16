@@ -120,12 +120,11 @@ actor DiaryCacheActor {
 
     /// Clear all cached diary data
     func clear() {
-        let previousSize = dayCache.count
         dayCache.removeAll()
         lastAccessTime.removeAll()
         hits = 0
         misses = 0
-            }
+    }
 
     /// Get current cache size
     func size() -> Int {

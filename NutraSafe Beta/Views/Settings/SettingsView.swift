@@ -15,6 +15,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var firebaseManager: FirebaseManager
     @EnvironmentObject var subscriptionManager: SubscriptionManager
+    @EnvironmentObject var healthKitManager: HealthKitManager
     @AppStorage("appearanceMode") private var appearanceMode: AppearanceMode = .system
 
     /// Binding to navigate to a specific tab after dismissing
@@ -738,6 +739,8 @@ struct NutritionGoalsSection: View {
 
 struct ProgressGoalsSection: View {
     @EnvironmentObject var firebaseManager: FirebaseManager
+    @EnvironmentObject var healthKitManager: HealthKitManager
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
     @AppStorage("unitSystem") private var unitSystem: UnitSystem = .metric
 
     @State private var currentWeight: Double?
@@ -960,8 +963,10 @@ struct ProgressGoalsSection: View {
             }
         }
         .fullScreenCover(isPresented: $showingWeightHistory) {
-            WeightTrackingView(showingSettings: $showingWeightHistory)
+            WeightTrackingView(showingSettings: $showingWeightHistory, isPresentedAsModal: true)
                 .environmentObject(firebaseManager)
+                .environmentObject(healthKitManager)
+                .environmentObject(subscriptionManager)
         }
         .onChange(of: showingWeightHistory) { _, isShowing in
             if !isShowing {

@@ -822,10 +822,10 @@ struct ContentView: View {
                 // Wait for all to complete (runs in ~1.2s instead of 3.4s sequential)
                 do {
                     let weights = try await weightsTask
-                    let useByItems = try await useByTask
+                    _ = try await useByTask
                     let reactions = try await reactionsTask
                     let settings = try await settingsTask
-                    let _ = await nutrientsTask
+                    _ = await nutrientsTask
                     await MainActor.run {
                         if let uid = FirebaseManager.shared.currentUser?.uid {
                             ReactionManager.shared.preload(reactions, for: uid)
@@ -941,6 +941,7 @@ enum ProgressSubTab: String, CaseIterable {
 struct WeightTrackingView: View {
     @Environment(\.colorScheme) var colorScheme
     @Binding var showingSettings: Bool
+    var isPresentedAsModal: Bool = false  // When true, shows close button instead of settings
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var firebaseManager: FirebaseManager
     @EnvironmentObject var subscriptionManager: SubscriptionManager
@@ -1040,7 +1041,14 @@ struct WeightTrackingView: View {
                 TabHeaderView(
                     tabs: ProgressSubTab.allCases,
                     selectedTab: $progressSubTab,
-                    onSettingsTapped: { showingSettings = true }
+                    onSettingsTapped: {
+                        if isPresentedAsModal {
+                            showingSettings = false  // Dismiss modal
+                        } else {
+                            showingSettings = true   // Open settings
+                        }
+                    },
+                    actionIcon: isPresentedAsModal ? "xmark" : "gearshape.fill"
                 )
 
                 // Loading overlay
@@ -4680,13 +4688,12 @@ struct ModernMacroItem: View {
 
 struct AddFoodMainView: View {
     @Binding var selectedTab: TabItem
-    @State private var selectedAddOption: AddOption = .search
+    @State private var selectedAddOption: AddOption
     @State private var prefilledBarcode: String? = nil // Barcode from scanner to prefill manual entry
     @Binding var isPresented: Bool // Direct binding to presentation state
     var onDismiss: (() -> Void)?
     var onComplete: ((TabItem) -> Void)?
     @State private var keyboardVisible = false
-    private let initialOption: AddOption?
 
     // Free tier limit checking
     @EnvironmentObject var subscriptionManager: SubscriptionManager
@@ -4699,7 +4706,8 @@ struct AddFoodMainView: View {
     init(selectedTab: Binding<TabItem>, isPresented: Binding<Bool>, initialOption: AddOption? = nil, onDismiss: (() -> Void)? = nil, onComplete: ((TabItem) -> Void)? = nil) {
         self._selectedTab = selectedTab
         self._isPresented = isPresented
-        self.initialOption = initialOption
+        // Initialize selectedAddOption directly from initialOption to avoid race condition
+        self._selectedAddOption = State(initialValue: initialOption ?? .search)
         self.onDismiss = onDismiss
         self.onComplete = onComplete
     }
@@ -4851,11 +4859,6 @@ struct AddFoodMainView: View {
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .onAppear {
-            // Set initial option if specified (e.g., from barcode scan menu action)
-            if let initial = initialOption {
-                selectedAddOption = initial
-            }
-
             // Check diary entry limit for free users
             checkDiaryLimit()
 

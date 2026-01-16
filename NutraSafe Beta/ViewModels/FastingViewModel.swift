@@ -563,13 +563,14 @@ class FastingViewModel: ObservableObject {
 
         Task {
             do {
-                let savedId = try await firebaseManager.saveFastingSession(session)
-                
+                _ = try await firebaseManager.saveFastingSession(session)
+
                 // Refresh sessions and analytics
                 await loadRecentSessions()
                 await loadAnalytics()
             } catch {
-                            }
+                // Silently handle save errors
+            }
         }
     }
 
@@ -819,12 +820,11 @@ class FastingViewModel: ObservableObject {
                     createdAt: Date()
                 )
 
-                let savedId = try await firebaseManager.saveFastingSession(session)
-                
+                _ = try await firebaseManager.saveFastingSession(session)
+
                 // Mark this window as already ended so it won't be reused if regime is restarted
                 lastEndedWindowEnd = windowEnd
-                            } else {
-                            }
+            }
 
             // Clear regime tracking state
             previousRegimeState = nil
@@ -1340,8 +1340,8 @@ class FastingViewModel: ObservableObject {
 
                                                 
             // Save the session
-            let savedId = try await firebaseManager.saveFastingSession(session)
-            
+            _ = try await firebaseManager.saveFastingSession(session)
+
             // Mark this fasting window as ended AND prevent auto-record duplicate
             lastEndedWindowEnd = ends
             lastRecordedFastWindowEnd = ends  // Prevent recordCompletedRegimeFast() from creating duplicate

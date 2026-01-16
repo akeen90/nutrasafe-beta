@@ -226,6 +226,7 @@ struct TabHeaderView<Tab: Hashable & CaseIterable & RawRepresentable>: View wher
     let tabs: [Tab]
     @Binding var selectedTab: Tab
     let onSettingsTapped: () -> Void
+    var actionIcon: String = "gearshape.fill"  // Customizable: "xmark" for close button
     @Namespace private var animation
 
     var body: some View {
@@ -267,7 +268,7 @@ struct TabHeaderView<Tab: Hashable & CaseIterable & RawRepresentable>: View wher
                         .fill(colorScheme == .dark ? Color(.systemGray5) : Color.white)
                         .frame(width: 36, height: 36)
                         .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
-                    Image(systemName: "gearshape.fill")
+                    Image(systemName: actionIcon)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.gray)
                 }

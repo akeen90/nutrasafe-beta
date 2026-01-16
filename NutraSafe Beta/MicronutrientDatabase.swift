@@ -124,9 +124,6 @@ class MicronutrientDatabase {
             preloadTask = Task.detached(priority: .utility) { [weak self] in
                 self?.preloadAllNutrients()
             }
-        } else {
-                        if let error = sqlite3_errmsg(db) {
-                            }
         }
     }
 
@@ -141,8 +138,6 @@ class MicronutrientDatabase {
     /// PERFORMANCE: Preload all nutrients into cache at startup (1 batch query instead of 33+ individual queries)
     private func preloadAllNutrients() {
         guard isInitialized, let db = db else { return }
-
-        let startTime = Date()
 
         let query = """
         SELECT nutrient, name, category, benefits, deficiency_signs, common_sources, recommended_daily_intake
@@ -177,8 +172,7 @@ class MicronutrientDatabase {
             count += 1
         }
 
-        let elapsed = Date().timeIntervalSince(startTime) * 1000 // Convert to milliseconds
-            }
+    }
 
     // MARK: - Synonym Lookup
 

@@ -1920,17 +1920,7 @@ class FirebaseManager: ObservableObject {
 
         try await db.collection("users").document(userId)
             .collection("settings").document("preferences").setData(data, merge: true)
-
-        let descriptions = macroGoals.map { goal in
-            if let percentage = goal.percentage {
-                return "\(goal.macroType.displayName): \(percentage)%"
-            } else if let directTarget = goal.directTarget {
-                return "\(goal.macroType.displayName): \(Int(directTarget))g"
-            } else {
-                return "\(goal.macroType.displayName)"
-            }
-        }
-        }
+    }
 
     func getMacroGoals() async throws -> [MacroGoal] {
         ensureAuthStateLoaded()
@@ -2872,10 +2862,8 @@ class FirebaseManager: ObservableObject {
         let docRef = db.collection("users").document(userId)
             .collection("fastingPlans").document(plan.id ?? UUID().uuidString)
 
-        let path = "users/\(userId)/fastingPlans/\(docRef.documentID)"
-        
         try docRef.setData(from: plan, merge: true)
-                return docRef.documentID
+        return docRef.documentID
     }
 
     func getFastingPlans() async throws -> [FastingPlan] {
@@ -2883,19 +2871,17 @@ class FirebaseManager: ObservableObject {
         guard let userId = currentUser?.uid else {
             throw NSError(domain: "NutraSafeAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "You must be signed in to view fasting plans"])
         }
-                        let path = "users/\(userId)/fastingPlans"
-        
         let snapshot = try await db.collection("users").document(userId)
             .collection("fastingPlans").order(by: "created_at", descending: true).getDocuments()
 
-        
         var plans: [FastingPlan] = []
-        for (index, doc) in snapshot.documents.enumerated() {
+        for doc in snapshot.documents {
             do {
                 let plan = try doc.data(as: FastingPlan.self)
-                                plans.append(plan)
+                plans.append(plan)
             } catch {
-                            }
+                // Skip malformed documents
+            }
         }
 
                 return plans
@@ -3004,9 +2990,6 @@ class FirebaseManager: ObservableObject {
 
         
         let sessions = snapshot.documents.compactMap { try? $0.data(as: FastingSession.self) }
-
-                for (index, session) in sessions.enumerated() {
-                    }
 
         return sessions
     }

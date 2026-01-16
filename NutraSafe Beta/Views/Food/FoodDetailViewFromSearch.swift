@@ -197,23 +197,26 @@ struct FoodDetailViewFromSearch: View {
                         }
                     }
                 }
-                // Fallback: description like "1 burger" → treat as per-unit
+                // Fallback for specific per-unit foods only (NOT generic "serving" mentions)
+                // Only treat as per-unit if description explicitly describes a countable food item
                 if initialServingSize == "100" {
                     let lower = servingDesc.lowercased()
+
+                    // Only convert to per-unit for SPECIFIC countable food items, NOT generic "serving"
+                    // These are foods that are naturally counted (1 burger, 1 slice, 1 piece)
+                    let perUnitFoodWords = ["burger", "pizza", "sandwich", "wrap", "taco", "burrito", "slice", "piece", "bar", "biscuit", "cookie"]
+
                     if lower.hasPrefix("1 ") {
                         let unitCandidate = lower.split(separator: " ").dropFirst().joined(separator: " ")
-                        if !unitCandidate.isEmpty {
+                        // Only use per-unit if it's a specific countable food, not generic "serving"/"portion"
+                        if !unitCandidate.isEmpty && perUnitFoodWords.contains(where: { unitCandidate.contains($0) }) {
                             initialServingSize = "1"
                             initialUnit = String(unitCandidate)
                         }
-                    } else {
-                        // If description mentions a unit keyword and no grams were found
-                        let unitWords = ["serving","piece","slice","burger","wrap","taco","burrito","sandwich","portion"]
-                        if let found = unitWords.first(where: { lower.contains($0) }) {
-                            initialServingSize = "1"
-                            initialUnit = found
-                        }
+                        // Otherwise keep default 100g - don't convert "1 serving" to per-unit
                     }
+                    // Don't do the generic "contains serving/portion" fallback anymore
+                    // Regular per-100g foods should stay as 100g default
                 }
             }
         }
@@ -231,12 +234,21 @@ struct FoodDetailViewFromSearch: View {
         // Initialize quantity multiplier from diary entry if editing
         self._quantityMultiplier = State(initialValue: diaryQuantity ?? 1.0)
 
-        // Initialize portion picker with first portion if available (for multi-size items like McNuggets)
+        // Initialize with custom row selected by default (editable serving size field)
+        // This allows immediate editing of portion size when entering the food page
+        self._selectedPortionName = State(initialValue: "__custom__")
+
+        // If portions are available, still use first portion values for the custom row
         if let portions = food.portions, !portions.isEmpty {
-            self._selectedPortionName = State(initialValue: portions[0].name)
-            // Also update serving amount to match the first portion
             self._servingAmount = State(initialValue: String(format: "%.0f", portions[0].serving_g))
             self._gramsAmount = State(initialValue: String(format: "%.0f", portions[0].serving_g))
+            // Set appropriate unit based on food category (ml for drinks, g for food)
+            let drinkCategories: [FoodSearchResult.FoodCategory] = [.softDrink, .juice, .hotDrink, .water, .alcoholicDrink]
+            if drinkCategories.contains(food.detectedCategory) {
+                self._servingUnit = State(initialValue: "ml")
+            } else {
+                self._servingUnit = State(initialValue: "g")
+            }
         }
     }
 
@@ -1069,20 +1081,20 @@ struct FoodDetailViewFromSearch: View {
         guard let ingredients = cachedIngredients else { return [] }
         
         let commonAllergens = [
-            ("Gluten", ["wheat", "barley", "rye", "oats", "spelt", "kamut", "gluten", "flour", "bran", "semolina", "durum"]),
-            ("Dairy", ["milk", "cream", "butter", "cheese", "yogurt", "lactose", "casein", "whey", "skimmed milk powder", "milk powder"]),
-            ("Eggs", ["egg", "eggs", "albumin", "lecithin", "egg white", "egg yolk", "ovomucin"]),
-            ("Nuts", ["almond", "hazelnut", "walnut", "cashew", "pistachio", "brazil nut", "macadamia", "pecan", "pine nut"]),
-            ("Peanuts", ["peanut", "groundnut", "arachis oil", "peanut oil"]),
-            ("Soy", ["soya", "soy", "soybean", "tofu", "tempeh", "miso", "soy lecithin", "soy protein"]),
-            ("Fish", ["fish", "anchovy", "tuna", "salmon", "cod", "haddock", "fish oil", "worcestershire sauce"]),
-            ("Shellfish", ["shellfish", "crab", "lobster", "prawn", "shrimp", "crayfish", "langoustine"]),
-            ("Sesame", ["sesame", "tahini", "sesame oil", "sesame seed"]),
-            ("Sulphites", ["sulphite", "sulfite", "sulphur dioxide", "sulfur dioxide", "e220", "e221", "e222", "e223", "e224", "e225", "e226", "e227", "e228"]),
+            ("Gluten", ["wheat", "barley", "rye", "oats", "spelt", "kamut", "gluten", "flour", "bran", "semolina", "durum", "triticale", "farro", "freekeh", "seitan", "malt", "beer", "lager", "ale", "stout"]),
+            ("Dairy", ["milk", "cream", "butter", "cheese", "yogurt", "lactose", "casein", "whey", "skimmed milk powder", "milk powder"]),  // Specific cheeses handled by AllergenDetector.containsDairyMilk()
+            ("Eggs", ["egg", "eggs", "albumin", "lecithin", "egg white", "egg yolk", "ovomucin", "mayonnaise", "meringue", "quiche", "frittata", "omelette", "brioche", "hollandaise", "aioli", "carbonara", "pavlova", "custard", "eggnog", "scotch egg"]),
+            ("Nuts", ["almond", "hazelnut", "walnut", "cashew", "pistachio", "brazil nut", "macadamia", "pecan", "pine nut", "chestnut", "praline", "marzipan", "frangipane", "nougat", "nutella", "gianduja", "filbert"]),
+            ("Peanuts", ["peanut", "groundnut", "arachis oil", "peanut oil", "peanut butter", "satay", "monkey nuts"]),
+            ("Soy", ["soya", "soy", "soybean", "tofu", "tempeh", "miso", "soy lecithin", "soy protein", "shoyu", "tamari", "edamame", "natto", "tvp"]),
+            ("Fish", ["fish", "anchovy", "tuna", "salmon", "cod", "haddock", "fish oil", "worcestershire", "mackerel", "sardine", "trout", "bass", "plaice", "pollock", "hake", "halibut", "herring", "kipper", "fish finger", "fish cake", "fish pie"]),
+            ("Shellfish", ["shellfish", "crab", "lobster", "prawn", "shrimp", "crayfish", "langoustine", "king prawn", "tiger prawn", "crab stick"]),
+            ("Sesame", ["sesame", "tahini", "sesame oil", "sesame seed", "hummus", "houmous", "halvah", "halva", "za'atar"]),
+            ("Sulphites", ["sulphite", "sulfite", "sulphur dioxide", "sulfur dioxide", "e220", "e221", "e222", "e223", "e224", "e225", "e226", "e227", "e228", "metabisulphite", "metabisulfite"]),
             ("Celery", ["celery", "celeriac", "celery salt", "celery extract"]),
             ("Mustard", ["mustard", "mustard seed", "dijon", "wholegrain mustard"]),
             ("Lupin", ["lupin", "lupine", "lupin flour"]),
-            ("Molluscs", ["mollusc", "mussel", "oyster", "clam", "scallop", "squid", "octopus", "snail"])
+            ("Molluscs", ["mollusc", "mussel", "oyster", "clam", "scallop", "squid", "octopus", "snail", "calamari", "cockle", "winkle", "whelk", "cuttlefish", "abalone", "escargot"])
         ]
         
         var detectedAllergens: [String] = []
@@ -2804,22 +2816,14 @@ private var nutritionFactsSection: some View {
         let combinedIngredients = ingredients.joined(separator: " ").lowercased()
         var detectedAllergens: [Allergen] = []
 
-        // Check for common allergens using the enum cases
-        let allergenChecks: [(Allergen, [String])] = [
-            (.dairy, ["milk", "cheese", "butter", "cream", "yogurt", "whey", "casein", "lactose"]),
-            (.eggs, ["egg", "albumin", "mayonnaise"]),
-            (.fish, ["fish", "salmon", "tuna", "cod", "haddock", "anchovy"]),
-            (.shellfish, ["shrimp", "crab", "lobster", "prawn", "crayfish"]),
-            (.treeNuts, ["almond", "cashew", "walnut", "pecan", "pistachio", "hazelnut", "macadamia"]),
-            (.peanuts, ["peanut", "groundnut"]),
-            (.wheat, ["wheat", "flour", "bread"]),
-            (.gluten, ["gluten"]),
-            (.soy, ["soy", "soya", "tofu", "edamame"]),
-            (.sesame, ["sesame", "tahini"])
-        ]
-
-        for (allergen, searchTerms) in allergenChecks {
-            if searchTerms.contains(where: { combinedIngredients.contains($0) }) {
+        // Use centralized keyword lists from Allergen.keywords
+        for allergen in [Allergen.dairy, .eggs, .fish, .shellfish, .treeNuts, .peanuts, .wheat, .gluten, .soy, .sesame] {
+            if allergen == .dairy {
+                // Use refined dairy detection (handles plant milks correctly)
+                if AllergenDetector.shared.containsDairyMilk(in: combinedIngredients) {
+                    detectedAllergens.append(allergen)
+                }
+            } else if allergen.keywords.contains(where: { combinedIngredients.contains($0) }) {
                 detectedAllergens.append(allergen)
             }
         }
@@ -2992,12 +2996,13 @@ private var nutritionFactsSection: some View {
 
                     // Save to Firebase
                     do {
-                        let savedId = try await firebaseManager.saveAIImprovedFood(
+                        _ = try await firebaseManager.saveAIImprovedFood(
                             originalFood: food,
                             enhancedData: enhancedData
                         )
-                                            } catch {
-                                            }
+                    } catch {
+                        // Silently handle save errors
+                    }
                 }
 
                 await MainActor.run {
@@ -3102,12 +3107,13 @@ private var nutritionFactsSection: some View {
 
                     // Save to Firebase
                     do {
-                        let savedId = try await firebaseManager.saveAIImprovedFood(
+                        _ = try await firebaseManager.saveAIImprovedFood(
                             originalFood: food,
                             enhancedData: enhancedData
                         )
-                                            } catch {
-                                            }
+                    } catch {
+                        // Silently handle save errors
+                    }
                 }
 
                 await MainActor.run {
@@ -3610,11 +3616,15 @@ private var nutritionFactsSection: some View {
                                 HStack(spacing: 2) {
                                     Text(servingUnit)
                                         .font(.system(size: 12, weight: .medium))
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.7)
                                     Image(systemName: "chevron.down")
                                         .font(.system(size: 7, weight: .semibold))
                                 }
                                 .foregroundColor(.primary)
-                                .frame(width: 40, height: 28)
+                                .frame(minWidth: 40, maxWidth: 80, alignment: .leading)
+                                .frame(height: 28)
+                                .padding(.horizontal, 6)
                                 .background(Color.white)
                                 .cornerRadius(6)
                             }

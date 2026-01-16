@@ -143,33 +143,94 @@ enum Allergen: String, CaseIterable, Identifiable {
     var keywords: [String] {
         switch self {
         case .dairy:
+            // Note: Specific cheese names handled by AllergenDetector.containsDairyMilk()
             return ["milk", "cream", "butter", "cheese", "yogurt", "whey", "casein", "lactose", "ghee", "custard", "ice cream"]
         case .eggs:
-            return ["egg", "albumin", "mayonnaise", "meringue", "ovalbumin", "lecithin"]
+            return [
+                "egg", "albumin", "mayonnaise", "meringue", "ovalbumin", "lecithin", "lysozyme",
+                "quiche", "frittata", "omelette", "omelet", "brioche", "challah", "hollandaise",
+                "béarnaise", "bearnaise", "aioli", "carbonara", "pavlova", "soufflé", "souffle",
+                "custard", "eggnog", "french toast", "scotch egg", "egg fried rice"
+            ]
         case .fish:
-            return ["salmon", "tuna", "cod", "bass", "trout", "anchovy", "sardine", "mackerel", "fish sauce", "worcestershire"]
+            return [
+                // Generic terms
+                "fish", "fish sauce", "worcestershire", "fish finger", "fish cake", "fish pie",
+                // Common fish species
+                "salmon", "tuna", "cod", "bass", "trout", "anchovy", "sardine", "mackerel",
+                "haddock", "plaice", "pollock", "hake", "monkfish", "halibut", "tilapia",
+                "bream", "sole", "herring", "kipper", "whitebait", "pilchard", "sprat",
+                "swordfish", "snapper", "grouper", "perch", "catfish", "carp", "pike",
+                "eel", "skate", "ray", "dover sole", "lemon sole", "sea bass", "sea bream"
+            ]
         case .shellfish:
-            return ["shrimp", "crab", "lobster", "clam", "mussel", "oyster", "scallop", "crawfish", "crayfish"]
+            return [
+                // Crustaceans
+                "shrimp", "prawn", "crab", "lobster", "crawfish", "crayfish", "langoustine",
+                "king prawn", "tiger prawn", "crab stick", "crab cake",
+                // Molluscs (bivalves, gastropods, cephalopods)
+                "clam", "mussel", "oyster", "scallop", "cockle", "winkle", "whelk",
+                "squid", "calamari", "octopus", "cuttlefish", "abalone", "snail", "escargot"
+            ]
         case .treeNuts:
-            return ["almond", "walnut", "cashew", "pistachio", "pecan", "hazelnut", "brazil nut", "macadamia", "pine nut"]
+            return [
+                // Individual nuts
+                "almond", "walnut", "cashew", "pistachio", "pecan", "hazelnut", "filbert",
+                "brazil nut", "macadamia", "pine nut", "chestnut", "praline", "gianduja",
+                // Nut-based products
+                "marzipan", "frangipane", "nougat", "nutella", "nut butter", "almond milk",
+                "almond flour", "ground almonds", "flaked almonds", "walnut oil", "hazelnut oil"
+            ]
         case .peanuts:
-            return ["peanut", "groundnut", "arachis oil", "peanut butter", "peanut oil"]
+            return [
+                "peanut", "groundnut", "arachis", "peanut butter", "peanut oil",
+                "satay", "monkey nuts", "peanut flour", "beer nuts"
+            ]
         case .wheat:
-            return ["wheat", "flour", "bread", "pasta", "bulgur", "couscous", "farina", "graham", "semolina", "spelt"]
+            return [
+                "wheat", "flour", "bread", "pasta", "bulgur", "couscous", "farina",
+                "graham", "semolina", "spelt", "kamut", "einkorn", "triticale", "durum",
+                "orzo", "farro", "freekeh", "matzo", "matzah", "crouton", "breadcrumb",
+                "panko", "batter", "seitan", "naan", "pita", "pitta", "chapati", "roti",
+                "croissant", "baguette", "ciabatta", "focaccia", "tortilla"
+            ]
         case .soy:
-            return ["soy", "soya", "tofu", "tempeh", "miso", "shoyu", "tamari", "edamame", "soy sauce"]
+            return [
+                "soy", "soya", "tofu", "tempeh", "miso", "shoyu", "tamari", "edamame",
+                "soy sauce", "soy milk", "soy protein", "soy lecithin", "natto",
+                "textured vegetable protein", "tvp", "soy protein isolate", "soybean oil"
+            ]
         case .sesame:
-            return ["sesame", "tahini", "sesame oil", "sesame seed", "sesamum"]
+            return [
+                "sesame", "tahini", "sesame oil", "sesame seed", "sesamum",
+                "hummus", "houmous", "halvah", "halva", "za'atar", "zaatar",
+                "gomashio", "goma", "benne seed"
+            ]
         case .gluten:
-            return ["gluten", "wheat", "barley", "rye", "malt", "brewer's yeast", "oats"]
+            return [
+                "gluten", "wheat", "barley", "rye", "malt", "brewer's yeast", "oats",
+                "seitan", "vital wheat gluten", "spelt", "kamut", "triticale", "farro",
+                "beer", "lager", "ale", "stout"
+            ]
         case .lactose:
             return ["lactose", "milk", "dairy", "whey", "cream", "butter", "cheese"]
         case .sulfites:
-            return ["sulfite", "sulfur dioxide", "wine", "dried fruit", "preservative"]
+            return [
+                "sulfite", "sulphite", "sulfur dioxide", "sulphur dioxide",
+                "e220", "e221", "e222", "e223", "e224", "e225", "e226", "e227", "e228",
+                "metabisulfite", "metabisulphite", "wine", "dried fruit"
+            ]
         case .msg:
-            return ["monosodium glutamate", "msg", "glutamate", "hydrolyzed protein", "yeast extract"]
+            return [
+                "monosodium glutamate", "msg", "glutamate", "hydrolyzed protein",
+                "yeast extract", "autolyzed yeast", "e621"
+            ]
         case .corn:
-            return ["corn", "maize", "corn syrup", "corn starch", "dextrose", "glucose", "fructose"]
+            return [
+                "corn", "maize", "corn syrup", "corn starch", "cornstarch", "cornflour",
+                "corn flour", "dextrose", "maltodextrin", "polenta", "grits", "hominy",
+                "corn oil", "popcorn", "tortilla chip", "corn chip", "nachos"
+            ]
         }
     }
     
@@ -290,10 +351,20 @@ class AllergenDetector {
     func containsDairyMilk(in rawText: String) -> Bool {
         let text = rawText.lowercased()
         let explicitDairyTerms = [
+            // General dairy terms
             "dairy","cheese","cream","butter","yogurt","yoghurt","whey","casein","lactose",
             "milk powder","skimmed milk powder","condensed milk","evaporated milk",
             "milk solids","milkfat","whole milk","semi skimmed milk","semi-skimmed milk","skimmed milk",
-            "cow milk","cow's milk","goat milk","sheep milk","milk chocolate"
+            "cow milk","cow's milk","goat milk","sheep milk","milk chocolate",
+            // Specific cheese names (so "parmesan" is detected even without "cheese" in the name)
+            "parmesan","parmigiano","cheddar","mozzarella","brie","camembert","feta","gouda",
+            "edam","gruyere","gruyère","emmental","ricotta","mascarpone","gorgonzola","roquefort",
+            "stilton","halloumi","haloumi","paneer","cottage cheese","cream cheese","quark",
+            "burrata","pecorino","manchego","provolone","fontina","taleggio","asiago","colby",
+            "monterey jack","swiss cheese","american cheese","processed cheese","cheese spread",
+            "red leicester","wensleydale","lancashire","cheshire","double gloucester",
+            "fromage frais","crème fraîche","creme fraiche","sour cream","clotted cream",
+            "ghee","buttermilk","kefir","lassi","custard","ice cream","gelato"
         ]
         if explicitDairyTerms.contains(where: { text.contains($0) }) {
             return true
@@ -756,11 +827,6 @@ class AdditiveWatchService {
 
             additiveDatabase = tempDatabase
             isLoaded = true
-
-                        let withSources = additiveDatabase.filter { !$0.sources.isEmpty }.count
-            let totalSources = additiveDatabase.reduce(0) { $0 + $1.sources.count }
-                        for (i, additive) in additiveDatabase.prefix(3).enumerated() {
-                            }
         } catch {
                     }
     }
@@ -801,22 +867,18 @@ class AdditiveWatchService {
                 let code = additive.eNumber.lowercased()
                 let name = additive.name.lowercased()
                 var matched = false
-                var matchedPattern = ""
 
                 // Check E-number first (skip if empty to prevent false positives)
                 if !code.isEmpty && matchesWithWordBoundaryLocal(text: normalized, pattern: code) {
                     matched = true
-                    matchedPattern = "E-number: \(code)"
                 } else if !name.isEmpty && matchesWithWordBoundaryLocal(text: normalized, pattern: name) {
                     matched = true
-                    matchedPattern = "Name: \(name)"
                 } else {
                     for syn in additive.synonyms {
                         let term = syn.lowercased()
                         if term.isEmpty { continue }
                         if matchesWithWordBoundaryLocal(text: normalized, pattern: term) {
                             matched = true
-                            matchedPattern = "Synonym: \(term)"
                             break
                         }
                     }
@@ -843,13 +905,6 @@ class AdditiveWatchService {
             comprehensiveWarnings: nil,
             ultraProcessedIngredients: []  // Empty - using consolidated database only
         )
-
-        // Log detected additives for debugging
-        if !finalDetected.isEmpty {
-                        for additive in finalDetected {
-                            }
-        } else {
-                    }
 
         DispatchQueue.main.async {
             completion(result)

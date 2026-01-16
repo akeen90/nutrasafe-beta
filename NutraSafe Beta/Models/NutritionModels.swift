@@ -1294,9 +1294,9 @@ struct FoodEntry: Identifiable, Codable {
         var ingredients: [String]? = nil
         if let ingredientsArray = data["ingredients"] as? [String] {
             ingredients = ingredientsArray
-        } else if let ingredientsValue = data["ingredients"] {
+        } else if data["ingredients"] != nil {
             // CRITICAL: Reject entire entry if ingredients field contains invalid type
-                                    return nil
+            return nil
         }
 
         // Deserialize additives if available with type safety
@@ -1305,9 +1305,9 @@ struct FoodEntry: Identifiable, Codable {
            JSONSerialization.isValidJSONObject(additivesArray),
            let additivesData = try? JSONSerialization.data(withJSONObject: additivesArray, options: []) {
             additives = try? JSONDecoder().decode([NutritionAdditiveInfo].self, from: additivesData)
-        } else if let additivesValue = data["additives"] {
+        } else if data["additives"] != nil {
             // CRITICAL: Reject entire entry if additives field contains invalid type
-                                    return nil
+            return nil
         }
 
         // Deserialize micronutrient profile if available with type safety
@@ -1326,9 +1326,9 @@ struct FoodEntry: Identifiable, Codable {
                                                                                 // Don't reject the entire entry, just skip the micronutrient data
                 micronutrientProfile = nil
             }
-        } else if let micronutrientValue = data["micronutrientProfile"] {
+        } else if data["micronutrientProfile"] != nil {
             // CRITICAL: Reject entire entry if micronutrientProfile field contains invalid type
-                                    return nil
+            return nil
         }
 
         return FoodEntry(

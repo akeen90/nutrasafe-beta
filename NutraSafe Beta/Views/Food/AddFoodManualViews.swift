@@ -1568,19 +1568,18 @@ struct ManualFoodDetailEntryView: View {
 
             // Check if AI was used to find ingredients
             let usedAI = foundIngredients != nil
-            let foodId: String
 
             if usedAI {
                 // Save to aiManuallyAdded collection with AI metadata
-                foodId = try await FirebaseManager.shared.saveAIEnhancedFood(
+                _ = try await FirebaseManager.shared.saveAIEnhancedFood(
                     foodData,
                     sourceURL: foundIngredients?.source_url,
                     aiProductName: foundIngredients?.product_name
                 )
-                            } else {
+            } else {
                 // Save to userAdded collection (manual entry with profanity check)
-                foodId = try await FirebaseManager.shared.saveUserAddedFood(foodData)
-                            }
+                _ = try await FirebaseManager.shared.saveUserAddedFood(foodData)
+            }
 
             // Now add to user's diary with capitalized values
             // Create appropriate serving description based on mode

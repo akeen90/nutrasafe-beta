@@ -754,90 +754,108 @@ struct FoodPatternAnalysisCard: View {
             .map { (symptom: $0.key, count: $0.value) }
     }
 
-    // UK's 14 Major Allergens - Base Categories
+    // UK's 14 Major Allergens - Base Categories (comprehensive detection)
     private func getBaseAllergen(for ingredient: String) -> String? {
         let lower = ingredient.lowercased()
 
-        // Milk and dairy products (refined detection)
+        // Milk and dairy products (uses comprehensive cheese/dairy list)
         if AllergenDetector.shared.containsDairyMilk(in: lower) {
             return "Milk"
         }
 
-        // Eggs
-        if lower.contains("egg") || lower.contains("albumin") || lower.contains("mayonnaise") {
+        // Eggs (comprehensive)
+        let eggKeywords = ["egg", "albumin", "mayonnaise", "meringue", "ovalbumin", "lecithin", "lysozyme",
+                           "quiche", "frittata", "omelette", "omelet", "brioche", "challah", "hollandaise",
+                           "béarnaise", "bearnaise", "aioli", "carbonara", "pavlova", "soufflé", "souffle",
+                           "custard", "eggnog", "scotch egg"]
+        if eggKeywords.contains(where: { lower.contains($0) }) {
             return "Eggs"
         }
 
         // Peanuts (separate from tree nuts)
-        if lower.contains("peanut") || lower.contains("groundnut") {
+        let peanutKeywords = ["peanut", "groundnut", "arachis", "peanut butter", "peanut oil", "satay", "monkey nuts"]
+        if peanutKeywords.contains(where: { lower.contains($0) }) {
             return "Peanuts"
         }
 
-        // Tree nuts
-        if lower.contains("almond") || lower.contains("hazelnut") || lower.contains("walnut") ||
-           lower.contains("cashew") || lower.contains("pistachio") || lower.contains("pecan") ||
-           lower.contains("brazil nut") || lower.contains("macadamia") || lower.contains("nut") {
+        // Tree nuts (comprehensive)
+        let treeNutKeywords = ["almond", "hazelnut", "walnut", "cashew", "pistachio", "pecan", "filbert",
+                               "brazil nut", "macadamia", "pine nut", "chestnut", "praline", "gianduja",
+                               "marzipan", "frangipane", "nougat", "nutella", "nut butter", "almond flour",
+                               "ground almonds", "flaked almonds", "walnut oil", "hazelnut oil"]
+        if treeNutKeywords.contains(where: { lower.contains($0) }) {
             return "Tree Nuts"
         }
 
-        // Cereals containing gluten
-        if lower.contains("wheat") || lower.contains("gluten") || lower.contains("barley") ||
-           lower.contains("rye") || lower.contains("oats") || lower.contains("spelt") ||
-           lower.contains("kamut") {
+        // Cereals containing gluten (comprehensive)
+        let glutenKeywords = ["wheat", "gluten", "barley", "rye", "oats", "spelt", "kamut", "einkorn",
+                              "triticale", "durum", "farro", "freekeh", "seitan", "malt", "brewer's yeast",
+                              "semolina", "bulgur", "couscous", "flour", "bread", "pasta", "beer", "lager", "ale", "stout"]
+        if glutenKeywords.contains(where: { lower.contains($0) }) {
             return "Gluten"
         }
 
-        // Soya
-        if lower.contains("soy") || lower.contains("soya") || lower.contains("soybean") ||
-           lower.contains("tofu") || lower.contains("edamame") {
+        // Soya (comprehensive)
+        let soyKeywords = ["soy", "soya", "soybean", "tofu", "tempeh", "miso", "shoyu", "tamari",
+                           "edamame", "soy sauce", "soy milk", "soy protein", "soy lecithin", "natto", "tvp"]
+        if soyKeywords.contains(where: { lower.contains($0) }) {
             return "Soya"
         }
 
-        // Fish
-        if lower.contains("fish") || lower.contains("salmon") || lower.contains("tuna") ||
-           lower.contains("cod") || lower.contains("haddock") || lower.contains("trout") ||
-           lower.contains("mackerel") {
+        // Fish (comprehensive - all common species)
+        let fishKeywords = ["fish", "fish sauce", "worcestershire", "fish finger", "fish cake", "fish pie",
+                            "salmon", "tuna", "cod", "bass", "trout", "anchovy", "sardine", "mackerel",
+                            "haddock", "plaice", "pollock", "hake", "monkfish", "halibut", "tilapia",
+                            "bream", "sole", "herring", "kipper", "whitebait", "pilchard", "sprat",
+                            "swordfish", "snapper", "grouper", "perch", "catfish", "carp", "pike", "eel"]
+        if fishKeywords.contains(where: { lower.contains($0) }) {
             return "Fish"
         }
 
-        // Crustaceans
-        if lower.contains("shellfish") || lower.contains("shrimp") || lower.contains("crab") ||
-           lower.contains("lobster") || lower.contains("prawn") || lower.contains("crayfish") ||
-           lower.contains("langoustine") {
+        // Crustaceans (comprehensive)
+        let crustaceanKeywords = ["shrimp", "prawn", "crab", "lobster", "crawfish", "crayfish", "langoustine",
+                                  "king prawn", "tiger prawn", "crab stick", "crab cake", "shellfish"]
+        if crustaceanKeywords.contains(where: { lower.contains($0) }) {
             return "Crustaceans"
         }
 
-        // Molluscs
-        if lower.contains("mollusc") || lower.contains("oyster") || lower.contains("clam") ||
-           lower.contains("mussel") || lower.contains("squid") || lower.contains("octopus") ||
-           lower.contains("snail") || lower.contains("whelk") {
+        // Molluscs (comprehensive)
+        let molluscKeywords = ["mollusc", "clam", "mussel", "oyster", "scallop", "cockle", "winkle", "whelk",
+                               "squid", "calamari", "octopus", "cuttlefish", "abalone", "snail", "escargot"]
+        if molluscKeywords.contains(where: { lower.contains($0) }) {
             return "Molluscs"
         }
 
-        // Sesame
-        if lower.contains("sesame") || lower.contains("tahini") {
+        // Sesame (comprehensive)
+        let sesameKeywords = ["sesame", "tahini", "sesame oil", "sesame seed", "hummus", "houmous",
+                              "halvah", "halva", "za'atar", "zaatar", "gomashio", "benne seed"]
+        if sesameKeywords.contains(where: { lower.contains($0) }) {
             return "Sesame"
         }
 
         // Mustard
-        if lower.contains("mustard") {
+        let mustardKeywords = ["mustard", "mustard seed", "dijon", "wholegrain mustard"]
+        if mustardKeywords.contains(where: { lower.contains($0) }) {
             return "Mustard"
         }
 
         // Celery
-        if lower.contains("celery") || lower.contains("celeriac") {
+        let celeryKeywords = ["celery", "celeriac", "celery salt", "celery extract"]
+        if celeryKeywords.contains(where: { lower.contains($0) }) {
             return "Celery"
         }
 
         // Lupin
-        if lower.contains("lupin") || lower.contains("lupine") {
+        let lupinKeywords = ["lupin", "lupine", "lupin flour"]
+        if lupinKeywords.contains(where: { lower.contains($0) }) {
             return "Lupin"
         }
 
-        // Sulphites
-        if lower.contains("sulphite") || lower.contains("sulfite") || lower.contains("sulphur dioxide") ||
-           lower.contains("sulfur dioxide") || lower.contains("e220") || lower.contains("e221") ||
-           lower.contains("e222") || lower.contains("e223") || lower.contains("e224") {
+        // Sulphites (comprehensive with E-numbers)
+        let sulphiteKeywords = ["sulphite", "sulfite", "sulphur dioxide", "sulfur dioxide",
+                                "e220", "e221", "e222", "e223", "e224", "e225", "e226", "e227", "e228",
+                                "metabisulphite", "metabisulfite"]
+        if sulphiteKeywords.contains(where: { lower.contains($0) }) {
             return "Sulphites"
         }
 

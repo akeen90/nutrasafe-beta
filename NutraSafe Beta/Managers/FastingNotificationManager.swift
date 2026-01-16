@@ -196,11 +196,7 @@ class FastingNotificationManager {
         let identifier = "fast_start_snooze_\(planId)_\(Date().timeIntervalSince1970)"
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
 
-        notificationCenter.add(request) { error in
-            if let error = error {
-            } else {
-            }
-        }
+        notificationCenter.add(request) { _ in }
     }
 
     private func scheduleExtendNotification(planId: String, userInfo: [AnyHashable: Any], minutes: Int) {
@@ -215,11 +211,7 @@ class FastingNotificationManager {
         let identifier = "fast_end_extend_\(planId)_\(Date().timeIntervalSince1970)"
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
 
-        notificationCenter.add(request) { error in
-            if let error = error {
-            } else {
-            }
-        }
+        notificationCenter.add(request) { _ in }
     }
 
     // MARK: - Schedule Notifications
@@ -548,14 +540,13 @@ class FastingNotificationManager {
     /// List all pending fasting notifications (for debugging)
     func listPendingNotifications() async {
         let pendingRequests = await notificationCenter.pendingNotificationRequests()
-        let fastingNotifications = pendingRequests.filter { request in
+        _ = pendingRequests.filter { request in
             if let type = request.content.userInfo["type"] as? String {
                 return type == "fasting"
             }
             return false
         }
-
-        }
+    }
 
     // MARK: - Background Refresh Support
 

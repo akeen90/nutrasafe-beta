@@ -142,12 +142,11 @@ actor WeekDataCache {
 
     /// Clear all cached week data
     func clear() {
-        let previousSize = weekCache.count
         weekCache.removeAll()
         accessOrder.removeAll()
         hits = 0
         misses = 0
-            }
+    }
 
     /// Get current cache size
     func size() -> Int {

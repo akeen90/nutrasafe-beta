@@ -347,6 +347,6 @@ class ImageCacheManager {
 
     /// Print cache statistics (for debugging)
     func printCacheStats() {
-        let stats = getCacheStats()
-            }
+        _ = getCacheStats()
+    }
 }

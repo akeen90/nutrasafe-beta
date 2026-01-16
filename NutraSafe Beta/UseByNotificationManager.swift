@@ -190,8 +190,6 @@ class UseByNotificationManager {
 
     /// Print all pending notifications (for debugging)
     func printPendingNotifications() async {
-        let requests = await UNUserNotificationCenter.current().pendingNotificationRequests()
-                for request in requests {
-                    }
+        _ = await UNUserNotificationCenter.current().pendingNotificationRequests()
     }
 }

@@ -513,9 +513,7 @@ struct AddFoodAIView: View {
         }
 
         let base64Image = imageData.base64EncodedString()
-        let imageSizeKB = imageData.count / 1024
 
-        
         // Call Firebase function for AI food recognition
         let urlString = "https://us-central1-nutrasafe-705c7.cloudfunctions.net/recognizeFood"
         guard let url = URL(string: urlString) else {
@@ -1223,12 +1221,13 @@ struct CombinedMealView: View {
                 await MainActor.run {
                     showingSuccessAlert = true
                 }
-            } catch let error as FirebaseManager.DiaryLimitError {
-                                await MainActor.run {
+            } catch is FirebaseManager.DiaryLimitError {
+                await MainActor.run {
                     showingLimitError = true
                 }
             } catch {
-                            }
+                // Silently handle other save errors
+            }
         }
     }
 }
