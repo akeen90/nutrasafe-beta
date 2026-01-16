@@ -664,20 +664,22 @@ struct ImagePicker: UIViewControllerRepresentable {
         }
         
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-            
+            // Dismiss picker first - UIImagePickerController requires explicit dismissal
+            picker.dismiss(animated: true)
+
             if let image = info[.originalImage] as? UIImage {
-                                parent.selectedImage?.wrappedValue = image
+                parent.selectedImage?.wrappedValue = image
                 parent.onImageSelected(image)
             } else {
                 // Failed to extract image - still call callback with nil to trigger error handling
-                                parent.onImageSelected(nil)
+                parent.onImageSelected(nil)
             }
         }
 
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            // Dismiss picker first - UIImagePickerController requires explicit dismissal
+            picker.dismiss(animated: true)
             parent.onImageSelected(nil)
-            // Don't dismiss here - let parent view control dismissal via sheet binding
-            // picker.dismiss(animated: true)
         }
     }
 }
