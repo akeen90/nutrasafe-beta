@@ -715,12 +715,11 @@ struct MultiImagePicker: UIViewControllerRepresentable {
         }
 
         func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
-            
-            // Don't call picker.dismiss() - let SwiftUI handle dismissal via the sheet binding
-            // This prevents race conditions between manual dismiss and binding state
+            // Dismiss the picker immediately - PHPickerViewController doesn't auto-dismiss
+            picker.dismiss(animated: true)
 
             guard !results.isEmpty else {
-                                DispatchQueue.main.async {
+                DispatchQueue.main.async {
                     self.parent.onImagesSelected([])
                 }
                 return

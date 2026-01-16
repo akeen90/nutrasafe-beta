@@ -3411,15 +3411,13 @@ struct AddWeightView: View {
             }
             .fullScreenCover(isPresented: $showingMultiImagePicker) {
                 MultiImagePicker(maxSelection: 3 - selectedPhotos.count) { images in
-                                        let availableSlots = 3 - selectedPhotos.count
+                    showingMultiImagePicker = false // Dismiss the picker
+                    let availableSlots = 3 - selectedPhotos.count
                     let photosToAdd = min(images.count, availableSlots)
 
                     for i in 0..<photosToAdd {
                         selectedPhotos.append(IdentifiableImage(image: images[i], url: nil))
-                                            }
-
-                    if images.count > photosToAdd {
-                                            }
+                    }
                 }
             }
             .confirmationDialog("Choose Photo Source", isPresented: $showingPhotoOptions) {
@@ -3944,15 +3942,13 @@ struct EditWeightView: View {
             }
             .fullScreenCover(isPresented: $showingMultiImagePicker) {
                 MultiImagePicker(maxSelection: 3 - selectedPhotos.count) { images in
-                                        let availableSlots = 3 - selectedPhotos.count
+                    showingMultiImagePicker = false // Dismiss the picker
+                    let availableSlots = 3 - selectedPhotos.count
                     let photosToAdd = min(images.count, availableSlots)
 
                     for i in 0..<photosToAdd {
                         selectedPhotos.append(IdentifiableImage(image: images[i], url: nil))
-                                            }
-
-                    if images.count > photosToAdd {
-                                            }
+                    }
                 }
             }
             .fullScreenCover(item: $selectedPhotoForViewing) { photo in
@@ -4714,12 +4710,14 @@ struct AddFoodMainView: View {
 
     enum AddOption: String, CaseIterable {
         case search = "Search"
+        case meals = "My Meals"
         case manual = "Manual"
         case barcode = "Barcode"
 
         var icon: String {
             switch self {
             case .search: return "magnifyingglass"
+            case .meals: return "fork.knife.circle"
             case .manual: return "square.and.pencil"
             case .barcode: return "barcode.viewfinder"
             }
@@ -4728,9 +4726,15 @@ struct AddFoodMainView: View {
         var description: String {
             switch self {
             case .search: return "Search food database"
+            case .meals: return "Saved meal combinations"
             case .manual: return "Enter manually"
             case .barcode: return "Scan product barcode"
             }
+        }
+
+        // Only show these tabs in the selector (barcode is accessed from search)
+        static var visibleCases: [AddOption] {
+            [.search, .meals, .manual]
         }
     }
 
@@ -4789,13 +4793,12 @@ struct AddFoodMainView: View {
                     VStack(spacing: 0) {
                         // Header
                         VStack(spacing: 12) {
-                        // Option selector
+                        // Option selector - Search, My Meals, Manual (barcode accessed from search)
                         HStack(spacing: 0) {
-                            OptionSelectorButton(title: "Search", icon: "magnifyingglass", isSelected: selectedAddOption == .search) {
-                                selectedAddOption = .search
-                            }
-                            OptionSelectorButton(title: "Manual", icon: "square.and.pencil", isSelected: selectedAddOption == .manual) {
-                                selectedAddOption = .manual
+                            ForEach(AddOption.visibleCases, id: \.self) { option in
+                                OptionSelectorButton(title: option.rawValue, icon: option.icon, isSelected: selectedAddOption == option) {
+                                    selectedAddOption = option
+                                }
                             }
                         }
                         .padding(.horizontal, 16)
@@ -4821,6 +4824,10 @@ struct AddFoodMainView: View {
                                         selectedAddOption = .barcode
                                     }
                                 )
+                            )
+                        case .meals:
+                            AnyView(
+                                MyMealsView(selectedTab: $selectedTab, onComplete: onComplete)
                             )
                         case .manual:
                             AnyView(

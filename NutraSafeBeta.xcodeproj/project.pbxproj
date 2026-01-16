@@ -116,6 +116,10 @@
 		RECOM456E67696E65426C64 /* NutrientRecommendationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = RECOM456E67696E6546696C65 /* NutrientRecommendationEngine.swift */; };
 		RECOM566965774275696C64 /* SmartRecommendationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = RECOM5669657746696C65 /* SmartRecommendationsView.swift */; };
 		SUBS0001BUILD /* SubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = SUBS0001FILE /* SubscriptionManager.swift */; };
+		MEALMODELS001BUILD /* MealModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = MEALMODELS001FILE /* MealModels.swift */; };
+		MEALMANAGER001BUILD /* MealManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = MEALMANAGER001FILE /* MealManager.swift */; };
+		MYMEALSVIEW001BUILD /* MyMealsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = MYMEALSVIEW001FILE /* MyMealsView.swift */; };
+		CREATEMEALVIEW001BUILD /* CreateMealView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CREATEMEALVIEW001FILE /* CreateMealView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -226,6 +230,10 @@
 		RECOM456E67696E6546696C65 /* NutrientRecommendationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutrientRecommendationEngine.swift; sourceTree = "<group>"; };
 		RECOM5669657746696C65 /* SmartRecommendationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartRecommendationsView.swift; sourceTree = "<group>"; };
 		SUBS0001FILE /* SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/SubscriptionManager.swift; sourceTree = "<group>"; };
+		MEALMODELS001FILE /* MealModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealModels.swift; sourceTree = "<group>"; };
+		MEALMANAGER001FILE /* MealManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/MealManager.swift; sourceTree = "<group>"; };
+		MYMEALSVIEW001FILE /* MyMealsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyMealsView.swift; sourceTree = "<group>"; };
+		CREATEMEALVIEW001FILE /* CreateMealView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateMealView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -252,10 +260,12 @@
 				FEAB7CC556B14207BD435571 /* AddFoodAIView.swift */,
 				BAE7C57B63B8447E8E45151CDF47A83C /* AdditiveAnalysisViews.swift */,
 				35D2ABE73E734F6F8D147178AE588182 /* BarcodeScanningViews.swift */,
+				CREATEMEALVIEW001FILE /* CreateMealView.swift */,
 				FF612B9BEC774EC78502B67C /* FoodDetailViewFromSearch.swift */,
 				EF86AB54327E46EA98DD76AB /* FoodManagementViews.swift */,
 				F424654E4CD941D1B3565C0B /* FoodSearchViews.swift */,
 				B1E4A63C54154D289C990AE1BEA07BB8 /* FoodTabViews.swift */,
+				MYMEALSVIEW001FILE /* MyMealsView.swift */,
 				B799554ABB0D79AAB6F4E64B /* AddFoodManualViews.swift */,
 			);
 			path = Food;
@@ -345,6 +355,7 @@
 				B1234567890123456789FA01 /* FastingModels.swift */,
 				B4C4FD21E58EE1B4FF761877 /* MicronutrientScoringModels.swift */,
 				BA25CC3104894F129803B0E8 /* CitationManager.swift */,
+				MEALMODELS001FILE /* MealModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -354,6 +365,7 @@
 			children = (
 				ALGOLIA001FILE /* AlgoliaSearchManager.swift */,
 				ONBMGR0001FILE /* OnboardingManager.swift */,
+				MEALMANAGER001FILE /* MealManager.swift */,
 			);
 			name = Managers;
 			sourceTree = "<group>";
@@ -677,6 +689,10 @@
 				44D4C7FE8AA62D4D81116871 /* FastingConfirmationSheet.swift in Sources */,
 				947EE7E17360015FB3D6CA3A /* AdditiveTrackerViewModel.swift in Sources */,
 				48DCC14357C3D077D4224FD2 /* AdditiveTrackerView.swift in Sources */,
+				MEALMODELS001BUILD /* MealModels.swift in Sources */,
+				MEALMANAGER001BUILD /* MealManager.swift in Sources */,
+				MYMEALSVIEW001BUILD /* MyMealsView.swift in Sources */,
+				CREATEMEALVIEW001BUILD /* CreateMealView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
