@@ -664,22 +664,29 @@ struct ImagePicker: UIViewControllerRepresentable {
         }
         
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-            // Dismiss picker first - UIImagePickerController requires explicit dismissal
-            picker.dismiss(animated: true)
+            // Extract image first before dismissing
+            let selectedImage = info[.originalImage] as? UIImage
 
-            if let image = info[.originalImage] as? UIImage {
-                parent.selectedImage?.wrappedValue = image
-                parent.onImageSelected(image)
-            } else {
-                // Failed to extract image - still call callback with nil to trigger error handling
-                parent.onImageSelected(nil)
+            // Dismiss picker and call callback in completion handler
+            // This prevents double-dismissal issues when presented in a sheet
+            picker.dismiss(animated: true) { [weak self] in
+                guard let self = self else { return }
+                if let image = selectedImage {
+                    self.parent.selectedImage?.wrappedValue = image
+                    self.parent.onImageSelected(image)
+                } else {
+                    // Failed to extract image - still call callback with nil to trigger error handling
+                    self.parent.onImageSelected(nil)
+                }
             }
         }
 
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            // Dismiss picker first - UIImagePickerController requires explicit dismissal
-            picker.dismiss(animated: true)
-            parent.onImageSelected(nil)
+            // Dismiss picker and call callback in completion handler
+            // This prevents double-dismissal issues when presented in a sheet
+            picker.dismiss(animated: true) { [weak self] in
+                self?.parent.onImageSelected(nil)
+            }
         }
     }
 }

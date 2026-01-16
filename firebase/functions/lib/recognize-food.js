@@ -29,7 +29,7 @@ exports.recognizeFood = (0, https_1.onRequest)({
     memory: '1GiB',
     secrets: [geminiApiKey, algoliaAdminKey],
 }, async (req, res) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w;
     // Handle CORS preflight
     if (req.method === 'OPTIONS') {
         res.set('Access-Control-Allow-Origin', '*');
@@ -62,7 +62,19 @@ exports.recognizeFood = (0, https_1.onRequest)({
         const algoliaClient = (0, algoliasearch_1.algoliasearch)(ALGOLIA_APP_ID, algoliaAdminKey.value());
         const finalFoods = [];
         for (const identified of identifiedFoods) {
-            const portionMultiplier = identified.portionGrams / 100;
+            // For PACKAGED products, cap portion size to prevent logging whole pack
+            // AI often estimates total pack weight (e.g., 700g for 4 chicken breasts)
+            // but users typically want to log a single serving
+            let adjustedPortionGrams = identified.portionGrams;
+            if (identified.isPackaging) {
+                // Maximum reasonable single serving for packaged products
+                const MAX_PACKAGED_PORTION = 250; // Most single servings are under 250g
+                if (identified.portionGrams > MAX_PACKAGED_PORTION) {
+                    console.log(`  ⚠️ [Portion cap] "${identified.name}": ${identified.portionGrams}g → ${MAX_PACKAGED_PORTION}g (likely whole pack detected)`);
+                    adjustedPortionGrams = MAX_PACKAGED_PORTION;
+                }
+            }
+            const portionMultiplier = adjustedPortionGrams / 100;
             // Only search database for packaged products with branding visible
             // Plated/prepared food uses AI estimates directly (more accurate for generic items)
             if (identified.isPackaging && identified.brand) {
@@ -77,6 +89,21 @@ exports.recognizeFood = (0, https_1.onRequest)({
                     const sugarVal = (_q = (_p = dbMatch.sugar) !== null && _p !== void 0 ? _p : dbMatch.Sugar) !== null && _q !== void 0 ? _q : 0;
                     const sodiumVal = (_s = (_r = dbMatch.sodium) !== null && _r !== void 0 ? _r : dbMatch.Sodium) !== null && _s !== void 0 ? _s : 0;
                     const brandVal = (_u = (_t = dbMatch.brandName) !== null && _t !== void 0 ? _t : dbMatch.brand) !== null && _u !== void 0 ? _u : identified.brand;
+                    // For PACKAGED products with database match, prefer the database serving size
+                    // over AI-estimated portion (AI should only estimate portions for generic plated food)
+                    const dbServingSize = (_w = (_v = dbMatch.servingSize) !== null && _v !== void 0 ? _v : dbMatch.ServingSize) !== null && _w !== void 0 ? _w : dbMatch.serving_size;
+                    let finalPortionGrams;
+                    if (dbServingSize && dbServingSize > 0) {
+                        // Use database serving size for packaged products
+                        finalPortionGrams = dbServingSize;
+                        console.log(`  📐 Using DB serving size: ${finalPortionGrams}g (AI estimated: ${adjustedPortionGrams}g)`);
+                    }
+                    else {
+                        // Fallback to AI estimate if no database serving size
+                        finalPortionGrams = adjustedPortionGrams;
+                        console.log(`  📐 No DB serving size, using AI estimate: ${finalPortionGrams}g`);
+                    }
+                    const finalPortionMultiplier = finalPortionGrams / 100;
                     // Log the raw database record for debugging
                     console.log(`  📦 DB record fields: ${Object.keys(dbMatch).join(', ')}`);
                     console.log(`  📊 Nutrition values - cal: ${caloriesVal}, prot: ${proteinVal}, carbs: ${carbsVal}, fat: ${fatVal}`);
@@ -84,14 +111,14 @@ exports.recognizeFood = (0, https_1.onRequest)({
                     finalFoods.push({
                         name: dbMatch.name,
                         brand: brandVal,
-                        calories: Math.round(caloriesVal * portionMultiplier),
-                        protein: Math.round(proteinVal * portionMultiplier * 10) / 10,
-                        carbs: Math.round(carbsVal * portionMultiplier * 10) / 10,
-                        fat: Math.round(fatVal * portionMultiplier * 10) / 10,
-                        fiber: Math.round(fiberVal * portionMultiplier * 10) / 10,
-                        sugar: Math.round(sugarVal * portionMultiplier * 10) / 10,
-                        sodium: Math.round(sodiumVal * portionMultiplier * 10) / 10,
-                        portionGrams: identified.portionGrams,
+                        calories: Math.round(caloriesVal * finalPortionMultiplier),
+                        protein: Math.round(proteinVal * finalPortionMultiplier * 10) / 10,
+                        carbs: Math.round(carbsVal * finalPortionMultiplier * 10) / 10,
+                        fat: Math.round(fatVal * finalPortionMultiplier * 10) / 10,
+                        fiber: Math.round(fiberVal * finalPortionMultiplier * 10) / 10,
+                        sugar: Math.round(sugarVal * finalPortionMultiplier * 10) / 10,
+                        sodium: Math.round(sodiumVal * finalPortionMultiplier * 10) / 10,
+                        portionGrams: finalPortionGrams,
                         confidence: identified.confidence,
                         isFromDatabase: true,
                         databaseId: dbMatch.objectID,
@@ -99,7 +126,7 @@ exports.recognizeFood = (0, https_1.onRequest)({
                             ? dbMatch.ingredients.join(', ')
                             : (dbMatch.ingredients || null),
                     });
-                    console.log(`  ✅ [Packaging] "${identified.name}" → DB match: "${dbMatch.name}" (${caloriesVal} kcal/100g)`);
+                    console.log(`  ✅ [Packaging] "${identified.name}" → DB match: "${dbMatch.name}" (${caloriesVal} kcal/100g × ${finalPortionMultiplier.toFixed(2)} = ${Math.round(caloriesVal * finalPortionMultiplier)} kcal)`);
                     continue;
                 }
                 // If no DB match for packaging, fall through to AI estimate
@@ -119,7 +146,7 @@ exports.recognizeFood = (0, https_1.onRequest)({
                 fiber: 0,
                 sugar: 0,
                 sodium: 0,
-                portionGrams: identified.portionGrams,
+                portionGrams: adjustedPortionGrams,
                 confidence: identified.isPackaging ? identified.confidence * 0.8 : identified.confidence, // Lower confidence only for failed DB lookups
                 isFromDatabase: false,
                 databaseId: null,
@@ -216,6 +243,15 @@ RECOGNISE SNACKS AND DRINKS:
 ## PACKAGING vs PLATED FOOD
 - isPackaging = true: Product in original packaging with labels/branding visible
 - isPackaging = false: Food on plate, in bowl, takeaway container, or being eaten
+
+## CRITICAL FOR PACKAGED PRODUCTS
+When isPackaging = true, estimate the SINGLE SERVING portion, NOT the whole pack:
+- Pack of 4 chicken breasts (700g total) → portionGrams = 175g (one breast)
+- Pack of sausages (400g for 8 sausages) → portionGrams = 50g (one sausage)
+- Sliced bread loaf → portionGrams = 35g (one slice)
+- Yogurt multipack → portionGrams = 125g (one pot)
+- Ready meal → portionGrams = stated serving size on pack
+Users scan packaged products to LOG A SINGLE SERVING, not the entire pack.
 
 ## CRITICAL - BREAK DOWN MEALS INTO COMPONENTS
 For plated food, list EACH component SEPARATELY:

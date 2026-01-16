@@ -73,11 +73,15 @@ For BARCODE:
 - ONLY return the numeric digits, no letters or symbols
 - If barcode is partially visible or unclear, omit it
 
-For INGREDIENTS:
-- Extract the COMPLETE ingredients list text
-- Preserve commas separating ingredients
-- Identify allergens (typically in BOLD or highlighted): wheat, milk, eggs, nuts, soy, fish, shellfish, sesame, celery, mustard, lupin, molluscs, sulphites
+For INGREDIENTS (CRITICAL - always extract if visible):
+- Extract the COMPLETE ingredients list text exactly as printed
+- Start from "Ingredients:" and include EVERYTHING until the ingredients list ends
+- Preserve commas and parentheses exactly as shown
+- Include sub-ingredients in parentheses (e.g., "Chocolate (Cocoa Mass, Sugar, Cocoa Butter)")
+- Include percentages if shown (e.g., "Chicken Breast (58%)")
+- Identify allergens (typically in BOLD or CAPITALS): wheat, milk, eggs, nuts, soy, fish, shellfish, sesame, celery, mustard, lupin, molluscs, sulphites
 - Extract "Contains:" or "May contain:" statements separately
+- THIS FIELD IS VERY IMPORTANT - users rely on it for allergy safety
 
 For NUTRITION (prefer per 100g, convert if needed):
 - Energy: Return in kcal (convert from kJ: kJ ÷ 4.184)
