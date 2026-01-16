@@ -3032,6 +3032,13 @@ struct UseByFoodDetailSheet: View {
     @State private var expiryAmount: Int = 7
     @State private var expiryUnit: ExpiryUnit = .days
 
+    // Photo capture states
+    @State private var capturedImage: UIImage?
+    @State private var showCameraPicker: Bool = false
+    @State private var showPhotoPicker: Bool = false
+    @State private var showPhotoActionSheet: Bool = false
+    @State private var isUploadingPhoto: Bool = false
+
     enum ExpiryMode {
         case calendar
         case selector
@@ -3260,6 +3267,59 @@ struct UseByFoodDetailSheet: View {
                     .background(Color(.secondarySystemBackground))
                     .cornerRadius(12)
 
+                    // Photo Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("PHOTO", systemImage: "camera.fill")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.secondary)
+
+                        if let displayImage = capturedImage {
+                            ZStack(alignment: .topTrailing) {
+                                Image(uiImage: displayImage)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(height: 200)
+                                    .clipped()
+                                    .cornerRadius(12)
+
+                                Button(action: {
+                                    capturedImage = nil
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.system(size: 24))
+                                        .foregroundColor(.white)
+                                        .background(Circle().fill(Color.black.opacity(0.6)))
+                                }
+                                .padding(8)
+                            }
+                        }
+
+                        Button(action: { showPhotoActionSheet = true }) {
+                            HStack {
+                                if isUploadingPhoto {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                } else {
+                                    Image(systemName: capturedImage != nil ? "camera.fill" : "camera")
+                                    Text(capturedImage != nil ? "Change Photo" : "Add Photo")
+                                }
+                            }
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.blue)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.blue.opacity(0.1))
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .disabled(isUploadingPhoto)
+                    }
+                    .padding(16)
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(12)
+
                     // Save Button
                     Button(action: saveToUseBy) {
                         HStack {
@@ -3302,6 +3362,31 @@ struct UseByFoodDetailSheet: View {
             }
         }
         .background(colorScheme == .dark ? Color.midnightBackground : Color(.systemBackground))
+        .confirmationDialog("Add Photo", isPresented: $showPhotoActionSheet) {
+            Button("Take Photo") {
+                showCameraPicker = true
+            }
+            Button("Choose from Library") {
+                showPhotoPicker = true
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+        .fullScreenCover(isPresented: $showCameraPicker) {
+            ImagePicker(selectedImage: nil, sourceType: .camera) { image in
+                if let image = image {
+                    capturedImage = image
+                }
+                showCameraPicker = false
+            }
+        }
+        .fullScreenCover(isPresented: $showPhotoPicker) {
+            PhotoLibraryPicker { image in
+                showPhotoPicker = false
+                if let image = image {
+                    capturedImage = image
+                }
+            }
+        }
     }
 
     private func saveToUseBy() {
@@ -3309,12 +3394,37 @@ struct UseByFoodDetailSheet: View {
 
         isSaving = true
 
+        // Haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.prepare()
+        impactFeedback.impactOccurred()
+
         Task {
             do {
                 let finalExpiryDate = expiryMode == .selector ? calculatedExpiryDate : expiryDate
+                let itemId = UUID().uuidString
+
+                // Handle image caching and upload
+                var firebaseURL: String? = nil
+                if let image = capturedImage {
+                    // Save to local cache
+                    do {
+                        try await ImageCacheManager.shared.saveUseByImageAsync(image, for: itemId)
+                    } catch {
+                        // Continue without caching
+                    }
+
+                    // Upload to Firebase for backup/sync
+                    do {
+                        let url = try await FirebaseManager.shared.uploadUseByItemPhoto(image)
+                        firebaseURL = url
+                    } catch {
+                        // Continue without upload
+                    }
+                }
 
                 let newItem = UseByInventoryItem(
-                    id: UUID().uuidString,
+                    id: itemId,
                     name: food.name,
                     brand: food.brand,
                     quantity: quantity,
@@ -3322,16 +3432,22 @@ struct UseByFoodDetailSheet: View {
                     addedDate: Date(),
                     barcode: nil,
                     category: nil,
-                    imageURL: nil,
+                    imageURL: firebaseURL,
                     notes: notes.isEmpty ? nil : notes
                 )
 
                 try await FirebaseManager.shared.addUseByItem(newItem)
+                await UseByNotificationManager.shared.scheduleNotifications(for: newItem)
 
                 await MainActor.run {
                     // Notify Use By tab to refresh
                     NotificationCenter.default.post(name: .useByInventoryUpdated, object: nil)
                     isSaving = false
+
+                    // Success haptic
+                    let successFeedback = UINotificationFeedbackGenerator()
+                    successFeedback.notificationOccurred(.success)
+
                     dismiss()
                     onComplete?()
                 }
