@@ -1133,33 +1133,40 @@ class FastingViewModel: ObservableObject {
     // MARK: - Session Management
 
     func startFastingSession() async {
-                        guard let plan = activePlan else {
-                        self.error = NSError(domain: "FastingViewModel", code: 1, userInfo: [NSLocalizedDescriptionKey: "No active plan found"])
+        guard let plan = activePlan else {
+            self.error = NSError(domain: "FastingViewModel", code: 1, userInfo: [NSLocalizedDescriptionKey: "No active plan found"])
             self.showError = true
             return
         }
 
-                isLoading = true
+        isLoading = true
         defer { isLoading = false }
 
-                let session = FastingManager.createSession(
+        let session = FastingManager.createSession(
             userId: userId,
             plan: plan,
             targetDurationHours: plan.durationHours
         )
 
-
-                do {
+        do {
             let docId = try await firebaseManager.saveFastingSession(session)
-            
+
             // Update local state immediately (same fix as for plan creation)
             var savedSession = session
             savedSession.id = docId
             self.activeSession = savedSession
             self.recentSessions.insert(savedSession, at: 0)
 
-                    } catch {
-                        self.error = error
+            // If regime is active, also set custom start time override so the regime UI shows fasting state
+            // This ensures the regime timer switches from "eating" to "fasting" immediately
+            if plan.regimeActive {
+                customStartTimeOverride = Date()
+                customTargetHoursOverride = plan.durationHours
+                // Clear the "ended window" marker so the eating check doesn't override the custom start
+                lastEndedWindowEnd = nil
+            }
+        } catch {
+            self.error = error
             self.showError = true
         }
     }

@@ -252,20 +252,12 @@ func expandSearchQuery(_ query: String) -> [String] {
 final class AlgoliaSearchManager {
     static let shared = AlgoliaSearchManager()
 
-    // Algolia credentials loaded from Info.plist (configured via build settings)
-    // Search-only API keys are designed by Algolia for client-side use and can only perform searches
-    private let appId: String?
-    private let searchKey: String?
-
-    // Flag to check if Algolia is properly configured
-    var isConfigured: Bool {
-        guard let appId = appId, let searchKey = searchKey else { return false }
-        return !appId.isEmpty && !searchKey.isEmpty
-    }
+    // Algolia credentials - search-only API keys are designed for client-side use
+    private let appId: String
+    private let searchKey: String
 
     // Base URL for Algolia API
-    private var baseURL: String? {
-        guard let appId = appId else { return nil }
+    private var baseURL: String {
         return "https://\(appId)-dsn.algolia.net/1/indexes"
     }
 
@@ -289,25 +281,9 @@ final class AlgoliaSearchManager {
     private let session: URLSession
 
     private init() {
-        // Load Algolia credentials from Info.plist (allows configuration via build settings)
-        // Credentials MUST be configured via ALGOLIA_APP_ID and ALGOLIA_SEARCH_KEY build settings
-        // If not configured, Algolia search will be disabled and local database will be used
-        let infoPlist = Bundle.main.infoDictionary
-        let plistAppId = infoPlist?["AlgoliaAppId"] as? String
-        let plistSearchKey = infoPlist?["AlgoliaSearchKey"] as? String
-
-        // Use Info.plist values only if they're valid (not empty or placeholder variables)
-        if let id = plistAppId, !id.isEmpty, !id.hasPrefix("$(") {
-            self.appId = id
-        } else {
-            self.appId = nil
-        }
-
-        if let key = plistSearchKey, !key.isEmpty, !key.hasPrefix("$(") {
-            self.searchKey = key
-        } else {
-            self.searchKey = nil
-        }
+        // Algolia search-only credentials - safe for client-side use (can only read, not write)
+        self.appId = "WK0TIF84M2"
+        self.searchKey = "577cc4ee3fed660318917bbb54abfb2e"
 
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 10 // 10 second timeout
@@ -315,11 +291,6 @@ final class AlgoliaSearchManager {
         config.waitsForConnectivity = true
         session = URLSession(configuration: config)
         searchCache.countLimit = 100
-
-        // Log warning after all properties are initialized
-        if !isConfigured {
-            print("⚠️ Algolia credentials not configured. Set ALGOLIA_APP_ID and ALGOLIA_SEARCH_KEY in build settings.")
-        }
     }
 
     // MARK: - Word Order Flexibility Helpers
@@ -358,9 +329,6 @@ final class AlgoliaSearchManager {
     ///   - hitsPerPage: Number of results per page (default 20)
     /// - Returns: Array of FoodSearchResult
     func search(query: String, hitsPerPage: Int = 20) async throws -> [FoodSearchResult] {
-        // Return empty if Algolia is not configured - local database will be used instead
-        guard isConfigured else { return [] }
-
         let trimmedQuery = query.trimmingCharacters(in: .whitespaces)
         guard !trimmedQuery.isEmpty else { return [] }
 
@@ -740,10 +708,6 @@ final class AlgoliaSearchManager {
 
     /// Search a single Algolia index using REST API
     private func searchIndex(indexName: String, query: String, hitsPerPage: Int) async throws -> [FoodSearchResult] {
-        guard let baseURL = baseURL, let appId = appId, let searchKey = searchKey else {
-            return []
-        }
-
         guard let url = URL(string: "\(baseURL)/\(indexName)/query") else {
             return []
         }
@@ -986,9 +950,6 @@ final class AlgoliaSearchManager {
     // MARK: - Barcode Search
     /// Exact barcode lookup across indices using Algolia filters
     func searchByBarcode(_ barcode: String) async throws -> FoodSearchResult? {
-        // Return nil if Algolia is not configured - local database will be used instead
-        guard isConfigured else { return nil }
-
         let variations: [String] = {
             var v = [barcode]
             if barcode.count == 13 && barcode.hasPrefix("0") { v.append(String(barcode.dropFirst())) }
@@ -1015,10 +976,6 @@ final class AlgoliaSearchManager {
     }
 
     private func searchIndexByBarcode(indexName: String, barcode: String) async throws -> FoodSearchResult? {
-        guard let baseURL = baseURL, let appId = appId, let searchKey = searchKey else {
-            return nil
-        }
-
         guard let url = URL(string: "\(baseURL)/\(indexName)/query") else {
             return nil
         }

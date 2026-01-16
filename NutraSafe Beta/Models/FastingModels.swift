@@ -253,16 +253,19 @@ struct FastingPlan: Identifiable, Codable {
         case eating(nextFastStart: Date)
     }
 
+    // Fixed English weekday names to match how daysOfWeek is stored (locale-independent)
+    private static let weekdayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
     var currentRegimeState: RegimeState {
         guard regimeActive else { return .inactive }
 
         let calendar = Calendar.current
         let now = Date()
 
-        // Get current weekday
+        // Get current weekday using locale-independent mapping
+        // calendar.component(.weekday) returns 1=Sunday, 2=Monday, etc.
         let currentWeekday = calendar.component(.weekday, from: now)
-        let weekdaySymbols = calendar.shortWeekdaySymbols
-        let currentDayName = weekdaySymbols[currentWeekday - 1]
+        let currentDayName = Self.weekdayNames[currentWeekday - 1]
 
         // Check if today is a scheduled fasting day
         if daysOfWeek.contains(currentDayName) {
@@ -299,9 +302,9 @@ struct FastingPlan: Identifiable, Codable {
         for dayOffset in 0...14 {
             guard let checkDate = calendar.date(byAdding: .day, value: dayOffset, to: now) else { continue }
 
+            // Use locale-independent weekday mapping
             let weekday = calendar.component(.weekday, from: checkDate)
-            let weekdaySymbols = calendar.shortWeekdaySymbols
-            let dayName = weekdaySymbols[weekday - 1]
+            let dayName = Self.weekdayNames[weekday - 1]
 
             if daysOfWeek.contains(dayName) {
                 let startHour = calendar.component(.hour, from: preferredStartTime)

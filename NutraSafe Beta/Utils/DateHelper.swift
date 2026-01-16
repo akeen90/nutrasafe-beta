@@ -54,9 +54,11 @@ enum DateHelper {
     }()
 
     /// Day of week format (e.g., "Mon", "Tue")
+    /// Uses fixed English locale to match stored daysOfWeek values
     static let dayOfWeekFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEE"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         return formatter
     }()
 

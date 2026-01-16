@@ -717,8 +717,8 @@ struct MultiImagePicker: UIViewControllerRepresentable {
         }
 
         func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
-            // Dismiss the picker immediately - PHPickerViewController doesn't auto-dismiss
-            picker.dismiss(animated: true)
+            // NOTE: Do NOT call picker.dismiss() here - let SwiftUI handle dismissal via the binding
+            // Calling both picker.dismiss() and setting the binding to false causes parent view dismissal issues
 
             guard !results.isEmpty else {
                 DispatchQueue.main.async {
@@ -740,13 +740,12 @@ struct MultiImagePicker: UIViewControllerRepresentable {
                         imageQueue.sync {
                             images.append(image)
                         }
-                                            } else {
-                                            }
+                    }
                 }
             }
 
             group.notify(queue: .main) {
-                                self.parent.onImagesSelected(images)
+                self.parent.onImagesSelected(images)
             }
         }
     }
