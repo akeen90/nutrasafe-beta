@@ -160,6 +160,9 @@ struct AddActionMenu: View {
         .onAppear {
             loadWaterCount()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .waterUpdated)) { _ in
+            loadWaterCount()
+        }
     }
 
     // MARK: - Water Control Row

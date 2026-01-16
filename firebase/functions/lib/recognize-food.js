@@ -29,6 +29,7 @@ exports.recognizeFood = (0, https_1.onRequest)({
     memory: '1GiB',
     secrets: [geminiApiKey, algoliaAdminKey],
 }, async (req, res) => {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u;
     // Handle CORS preflight
     if (req.method === 'OPTIONS') {
         res.set('Access-Control-Allow-Origin', '*');
@@ -67,17 +68,29 @@ exports.recognizeFood = (0, https_1.onRequest)({
             if (identified.isPackaging && identified.brand) {
                 const dbMatch = await searchDatabaseForFood(algoliaClient, identified);
                 if (dbMatch) {
+                    // Extract nutrition with fallbacks for different field naming conventions
+                    const caloriesVal = (_c = (_b = (_a = dbMatch.calories) !== null && _a !== void 0 ? _a : dbMatch.Calories) !== null && _b !== void 0 ? _b : dbMatch.energy) !== null && _c !== void 0 ? _c : 0;
+                    const proteinVal = (_e = (_d = dbMatch.protein) !== null && _d !== void 0 ? _d : dbMatch.Protein) !== null && _e !== void 0 ? _e : 0;
+                    const carbsVal = (_h = (_g = (_f = dbMatch.carbs) !== null && _f !== void 0 ? _f : dbMatch.Carbs) !== null && _g !== void 0 ? _g : dbMatch.carbohydrates) !== null && _h !== void 0 ? _h : 0;
+                    const fatVal = (_k = (_j = dbMatch.fat) !== null && _j !== void 0 ? _j : dbMatch.Fat) !== null && _k !== void 0 ? _k : 0;
+                    const fiberVal = (_o = (_m = (_l = dbMatch.fiber) !== null && _l !== void 0 ? _l : dbMatch.Fiber) !== null && _m !== void 0 ? _m : dbMatch.fibre) !== null && _o !== void 0 ? _o : 0;
+                    const sugarVal = (_q = (_p = dbMatch.sugar) !== null && _p !== void 0 ? _p : dbMatch.Sugar) !== null && _q !== void 0 ? _q : 0;
+                    const sodiumVal = (_s = (_r = dbMatch.sodium) !== null && _r !== void 0 ? _r : dbMatch.Sodium) !== null && _s !== void 0 ? _s : 0;
+                    const brandVal = (_u = (_t = dbMatch.brandName) !== null && _t !== void 0 ? _t : dbMatch.brand) !== null && _u !== void 0 ? _u : identified.brand;
+                    // Log the raw database record for debugging
+                    console.log(`  📦 DB record fields: ${Object.keys(dbMatch).join(', ')}`);
+                    console.log(`  📊 Nutrition values - cal: ${caloriesVal}, prot: ${proteinVal}, carbs: ${carbsVal}, fat: ${fatVal}`);
                     // Database match found - use verified nutrition scaled to portion
                     finalFoods.push({
                         name: dbMatch.name,
-                        brand: dbMatch.brandName || identified.brand,
-                        calories: Math.round((dbMatch.calories || 0) * portionMultiplier),
-                        protein: Math.round((dbMatch.protein || 0) * portionMultiplier * 10) / 10,
-                        carbs: Math.round((dbMatch.carbs || 0) * portionMultiplier * 10) / 10,
-                        fat: Math.round((dbMatch.fat || 0) * portionMultiplier * 10) / 10,
-                        fiber: Math.round((dbMatch.fiber || 0) * portionMultiplier * 10) / 10,
-                        sugar: Math.round((dbMatch.sugar || 0) * portionMultiplier * 10) / 10,
-                        sodium: Math.round((dbMatch.sodium || 0) * portionMultiplier * 10) / 10,
+                        brand: brandVal,
+                        calories: Math.round(caloriesVal * portionMultiplier),
+                        protein: Math.round(proteinVal * portionMultiplier * 10) / 10,
+                        carbs: Math.round(carbsVal * portionMultiplier * 10) / 10,
+                        fat: Math.round(fatVal * portionMultiplier * 10) / 10,
+                        fiber: Math.round(fiberVal * portionMultiplier * 10) / 10,
+                        sugar: Math.round(sugarVal * portionMultiplier * 10) / 10,
+                        sodium: Math.round(sodiumVal * portionMultiplier * 10) / 10,
                         portionGrams: identified.portionGrams,
                         confidence: identified.confidence,
                         isFromDatabase: true,
@@ -86,7 +99,7 @@ exports.recognizeFood = (0, https_1.onRequest)({
                             ? dbMatch.ingredients.join(', ')
                             : (dbMatch.ingredients || null),
                     });
-                    console.log(`  ✅ [Packaging] "${identified.name}" → DB match: "${dbMatch.name}" (${dbMatch.calories || 0} kcal/100g)`);
+                    console.log(`  ✅ [Packaging] "${identified.name}" → DB match: "${dbMatch.name}" (${caloriesVal} kcal/100g)`);
                     continue;
                 }
                 // If no DB match for packaging, fall through to AI estimate
@@ -413,12 +426,9 @@ async function searchDatabaseForFood(client, food) {
                     searchParams: {
                         query,
                         hitsPerPage: 3,
-                        attributesToRetrieve: [
-                            'objectID', 'name', 'brandName',
-                            'calories', 'protein', 'carbs', 'fat',
-                            'fiber', 'sugar', 'sodium',
-                            'ingredients', 'verified', 'isGeneric'
-                        ],
+                        // Retrieve all attributes to handle different field naming conventions
+                        // CSV imports may use different cases or spellings
+                        attributesToRetrieve: ['*'],
                     },
                 });
                 if (result.hits && result.hits.length > 0) {

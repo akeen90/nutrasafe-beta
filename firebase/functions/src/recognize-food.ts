@@ -40,14 +40,25 @@ interface AlgoliaFoodHit {
   objectID: string;
   name: string;
   brandName?: string;
-  // Algolia stores nutrition without "Per100g" suffix
+  brand?: string;  // Some indices use 'brand' instead of 'brandName'
+  // Algolia stores nutrition - handle different field name conventions
   calories?: number;
+  Calories?: number;  // Some CSV imports may use title case
+  energy?: number;    // Alternative field name
   protein?: number;
+  Protein?: number;
   carbs?: number;
+  Carbs?: number;
+  carbohydrates?: number;
   fat?: number;
+  Fat?: number;
   fiber?: number;
+  Fiber?: number;
+  fibre?: number;     // British spelling
   sugar?: number;
+  Sugar?: number;
   sodium?: number;
+  Sodium?: number;
   ingredients?: string | string[];  // May be string or array depending on record
   verified?: boolean;
   isGeneric?: boolean;
@@ -128,17 +139,31 @@ export const recognizeFood = onRequest(
           const dbMatch = await searchDatabaseForFood(algoliaClient, identified);
 
           if (dbMatch) {
+            // Extract nutrition with fallbacks for different field naming conventions
+            const caloriesVal = dbMatch.calories ?? dbMatch.Calories ?? dbMatch.energy ?? 0;
+            const proteinVal = dbMatch.protein ?? dbMatch.Protein ?? 0;
+            const carbsVal = dbMatch.carbs ?? dbMatch.Carbs ?? dbMatch.carbohydrates ?? 0;
+            const fatVal = dbMatch.fat ?? dbMatch.Fat ?? 0;
+            const fiberVal = dbMatch.fiber ?? dbMatch.Fiber ?? dbMatch.fibre ?? 0;
+            const sugarVal = dbMatch.sugar ?? dbMatch.Sugar ?? 0;
+            const sodiumVal = dbMatch.sodium ?? dbMatch.Sodium ?? 0;
+            const brandVal = dbMatch.brandName ?? dbMatch.brand ?? identified.brand;
+
+            // Log the raw database record for debugging
+            console.log(`  📦 DB record fields: ${Object.keys(dbMatch).join(', ')}`);
+            console.log(`  📊 Nutrition values - cal: ${caloriesVal}, prot: ${proteinVal}, carbs: ${carbsVal}, fat: ${fatVal}`);
+
             // Database match found - use verified nutrition scaled to portion
             finalFoods.push({
               name: dbMatch.name,
-              brand: dbMatch.brandName || identified.brand,
-              calories: Math.round((dbMatch.calories || 0) * portionMultiplier),
-              protein: Math.round((dbMatch.protein || 0) * portionMultiplier * 10) / 10,
-              carbs: Math.round((dbMatch.carbs || 0) * portionMultiplier * 10) / 10,
-              fat: Math.round((dbMatch.fat || 0) * portionMultiplier * 10) / 10,
-              fiber: Math.round((dbMatch.fiber || 0) * portionMultiplier * 10) / 10,
-              sugar: Math.round((dbMatch.sugar || 0) * portionMultiplier * 10) / 10,
-              sodium: Math.round((dbMatch.sodium || 0) * portionMultiplier * 10) / 10,
+              brand: brandVal,
+              calories: Math.round(caloriesVal * portionMultiplier),
+              protein: Math.round(proteinVal * portionMultiplier * 10) / 10,
+              carbs: Math.round(carbsVal * portionMultiplier * 10) / 10,
+              fat: Math.round(fatVal * portionMultiplier * 10) / 10,
+              fiber: Math.round(fiberVal * portionMultiplier * 10) / 10,
+              sugar: Math.round(sugarVal * portionMultiplier * 10) / 10,
+              sodium: Math.round(sodiumVal * portionMultiplier * 10) / 10,
               portionGrams: identified.portionGrams,
               confidence: identified.confidence,
               isFromDatabase: true,
@@ -147,7 +172,7 @@ export const recognizeFood = onRequest(
                 ? dbMatch.ingredients.join(', ')
                 : (dbMatch.ingredients || null),
             });
-            console.log(`  ✅ [Packaging] "${identified.name}" → DB match: "${dbMatch.name}" (${dbMatch.calories || 0} kcal/100g)`);
+            console.log(`  ✅ [Packaging] "${identified.name}" → DB match: "${dbMatch.name}" (${caloriesVal} kcal/100g)`);
             continue;
           }
           // If no DB match for packaging, fall through to AI estimate
@@ -488,12 +513,9 @@ async function searchDatabaseForFood(
           searchParams: {
             query,
             hitsPerPage: 3,
-            attributesToRetrieve: [
-              'objectID', 'name', 'brandName',
-              'calories', 'protein', 'carbs', 'fat',
-              'fiber', 'sugar', 'sodium',
-              'ingredients', 'verified', 'isGeneric'
-            ],
+            // Retrieve all attributes to handle different field naming conventions
+            // CSV imports may use different cases or spellings
+            attributesToRetrieve: ['*'],
           },
         });
 
